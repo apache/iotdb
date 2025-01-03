@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeE
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
@@ -37,6 +38,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_DEFAULT_VALUE;
@@ -46,13 +48,55 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
 
 public abstract class DownSamplingProcessor implements PipeProcessor {
 
+  protected static final CurrentTimeFunction currentTime;
+
+  @FunctionalInterface
+  protected interface CurrentTimeFunction {
+    long apply();
+  }
+
+  static {
+    switch (TimestampPrecisionUtils.currPrecision) {
+      case NANOSECONDS:
+        currentTime = System::nanoTime;
+        break;
+      case MICROSECONDS:
+        currentTime = () -> TimeUnit.NANOSECONDS.toMicros(System.nanoTime());
+        break;
+      default:
+        currentTime = System::currentTimeMillis;
+    }
+  }
+
   protected long memoryLimitInBytes;
 
   protected boolean shouldSplitFile;
 
   protected String dataBaseNameWithPathSeparator;
 
-  protected PartialPathLastObjectCache<?> pathLastObjectCache;
+  /**
+   * The minimum interval of arrival times in milliseconds. Represents the minimum time interval
+   * between the arrival times of two consecutive events.
+   */
+  protected long arrivalTimeMinInterval;
+
+  /**
+   * The maximum interval of arrival times in milliseconds. Represents the maximum time interval
+   * between the arrival times of two consecutive events.
+   */
+  protected long arrivalTimeMaxInterval;
+
+  /**
+   * The minimum interval of event times in milliseconds. Represents the minimum time interval
+   * between the event times of two consecutive events.
+   */
+  protected long eventTimeMinInterval;
+
+  /**
+   * The maximum interval of event times in milliseconds. Represents the maximum time interval
+   * between the event times of two consecutive events.
+   */
+  protected long eventTimeMaxInterval;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -69,6 +113,50 @@ public abstract class DownSamplingProcessor implements PipeProcessor {
             "%s must be > 0, but got %s",
             PROCESSOR_DOWN_SAMPLING_MEMORY_LIMIT_IN_BYTES_KEY, memoryLimitInBytes),
         memoryLimitInBytes);
+  }
+
+  public void validateTimeInterval(final PipeParameterValidator validator) throws Exception {
+    validator
+        .validate(
+            eventTimeMinInterval -> (long) eventTimeMinInterval >= 0,
+            String.format(
+                "%s must be >= 0, but got %s", "event-time.min-interval", eventTimeMinInterval),
+            eventTimeMinInterval)
+        .validate(
+            eventTimeMaxInterval -> (long) eventTimeMaxInterval >= 0,
+            String.format(
+                "%s must be >= 0, but got %s", "event-time.max-interval", eventTimeMaxInterval),
+            eventTimeMaxInterval)
+        .validate(
+            minMaxPair -> (Long) minMaxPair[0] <= (Long) minMaxPair[1],
+            String.format(
+                "%s must be <= %s, but got %s and %s",
+                "event-time.min-interval",
+                "event-time.max-interval",
+                eventTimeMinInterval,
+                eventTimeMaxInterval),
+            eventTimeMinInterval,
+            eventTimeMaxInterval)
+        .validate(
+            arrivalTimeMinInterval -> (long) arrivalTimeMinInterval >= 0,
+            String.format(
+                "%s must be >= 0, but got %s", "arrival-time.min-interval", arrivalTimeMinInterval),
+            arrivalTimeMinInterval)
+        .validate(
+            arrivalTimeMaxInterval -> (long) arrivalTimeMaxInterval >= 0,
+            String.format(
+                "%s must be >= 0, but got %s", "arrival-time.max-interval", arrivalTimeMaxInterval),
+            arrivalTimeMaxInterval)
+        .validate(
+            minMaxPair -> (Long) minMaxPair[0] <= (Long) minMaxPair[1],
+            String.format(
+                "%s must be <= %s, but got %s and %s",
+                "arrival-time.min-interval",
+                "arrival-time.max-interval",
+                arrivalTimeMinInterval,
+                arrivalTimeMaxInterval),
+            arrivalTimeMinInterval,
+            arrivalTimeMaxInterval);
   }
 
   @Override
@@ -88,11 +176,10 @@ public abstract class DownSamplingProcessor implements PipeProcessor {
                             .getRegionId()))
                 .getDatabaseName()
             + TsFileConstant.PATH_SEPARATOR;
-
-    pathLastObjectCache = initPathLastObjectCache(memoryLimitInBytes);
+    initPathLastObjectCache(memoryLimitInBytes);
   }
 
-  protected abstract PartialPathLastObjectCache<?> initPathLastObjectCache(long memoryLimitInBytes);
+  protected abstract void initPathLastObjectCache(long memoryLimitInBytes);
 
   @Override
   public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
@@ -139,6 +226,37 @@ public abstract class DownSamplingProcessor implements PipeProcessor {
       AtomicReference<Exception> exception);
 
   /**
+   * Determine the arrival time interval and event time interval.
+   *
+   * @return true to indicate that the process does not need to be continued and the data can be
+   *     updated directly. False means that the event is discarded directly. Null means that the
+   *     downsampling algorithm can continue to be executed.
+   */
+  protected Boolean filterArrivalTimeAndEventTime(
+      final DownSamplingFilter filter, final long arrivalTime, final long eventTime) {
+    final long arrivalTimeInterval = Math.abs(arrivalTime - filter.getLastPointArrivalTime());
+
+    if (filter.isFilteredByArrivalTime()) {
+      if (arrivalTimeInterval >= arrivalTimeMaxInterval) {
+        return Boolean.TRUE;
+      }
+      if (arrivalTimeInterval < arrivalTimeMinInterval) {
+        return Boolean.FALSE;
+      }
+    }
+
+    final long eventTimeInterval = Math.abs(eventTime - filter.getLastPointEventTime());
+    if (eventTimeInterval >= eventTimeMaxInterval) {
+      return Boolean.TRUE;
+    }
+
+    if (eventTimeInterval < eventTimeMinInterval) {
+      return Boolean.FALSE;
+    }
+    return null;
+  }
+
+  /**
    * If data comes in {@link TsFileInsertionEvent}, we will not split it into {@link
    * TabletInsertionEvent} by default, because the data in {@link TsFileInsertionEvent} is already
    * compressed, down-sampling may not reduce the size of data but will surely increase the CPU
@@ -164,12 +282,5 @@ public abstract class DownSamplingProcessor implements PipeProcessor {
   @Override
   public void process(Event event, EventCollector eventCollector) throws Exception {
     eventCollector.collect(event);
-  }
-
-  @Override
-  public void close() throws Exception {
-    if (pathLastObjectCache != null) {
-      pathLastObjectCache.close();
-    }
   }
 }
