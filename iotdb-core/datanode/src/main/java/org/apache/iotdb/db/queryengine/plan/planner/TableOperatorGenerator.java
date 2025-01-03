@@ -212,6 +212,7 @@ import static org.apache.iotdb.db.queryengine.execution.operator.source.relation
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createAccumulator;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createGroupedAccumulator;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash.DEFAULT_GROUP_NUMBER;
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.IDENTITY_FILL;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.UNKNOWN_DATATYPE;
@@ -1569,7 +1570,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             aggregation.getArguments(),
             Collections.emptyMap(),
             scanAscending,
-            timeColumnName);
+            timeColumnName,
+            aggregation.isDistinct());
 
     return new TableAggregator(
         accumulator,
@@ -1669,7 +1671,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           genGroupKeyComparator(preGroupedTypesBuilder.build(), preGroupedChannels),
           aggregatorBuilder.build(),
           node.getStep(),
-          64,
+          DEFAULT_GROUP_NUMBER,
           Long.MAX_VALUE,
           false,
           Long.MAX_VALUE);
@@ -1696,7 +1698,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         groupByChannels,
         aggregatorBuilder.build(),
         node.getStep(),
-        64,
+        DEFAULT_GROUP_NUMBER,
         Long.MAX_VALUE,
         false,
         Long.MAX_VALUE);
@@ -1744,7 +1746,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             originalArgumentTypes,
             Collections.emptyList(),
             Collections.emptyMap(),
-            true);
+            true,
+            aggregation.isDistinct());
 
     return new GroupedAggregator(
         accumulator,
