@@ -334,6 +334,10 @@ public class TableLogicalPlanner {
   }
 
   private PlanNode planShowDevice(final ShowDevice statement, final Analysis analysis) {
+    final Optional<Query> query = statement.getQuery4InformationSchema();
+    if (query.isPresent()) {
+      return createOutputPlan(createRelationPlan(analysis, query.get()), analysis);
+    }
     planQueryDevice(statement, analysis);
 
     final QueryId queryId = queryContext.getQueryId();
@@ -387,6 +391,10 @@ public class TableLogicalPlanner {
   }
 
   private PlanNode planCountDevice(final CountDevice statement, final Analysis analysis) {
+    final Optional<Query> query = statement.getQuery4InformationSchema();
+    if (query.isPresent()) {
+      return createOutputPlan(createRelationPlan(analysis, query.get()), analysis);
+    }
     planQueryDevice(statement, analysis);
 
     final TableDeviceQueryCountNode node =

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -34,12 +35,15 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevice {
 
   // For query devices fully in cache
   protected List<ShowDevicesResult> results = new ArrayList<>();
+
+  protected Query query;
 
   protected AbstractQueryDeviceWithCache(
       final NodeLocation location, final Table table, final Expression rawExpression) {
@@ -84,6 +88,18 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
                 new ColumnHeader(columnSchema.getColumnName(), columnSchema.getDataType()))
         .collect(Collectors.toList());
   }
+
+  public Optional<Query> getQuery4InformationSchema() {
+    if (!InformationSchema.INFORMATION_DATABASE.equals(database)) {
+      return Optional.empty();
+    }
+    if (Objects.isNull(query)) {
+      query = getQuery();
+    }
+    return Optional.of(query);
+  }
+
+  public abstract Query getQuery();
 
   public abstract DatasetHeader getDataSetHeader();
 
