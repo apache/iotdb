@@ -499,10 +499,6 @@ public class ThresholdMemoryMetrics implements IMetricSet {
                     LEVELS[2]));
   }
 
-  private void unbindConsensusMemoryMetrics(AbstractMetricService metricService) {
-
-  }
-
   public static ThresholdMemoryMetrics getInstance() {
     return ThresholdMemoryMetrics.ThresholdMemoryMetricsHolder.INSTANCE;
   }
