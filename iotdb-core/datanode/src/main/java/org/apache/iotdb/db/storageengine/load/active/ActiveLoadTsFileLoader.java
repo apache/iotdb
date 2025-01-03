@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesSizeMetricsSet;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.session.util.RetryUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
@@ -258,7 +259,11 @@ public class ActiveLoadTsFileLoader {
 
     final File targetDir = new File(failDir.get());
     try {
-      org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check(sourceFile, targetDir);
+      RetryUtils.retryOnException(
+          () -> {
+            org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check(sourceFile, targetDir);
+            return null;
+          });
     } catch (final IOException e) {
       LOGGER.warn("Error occurred during moving file {} to fail directory.", filePath, e);
     }

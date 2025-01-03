@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.session.util.RetryUtils;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -79,6 +80,28 @@ public class FileUtils {
       if (!quietForNoSuchFile) {
         LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(file.list()), e);
       }
+    } catch (DirectoryNotEmptyException e) {
+      LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(file.list()), e);
+    } catch (Exception e) {
+      LOGGER.warn("{}: {}", e.getMessage(), file.getName(), e);
+    }
+  }
+
+  public static void deleteFileOrDirectoryWithRetry(File file) {
+    if (file.isDirectory()) {
+      File[] files = file.listFiles();
+      if (files != null) {
+        for (File subfile : files) {
+          deleteFileOrDirectoryWithRetry(subfile);
+        }
+      }
+    }
+    try {
+      RetryUtils.retryOnException(
+          () -> {
+            Files.delete(file.toPath());
+            return null;
+          });
     } catch (DirectoryNotEmptyException e) {
       LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(file.list()), e);
     } catch (Exception e) {

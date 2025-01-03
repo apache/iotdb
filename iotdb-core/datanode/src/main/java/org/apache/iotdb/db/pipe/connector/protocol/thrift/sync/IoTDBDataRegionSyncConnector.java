@@ -53,6 +53,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
+import org.apache.iotdb.session.util.RetryUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -312,7 +313,11 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     for (final File tsFile : sealedFiles) {
       doTransfer(pipe2WeightMap, tsFile, null, null);
       try {
-        FileUtils.delete(tsFile);
+        RetryUtils.retryOnException(
+            () -> {
+              FileUtils.delete(tsFile);
+              return null;
+            });
       } catch (final NoSuchFileException e) {
         LOGGER.info("The file {} is not found, may already be deleted.", tsFile);
       } catch (final Exception e) {

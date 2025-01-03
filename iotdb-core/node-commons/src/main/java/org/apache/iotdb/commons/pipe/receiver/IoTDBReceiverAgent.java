@@ -23,6 +23,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
+import org.apache.iotdb.session.util.RetryUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -114,7 +115,11 @@ public abstract class IoTDBReceiverAgent {
 
   public static void cleanPipeReceiverDir(final File receiverFileDir) {
     try {
-      FileUtils.deleteDirectory(receiverFileDir);
+      RetryUtils.retryOnException(
+          () -> {
+            FileUtils.deleteDirectory(receiverFileDir);
+            return null;
+          });
       LOGGER.info("Clean pipe receiver dir {} successfully.", receiverFileDir);
     } catch (final Exception e) {
       LOGGER.warn("Clean pipe receiver dir {} failed.", receiverFileDir, e);

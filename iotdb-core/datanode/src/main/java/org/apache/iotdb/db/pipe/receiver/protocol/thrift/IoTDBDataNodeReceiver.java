@@ -98,6 +98,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
+import org.apache.iotdb.session.util.RetryUtils;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.utils.Pair;
@@ -559,7 +560,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final File sourceFile = new File(absolutePath);
       if (!Objects.equals(
           loadActiveListeningPipeDir, sourceFile.getParentFile().getAbsolutePath())) {
-        FileUtils.moveFileWithMD5Check(sourceFile, new File(loadActiveListeningPipeDir));
+        RetryUtils.retryOnException(
+            () -> {
+              FileUtils.moveFileWithMD5Check(sourceFile, new File(loadActiveListeningPipeDir));
+              return null;
+            });
       }
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
