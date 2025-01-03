@@ -65,6 +65,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
@@ -72,6 +73,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 
 import org.apache.commons.lang3.Validate;
@@ -628,7 +630,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     }
 
     List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("TableScan-%s", node.getPlanNodeId().getId()));
+    boxValue.add(node.toString());
     boxValue.add(String.format("QualifiedTableName: %s", node.getQualifiedObjectName().toString()));
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
 
@@ -660,6 +662,14 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
             node.getRegionReplicaSet() == null || node.getRegionReplicaSet().getRegionId() == null
                 ? REGION_NOT_ASSIGNED
                 : node.getRegionReplicaSet().getRegionId().getId()));
+
+    if (deviceTableScanNode instanceof TreeDeviceViewScanNode) {
+      TreeDeviceViewScanNode treeDeviceViewScanNode = (TreeDeviceViewScanNode) deviceTableScanNode;
+      boxValue.add(String.format("TreeDB: %s", treeDeviceViewScanNode.getTreeDBName()));
+      boxValue.add(
+          String.format(
+              "MeasurementToColumnName: %s", treeDeviceViewScanNode.getMeasurementColumnNameMap()));
+    }
     return render(node, boxValue, context);
   }
 
@@ -690,7 +700,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode node,
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("AggregationTableScan-%s", node.getPlanNodeId().getId()));
+    boxValue.add(node.toString());
     boxValue.add(String.format("QualifiedTableName: %s", node.getQualifiedObjectName().toString()));
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
     int i = 0;
@@ -725,6 +735,16 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
             node.getRegionReplicaSet() == null || node.getRegionReplicaSet().getRegionId() == null
                 ? REGION_NOT_ASSIGNED
                 : node.getRegionReplicaSet().getRegionId().getId()));
+
+    if (node instanceof AggregationTreeDeviceViewScanNode) {
+      AggregationTreeDeviceViewScanNode aggregationTreeDeviceViewScanNode =
+          (AggregationTreeDeviceViewScanNode) node;
+      boxValue.add(String.format("TreeDB: %s", aggregationTreeDeviceViewScanNode.getTreeDBName()));
+      boxValue.add(
+          String.format(
+              "MeasurementToColumnName: %s",
+              aggregationTreeDeviceViewScanNode.getMeasurementColumnNameMap()));
+    }
     return render(node, boxValue, context);
   }
 

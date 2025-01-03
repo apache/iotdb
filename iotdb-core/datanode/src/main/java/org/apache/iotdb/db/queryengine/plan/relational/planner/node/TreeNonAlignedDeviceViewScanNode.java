@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,17 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -34,96 +35,92 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 
-public class InformationSchemaTableScanNode extends TableScanNode {
-  public InformationSchemaTableScanNode(
-      PlanNodeId id,
-      QualifiedObjectName qualifiedObjectName,
-      List<Symbol> outputSymbols,
-      Map<Symbol, ColumnSchema> assignments) {
-    super(id, qualifiedObjectName, outputSymbols, assignments);
-  }
+public class TreeNonAlignedDeviceViewScanNode extends TreeDeviceViewScanNode {
 
-  public InformationSchemaTableScanNode(
+  public TreeNonAlignedDeviceViewScanNode(
       PlanNodeId id,
       QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
       Map<Symbol, ColumnSchema> assignments,
-      Expression pushDownPredicate,
-      long pushDownLimit,
-      long pushDownOffset) {
-    super(
-        id,
-        qualifiedObjectName,
-        outputSymbols,
-        assignments,
-        pushDownPredicate,
-        pushDownLimit,
-        pushDownOffset);
-  }
-
-  public InformationSchemaTableScanNode(
-      PlanNodeId id,
-      QualifiedObjectName qualifiedObjectName,
-      List<Symbol> outputSymbols,
-      Map<Symbol, ColumnSchema> assignments,
+      List<DeviceEntry> deviceEntries,
+      Map<Symbol, Integer> idAndAttributeIndexMap,
+      Ordering scanOrder,
+      Expression timePredicate,
       Expression pushDownPredicate,
       long pushDownLimit,
       long pushDownOffset,
-      TRegionReplicaSet regionReplicaSet) {
+      boolean pushLimitToEachDevice,
+      boolean containsNonAlignedDevice,
+      String treeDBName,
+      Map<String, String> measurementColumnNameMap) {
     super(
         id,
         qualifiedObjectName,
         outputSymbols,
         assignments,
-        pushDownPredicate,
-        pushDownLimit,
-        pushDownOffset);
-    this.regionReplicaSet = regionReplicaSet;
-  }
-
-  private InformationSchemaTableScanNode() {}
-
-  @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitInformationSchemaTableScan(this, context);
-  }
-
-  @Override
-  public PlanNode clone() {
-    return new InformationSchemaTableScanNode(
-        id,
-        qualifiedObjectName,
-        outputSymbols,
-        assignments,
+        deviceEntries,
+        idAndAttributeIndexMap,
+        scanOrder,
+        timePredicate,
         pushDownPredicate,
         pushDownLimit,
         pushDownOffset,
-        regionReplicaSet);
+        pushLimitToEachDevice,
+        containsNonAlignedDevice,
+        treeDBName,
+        measurementColumnNameMap);
+  }
+
+  public TreeNonAlignedDeviceViewScanNode() {}
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitTreeNonAlignedDeviceViewScan(this, context);
+  }
+
+  @Override
+  public TreeNonAlignedDeviceViewScanNode clone() {
+    return new TreeNonAlignedDeviceViewScanNode(
+        getPlanNodeId(),
+        qualifiedObjectName,
+        outputSymbols,
+        assignments,
+        deviceEntries,
+        idAndAttributeIndexMap,
+        scanOrder,
+        timePredicate,
+        pushDownPredicate,
+        pushDownLimit,
+        pushDownOffset,
+        pushLimitToEachDevice,
+        containsNonAlignedDevice,
+        treeDBName,
+        measurementColumnNameMap);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.INFORMATION_SCHEMA_TABLE_SCAN_NODE.serialize(byteBuffer);
+    PlanNodeType.TREE_NONALIGNED_DEVICE_VIEW_SCAN_NODE.serialize(byteBuffer);
 
-    TableScanNode.serializeMemberVariables(this, byteBuffer, true);
+    TreeDeviceViewScanNode.serializeMemberVariables(this, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.INFORMATION_SCHEMA_TABLE_SCAN_NODE.serialize(stream);
+    PlanNodeType.TREE_NONALIGNED_DEVICE_VIEW_SCAN_NODE.serialize(stream);
 
-    TableScanNode.serializeMemberVariables(this, stream, true);
+    TreeDeviceViewScanNode.serializeMemberVariables(this, stream);
   }
 
-  public static InformationSchemaTableScanNode deserialize(ByteBuffer byteBuffer) {
-    InformationSchemaTableScanNode node = new InformationSchemaTableScanNode();
-    TableScanNode.deserializeMemberVariables(byteBuffer, node, true);
+  public static TreeNonAlignedDeviceViewScanNode deserialize(ByteBuffer byteBuffer) {
+    TreeNonAlignedDeviceViewScanNode node = new TreeNonAlignedDeviceViewScanNode();
+    TreeDeviceViewScanNode.deserializeMemberVariables(byteBuffer, node, true);
 
     node.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
     return node;
   }
 
   public String toString() {
-    return "InformationSchemaTableScanNode-" + this.getPlanNodeId();
+    return "TreeNonAlignedDeviceViewScanNode-" + this.getPlanNodeId();
   }
 }

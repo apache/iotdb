@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationT
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -87,20 +88,43 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
                       .forEach(
                           symbol -> newAssignments.put(symbol, node.getAssignments().get(symbol))));
 
-      return Optional.of(
-          new DeviceTableScanNode(
-              deviceTableScanNode.getPlanNodeId(),
-              deviceTableScanNode.getQualifiedObjectName(),
-              newOutputs,
-              newAssignments,
-              deviceTableScanNode.getDeviceEntries(),
-              deviceTableScanNode.getIdAndAttributeIndexMap(),
-              deviceTableScanNode.getScanOrder(),
-              deviceTableScanNode.getTimePredicate().orElse(null),
-              deviceTableScanNode.getPushDownPredicate(),
-              deviceTableScanNode.getPushDownLimit(),
-              deviceTableScanNode.getPushDownOffset(),
-              deviceTableScanNode.isPushLimitToEachDevice()));
+      if (node instanceof TreeDeviceViewScanNode) {
+        TreeDeviceViewScanNode treeDeviceViewScanNode =
+            (TreeDeviceViewScanNode) deviceTableScanNode;
+        return Optional.of(
+            new TreeDeviceViewScanNode(
+                deviceTableScanNode.getPlanNodeId(),
+                deviceTableScanNode.getQualifiedObjectName(),
+                newOutputs,
+                newAssignments,
+                deviceTableScanNode.getDeviceEntries(),
+                deviceTableScanNode.getIdAndAttributeIndexMap(),
+                deviceTableScanNode.getScanOrder(),
+                deviceTableScanNode.getTimePredicate().orElse(null),
+                deviceTableScanNode.getPushDownPredicate(),
+                deviceTableScanNode.getPushDownLimit(),
+                deviceTableScanNode.getPushDownOffset(),
+                deviceTableScanNode.isPushLimitToEachDevice(),
+                deviceTableScanNode.containsNonAlignedDevice(),
+                treeDeviceViewScanNode.getTreeDBName(),
+                treeDeviceViewScanNode.getMeasurementColumnNameMap()));
+      } else {
+        return Optional.of(
+            new DeviceTableScanNode(
+                deviceTableScanNode.getPlanNodeId(),
+                deviceTableScanNode.getQualifiedObjectName(),
+                newOutputs,
+                newAssignments,
+                deviceTableScanNode.getDeviceEntries(),
+                deviceTableScanNode.getIdAndAttributeIndexMap(),
+                deviceTableScanNode.getScanOrder(),
+                deviceTableScanNode.getTimePredicate().orElse(null),
+                deviceTableScanNode.getPushDownPredicate(),
+                deviceTableScanNode.getPushDownLimit(),
+                deviceTableScanNode.getPushDownOffset(),
+                deviceTableScanNode.isPushLimitToEachDevice(),
+                deviceTableScanNode.containsNonAlignedDevice()));
+      }
     } else if (node instanceof InformationSchemaTableScanNode) {
       // For the convenience of process in execution stage, column-prune for
       // InformationSchemaTableScanNode is
