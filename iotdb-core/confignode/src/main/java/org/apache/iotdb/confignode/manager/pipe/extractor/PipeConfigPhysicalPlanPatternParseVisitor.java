@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
@@ -189,27 +190,28 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
 
   private Optional<ConfigPhysicalPlan> visitPathRelatedAuthorPlan(
       final AuthorPlan pathRelatedAuthorPlan, final IoTDBTreePattern pattern) {
+    AuthorTreePlan plan = (AuthorTreePlan) pathRelatedAuthorPlan;
     final List<PartialPath> intersectedPaths =
-        pathRelatedAuthorPlan.getNodeNameList().stream()
+        plan.getNodeNameList().stream()
             .map(pattern::getIntersection)
             .flatMap(Collection::stream)
             .collect(Collectors.toList());
     final Set<Integer> permissions =
         !intersectedPaths.isEmpty()
-            ? pathRelatedAuthorPlan.getPermissions()
-            : pathRelatedAuthorPlan.getPermissions().stream()
-                .filter(permission -> !PrivilegeType.values()[permission].isPathRelevant())
+            ? plan.getPermissions()
+            : plan.getPermissions().stream()
+                .filter(permission -> !PrivilegeType.values()[permission].isPathPrivilege())
                 .collect(Collectors.toSet());
     return !permissions.isEmpty()
         ? Optional.of(
-            new AuthorPlan(
-                pathRelatedAuthorPlan.getAuthorType(),
-                pathRelatedAuthorPlan.getUserName(),
-                pathRelatedAuthorPlan.getRoleName(),
-                pathRelatedAuthorPlan.getPassword(),
-                pathRelatedAuthorPlan.getNewPassword(),
-                permissions,
-                pathRelatedAuthorPlan.getGrantOpt(),
+            new AuthorTreePlan(
+                plan.getAuthorType(),
+                plan.getUserName(),
+                plan.getRoleName(),
+                plan.getPassword(),
+                plan.getNewPassword(),
+                plan.getPermissions(),
+                plan.getGrantOpt(),
                 intersectedPaths))
         : Optional.empty();
   }
