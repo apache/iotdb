@@ -43,9 +43,10 @@ public class LoadTsFileStatement extends Statement {
 
   private final File file;
   private int databaseLevel;
-  private boolean verifySchema;
-  private boolean deleteAfterLoad;
-  private boolean autoCreateDatabase;
+  private boolean verifySchema = true;
+  private boolean deleteAfterLoad = false;
+  private boolean convertOnTypeMismatch = true;
+  private boolean autoCreateDatabase = true;
 
   private Map<String, String> loadAttributes;
 
@@ -58,16 +59,17 @@ public class LoadTsFileStatement extends Statement {
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
     this.verifySchema = true;
     this.deleteAfterLoad = false;
+    this.convertOnTypeMismatch = true;
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
-    this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
     this.writePointCountList = new ArrayList<>();
     this.statementType = StatementType.MULTI_BATCH_INSERT;
 
-    processTsFile(filePath);
+    this.tsFiles = processTsFile(file);
   }
 
-  private void processTsFile(final String filePath) throws FileNotFoundException {
+  public static List<File> processTsFile(final File file) throws FileNotFoundException {
+    final List<File> tsFiles = new ArrayList<>();
     if (file.isFile()) {
       tsFiles.add(file);
     } else {
@@ -75,11 +77,12 @@ public class LoadTsFileStatement extends Statement {
         throw new FileNotFoundException(
             String.format(
                 "Can not find %s on this machine, notice that load can only handle files on this machine.",
-                filePath));
+                file.getPath()));
       }
-      findAllTsFile(file);
+      tsFiles.addAll(findAllTsFile(file));
     }
     sortTsFiles(tsFiles);
+    return tsFiles;
   }
 
   protected LoadTsFileStatement() {
@@ -87,6 +90,7 @@ public class LoadTsFileStatement extends Statement {
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
     this.verifySchema = true;
     this.deleteAfterLoad = false;
+    this.convertOnTypeMismatch = true;
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
@@ -94,21 +98,24 @@ public class LoadTsFileStatement extends Statement {
     this.statementType = StatementType.MULTI_BATCH_INSERT;
   }
 
-  private void findAllTsFile(File file) {
+  private static List<File> findAllTsFile(File file) {
     final File[] files = file.listFiles();
     if (files == null) {
-      return;
+      return Collections.emptyList();
     }
+
+    final List<File> tsFiles = new ArrayList<>();
     for (File nowFile : files) {
       if (nowFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
         tsFiles.add(nowFile);
       } else if (nowFile.isDirectory()) {
-        findAllTsFile(nowFile);
+        tsFiles.addAll(findAllTsFile(nowFile));
       }
     }
+    return tsFiles;
   }
 
-  private void sortTsFiles(List<File> files) {
+  private static void sortTsFiles(List<File> files) {
     files.sort(
         (o1, o2) -> {
           String file1Name = o1.getName();
@@ -121,36 +128,44 @@ public class LoadTsFileStatement extends Statement {
         });
   }
 
-  public void setDeleteAfterLoad(boolean deleteAfterLoad) {
-    this.deleteAfterLoad = deleteAfterLoad;
-  }
-
   public void setDatabaseLevel(int databaseLevel) {
     this.databaseLevel = databaseLevel;
+  }
+
+  public int getDatabaseLevel() {
+    return databaseLevel;
   }
 
   public void setVerifySchema(boolean verifySchema) {
     this.verifySchema = verifySchema;
   }
 
-  public void setAutoCreateDatabase(boolean autoCreateDatabase) {
-    this.autoCreateDatabase = autoCreateDatabase;
-  }
-
   public boolean isVerifySchema() {
     return verifySchema;
+  }
+
+  public void setDeleteAfterLoad(boolean deleteAfterLoad) {
+    this.deleteAfterLoad = deleteAfterLoad;
   }
 
   public boolean isDeleteAfterLoad() {
     return deleteAfterLoad;
   }
 
-  public boolean isAutoCreateDatabase() {
-    return autoCreateDatabase;
+  public void setConvertOnTypeMismatch(boolean convertOnTypeMismatch) {
+    this.convertOnTypeMismatch = convertOnTypeMismatch;
   }
 
-  public int getDatabaseLevel() {
-    return databaseLevel;
+  public boolean isConvertOnTypeMismatch() {
+    return convertOnTypeMismatch;
+  }
+
+  public void setAutoCreateDatabase(boolean autoCreateDatabase) {
+    this.autoCreateDatabase = autoCreateDatabase;
+  }
+
+  public boolean isAutoCreateDatabase() {
+    return autoCreateDatabase;
   }
 
   public List<File> getTsFiles() {
@@ -181,6 +196,8 @@ public class LoadTsFileStatement extends Statement {
   private void initAttributes() {
     this.databaseLevel = LoadTsFileConfigurator.parseOrGetDefaultDatabaseLevel(loadAttributes);
     this.deleteAfterLoad = LoadTsFileConfigurator.parseOrGetDefaultOnSuccess(loadAttributes);
+    this.convertOnTypeMismatch =
+        LoadTsFileConfigurator.parseOrGetDefaultConvertOnTypeMismatch(loadAttributes);
   }
 
   @Override
@@ -204,13 +221,15 @@ public class LoadTsFileStatement extends Statement {
     return "LoadTsFileStatement{"
         + "file="
         + file
-        + ", deleteAfterLoad="
+        + ", delete-after-load="
         + deleteAfterLoad
-        + ", databaseLevel="
+        + ", database-level="
         + databaseLevel
-        + ", verifySchema="
+        + ", verify-schema="
         + verifySchema
-        + ", tsFiles Size="
+        + ", convert-on-type-mismatch="
+        + convertOnTypeMismatch
+        + ", tsFiles size="
         + tsFiles.size()
         + '}';
   }

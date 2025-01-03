@@ -36,6 +36,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
+import org.apache.iotdb.db.exception.VerifyMetadataTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
@@ -63,6 +64,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
+import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileAnalyzeSchemaMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.db.utils.ModificationUtils;
@@ -129,6 +131,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private final SchemaAutoCreatorAndVerifier schemaAutoCreatorAndVerifier;
 
+  private final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter;
+
   LoadTsFileAnalyzer(
       LoadTsFileStatement loadTsFileStatement,
       MPPQueryContext context,
@@ -141,6 +145,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.schemaFetcher = schemaFetcher;
 
     this.schemaAutoCreatorAndVerifier = new SchemaAutoCreatorAndVerifier();
+    this.loadTsFileDataTypeConverter = new LoadTsFileDataTypeConverter();
   }
 
   public Analysis analyzeFileByFile(final boolean isDeleteAfterLoad) {
@@ -179,6 +184,11 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         }
       } catch (AuthException e) {
         return createFailAnalysisForAuthException(e);
+      } catch (VerifyMetadataTypeMismatchException e) {
+        executeDataTypeConversionOnTypeMismatch(analysis, e);
+        // just return false to STOP the analysis process,
+        // the real result on the conversion will be set in the analysis.
+        return analysis;
       } catch (Exception e) {
         final String exceptionMessage =
             String.format(
@@ -195,6 +205,11 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       schemaAutoCreatorAndVerifier.flush();
     } catch (AuthException e) {
       return createFailAnalysisForAuthException(e);
+    } catch (VerifyMetadataTypeMismatchException e) {
+      executeDataTypeConversionOnTypeMismatch(analysis, e);
+      // just return false to STOP the analysis process,
+      // the real result on the conversion will be set in the analysis.
+      return analysis;
     } catch (Exception e) {
       final String exceptionMessage =
           String.format(
@@ -214,13 +229,33 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     return analysis;
   }
 
+  private void executeDataTypeConversionOnTypeMismatch(
+      final Analysis analysis, final VerifyMetadataTypeMismatchException e) {
+    final TSStatus status =
+        loadTsFileStatement.isConvertOnTypeMismatch()
+            ? loadTsFileDataTypeConverter.convertForTreeModel(loadTsFileStatement)
+            : null;
+
+    if (status == null) {
+      analysis.setFailStatus(
+          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
+    } else if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+        && status.getCode() != TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()) {
+      analysis.setFailStatus(status);
+    }
+
+    analysis.setFinishQueryAfterAnalyze(true);
+    analysis.setStatement(loadTsFileStatement);
+  }
+
   @Override
   public void close() {
     schemaAutoCreatorAndVerifier.close();
   }
 
   private void analyzeSingleTsFile(final File tsFile, final boolean isDeleteAfterLoad)
-      throws IOException, AuthException {
+      throws IOException, AuthException, VerifyMetadataTypeMismatchException {
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       // can be reused when constructing tsfile resource
       final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =
@@ -310,7 +345,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     public void autoCreateAndVerify(
         TsFileSequenceReader reader,
         Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadataList)
-        throws IOException, AuthException {
+        throws IOException, AuthException, VerifyMetadataTypeMismatchException {
       for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
           device2TimeseriesMetadataList.entrySet()) {
         final IDeviceID device = entry.getKey();
@@ -412,13 +447,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       schemaCache.clearDeviceIsAlignedCacheIfNecessary();
     }
 
-    public void flush() throws AuthException {
+    public void flush() throws AuthException, VerifyMetadataTypeMismatchException {
       doAutoCreateAndVerify();
 
       schemaCache.clearTimeSeries();
     }
 
-    private void doAutoCreateAndVerify() throws SemanticException, AuthException {
+    private void doAutoCreateAndVerify()
+        throws SemanticException, AuthException, VerifyMetadataTypeMismatchException {
       if (schemaCache.getDevice2TimeSeries().isEmpty()) {
         return;
       }
@@ -439,7 +475,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         if (loadTsFileStatement.isVerifySchema()) {
           verifySchema(schemaTree);
         }
-      } catch (AuthException e) {
+      } catch (AuthException | VerifyMetadataTypeMismatchException e) {
         throw e;
       } catch (Exception e) {
         LOGGER.warn("Auto create or verify schema error.", e);
@@ -600,7 +636,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     private void verifySchema(ISchemaTree schemaTree)
-        throws VerifyMetadataException, IllegalPathException {
+        throws VerifyMetadataException, IllegalPathException, VerifyMetadataTypeMismatchException {
       for (final Map.Entry<IDeviceID, Set<MeasurementSchema>> entry :
           schemaCache.getDevice2TimeSeries().entrySet()) {
         final IDeviceID device = entry.getKey();
@@ -648,7 +684,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
           // check datatype
           if (!tsFileSchema.getType().equals(iotdbSchema.getType())) {
-            throw new VerifyMetadataException(
+            throw new VerifyMetadataTypeMismatchException(
                 String.format(
                     "Measurement %s%s%s datatype not match, TsFile: %s, IoTDB: %s",
                     device,
