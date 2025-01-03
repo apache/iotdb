@@ -1089,6 +1089,14 @@ struct TTableInfo {
    3: optional i32 state
 }
 
+struct TConstructTreeDeviceViewReq {
+    1: required string database
+    2: required string tableName
+    3: required string pathPattern
+    4: required binary columnInfo
+    5: optional string TTL
+}
+
 service IConfigNodeRPCService {
 
   // ======================================================
@@ -1830,5 +1838,8 @@ service IConfigNodeRPCService {
   TFetchTableResp fetchTables(map<string, set<string>> fetchTableMap)
 
   TDeleteTableDeviceResp deleteDevice(TDeleteTableDeviceReq req)
+
+  // Tree view, used now for IT
+  common.TSStatus constructTreeView(TConstructTreeDeviceViewReq req)
 }
 

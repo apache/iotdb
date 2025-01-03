@@ -19,25 +19,36 @@
 
 package org.apache.iotdb.relational.it.schema;
 
+import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
+import org.apache.iotdb.confignode.rpc.thrift.TConstructTreeDeviceViewReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.nio.ByteBuffer;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
@@ -564,6 +575,68 @@ public class IoTDBTableIT {
     } catch (final SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testTreeViewTable() throws Exception {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database root.a.b");
+      statement.execute("create timeSeries root.a.b.c.d.s1 int32");
+      statement.execute("create timeSeries root.a.b.c.d.s2 string");
+      statement.execute("create timeSeries root.a.b.c.s1 int32");
+      statement.execute("create timeSeries root.a.b.c.f.g.h.s1 int32");
+
+      // Put schema cache
+      statement.execute("select s1, s2 from root.a.b.c.d");
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+
+    try (final SyncConfigNodeIServiceClient client =
+            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection();
+        final Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+          client
+              .constructTreeView(
+                  new TConstructTreeDeviceViewReq(
+                      "tree_view_db",
+                      "tree_table",
+                      "root.a.**",
+                      ByteBuffer.wrap(
+                          TsTableColumnSchemaUtil.serialize(
+                              Arrays.asList(
+                                  new TagColumnSchema("tag1", TSDataType.STRING),
+                                  new TagColumnSchema("tag2", TSDataType.STRING),
+                                  new FieldColumnSchema("s1", TSDataType.INT32),
+                                  new FieldColumnSchema("s2", TSDataType.STRING))))))
+              .getCode());
+      statement.execute("use tree_view_db");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc tree_table"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "time,TIMESTAMP,TIME,",
+                  "tag1,STRING,TAG,",
+                  "tag2,STRING,TAG,",
+                  "s1,INT32,FIELD,",
+                  "s2,STRING,FIELD,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show devices from tree_table where tag1 = 'c'"),
+          "tag1,tag2,",
+          new HashSet<>(Arrays.asList("c,d,", "c,null,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show devices from tree_table where tag1 = 'c' and tag2 is null"),
+          "tag1,tag2,",
+          Collections.singleton("c,null,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("count devices from tree_table"),
+          "count(devices),",
+          Collections.singleton("2,"));
     }
   }
 }
