@@ -24,7 +24,7 @@ import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeDispatcher;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeGuardian;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeReceiver;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeSelector;
-import org.apache.iotdb.consensus.pipe.consensuspipe.ProgressIndexManager;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ReplicateProgressManager;
 
 import java.util.concurrent.TimeUnit;
 
@@ -203,7 +203,7 @@ public class PipeConsensusConfig {
     private final ConsensusPipeDispatcher consensusPipeDispatcher;
     private final ConsensusPipeGuardian consensusPipeGuardian;
     private final ConsensusPipeSelector consensusPipeSelector;
-    private final ProgressIndexManager progressIndexManager;
+    private final ReplicateProgressManager replicateProgressManager;
     private final ConsensusPipeReceiver consensusPipeReceiver;
     private final long consensusPipeGuardJobIntervalInSeconds;
 
@@ -214,7 +214,7 @@ public class PipeConsensusConfig {
         ConsensusPipeDispatcher consensusPipeDispatcher,
         ConsensusPipeGuardian consensusPipeGuardian,
         ConsensusPipeSelector consensusPipeSelector,
-        ProgressIndexManager progressIndexManager,
+        ReplicateProgressManager replicateProgressManager,
         ConsensusPipeReceiver consensusPipeReceiver,
         long consensusPipeGuardJobIntervalInSeconds) {
       this.extractorPluginName = extractorPluginName;
@@ -223,7 +223,7 @@ public class PipeConsensusConfig {
       this.consensusPipeDispatcher = consensusPipeDispatcher;
       this.consensusPipeGuardian = consensusPipeGuardian;
       this.consensusPipeSelector = consensusPipeSelector;
-      this.progressIndexManager = progressIndexManager;
+      this.replicateProgressManager = replicateProgressManager;
       this.consensusPipeReceiver = consensusPipeReceiver;
       this.consensusPipeGuardJobIntervalInSeconds = consensusPipeGuardJobIntervalInSeconds;
     }
@@ -256,8 +256,8 @@ public class PipeConsensusConfig {
       return consensusPipeReceiver;
     }
 
-    public ProgressIndexManager getProgressIndexManager() {
-      return progressIndexManager;
+    public ReplicateProgressManager getProgressIndexManager() {
+      return replicateProgressManager;
     }
 
     public long getConsensusPipeGuardJobIntervalInSeconds() {
@@ -277,7 +277,7 @@ public class PipeConsensusConfig {
       private ConsensusPipeDispatcher consensusPipeDispatcher = null;
       private ConsensusPipeGuardian consensusPipeGuardian = null;
       private ConsensusPipeSelector consensusPipeSelector = null;
-      private ProgressIndexManager progressIndexManager = null;
+      private ReplicateProgressManager replicateProgressManager = null;
       private ConsensusPipeReceiver consensusPipeReceiver = null;
       private long consensusPipeGuardJobIntervalInSeconds = 180L;
 
@@ -317,8 +317,9 @@ public class PipeConsensusConfig {
         return this;
       }
 
-      public Pipe.Builder setProgressIndexManager(ProgressIndexManager progressIndexManager) {
-        this.progressIndexManager = progressIndexManager;
+      public Pipe.Builder setProgressIndexManager(
+          ReplicateProgressManager replicateProgressManager) {
+        this.replicateProgressManager = replicateProgressManager;
         return this;
       }
 
@@ -336,7 +337,7 @@ public class PipeConsensusConfig {
             consensusPipeDispatcher,
             consensusPipeGuardian,
             consensusPipeSelector,
-            progressIndexManager,
+            replicateProgressManager,
             consensusPipeReceiver,
             consensusPipeGuardJobIntervalInSeconds);
       }

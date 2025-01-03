@@ -22,10 +22,13 @@ package org.apache.iotdb.consensus.pipe.consensuspipe;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 
-public interface ProgressIndexManager {
+public interface ReplicateProgressManager {
   ProgressIndex getProgressIndex(ConsensusPipeName consensusPipeName);
 
   ProgressIndex assignProgressIndex(ConsensusGroupId consensusGroupId);
 
   ProgressIndex getMaxAssignedProgressIndex(ConsensusGroupId consensusGroupId);
+
+  long getSyncLagForSpecificConsensusPipe(
+      ConsensusGroupId consensusGroupId, ConsensusPipeName consensusPipeName);
 }
