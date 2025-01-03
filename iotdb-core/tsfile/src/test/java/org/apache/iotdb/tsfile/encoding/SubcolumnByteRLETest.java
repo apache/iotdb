@@ -177,12 +177,8 @@ public class SubcolumnByteRLETest {
                 boolean bpBest = false;
 
                 for (int j = 1; j < x_length; j++) {
-                    if (subcolumnListList[i][j] == currentNumber) {
-                        // count++;
-                    } else {
-                        index++;
-                        currentNumber = subcolumnListList[i][j];
-                    }
+                    index++;
+                    currentNumber = subcolumnListList[i][j];
 
                     if (bw * index + bitWidthListList[beta][i] * index >= bpCost) {
                         bpBest = true;
@@ -221,7 +217,8 @@ public class SubcolumnByteRLETest {
         return betaBest;
     }
 
-    public static int SubcolumnEncoder(int[] list, int startBitPosition, byte[] encoded_result, int[] beta, int block_size) {
+    public static int SubcolumnEncoder(int[] list, int startBitPosition, byte[] encoded_result, int[] beta,
+            int block_size) {
         int list_length = list.length;
         int maxValue = 0;
         for (int i = 0; i < list_length; i++) {
@@ -235,7 +232,6 @@ public class SubcolumnByteRLETest {
         intToBytes(m, encoded_result, startBitPosition, 6);
 
         startBitPosition += 6;
-
 
         if (m == 0) {
             return startBitPosition;
@@ -288,14 +284,11 @@ public class SubcolumnByteRLETest {
             int[] rle_values = new int[list_length];
 
             for (int j = 1; j < list_length; j++) {
-                if (subcolumnList[i][j] == currentNumber) {
-                    // count++;
-                } else {
-                    run_length[index] = j;
-                    rle_values[index] = currentNumber;
-                    index++;
-                    currentNumber = subcolumnList[i][j];
-                }
+
+                run_length[index] = j;
+                rle_values[index] = currentNumber;
+                index++;
+                currentNumber = subcolumnList[i][j];
             }
 
             run_length[index] = list_length;
@@ -439,7 +432,7 @@ public class SubcolumnByteRLETest {
         intToBytes(min_delta[0], encoded_result, startBitPosition, 32);
 
         startBitPosition += 32;
-        
+
         // System.out.println("min_delta: " + min_delta[0]);
 
         if (block_index == 0) {
