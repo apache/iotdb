@@ -115,8 +115,7 @@ public class CompactionEstimateUtils {
         cost += resource.getTotalModSizeInByte();
         try (CompactionTsFileReader reader =
             new CompactionTsFileReader(resource.getTsFilePath(), taskType)) {
-          for (Map.Entry<IDeviceID, Long> entry :
-              getDeviceMetadataSizeMapAndCollectMetadataInfo(reader, metadataInfo).entrySet()) {
+          for (Map.Entry<IDeviceID, Long> entry : getDeviceMetadataSizeMap(reader).entrySet()) {
             deviceMetadataSizeMap.merge(entry.getKey(), entry.getValue(), Long::sum);
           }
         }
@@ -129,25 +128,18 @@ public class CompactionEstimateUtils {
     }
   }
 
-  public static Map<IDeviceID, Long> getDeviceMetadataSizeMapAndCollectMetadataInfo(
-      CompactionTsFileReader reader, MetadataInfo roughMetadataInfo) throws IOException {
+  public static Map<IDeviceID, Long> getDeviceMetadataSizeMap(CompactionTsFileReader reader)
+      throws IOException {
     Map<IDeviceID, Long> deviceMetadataSizeMap = new HashMap<>();
     TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
     while (deviceIterator.hasNext()) {
       Pair<IDeviceID, Boolean> deviceAlignedPair = deviceIterator.next();
       IDeviceID deviceID = deviceAlignedPair.getLeft();
-      boolean isAligned = deviceAlignedPair.getRight();
       MetadataIndexNode firstMeasurementNodeOfCurrentDevice =
           deviceIterator.getFirstMeasurementNodeOfCurrentDevice();
       long totalTimeseriesMetadataSizeOfCurrentDevice = 0;
       Map<String, Pair<Long, Long>> timeseriesMetadataOffsetByDevice =
           reader.getTimeseriesMetadataOffsetByDevice(firstMeasurementNodeOfCurrentDevice);
-      if (isAligned) {
-        roughMetadataInfo.maxConcurrentAlignedSeriesNum =
-            Math.max(
-                roughMetadataInfo.maxConcurrentAlignedSeriesNum,
-                timeseriesMetadataOffsetByDevice.size());
-      }
       for (Pair<Long, Long> offsetPair : timeseriesMetadataOffsetByDevice.values()) {
         totalTimeseriesMetadataSizeOfCurrentDevice += (offsetPair.right - offsetPair.left);
       }

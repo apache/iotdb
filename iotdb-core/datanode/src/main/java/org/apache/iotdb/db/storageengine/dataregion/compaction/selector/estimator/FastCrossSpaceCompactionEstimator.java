@@ -84,6 +84,9 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
   @Override
   public long roughEstimateCrossCompactionMemory(
       List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
+    if (config.getCompactionMaxAlignedSeriesNumInOneBatch() <= 0) {
+      return -1L;
+    }
     List<TsFileResource> sourceFiles = new ArrayList<>(seqResources.size() + unseqResources.size());
     sourceFiles.addAll(seqResources);
     sourceFiles.addAll(unseqResources);

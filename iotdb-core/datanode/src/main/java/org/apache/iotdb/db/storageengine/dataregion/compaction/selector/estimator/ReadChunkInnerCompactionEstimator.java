@@ -76,6 +76,9 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
   @Override
   public long roughEstimateInnerCompactionMemory(List<TsFileResource> resources)
       throws IOException {
+    if (config.getCompactionMaxAlignedSeriesNumInOneBatch() <= 0) {
+      return -1L;
+    }
     Optional<MetadataInfo> metadataInfo =
         CompactionEstimateUtils.collectMetadataInfo(resources, CompactionType.INNER_SEQ_COMPACTION);
     if (!metadataInfo.isPresent()) {

@@ -136,8 +136,9 @@ public class CompactionTaskMemCostEstimatorTest extends AbstractCompactionTest {
     IoTDBDescriptor.getInstance().getConfig().setCompactionMaxAlignedSeriesNumInOneBatch(-1);
     ReadChunkInnerCompactionEstimator estimator = new ReadChunkInnerCompactionEstimator();
     long v1 = estimator.roughEstimateInnerCompactionMemory(seqResources);
-    IoTDBDescriptor.getInstance().getConfig().setCompactionReadOperationPerSec(100);
+    Assert.assertTrue(v1 < 0);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionMaxAlignedSeriesNumInOneBatch(10);
     long v2 = estimator.roughEstimateInnerCompactionMemory(seqResources);
-    Assert.assertEquals(v1, v2);
+    Assert.assertTrue(v2 > 0);
   }
 }

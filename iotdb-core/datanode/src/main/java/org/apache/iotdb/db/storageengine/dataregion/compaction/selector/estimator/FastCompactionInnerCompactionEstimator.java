@@ -82,6 +82,9 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
   @Override
   public long roughEstimateInnerCompactionMemory(List<TsFileResource> resources)
       throws IOException {
+    if (config.getCompactionMaxAlignedSeriesNumInOneBatch() <= 0) {
+      return -1L;
+    }
     Optional<MetadataInfo> metadataInfo =
         CompactionEstimateUtils.collectMetadataInfo(
             resources,
