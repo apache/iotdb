@@ -1486,7 +1486,7 @@ public class IoTDBSessionRelationalIT {
           }
         }
         session.executeNonQueryStatement("USE db1");
-        session.executeNonQueryStatement("CREATE TABLE test_insert_min_max (id1 ID, s1 INT32)");
+        session.executeNonQueryStatement("CREATE TABLE test_insert_min_max (id1 TAG, s1 INT32)");
 
         session.executeNonQueryStatement(
             String.format(
