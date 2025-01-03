@@ -829,7 +829,7 @@ public class IoTDBSessionRelationalIT {
         tablet.addValue("tag2", row, "tag:" + timestamp);
         tablet.addValue("attr1", row, "attr:" + timestamp);
         tablet.addValue("m1", row, timestamp * 1.0);
-        timestamp ++;
+        timestamp++;
       }
 
       session.insert(tablet);
@@ -856,7 +856,7 @@ public class IoTDBSessionRelationalIT {
         tablet.addValue("tag2", row, "tag:" + timestamp);
         tablet.addValue("attr1", row, "attr:" + timestamp);
         tablet.addValue("m1", row, timestamp * 1.0);
-        timestamp ++;
+        timestamp++;
       }
 
       session.insert(tablet);
@@ -1475,7 +1475,8 @@ public class IoTDBSessionRelationalIT {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
       // only one column in this table, and others should be auto-created
-      session.executeNonQueryStatement("CREATE TABLE table" + testNum + " (tag1 string tag, s1 text field)");
+      session.executeNonQueryStatement(
+          "CREATE TABLE table" + testNum + " (tag1 string tag, s1 text field)");
 
       List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("tag2", TSDataType.STRING));
@@ -1496,13 +1497,14 @@ public class IoTDBSessionRelationalIT {
         tablet.addTimestamp(row, timestamp);
         tablet.addValue("tag2", row, "string");
         tablet.addValue("s2", row, timestamp);
-        timestamp ++;
+        timestamp++;
       }
 
       session.insert(tablet);
       tablet.reset();
 
-      SessionDataSet dataSet = session.executeQueryStatement("select * from table" + testNum + " order by time");
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from table" + testNum + " order by time");
       int cnt = 0;
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
@@ -1523,7 +1525,7 @@ public class IoTDBSessionRelationalIT {
         tablet.addTimestamp(row, timestamp);
         tablet.addValue("tag2", row, "tag:" + timestamp);
         tablet.addValue("s2", row, timestamp);
-        timestamp ++;
+        timestamp++;
       }
 
       session.insert(tablet);
