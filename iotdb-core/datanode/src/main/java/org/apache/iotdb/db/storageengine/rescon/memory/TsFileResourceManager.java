@@ -77,7 +77,7 @@ public class TsFileResourceManager {
         totalTimeIndexMemCost -= tsFileResource.calculateRamSize();
         degradedTimeIndexNum--;
       } else {
-        totalTimeIndexMemCost -= tsFileResource.getRamSize();
+        totalTimeIndexMemCost -= tsFileResource.calculateRamSize();
       }
     }
   }
