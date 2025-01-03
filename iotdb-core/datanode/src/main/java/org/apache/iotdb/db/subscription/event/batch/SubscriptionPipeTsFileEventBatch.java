@@ -28,6 +28,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -95,14 +96,16 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
     }
 
     final List<SubscriptionEvent> events = new ArrayList<>();
-    final List<File> tsFiles = batch.sealTsFiles();
-    final AtomicInteger referenceCount = new AtomicInteger(tsFiles.size());
-    for (final File tsFile : tsFiles) {
+    final List<Pair<String, File>> dbTsFilePairs = batch.sealTsFiles();
+    final AtomicInteger referenceCount = new AtomicInteger(dbTsFilePairs.size());
+    for (final Pair<String, File> tsFile : dbTsFilePairs) {
       final SubscriptionCommitContext commitContext =
           prefetchingQueue.generateSubscriptionCommitContext();
       events.add(
           new SubscriptionEvent(
-              new SubscriptionPipeTsFileBatchEvents(this, referenceCount), tsFile, commitContext));
+              new SubscriptionPipeTsFileBatchEvents(this, referenceCount),
+              tsFile.right,
+              commitContext));
     }
     return events;
   }
