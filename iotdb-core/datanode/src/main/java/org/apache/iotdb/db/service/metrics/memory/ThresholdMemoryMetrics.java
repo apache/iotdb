@@ -59,6 +59,9 @@ public class ThresholdMemoryMetrics implements IMetricSet {
   private static final String QUERY_ENGINE_TIME_INDEX = "QueryEngine-TimeIndex";
   private static final String QUERY_ENGINE_COORDINATOR = "QueryEngine-Coordinator";
   private static final String SCHEMA_ENGINE = "SchemaEngine";
+  private static final String SCHEMA_ENGINE_SCHEMA_REGION = "SchemaEngine-SchemaRegion";
+  private static final String SCHEMA_ENGINE_SCHEMA_CACHE = "SchemaEngine-SchemaCache";
+  private static final String SCHEMA_ENGINE_PARTITION_CACHE = "SchemaEngine-PartitionCache";
   private static final String CONSENSUS = "Consensus";
   private static final String STREAM_ENGINE = "StreamEngine";
   private static final String DIRECT_BUFFER = "DirectBuffer";
@@ -79,17 +82,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
         .set(Runtime.getRuntime().maxMemory());
     bindStorageEngineRelatedMemoryMetrics(metricService);
     bindQueryEngineMemoryMetrics(metricService);
-    metricService
-        .getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            SCHEMA_ENGINE,
-            Tag.TYPE.toString(),
-            ON_HEAP,
-            Tag.LEVEL.toString(),
-            LEVELS[1])
-        .set(config.getAllocateMemoryForSchema());
+    bindSchemaEngineMemoryMetrics(metricService);
     metricService
         .getOrCreateGauge(
             Metric.THRESHOLD_MEMORY_SIZE.toString(),
@@ -321,6 +314,53 @@ public class ThresholdMemoryMetrics implements IMetricSet {
         .set(config.getAllocateMemoryForCoordinator());
   }
 
+  private void bindSchemaEngineMemoryMetrics(AbstractMetricService metricService) {
+    metricService
+        .getOrCreateGauge(
+            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            MetricLevel.NORMAL,
+            Tag.NAME.toString(),
+            SCHEMA_ENGINE,
+            Tag.TYPE.toString(),
+            ON_HEAP,
+            Tag.LEVEL.toString(),
+            LEVELS[1])
+        .set(config.getAllocateMemoryForSchema());
+    metricService
+        .getOrCreateGauge(
+            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            MetricLevel.NORMAL,
+            Tag.NAME.toString(),
+            SCHEMA_ENGINE_SCHEMA_REGION,
+            Tag.TYPE.toString(),
+            ON_HEAP,
+            Tag.LEVEL.toString(),
+            LEVELS[2])
+        .set(config.getAllocateMemoryForSchemaRegion());
+    metricService
+        .getOrCreateGauge(
+            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            MetricLevel.NORMAL,
+            Tag.NAME.toString(),
+            SCHEMA_ENGINE_SCHEMA_CACHE,
+            Tag.TYPE.toString(),
+            ON_HEAP,
+            Tag.LEVEL.toString(),
+            LEVELS[2])
+        .set(config.getAllocateMemoryForSchemaCache());
+    metricService
+        .getOrCreateGauge(
+            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            MetricLevel.NORMAL,
+            Tag.NAME.toString(),
+            SCHEMA_ENGINE_PARTITION_CACHE,
+            Tag.TYPE.toString(),
+            ON_HEAP,
+            Tag.LEVEL.toString(),
+            LEVELS[2])
+        .set(config.getAllocateMemoryForPartitionCache());
+  }
+
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
@@ -345,6 +385,8 @@ public class ThresholdMemoryMetrics implements IMetricSet {
                     Tag.LEVEL.toString(),
                     LEVELS[1]));
     unbindStorageEngineRelatedMemoryMetrics(metricService);
+    unbindQueryEngineMemoryMetrics(metricService);
+    unbindSchemaEngineMemoryMetrics(metricService);
     Collections.singletonList(DIRECT_BUFFER)
         .forEach(
             name ->
@@ -410,6 +452,22 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             QUERY_ENGINE_DATA_EXCHANGE,
             QUERY_ENGINE_TIME_INDEX,
             QUERY_ENGINE_COORDINATOR)
+        .forEach(
+            name ->
+                metricService.remove(
+                    MetricType.GAUGE,
+                    Metric.THRESHOLD_MEMORY_SIZE.toString(),
+                    Tag.NAME.toString(),
+                    name,
+                    Tag.TYPE.toString(),
+                    ON_HEAP,
+                    Tag.LEVEL.toString(),
+                    LEVELS[2]));
+  }
+
+  private void unbindSchemaEngineMemoryMetrics(AbstractMetricService metricService) {
+    Arrays.asList(
+            SCHEMA_ENGINE_SCHEMA_REGION, SCHEMA_ENGINE_SCHEMA_CACHE, SCHEMA_ENGINE_PARTITION_CACHE)
         .forEach(
             name ->
                 metricService.remove(
