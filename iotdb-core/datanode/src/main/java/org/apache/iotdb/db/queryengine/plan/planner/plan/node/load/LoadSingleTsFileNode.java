@@ -29,9 +29,8 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
 
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -43,7 +42,6 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -60,18 +58,20 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private final boolean isTableModel;
   private final String database;
   private final boolean deleteAfterLoad;
+  private final boolean loadWithMods;
   private final long writePointCount;
   private boolean needDecodeTsFile;
 
   private TRegionReplicaSet localRegionReplicaSet;
 
   public LoadSingleTsFileNode(
-      PlanNodeId id,
-      TsFileResource resource,
-      boolean isTableModel,
-      String database,
-      boolean deleteAfterLoad,
-      long writePointCount) {
+      final PlanNodeId id,
+      final TsFileResource resource,
+      final boolean isTableModel,
+      final String database,
+      final boolean deleteAfterLoad,
+      final long writePointCount,
+      final boolean loadWithMods) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
@@ -79,6 +79,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     this.database = database;
     this.deleteAfterLoad = deleteAfterLoad;
     this.writePointCount = writePointCount;
+    this.loadWithMods = loadWithMods;
   }
 
   public boolean isTsFileEmpty() {
@@ -86,9 +87,9 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   }
 
   public boolean needDecodeTsFile(
-      Function<List<Pair<IDeviceID, TTimePartitionSlot>>, List<TRegionReplicaSet>> partitionFetcher)
-      throws IOException {
-    List<Pair<IDeviceID, TTimePartitionSlot>> slotList = new ArrayList<>();
+      final Function<List<Pair<IDeviceID, TTimePartitionSlot>>, List<TRegionReplicaSet>>
+          partitionFetcher) {
+    final List<Pair<IDeviceID, TTimePartitionSlot>> slotList = new ArrayList<>();
     resource
         .getDevices()
         .forEach(
@@ -112,13 +113,13 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     return needDecodeTsFile;
   }
 
-  private boolean isDispatchedToLocal(Set<TRegionReplicaSet> replicaSets) {
+  private boolean isDispatchedToLocal(final Set<TRegionReplicaSet> replicaSets) {
     if (replicaSets.size() > 1) {
       return false;
     }
 
-    for (TRegionReplicaSet replicaSet : replicaSets) {
-      List<TDataNodeLocation> dataNodeLocationList = replicaSet.getDataNodeLocations();
+    for (final TRegionReplicaSet replicaSet : replicaSets) {
+      final List<TDataNodeLocation> dataNodeLocationList = replicaSet.getDataNodeLocations();
       if (dataNodeLocationList.size() > 1) {
         return false;
       }
@@ -131,13 +132,17 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     return true;
   }
 
-  private boolean isDispatchedToLocal(TEndPoint endPoint) {
+  private boolean isDispatchedToLocal(final TEndPoint endPoint) {
     return IoTDBDescriptor.getInstance().getConfig().getInternalAddress().equals(endPoint.getIp())
         && IoTDBDescriptor.getInstance().getConfig().getInternalPort() == endPoint.port;
   }
 
   public boolean isDeleteAfterLoad() {
     return deleteAfterLoad;
+  }
+
+  public boolean isLoadWithMods() {
+    return loadWithMods;
   }
 
   public boolean isTableModel() {
@@ -176,7 +181,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   }
 
   @Override
-  public void addChild(PlanNode child) {
+  public void addChild(final PlanNode child) {
     // Do nothing
   }
 
@@ -196,17 +201,17 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
+  protected void serializeAttributes(final ByteBuffer byteBuffer) {
     // Do nothing
   }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+  protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     // Do nothing
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
+  public List<WritePlanNode> splitByPartition(final IAnalysis analysis) {
     throw new NotImplementedException("split load single TsFile is not implemented");
   }
 
@@ -221,35 +226,27 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   }
 
   public void clean() {
-    try {
-      if (deleteAfterLoad) {
-        Files.deleteIfExists(tsFile.toPath());
-        Files.deleteIfExists(
-            new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
-        Files.deleteIfExists(ModificationFile.getExclusiveMods(tsFile).toPath());
-        Files.deleteIfExists(
-            new File(tsFile.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX).toPath());
-      }
-    } catch (final IOException e) {
-      LOGGER.warn("Delete After Loading {} error.", tsFile, e);
+    if (deleteAfterLoad) {
+      LoadTsFileManager.cleanTsFile(tsFile);
     }
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    LoadSingleTsFileNode loadSingleTsFileNode = (LoadSingleTsFileNode) o;
+    final LoadSingleTsFileNode loadSingleTsFileNode = (LoadSingleTsFileNode) o;
     return Objects.equals(tsFile, loadSingleTsFileNode.tsFile)
         && Objects.equals(resource, loadSingleTsFileNode.resource)
         && Objects.equals(isTableModel, loadSingleTsFileNode.isTableModel)
         && Objects.equals(database, loadSingleTsFileNode.database)
         && Objects.equals(needDecodeTsFile, loadSingleTsFileNode.needDecodeTsFile)
         && Objects.equals(deleteAfterLoad, loadSingleTsFileNode.deleteAfterLoad)
+        && Objects.equals(loadWithMods, loadSingleTsFileNode.loadWithMods)
         && Objects.equals(localRegionReplicaSet, loadSingleTsFileNode.localRegionReplicaSet);
   }
 
@@ -262,6 +259,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         database,
         needDecodeTsFile,
         deleteAfterLoad,
+        loadWithMods,
         localRegionReplicaSet);
   }
 }

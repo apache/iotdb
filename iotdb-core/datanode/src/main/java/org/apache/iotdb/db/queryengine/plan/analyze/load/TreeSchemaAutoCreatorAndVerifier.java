@@ -234,7 +234,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
       if (loadTsFileAnalyzer.isVerifySchema()) {
         verifySchema(schemaTree);
       }
-    } catch (AuthException e) {
+    } catch (final AuthException e) {
       throw e;
     } catch (VerifyMetadataTypeMismatchException e) {
       if (loadTsFileAnalyzer.isConvertOnTypeMismatch()) {
@@ -243,7 +243,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
       } else {
         handleException(e, loadTsFileAnalyzer.getStatementString());
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       handleException(e, loadTsFileAnalyzer.getStatementString());
     }
   }

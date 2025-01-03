@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.load.splitter;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 
@@ -33,7 +32,7 @@ import java.io.InputStream;
 public class DeletionData implements TsFileData {
   private final ModEntry deletion;
 
-  public DeletionData(ModEntry deletion) {
+  public DeletionData(final ModEntry deletion) {
     this.deletion = deletion;
   }
 
@@ -42,7 +41,7 @@ public class DeletionData implements TsFileData {
     return deletion.serializedSize();
   }
 
-  public void writeToModificationFile(ModificationFile modificationFile) throws IOException {
+  public void writeToModificationFile(final ModificationFile modificationFile) throws IOException {
     modificationFile.write(deletion);
   }
 
@@ -52,13 +51,12 @@ public class DeletionData implements TsFileData {
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(getType().ordinal(), stream);
     deletion.serialize(stream);
   }
 
-  public static DeletionData deserialize(InputStream stream)
-      throws IllegalPathException, IOException {
+  public static DeletionData deserialize(final InputStream stream) throws IOException {
     return new DeletionData(ModEntry.createFrom(new DataInputStream(stream)));
   }
 }

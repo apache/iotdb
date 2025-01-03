@@ -2987,8 +2987,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   @Override
   public Analysis visitPipeEnrichedStatement(
-      PipeEnrichedStatement pipeEnrichedStatement, MPPQueryContext context) {
-    Analysis analysis = pipeEnrichedStatement.getInnerStatement().accept(this, context);
+      final PipeEnrichedStatement pipeEnrichedStatement, final MPPQueryContext context) {
+    final Analysis analysis = pipeEnrichedStatement.getInnerStatement().accept(this, context);
     analysis.setDatabaseName(context.getDatabaseName().orElse(null));
 
     // statement may be changed because of logical view
@@ -2998,7 +2998,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   @Override
-  public Analysis visitLoadFile(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
+  public Analysis visitLoadFile(
+      final LoadTsFileStatement loadTsFileStatement, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
 
     final long startTime = System.nanoTime();
@@ -3022,7 +3023,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private LoadTsFileAnalyzer getAnalyzer(
-      LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
+      final LoadTsFileStatement loadTsFileStatement, final MPPQueryContext context) {
     if (Objects.equals(loadTsFileStatement.getModel(), LoadTsFileConfigurator.MODEL_TREE_VALUE)) {
       // Load to tree-model
       return new LoadTsFileToTreeModelAnalyzer(loadTsFileStatement, context);
