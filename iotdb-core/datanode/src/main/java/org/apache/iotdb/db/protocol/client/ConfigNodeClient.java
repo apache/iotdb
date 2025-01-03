@@ -61,6 +61,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TConstructTreeDeviceViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
@@ -1307,6 +1308,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TDeleteTableDeviceResp deleteDevice(final TDeleteTableDeviceReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.deleteDevice(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TSStatus constructTreeView(final TConstructTreeDeviceViewReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.constructTreeView(req), status -> !updateConfigNodeLeader(status));
   }
 
   public static class Factory extends ThriftClientFactory<ConfigRegionId, ConfigNodeClient> {

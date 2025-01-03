@@ -1123,9 +1123,12 @@ public class TableDistributedPlanGenerator
     analysis
         .getSchemaPartitionInfo()
         .getSchemaPartitionMap()
-        .get(node.getDatabase())
+        .values()
         .forEach(
-            (deviceGroupId, schemaRegionReplicaSet) -> schemaRegionSet.add(schemaRegionReplicaSet));
+            replicaSetMap ->
+                replicaSetMap.forEach(
+                    (deviceGroupId, schemaRegionReplicaSet) ->
+                        schemaRegionSet.add(schemaRegionReplicaSet)));
 
     context.mostUsedRegion = schemaRegionSet.iterator().next();
     if (schemaRegionSet.size() == 1) {

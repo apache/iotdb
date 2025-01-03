@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
@@ -240,17 +241,13 @@ public class ConfigMTree {
    *
    * @return a list contains all distinct databases
    */
-  public List<PartialPath> getAllDatabasePaths(final Boolean isTableModel) {
+  public List<PartialPath> getAllDatabasePaths() {
     final List<PartialPath> res = new ArrayList<>();
     final Deque<IConfigMNode> nodeStack = new ArrayDeque<>();
     nodeStack.add(root);
     while (!nodeStack.isEmpty()) {
       final IConfigMNode current = nodeStack.pop();
       if (current.isDatabase()) {
-        if (Boolean.TRUE.equals(isTableModel) && !current.getDatabaseSchema().isIsTableModel()
-            || Boolean.FALSE.equals(isTableModel) && current.getDatabaseSchema().isIsTableModel()) {
-          continue;
-        }
         res.add(current.getPartialPath());
       } else {
         nodeStack.addAll(current.getChildren().values());
@@ -699,6 +696,12 @@ public class ConfigMTree {
           database.getFullPath().substring(ROOT.length() + 1), tableName);
     }
     final ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
+    if (TreeViewSchema.isTreeViewTable(tableNode.getTable())) {
+      throw new MetadataException(
+          String.format(
+              "Table '%s.%s' is a tree view table, does not support drop", database, tableName),
+          TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+    }
     if (tableNode.getStatus().equals(TableNodeStatus.PRE_CREATE)) {
       throw new IllegalStateException();
     }
@@ -753,7 +756,7 @@ public class ConfigMTree {
   }
 
   public Map<String, List<TsTable>> getAllUsingTables() {
-    return getAllDatabasePaths(true).stream()
+    return getAllDatabasePaths().stream()
         .collect(
             Collectors.toMap(
                 PartialPath::getFullPath,
@@ -770,7 +773,7 @@ public class ConfigMTree {
 
   public Map<String, List<TsTable>> getAllPreCreateTables() throws MetadataException {
     final Map<String, List<TsTable>> result = new HashMap<>();
-    final List<PartialPath> databaseList = getAllDatabasePaths(true);
+    final List<PartialPath> databaseList = getAllDatabasePaths();
     for (final PartialPath databasePath : databaseList) {
       final String database = databasePath.getFullPath().substring(ROOT.length() + 1);
       final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(databasePath).getAsMNode();
@@ -805,15 +808,6 @@ public class ConfigMTree {
     columnSchemaList.forEach(o -> table.removeColumnSchema(o.getColumnName()));
   }
 
-  public void renameTableColumn(
-      final PartialPath database,
-      final String tableName,
-      final String oldName,
-      final String newName)
-      throws MetadataException {
-    getTable(database, tableName).renameColumnSchema(oldName, newName);
-  }
-
   public void setTableProperties(
       final PartialPath database, final String tableName, final Map<String, String> tableProperties)
       throws MetadataException {
@@ -843,6 +837,13 @@ public class ConfigMTree {
       final PartialPath database, final String tableName, final String columnName)
       throws MetadataException, SemanticException {
     final ConfigTableNode node = getTableNode(database, tableName);
+    if (TreeViewSchema.isTreeViewTable(node.getTable())) {
+      throw new MetadataException(
+          String.format(
+              "Table '%s.%s' is a tree view table, does not support alter", database, tableName),
+          TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+    }
+
     final TsTableColumnSchema columnSchema = node.getTable().getColumnSchema(columnName);
     if (Objects.isNull(columnSchema)) {
       throw new ColumnNotExistsException(

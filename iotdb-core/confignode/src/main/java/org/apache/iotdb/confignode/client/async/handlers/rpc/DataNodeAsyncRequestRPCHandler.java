@@ -210,6 +210,16 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
       case KILL_QUERY_INSTANCE:
       case RESET_PEER_LIST:
       case TEST_CONNECTION:
+      case INVALIDATE_TABLE_CACHE:
+      case DELETE_DATA_FOR_DROP_TABLE:
+      case DELETE_DEVICES_FOR_DROP_TABLE:
+      case INVALIDATE_COLUMN_CACHE:
+      case DELETE_COLUMN_DATA:
+      case CONSTRUCT_TABLE_DEVICE_BLACK_LIST:
+      case ROLLBACK_TABLE_DEVICE_BLACK_LIST:
+      case INVALIDATE_MATCHED_TABLE_DEVICE_CACHE:
+      case DELETE_DATA_FOR_TABLE_DEVICE:
+      case DELETE_TABLE_DEVICE_IN_BLACK_LIST:
       default:
         return new DataNodeTSStatusRPCHandler(
             requestType,

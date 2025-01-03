@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
+import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -128,7 +129,7 @@ public class AddTableColumnProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .addTableColumn(database, tableName, addedColumnList);
+            .executePlan(new AddTableColumnPlan(database, tableName, addedColumnList, false));
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     } else {
@@ -173,7 +174,7 @@ public class AddTableColumnProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .rollbackAddTableColumn(database, tableName, addedColumnList);
+            .executePlan(new AddTableColumnPlan(database, tableName, addedColumnList, true));
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }

@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanNodeSearcher;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
@@ -44,7 +44,7 @@ public final class PlanAssert {
   public static void assertPlan(LogicalQueryPlan actual, PlanMatchPattern pattern) {
     assertPlan(
         actual.getContext().getSession(),
-        new TestMatadata(),
+        new TestMetadata(),
         actual.getRootNode(),
         noLookup(),
         pattern);
@@ -59,7 +59,7 @@ public final class PlanAssert {
             IoTDBConstant.ClientVersion.V_1_0,
             "db",
             IClientSession.SqlDialect.TABLE),
-        new TestMatadata(),
+        new TestMetadata(),
         actual,
         noLookup(),
         pattern);

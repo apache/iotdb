@@ -47,9 +47,8 @@ public abstract class AbstractTraverseDevice extends Statement {
   protected String database;
 
   protected String tableName;
-
   // Temporary
-  private Table table;
+  protected Table table;
 
   protected Expression where;
 
@@ -127,7 +126,6 @@ public abstract class AbstractTraverseDevice extends Statement {
     where = ExtractCommonPredicatesExpressionRewriter.extractCommonPredicates(where);
     return TableDeviceSchemaFetcher.getInstance()
         .parseFilter4TraverseDevice(
-            database,
             tableInstance,
             (where instanceof LogicalExpression
                     && ((LogicalExpression) where).getOperator() == LogicalExpression.Operator.AND)
