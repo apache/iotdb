@@ -130,6 +130,16 @@ public class CompactionTaskMemCostEstimatorTest extends AbstractCompactionTest {
           TSEncoding.PLAIN,
           CompressionType.UNCOMPRESSED);
       writer.endChunkGroup();
+
+      writer.startChunkGroup("d2");
+      for (int i = 0; i < 10; i++) {
+        writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+            "s" + i,
+            new TimeRange[] {new TimeRange(0, 10000)},
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED);
+      }
+      writer.endChunkGroup();
       writer.endFile();
     }
     seqResources.add(resource);

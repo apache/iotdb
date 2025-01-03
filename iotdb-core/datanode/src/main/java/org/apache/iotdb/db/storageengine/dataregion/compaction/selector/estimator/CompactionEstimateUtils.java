@@ -129,7 +129,7 @@ public class CompactionEstimateUtils {
     }
   }
 
-  public static Map<IDeviceID, Long> getDeviceMetadataSizeMapAndCollectMetadataInfo(
+  static Map<IDeviceID, Long> getDeviceMetadataSizeMapAndCollectMetadataInfo(
       CompactionTsFileReader reader, MetadataInfo metadataInfo) throws IOException {
     Map<IDeviceID, Long> deviceMetadataSizeMap = new HashMap<>();
     TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
@@ -137,9 +137,7 @@ public class CompactionEstimateUtils {
       Pair<IDeviceID, Boolean> deviceAlignedPair = deviceIterator.next();
       IDeviceID deviceID = deviceAlignedPair.getLeft();
       boolean isAligned = deviceAlignedPair.getRight();
-      if (isAligned) {
-        metadataInfo.hasAlignedSeries = true;
-      }
+      metadataInfo.hasAlignedSeries |= isAligned;
       MetadataIndexNode firstMeasurementNodeOfCurrentDevice =
           deviceIterator.getFirstMeasurementNodeOfCurrentDevice();
       long totalTimeseriesMetadataSizeOfCurrentDevice = 0;
