@@ -314,6 +314,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
         .set(config.getAllocateMemoryForCoordinator());
   }
 
+  /** Bind the memory threshold metrics of schema engine */
   private void bindSchemaEngineMemoryMetrics(AbstractMetricService metricService) {
     metricService
         .getOrCreateGauge(
