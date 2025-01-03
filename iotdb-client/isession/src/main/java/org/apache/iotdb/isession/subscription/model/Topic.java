@@ -17,40 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.model;
+package org.apache.iotdb.isession.subscription.model;
 
-public class Subscription {
+public class Topic {
 
   private final String topicName;
-  private final String consumerGroupId;
-  private final String consumerIds;
+  private final String topicAttributes;
 
-  public Subscription(String topicName, String consumerGroupId, String consumerIds) {
+  public Topic(final String topicName, final String topicAttributes) {
     this.topicName = topicName;
-    this.consumerGroupId = consumerGroupId;
-    this.consumerIds = consumerIds;
+    this.topicAttributes = topicAttributes;
   }
 
   public String getTopicName() {
     return topicName;
   }
 
-  public String getConsumerGroupId() {
-    return consumerGroupId;
-  }
-
-  public String getConsumerIds() {
-    return consumerIds;
+  public String getTopicAttributes() {
+    return topicAttributes;
   }
 
   @Override
   public String toString() {
-    return "Subscription{topicName="
-        + topicName
-        + ", consumerGroupId="
-        + consumerGroupId
-        + ", consumerIds="
-        + consumerIds
-        + "}";
+    return "Topic{topicName=" + topicName + ", topicAttributes=" + topicAttributes + "}";
   }
 }
