@@ -23,8 +23,12 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 class MetadataInfo {
   public long metadataMemCost;
+  public boolean hasAlignedSeries;
 
   public int getMaxConcurrentSeriesNum() {
+    if (!hasAlignedSeries) {
+      return IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
+    }
     int compactionMaxAlignedSeriesNumInOneBatch =
         IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch();
     compactionMaxAlignedSeriesNumInOneBatch =
