@@ -335,8 +335,6 @@ public class IoTDBRestartTableIT {
   @Test
   public void testRecoverWALDeleteSchemaCheckResourceTime() throws Exception {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    int avgSeriesPointNumberThreshold = config.getAvgSeriesPointNumberThreshold();
-    config.setAvgSeriesPointNumberThreshold(2);
     long tsFileSize = config.getSeqTsFileSize();
     long unFsFileSize = config.getSeqTsFileSize();
     config.setSeqTsFileSize(10000000);
@@ -372,7 +370,6 @@ public class IoTDBRestartTableIT {
       assertEquals(2, cnt);
     }
 
-    config.setAvgSeriesPointNumberThreshold(avgSeriesPointNumberThreshold);
     config.setSeqTsFileSize(tsFileSize);
     config.setUnSeqTsFileSize(unFsFileSize);
   }
