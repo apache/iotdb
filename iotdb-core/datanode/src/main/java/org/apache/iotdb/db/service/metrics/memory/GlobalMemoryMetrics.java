@@ -29,6 +29,7 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
+import java.util.Arrays;
 import java.util.Collections;
 
 public class GlobalMemoryMetrics implements IMetricSet {
@@ -55,6 +56,17 @@ public class GlobalMemoryMetrics implements IMetricSet {
             Tag.LEVEL.toString(),
             LEVELS[0])
         .set(Runtime.getRuntime().maxMemory());
+    metricService
+        .getOrCreateGauge(
+            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            MetricLevel.NORMAL,
+            Tag.NAME.toString(),
+            TOTAL,
+            Tag.TYPE.toString(),
+            OFF_HEAP,
+            Tag.LEVEL.toString(),
+            LEVELS[0])
+        .set(config.getMaxOffHeapMemoryBytes());
     StorageEngineMemoryMetrics.getInstance().bindTo(metricService);
     QueryEngineMemoryMetrics.getInstance().bindTo(metricService);
     SchemaEngineMemoryMetrics.getInstance().bindTo(metricService);
@@ -75,15 +87,19 @@ public class GlobalMemoryMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    metricService.remove(
-        MetricType.GAUGE,
-        Metric.THRESHOLD_MEMORY_SIZE.toString(),
-        Tag.NAME.toString(),
-        TOTAL,
-        Tag.TYPE.toString(),
-        ON_HEAP,
-        Tag.LEVEL.toString(),
-        "0");
+    Arrays.asList(ON_HEAP, OFF_HEAP)
+        .forEach(
+            type -> {
+              metricService.remove(
+                  MetricType.GAUGE,
+                  Metric.THRESHOLD_MEMORY_SIZE.toString(),
+                  Tag.NAME.toString(),
+                  TOTAL,
+                  Tag.TYPE.toString(),
+                  type,
+                  Tag.LEVEL.toString(),
+                  LEVELS[0]);
+            });
     StorageEngineMemoryMetrics.getInstance().unbindFrom(metricService);
     QueryEngineMemoryMetrics.getInstance().unbindFrom(metricService);
     SchemaEngineMemoryMetrics.getInstance().unbindFrom(metricService);
