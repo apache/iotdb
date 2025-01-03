@@ -39,7 +39,7 @@ import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
-import org.apache.iotdb.db.service.metrics.memory.ThresholdMemoryMetrics;
+import org.apache.iotdb.db.service.metrics.memory.GlobalMemoryMetrics;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesSizeMetricsSet;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
@@ -105,7 +105,7 @@ public class DataNodeMetricsHelper {
     metricService.addMetricSet(ActiveLoadingFilesSizeMetricsSet.getInstance());
 
     // bind memory related metrics
-    metricService.addMetricSet(ThresholdMemoryMetrics.getInstance());
+    metricService.addMetricSet(GlobalMemoryMetrics.getInstance());
   }
 
   private static void initSystemMetrics(MetricService metricService) {
