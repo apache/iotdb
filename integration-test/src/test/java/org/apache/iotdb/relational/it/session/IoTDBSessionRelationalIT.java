@@ -1494,7 +1494,7 @@ public class IoTDBSessionRelationalIT {
 
       for (int row = 0; row < 15; row++) {
         tablet.addTimestamp(row, timestamp);
-        tablet.addValue("tag2", row, "tag:" + timestamp);
+        tablet.addValue("tag2", row, "string");
         tablet.addValue("s2", row, timestamp);
         timestamp ++;
       }
