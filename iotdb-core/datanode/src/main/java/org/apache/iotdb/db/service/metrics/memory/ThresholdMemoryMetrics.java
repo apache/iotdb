@@ -83,6 +83,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
     bindStorageEngineRelatedMemoryMetrics(metricService);
     bindQueryEngineMemoryMetrics(metricService);
     bindSchemaEngineMemoryMetrics(metricService);
+    bindConsensusMemoryMetrics(metricService);
     metricService
         .getOrCreateGauge(
             Metric.THRESHOLD_MEMORY_SIZE.toString(),
@@ -362,6 +363,21 @@ public class ThresholdMemoryMetrics implements IMetricSet {
         .set(config.getAllocateMemoryForPartitionCache());
   }
 
+  /** Bind the memory threshold metrics of consensus(NOTICE: iot consensus only) */
+  private void bindConsensusMemoryMetrics(AbstractMetricService metricService) {
+      metricService
+        .getOrCreateGauge(
+            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            MetricLevel.NORMAL,
+            Tag.NAME.toString(),
+            CONSENSUS,
+            Tag.TYPE.toString(),
+            ON_HEAP,
+            Tag.LEVEL.toString(),
+            LEVELS[1])
+        .set(config.getAllocateMemoryForConsensus());
+  }
+
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
@@ -388,6 +404,7 @@ public class ThresholdMemoryMetrics implements IMetricSet {
     unbindStorageEngineRelatedMemoryMetrics(metricService);
     unbindQueryEngineMemoryMetrics(metricService);
     unbindSchemaEngineMemoryMetrics(metricService);
+    unbindConsensusMemoryMetrics(metricService);
     Collections.singletonList(DIRECT_BUFFER)
         .forEach(
             name ->
@@ -480,6 +497,10 @@ public class ThresholdMemoryMetrics implements IMetricSet {
                     ON_HEAP,
                     Tag.LEVEL.toString(),
                     LEVELS[2]));
+  }
+
+  private void unbindConsensusMemoryMetrics(AbstractMetricService metricService) {
+
   }
 
   public static ThresholdMemoryMetrics getInstance() {
