@@ -57,7 +57,7 @@ public class LastByDescAccumulator extends LastByAccumulator {
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
         if (!yColumn.isNull(position)) {
-          updateIntLastValue(xColumn, i, timeColumn.getLong(position));
+          updateIntLastValue(xColumn, position, timeColumn.getLong(position));
           return;
         }
       }
@@ -82,7 +82,7 @@ public class LastByDescAccumulator extends LastByAccumulator {
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
         if (!yColumn.isNull(position)) {
-          updateLongLastValue(xColumn, i, timeColumn.getLong(position));
+          updateLongLastValue(xColumn, position, timeColumn.getLong(position));
           return;
         }
       }
@@ -107,7 +107,7 @@ public class LastByDescAccumulator extends LastByAccumulator {
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
         if (!yColumn.isNull(position)) {
-          updateFloatLastValue(xColumn, i, timeColumn.getLong(position));
+          updateFloatLastValue(xColumn, position, timeColumn.getLong(position));
           return;
         }
       }
@@ -132,7 +132,7 @@ public class LastByDescAccumulator extends LastByAccumulator {
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
         if (!yColumn.isNull(position)) {
-          updateDoubleLastValue(xColumn, i, timeColumn.getLong(position));
+          updateDoubleLastValue(xColumn, position, timeColumn.getLong(position));
           return;
         }
       }
@@ -157,7 +157,7 @@ public class LastByDescAccumulator extends LastByAccumulator {
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
         if (!yColumn.isNull(position)) {
-          updateBinaryLastValue(xColumn, i, timeColumn.getLong(position));
+          updateBinaryLastValue(xColumn, position, timeColumn.getLong(position));
           return;
         }
       }
@@ -182,7 +182,7 @@ public class LastByDescAccumulator extends LastByAccumulator {
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
         if (!yColumn.isNull(position)) {
-          updateBooleanLastValue(xColumn, i, timeColumn.getLong(position));
+          updateBooleanLastValue(xColumn, position, timeColumn.getLong(position));
           return;
         }
       }
