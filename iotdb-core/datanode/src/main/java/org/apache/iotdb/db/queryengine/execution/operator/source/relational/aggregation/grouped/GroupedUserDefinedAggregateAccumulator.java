@@ -78,7 +78,10 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
   @Override
   public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
     RecordIterator iterator =
-        new MaskedRecordIterator(Arrays.asList(arguments), inputDataTypes, mask);
+        mask.isSelectAll()
+            ? new RecordIterator(
+                Arrays.asList(arguments), inputDataTypes, arguments[0].getPositionCount())
+            : new MaskedRecordIterator(Arrays.asList(arguments), inputDataTypes, mask);
     int[] selectedPositions = mask.getSelectedPositions();
     int index = 0;
     while (iterator.hasNext()) {

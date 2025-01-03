@@ -48,7 +48,7 @@ public class FirstDescAccumulator extends FirstAccumulator {
       int position;
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
-        if (!valueColumn.isNull(i)) {
+        if (!valueColumn.isNull(position)) {
           updateIntFirstValue(valueColumn.getInt(position), timeColumn.getLong(position));
         }
       }
@@ -70,7 +70,7 @@ public class FirstDescAccumulator extends FirstAccumulator {
       int position;
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
-        if (!valueColumn.isNull(i)) {
+        if (!valueColumn.isNull(position)) {
           updateLongFirstValue(valueColumn.getLong(position), timeColumn.getLong(position));
         }
       }
@@ -92,7 +92,7 @@ public class FirstDescAccumulator extends FirstAccumulator {
       int position;
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
-        if (!valueColumn.isNull(i)) {
+        if (!valueColumn.isNull(position)) {
           updateFloatFirstValue(valueColumn.getFloat(position), timeColumn.getLong(position));
         }
       }
@@ -114,7 +114,7 @@ public class FirstDescAccumulator extends FirstAccumulator {
       int position;
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
-        if (!valueColumn.isNull(i)) {
+        if (!valueColumn.isNull(position)) {
           updateDoubleFirstValue(valueColumn.getDouble(position), timeColumn.getLong(position));
         }
       }
@@ -136,7 +136,7 @@ public class FirstDescAccumulator extends FirstAccumulator {
       int position;
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
-        if (!valueColumn.isNull(i)) {
+        if (!valueColumn.isNull(position)) {
           updateBinaryFirstValue(valueColumn.getBinary(position), timeColumn.getLong(position));
         }
       }
@@ -158,7 +158,7 @@ public class FirstDescAccumulator extends FirstAccumulator {
       int position;
       for (int i = 0; i < positionCount; i++) {
         position = selectedPositions[i];
-        if (!valueColumn.isNull(i)) {
+        if (!valueColumn.isNull(position)) {
           updateBooleanFirstValue(valueColumn.getBoolean(position), timeColumn.getLong(position));
         }
       }
