@@ -63,6 +63,7 @@ import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.function.ToLongFunction;
 
@@ -1158,17 +1159,27 @@ public class SeriesScanUtil implements Accountable {
       unpackUnseqTsFileResource();
     }
     while (orderUtils.hasNextSeqResource() && orderUtils.isCurSeqOverlappedWith(endpointTime)) {
-      unpackSeqTsFileResource();
+      Optional<ITimeSeriesMetadata> timeSeriesMetadata = unpackSeqTsFileResource();
+      // asc: if current seq tsfile's endTime >= endpointTime, we don't need to continue
+      // desc: if current seq tsfile's startTime <= endpointTime, we don't need to continue
+      if (timeSeriesMetadata.isPresent()
+          && orderUtils.overlappedSeqResourceSearchingNeedStop(
+              endpointTime, timeSeriesMetadata.get().getStatistics())) {
+        break;
+      }
     }
   }
 
-  private void unpackSeqTsFileResource() throws IOException {
+  private Optional<ITimeSeriesMetadata> unpackSeqTsFileResource() throws IOException {
     ITimeSeriesMetadata timeseriesMetadata =
         loadTimeSeriesMetadata(orderUtils.getNextSeqFileResource(true), true);
     // skip if data type is mismatched which may be caused by delete
     if (timeseriesMetadata != null && timeseriesMetadata.typeMatch(getTsDataTypeList())) {
       timeseriesMetadata.setSeq(true);
       seqTimeSeriesMetadata.add(timeseriesMetadata);
+      return Optional.of(timeseriesMetadata);
+    } else {
+      return Optional.empty();
     }
   }
 
@@ -1336,6 +1347,9 @@ public class SeriesScanUtil implements Accountable {
     TsFileResource getNextUnseqFileResource(boolean isDelete);
 
     void setCurSeqFileIndex(QueryDataSource dataSource);
+
+    boolean overlappedSeqResourceSearchingNeedStop(
+        long endPointTime, Statistics<? extends Object> currentStatistics);
   }
 
   class DescTimeOrderUtils implements TimeOrderUtils {
@@ -1454,6 +1468,12 @@ public class SeriesScanUtil implements Accountable {
     public void setCurSeqFileIndex(QueryDataSource dataSource) {
       curSeqFileIndex = dataSource.getSeqResourcesSize() - 1;
     }
+
+    @Override
+    public boolean overlappedSeqResourceSearchingNeedStop(
+        long endPointTime, Statistics<?> currentStatistics) {
+      return currentStatistics.getStartTime() <= endPointTime;
+    }
   }
 
   class AscTimeOrderUtils implements TimeOrderUtils {
@@ -1571,6 +1591,12 @@ public class SeriesScanUtil implements Accountable {
     @Override
     public void setCurSeqFileIndex(QueryDataSource dataSource) {
       curSeqFileIndex = 0;
+    }
+
+    @Override
+    public boolean overlappedSeqResourceSearchingNeedStop(
+        long endPointTime, Statistics<?> currentStatistics) {
+      return currentStatistics.getEndTime() >= endPointTime;
     }
   }
 

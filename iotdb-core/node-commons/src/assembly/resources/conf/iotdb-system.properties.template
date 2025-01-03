@@ -865,8 +865,13 @@ enable_auto_create_schema=true
 # Database level when creating schema automatically is enabled
 # e.g. root.sg0.d1.s2
 #      we will set root.sg0 as the database if database level is 1
+# If the incoming path is shorter than this value, the creation/insertion will fail.
 # effectiveMode: hot_reload
 # Datatype: int
+# Range: [1, Integer.MAX_VALUE]
+# Default: 1
+# When illegal: report an error and change nothing during hot-reload; use the default value in
+# start-up
 default_storage_group_level=1
 
 # ALL data types: BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT
@@ -1027,6 +1032,13 @@ sort_buffer_size_in_bytes=1048576
 # Datatype: int
 merge_threshold_of_explain_analyze=10
 
+# The limit of query sampling throughput merge can reach per second
+# 0 means no queries will be recorded
+# negative number means no limit, all queries will be recorded.
+# effectiveMode: hot_reload
+# Datatype: int, Unit: bytes
+query_sample_throughput_bytes_per_sec=160
+
 ####################
 ### TTL Configuration
 ####################
@@ -1142,7 +1154,7 @@ flush_thread_count=0
 
 # In one insert (one device, one timestamp, multiple measurements),
 # if enable partial insert, one measurement failure will not impact other measurements
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: boolean
 enable_partial_insert=true
 
@@ -1464,11 +1476,6 @@ iot_consensus_cache_window_time_in_ms=-1
 # Datatype: boolean
 enable_wal_compression=true
 
-# Blocking queue capacity of each PageCacheDeletionBuffer, restricts maximum number of entry in the blocking queue.
-# effectiveMode: restart
-# Datatype: int
-page_cache_deletion_buffer_queue_capacity=500
-
 ####################
 ### IoTConsensus Configuration
 ####################
@@ -1575,21 +1582,6 @@ value_encoder=PLAIN
 # And it is also used as the default compressor of time column in aligned timeseries.
 # effectiveMode: hot_reload
 compressor=LZ4
-
-# Encryption configuration
-# Data encryption function switch.
-# effectiveMode: restart
-encrypt_flag=false
-
-# Encryption configuration
-# Data encryption method, supports org.apache.tsfile.encrypt.UNENCRYPTED, org.apache.tsfile.encrypt.AES128.
-# effectiveMode: restart
-encrypt_type=org.apache.tsfile.encrypt.UNENCRYPTED
-
-# Encryption configuration
-# Data encryption key source. The key should be 16 byte String.
-# effectiveMode: restart
-encrypt_key_path=
 
 ####################
 ### Authorization Configuration
@@ -1899,6 +1891,12 @@ iot_consensus_v2_pipeline_size=5
 # effectiveMode: restart
 # Datatype: string
 iot_consensus_v2_mode=batch
+
+# Blocking queue capacity of each deletion ahead log buffer for iot consensus v2,
+# restricts maximum number of entry in the blocking queue.
+# effectiveMode: restart
+# Datatype: int
+deletion_ahead_log_buffer_queue_capacity=500
 
 ####################
 ### Procedure Configuration

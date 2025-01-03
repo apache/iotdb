@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -32,7 +33,6 @@ import org.apache.thrift.TException;
 
 import java.util.List;
 
-import static org.apache.iotdb.commons.schema.table.InformationSchemaTable.QUERIES;
 import static org.apache.iotdb.rpc.TSStatusCode.QUERY_PROCESS_ERROR;
 
 public class DataNodeLocationSupplierFactory {
@@ -60,9 +60,9 @@ public class DataNodeLocationSupplierFactory {
     }
 
     private List<TDataNodeLocation> getRunningDataNodeLocations() {
-      try (ConfigNodeClient client =
+      try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        TGetDataNodeLocationsResp showDataNodesResp = client.getRunningDataNodeLocations();
+        final TGetDataNodeLocationsResp showDataNodesResp = client.getRunningDataNodeLocations();
         if (showDataNodesResp.getStatus().getCode()
             != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           throw new IoTDBRuntimeException(
@@ -71,7 +71,7 @@ public class DataNodeLocationSupplierFactory {
               QUERY_PROCESS_ERROR.getStatusCode());
         }
         return showDataNodesResp.getDataNodeLocationList();
-      } catch (ClientManagerException | TException e) {
+      } catch (final ClientManagerException | TException e) {
         throw new IoTDBRuntimeException(
             "An error occurred when executing getRunningDataNodeLocations():" + e.getMessage(),
             QUERY_PROCESS_ERROR.getStatusCode());
@@ -79,8 +79,8 @@ public class DataNodeLocationSupplierFactory {
     }
 
     @Override
-    public List<TDataNodeLocation> getDataNodeLocations(String tableName) {
-      if (tableName.equals(QUERIES.getSchemaTableName())) {
+    public List<TDataNodeLocation> getDataNodeLocations(final String tableName) {
+      if (tableName.equals(InformationSchema.QUERIES)) {
         return getRunningDataNodeLocations();
       } else {
         throw new UnsupportedOperationException("Unknown table: " + tableName);

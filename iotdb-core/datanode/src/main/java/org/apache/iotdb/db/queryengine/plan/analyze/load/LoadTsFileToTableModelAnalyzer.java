@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.db.exception.LoadEmptyFileException;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
+import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -60,8 +60,6 @@ import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.validateDatabaseName;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR_CHAR;
 
 public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
   private static final Logger LOGGER =
@@ -192,8 +190,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
     }
 
     final CreateDBTask task =
-        new CreateDBTask(
-            new TDatabaseSchema(ROOT + PATH_SEPARATOR_CHAR + database).setIsTableModel(true), true);
+        new CreateDBTask(new TDatabaseSchema(database).setIsTableModel(true), true);
     try {
       final ListenableFuture<ConfigTaskResult> future =
           task.execute(ClusterConfigTaskExecutor.getInstance());

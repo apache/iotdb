@@ -192,6 +192,7 @@ public class ActiveLoadTsFileLoader {
   private TSStatus loadTsFile(final Pair<String, Boolean> filePair) throws FileNotFoundException {
     final LoadTsFileStatement statement = new LoadTsFileStatement(filePair.getLeft());
     statement.setDeleteAfterLoad(true);
+    statement.setConvertOnTypeMismatch(true);
     statement.setVerifySchema(true);
     statement.setAutoCreateDatabase(false);
     return executeStatement(filePair.getRight() ? new PipeEnrichedStatement(statement) : statement);
@@ -206,7 +207,8 @@ public class ActiveLoadTsFileLoader {
             "",
             ClusterPartitionFetcher.getInstance(),
             ClusterSchemaFetcher.getInstance(),
-            IOTDB_CONFIG.getQueryTimeoutThreshold())
+            IOTDB_CONFIG.getQueryTimeoutThreshold(),
+            false)
         .status;
   }
 

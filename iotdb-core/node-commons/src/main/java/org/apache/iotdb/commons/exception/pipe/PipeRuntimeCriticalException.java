@@ -31,37 +31,37 @@ import java.util.Objects;
 
 public class PipeRuntimeCriticalException extends PipeRuntimeException {
 
-  public PipeRuntimeCriticalException(String message) {
+  public PipeRuntimeCriticalException(final String message) {
     super(message);
   }
 
-  public PipeRuntimeCriticalException(String message, long timeStamp) {
+  public PipeRuntimeCriticalException(final String message, final long timeStamp) {
     super(message, timeStamp);
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     return obj instanceof PipeRuntimeCriticalException
         && Objects.equals(getMessage(), ((PipeRuntimeCriticalException) obj).getMessage())
         && Objects.equals(getTimeStamp(), ((PipeRuntimeException) obj).getTimeStamp());
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
+  public void serialize(final ByteBuffer byteBuffer) {
     PipeRuntimeExceptionType.CRITICAL_EXCEPTION.serialize(byteBuffer);
     ReadWriteIOUtils.write(getMessage(), byteBuffer);
     ReadWriteIOUtils.write(getTimeStamp(), byteBuffer);
   }
 
   @Override
-  public void serialize(OutputStream stream) throws IOException {
+  public void serialize(final OutputStream stream) throws IOException {
     PipeRuntimeExceptionType.CRITICAL_EXCEPTION.serialize(stream);
     ReadWriteIOUtils.write(getMessage(), stream);
     ReadWriteIOUtils.write(getTimeStamp(), stream);
   }
 
   public static PipeRuntimeCriticalException deserializeFrom(
-      PipeRuntimeMetaVersion version, ByteBuffer byteBuffer) {
+      final PipeRuntimeMetaVersion version, final ByteBuffer byteBuffer) {
     final String message = ReadWriteIOUtils.readString(byteBuffer);
     switch (version) {
       case VERSION_1:
@@ -74,7 +74,7 @@ public class PipeRuntimeCriticalException extends PipeRuntimeException {
   }
 
   public static PipeRuntimeCriticalException deserializeFrom(
-      PipeRuntimeMetaVersion version, InputStream stream) throws IOException {
+      final PipeRuntimeMetaVersion version, final InputStream stream) throws IOException {
     final String message = ReadWriteIOUtils.readString(stream);
     switch (version) {
       case VERSION_1:

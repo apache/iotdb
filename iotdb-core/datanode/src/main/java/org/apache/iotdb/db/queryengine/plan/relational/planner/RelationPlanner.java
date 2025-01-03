@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TreeDeviceViewSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
@@ -47,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationS
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
@@ -94,7 +96,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.commons.schema.table.InformationSchemaTable.INFORMATION_SCHEMA;
+import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerce;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.coerceIfNecessary;
@@ -191,7 +193,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           symbol,
           new ColumnSchema(
               field.getName().orElse(null), field.getType(), field.isHidden(), category));
-      if (category == TsTableColumnCategory.ID) {
+      if (category == TsTableColumnCategory.TAG) {
         idAndAttributeIndexMap.put(symbol, idIndex++);
       }
     }
@@ -200,8 +202,26 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
 
     Map<Symbol, ColumnSchema> tableColumnSchema = symbolToColumnSchema.build();
     analysis.addTableSchema(qualifiedObjectName, tableColumnSchema);
+
+    if (analysis.getTableHandle(table) instanceof TreeDeviceViewSchema) {
+      TreeDeviceViewSchema treeDeviceViewSchema =
+          (TreeDeviceViewSchema) analysis.getTableHandle(table);
+      return new RelationPlan(
+          new TreeDeviceViewScanNode(
+              idAllocator.genPlanNodeId(),
+              qualifiedObjectName,
+              outputSymbols,
+              tableColumnSchema,
+              idAndAttributeIndexMap,
+              treeDeviceViewSchema.getTreeDBName(),
+              treeDeviceViewSchema.getMeasurementColumnNameMap()),
+          scope,
+          outputSymbols,
+          outerContext);
+    }
+
     TableScanNode tableScanNode =
-        qualifiedObjectName.getDatabaseName().equals(INFORMATION_SCHEMA)
+        qualifiedObjectName.getDatabaseName().equals(INFORMATION_DATABASE)
             ? new InformationSchemaTableScanNode(
                 idAllocator.genPlanNodeId(), qualifiedObjectName, outputSymbols, tableColumnSchema)
             : new DeviceTableScanNode(
@@ -681,8 +701,9 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
         insertNode, analysis.getRootScope(), Collections.emptyList(), outerContext);
   }
 
-  protected RelationalInsertRowNode fromInsertRowStatement(InsertRowStatement insertRowStatement) {
-    RelationalInsertRowNode insertNode =
+  protected RelationalInsertRowNode fromInsertRowStatement(
+      final InsertRowStatement insertRowStatement) {
+    final RelationalInsertRowNode insertNode =
         new RelationalInsertRowNode(
             idAllocator.genPlanNodeId(),
             insertRowStatement.getDevicePath(),

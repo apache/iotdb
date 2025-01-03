@@ -44,9 +44,9 @@ import java.util.Map;
 
 import static org.junit.Assert.fail;
 
+@Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-@Ignore
 public class IoTDBEncryptionValueQueryIT {
   private static String[] sqls =
       new String[] {
@@ -128,7 +128,7 @@ public class IoTDBEncryptionValueQueryIT {
         .getConfig()
         .getCommonConfig()
         .setEncryptFlag(true)
-        .setEncryptType("org.apache.tsfile.encrypt.AES128");
+        .setEncryptType("UNENCRYPTED");
     EnvFactory.getEnv().initClusterEnvironment();
     importData();
   }

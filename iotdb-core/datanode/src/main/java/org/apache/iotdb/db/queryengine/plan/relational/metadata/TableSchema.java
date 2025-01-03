@@ -41,7 +41,7 @@ public class TableSchema {
 
   private final List<ColumnSchema> columns;
 
-  public TableSchema(String tableName, List<ColumnSchema> columns) {
+  public TableSchema(final String tableName, final List<ColumnSchema> columns) {
     this.tableName = tableName;
     this.columns = columns;
   }
@@ -55,7 +55,8 @@ public class TableSchema {
   }
 
   /** Get the column with the specified name and category, return null if not found. */
-  public ColumnSchema getColumn(String columnName, TsTableColumnCategory columnCategory) {
+  public ColumnSchema getColumn(
+      final String columnName, final TsTableColumnCategory columnCategory) {
     for (final ColumnSchema column : columns) {
       if (column.getName().equals(columnName) && column.getColumnCategory() == columnCategory) {
         return column;
@@ -68,9 +69,9 @@ public class TableSchema {
    * Given the name of an ID column, return the index of this column among all ID columns, return -1
    * if not found.
    */
-  public int getIndexAmongIdColumns(String idColumnName) {
+  public int getIndexAmongIdColumns(final String idColumnName) {
     int index = 0;
-    for (ColumnSchema column : getIdColumns()) {
+    for (final ColumnSchema column : getIdColumns()) {
       if (column.getName().equals(idColumnName)) {
         return index;
       }
@@ -79,10 +80,10 @@ public class TableSchema {
     return -1;
   }
 
-  public static TableSchema of(TsTable tsTable) {
-    String tableName = tsTable.getTableName();
-    List<ColumnSchema> columns = new ArrayList<>();
-    for (TsTableColumnSchema tsTableColumnSchema : tsTable.getColumnList()) {
+  public static TableSchema of(final TsTable tsTable) {
+    final String tableName = tsTable.getTableName();
+    final List<ColumnSchema> columns = new ArrayList<>();
+    for (final TsTableColumnSchema tsTableColumnSchema : tsTable.getColumnList()) {
       columns.add(ColumnSchema.ofTsColumnSchema(tsTableColumnSchema));
     }
     return new TableSchema(tableName, columns);
@@ -128,9 +129,9 @@ public class TableSchema {
   private static final Logger LOGGER = org.slf4j.LoggerFactory.getLogger(TableSchema.class);
 
   public static TableSchema fromTsFileTableSchema(
-      String tableName, org.apache.tsfile.file.metadata.TableSchema tsFileTableSchema) {
+      final String tableName, final org.apache.tsfile.file.metadata.TableSchema tsFileTableSchema) {
     try {
-      List<ColumnSchema> columns = new ArrayList<>();
+      final List<ColumnSchema> columns = new ArrayList<>();
       for (int i = 0; i < tsFileTableSchema.getColumnSchemas().size(); i++) {
         final String columnName = tsFileTableSchema.getColumnSchemas().get(i).getMeasurementName();
         if (columnName == null || columnName.isEmpty()) {
@@ -156,7 +157,7 @@ public class TableSchema {
                 TsTableColumnCategory.fromTsFileColumnType(columnType)));
       }
       return new TableSchema(tableName, columns);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           "Cannot convert tsfile table schema to iotdb table schema, table name: {}, tsfile table schema: {}",
           tableName,
@@ -167,14 +168,14 @@ public class TableSchema {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    TableSchema that = (TableSchema) o;
+    final TableSchema that = (TableSchema) o;
     return Objects.equals(tableName, that.tableName) && Objects.equals(columns, that.columns);
   }
 
@@ -190,7 +191,7 @@ public class TableSchema {
 
   public List<ColumnSchema> getIdColumns() {
     return columns.stream()
-        .filter(c -> c.getColumnCategory() == TsTableColumnCategory.ID)
+        .filter(c -> c.getColumnCategory() == TsTableColumnCategory.TAG)
         .collect(Collectors.toList());
   }
 }

@@ -142,7 +142,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       final List<Integer> columnIndexes = new ArrayList<>();
 
       for (int i = 0; i < schemas.size(); ++i) {
-        if (tablet.getColumnTypes().get(i) == Tablet.ColumnCategory.MEASUREMENT) {
+        if (tablet.getColumnTypes().get(i) == Tablet.ColumnCategory.FIELD) {
           columnIndexes.add(i);
           newSchemas.add(schemas.get(i));
         }
@@ -339,7 +339,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     // Use eventNode here because other nodes doesn't support values and times simultaneously
     for (int columnIndex = 0; columnIndex < tablet.getSchemas().size(); ++columnIndex) {
       if (isTableModel
-          && !tablet.getColumnTypes().get(columnIndex).equals(Tablet.ColumnCategory.MEASUREMENT)) {
+          && !tablet.getColumnTypes().get(columnIndex).equals(Tablet.ColumnCategory.FIELD)) {
         continue;
       }
       final TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();

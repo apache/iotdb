@@ -27,7 +27,7 @@ public class SubqueryDataSetUtils {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
         // table1
-        "CREATE TABLE table1(province STRING ID, city STRING ID, region STRING ID, device_id STRING ID, color STRING ATTRIBUTE, type STRING ATTRIBUTE, s1 INT32 MEASUREMENT, s2 INT64 MEASUREMENT, s3 FLOAT MEASUREMENT, s4 DOUBLE MEASUREMENT, s5 BOOLEAN MEASUREMENT, s6 TEXT MEASUREMENT, s7 STRING MEASUREMENT, s8 BLOB MEASUREMENT, s9 TIMESTAMP MEASUREMENT, s10 DATE MEASUREMENT)",
+        "CREATE TABLE table1(province STRING TAG, city STRING TAG, region STRING TAG, device_id STRING TAG, color STRING ATTRIBUTE, type STRING ATTRIBUTE, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 BOOLEAN FIELD, s6 TEXT FIELD, s7 STRING FIELD, s8 BLOB FIELD, s9 TIMESTAMP FIELD, s10 DATE FIELD)",
         "INSERT INTO table1(time,province,city,region,device_id,color,type,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values (2024-09-24T06:13:30.000+00:00,'shanghai','shanghai','huangpu','d01','red','A',30,30,30.0,30.0,true,'shanghai_huangpu_red_A_d01_30','shanghai_huangpu_red_A_d01_30',X'cafebabe30',2024-09-24T06:13:00.000+00:00,'2024-09-23')",
         "INSERT INTO table1(time,province,city,region,device_id,color,type,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values (2024-09-24T06:14:30.000+00:00,'shanghai','shanghai','huangpu','d01','red','A',40,40,40.0,40.0,false,'shanghai_huangpu_red_A_d01_40','shanghai_huangpu_red_A_d01_40',X'cafebabe40',2024-09-24T06:14:00.000+00:00,'2024-09-24')",
         "INSERT INTO table1(time,province,city,region,device_id,color,type,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values (2024-09-24T06:15:30.000+00:00,'shanghai','shanghai','huangpu','d01','red','A',50,50,50.0,50.0,true,'shanghai_huangpu_red_A_d01_50','shanghai_huangpu_red_A_d01_50',X'cafebabe50',2024-09-24T06:15:00.000+00:00,'2024-09-25')",
@@ -93,7 +93,7 @@ public class SubqueryDataSetUtils {
         "INSERT INTO table1(time,province,city,region,device_id,color,type,s2,s9) values (2024-09-24T06:15:40.000+00:00,'beijing','beijing','haidian','d16','yellow','BBBBBBBBBBBBBBBB',40000,2024-09-24T06:15:40.000+00:00)",
         "INSERT INTO table1(time,province,city,region,device_id,color,type,s1,s4,s6,s8,s9) values (2024-09-24T06:15:55.000+00:00,'beijing','beijing','haidian','d16','yellow','BBBBBBBBBBBBBBBB',55,55.0,'beijing_haidian_yellow_B_d16_55',X'cafebabe55',2024-09-24T06:15:55.000+00:00)",
         // table2
-        "CREATE TABLE table2(device_id STRING ID, s1 INT32 MEASUREMENT, s2 INT64 MEASUREMENT, s3 FLOAT MEASUREMENT, s4 DOUBLE MEASUREMENT, s5 BOOLEAN MEASUREMENT, s6 TEXT MEASUREMENT, s7 STRING MEASUREMENT, s8 BLOB MEASUREMENT, s9 TIMESTAMP MEASUREMENT, s10 DATE MEASUREMENT)",
+        "CREATE TABLE table2(device_id STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 BOOLEAN FIELD, s6 TEXT FIELD, s7 STRING FIELD, s8 BLOB FIELD, s9 TIMESTAMP FIELD, s10 DATE FIELD)",
         "INSERT INTO table2(time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) "
             + " values(1, 'd1', 1, 11, 1.1, 11.1, true, 'text1', 'string1', X'cafebabe01', 1, '2024-10-01')",
         "INSERT INTO table2(time,device_id,s1,s2,s3,s4,s5) "
