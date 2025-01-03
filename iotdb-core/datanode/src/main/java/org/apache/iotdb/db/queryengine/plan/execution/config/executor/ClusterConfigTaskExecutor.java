@@ -133,6 +133,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -2044,6 +2046,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       req.setExtractorAttributes(alterPipeStatement.getExtractorAttributes());
       req.setIsReplaceAllExtractorAttributes(alterPipeStatement.isReplaceAllExtractorAttributes());
       req.setIfExistsCondition(alterPipeStatement.hasIfExistsCondition());
+      req.setIsTableModel(alterPipeStatement.isTableModel());
       final TSStatus tsStatus = configNodeClient.alterPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
@@ -2073,7 +2076,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TSStatus tsStatus = configNodeClient.startPipe(startPipeStatement.getPipeName());
+      final TSStatus tsStatus =
+          configNodeClient.startPipeExtended(
+              new TStartPipeReq()
+                  .setPipeName(startPipeStatement.getPipeName())
+                  .setIsTableModel(startPipeStatement.isTableModel()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
@@ -2106,7 +2113,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           configNodeClient.dropPipeExtended(
               new TDropPipeReq()
                   .setPipeName(dropPipeStatement.getPipeName())
-                  .setIfExistsCondition(dropPipeStatement.hasIfExistsCondition()));
+                  .setIfExistsCondition(dropPipeStatement.hasIfExistsCondition())
+                  .setIsTableModel(dropPipeStatement.isTableModel()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
@@ -2135,7 +2143,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TSStatus tsStatus = configNodeClient.stopPipe(stopPipeStatement.getPipeName());
+
+      final TSStatus tsStatus =
+          configNodeClient.stopPipeExtended(
+              new TStopPipeReq()
+                  .setPipeName(stopPipeStatement.getPipeName())
+                  .setIsTableModel(stopPipeStatement.isTableModel()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
@@ -2159,6 +2172,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (showPipesStatement.getWhereClause()) {
         tShowPipeReq.setWhereClause(true);
       }
+      tShowPipeReq.setIsTableModel(showPipesStatement.isTableModel());
       final List<TShowPipeInfo> tShowPipeInfoList =
           configNodeClient.showPipe(tShowPipeReq).getPipeInfoList();
       ShowPipeTask.buildTSBlock(tShowPipeInfoList, future);
