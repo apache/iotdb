@@ -162,10 +162,6 @@ public class ThresholdMemoryMetrics implements IMetricSet {
         (long)
             (config.getAllocateMemoryForStorageEngine() * (1 - config.getCompactionProportion()));
     long compactionSize = storageEngineSize - writeSize;
-    long bufferedArraySize =
-        (long)
-            (config.getAllocateMemoryForStorageEngine()
-                * config.getBufferedArraysMemoryProportion());
     writeMemorySize =
         metricService.getOrCreateGauge(
             Metric.THRESHOLD_MEMORY_SIZE.toString(),
@@ -204,6 +200,17 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.LEVEL.toString(),
             LEVELS[3]);
     memtableMemorySize.set(memtableSize);
+    timePartitionInfoMemorySize =
+        metricService.getOrCreateGauge(
+            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            MetricLevel.NORMAL,
+            Tag.NAME.toString(),
+            STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO,
+            Tag.TYPE.toString(),
+            ON_HEAP,
+            Tag.LEVEL.toString(),
+            LEVELS[3]);
+    timePartitionInfoMemorySize.set(timePartitionInfoSize);
     // The memtable memory of storage engine contain DataNodeDevicePathCache (NOTICE: This part of
     // memory is not divided)
     long dataNodeDevicePathCacheSize =
@@ -211,6 +218,10 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             (config.getAllocateMemoryForStorageEngine()
                 * config.getWriteProportionForMemtable()
                 * config.getDevicePathCacheProportion());
+    long bufferedArraySize =
+        (long)
+            (config.getAllocateMemoryForStorageEngine()
+                * config.getBufferedArraysMemoryProportion());
     dataNodeDevicePathCacheMemorySize =
         metricService.getOrCreateGauge(
             Metric.THRESHOLD_MEMORY_SIZE.toString(),
@@ -233,17 +244,6 @@ public class ThresholdMemoryMetrics implements IMetricSet {
             Tag.LEVEL.toString(),
             LEVELS[4]);
     bufferedArraysMemorySize.set(bufferedArraySize);
-    timePartitionInfoMemorySize =
-        metricService.getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO,
-            Tag.TYPE.toString(),
-            ON_HEAP,
-            Tag.LEVEL.toString(),
-            LEVELS[3]);
-    timePartitionInfoMemorySize.set(timePartitionInfoSize);
   }
 
   @Override
