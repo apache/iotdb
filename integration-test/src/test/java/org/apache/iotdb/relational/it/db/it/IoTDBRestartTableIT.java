@@ -121,15 +121,17 @@ public class IoTDBRestartTableIT {
     }
   }
 
-  @Ignore // data deletion
+  @Ignore
   @Test
   public void testRestartDelete() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
+      statement.execute("create database test");
       statement.execute("use \"test\"");
-      statement.execute("insert into root.turbine.d1(time,s1) values(1,1)");
-      statement.execute("insert into root.turbine.d1(time,s1) values(2,2)");
-      statement.execute("insert into root.turbine.d1(time,s1) values(3,3)");
+      statement.execute("create table turbine (id1 string id, s1 float measurement)");
+      statement.execute("insert into turbine(id1, time,s1) values('d1', 1,1.0)");
+      statement.execute("insert into turbine(id1, time,s1) values('d1', 2,2.0)");
+      statement.execute("insert into turbine(id1, time,s1) values('d1', 3,3.0)");
     }
 
     TestUtils.restartDataNodes();
@@ -137,11 +139,11 @@ public class IoTDBRestartTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"test\"");
-      statement.execute("delete from root.turbine.d1.s1 where time<=1");
+      statement.execute("delete from turbine where time<=1");
 
-      ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.turbine.d1");
+      ResultSet resultSet = statement.executeQuery("SELECT Time,s1 FROM turbine");
       assertNotNull(resultSet);
-      String[] exp = new String[] {"2,2.0", "3,3.0"};
+      String[] exp = new String[] {"1970-01-01T00:00:00.002Z,2.0", "1970-01-01T00:00:00.003Z,3.0"};
       int cnt = 0;
       try {
         while (resultSet.next()) {
@@ -151,10 +153,10 @@ public class IoTDBRestartTableIT {
         }
 
         statement.execute("flush");
-        statement.execute("delete from root.turbine.d1.s1 where time<=2");
+        statement.execute("delete from turbine where time<=2");
 
-        exp = new String[] {"3,3.0"};
-        resultSet = statement.executeQuery("SELECT s1 FROM root.turbine.d1");
+        exp = new String[] {"1970-01-01T00:00:00.003Z,3.0"};
+        resultSet = statement.executeQuery("SELECT Time,s1 FROM turbine");
         assertNotNull(resultSet);
         cnt = 0;
         while (resultSet.next()) {

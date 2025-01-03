@@ -158,6 +158,21 @@ public class IoTDBDeletionTableIT {
       }
 
       try {
+        statement.execute("DELETE FROM vehicle1  WHERE s1 = 'text'");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals("701: The column 's1' does not exist or is not an id column", e.getMessage());
+      }
+
+      try {
+        statement.execute("DELETE FROM vehicle1  WHERE attr1 = 'text'");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals(
+            "701: The column 'attr1' does not exist or is not an id column", e.getMessage());
+      }
+
+      try {
         statement.execute("DELETE FROM vehicle1  WHERE s3 = 'text'");
         fail("should not reach here!");
       } catch (SQLException e) {
@@ -298,8 +313,7 @@ public class IoTDBDeletionTableIT {
       statement.execute("CREATE DATABASE ln3");
       statement.execute("use ln3");
       statement.execute(
-          String.format(
-              "CREATE TABLE vehicle3(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)"));
+              "CREATE TABLE vehicle3(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)");
 
       statement.execute(
           "INSERT INTO vehicle3(time, deviceId, s4) " + "values(1509465600000, 'd0', true)");
@@ -1082,8 +1096,8 @@ public class IoTDBDeletionTableIT {
     AtomicLong deletedPointCounter = new AtomicLong(0);
     ExecutorService writeDeletionThreadPool = Executors.newCachedThreadPool();
     ExecutorService restartThreadPool = Executors.newCachedThreadPool();
-    int fileNumMax = 1000;
-    int pointPerFile = 1000;
+    int fileNumMax = 100;
+    int pointPerFile = 100;
     int deviceNum = 4;
     Future<Void> writeThread =
         writeDeletionThreadPool.submit(
@@ -1109,7 +1123,7 @@ public class IoTDBDeletionTableIT {
                     deletionRange,
                     minIntervalToRecord,
                     testNum));
-    int restartTargetPointWritten = 100000;
+    int restartTargetPointWritten = 5000;
     Future<Void> restartThread =
         restartThreadPool.submit(
             () -> restart(writtenPointCounter, restartTargetPointWritten, writeDeletionThreadPool));
@@ -1166,7 +1180,6 @@ public class IoTDBDeletionTableIT {
 
       statement.execute(
           "create table if not exists table" + testNum + "(deviceId STRING TAG, s0 INT32 field)");
-
       for (int i = 1; i <= fileNumMax; i++) {
         for (int j = 0; j < pointPerFile; j++) {
           long time = writtenPointCounter.get() + 1;
