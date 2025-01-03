@@ -244,7 +244,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         && status.getCode() != TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()) {
       analysis.setFailStatus(status);
     }
+
     analysis.setFinishQueryAfterAnalyze(true);
+    analysis.setStatement(loadTsFileStatement);
   }
 
   @Override
