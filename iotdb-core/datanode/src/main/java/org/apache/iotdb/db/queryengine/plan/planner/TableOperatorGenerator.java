@@ -2031,7 +2031,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       }
       return new TableFunctionOperator(
           operatorContext,
-          processorProvider.getDataProcessor(),
+          processorProvider,
           operator,
           outputDataTypes,
           properChannelCount,

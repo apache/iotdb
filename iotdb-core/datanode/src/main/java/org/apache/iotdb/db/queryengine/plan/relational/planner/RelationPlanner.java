@@ -835,7 +835,9 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           analysis.setSortNode(true);
         }
 
-        specification = Optional.of(new DataOrganizationSpecification(partitionBy, orderBy));
+        if(!partitionBy.isEmpty() || orderBy.isPresent()) {
+          specification = Optional.of(new DataOrganizationSpecification(partitionBy, orderBy));
+        }
       }
 
       // add output symbols passed from the table argument

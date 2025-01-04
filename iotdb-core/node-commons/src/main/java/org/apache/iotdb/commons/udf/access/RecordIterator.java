@@ -105,6 +105,11 @@ public class RecordIterator implements Iterator<Record> {
       }
 
       @Override
+      public Object getObject(int columnIndex) {
+        return childrenColumns.get(columnIndex).getObject(index);
+      }
+
+      @Override
       public Type getDataType(int columnIndex) {
         return UDFDataTypeTransformer.transformReadTypeToUDFDataType(dataTypes.get(columnIndex));
       }

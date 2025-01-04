@@ -41,7 +41,8 @@ public abstract class TableFunction {
   // TODO(UDF): 我觉得这里增大了用户的理解成本，是否考虑能够直接在analyze中决定返回表头就好了
   public abstract Optional<Descriptor> getReturnProperColumns();
 
-  public abstract TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException;
+  public abstract TableFunctionAnalysis analyze(Map<String, Argument> arguments)
+      throws UDFException;
 
   public abstract TableFunctionProcessorProvider getProcessorProvider(
       Map<String, Argument> arguments);

@@ -19,48 +19,54 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.function;
 
-import org.apache.iotdb.db.queryengine.common.transformation.TableFunctionPartitionImpl;
-import org.apache.iotdb.db.queryengine.common.transformation.TransformationState;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.PartitionState;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
+import org.apache.iotdb.db.queryengine.transformation.dag.util.TypeUtils;
+import org.apache.iotdb.udf.api.relational.access.Record;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
-import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionProcessorState;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Optional;
+import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 
 // only one input source is supported now
 public class TableFunctionOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
   private final Operator inputOperator;
-  private final TableFunctionDataProcessor processor;
+  private final TableFunctionProcessorProvider processorProvider;
   private final List<TSDataType> outputDataTypes;
   private final int properChannelCount;
   private final List<Integer> requiredChannels;
   private final TableFunctionNode.PassThroughSpecification passThroughSpecifications;
   private final List<Integer> partitionChannels;
+  private final PartitionRecognizer partitionRecognizer;
+  private final TsBlockBuilder blockBuilder;
 
-  private final TableFunctionPartitionTransformation partitionTransformation;
-  private TransformationState<TableFunctionPartitionImpl> partitionState =
-      TransformationState.needsMoreData();
-  private TableFunctionProcessorState processorState = null;
-
+  private TableFunctionDataProcessor processor;
+  private PartitionState partitionState;
   private ListenableFuture<?> isBlocked;
-  private Optional<TsBlock> currentInputBlock;
+  private boolean finished = false;
 
   public TableFunctionOperator(
       OperatorContext operatorContext,
-      TableFunctionDataProcessor processor,
+      TableFunctionProcessorProvider processorProvider,
       Operator inputOperator,
       List<TSDataType> outputDataTypes,
       int properChannelCount,
@@ -69,15 +75,15 @@ public class TableFunctionOperator implements ProcessOperator {
       List<Integer> partitionChannels) {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
-    this.processor = processor;
+    this.processorProvider = processorProvider;
     this.outputDataTypes = outputDataTypes;
     this.properChannelCount = properChannelCount;
     this.requiredChannels = requiredChannels;
     this.passThroughSpecifications = passThroughSpecifications;
     this.partitionChannels = partitionChannels;
-    this.partitionTransformation =
-        new TableFunctionPartitionTransformation(
-            outputDataTypes, requiredChannels, partitionChannels, properChannelCount);
+    this.partitionRecognizer = new PartitionRecognizer(partitionChannels);
+    this.partitionState = PartitionState.INIT_STATE;
+    this.blockBuilder = new TsBlockBuilder(outputDataTypes);
   }
 
   @Override
@@ -88,28 +94,22 @@ public class TableFunctionOperator implements ProcessOperator {
   @Override
   public ListenableFuture<?> isBlocked() {
     if (isBlocked == null) {
-      isBlocked = tryGetNextPartition();
+      isBlocked = tryGetNextTsBlock();
     }
     return isBlocked;
   }
 
-  private ListenableFuture<?> tryGetNextPartition() {
+  private ListenableFuture<?> tryGetNextTsBlock() {
     try {
-      while (!TransformationState.Type.FINISHED.equals(partitionState.getType())) {
-        if (partitionState.isNeedsMoreData()) {
-          if (!inputOperator.isBlocked().isDone()) {
-            return inputOperator.isBlocked();
-          }
-          if (inputOperator.hasNextWithTimer()) {
-            currentInputBlock = Optional.ofNullable(inputOperator.nextWithTimer());
-          } else {
-            currentInputBlock = null;
-          }
-        }
-        partitionState = partitionTransformation.process(currentInputBlock);
-        if (TransformationState.Type.RESULT.equals(partitionState.getType())) {
-          break;
-        }
+      if (inputOperator.isFinished()) {
+        partitionRecognizer.noMoreData();
+        return NOT_BLOCKED;
+      }
+      if (!inputOperator.isBlocked().isDone()) {
+        return inputOperator.isBlocked();
+      }
+      if (inputOperator.hasNextWithTimer()) {
+        partitionRecognizer.addTsBlock(inputOperator.nextWithTimer());
       }
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -119,23 +119,51 @@ public class TableFunctionOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
-    if (!hasNext()) {
-      throw new NoSuchElementException();
+    PartitionState.StateType stateType = partitionState.getStateType();
+    if (stateType == PartitionState.StateType.INIT
+        || stateType == PartitionState.StateType.NEED_MORE_DATA) {
+      isBlocked = null;
+      return null;
+    } else {
+      List<ColumnBuilder> columnBuilders = getOutputColumnBuilders();
+      if (stateType == PartitionState.StateType.FINISHED) {
+        if (processor != null) {
+          processor.finish(columnBuilders);
+        }
+        finished = true;
+        return buildTsBlock();
+      }
+      if (stateType == PartitionState.StateType.NEW_PARTITION) {
+        if (processor != null) {
+          processor.finish(columnBuilders);
+        }
+        processor = processorProvider.getDataProcessor();
+      }
+      Iterator<Record> recordIterator = partitionState.getRecordIterator();
+      while (recordIterator.hasNext()) {
+        processor.process(recordIterator.next(), columnBuilders);
+      }
+      return buildTsBlock();
     }
-    final TableFunctionPartitionImpl partition = partitionState.getResult();
-    if (partition == null) {
-      // it should never happen
-      throw new RuntimeException("TableFunctionPartitionImpl is null");
-    }
-    List<Column> columns = processor.process(Collections.singletonList(partition));
-    isBlocked = null;
-    return partition.constructResult(columns);
+  }
+
+  private List<ColumnBuilder> getOutputColumnBuilders() {
+    blockBuilder.reset();
+    return Arrays.asList(blockBuilder.getValueColumnBuilders());
+  }
+
+  private TsBlock buildTsBlock() {
+    // TODO(UDF): it should be implemented in the other way
+    int positionCount = getOutputColumnBuilders().get(0).build().getPositionCount();
+    blockBuilder.declarePositions(positionCount);
+    return blockBuilder.build(new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, positionCount));
   }
 
   @Override
   public boolean hasNext() throws Exception {
     isBlocked().get(); // wait for the next TsBlock
-    return TransformationState.Type.RESULT.equals(partitionState.getType());
+    partitionState = partitionRecognizer.getState();
+    return !finished;
   }
 
   @Override
@@ -143,7 +171,7 @@ public class TableFunctionOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() throws Exception {
-    return TransformationState.Type.FINISHED.equals(partitionState.getType());
+    return finished;
   }
 
   @Override

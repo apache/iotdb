@@ -123,7 +123,7 @@ public class ImplementTableFunctionSource implements Rule<TableFunctionNode> {
       // generate sort node
       sourceProperties
           .getDataOrganizationSpecification()
-          .ifPresent(
+              .ifPresent(
               dataOrganizationSpecification -> {
                 ImmutableList.Builder<Symbol> orderBy = ImmutableList.builder();
                 ImmutableMap.Builder<Symbol, SortOrder> orderings = ImmutableMap.builder();

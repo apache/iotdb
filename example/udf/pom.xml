@@ -31,7 +31,7 @@
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-server</artifactId>
+            <artifactId>udf-api</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>
         </dependency>
