@@ -273,14 +273,14 @@ public class LoadTsFileScheduler implements IScheduler {
         stateMachine.transitionToFinished();
       } else {
         // if failed to load some TsFiles, then try to convert the TsFiles to Tablets
-        convertFailedTsFilesToTablet();
+        convertFailedTsFilesToTablets();
       }
     } finally {
       LoadTsFileMemoryManager.getInstance().releaseDataCacheMemoryBlock();
     }
   }
 
-  private void convertFailedTsFilesToTablet() {
+  private void convertFailedTsFilesToTablets() {
     for (int failedLoadTsFileIndex : failedLoadTsFileIndexes) {
       final LoadSingleTsFileNode failedNode = tsFileNodeList.get(failedLoadTsFileIndex);
       final String filePath = failedNode.getTsFileResource().getTsFilePath();
