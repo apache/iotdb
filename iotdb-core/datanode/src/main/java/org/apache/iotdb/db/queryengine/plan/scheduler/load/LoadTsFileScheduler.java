@@ -320,6 +320,13 @@ public class LoadTsFileScheduler implements IScheduler {
     // successfully
     if (failedLoadTsFileIndexes.isEmpty()) {
       stateMachine.transitionToFinished();
+    } else {
+      stateMachine.transitionToFailed(
+          new LoadFileException(
+              "Failed to load some TsFiles and convert them to Tablets. Failed TsFiles: "
+                  + failedLoadTsFileIndexes.stream()
+                      .map(i -> tsFileNodeList.get(i).getTsFileResource().getTsFilePath())
+                      .collect(Collectors.joining(", "))));
     }
   }
 
