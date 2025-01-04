@@ -493,7 +493,7 @@ public class ColumnTransformerBuilder
     return res;
   }
 
-  // currently, we only support Date and Timestamp
+  // currently, we only support Date/Timestamp/INT64
   // for Date, GenericLiteral.value is an int value
   // for Timestamp, GenericLiteral.value is a long value
   private static ConstantColumnTransformer getColumnTransformerForGenericLiteral(
@@ -505,6 +505,10 @@ public class ColumnTransformerBuilder
     } else if (TimestampType.TIMESTAMP.getTypeEnum().name().equals(literal.getType())) {
       return new ConstantColumnTransformer(
           TimestampType.TIMESTAMP,
+          new LongColumn(1, Optional.empty(), new long[] {Long.parseLong(literal.getValue())}));
+    } else if (INT64.getTypeEnum().name().equals(literal.getType())) {
+      return new ConstantColumnTransformer(
+          INT64,
           new LongColumn(1, Optional.empty(), new long[] {Long.parseLong(literal.getValue())}));
     } else {
       throw new SemanticException("Unsupported type in GenericLiteral: " + literal.getType());

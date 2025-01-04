@@ -41,7 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
@@ -229,7 +229,7 @@ public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanO
 
       return new SimpleCaseExpression(
           countAllValue.toSymbolReference(),
-          ImmutableList.of(new WhenClause(new LongLiteral("0"), emptySetResult)),
+          ImmutableList.of(new WhenClause(new GenericLiteral("INT64", "0"), emptySetResult)),
           quantifier.apply(
               ImmutableList.of(
                   comparisonWithExtremeValue,

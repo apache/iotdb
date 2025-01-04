@@ -82,6 +82,7 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
+import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.UnknownType.UNKNOWN;
 
@@ -335,10 +336,10 @@ public class IrTypeAnalyzer {
 
     @Override
     protected Type visitLongLiteral(LongLiteral node, Context context) {
-      /*if (node.getParsedValue() >= Integer.MIN_VALUE
+      if (node.getParsedValue() >= Integer.MIN_VALUE
           && node.getParsedValue() <= Integer.MAX_VALUE) {
         return setExpressionType(node, INT32);
-      }*/
+      }
       // keep the original type
       return setExpressionType(node, INT64);
     }
@@ -360,6 +361,8 @@ public class IrTypeAnalyzer {
         type = DateType.DATE;
       } else if (TimestampType.TIMESTAMP.getTypeEnum().name().equals(node.getType())) {
         type = TimestampType.TIMESTAMP;
+      } else if (INT64.getTypeEnum().name().equals(node.getType())) {
+        type = INT64;
       } else {
         throw new SemanticException("Unsupported type in GenericLiteral: " + node.getType());
       }
