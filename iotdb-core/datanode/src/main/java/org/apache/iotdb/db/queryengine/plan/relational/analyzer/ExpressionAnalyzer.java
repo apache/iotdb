@@ -932,7 +932,7 @@ public class ExpressionAnalyzer {
     @Override
     protected Type visitInPredicate(InPredicate node, StackableAstVisitorContext<Context> context) {
       Expression value = node.getValue();
-      // todo: remove this check after supporting RowType
+      // Attention: remove this check after supporting RowType
       if (value instanceof Row) {
         throw new SemanticException(SUBQUERY_COLUMN_NUM_CHECK);
       }
@@ -1051,7 +1051,7 @@ public class ExpressionAnalyzer {
 
       List<RowType.Field> fieldList = fields.build();
 
-      // todo: remove this check after supporting RowType
+      // Attention: remove this check after supporting RowType
       if (fieldList.size() != 1 || fieldList.get(0).getType() instanceof RowType) {
         throw new SemanticException(SUBQUERY_COLUMN_NUM_CHECK);
       }
