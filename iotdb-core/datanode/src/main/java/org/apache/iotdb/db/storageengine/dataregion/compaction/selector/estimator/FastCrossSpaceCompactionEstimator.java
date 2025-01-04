@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimator {
 
@@ -83,20 +84,20 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
   @Override
   public long roughEstimateCrossCompactionMemory(
       List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
+    if (config.getCompactionMaxAlignedSeriesNumInOneBatch() <= 0) {
+      return -1L;
+    }
     List<TsFileResource> sourceFiles = new ArrayList<>(seqResources.size() + unseqResources.size());
     sourceFiles.addAll(seqResources);
     sourceFiles.addAll(unseqResources);
 
-    long metadataCost =
-        CompactionEstimateUtils.roughEstimateMetadataCostInCompaction(
-            sourceFiles, CompactionType.CROSS_COMPACTION);
-    if (metadataCost < 0) {
-      return metadataCost;
+    Optional<MetadataInfo> metadataInfo =
+        CompactionEstimateUtils.collectMetadataInfo(sourceFiles, CompactionType.CROSS_COMPACTION);
+    if (!metadataInfo.isPresent()) {
+      return -1L;
     }
 
-    int maxConcurrentSeriesNum =
-        Math.max(
-            config.getCompactionMaxAlignedSeriesNumInOneBatch(), config.getSubCompactionTaskNum());
+    int maxConcurrentSeriesNum = metadataInfo.get().getMaxConcurrentSeriesNum();
     long maxChunkSize = config.getTargetChunkSize();
     long maxPageSize = tsFileConfig.getPageSizeInByte();
     int maxOverlapFileNum = calculatingMaxOverlapFileNumInSubCompactionTask(sourceFiles);
@@ -104,6 +105,6 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
     // target files (chunk + unsealed page writer)
     return (maxOverlapFileNum + 1) * maxConcurrentSeriesNum * (maxChunkSize + maxPageSize)
         + fixedMemoryBudget
-        + metadataCost;
+        + metadataInfo.get().metadataMemCost;
   }
 }
