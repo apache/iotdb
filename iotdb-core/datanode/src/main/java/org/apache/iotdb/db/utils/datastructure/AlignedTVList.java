@@ -504,7 +504,7 @@ public abstract class AlignedTVList extends TVList {
       return true;
     }
 
-    if (values.get(columnIndex) == null) {
+    if (columnIndex < 0 || columnIndex >= values.size() || values.get(columnIndex) == null) {
       return true;
     }
     if (bitMaps == null
@@ -584,6 +584,10 @@ public abstract class AlignedTVList extends TVList {
    * @return Delete info pair. Left: deletedNumber int; right: ifDeleteColumn boolean
    */
   public Pair<Integer, Boolean> delete(long lowerBound, long upperBound, int columnIndex) {
+    if (columnIndex >= values.size()) {
+      return new Pair<>(0, false);
+    }
+
     int deletedNumber = 0;
     boolean deleteColumn = true;
     for (int i = 0; i < rowCount; i++) {
@@ -592,12 +596,6 @@ public abstract class AlignedTVList extends TVList {
         int originRowIndex = getValueIndex(i);
         int arrayIndex = originRowIndex / ARRAY_SIZE;
         int elementIndex = originRowIndex % ARRAY_SIZE;
-        if (dataTypes.get(columnIndex).isBinary()) {
-          Binary value = ((Binary[]) values.get(columnIndex).get(arrayIndex))[elementIndex];
-          if (value != null) {
-            memoryBinaryChunkSize[columnIndex] -= getBinarySize(value);
-          }
-        }
         markNullValue(columnIndex, arrayIndex, elementIndex);
         deletedNumber++;
       } else {
@@ -608,23 +606,22 @@ public abstract class AlignedTVList extends TVList {
   }
 
   public void deleteColumn(int columnIndex) {
-    dataTypes.remove(columnIndex);
-
-    long[] tmpValueChunkRawSize = memoryBinaryChunkSize;
-    memoryBinaryChunkSize = new long[dataTypes.size()];
-    int copyIndex = 0;
-    for (int i = 0; i < tmpValueChunkRawSize.length; i++) {
-      if (i == columnIndex) {
-        continue;
+    if (bitMaps == null) {
+      bitMaps = new ArrayList<>(dataTypes.size());
+      for (int j = 0; j < dataTypes.size(); j++) {
+        bitMaps.add(null);
       }
-      memoryBinaryChunkSize[copyIndex++] = tmpValueChunkRawSize[i];
     }
-
-    for (Object array : values.get(columnIndex)) {
-      PrimitiveArrayManager.release(array);
+    if (bitMaps.get(columnIndex) == null) {
+      List<BitMap> columnBitMaps = new ArrayList<>();
+      for (int i = 0; i < values.get(columnIndex).size(); i++) {
+        columnBitMaps.add(new BitMap(ARRAY_SIZE));
+      }
+      bitMaps.set(columnIndex, columnBitMaps);
     }
-    values.remove(columnIndex);
-    bitMaps.remove(columnIndex);
+    for (int i = 0; i < bitMaps.get(columnIndex).size(); i++) {
+      bitMaps.get(columnIndex).get(i).markAll();
+    }
   }
 
   protected Object cloneValue(TSDataType type, Object value) {

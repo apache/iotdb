@@ -500,14 +500,17 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   public void removeColumn(String measurementId) {
-    list.deleteColumn(measurementIndexMap.get(measurementId));
+    int columnIndex = measurementIndexMap.get(measurementId);
+    list.deleteColumn(columnIndex);
     for (AlignedTVList alignedTvList : sortedList) {
-      alignedTvList.deleteColumn(measurementIndexMap.get(measurementId));
+      alignedTvList.deleteColumn(columnIndex);
     }
-    IMeasurementSchema schemaToBeRemoved = schemaList.get(measurementIndexMap.get(measurementId));
-    schemaList.remove(schemaToBeRemoved);
+    IMeasurementSchema schemaToBeRemoved = schemaList.get(columnIndex);
     measurementIndexMap.clear();
     for (int i = 0; i < schemaList.size(); i++) {
+      if (schemaList.get(i).getMeasurementName().equals(schemaToBeRemoved.getMeasurementName())) {
+        continue;
+      }
       measurementIndexMap.put(schemaList.get(i).getMeasurementName(), i);
     }
   }
@@ -957,7 +960,15 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   public boolean isAllDeleted() {
-    return list.isAllDeleted();
+    if (!list.isAllDeleted()) {
+      return false;
+    }
+    for (AlignedTVList alignedTvList : sortedList) {
+      if (!alignedTvList.isAllDeleted()) {
+        return false;
+      }
+    }
+    return true;
   }
 
   public List<AlignedTVList> getSortedList() {
