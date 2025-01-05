@@ -1534,7 +1534,7 @@ public abstract class AlignedTVList extends TVList {
     private TSEncoding[] encodingArray;
 
     // remember the selected index of last not-null value for each column during prepareNext phase.
-    // It is already transferred by getValueIndex method, so it can be directly used in
+    // It is already converted by getValueIndex method, so it can be directly used in
     // getPrimitiveObject method.
     private int[] selectedIndex;
 

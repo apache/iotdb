@@ -439,9 +439,6 @@ public class IoTDBConfig {
    */
   private int tvListSortThreshold = 0;
 
-  /** When average series point number reaches this, flush the memtable to disk */
-  private int avgSeriesPointNumberThreshold = 100000;
-
   /** Enable inner space compaction for sequence files */
   private volatile boolean enableSeqSpaceCompaction = true;
 
