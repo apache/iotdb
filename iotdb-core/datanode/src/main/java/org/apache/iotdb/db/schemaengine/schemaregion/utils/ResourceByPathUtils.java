@@ -52,6 +52,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.filter.operator.GroupByFilter;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.VectorMeasurementSchema;
@@ -356,6 +357,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     // immutable aligned TVList
     for (AlignedTVList alignedTvList : alignedMemChunk.getSortedList()) {
       if (globalTimeFilter != null
+          && !(globalTimeFilter instanceof GroupByFilter)
           && !globalTimeFilter.satisfyStartEndTime(
               alignedTvList.getMinTime(), alignedTvList.getMaxTime())) {
         continue;
@@ -376,36 +378,37 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     AlignedTVList cloneList = null;
     list.lockQueryList();
     try {
-      if (!isWorkMemTable) {
-        if (globalTimeFilter == null
-            || globalTimeFilter.satisfyStartEndTime(list.getMinTime(), list.getMaxTime())) {
+      if (globalTimeFilter == null
+          || globalTimeFilter instanceof GroupByFilter
+          || globalTimeFilter.satisfyStartEndTime(list.getMinTime(), list.getMaxTime())) {
+        if (!isWorkMemTable) {
           LOGGER.debug(
               "Flushing MemTable - add current query context to mutable AlignedTVList's query list");
           list.getQueryContextList().add(context);
           alignedTvListQueryMap.put(list, list.rowCount());
-        }
-      } else {
-        if (list.isSorted() || list.getQueryContextList().isEmpty()) {
-          LOGGER.debug(
-              "Working MemTable - add current query context to mutable AlignedTVList's query list when it's sorted or no other query on it");
-          list.getQueryContextList().add(context);
-          alignedTvListQueryMap.put(list, list.rowCount());
         } else {
-          LOGGER.debug(
-              "Working MemTable - clone mutable AlignedTVList and replace old AlignedTVList in working MemTable");
-          QueryContext firstQuery = list.getQueryContextList().get(0);
-          // reserve query memory
-          if (firstQuery instanceof FragmentInstanceContext) {
-            MemoryReservationManager memoryReservationManager =
-                ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
-            memoryReservationManager.reserveMemoryCumulatively(list.calculateRamSize());
-          }
-          list.setOwnerQuery(firstQuery);
+          if (list.isSorted() || list.getQueryContextList().isEmpty()) {
+            LOGGER.debug(
+                "Working MemTable - add current query context to mutable AlignedTVList's query list when it's sorted or no other query on it");
+            list.getQueryContextList().add(context);
+            alignedTvListQueryMap.put(list, list.rowCount());
+          } else {
+            LOGGER.debug(
+                "Working MemTable - clone mutable AlignedTVList and replace old AlignedTVList in working MemTable");
+            QueryContext firstQuery = list.getQueryContextList().get(0);
+            // reserve query memory
+            if (firstQuery instanceof FragmentInstanceContext) {
+              MemoryReservationManager memoryReservationManager =
+                  ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
+              memoryReservationManager.reserveMemoryCumulatively(list.calculateRamSize());
+            }
+            list.setOwnerQuery(firstQuery);
 
-          // clone TVList
-          cloneList = list.clone();
-          cloneList.getQueryContextList().add(context);
-          alignedTvListQueryMap.put(cloneList, cloneList.rowCount());
+            // clone TVList
+            cloneList = list.clone();
+            cloneList.getQueryContextList().add(context);
+            alignedTvListQueryMap.put(cloneList, cloneList.rowCount());
+          }
         }
       }
     } finally {
@@ -546,6 +549,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     // immutable sorted lists
     for (TVList tvList : memChunk.getSortedList()) {
       if (globalTimeFilter != null
+          && !(globalTimeFilter instanceof GroupByFilter)
           && !globalTimeFilter.satisfyStartEndTime(tvList.getMinTime(), tvList.getMaxTime())) {
         continue;
       }
@@ -565,50 +569,51 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     TVList cloneList = null;
     list.lockQueryList();
     try {
-      if (!isWorkMemTable) {
-        if (globalTimeFilter == null
-            || globalTimeFilter.satisfyStartEndTime(list.getMinTime(), list.getMaxTime())) {
+      if (globalTimeFilter == null
+          || globalTimeFilter instanceof GroupByFilter
+          || globalTimeFilter.satisfyStartEndTime(list.getMinTime(), list.getMaxTime())) {
+        if (!isWorkMemTable) {
           LOGGER.debug(
               "Flushing MemTable - add current query context to mutable TVList's query list");
           list.getQueryContextList().add(context);
           tvListQueryMap.put(list, list.rowCount());
-        }
-      } else {
-        if (list.isSorted() || list.getQueryContextList().isEmpty()) {
-          LOGGER.debug(
-              "Working MemTable - add current query context to mutable TVList's query list when it's sorted or no other query on it");
-          list.getQueryContextList().add(context);
-          tvListQueryMap.put(list, list.rowCount());
         } else {
-          /*
-           * +----------------------+
-           * |      MemTable        |
-           * |                      |
-           * |    +------------+    |          +-----------------+
-           * |    |   TVList   |<---+--+   +---+  Previous Query |
-           * |    +-----^------+    |  |   |   +-----------------+
-           * |          |           |  |   |
-           * +----------+-----------+  |   |   +----------------+
-           *            | Clone        +---+---+  Current Query |
-           *      +-----+------+           |   +----------------+
-           *      |   TVList   | <---------+
-           *      +------------+
-           */
-          LOGGER.debug(
-              "Working MemTable - clone mutable TVList and replace old TVList in working MemTable");
-          QueryContext firstQuery = list.getQueryContextList().get(0);
-          // reserve query memory
-          if (firstQuery instanceof FragmentInstanceContext) {
-            MemoryReservationManager memoryReservationManager =
-                ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
-            memoryReservationManager.reserveMemoryCumulatively(list.calculateRamSize());
-          }
-          list.setOwnerQuery(firstQuery);
+          if (list.isSorted() || list.getQueryContextList().isEmpty()) {
+            LOGGER.debug(
+                "Working MemTable - add current query context to mutable TVList's query list when it's sorted or no other query on it");
+            list.getQueryContextList().add(context);
+            tvListQueryMap.put(list, list.rowCount());
+          } else {
+            /*
+             * +----------------------+
+             * |      MemTable        |
+             * |                      |
+             * |    +------------+    |          +-----------------+
+             * |    |   TVList   |<---+--+   +---+  Previous Query |
+             * |    +-----^------+    |  |   |   +-----------------+
+             * |          |           |  |   |
+             * +----------+-----------+  |   |   +----------------+
+             *            | Clone        +---+---+  Current Query |
+             *      +-----+------+           |   +----------------+
+             *      |   TVList   | <---------+
+             *      +------------+
+             */
+            LOGGER.debug(
+                "Working MemTable - clone mutable TVList and replace old TVList in working MemTable");
+            QueryContext firstQuery = list.getQueryContextList().get(0);
+            // reserve query memory
+            if (firstQuery instanceof FragmentInstanceContext) {
+              MemoryReservationManager memoryReservationManager =
+                  ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
+              memoryReservationManager.reserveMemoryCumulatively(list.calculateRamSize());
+            }
+            list.setOwnerQuery(firstQuery);
 
-          // clone TVList
-          cloneList = list.clone();
-          cloneList.getQueryContextList().add(context);
-          tvListQueryMap.put(cloneList, cloneList.rowCount());
+            // clone TVList
+            cloneList = list.clone();
+            cloneList.getQueryContextList().add(context);
+            tvListQueryMap.put(cloneList, cloneList.rowCount());
+          }
         }
       }
     } finally {
