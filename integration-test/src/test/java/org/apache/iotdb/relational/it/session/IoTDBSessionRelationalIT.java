@@ -25,6 +25,8 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.category.TableClusterIT;
+import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
@@ -59,6 +61,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
+@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBSessionRelationalIT {
 
   @BeforeClass
@@ -1471,7 +1474,7 @@ public class IoTDBSessionRelationalIT {
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void autoCreateTagColumnTest2()
       throws IoTDBConnectionException, StatementExecutionException {
-    int testNum = 17;
+    int testNum = 18;
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
       // only one column in this table, and others should be auto-created
@@ -1513,7 +1516,7 @@ public class IoTDBSessionRelationalIT {
         assertNull(rowRecord.getFields().get(1).getDataType());
         // s1 should be null
         assertNull(rowRecord.getFields().get(2).getDataType());
-        assertEquals("tag:" + t, rowRecord.getFields().get(3).getBinaryV().toString());
+        assertEquals("string", rowRecord.getFields().get(3).getBinaryV().toString());
         assertEquals(t, rowRecord.getFields().get(4).getLongV());
         cnt++;
       }
@@ -1523,7 +1526,7 @@ public class IoTDBSessionRelationalIT {
 
       for (int row = 0; row < 15; row++) {
         tablet.addTimestamp(row, timestamp);
-        tablet.addValue("tag2", row, "tag:" + timestamp);
+        tablet.addValue("tag2", row, "string");
         tablet.addValue("s2", row, timestamp);
         timestamp++;
       }
@@ -1540,7 +1543,7 @@ public class IoTDBSessionRelationalIT {
         assertNull(rowRecord.getFields().get(1).getDataType());
         // s1 should be null
         assertNull(rowRecord.getFields().get(2).getDataType());
-        assertEquals("tag:" + t, rowRecord.getFields().get(3).getBinaryV().toString());
+        assertEquals("string", rowRecord.getFields().get(3).getBinaryV().toString());
         assertEquals(t, rowRecord.getFields().get(4).getLongV());
         cnt++;
       }
