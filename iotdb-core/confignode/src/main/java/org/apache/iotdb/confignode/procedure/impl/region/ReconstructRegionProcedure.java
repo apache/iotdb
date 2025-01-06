@@ -41,7 +41,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class ReconstructRegionProcedure
-    extends RegionMemberChangeProcedure<ReconstructRegionState> {
+    extends RegionOperationProcedure<ReconstructRegionState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(ReconstructRegionProcedure.class);
 
   private TDataNodeLocation targetDataNode;

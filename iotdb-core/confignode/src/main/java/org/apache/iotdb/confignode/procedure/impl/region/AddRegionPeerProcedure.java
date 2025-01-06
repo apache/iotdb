@@ -53,7 +53,7 @@ import static org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler.si
 import static org.apache.iotdb.confignode.procedure.state.AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
 
-public class AddRegionPeerProcedure extends RegionMemberChangeProcedure<AddRegionPeerState> {
+public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPeerState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(AddRegionPeerProcedure.class);
 
   private TDataNodeLocation coordinator;

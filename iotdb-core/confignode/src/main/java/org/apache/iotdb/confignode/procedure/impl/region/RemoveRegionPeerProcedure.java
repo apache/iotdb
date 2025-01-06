@@ -51,7 +51,7 @@ import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.
 import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.REMOVE_REGION_PEER;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
 
-public class RemoveRegionPeerProcedure extends RegionMemberChangeProcedure<RemoveRegionPeerState> {
+public class RemoveRegionPeerProcedure extends RegionOperationProcedure<RemoveRegionPeerState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(RemoveRegionPeerProcedure.class);
   private TDataNodeLocation coordinator;
   private TDataNodeLocation targetDataNode;

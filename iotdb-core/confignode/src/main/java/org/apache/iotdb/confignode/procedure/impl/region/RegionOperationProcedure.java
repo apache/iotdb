@@ -23,13 +23,13 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 
-public abstract class RegionMemberChangeProcedure<TState>
+public abstract class RegionOperationProcedure<TState>
     extends StateMachineProcedure<ConfigNodeProcedureEnv, TState> {
   TConsensusGroupId regionId;
 
-  public RegionMemberChangeProcedure() {}
+  public RegionOperationProcedure() {}
 
-  public RegionMemberChangeProcedure(TConsensusGroupId regionId) {
+  public RegionOperationProcedure(TConsensusGroupId regionId) {
     this.regionId = regionId;
   }
 

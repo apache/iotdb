@@ -77,7 +77,7 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.region.AddRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.ReconstructRegionProcedure;
-import org.apache.iotdb.confignode.procedure.impl.region.RegionMemberChangeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.region.RegionOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
 import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionPeerProcedure;
@@ -940,11 +940,11 @@ public class ProcedureManager {
   }
 
   private String checkRegionOperationDuplication(TConsensusGroupId regionId) {
-    List<? extends RegionMemberChangeProcedure<?>> otherRegionMemberChangeProcedures =
+    List<? extends RegionOperationProcedure<?>> otherRegionMemberChangeProcedures =
         getExecutor().getProcedures().values().stream()
             .filter(procedure -> !procedure.isFinished())
-            .filter(procedure -> procedure instanceof RegionMemberChangeProcedure)
-            .map(procedure -> (RegionMemberChangeProcedure<?>) procedure)
+            .filter(procedure -> procedure instanceof RegionOperationProcedure)
+            .map(procedure -> (RegionOperationProcedure<?>) procedure)
             .filter(
                 regionMemberChangeProcedure ->
                     regionId.equals(regionMemberChangeProcedure.getRegionId()))

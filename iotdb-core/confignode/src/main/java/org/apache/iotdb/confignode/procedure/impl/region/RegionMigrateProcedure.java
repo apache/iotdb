@@ -41,7 +41,7 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /** Region migrate procedure */
-public class RegionMigrateProcedure extends RegionMemberChangeProcedure<RegionTransitionState> {
+public class RegionMigrateProcedure extends RegionOperationProcedure<RegionTransitionState> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RegionMigrateProcedure.class);
 
