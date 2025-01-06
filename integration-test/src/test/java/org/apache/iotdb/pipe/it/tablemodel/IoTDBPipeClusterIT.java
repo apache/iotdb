@@ -331,6 +331,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
           TableModelUtils.assertData("test", "test", 0, 301, receiverEnv, handleFailure);
           TableModelUtils.assertData("test1", "test1", 0, 301, receiverEnv, handleFailure);
         }
+        return;
       } catch (Exception | Error e) {
         if (retry < 4) {
           this.tearDown();
