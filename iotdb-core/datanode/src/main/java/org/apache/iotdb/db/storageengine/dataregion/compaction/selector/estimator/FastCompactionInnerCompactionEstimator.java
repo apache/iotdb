@@ -24,7 +24,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Optional;
 
 public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEstimator {
 
@@ -85,16 +84,13 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
     if (config.getCompactionMaxAlignedSeriesNumInOneBatch() <= 0) {
       return -1L;
     }
-    Optional<MetadataInfo> metadataInfo =
+    MetadataInfo metadataInfo =
         CompactionEstimateUtils.collectMetadataInfo(
             resources,
             resources.get(0).isSeq()
                 ? CompactionType.INNER_SEQ_COMPACTION
                 : CompactionType.INNER_UNSEQ_COMPACTION);
-    if (!metadataInfo.isPresent()) {
-      return -1L;
-    }
-    int maxConcurrentSeriesNum = metadataInfo.get().getMaxConcurrentSeriesNum();
+    int maxConcurrentSeriesNum = metadataInfo.getMaxConcurrentSeriesNum();
     long maxChunkSize = config.getTargetChunkSize();
     long maxPageSize = tsFileConfig.getPageSizeInByte();
     int maxOverlapFileNum = calculatingMaxOverlapFileNumInSubCompactionTask(resources);
@@ -102,6 +98,6 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
     // target file (chunk + unsealed page writer)
     return (maxOverlapFileNum + 1) * maxConcurrentSeriesNum * (maxChunkSize + maxPageSize)
         + fixedMemoryBudget
-        + metadataInfo.get().metadataMemCost;
+        + metadataInfo.metadataMemCost;
   }
 }

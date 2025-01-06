@@ -25,7 +25,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimator {
 
@@ -91,13 +90,10 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
     sourceFiles.addAll(seqResources);
     sourceFiles.addAll(unseqResources);
 
-    Optional<MetadataInfo> metadataInfo =
+    MetadataInfo metadataInfo =
         CompactionEstimateUtils.collectMetadataInfo(sourceFiles, CompactionType.CROSS_COMPACTION);
-    if (!metadataInfo.isPresent()) {
-      return -1L;
-    }
 
-    int maxConcurrentSeriesNum = metadataInfo.get().getMaxConcurrentSeriesNum();
+    int maxConcurrentSeriesNum = metadataInfo.getMaxConcurrentSeriesNum();
     long maxChunkSize = config.getTargetChunkSize();
     long maxPageSize = tsFileConfig.getPageSizeInByte();
     int maxOverlapFileNum = calculatingMaxOverlapFileNumInSubCompactionTask(sourceFiles);
@@ -105,6 +101,6 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
     // target files (chunk + unsealed page writer)
     return (maxOverlapFileNum + 1) * maxConcurrentSeriesNum * (maxChunkSize + maxPageSize)
         + fixedMemoryBudget
-        + metadataInfo.get().metadataMemCost;
+        + metadataInfo.metadataMemCost;
   }
 }

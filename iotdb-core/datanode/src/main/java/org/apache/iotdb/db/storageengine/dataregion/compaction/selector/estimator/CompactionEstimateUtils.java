@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionSourceFileDeletedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -37,7 +38,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 public class CompactionEstimateUtils {
 
@@ -102,11 +102,9 @@ public class CompactionEstimateUtils {
         averageChunkMetadataSize);
   }
 
-  static Optional<MetadataInfo> collectMetadataInfo(
-      List<TsFileResource> resources, CompactionType taskType) throws IOException {
-    if (!CompactionEstimateUtils.addReadLock(resources)) {
-      return Optional.empty();
-    }
+  static MetadataInfo collectMetadataInfo(List<TsFileResource> resources, CompactionType taskType)
+      throws IOException {
+    CompactionEstimateUtils.addReadLock(resources);
     MetadataInfo metadataInfo = new MetadataInfo();
     long cost = 0L;
     Map<IDeviceID, Long> deviceMetadataSizeMap = new HashMap<>();
@@ -123,7 +121,7 @@ public class CompactionEstimateUtils {
       }
       metadataInfo.metadataMemCost =
           cost + deviceMetadataSizeMap.values().stream().max(Long::compareTo).orElse(0L);
-      return Optional.of(metadataInfo);
+      return metadataInfo;
     } finally {
       CompactionEstimateUtils.releaseReadLock(resources);
     }
@@ -151,14 +149,15 @@ public class CompactionEstimateUtils {
     return deviceMetadataSizeMap;
   }
 
-  public static boolean shouldAccurateEstimate(long roughEstimatedMemCost) {
+  public static boolean shouldUseRoughEstimateResult(long roughEstimatedMemCost) {
     return roughEstimatedMemCost > 0
         && IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                 * roughEstimatedMemCost
             < SystemInfo.getInstance().getMemorySizeForCompaction();
   }
 
-  public static boolean addReadLock(List<TsFileResource> resources) {
+  public static void addReadLock(List<TsFileResource> resources)
+      throws CompactionSourceFileDeletedException {
     for (int i = 0; i < resources.size(); i++) {
       TsFileResource resource = resources.get(i);
       resource.readLock();
@@ -167,10 +166,10 @@ public class CompactionEstimateUtils {
         for (int j = 0; j <= i; j++) {
           resources.get(j).readUnlock();
         }
-        return false;
+        throw new CompactionSourceFileDeletedException(
+            "source file " + resource.getTsFilePath() + " is deleted");
       }
     }
-    return true;
   }
 
   public static void releaseReadLock(List<TsFileResource> resources) {
