@@ -1755,12 +1755,12 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TGetDataNodeLocationsResp getRunningDataNodeLocations() {
+  public TGetDataNodeLocationsResp getReadableDataNodeLocations() {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? new TGetDataNodeLocationsResp(
             new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-            nodeManager.filterDataNodeThroughStatus(NodeStatus.Running).stream()
+            nodeManager.filterDataNodeThroughStatus(NodeStatus::isReadable).stream()
                 .map(TDataNodeConfiguration::getLocation)
                 .collect(Collectors.toList()))
         : new TGetDataNodeLocationsResp(status, Collections.emptyList());
