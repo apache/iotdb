@@ -138,9 +138,9 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       transferTabletRowForClientServerModel(
           tablet.getDeviceId().split("\\."), newSchemas, timestamps, values);
     } else {
-      new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByDevIdTimestamp();
-      final List<Integer> columnIndexes = new ArrayList<>();
+      new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByTimestampIfNecessary();
 
+      final List<Integer> columnIndexes = new ArrayList<>();
       for (int i = 0; i < schemas.size(); ++i) {
         if (tablet.getColumnTypes().get(i) == Tablet.ColumnCategory.FIELD) {
           columnIndexes.add(i);

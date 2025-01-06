@@ -238,9 +238,46 @@ public class PipeTabletEventSorterTest {
     doTableModelTest(false, true);
   }
 
+  @Test
+  public void testTableModelDeduplicateAndSort1() {
+    doTableModelTest1(true, true);
+  }
+
+  @Test
+  public void testTableModelDeduplicate1() {
+    doTableModelTest1(true, false);
+  }
+
+  @Test
+  public void testTableModelSort1() {
+    doTableModelTest1(false, true);
+  }
+
   public void doTableModelTest(final boolean hasDuplicates, final boolean isUnSorted) {
     final Tablet tablet = generateTablet("test", 10, hasDuplicates, isUnSorted);
     new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByDevIdTimestamp();
+    for (int i = 1; i < tablet.getRowSize(); i++) {
+      long time = tablet.timestamps[i];
+      Assert.assertTrue(time > tablet.timestamps[i - 1]);
+      Assert.assertEquals(
+          tablet.getValue(i, 0),
+          new Binary(String.valueOf(i / 100).getBytes(StandardCharsets.UTF_8)));
+      Assert.assertEquals(tablet.getValue(i, 1), (long) i);
+      Assert.assertEquals(tablet.getValue(i, 2), i * 1.0f);
+      Assert.assertEquals(
+          tablet.getValue(i, 3), new Binary(String.valueOf(i).getBytes(StandardCharsets.UTF_8)));
+      Assert.assertEquals(tablet.getValue(i, 4), (long) i);
+      Assert.assertEquals(tablet.getValue(i, 5), i);
+      Assert.assertEquals(tablet.getValue(i, 6), i * 0.1);
+      Assert.assertEquals(tablet.getValue(i, 7), getDate(i));
+      Assert.assertEquals(
+          tablet.getValue(i, 8), new Binary(String.valueOf(i).getBytes(StandardCharsets.UTF_8)));
+    }
+  }
+
+  public void doTableModelTest1(final boolean hasDuplicates, final boolean isUnSorted) {
+    final Tablet tablet = generateTablet("test", 10, hasDuplicates, isUnSorted);
+    new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByTimestampIfNecessary();
     for (int i = 1; i < tablet.getRowSize(); i++) {
       long time = tablet.timestamps[i];
       Assert.assertTrue(time > tablet.timestamps[i - 1]);
@@ -278,15 +315,15 @@ public class PipeTabletEventSorterTest {
 
     final List<Tablet.ColumnCategory> columnTypes =
         Arrays.asList(
-            Tablet.ColumnCategory.ID,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT,
-            Tablet.ColumnCategory.MEASUREMENT);
+            Tablet.ColumnCategory.TAG,
+            Tablet.ColumnCategory.FIELD,
+            Tablet.ColumnCategory.FIELD,
+            Tablet.ColumnCategory.FIELD,
+            Tablet.ColumnCategory.FIELD,
+            Tablet.ColumnCategory.FIELD,
+            Tablet.ColumnCategory.FIELD,
+            Tablet.ColumnCategory.FIELD,
+            Tablet.ColumnCategory.FIELD);
     Tablet tablet =
         new Tablet(
             tableName,
