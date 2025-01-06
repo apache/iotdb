@@ -592,14 +592,14 @@ public class LoadTsFileScheduler implements IScheduler {
       }
     }
 
-    // if all failed TsFiles are converted to Tablets, then the load process is finished
-    // successfully
+    // If all failed TsFiles are converted into tablets and inserted,
+    // we can consider the load process as successful.
     if (failedTsFileNodeIndexes.isEmpty()) {
       stateMachine.transitionToFinished();
     } else {
       stateMachine.transitionToFailed(
           new LoadFileException(
-              "Failed to load some TsFiles and convert them to Tablets. Failed TsFiles: "
+              "Failed to load some TsFiles by converting them into tablets. Failed TsFiles: "
                   + failedTsFileNodeIndexes.stream()
                       .map(i -> tsFileNodeList.get(i).getTsFileResource().getTsFilePath())
                       .collect(Collectors.joining(", "))));
