@@ -20,8 +20,8 @@
 package org.apache.iotdb.commons.pipe.resource.snapshot;
 
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.session.util.RetryUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.commons.pipe.receiver;
 
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
-import org.apache.iotdb.session.util.RetryUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;

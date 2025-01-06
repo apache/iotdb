@@ -20,14 +20,17 @@
 package org.apache.iotdb.session.util;
 
 public class RetryUtils {
+
+  public interface CallableWithException<T, E extends Exception> {
+    T call() throws E;
+  }
+
   public static final int MAX_RETRIES = 3;
 
-  private RetryUtils() {}
-
-  public static <E, T extends Exception> E retryOnException(CallableWithException<E, T> callable)
-      throws T {
+  public static <T, E extends Exception> T retryOnException(
+      final CallableWithException<T, E> callable) throws E {
     int attempt = 0;
-    while (attempt < MAX_RETRIES) {
+    while (true) {
       try {
         return callable.call();
       } catch (Exception e) {
@@ -37,6 +40,9 @@ public class RetryUtils {
         }
       }
     }
-    return null;
+  }
+
+  private RetryUtils() {
+    // utility class
   }
 }
