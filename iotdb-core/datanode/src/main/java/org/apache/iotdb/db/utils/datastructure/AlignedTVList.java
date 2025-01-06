@@ -759,10 +759,6 @@ public abstract class AlignedTVList extends TVList {
     }
   }
 
-  public long[] memoryBinaryChunkSize() {
-    return memoryBinaryChunkSize;
-  }
-
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public synchronized void putAlignedValues(

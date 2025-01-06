@@ -271,7 +271,14 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
         // We need to extend a new column in AlignedMemChunk and AlignedTVList.
         // And the reorderedColumnValues should extend one more column for the new measurement
         if (index == null) {
-          index = measurementIndexMap.size();
+          index =
+              measurementIndexMap.isEmpty()
+                  ? 0
+                  : measurementIndexMap.values().stream()
+                          .mapToInt(Integer::intValue)
+                          .max()
+                          .getAsInt()
+                      + 1;
           this.measurementIndexMap.put(schemaListInInsertPlan.get(i).getMeasurementName(), index);
           this.schemaList.add(schemaListInInsertPlan.get(i));
           this.list.extendColumn(schemaListInInsertPlan.get(i).getType());
@@ -506,13 +513,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       alignedTvList.deleteColumn(columnIndex);
     }
     IMeasurementSchema schemaToBeRemoved = schemaList.get(columnIndex);
-    measurementIndexMap.clear();
-    for (int i = 0; i < schemaList.size(); i++) {
-      if (schemaList.get(i).getMeasurementName().equals(schemaToBeRemoved.getMeasurementName())) {
-        continue;
-      }
-      measurementIndexMap.put(schemaList.get(i).getMeasurementName(), i);
-    }
+    measurementIndexMap.remove(schemaToBeRemoved.getMeasurementName());
   }
 
   @Override
