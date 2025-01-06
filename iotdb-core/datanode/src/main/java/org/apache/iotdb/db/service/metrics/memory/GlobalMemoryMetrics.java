@@ -47,7 +47,7 @@ public class GlobalMemoryMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     metricService
         .getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            Metric.MEMORY_THRESHOLD_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
             TOTAL,
@@ -58,7 +58,7 @@ public class GlobalMemoryMetrics implements IMetricSet {
         .set(Runtime.getRuntime().maxMemory());
     metricService
         .getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            Metric.MEMORY_THRESHOLD_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
             TOTAL,
@@ -74,7 +74,7 @@ public class GlobalMemoryMetrics implements IMetricSet {
     StreamEngineMemoryMetrics.getInstance().bindTo(metricService);
     metricService
         .getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            Metric.MEMORY_THRESHOLD_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
             DIRECT_BUFFER,
@@ -92,7 +92,7 @@ public class GlobalMemoryMetrics implements IMetricSet {
             type -> {
               metricService.remove(
                   MetricType.GAUGE,
-                  Metric.THRESHOLD_MEMORY_SIZE.toString(),
+                  Metric.MEMORY_THRESHOLD_SIZE.toString(),
                   Tag.NAME.toString(),
                   TOTAL,
                   Tag.TYPE.toString(),
@@ -110,7 +110,7 @@ public class GlobalMemoryMetrics implements IMetricSet {
             name ->
                 metricService.remove(
                     MetricType.GAUGE,
-                    Metric.THRESHOLD_MEMORY_SIZE.toString(),
+                    Metric.MEMORY_THRESHOLD_SIZE.toString(),
                     Tag.NAME.toString(),
                     name,
                     Tag.TYPE.toString(),

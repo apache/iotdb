@@ -36,7 +36,7 @@ public class ConsensusMemoryMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     metricService
         .getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            Metric.MEMORY_THRESHOLD_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
             CONSENSUS,
@@ -51,7 +51,7 @@ public class ConsensusMemoryMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
         MetricType.GAUGE,
-        Metric.THRESHOLD_MEMORY_SIZE.toString(),
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
         Tag.NAME.toString(),
         CONSENSUS,
         Tag.TYPE.toString(),

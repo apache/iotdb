@@ -49,7 +49,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     // Total memory size of storage engine
     metricService
         .getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            Metric.MEMORY_THRESHOLD_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
             STORAGE_ENGINE,
@@ -65,7 +65,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     long compactionSize = storageEngineSize - writeSize;
     metricService
         .getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            Metric.MEMORY_THRESHOLD_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
             STORAGE_ENGINE_WRITE,
@@ -76,7 +76,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
         .set(writeSize);
     metricService
         .getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            Metric.MEMORY_THRESHOLD_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
             STORAGE_ENGINE_COMPACTION,
@@ -92,7 +92,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     long timePartitionInfoSize = config.getAllocateMemoryForTimePartitionInfo();
     metricService
         .getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            Metric.MEMORY_THRESHOLD_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
             STORAGE_ENGINE_WRITE_MEMTABLE,
@@ -103,7 +103,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
         .set(memtableSize);
     metricService
         .getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            Metric.MEMORY_THRESHOLD_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
             STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO,
@@ -125,7 +125,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
                 * config.getBufferedArraysMemoryProportion());
     metricService
         .getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            Metric.MEMORY_THRESHOLD_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
             STORAGE_ENGINE_WRITE_MEMTABLE_CACHE,
@@ -136,7 +136,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
         .set(dataNodeDevicePathCacheSize);
     metricService
         .getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            Metric.MEMORY_THRESHOLD_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
             STORAGE_ENGINE_WRITE_MEMTABLE_BUFFERED_ARRAYS,
@@ -151,7 +151,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
         MetricType.GAUGE,
-        Metric.THRESHOLD_MEMORY_SIZE.toString(),
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
         Tag.NAME.toString(),
         STORAGE_ENGINE,
         Tag.TYPE.toString(),
@@ -163,7 +163,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
             name ->
                 metricService.remove(
                     MetricType.GAUGE,
-                    Metric.THRESHOLD_MEMORY_SIZE.toString(),
+                    Metric.MEMORY_THRESHOLD_SIZE.toString(),
                     Tag.NAME.toString(),
                     name,
                     Tag.TYPE.toString(),
@@ -175,7 +175,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
             name ->
                 metricService.remove(
                     MetricType.GAUGE,
-                    Metric.THRESHOLD_MEMORY_SIZE.toString(),
+                    Metric.MEMORY_THRESHOLD_SIZE.toString(),
                     Tag.NAME.toString(),
                     name,
                     Tag.TYPE.toString(),
@@ -188,7 +188,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
             name ->
                 metricService.remove(
                     MetricType.GAUGE,
-                    Metric.THRESHOLD_MEMORY_SIZE.toString(),
+                    Metric.MEMORY_THRESHOLD_SIZE.toString(),
                     Tag.NAME.toString(),
                     name,
                     Tag.TYPE.toString(),

@@ -46,7 +46,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     metricService
         .getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            Metric.MEMORY_THRESHOLD_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
             QUERY_ENGINE,
@@ -57,7 +57,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         .set(config.getAllocateMemoryForRead());
     metricService
         .getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            Metric.MEMORY_THRESHOLD_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
             QUERY_ENGINE_BLOOM_FILTER_CACHE,
@@ -68,7 +68,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         .set(config.getAllocateMemoryForBloomFilterCache());
     metricService
         .getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            Metric.MEMORY_THRESHOLD_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
             QUERY_ENGINE_CHUNK_CACHE,
@@ -79,7 +79,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         .set(config.getAllocateMemoryForChunkCache());
     metricService
         .getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            Metric.MEMORY_THRESHOLD_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
             QUERY_ENGINE_TIME_SERIES_METADATA_CACHE,
@@ -90,7 +90,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         .set(config.getAllocateMemoryForTimeSeriesMetaDataCache());
     metricService
         .getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            Metric.MEMORY_THRESHOLD_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
             QUERY_ENGINE_OPERATORS,
@@ -101,7 +101,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         .set(config.getAllocateMemoryForOperators());
     metricService
         .getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            Metric.MEMORY_THRESHOLD_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
             QUERY_ENGINE_DATA_EXCHANGE,
@@ -112,7 +112,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         .set(config.getAllocateMemoryForDataExchange());
     metricService
         .getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            Metric.MEMORY_THRESHOLD_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
             QUERY_ENGINE_TIME_INDEX,
@@ -123,7 +123,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         .set(config.getAllocateMemoryForTimeIndex());
     metricService
         .getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            Metric.MEMORY_THRESHOLD_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
             QUERY_ENGINE_COORDINATOR,
@@ -138,7 +138,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
         MetricType.GAUGE,
-        Metric.THRESHOLD_MEMORY_SIZE.toString(),
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
         Tag.NAME.toString(),
         QUERY_ENGINE,
         Tag.TYPE.toString(),
@@ -157,7 +157,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
             name ->
                 metricService.remove(
                     MetricType.GAUGE,
-                    Metric.THRESHOLD_MEMORY_SIZE.toString(),
+                    Metric.MEMORY_THRESHOLD_SIZE.toString(),
                     Tag.NAME.toString(),
                     name,
                     Tag.TYPE.toString(),

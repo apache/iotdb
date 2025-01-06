@@ -36,7 +36,7 @@ public class StreamEngineMemoryMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     metricService
         .getOrCreateGauge(
-            Metric.THRESHOLD_MEMORY_SIZE.toString(),
+            Metric.MEMORY_THRESHOLD_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
             STREAM_ENGINE,
@@ -51,7 +51,7 @@ public class StreamEngineMemoryMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
         MetricType.GAUGE,
-        Metric.THRESHOLD_MEMORY_SIZE.toString(),
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
         Tag.NAME.toString(),
         STREAM_ENGINE,
         Tag.TYPE.toString(),
