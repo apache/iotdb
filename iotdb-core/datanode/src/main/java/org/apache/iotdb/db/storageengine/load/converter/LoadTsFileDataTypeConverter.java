@@ -31,6 +31,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Optional;
+
 public class LoadTsFileDataTypeConverter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileDataTypeConverter.class);
@@ -58,15 +60,21 @@ public class LoadTsFileDataTypeConverter {
   public static final LoadConvertedInsertTabletStatementExceptionVisitor
       STATEMENT_EXCEPTION_VISITOR = new LoadConvertedInsertTabletStatementExceptionVisitor();
 
-  public TSStatus convertForTreeModel(LoadTsFileStatement loadTsFileTreeStatement) {
+  public Optional<TSStatus> convertForTreeModel(LoadTsFileStatement loadTsFileTreeStatement) {
     try {
-      return loadTsFileTreeStatement
-          .accept(treeStatementDataTypeConvertExecutionVisitor, null)
-          .orElse(null);
+      return loadTsFileTreeStatement.accept(treeStatementDataTypeConvertExecutionVisitor, null);
     } catch (Exception e) {
       LOGGER.warn(
           "Failed to convert data types for tree model statement {}.", loadTsFileTreeStatement, e);
-      return new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage());
+      return Optional.of(
+          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
     }
+  }
+
+  public boolean isSuccessful(final TSStatus status) {
+    return status != null
+        && (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+            || status.getCode() == TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode());
   }
 }
