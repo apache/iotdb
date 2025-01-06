@@ -225,8 +225,8 @@ public class IoTDBConfig {
   /** max total direct buffer off heap memory size proportion */
   private double maxDirectBufferOffHeapMemorySizeProportion = 0.8;
 
-  /** Blocking queue capacity of each page cache deletion buffer */
-  private int pageCacheDeletionBufferQueueCapacity = 500;
+  /** Blocking queue capacity of each delete ahead log buffer */
+  private int deletionAheadLogBufferQueueCapacity = 500;
 
   /** Size threshold of each wal file. Unit: byte */
   private volatile long walFileSizeThresholdInByte = 30 * 1024 * 1024L;
@@ -1991,12 +1991,12 @@ public class IoTDBConfig {
     this.maxDirectBufferOffHeapMemorySizeProportion = maxDirectBufferOffHeapMemorySizeProportion;
   }
 
-  public int getPageCacheDeletionBufferQueueCapacity() {
-    return pageCacheDeletionBufferQueueCapacity;
+  public int getDeletionAheadLogBufferQueueCapacity() {
+    return deletionAheadLogBufferQueueCapacity;
   }
 
-  void setPageCacheDeletionBufferQueueCapacity(int pageCacheDeletionBufferQueueCapacity) {
-    this.pageCacheDeletionBufferQueueCapacity = pageCacheDeletionBufferQueueCapacity;
+  void setDeletionAheadLogBufferQueueCapacity(int deletionAheadLogBufferQueueCapacity) {
+    this.deletionAheadLogBufferQueueCapacity = deletionAheadLogBufferQueueCapacity;
   }
 
   public long getWalFileSizeThresholdInByte() {

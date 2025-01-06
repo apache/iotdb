@@ -17,18 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
+package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
-public class TableScanOperator extends AbstractTableScanOperator {
-  public TableScanOperator(AbstractTableScanOperatorParameter parameter) {
-    super(parameter);
+public class TreeDeviceViewSchema extends TableSchema {
+
+  public TreeDeviceViewSchema(String tableName, List<ColumnSchema> columns) {
+    super(tableName, columns);
   }
 
-  @Override
-  String getNthIdColumnValue(DeviceEntry deviceEntry, int idColumnIndex) {
-    // +1 for skipping the table name segment
-    return ((String) deviceEntry.getNthSegment(idColumnIndex + 1));
+  public String getTreeDBName() {
+    return "root.tree";
+  }
+
+  public Map<String, String> getMeasurementColumnNameMap() {
+    return Collections.emptyMap();
   }
 }
