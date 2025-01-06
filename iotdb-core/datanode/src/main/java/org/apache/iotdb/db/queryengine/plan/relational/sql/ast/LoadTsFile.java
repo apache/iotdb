@@ -63,7 +63,7 @@ public class LoadTsFile extends Statement {
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.resources = new ArrayList<>();
     this.writePointCountList = new ArrayList<>();
-    this.loadAttributes = loadAttributes;
+    this.loadAttributes = loadAttributes == null ? Collections.emptyMap() : loadAttributes;
     initAttributes();
 
     try {
@@ -107,8 +107,9 @@ public class LoadTsFile extends Statement {
     return database;
   }
 
-  public void setDatabase(String database) {
+  public LoadTsFile setDatabase(String database) {
     this.database = database;
+    return this;
   }
 
   public String getModel() {
