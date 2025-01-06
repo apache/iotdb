@@ -12,8 +12,8 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class SubcolumnByteRLE2BlockSizeTest {
-    // SubcolumnByteRLE2Test 测试不同 block size
+public class Subcolumn3BlockSizeTest {
+    // Subcolumn3Test 测试不同 block size
 
     public static int getDecimalPrecision(String str) {
         // 查找小数点的位置
@@ -60,7 +60,7 @@ public class SubcolumnByteRLE2BlockSizeTest {
 
         for (int block_size : block_size_list) {
 
-            String outputPath = output_parent_dir + "subcolumn_rle2_block_" + block_size + ".csv";
+            String outputPath = output_parent_dir + "subcolumn_rle_block_" + block_size + ".csv";
             CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
 
             String[] head = {
@@ -114,13 +114,12 @@ public class SubcolumnByteRLE2BlockSizeTest {
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length = SubcolumnByteRLE2Test.Encoder(data2_arr, block_size, encoded_result);
+                    length = Subcolumn3Test.Encoder(data2_arr, block_size, encoded_result);
                 }
 
                 long e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime);
-                // compressed_size += length / 8;
-                compressed_size += length;
+                compressed_size += length / 8;
                 double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
                 ratio += ratioTmp;
 
@@ -129,7 +128,7 @@ public class SubcolumnByteRLE2BlockSizeTest {
                 s = System.nanoTime();
 
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    int[] data2_arr_decoded = SubcolumnByteRLE2Test.Decoder(encoded_result);
+                    int[] data2_arr_decoded = Subcolumn3Test.Decoder(encoded_result);
                     for (int i = 0; i < data2_arr_decoded.length; i++) {
                         // assert data2_arr[i] == data2_arr_decoded[i]
                         //         || data2_arr[i] + Integer.MAX_VALUE + 1 == data2_arr_decoded[i];

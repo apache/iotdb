@@ -12,17 +12,17 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class TSDIFFSubcolumnByteTest {
-    // TS2DIFF+Subcolumn SubcolumnByteTest
+public class TSDIFFSubcolumn3Test {
+    // TS2DIFF+Subcolumn Subcolumn3Test
 
     public static int Encoder(int[] data, int block_size, byte[] encoded_result) {
         int data_length = data.length;
         int startBitPosition = 0;
 
-        SubcolumnByteTest.intToBytes(data_length, encoded_result, startBitPosition, 32);
+        Subcolumn3Test.intToBytes(data_length, encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
-        SubcolumnByteTest.intToBytes(block_size, encoded_result, startBitPosition, 32);
+        Subcolumn3Test.intToBytes(block_size, encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
         int num_blocks = data_length / block_size;
@@ -38,7 +38,7 @@ public class TSDIFFSubcolumnByteTest {
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                SubcolumnByteTest.intToBytes(data[num_blocks * block_size + i], encoded_result, startBitPosition, 32);
+                Subcolumn3Test.intToBytes(data[num_blocks * block_size + i], encoded_result, startBitPosition, 32);
                 startBitPosition += 32;
             }
         } else {
@@ -52,10 +52,10 @@ public class TSDIFFSubcolumnByteTest {
     public static int[] Decoder(byte[] encoded_result) {
         int startBitPosition = 0;
 
-        int data_length = SubcolumnByteTest.bytesToInt(encoded_result, startBitPosition, 32);
+        int data_length = Subcolumn3Test.bytesToInt(encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
-        int block_size = SubcolumnByteTest.bytesToInt(encoded_result, startBitPosition, 32);
+        int block_size = Subcolumn3Test.bytesToInt(encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
         int num_blocks = data_length / block_size;
@@ -70,7 +70,7 @@ public class TSDIFFSubcolumnByteTest {
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                data[num_blocks * block_size + i] = SubcolumnByteTest.bytesToIntSigned(encoded_result, startBitPosition, 32);
+                data[num_blocks * block_size + i] = Subcolumn3Test.bytesToIntSigned(encoded_result, startBitPosition, 32);
                 startBitPosition += 32;
             }
         } else {
@@ -132,10 +132,10 @@ public class TSDIFFSubcolumnByteTest {
         // data_delta 的长度为 remainder - 1
         int[] data_delta = getAbsDeltaTsBlock(data, block_index, block_size, remainder, min_delta);
 
-        SubcolumnByteTest.intToBytes(min_delta[0], encoded_result, startBitPosition, 32);
+        Subcolumn3Test.intToBytes(min_delta[0], encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
-        SubcolumnByteTest.intToBytes(min_delta[1], encoded_result, startBitPosition, 32);
+        Subcolumn3Test.intToBytes(min_delta[1], encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
         if (block_index == 0) {
@@ -145,12 +145,12 @@ public class TSDIFFSubcolumnByteTest {
                     maxValue = data_delta[j];
                 }
             }
-            int m = SubcolumnByteTest.bitWidth(maxValue);
+            int m = Subcolumn3Test.bitWidth(maxValue);
 
-            beta[0] = SubcolumnByteTest.Subcolumn(data_delta, remainder - 1, m);
+            beta[0] = Subcolumn3Test.Subcolumn(data_delta, remainder - 1, m, block_size);
         }
 
-        startBitPosition = SubcolumnByteTest.SubcolumnEncoder(data_delta, startBitPosition, encoded_result, beta);
+        startBitPosition = Subcolumn3Test.SubcolumnEncoder(data_delta, startBitPosition, encoded_result, beta, block_size);
 
         return startBitPosition;
     }
@@ -159,15 +159,15 @@ public class TSDIFFSubcolumnByteTest {
             int startBitPosition, int[] data) {
         int[] min_delta = new int[3];
 
-        min_delta[0] = SubcolumnByteTest.bytesToIntSigned(encoded_result, startBitPosition, 32);
+        min_delta[0] = Subcolumn3Test.bytesToIntSigned(encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
-        min_delta[1] = SubcolumnByteTest.bytesToIntSigned(encoded_result, startBitPosition, 32);
+        min_delta[1] = Subcolumn3Test.bytesToIntSigned(encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
         int[] data_delta = new int[remainder - 1];
 
-        startBitPosition = SubcolumnByteTest.SubcolumnDecoder(encoded_result, startBitPosition, data_delta);
+        startBitPosition = Subcolumn3Test.SubcolumnDecoder(encoded_result, startBitPosition, data_delta, block_size);
 
         for (int i = 0; i < remainder - 1; i++) {
             data_delta[i] = data_delta[i] + min_delta[1];
@@ -219,7 +219,7 @@ public class TSDIFFSubcolumnByteTest {
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        String outputPath = output_parent_dir + "ts2diff_subcolumn_byte_512.csv";
+        String outputPath = output_parent_dir + "ts2diff_subcolumn3.csv";
 
         // int block_size = 1024;
         int block_size = 512;

@@ -12,18 +12,24 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class SPRINTZSubcolumnByteTest {
-    // SPRINTZ SubcolumnByteTest
+public class TSDIFFSubcolumn5Test {
+    // TS2DIFF+Subcolumn SubcolumnByteRLETest
 
     public static int Encoder(int[] data, int block_size, byte[] encoded_result) {
         int data_length = data.length;
-        int startBitPosition = 0;
+        int encode_pos = 0;
 
-        SubcolumnByteTest.intToBytes(data_length, encoded_result, startBitPosition, 32);
-        startBitPosition += 32;
+        encoded_result[0] = (byte) (data_length >> 24);
+        encoded_result[1] = (byte) (data_length >> 16);
+        encoded_result[2] = (byte) (data_length >> 8);
+        encoded_result[3] = (byte) data_length;
+        encode_pos += 4;
 
-        SubcolumnByteTest.intToBytes(block_size, encoded_result, startBitPosition, 32);
-        startBitPosition += 32;
+        encoded_result[4] = (byte) (block_size >> 24);
+        encoded_result[5] = (byte) (block_size >> 16);
+        encoded_result[6] = (byte) (block_size >> 8);
+        encoded_result[7] = (byte) block_size;
+        encode_pos += 4;
 
         int num_blocks = data_length / block_size;
 
@@ -33,66 +39,60 @@ public class SPRINTZSubcolumnByteTest {
         beta[0] = 2;
 
         for (int i = 0; i < num_blocks; i++) {
-            startBitPosition = BlockEncoder(data, i, block_size, block_size, startBitPosition, encoded_result, beta);
+            encode_pos = BlockEncoder(data, i, block_size, block_size, encode_pos, encoded_result, beta);
         }
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                SubcolumnByteTest.intToBytes(data[num_blocks * block_size + i], encoded_result, startBitPosition, 32);
-                startBitPosition += 32;
+                int value = data[num_blocks * block_size + i];
+                encoded_result[encode_pos] = (byte) (value >> 24);
+                encoded_result[encode_pos + 1] = (byte) (value >> 16);
+                encoded_result[encode_pos + 2] = (byte) (value >> 8);
+                encoded_result[encode_pos + 3] = (byte) value;
+                encode_pos += 4;
             }
         } else {
-            startBitPosition = BlockEncoder(data, num_blocks, block_size, remainder, startBitPosition,
+            encode_pos = BlockEncoder(data, num_blocks, block_size, remainder, encode_pos,
                     encoded_result, beta);
         }
 
-        return startBitPosition;
+        return encode_pos;
     }
 
     public static int[] Decoder(byte[] encoded_result) {
-        int startBitPosition = 0;
+        int encode_pos = 0;
 
-        int data_length = SubcolumnByteTest.bytesToInt(encoded_result, startBitPosition, 32);
-        startBitPosition += 32;
+        int data_length = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+        encode_pos += 4;
 
-        int block_size = SubcolumnByteTest.bytesToInt(encoded_result, startBitPosition, 32);
-        startBitPosition += 32;
+        int block_size = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+        encode_pos += 4;
 
         int num_blocks = data_length / block_size;
 
         int[] data = new int[data_length];
 
         for (int i = 0; i < num_blocks; i++) {
-            startBitPosition = BlockDecoder(encoded_result, i, block_size, block_size, startBitPosition, data);
+            encode_pos = BlockDecoder(encoded_result, i, block_size, block_size, encode_pos, data);
         }
 
         int remainder = data_length % block_size;
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                data[num_blocks * block_size + i] = SubcolumnByteTest.bytesToIntSigned(encoded_result, startBitPosition, 32);
-                startBitPosition += 32;
+                data[num_blocks * block_size + i] = ((encoded_result[encode_pos] & 0xFF) << 24) |
+                        ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+                        ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+                encode_pos += 4;
             }
         } else {
-            startBitPosition = BlockDecoder(encoded_result, num_blocks, block_size, remainder,
-                    startBitPosition, data);
+            encode_pos = BlockDecoder(encoded_result, num_blocks, block_size, remainder,
+            encode_pos, data);
         }
 
         return data;
-    }
-
-    public static int zigzag(int num) {
-        if (num < 0)
-            return ((-num) << 1) - 1;
-        else
-            return num << 1;
-    }
-
-    public static int deZigzag(int num) {
-        if (num % 2 == 0)
-            return num >> 1;
-        else
-            return -((num + 1) >> 1);
     }
 
     public static int[] getAbsDeltaTsBlock(
@@ -103,45 +103,60 @@ public class SPRINTZSubcolumnByteTest {
             int[] min_delta) {
         int[] ts_block_delta = new int[remaining - 1];
 
-        int base = i * block_size + 1;
-        int end = i * block_size + remaining;
-        min_delta[0] = ts_block[base - 1];
         int value_delta_min = Integer.MAX_VALUE;
         int value_delta_max = Integer.MIN_VALUE;
-        for (int j = base; j < end; j++) {
-            int epsilon_v = ts_block[j] - ts_block[j - 1];
-            epsilon_v = zigzag(epsilon_v);
+        int base = i * block_size + 1;
+        int end = i * block_size + remaining;
+
+        int tmp_j_1 = ts_block[base - 1];
+        min_delta[0] = tmp_j_1;
+        int j = base;
+        int tmp_j;
+
+        while (j < end) {
+            tmp_j = ts_block[j];
+            int epsilon_v = tmp_j - tmp_j_1;
+            ts_block_delta[j - base] = epsilon_v;
             if (epsilon_v < value_delta_min) {
                 value_delta_min = epsilon_v;
             }
             if (epsilon_v > value_delta_max) {
                 value_delta_max = epsilon_v;
             }
-            ts_block_delta[j - base] = epsilon_v;
-
+            tmp_j_1 = tmp_j;
+            j++;
         }
-        for (int j = 0; j < remaining - 1; j++) {
+        j = 0;
+        end = remaining - 1;
+        while (j < end) {
             ts_block_delta[j] = ts_block_delta[j] - value_delta_min;
-
+            j++;
         }
-        min_delta[1] = (value_delta_min);
+
+        min_delta[1] = value_delta_min;
         min_delta[2] = (value_delta_max - value_delta_min);
 
         return ts_block_delta;
     }
 
     public static int BlockEncoder(int[] data, int block_index, int block_size, int remainder,
-            int startBitPosition, byte[] encoded_result, int[] beta) {
+            int encode_pos, byte[] encoded_result, int[] beta) {
         int[] min_delta = new int[3];
 
-        // data_delta 长度为 remainder - 1
+        // data_delta 的长度为 remainder - 1
         int[] data_delta = getAbsDeltaTsBlock(data, block_index, block_size, remainder, min_delta);
 
-        SubcolumnByteTest.intToBytes(min_delta[0], encoded_result, startBitPosition, 32);
-        startBitPosition += 32;
+        encoded_result[encode_pos] = (byte) (min_delta[0] >> 24);
+        encoded_result[encode_pos + 1] = (byte) (min_delta[0] >> 16);
+        encoded_result[encode_pos + 2] = (byte) (min_delta[0] >> 8);
+        encoded_result[encode_pos + 3] = (byte) min_delta[0];
+        encode_pos += 4;
 
-        SubcolumnByteTest.intToBytes(min_delta[1], encoded_result, startBitPosition, 32);
-        startBitPosition += 32;
+        encoded_result[encode_pos] = (byte) (min_delta[1] >> 24);
+        encoded_result[encode_pos + 1] = (byte) (min_delta[1] >> 16);
+        encoded_result[encode_pos + 2] = (byte) (min_delta[1] >> 8);
+        encoded_result[encode_pos + 3] = (byte) min_delta[1];
+        encode_pos += 4;
 
         if (block_index == 0) {
             int maxValue = 0;
@@ -150,36 +165,34 @@ public class SPRINTZSubcolumnByteTest {
                     maxValue = data_delta[j];
                 }
             }
-            int m = SubcolumnByteTest.bitWidth(maxValue);
+            int m = Subcolumn5Test.bitWidth(maxValue);
 
-            beta[0] = SubcolumnByteTest.Subcolumn(data_delta, remainder - 1, m);
+            beta[0] = Subcolumn5Test.Subcolumn(data_delta, remainder - 1, m, block_size);
         }
 
-        startBitPosition = SubcolumnByteTest.SubcolumnEncoder(data_delta, startBitPosition, encoded_result, beta);
+        encode_pos = Subcolumn5Test.SubcolumnEncoder(data_delta, encode_pos, encoded_result, beta, block_size);
 
-        return startBitPosition;
+        return encode_pos;
     }
 
     public static int BlockDecoder(byte[] encoded_result, int block_index, int block_size, int remainder,
-            int startBitPosition, int[] data) {
+            int encode_pos, int[] data) {
         int[] min_delta = new int[3];
 
-        min_delta[0] = SubcolumnByteTest.bytesToIntSigned(encoded_result, startBitPosition, 32);
-        startBitPosition += 32;
+        min_delta[0] = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+        encode_pos += 4;
 
-        min_delta[1] = SubcolumnByteTest.bytesToIntSigned(encoded_result, startBitPosition, 32);
-        startBitPosition += 32;
+        min_delta[1] = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+        encode_pos += 4;
 
         int[] data_delta = new int[remainder - 1];
 
-        startBitPosition = SubcolumnByteTest.SubcolumnDecoder(encoded_result, startBitPosition, data_delta);
+        encode_pos = Subcolumn5Test.SubcolumnDecoder(encoded_result, encode_pos, data_delta, block_size);
 
         for (int i = 0; i < remainder - 1; i++) {
             data_delta[i] = data_delta[i] + min_delta[1];
-        }
-
-        for (int i = 0; i < remainder - 1; i++) {
-            data_delta[i] = deZigzag(data_delta[i]);
         }
 
         data[block_index * block_size] = min_delta[0];
@@ -188,7 +201,7 @@ public class SPRINTZSubcolumnByteTest {
             data[block_index * block_size + i + 1] = data[block_index * block_size + i] + data_delta[i];
         }
 
-        return startBitPosition;
+        return encode_pos;
     }
 
     public static int getDecimalPrecision(String str) {
@@ -222,13 +235,13 @@ public class SPRINTZSubcolumnByteTest {
     }
 
     @Test
-    public void testSPRINTZ() throws IOException {
+    public void testTSDIFF() throws IOException {
         String parent_dir = "D:/github/xjz17/subcolumn/elf_resources/dataset/";
         // String parent_dir = "D:/compress-subcolumn/dataset/";
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        String outputPath = output_parent_dir + "sprintz_subcolumn_byte_512.csv";
+        String outputPath = output_parent_dir + "ts2diff_subcolumn5.csv";
 
         // int block_size = 1024;
         int block_size = 512;
@@ -295,7 +308,8 @@ public class SPRINTZSubcolumnByteTest {
 
             long e = System.nanoTime();
             encodeTime += ((e - s) / repeatTime);
-            compressed_size += length / 8;
+            // compressed_size += length / 8;
+            compressed_size += length;
             double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
             ratio += ratioTmp;
 
@@ -304,9 +318,9 @@ public class SPRINTZSubcolumnByteTest {
             for (int repeat = 0; repeat < repeatTime; repeat++) {
                 int[] data2_arr_decoded = Decoder(encoded_result);
                 for (int i = 0; i < data2_arr_decoded.length; i++) {
-                    assert data2_arr[i] == data2_arr_decoded[i]
-                            || data2_arr[i] + Integer.MAX_VALUE + 1 == data2_arr_decoded[i];
-                    // assert data2_arr[i] == data2_arr_decoded[i];
+                    // assert data2_arr[i] == data2_arr_decoded[i]
+                    //         || data2_arr[i] + Integer.MAX_VALUE + 1 == data2_arr_decoded[i];
+                    assert data2_arr[i] == data2_arr_decoded[i];
                 }
             }
 
@@ -315,7 +329,7 @@ public class SPRINTZSubcolumnByteTest {
 
             String[] record = {
                     datasetName,
-                    "SPRINTZ+Subcolumn",
+                    "TS2DIFF+Subcolumn",
                     String.valueOf(encodeTime),
                     String.valueOf(decodeTime),
                     String.valueOf(data1.size()),

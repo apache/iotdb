@@ -19,10 +19,10 @@ public class RLETest {
         int data_length = data.length;
         int startBitPosition = 0;
 
-        SubcolumnEncodeTest.writeBits(encoded_result, startBitPosition, 32, data_length);
+        Subcolumn0Test.writeBits(encoded_result, startBitPosition, 32, data_length);
         startBitPosition += 32;
 
-        SubcolumnEncodeTest.writeBits(encoded_result, startBitPosition, 32, block_size);
+        Subcolumn0Test.writeBits(encoded_result, startBitPosition, 32, block_size);
         startBitPosition += 32;
 
         int num_blocks = data_length / block_size;
@@ -35,7 +35,7 @@ public class RLETest {
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                SubcolumnEncodeTest.writeBits(encoded_result, startBitPosition, 32, data[num_blocks * block_size + i]);
+                Subcolumn0Test.writeBits(encoded_result, startBitPosition, 32, data[num_blocks * block_size + i]);
                 startBitPosition += 32;
             }
         } else {
@@ -49,10 +49,10 @@ public class RLETest {
     public static int[] Decoder(byte[] encoded_result) {
         int startBitPosition = 0;
 
-        int data_length = SubcolumnEncodeTest.readBits(encoded_result, startBitPosition, 32, 0);
+        int data_length = Subcolumn0Test.readBits(encoded_result, startBitPosition, 32, 0);
         startBitPosition += 32;
 
-        int block_size = SubcolumnEncodeTest.readBits(encoded_result, startBitPosition, 32, 0);
+        int block_size = Subcolumn0Test.readBits(encoded_result, startBitPosition, 32, 0);
         startBitPosition += 32;
 
         int num_blocks = data_length / block_size;
@@ -67,7 +67,7 @@ public class RLETest {
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                data[num_blocks * block_size + i] = SubcolumnEncodeTest.readBits(encoded_result, startBitPosition, 32, 1);
+                data[num_blocks * block_size + i] = Subcolumn0Test.readBits(encoded_result, startBitPosition, 32, 1);
                 startBitPosition += 32;
             }
         } else {
@@ -154,21 +154,21 @@ public class RLETest {
             repeat_count_arr[i] = repeat_count.get(i);
         }
 
-        SubcolumnEncodeTest.writeBits(encoded_result, startBitPosition, 32, min_delta[0]);
+        Subcolumn0Test.writeBits(encoded_result, startBitPosition, 32, min_delta[0]);
         startBitPosition += 32;
 
-        SubcolumnEncodeTest.writeBits(encoded_result, startBitPosition, 32, data_delta.length);
+        Subcolumn0Test.writeBits(encoded_result, startBitPosition, 32, data_delta.length);
         startBitPosition += 32;
 
-        SubcolumnEncodeTest.writeBits(encoded_result, startBitPosition, 8, repeat_count_arr.length);
+        Subcolumn0Test.writeBits(encoded_result, startBitPosition, 8, repeat_count_arr.length);
         startBitPosition += 8;
 
-        int m = SubcolumnEncodeTest.bitWidth(min_delta[2]);
+        int m = Subcolumn0Test.bitWidth(min_delta[2]);
 
-        SubcolumnEncodeTest.writeBits(encoded_result, startBitPosition, 8, m);
+        Subcolumn0Test.writeBits(encoded_result, startBitPosition, 8, m);
         startBitPosition += 8;
         
-        SubcolumnEncodeTest.bitPacking(data_delta, encoded_result, startBitPosition, m, data_delta.length);
+        Subcolumn0Test.bitPacking(data_delta, encoded_result, startBitPosition, m, data_delta.length);
         startBitPosition += m * data_delta.length;
 
         int maxValue = 0;
@@ -178,12 +178,12 @@ public class RLETest {
             }
         }
 
-        int bw = SubcolumnEncodeTest.bitWidth(maxValue);
+        int bw = Subcolumn0Test.bitWidth(maxValue);
 
-        SubcolumnEncodeTest.writeBits(encoded_result, startBitPosition, 8, bw);
+        Subcolumn0Test.writeBits(encoded_result, startBitPosition, 8, bw);
         startBitPosition += 8;
 
-        SubcolumnEncodeTest.bitPacking(repeat_count_arr, encoded_result, startBitPosition, bw, repeat_count_arr.length);
+        Subcolumn0Test.bitPacking(repeat_count_arr, encoded_result, startBitPosition, bw, repeat_count_arr.length);
         startBitPosition += bw * repeat_count_arr.length;
 
         return startBitPosition;
@@ -193,31 +193,31 @@ public class RLETest {
             int startBitPosition, int[] data) {
         int[] min_delta = new int[3];
 
-        min_delta[0] = SubcolumnEncodeTest.readBits(encoded_result, startBitPosition, 32, 1);
+        min_delta[0] = Subcolumn0Test.readBits(encoded_result, startBitPosition, 32, 1);
         startBitPosition += 32;
 
-        int data_delta_length = SubcolumnEncodeTest.readBits(encoded_result, startBitPosition, 32, 0);
+        int data_delta_length = Subcolumn0Test.readBits(encoded_result, startBitPosition, 32, 0);
         startBitPosition += 32;
 
-        int repeat_count_length = SubcolumnEncodeTest.readBits(encoded_result, startBitPosition, 8, 0);
+        int repeat_count_length = Subcolumn0Test.readBits(encoded_result, startBitPosition, 8, 0);
         startBitPosition += 8;
 
-        int m = SubcolumnEncodeTest.readBits(encoded_result, startBitPosition, 8, 0);
+        int m = Subcolumn0Test.readBits(encoded_result, startBitPosition, 8, 0);
         startBitPosition += 8;
 
         // System.out.println("repeat_count_length: " + repeat_count_length);
 
         int[] data_delta = new int[data_delta_length];
 
-        data_delta = SubcolumnEncodeTest.bitUnpacking(encoded_result, startBitPosition, m, data_delta_length);
+        data_delta = Subcolumn0Test.bitUnpacking(encoded_result, startBitPosition, m, data_delta_length);
         startBitPosition += m * data_delta_length;
 
-        int bw = SubcolumnEncodeTest.readBits(encoded_result, startBitPosition, 8, 0);
+        int bw = Subcolumn0Test.readBits(encoded_result, startBitPosition, 8, 0);
         startBitPosition += 8;
 
         int[] repeat_count = new int[repeat_count_length];
 
-        repeat_count = SubcolumnEncodeTest.bitUnpacking(encoded_result, startBitPosition, bw, repeat_count_length);
+        repeat_count = Subcolumn0Test.bitUnpacking(encoded_result, startBitPosition, bw, repeat_count_length);
         startBitPosition += bw * repeat_count_length;
 
         int[] new_data_delta = new int[remainder];

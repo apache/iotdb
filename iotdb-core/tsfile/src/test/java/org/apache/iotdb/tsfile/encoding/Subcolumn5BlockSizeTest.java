@@ -12,8 +12,8 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class SubcolumnByteRLEBlockSizeTest {
-    // SubcolumnByteRLETest 测试不同 block size
+public class Subcolumn5BlockSizeTest {
+    // Subcolumn5Test 测试不同 block size
 
     public static int getDecimalPrecision(String str) {
         // 查找小数点的位置
@@ -52,15 +52,16 @@ public class SubcolumnByteRLEBlockSizeTest {
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        int[] block_size_list = { 1024, 512, 256, 128, 64, 32 };
+        // int[] block_size_list = { 1024, 512, 256, 128, 64, 32 };
+        int[] block_size_list = { 32, 64, 128, 256, 512, 1024 };
 
-        int repeatTime = 100;
+        int repeatTime = 500;
         // TODO 真正计算时，记得注释掉将下面的内容
         // repeatTime = 1;
 
         for (int block_size : block_size_list) {
 
-            String outputPath = output_parent_dir + "subcolumn_rle_block_" + block_size + ".csv";
+            String outputPath = output_parent_dir + "subcolumn5_block_" + block_size + ".csv";
             CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
 
             String[] head = {
@@ -114,12 +115,13 @@ public class SubcolumnByteRLEBlockSizeTest {
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length = SubcolumnByteRLETest.Encoder(data2_arr, block_size, encoded_result);
+                    length = Subcolumn5Test.Encoder(data2_arr, block_size, encoded_result);
                 }
 
                 long e = System.nanoTime();
                 encodeTime += ((e - s) / repeatTime);
-                compressed_size += length / 8;
+                // compressed_size += length / 8;
+                compressed_size += length;
                 double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
                 ratio += ratioTmp;
 
@@ -128,7 +130,7 @@ public class SubcolumnByteRLEBlockSizeTest {
                 s = System.nanoTime();
 
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    int[] data2_arr_decoded = SubcolumnByteRLETest.Decoder(encoded_result);
+                    int[] data2_arr_decoded = Subcolumn5Test.Decoder(encoded_result);
                     for (int i = 0; i < data2_arr_decoded.length; i++) {
                         // assert data2_arr[i] == data2_arr_decoded[i]
                         //         || data2_arr[i] + Integer.MAX_VALUE + 1 == data2_arr_decoded[i];

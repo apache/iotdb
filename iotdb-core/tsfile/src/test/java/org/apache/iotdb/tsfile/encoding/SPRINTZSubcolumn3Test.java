@@ -12,17 +12,17 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class SPRINTZSubcolumnByteRLETest {
-    // SPRINTZ SubcolumnByteNewTest
+public class SPRINTZSubcolumn3Test {
+    // SPRINTZ Subcolumn3Test
 
     public static int Encoder(int[] data, int block_size, byte[] encoded_result) {
         int data_length = data.length;
         int startBitPosition = 0;
 
-        SubcolumnByteRLETest.intToBytes(data_length, encoded_result, startBitPosition, 32);
+        Subcolumn3Test.intToBytes(data_length, encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
-        SubcolumnByteRLETest.intToBytes(block_size, encoded_result, startBitPosition, 32);
+        Subcolumn3Test.intToBytes(block_size, encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
         int num_blocks = data_length / block_size;
@@ -38,7 +38,7 @@ public class SPRINTZSubcolumnByteRLETest {
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                SubcolumnByteRLETest.intToBytes(data[num_blocks * block_size + i], encoded_result, startBitPosition, 32);
+                Subcolumn3Test.intToBytes(data[num_blocks * block_size + i], encoded_result, startBitPosition, 32);
                 startBitPosition += 32;
             }
         } else {
@@ -52,10 +52,10 @@ public class SPRINTZSubcolumnByteRLETest {
     public static int[] Decoder(byte[] encoded_result) {
         int startBitPosition = 0;
 
-        int data_length = SubcolumnByteRLETest.bytesToInt(encoded_result, startBitPosition, 32);
+        int data_length = Subcolumn3Test.bytesToInt(encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
-        int block_size = SubcolumnByteRLETest.bytesToInt(encoded_result, startBitPosition, 32);
+        int block_size = Subcolumn3Test.bytesToInt(encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
         int num_blocks = data_length / block_size;
@@ -70,7 +70,7 @@ public class SPRINTZSubcolumnByteRLETest {
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                data[num_blocks * block_size + i] = SubcolumnByteRLETest.bytesToIntSigned(encoded_result, startBitPosition, 32);
+                data[num_blocks * block_size + i] = Subcolumn3Test.bytesToIntSigned(encoded_result, startBitPosition, 32);
                 startBitPosition += 32;
             }
         } else {
@@ -137,10 +137,10 @@ public class SPRINTZSubcolumnByteRLETest {
         // data_delta 长度为 remainder - 1
         int[] data_delta = getAbsDeltaTsBlock(data, block_index, block_size, remainder, min_delta);
 
-        SubcolumnByteRLETest.intToBytes(min_delta[0], encoded_result, startBitPosition, 32);
+        Subcolumn3Test.intToBytes(min_delta[0], encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
-        SubcolumnByteRLETest.intToBytes(min_delta[1], encoded_result, startBitPosition, 32);
+        Subcolumn3Test.intToBytes(min_delta[1], encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
         if (block_index == 0) {
@@ -150,12 +150,12 @@ public class SPRINTZSubcolumnByteRLETest {
                     maxValue = data_delta[j];
                 }
             }
-            int m = SubcolumnByteRLETest.bitWidth(maxValue);
+            int m = Subcolumn3Test.bitWidth(maxValue);
 
-            beta[0] = SubcolumnByteRLETest.Subcolumn(data_delta, remainder - 1, m, block_size);
+            beta[0] = Subcolumn3Test.Subcolumn(data_delta, remainder - 1, m, block_size);
         }
 
-        startBitPosition = SubcolumnByteRLETest.SubcolumnEncoder(data_delta, startBitPosition, encoded_result, beta, block_size);
+        startBitPosition = Subcolumn3Test.SubcolumnEncoder(data_delta, startBitPosition, encoded_result, beta, block_size);
 
         return startBitPosition;
     }
@@ -164,15 +164,15 @@ public class SPRINTZSubcolumnByteRLETest {
             int startBitPosition, int[] data) {
         int[] min_delta = new int[3];
 
-        min_delta[0] = SubcolumnByteRLETest.bytesToIntSigned(encoded_result, startBitPosition, 32);
+        min_delta[0] = Subcolumn3Test.bytesToIntSigned(encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
-        min_delta[1] = SubcolumnByteRLETest.bytesToIntSigned(encoded_result, startBitPosition, 32);
+        min_delta[1] = Subcolumn3Test.bytesToIntSigned(encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
         int[] data_delta = new int[remainder - 1];
 
-        startBitPosition = SubcolumnByteRLETest.SubcolumnDecoder(encoded_result, startBitPosition, data_delta, block_size);
+        startBitPosition = Subcolumn3Test.SubcolumnDecoder(encoded_result, startBitPosition, data_delta, block_size);
 
         for (int i = 0; i < remainder - 1; i++) {
             data_delta[i] = data_delta[i] + min_delta[1];
@@ -228,7 +228,7 @@ public class SPRINTZSubcolumnByteRLETest {
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        String outputPath = output_parent_dir + "sprintz_subcolumn_byte_512.csv";
+        String outputPath = output_parent_dir + "sprintz_subcolumn3.csv";
 
         // int block_size = 1024;
         int block_size = 512;

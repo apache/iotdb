@@ -12,8 +12,8 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class SubcolumnByteBlockSizeTest {
-    // SubcolumnByteTest 测试不同 block size
+public class Subcolumn2BlockSizeTest {
+    // Subcolumn2Test 测试不同 block size
 
     public static int getDecimalPrecision(String str) {
         // 查找小数点的位置
@@ -114,7 +114,7 @@ public class SubcolumnByteBlockSizeTest {
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length = SubcolumnByteTest.Encoder(data2_arr, block_size, encoded_result);
+                    length = Subcolumn1Test.Encoder(data2_arr, block_size, encoded_result);
                 }
 
                 long e = System.nanoTime();
@@ -128,7 +128,7 @@ public class SubcolumnByteBlockSizeTest {
                 s = System.nanoTime();
 
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    int[] data2_arr_decoded = SubcolumnByteTest.Decoder(encoded_result);
+                    int[] data2_arr_decoded = Subcolumn1Test.Decoder(encoded_result);
                     for (int i = 0; i < data2_arr_decoded.length; i++) {
                         // assert data2_arr[i] == data2_arr_decoded[i]
                         //         || data2_arr[i] + Integer.MAX_VALUE + 1 == data2_arr_decoded[i];

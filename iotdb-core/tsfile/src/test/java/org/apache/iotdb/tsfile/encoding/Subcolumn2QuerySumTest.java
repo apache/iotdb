@@ -13,16 +13,16 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class SubcolumnQueryMaxTest {
-    // SubcolumnByteTest Query Max
+public class Subcolumn2QuerySumTest {
+    // Subcolumn2Test Query Sum
 
     public static void Query(byte[] encoded_result) {
 
         int startBitPosition = 0;
-        int data_length = SubcolumnByteTest.bytesToInt(encoded_result, startBitPosition, 32);
+        int data_length = Subcolumn2Test.bytesToInt(encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
-        int block_size = SubcolumnByteTest.bytesToInt(encoded_result, startBitPosition, 32);
+        int block_size = Subcolumn2Test.bytesToInt(encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
         int num_blocks = data_length / block_size;
@@ -32,7 +32,7 @@ public class SubcolumnQueryMaxTest {
         int[] result_length = new int[1];
 
         for (int i = 0; i < num_blocks; i++) {
-            startBitPosition = BlockQueryMax(encoded_result, i, block_size, block_size, startBitPosition, result,
+            startBitPosition = BlockQuerySum(encoded_result, i, block_size, block_size, startBitPosition, result,
                     result_length);
         }
 
@@ -40,13 +40,13 @@ public class SubcolumnQueryMaxTest {
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                int value = SubcolumnByteTest.bytesToIntSigned(encoded_result, startBitPosition, 32);
+                int value = Subcolumn2Test.bytesToIntSigned(encoded_result, startBitPosition, 32);
                 result[result_length[0]] = value;
                 result_length[0]++;
                 startBitPosition += 32;
             }
         } else {
-            startBitPosition = BlockQueryMax(encoded_result, num_blocks, block_size, remainder, startBitPosition,
+            startBitPosition = BlockQuerySum(encoded_result, num_blocks, block_size, remainder, startBitPosition,
                     result, result_length);
         }
 
@@ -57,22 +57,15 @@ public class SubcolumnQueryMaxTest {
 
     }
 
-    public static int BlockQueryMax(byte[] encoded_result, int block_index, int block_size, int remainder,
+    public static int BlockQuerySum(byte[] encoded_result, int block_index, int block_size, int remainder,
             int startBitPosition, int[] result, int[] result_length) {
         int[] min_delta = new int[3];
 
-        min_delta[0] = SubcolumnByteTest.bytesToIntSigned(encoded_result, startBitPosition, 32);
+        min_delta[0] = Subcolumn2Test.bytesToIntSigned(encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
-        int m = SubcolumnByteTest.bytesToInt(encoded_result, startBitPosition, 6);
+        int m = Subcolumn2Test.bytesToInt(encoded_result, startBitPosition, 6);
         startBitPosition += 6;
-
-        int[] candidate_indices = new int[remainder];
-        int candidate_length = 0;
-        for (int i = 0; i < remainder; i++) {
-            candidate_indices[i] = i;
-            candidate_length++;
-        }
 
         if (m == 0) {
             result[result_length[0]] = min_delta[0];
@@ -80,107 +73,44 @@ public class SubcolumnQueryMaxTest {
             return startBitPosition;
         }
 
-        int beta = SubcolumnByteTest.bytesToInt(encoded_result, startBitPosition, 6);
+        int beta = Subcolumn2Test.bytesToInt(encoded_result, startBitPosition, 6);
         startBitPosition += 6;
 
         int l = (m + beta - 1) / beta;
 
-        int[] bitWidthList = SubcolumnByteTest.bitUnpacking(encoded_result, startBitPosition, 8, l);
+        int[] bitWidthList = Subcolumn2Test.bitUnpacking(encoded_result, startBitPosition, 8, l);
         startBitPosition += 8 * l;
 
-        int[][] subcolumnList = new int[l][remainder];
-
         for (int i = l - 1; i >= 0; i--) {
-            boolean type = SubcolumnByteTest.bytesToBool(encoded_result, startBitPosition);
+            boolean type = Subcolumn2Test.bytesToBool(encoded_result, startBitPosition);
             startBitPosition += 1;
             if (!type) {
+
+                for (int j = 0; j < remainder; j++) {
+                    int value = Subcolumn2Test.bytesToInt(encoded_result, startBitPosition + j * bitWidthList[i],
+                            bitWidthList[i]);
+                    result[result_length[0]] += value << (i * beta);
+                }
+
                 startBitPosition += bitWidthList[i] * remainder;
 
-                if (candidate_length == 1) {
-                    continue;
-                }
-
-                int maxPart = 0;
-
-                int new_length = 0;
-                for (int j = 0; j < candidate_length; j++) {
-                    int index = candidate_indices[j];
-                    subcolumnList[i][index] = SubcolumnByteTest.bytesToInt(encoded_result,
-                            startBitPosition + index * bitWidthList[i], bitWidthList[i]);
-
-                    if (subcolumnList[i][index] > maxPart) {
-                        maxPart = subcolumnList[i][index];
-                        // new_length = 0;
-                        // candidate_indices[new_length] = index;
-                        // new_length++;
-                        // } else if (bpListList[i][index] == maxPart) {
-                        // candidate_indices[new_length] = index;
-                        // new_length++;
-                    }
-                }
-
-                for (int j = 0; j < candidate_length; j++) {
-                    int index = candidate_indices[j];
-                    if (subcolumnList[i][index] == maxPart) {
-                        candidate_indices[new_length] = index;
-                        new_length++;
-                    }
-                }
-
-                candidate_length = new_length;
-
             } else {
-                int index = SubcolumnByteTest.bytesToInt(encoded_result, startBitPosition, 16);
+                int index = Subcolumn2Test.bytesToInt(encoded_result, startBitPosition, 16);
                 startBitPosition += 16;
 
-                if (candidate_length == 1) {
-                    startBitPosition += 8 * index;
-                    startBitPosition += bitWidthList[i] * index;
-                    continue;
-                }
-
-                int[] run_length = SubcolumnByteTest.bitUnpacking(encoded_result, startBitPosition, 8, index);
+                int[] run_length = Subcolumn2Test.bitUnpacking(encoded_result, startBitPosition, 8, index);
                 startBitPosition += 8 * index;
 
-                int[] rle_values = SubcolumnByteTest.bitUnpacking(encoded_result, startBitPosition, bitWidthList[i],
+                int[] rle_values = Subcolumn2Test.bitUnpacking(encoded_result, startBitPosition, bitWidthList[i],
                         index);
                 startBitPosition += bitWidthList[i] * index;
 
-                int count = 0;
                 for (int j = 0; j < index; j++) {
-                    for (int k = 0; k < run_length[j]; k++) {
-                        subcolumnList[i][count] = rle_values[j];
-                        count++;
-                    }
+                    result[result_length[0]] += (rle_values[j] << (i * beta)) * run_length[j];
                 }
-
-                int maxPart = 0;
-
-                int new_length = 0;
-                for (int j = 0; j < candidate_length; j++) {
-                    int index_candidate = candidate_indices[j];
-                    if (subcolumnList[i][index_candidate] > maxPart) {
-                        maxPart = subcolumnList[i][index_candidate];
-                        // new_length = 0;
-                        // } else if (bpListList[i][index_candidate] == maxPart) {
-                        // candidate_indices[new_length] = index_candidate;
-                        // new_length++;
-                    }
-                }
-
-                for (int j = 0; j < candidate_length; j++) {
-                    int index_candidate = candidate_indices[j];
-                    if (subcolumnList[i][index_candidate] == maxPart) {
-                        candidate_indices[new_length] = index_candidate;
-                        new_length++;
-                    }
-                }
-
-                candidate_length = new_length;
             }
         }
 
-        result[result_length[0]] = candidate_indices[0];
         result_length[0]++;
 
         return startBitPosition;
@@ -223,7 +153,7 @@ public class SubcolumnQueryMaxTest {
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        String outputPath = output_parent_dir + "test_byte_query_max.csv";
+        String outputPath = output_parent_dir + "test_byte_query_sum.csv";
 
         // int block_size = 1024;
         int block_size = 512;
@@ -285,7 +215,7 @@ public class SubcolumnQueryMaxTest {
 
             long s = System.nanoTime();
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                length = SubcolumnByteTest.Encoder(data2_arr, block_size, encoded_result);
+                length = Subcolumn2Test.Encoder(data2_arr, block_size, encoded_result);
             }
 
             long e = System.nanoTime();

@@ -13,17 +13,20 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class SubcolumnRLEQueryMaxTest {
-    // SubcolumnByteRLETest Query Max
+public class Subcolumn5QueryMaxTest {
+    // Subcolumn5Test Query Max
 
     public static void Query(byte[] encoded_result) {
 
-        int startBitPosition = 0;
-        int data_length = SubcolumnByteRLETest.bytesToInt(encoded_result, startBitPosition, 32);
-        startBitPosition += 32;
+        int encode_pos = 0;
 
-        int block_size = SubcolumnByteRLETest.bytesToInt(encoded_result, startBitPosition, 32);
-        startBitPosition += 32;
+        int data_length = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+        encode_pos += 4;
+
+        int block_size = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+        encode_pos += 4;
 
         int num_blocks = data_length / block_size;
 
@@ -32,7 +35,7 @@ public class SubcolumnRLEQueryMaxTest {
         int[] result_length = new int[1];
 
         for (int i = 0; i < num_blocks; i++) {
-            startBitPosition = BlockQueryMax(encoded_result, i, block_size, block_size, startBitPosition, result,
+            encode_pos = BlockQueryMax(encoded_result, i, block_size, block_size, encode_pos, result,
                     result_length);
         }
 
@@ -40,13 +43,15 @@ public class SubcolumnRLEQueryMaxTest {
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                int value = SubcolumnByteRLETest.bytesToIntSigned(encoded_result, startBitPosition, 32);
+                int value = ((encoded_result[encode_pos] & 0xFF) << 24) |
+                ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
                 result[result_length[0]] = value;
                 result_length[0]++;
-                startBitPosition += 32;
+                encode_pos += 4;
             }
         } else {
-            startBitPosition = BlockQueryMax(encoded_result, num_blocks, block_size, remainder, startBitPosition,
+            encode_pos = BlockQueryMax(encoded_result, num_blocks, block_size, remainder, encode_pos,
                     result, result_length);
         }
 
@@ -58,14 +63,17 @@ public class SubcolumnRLEQueryMaxTest {
     }
 
     public static int BlockQueryMax(byte[] encoded_result, int block_index, int block_size, int remainder,
-            int startBitPosition, int[] result, int[] result_length) {
+            int encode_pos, int[] result, int[] result_length) {
         int[] min_delta = new int[3];
 
-        min_delta[0] = SubcolumnByteRLETest.bytesToIntSigned(encoded_result, startBitPosition, 32);
-        startBitPosition += 32;
+        min_delta[0] = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+        encode_pos += 4;
 
-        int m = SubcolumnByteRLETest.bytesToInt(encoded_result, startBitPosition, 6);
-        startBitPosition += 6;
+        int m = encoded_result[encode_pos];
+        encode_pos += 1;
+
+        // System.out.println("m: " + m);
 
         int[] candidate_indices = new int[remainder];
         int candidate_length = 0;
@@ -77,28 +85,35 @@ public class SubcolumnRLEQueryMaxTest {
         if (m == 0) {
             result[result_length[0]] = min_delta[0];
             result_length[0]++;
-            return startBitPosition;
+            return encode_pos;
         }
 
-        int bw = SubcolumnByteRLETest.bitWidth(block_size);
+        int bw = Subcolumn5Test.bitWidth(block_size);
 
-        int beta = SubcolumnByteRLETest.bytesToInt(encoded_result, startBitPosition, 6);
-        startBitPosition += 6;
+        int beta = encoded_result[encode_pos];
+        encode_pos += 1;
+
+        // System.out.println("beta: " + beta);
 
         int l = (m + beta - 1) / beta;
 
-        int[] bitWidthList = SubcolumnByteRLETest.bitUnpacking(encoded_result, startBitPosition, 8, l);
-        startBitPosition += 8 * l;
+        int[] bitWidthList = new int[l];
 
-        int[][] subcolumnList = new int[l][remainder];
+        encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, 8, l, bitWidthList);
+
+        // int[][] subcolumnList = new int[l][remainder];
+
+        int[] encodingType = new int[l];
+
+        encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, 1, l, encodingType);
 
         for (int i = l - 1; i >= 0; i--) {
-            boolean type = SubcolumnByteRLETest.bytesToBool(encoded_result, startBitPosition);
-            startBitPosition += 1;
-            if (!type) {
-                startBitPosition += bitWidthList[i] * remainder;
-
+            int type = encodingType[i];
+            if (type == 0) {
                 if (candidate_length == 1) {
+                    encode_pos *= 8;
+                    encode_pos += bitWidthList[i] * remainder;
+                    encode_pos = (encode_pos + 7) / 8;
                     continue;
                 }
 
@@ -107,20 +122,24 @@ public class SubcolumnRLEQueryMaxTest {
                 int new_length = 0;
                 for (int j = 0; j < candidate_length; j++) {
                     int index = candidate_indices[j];
-                    subcolumnList[i][index] = SubcolumnByteRLETest.bytesToInt(encoded_result,
-                            startBitPosition + index * bitWidthList[i], bitWidthList[i]);
+                    int value = Subcolumn5Test.bytesToInt(encoded_result,
+                    encode_pos * 8 + index * bitWidthList[i], bitWidthList[i]);
 
-                    if (subcolumnList[i][index] > maxPart) {
-                        maxPart = subcolumnList[i][index];
+                    if (value > maxPart) {
+                        maxPart = value;
 
                         new_length = 0;
                         candidate_indices[new_length] = index;
                         new_length++;
-                        } else if (subcolumnList[i][index] == maxPart) {
+                        } else if (value == maxPart) {
                         candidate_indices[new_length] = index;
                         new_length++;
                     }
                 }
+
+                encode_pos *= 8;
+                encode_pos += bitWidthList[i] * remainder;
+                encode_pos = (encode_pos + 7) / 8;
 
                 // for (int j = 0; j < candidate_length; j++) {
                 //     int index = candidate_indices[j];
@@ -133,21 +152,26 @@ public class SubcolumnRLEQueryMaxTest {
                 candidate_length = new_length;
 
             } else {
-                int index = SubcolumnByteRLETest.bytesToInt(encoded_result, startBitPosition, 16);
-                startBitPosition += 16;
+                int index = ((encoded_result[encode_pos] & 0xFF) << 8) | (encoded_result[encode_pos + 1] & 0xFF);
+                encode_pos += 2;
 
                 if (candidate_length == 1) {
-                    startBitPosition += bw * index;
-                    startBitPosition += bitWidthList[i] * index;
+                    encode_pos *= 8;
+                    encode_pos += bw * index;
+                    encode_pos = (encode_pos + 7) / 8;
+
+                    encode_pos *= 8;
+                    encode_pos += bitWidthList[i] * index;
+                    encode_pos = (encode_pos + 7) / 8;
+
                     continue;
                 }
 
-                int[] run_length = SubcolumnByteRLETest.bitUnpacking(encoded_result, startBitPosition, bw, index);
-                startBitPosition += bw * index;
+                int[] run_length = new int[index];
+                int[] rle_values = new int[index];
 
-                int[] rle_values = SubcolumnByteRLETest.bitUnpacking(encoded_result, startBitPosition, bitWidthList[i],
-                        index);
-                startBitPosition += bitWidthList[i] * index;
+                encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, bw, index, run_length);
+                encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, bitWidthList[i], index, rle_values);
 
                 int maxPart = 0;
 
@@ -198,7 +222,7 @@ public class SubcolumnRLEQueryMaxTest {
         result[result_length[0]] = candidate_indices[0];
         result_length[0]++;
 
-        return startBitPosition;
+        return encode_pos;
     }
 
     public static int getDecimalPrecision(String str) {
@@ -238,12 +262,12 @@ public class SubcolumnRLEQueryMaxTest {
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        String outputPath = output_parent_dir + "query_max.csv";
+        String outputPath = output_parent_dir + "query_max5.csv";
 
         // int block_size = 1024;
         int block_size = 512;
 
-        int repeatTime = 100;
+        int repeatTime = 500;
         // TODO 真正计算时，记得注释掉将下面的内容
         // repeatTime = 1;
 
@@ -300,12 +324,13 @@ public class SubcolumnRLEQueryMaxTest {
 
             long s = System.nanoTime();
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                length = SubcolumnByteRLETest.Encoder(data2_arr, block_size, encoded_result);
+                length = Subcolumn5Test.Encoder(data2_arr, block_size, encoded_result);
             }
 
             long e = System.nanoTime();
             encodeTime += ((e - s) / repeatTime);
-            compressed_size += length / 8;
+            // compressed_size += length / 8;
+            compressed_size += length;
             double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
             ratio += ratioTmp;
 

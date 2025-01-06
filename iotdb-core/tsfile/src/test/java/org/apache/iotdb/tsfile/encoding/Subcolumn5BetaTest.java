@@ -12,10 +12,8 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class SubcolumnByteRLE2Test {
-    // 只对第一个 block 求最合适的 beta，之后的 block 都用同一个 beta
-    // 使用 intToBytes 等操作
-    // 对于 RLE 的分列，run_length 数组改为存累计长度
+public class Subcolumn5BetaTest {
+    // Subcolumn5Test 测试不同 beta 的影响
 
     public static int bitWidth(int value) {
         return 32 - Integer.numberOfLeadingZeros(value);
@@ -251,13 +249,10 @@ public class SubcolumnByteRLE2Test {
                 boolean bpBest = false;
 
                 for (int j = 1; j < x_length; j++) {
-                    // if (subcolumnList[i][j] == currentNumber) {
-                    //     // count++;
-                    // } else {
-                        
-                    // }
-                    index++;
-                    currentNumber = subcolumnList[i][j];
+                    if (subcolumnList[i][j] != currentNumber) {
+                        index++;
+                        currentNumber = subcolumnList[i][j];
+                    }
 
                     if (bw * index + bitWidthListList[i] * index >= bpCost) {
                         bpBest = true;
@@ -366,15 +361,12 @@ public class SubcolumnByteRLE2Test {
             int[] rle_values = new int[list_length];
 
             for (int j = 1; j < list_length; j++) {
-                // if (subcolumnList[i][j] == currentNumber) {
-                //     // count++;
-                // } else {
-                    
-                // }
-                run_length[index] = j;
+                if (subcolumnList[i][j] != currentNumber) {
+                    run_length[index] = j;
                     rle_values[index] = currentNumber;
                     index++;
                     currentNumber = subcolumnList[i][j];
+                }
             }
 
             run_length[index] = list_length;
@@ -403,7 +395,6 @@ public class SubcolumnByteRLE2Test {
             }
 
         }
-
 
         preTypePos = bitPacking(encodingType, 1, preTypePos, encoded_result, l);
 
@@ -529,17 +520,17 @@ public class SubcolumnByteRLE2Test {
         encoded_result[encode_pos + 3] = (byte) min_delta[0];
         encode_pos += 4;
 
-        if (block_index == 0) {
-            int maxValue = 0;
-            for (int j = 0; j < remainder; j++) {
-                if (data_delta[j] > maxValue) {
-                    maxValue = data_delta[j];
-                }
-            }
-            int m = bitWidth(maxValue);
+        // if (block_index == 0) {
+        // int maxValue = 0;
+        // for (int j = 0; j < remainder; j++) {
+        // if (data_delta[j] > maxValue) {
+        // maxValue = data_delta[j];
+        // }
+        // }
+        // int m = bitWidth(maxValue);
 
-            beta[0] = Subcolumn(data_delta, remainder, m, block_size);
-        }
+        // beta[0] = Subcolumn(data_delta, remainder, m, block_size);
+        // }
 
         encode_pos = SubcolumnEncoder(data_delta, encode_pos,
                 encoded_result, beta, block_size);
@@ -567,7 +558,7 @@ public class SubcolumnByteRLE2Test {
         return encode_pos;
     }
 
-    public static int Encoder(int[] data, int block_size, byte[] encoded_result) {
+    public static int Encoder(int[] data, int block_size, byte[] encoded_result, int beta_value) {
         int data_length = data.length;
         int encode_pos = 0;
 
@@ -588,7 +579,7 @@ public class SubcolumnByteRLE2Test {
         int remainder = data_length % block_size;
 
         int[] beta = new int[1];
-        beta[0] = 2;
+        beta[0] = beta_value;
 
         for (int i = 0; i < num_blocks; i++) {
             encode_pos = BlockEncoder(data, i, block_size, block_size, encode_pos, encoded_result, beta);
@@ -614,7 +605,8 @@ public class SubcolumnByteRLE2Test {
     public static int[] Decoder(byte[] encoded_result) {
         int encode_pos = 0;
 
-        int data_length = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+        int data_length = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16)
+                |
                 ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
         encode_pos += 4;
 
@@ -684,7 +676,8 @@ public class SubcolumnByteRLE2Test {
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        String outputPath = output_parent_dir + "subcolumn_test0.csv";
+        int[] beta_list = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                24, 25, 26, 27, 28, 29, 30, 31 };
 
         // int block_size = 1024;
         int block_size = 512;
@@ -693,96 +686,101 @@ public class SubcolumnByteRLE2Test {
         // TODO 真正计算时，记得注释掉将下面的内容
         // repeatTime = 1;
 
-        CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
+        for (int beta : beta_list) {
 
-        String[] head = {
-                "Dataset",
-                "Encoding Algorithm",
-                "Encoding Time",
-                "Decoding Time",
-                "Points",
-                "Compressed Size",
-                "Compression Ratio"
-        };
-        writer.writeRecord(head);
+            String outputPath = output_parent_dir + "subcolumn5_beta_" + beta + ".csv";
 
-        File directory = new File(parent_dir);
-        // File[] csvFiles = directory.listFiles();
-        File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
+            CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
 
-        for (File file : csvFiles) {
-            String datasetName = extractFileName(file.toString());
-            System.out.println(datasetName);
-
-            InputStream inputStream = Files.newInputStream(file.toPath());
-
-            CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-            ArrayList<Float> data1 = new ArrayList<>();
-
-            int max_decimal = 0;
-            while (loader.readRecord()) {
-                String f_str = loader.getValues()[0];
-                int cur_decimal = getDecimalPrecision(f_str);
-                if (cur_decimal > max_decimal)
-                    max_decimal = cur_decimal;
-                data1.add(Float.valueOf(f_str));
-            }
-            inputStream.close();
-            int[] data2_arr = new int[data1.size()];
-            int max_mul = (int) Math.pow(10, max_decimal);
-            for (int i = 0; i < data1.size(); i++) {
-                data2_arr[i] = (int) (data1.get(i) * max_mul);
-            }
-
-            System.out.println(max_decimal);
-            byte[] encoded_result = new byte[data2_arr.length * 4];
-
-            long encodeTime = 0;
-            long decodeTime = 0;
-            double ratio = 0;
-            double compressed_size = 0;
-
-            int length = 0;
-
-            long s = System.nanoTime();
-            for (int repeat = 0; repeat < repeatTime; repeat++) {
-                length = Encoder(data2_arr, block_size, encoded_result);
-            }
-
-            long e = System.nanoTime();
-            encodeTime += ((e - s) / repeatTime);
-            // compressed_size += length / 8;
-            compressed_size += length;
-            double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
-            ratio += ratioTmp;
-
-            System.out.println("Decode");
-
-            s = System.nanoTime();
-
-            for (int repeat = 0; repeat < repeatTime; repeat++) {
-                int[] data2_arr_decoded = Decoder(encoded_result);
-                for (int i = 0; i < data2_arr_decoded.length; i++) {
-                    assert data2_arr[i] == data2_arr_decoded[i];
-                }
-            }
-
-            e = System.nanoTime();
-            decodeTime += ((e - s) / repeatTime);
-
-            String[] record = {
-                    datasetName,
-                    "Subcolumn",
-                    String.valueOf(encodeTime),
-                    String.valueOf(decodeTime),
-                    String.valueOf(data1.size()),
-                    String.valueOf(compressed_size),
-                    String.valueOf(ratio)
+            String[] head = {
+                    "Dataset",
+                    "Encoding Algorithm",
+                    "Encoding Time",
+                    "Decoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Compression Ratio"
             };
-            writer.writeRecord(record);
-            System.out.println(ratio);
-        }
+            writer.writeRecord(head);
 
-        writer.close();
+            File directory = new File(parent_dir);
+            // File[] csvFiles = directory.listFiles();
+            File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
+
+            for (File file : csvFiles) {
+                String datasetName = extractFileName(file.toString());
+                System.out.println(datasetName);
+
+                InputStream inputStream = Files.newInputStream(file.toPath());
+
+                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+                ArrayList<Float> data1 = new ArrayList<>();
+
+                int max_decimal = 0;
+                while (loader.readRecord()) {
+                    String f_str = loader.getValues()[0];
+                    int cur_decimal = getDecimalPrecision(f_str);
+                    if (cur_decimal > max_decimal)
+                        max_decimal = cur_decimal;
+                    data1.add(Float.valueOf(f_str));
+                }
+                inputStream.close();
+                int[] data2_arr = new int[data1.size()];
+                int max_mul = (int) Math.pow(10, max_decimal);
+                for (int i = 0; i < data1.size(); i++) {
+                    data2_arr[i] = (int) (data1.get(i) * max_mul);
+                }
+
+                System.out.println(max_decimal);
+                byte[] encoded_result = new byte[data2_arr.length * 4];
+
+                long encodeTime = 0;
+                long decodeTime = 0;
+                double ratio = 0;
+                double compressed_size = 0;
+
+                int length = 0;
+
+                long s = System.nanoTime();
+                for (int repeat = 0; repeat < repeatTime; repeat++) {
+                    length = Encoder(data2_arr, block_size, encoded_result, beta);
+                }
+
+                long e = System.nanoTime();
+                encodeTime += ((e - s) / repeatTime);
+                // compressed_size += length / 8;
+                compressed_size += length;
+                double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
+                ratio += ratioTmp;
+
+                System.out.println("Decode");
+
+                s = System.nanoTime();
+
+                for (int repeat = 0; repeat < repeatTime; repeat++) {
+                    int[] data2_arr_decoded = Decoder(encoded_result);
+                    for (int i = 0; i < data2_arr_decoded.length; i++) {
+                        assert data2_arr[i] == data2_arr_decoded[i];
+                    }
+                }
+
+                e = System.nanoTime();
+                decodeTime += ((e - s) / repeatTime);
+
+                String[] record = {
+                        datasetName,
+                        "Subcolumn",
+                        String.valueOf(encodeTime),
+                        String.valueOf(decodeTime),
+                        String.valueOf(data1.size()),
+                        String.valueOf(compressed_size),
+                        String.valueOf(ratio)
+                };
+                writer.writeRecord(record);
+                System.out.println(ratio);
+            }
+
+            writer.close();
+        }
     }
 }

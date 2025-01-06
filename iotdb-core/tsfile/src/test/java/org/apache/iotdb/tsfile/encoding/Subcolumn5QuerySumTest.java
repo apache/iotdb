@@ -13,17 +13,20 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class SubcolumnRLENewQuerySumTest {
-    // SubcolumnByteRLENewTest Query Sum
+public class Subcolumn5QuerySumTest {
+    // Subcolumn5Test Query Sum
 
     public static void Query(byte[] encoded_result) {
 
-        int startBitPosition = 0;
-        int data_length = SubcolumnByteRLENewTest.bytesToInt(encoded_result, startBitPosition, 32);
-        startBitPosition += 32;
+        int encode_pos = 0;
 
-        int block_size = SubcolumnByteRLENewTest.bytesToInt(encoded_result, startBitPosition, 32);
-        startBitPosition += 32;
+        int data_length = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+        encode_pos += 4;
+
+        int block_size = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+        encode_pos += 4;
 
         int num_blocks = data_length / block_size;
 
@@ -32,7 +35,7 @@ public class SubcolumnRLENewQuerySumTest {
         int[] result_length = new int[1];
 
         for (int i = 0; i < num_blocks; i++) {
-            startBitPosition = BlockQuerySum(encoded_result, i, block_size, block_size, startBitPosition, result,
+            encode_pos = BlockQuerySum(encoded_result, i, block_size, block_size, encode_pos, result,
                     result_length);
         }
 
@@ -40,13 +43,15 @@ public class SubcolumnRLENewQuerySumTest {
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                int value = SubcolumnByteRLENewTest.bytesToIntSigned(encoded_result, startBitPosition, 32);
+                int value = ((encoded_result[encode_pos] & 0xFF) << 24) |
+                ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+                encode_pos += 4;
                 result[result_length[0]] = value;
                 result_length[0]++;
-                startBitPosition += 32;
             }
         } else {
-            startBitPosition = BlockQuerySum(encoded_result, num_blocks, block_size, remainder, startBitPosition,
+            encode_pos = BlockQuerySum(encoded_result, num_blocks, block_size, remainder, encode_pos,
                     result, result_length);
         }
 
@@ -58,54 +63,62 @@ public class SubcolumnRLENewQuerySumTest {
     }
 
     public static int BlockQuerySum(byte[] encoded_result, int block_index, int block_size, int remainder,
-            int startBitPosition, int[] result, int[] result_length) {
+            int encode_pos, int[] result, int[] result_length) {
         int[] min_delta = new int[3];
 
-        min_delta[0] = SubcolumnByteRLENewTest.bytesToIntSigned(encoded_result, startBitPosition, 32);
-        startBitPosition += 32;
+        min_delta[0] = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+        encode_pos += 4;
 
-        int m = SubcolumnByteRLENewTest.bytesToInt(encoded_result, startBitPosition, 6);
-        startBitPosition += 6;
+        int m = encoded_result[encode_pos];
+        encode_pos += 1;
 
         if (m == 0) {
             result[result_length[0]] = min_delta[0];
             result_length[0]++;
-            return startBitPosition;
+            return encode_pos;
         }
 
-        byte bw = SubcolumnByteRLENewTest.bitWidthByte(block_size);
+        int bw = Subcolumn5Test.bitWidth(block_size);
 
-        byte beta = SubcolumnByteRLENewTest.bytesToByte(encoded_result, startBitPosition, 6);
-        startBitPosition += 6;
+        int beta = encoded_result[encode_pos];
+        encode_pos += 1;
 
         int l = (m + beta - 1) / beta;
 
-        byte[] bitWidthList = SubcolumnByteRLENewTest.bitUnpackingByte(encoded_result, startBitPosition, 8, l);
-        startBitPosition += 8 * l;
+        int[] bitWidthList = new int[l];
+
+        encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, 8, l, bitWidthList);
+
+        int[] encodingType = new int[l];
+
+        encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, 1, l, encodingType);
 
         for (int i = l - 1; i >= 0; i--) {
-            boolean type = SubcolumnByteRLENewTest.bytesToBool(encoded_result, startBitPosition);
-            startBitPosition += 1;
-            if (!type) {
+            int type = encodingType[i];
+            if (type == 0) {
+
+                encode_pos *= 8;
 
                 for (int j = 0; j < remainder; j++) {
-                    byte value = SubcolumnByteRLENewTest.bytesToByte(encoded_result, startBitPosition + j * bitWidthList[i],
+                    int value = Subcolumn5Test.bytesToInt(encoded_result, encode_pos + j * bitWidthList[i],
                             bitWidthList[i]);
                     result[result_length[0]] += value << (i * beta);
                 }
 
-                startBitPosition += bitWidthList[i] * remainder;
+                encode_pos += remainder * bitWidthList[i];
+                encode_pos = (encode_pos + 7) / 8;
 
             } else {
-                int index = SubcolumnByteRLENewTest.bytesToInt(encoded_result, startBitPosition, 16);
-                startBitPosition += 16;
+                int index = ((encoded_result[encode_pos] & 0xFF) << 8) | (encoded_result[encode_pos + 1] & 0xFF);
 
-                int[] run_length = SubcolumnByteRLENewTest.bitUnpacking(encoded_result, startBitPosition, bw, index);
-                startBitPosition += bw * index;
+                encode_pos += 2;
 
-                byte[] rle_values = SubcolumnByteRLENewTest.bitUnpackingByte(encoded_result, startBitPosition, bitWidthList[i],
-                        index);
-                startBitPosition += bitWidthList[i] * index;
+                int[] run_length = new int[index];
+                int[] rle_values = new int[index];
+
+                encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, bw, index, run_length);
+                encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, bitWidthList[i], index, rle_values);
 
                 for (int j = 0; j < index; j++) {
                     int runCount = j == 0 ? run_length[j] : run_length[j] - run_length[j - 1];
@@ -117,7 +130,7 @@ public class SubcolumnRLENewQuerySumTest {
 
         result_length[0]++;
 
-        return startBitPosition;
+        return encode_pos;
     }
 
     public static int getDecimalPrecision(String str) {
@@ -157,12 +170,12 @@ public class SubcolumnRLENewQuerySumTest {
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        String outputPath = output_parent_dir + "test_byte_query_sum_1.csv";
+        String outputPath = output_parent_dir + "query_sum50.csv";
 
         // int block_size = 1024;
         int block_size = 512;
 
-        int repeatTime = 100;
+        int repeatTime = 500;
         // TODO 真正计算时，记得注释掉将下面的内容
         // repeatTime = 1;
 
@@ -219,12 +232,13 @@ public class SubcolumnRLENewQuerySumTest {
 
             long s = System.nanoTime();
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                length = SubcolumnByteRLENewTest.Encoder(data2_arr, block_size, encoded_result);
+                length = Subcolumn5Test.Encoder(data2_arr, block_size, encoded_result);
             }
 
             long e = System.nanoTime();
             encodeTime += ((e - s) / repeatTime);
-            compressed_size += length / 8;
+            // compressed_size += length / 8;
+            compressed_size += length;
             double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
             ratio += ratioTmp;
 

@@ -13,16 +13,16 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class SubcolumnQueryIndexTest {
-    // SubcolumnByteTest Query Index
+public class Subcolumn3QueryIndexTest {
+    // Subcolumn3Test Query Index
 
     public static void Query(byte[] encoded_result, int lower_bound, int upper_bound) {
 
         int startBitPosition = 0;
-        int data_length = SubcolumnByteTest.bytesToInt(encoded_result, startBitPosition, 32);
+        int data_length = Subcolumn3Test.bytesToInt(encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
-        int block_size = SubcolumnByteTest.bytesToInt(encoded_result, startBitPosition, 32);
+        int block_size = Subcolumn3Test.bytesToInt(encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
         int num_blocks = data_length / block_size;
@@ -41,7 +41,7 @@ public class SubcolumnQueryIndexTest {
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                int value = SubcolumnByteTest.bytesToIntSigned(encoded_result, startBitPosition, 32);
+                int value = Subcolumn3Test.bytesToIntSigned(encoded_result, startBitPosition, 32);
                 if (value >= lower_bound) {
                     result[result_length[0]] = value;
                     result_length[0]++;
@@ -65,12 +65,12 @@ public class SubcolumnQueryIndexTest {
             int startBitPosition, int lower_bound, int[] result, int[] result_length) {
         int[] min_delta = new int[3];
 
-        min_delta[0] = SubcolumnByteTest.bytesToIntSigned(encoded_result, startBitPosition, 32);
+        min_delta[0] = Subcolumn3Test.bytesToIntSigned(encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
         // int[] block_data = new int[remainder];
 
-        int m = SubcolumnByteTest.bytesToInt(encoded_result, startBitPosition, 6);
+        int m = Subcolumn3Test.bytesToInt(encoded_result, startBitPosition, 6);
         startBitPosition += 6;
 
         lower_bound -= min_delta[0];
@@ -93,18 +93,20 @@ public class SubcolumnQueryIndexTest {
             return startBitPosition;
         }
 
-        int beta = SubcolumnByteTest.bytesToInt(encoded_result, startBitPosition, 6);
+        int bw = Subcolumn3Test.bitWidth(block_size);
+
+        int beta = Subcolumn3Test.bytesToInt(encoded_result, startBitPosition, 6);
         startBitPosition += 6;
 
         int l = (m + beta - 1) / beta;
 
-        int[] bitWidthList = SubcolumnByteTest.bitUnpacking(encoded_result, startBitPosition, 8, l);
+        int[] bitWidthList = Subcolumn3Test.bitUnpacking(encoded_result, startBitPosition, 8, l);
         startBitPosition += 8 * l;
 
         int[][] subcolumnList = new int[l][remainder];
 
         for (int i = l - 1; i >= 0; i--) {
-            boolean type = SubcolumnByteTest.bytesToBool(encoded_result, startBitPosition);
+            boolean type = Subcolumn3Test.bytesToBool(encoded_result, startBitPosition);
             startBitPosition += 1;
             if (!type) {
 
@@ -114,14 +116,12 @@ public class SubcolumnQueryIndexTest {
                 }
 
                 int new_length = 0;
-                int value = (lower_bound >> (i * beta)) & ((1 << beta) - 1);
-                
                 for (int j = 0; j < candidate_length; j++) {
                     int index = candidate_indices[j];
 
-                    subcolumnList[i][index] = SubcolumnByteTest.bytesToInt(encoded_result,
+                    subcolumnList[i][index] = Subcolumn3Test.bytesToInt(encoded_result,
                             startBitPosition + index * bitWidthList[i], bitWidthList[i]);
-                    
+                    int value = (lower_bound >> (i * beta)) & ((1 << beta) - 1);
                     if (subcolumnList[i][index] > value) {
                         result[result_length[0]] = block_size * block_index + index;
                         result_length[0]++;
@@ -137,46 +137,48 @@ public class SubcolumnQueryIndexTest {
 
             } else {
 
-                int index = SubcolumnByteTest.bytesToInt(encoded_result, startBitPosition, 16);
+                int index = Subcolumn3Test.bytesToInt(encoded_result, startBitPosition, 16);
                 startBitPosition += 16;
 
                 if (lower_bound <= 0) {
-                    startBitPosition += 8 * index;
+                    startBitPosition += bw * index;
                     startBitPosition += bitWidthList[i] * index;
                     continue;
                 }
 
-                int[] run_length = SubcolumnByteTest.bitUnpacking(encoded_result, startBitPosition, 8, index);
-                startBitPosition += 8 * index;
+                int[] run_length = Subcolumn3Test.bitUnpacking(encoded_result, startBitPosition, bw, index);
+                startBitPosition += bw * index;
 
-                int[] rle_values = SubcolumnByteTest.bitUnpacking(encoded_result, startBitPosition, bitWidthList[i],
+                int[] rle_values = Subcolumn3Test.bitUnpacking(encoded_result, startBitPosition, bitWidthList[i],
                         index);
                 startBitPosition += bitWidthList[i] * index;
 
-                int count = 0;
-                for (int j = 0; j < index; j++) {
-                    for (int k = 0; k < run_length[j]; k++) {
-                        subcolumnList[i][count] = rle_values[j];
-                        count++;
-                    }
-                }
-
                 int new_length = 0;
+                int rleIndex = 0;
+                int currentPos = 0;
                 int value = (lower_bound >> (i * beta)) & ((1 << beta) - 1);
 
                 for (int j = 0; j < candidate_length; j++) {
                     int index_candidate = candidate_indices[j];
-                    
-                    if (subcolumnList[i][index_candidate] > value) {
-                        result[result_length[0]] = block_size * block_index + index_candidate;
-                        result_length[0]++;
-                    } else if (subcolumnList[i][index_candidate] == value) {
-                        candidate_indices[new_length] = index_candidate;
-                        new_length++;
+
+                    while (rleIndex < index && currentPos + run_length[rleIndex] <= index_candidate) {
+                        currentPos += run_length[rleIndex];
+                        rleIndex++;
+                    }
+
+                    if (rleIndex < index) {
+                        if (rle_values[rleIndex] > value) {
+                            result[result_length[0]] = block_size * block_index + index_candidate;
+                            result_length[0]++;
+                        } else if (rle_values[rleIndex] == value) {
+                            candidate_indices[new_length] = index_candidate;
+                            new_length++;
+                        }
                     }
                 }
 
                 candidate_length = new_length;
+
             }
         }
 
@@ -228,17 +230,17 @@ public class SubcolumnQueryIndexTest {
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        String outputPath = output_parent_dir + "test_byte_query_index.csv";
+        String outputPath = output_parent_dir + "query_index_512.csv";
 
         // int block_size = 1024;
         int block_size = 512;
 
         HashMap<String, int[]> queryRange = new HashMap<>();
-        queryRange.put("Air-pressure", new int[] { 8850000, 8855000 });
+        queryRange.put("Air-pressure", new int[] { 8720000, 8820000 });
         queryRange.put("Bird-migration", new int[] { 2500000, 2600000 });
-        queryRange.put("Bitcoin-price", new int[] { 170000000, 172000000 });
+        queryRange.put("Bitcoin-price", new int[] { 160000000, 170000000 });
         queryRange.put("Blockchain-tr", new int[] { 100000, 300000 });
-        queryRange.put("City-temp", new int[] { 600, 700 });
+        queryRange.put("City-temp", new int[] { 480, 700 });
         queryRange.put("Dewpoint-temp", new int[] { 9500, 9600 });
         queryRange.put("IR-bio-temp", new int[] { -300, -200 });
         queryRange.put("PM10-dust", new int[] { 1000, 2000 });
@@ -304,7 +306,7 @@ public class SubcolumnQueryIndexTest {
 
             long s = System.nanoTime();
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                length = SubcolumnByteTest.Encoder(data2_arr, block_size, encoded_result);
+                length = Subcolumn3Test.Encoder(data2_arr, block_size, encoded_result);
             }
 
             long e = System.nanoTime();
