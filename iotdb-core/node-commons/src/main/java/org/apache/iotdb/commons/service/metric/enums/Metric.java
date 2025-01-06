@@ -189,6 +189,7 @@ public enum Metric {
   BINARY_ALLOCATOR("binary_allocator"),
   // memory related
   MEMORY_THRESHOLD_SIZE("memory_threshold_size"),
+  MEMORY_ACTUAL_SIZE("memory_actual_size"),
   ;
 
   final String value;
