@@ -19,6 +19,8 @@
 package org.apache.iotdb.consensus.pipe.consensuspipe;
 
 public interface ConsensusPipeConnector {
+  int getConsensusPipeRestartTimes();
+
   long getConsensusPipeCommitProgress();
 
   long getConsensusPipeReplicateProgress();

@@ -44,6 +44,8 @@ import java.util.stream.Collectors;
 public class ReplicateProgressDataNodeManager implements ReplicateProgressManager {
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
   private final Map<ConsensusGroupId, ProgressIndex> groupId2MaxProgressIndex;
+  private long pinnedCommitIndexForMigration;
+  private int pinnedPipeRestartTimesForMigration;
 
   public ReplicateProgressDataNodeManager() {
     this.groupId2MaxProgressIndex = new ConcurrentHashMap<>();
@@ -135,6 +137,25 @@ public class ReplicateProgressDataNodeManager implements ReplicateProgressManage
   public long getSyncLagForSpecificConsensusPipe(
       ConsensusGroupId consensusGroupId, ConsensusPipeName consensusPipeName) {
     return PipeConsensusSyncLagManager.getInstance(consensusGroupId.toString())
-        .getSyncLagForSpecificConsensusPipe(consensusPipeName);
+        .getSyncLagForRegionMigration(
+            consensusPipeName,
+            this.pinnedCommitIndexForMigration,
+            this.pinnedPipeRestartTimesForMigration);
+  }
+
+  @Override
+  public void pinCommitIndexForMigration(
+      ConsensusGroupId consensusGroupId, ConsensusPipeName consensusPipeName) {
+    this.pinnedCommitIndexForMigration =
+        PipeConsensusSyncLagManager.getInstance(consensusGroupId.toString())
+            .getCurrentCommitIndex(consensusPipeName);
+  }
+
+  @Override
+  public void pinRestartTimeForMigration(
+      ConsensusGroupId consensusGroupId, ConsensusPipeName consensusPipeName) {
+    this.pinnedCommitIndexForMigration =
+        PipeConsensusSyncLagManager.getInstance(consensusGroupId.toString())
+            .getCurrentRestartTimes(consensusPipeName);
   }
 }

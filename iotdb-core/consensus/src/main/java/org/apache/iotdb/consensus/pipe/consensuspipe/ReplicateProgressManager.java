@@ -31,4 +31,10 @@ public interface ReplicateProgressManager {
 
   long getSyncLagForSpecificConsensusPipe(
       ConsensusGroupId consensusGroupId, ConsensusPipeName consensusPipeName);
+
+  void pinCommitIndexForMigration(
+      ConsensusGroupId consensusGroupId, ConsensusPipeName consensusPipeName);
+
+  void pinRestartTimeForMigration(
+      ConsensusGroupId consensusGroupId, ConsensusPipeName consensusPipeName);
 }

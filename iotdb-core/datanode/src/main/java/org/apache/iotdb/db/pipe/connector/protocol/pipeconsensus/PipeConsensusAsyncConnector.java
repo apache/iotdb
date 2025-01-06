@@ -132,7 +132,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
     // initialize metric components
     pipeConsensusConnectorMetrics = new PipeConsensusConnectorMetrics(this);
     PipeConsensusSyncLagManager.getInstance(getConsensusGroupIdStr())
-        .addConsensusPipeConnector(new ConsensusPipeName(consensusPipeName),this);
+        .addConsensusPipeConnector(new ConsensusPipeName(consensusPipeName), this);
     MetricService.getInstance().addMetricSet(this.pipeConsensusConnectorMetrics);
 
     // In PipeConsensus, one pipeConsensusTask corresponds to a pipeConsensusConnector. Thus,
@@ -597,6 +597,15 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
   public int getRetryBufferSize() {
     return retryEventQueue.size();
+  }
+
+  @Override
+  public int getConsensusPipeRestartTimes() {
+    return PipeEventCommitManager.getInstance()
+        .getGivenConsensusPipeRestartTimes(
+            consensusPipeName,
+            PipeDataNodeAgent.task().getPipeCreationTime(consensusPipeName),
+            consensusGroupId);
   }
 
   @Override
