@@ -137,7 +137,6 @@ public class LoadTsFileScheduler implements IScheduler {
   private final Set<TRegionReplicaSet> allReplicaSets;
   private final boolean isGeneratedByPipe;
   private final LoadTsFileDataCacheMemoryBlock block;
-  private final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter;
   private final List<Integer> failedLoadTsFileIndexes = new ArrayList<>();
 
   public LoadTsFileScheduler(
@@ -156,7 +155,6 @@ public class LoadTsFileScheduler implements IScheduler {
     this.allReplicaSets = new HashSet<>();
     this.isGeneratedByPipe = isGeneratedByPipe;
     this.block = LoadTsFileMemoryManager.getInstance().allocateDataCacheMemoryBlock();
-    this.loadTsFileDataTypeConverter = new LoadTsFileDataTypeConverter();
 
     for (FragmentInstance fragmentInstance : distributedQueryPlan.getInstances()) {
       tsFileNodeList.add((LoadSingleTsFileNode) fragmentInstance.getFragment().getPlanNodeTree());
@@ -281,7 +279,10 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   private void convertFailedTsFilesToTablets() {
-    for (int failedLoadTsFileIndex : failedLoadTsFileIndexes) {
+    final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
+        new LoadTsFileDataTypeConverter();
+
+    for (final int failedLoadTsFileIndex : failedLoadTsFileIndexes) {
       final LoadSingleTsFileNode failedNode = tsFileNodeList.get(failedLoadTsFileIndex);
       final String filePath = failedNode.getTsFileResource().getTsFilePath();
 

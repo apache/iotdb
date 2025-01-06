@@ -82,8 +82,6 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
   final ISchemaFetcher schemaFetcher = ClusterSchemaFetcher.getInstance();
 
-  protected final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter;
-
   LoadTsFileAnalyzer(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
     this.loadTsFileTreeStatement = loadTsFileStatement;
     this.tsFiles = loadTsFileStatement.getTsFiles();
@@ -94,7 +92,6 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     this.isAutoCreateDatabase = loadTsFileStatement.isAutoCreateDatabase();
     this.databaseLevel = loadTsFileStatement.getDatabaseLevel();
     this.database = loadTsFileStatement.getDatabase();
-    this.loadTsFileDataTypeConverter = new LoadTsFileDataTypeConverter();
 
     this.loadTsFileTableStatement = null;
     this.isTableModelStatement = false;
@@ -111,7 +108,6 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     this.isAutoCreateDatabase = loadTsFileTableStatement.isAutoCreateDatabase();
     this.databaseLevel = loadTsFileTableStatement.getDatabaseLevel();
     this.database = loadTsFileTableStatement.getDatabase();
-    this.loadTsFileDataTypeConverter = new LoadTsFileDataTypeConverter();
 
     this.loadTsFileTreeStatement = null;
     this.isTableModelStatement = true;
@@ -178,12 +174,18 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
 
   protected void executeDataTypeConversionOnTypeMismatch(
       final IAnalysis analysis, final VerifyMetadataTypeMismatchException e) {
-    final TSStatus status =
-        isConvertOnTypeMismatch
-            ? (isTableModelStatement
-                ? loadTsFileDataTypeConverter.convertForTableModel(loadTsFileTableStatement)
-                : loadTsFileDataTypeConverter.convertForTreeModel(loadTsFileTreeStatement))
-            : null;
+    final TSStatus status;
+
+    if (isConvertOnTypeMismatch) {
+      final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
+          new LoadTsFileDataTypeConverter();
+      status =
+          isTableModelStatement
+              ? loadTsFileDataTypeConverter.convertForTableModel(loadTsFileTableStatement)
+              : loadTsFileDataTypeConverter.convertForTreeModel(loadTsFileTreeStatement);
+    } else {
+      status = null;
+    }
 
     if (status == null) {
       analysis.setFailStatus(
