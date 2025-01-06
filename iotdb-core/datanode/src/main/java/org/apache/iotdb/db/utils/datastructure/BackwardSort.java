@@ -78,6 +78,7 @@ public class BackwardSort extends QuickSort {
       PrimitiveArrayManager.release(dataArray);
     }
     tmpIndices.clear();
+    tmpLength = 0;
   }
 
   public void backwardSort(List<long[]> timestamps, int rowCount) {
