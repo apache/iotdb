@@ -28,33 +28,34 @@ import java.lang.reflect.Proxy;
 
 public class MagicUtils {
 
-    private static Logger LOGGER = LoggerFactory.getLogger(MagicUtils.class);
+  private static Logger LOGGER = LoggerFactory.getLogger(MagicUtils.class);
 
-    /**
-     * Ignore all exceptions during close()
-     * @param t target object
-     * @return object which will close without exception
-     */
-    public static <T extends AutoCloseable> T makeItCloseQuietly(T t) {
-      InvocationHandler handler =
-          (proxy, method, args) -> {
-            try {
-              if (method.getName().equals("close")) {
-                try {
-                  method.invoke(t, args);
-                } catch (Throwable e) {
-                  LOGGER.warn("Exception happens during close(): ", e);
-                }
-                return null;
-              } else {
-                return method.invoke(t, args);
+  /**
+   * Ignore all exceptions during close()
+   *
+   * @param t target object
+   * @return object which will close without exception
+   */
+  public static <T extends AutoCloseable> T makeItCloseQuietly(T t) {
+    InvocationHandler handler =
+        (proxy, method, args) -> {
+          try {
+            if (method.getName().equals("close")) {
+              try {
+                method.invoke(t, args);
+              } catch (Throwable e) {
+                LOGGER.warn("Exception happens during close(): ", e);
               }
-            } catch (InvocationTargetException e) {
-              throw e.getTargetException();
+              return null;
+            } else {
+              return method.invoke(t, args);
             }
-          };
-      return (T)
-          Proxy.newProxyInstance(
-              t.getClass().getClassLoader(), t.getClass().getInterfaces(), handler);
-    }
+          } catch (InvocationTargetException e) {
+            throw e.getTargetException();
+          }
+        };
+    return (T)
+        Proxy.newProxyInstance(
+            t.getClass().getClassLoader(), t.getClass().getInterfaces(), handler);
+  }
 }

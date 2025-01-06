@@ -94,7 +94,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualAutoIT {
           Collections.singleton("1,"));
 
       try (final Connection connection = makeItCloseQuietly(senderEnv.getConnection());
-           final Statement statement = makeItCloseQuietly(connection.createStatement()); ) {
+          final Statement statement = makeItCloseQuietly(connection.createStatement()); ) {
         ResultSet result = statement.executeQuery("show pipes");
         await()
             .pollInSameThread()
@@ -169,7 +169,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualAutoIT {
           Collections.singleton("3,"));
 
       try (final Connection connection = makeItCloseQuietly(senderEnv.getConnection());
-           final Statement statement = makeItCloseQuietly(connection.createStatement()); ) {
+          final Statement statement = makeItCloseQuietly(connection.createStatement()); ) {
         ResultSet result = statement.executeQuery("show pipes");
         await()
             .pollInSameThread()
