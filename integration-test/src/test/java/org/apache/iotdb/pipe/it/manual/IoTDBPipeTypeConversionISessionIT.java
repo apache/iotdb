@@ -750,7 +750,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
     for (int i = 0; i < objects.length; i++) {
       MeasurementSchema schema = pairs.get(i).left;
       measurementSchemas.add(schema);
-      columnTypes.add(Tablet.ColumnCategory.MEASUREMENT);
+      columnTypes.add(Tablet.ColumnCategory.FIELD);
       switch (schema.getType()) {
         case INT64:
           objects[i] = createTestDataForInt64();

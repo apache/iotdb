@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -44,7 +45,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,13 +59,13 @@ import static org.apache.iotdb.db.utils.constant.SqlConstant.TABLE_TIME_COLUMN_N
 
 public class AggregationTableScanNode extends DeviceTableScanNode {
   // if there is date_bin function of time, we should use this field to transform time input
-  private final Assignments projection;
+  protected Assignments projection;
 
-  private final Map<Symbol, AggregationNode.Aggregation> aggregations;
-  private final AggregationNode.GroupingSetDescriptor groupingSets;
-  private final List<Symbol> preGroupedSymbols;
-  private AggregationNode.Step step;
-  private final Optional<Symbol> groupIdSymbol;
+  protected Map<Symbol, AggregationNode.Aggregation> aggregations;
+  protected AggregationNode.GroupingSetDescriptor groupingSets;
+  protected List<Symbol> preGroupedSymbols;
+  protected AggregationNode.Step step;
+  protected Optional<Symbol> groupIdSymbol;
 
   public AggregationTableScanNode(
       PlanNodeId id,
@@ -80,6 +80,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
       long pushDownLimit,
       long pushDownOffset,
       boolean pushLimitToEachDevice,
+      boolean containsNonAlignedDevice,
       Assignments projection,
       Map<Symbol, AggregationNode.Aggregation> aggregations,
       AggregationNode.GroupingSetDescriptor groupingSets,
@@ -98,30 +99,11 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         pushDownPredicate,
         pushDownLimit,
         pushDownOffset,
-        pushLimitToEachDevice);
+        pushLimitToEachDevice,
+        containsNonAlignedDevice);
     this.projection = projection;
 
-    this.aggregations = new LinkedHashMap<>(aggregations.size());
-    for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : aggregations.entrySet()) {
-      Symbol symbol = entry.getKey();
-      AggregationNode.Aggregation aggregation = entry.getValue();
-      if (aggregation.getArguments().isEmpty()
-          && COUNT.equals(aggregation.getResolvedFunction().getSignature().getName())) {
-        AggregationNode.Aggregation countStarAggregation = getCountStarAggregation(aggregation);
-        if (!assignments.containsKey(Symbol.of(TABLE_TIME_COLUMN_NAME))) {
-          assignments.put(
-              Symbol.of(TABLE_TIME_COLUMN_NAME),
-              new ColumnSchema(
-                  TABLE_TIME_COLUMN_NAME,
-                  TimestampType.TIMESTAMP,
-                  false,
-                  TsTableColumnCategory.TIME));
-        }
-        this.aggregations.put(symbol, countStarAggregation);
-      } else {
-        this.aggregations.put(symbol, aggregation);
-      }
-    }
+    this.aggregations = transformCountStar(aggregations, assignments);
     aggregations.values().forEach(aggregation -> aggregation.verifyArguments(step));
 
     requireNonNull(groupingSets, "groupingSets is null");
@@ -151,14 +133,51 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         "Pre-grouped symbols must be a subset of the grouping keys");
     this.preGroupedSymbols = ImmutableList.copyOf(preGroupedSymbols);
 
+    this.setOutputSymbols(constructOutputSymbols(groupingSets, aggregations));
+  }
+
+  protected AggregationTableScanNode() {}
+
+  private static List<Symbol> constructOutputSymbols(
+      AggregationNode.GroupingSetDescriptor groupingSets,
+      Map<Symbol, AggregationNode.Aggregation> aggregations) {
     ImmutableList.Builder<Symbol> outputs = ImmutableList.builder();
     outputs.addAll(groupingSets.getGroupingKeys());
     outputs.addAll(aggregations.keySet());
-
-    this.setOutputSymbols(outputs.build());
+    return outputs.build();
   }
 
-  private AggregationNode.Aggregation getCountStarAggregation(
+  // transform count() to count(time)
+  private static Map<Symbol, AggregationNode.Aggregation> transformCountStar(
+      Map<Symbol, AggregationNode.Aggregation> aggregations,
+      Map<Symbol, ColumnSchema> assignments) {
+    ImmutableMap.Builder<Symbol, AggregationNode.Aggregation> resultBuilder =
+        ImmutableMap.builder();
+
+    for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : aggregations.entrySet()) {
+      Symbol symbol = entry.getKey();
+      AggregationNode.Aggregation aggregation = entry.getValue();
+      if (aggregation.getArguments().isEmpty()) {
+        AggregationNode.Aggregation countStarAggregation = getCountStarAggregation(aggregation);
+        if (!getTimeColumn(assignments).isPresent()) {
+          assignments.put(
+              Symbol.of(TABLE_TIME_COLUMN_NAME),
+              new ColumnSchema(
+                  TABLE_TIME_COLUMN_NAME,
+                  TimestampType.TIMESTAMP,
+                  false,
+                  TsTableColumnCategory.TIME));
+        }
+        resultBuilder.put(symbol, countStarAggregation);
+      } else {
+        resultBuilder.put(symbol, aggregation);
+      }
+    }
+
+    return resultBuilder.build();
+  }
+
+  private static AggregationNode.Aggregation getCountStarAggregation(
       AggregationNode.Aggregation aggregation) {
     ResolvedFunction resolvedFunction = aggregation.getResolvedFunction();
     ResolvedFunction countStarFunction =
@@ -237,6 +256,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         pushDownLimit,
         pushDownOffset,
         pushLimitToEachDevice,
+        containsNonAlignedDevice,
         projection,
         aggregations,
         groupingSets,
@@ -255,6 +275,32 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
       AggregationNode aggregationNode,
       ProjectNode projectNode,
       DeviceTableScanNode tableScanNode) {
+    if (tableScanNode instanceof TreeDeviceViewScanNode) {
+      TreeDeviceViewScanNode treeDeviceViewScanNode = (TreeDeviceViewScanNode) tableScanNode;
+      return new AggregationTreeDeviceViewScanNode(
+          id,
+          tableScanNode.getQualifiedObjectName(),
+          tableScanNode.getOutputSymbols(),
+          tableScanNode.getAssignments(),
+          tableScanNode.getDeviceEntries(),
+          tableScanNode.getIdAndAttributeIndexMap(),
+          tableScanNode.getScanOrder(),
+          tableScanNode.getTimePredicate().orElse(null),
+          tableScanNode.getPushDownPredicate(),
+          tableScanNode.getPushDownLimit(),
+          tableScanNode.getPushDownOffset(),
+          tableScanNode.isPushLimitToEachDevice(),
+          tableScanNode.containsNonAlignedDevice(),
+          projectNode == null ? null : projectNode.getAssignments(),
+          aggregationNode.getAggregations(),
+          aggregationNode.getGroupingSets(),
+          aggregationNode.getPreGroupedSymbols(),
+          aggregationNode.getStep(),
+          aggregationNode.getGroupIdSymbol(),
+          treeDeviceViewScanNode.getTreeDBName(),
+          treeDeviceViewScanNode.getMeasurementColumnNameMap());
+    }
+
     return new AggregationTableScanNode(
         id,
         tableScanNode.getQualifiedObjectName(),
@@ -268,6 +314,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         tableScanNode.getPushDownLimit(),
         tableScanNode.getPushDownOffset(),
         tableScanNode.isPushLimitToEachDevice(),
+        tableScanNode.containsNonAlignedDevice(),
         projectNode == null ? null : projectNode.getAssignments(),
         aggregationNode.getAggregations(),
         aggregationNode.getGroupingSets(),
@@ -282,6 +329,32 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
       ProjectNode projectNode,
       DeviceTableScanNode tableScanNode,
       AggregationNode.Step step) {
+    if (tableScanNode instanceof TreeDeviceViewScanNode) {
+      TreeDeviceViewScanNode treeDeviceViewScanNode = (TreeDeviceViewScanNode) tableScanNode;
+      return new AggregationTreeDeviceViewScanNode(
+          id,
+          tableScanNode.getQualifiedObjectName(),
+          tableScanNode.getOutputSymbols(),
+          tableScanNode.getAssignments(),
+          tableScanNode.getDeviceEntries(),
+          tableScanNode.getIdAndAttributeIndexMap(),
+          tableScanNode.getScanOrder(),
+          tableScanNode.getTimePredicate().orElse(null),
+          tableScanNode.getPushDownPredicate(),
+          tableScanNode.getPushDownLimit(),
+          tableScanNode.getPushDownOffset(),
+          tableScanNode.isPushLimitToEachDevice(),
+          tableScanNode.containsNonAlignedDevice(),
+          projectNode == null ? null : projectNode.getAssignments(),
+          aggregationNode.getAggregations(),
+          aggregationNode.getGroupingSets(),
+          aggregationNode.getPreGroupedSymbols(),
+          step,
+          aggregationNode.getGroupIdSymbol(),
+          treeDeviceViewScanNode.getTreeDBName(),
+          treeDeviceViewScanNode.getMeasurementColumnNameMap());
+    }
+
     return new AggregationTableScanNode(
         id,
         tableScanNode.getQualifiedObjectName(),
@@ -295,6 +368,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         tableScanNode.getPushDownLimit(),
         tableScanNode.getPushDownOffset(),
         tableScanNode.isPushLimitToEachDevice(),
+        tableScanNode.containsNonAlignedDevice(),
         projectNode == null ? null : projectNode.getAssignments(),
         aggregationNode.getAggregations(),
         aggregationNode.getGroupingSets(),
@@ -336,59 +410,14 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
     return "AggregationTableScanNode-" + this.getPlanNodeId();
   }
 
-  @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.TABLE_AGGREGATION_TABLE_SCAN_NODE.serialize(byteBuffer);
+  protected static void serializeMemberVariables(
+      AggregationTableScanNode node, ByteBuffer byteBuffer) {
+    DeviceTableScanNode.serializeMemberVariables(node, byteBuffer, false);
 
-    if (qualifiedObjectName.getDatabaseName() != null) {
+    if (node.projection != null) {
       ReadWriteIOUtils.write(true, byteBuffer);
-      ReadWriteIOUtils.write(qualifiedObjectName.getDatabaseName(), byteBuffer);
-    } else {
-      ReadWriteIOUtils.write(false, byteBuffer);
-    }
-    ReadWriteIOUtils.write(qualifiedObjectName.getObjectName(), byteBuffer);
-
-    ReadWriteIOUtils.write(assignments.size(), byteBuffer);
-    for (Map.Entry<Symbol, ColumnSchema> entry : assignments.entrySet()) {
-      Symbol.serialize(entry.getKey(), byteBuffer);
-      ColumnSchema.serialize(entry.getValue(), byteBuffer);
-    }
-
-    ReadWriteIOUtils.write(deviceEntries.size(), byteBuffer);
-    for (DeviceEntry entry : deviceEntries) {
-      entry.serialize(byteBuffer);
-    }
-
-    ReadWriteIOUtils.write(idAndAttributeIndexMap.size(), byteBuffer);
-    for (Map.Entry<Symbol, Integer> entry : idAndAttributeIndexMap.entrySet()) {
-      Symbol.serialize(entry.getKey(), byteBuffer);
-      ReadWriteIOUtils.write(entry.getValue(), byteBuffer);
-    }
-
-    ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
-
-    if (timePredicate != null) {
-      ReadWriteIOUtils.write(true, byteBuffer);
-      Expression.serialize(timePredicate, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write(false, byteBuffer);
-    }
-
-    if (pushDownPredicate != null) {
-      ReadWriteIOUtils.write(true, byteBuffer);
-      Expression.serialize(pushDownPredicate, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write(false, byteBuffer);
-    }
-
-    ReadWriteIOUtils.write(pushDownLimit, byteBuffer);
-    ReadWriteIOUtils.write(pushDownOffset, byteBuffer);
-    ReadWriteIOUtils.write(pushLimitToEachDevice, byteBuffer);
-
-    if (projection != null) {
-      ReadWriteIOUtils.write(true, byteBuffer);
-      ReadWriteIOUtils.write(projection.getMap().size(), byteBuffer);
-      for (Map.Entry<Symbol, Expression> entry : projection.getMap().entrySet()) {
+      ReadWriteIOUtils.write(node.projection.getMap().size(), byteBuffer);
+      for (Map.Entry<Symbol, Expression> entry : node.projection.getMap().entrySet()) {
         Symbol.serialize(entry.getKey(), byteBuffer);
         Expression.serialize(entry.getValue(), byteBuffer);
       }
@@ -396,79 +425,36 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
       ReadWriteIOUtils.write(false, byteBuffer);
     }
 
-    ReadWriteIOUtils.write(aggregations.size(), byteBuffer);
-    for (Map.Entry<Symbol, AggregationNode.Aggregation> aggregation : aggregations.entrySet()) {
+    ReadWriteIOUtils.write(node.aggregations.size(), byteBuffer);
+    for (Map.Entry<Symbol, AggregationNode.Aggregation> aggregation :
+        node.aggregations.entrySet()) {
       Symbol.serialize(aggregation.getKey(), byteBuffer);
       aggregation.getValue().serialize(byteBuffer);
     }
 
-    groupingSets.serialize(byteBuffer);
+    node.groupingSets.serialize(byteBuffer);
 
-    ReadWriteIOUtils.write(preGroupedSymbols.size(), byteBuffer);
-    for (Symbol preGroupedSymbol : preGroupedSymbols) {
+    ReadWriteIOUtils.write(node.preGroupedSymbols.size(), byteBuffer);
+    for (Symbol preGroupedSymbol : node.preGroupedSymbols) {
       Symbol.serialize(preGroupedSymbol, byteBuffer);
     }
 
-    step.serialize(byteBuffer);
+    node.step.serialize(byteBuffer);
 
-    ReadWriteIOUtils.write(groupIdSymbol.isPresent(), byteBuffer);
-    if (groupIdSymbol.isPresent()) {
-      Symbol.serialize(groupIdSymbol.get(), byteBuffer);
+    ReadWriteIOUtils.write(node.groupIdSymbol.isPresent(), byteBuffer);
+    if (node.groupIdSymbol.isPresent()) {
+      Symbol.serialize(node.groupIdSymbol.get(), byteBuffer);
     }
   }
 
-  @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.TABLE_AGGREGATION_TABLE_SCAN_NODE.serialize(stream);
-    if (qualifiedObjectName.getDatabaseName() != null) {
+  protected static void serializeMemberVariables(
+      AggregationTableScanNode node, DataOutputStream stream) throws IOException {
+    DeviceTableScanNode.serializeMemberVariables(node, stream, false);
+
+    if (node.projection != null) {
       ReadWriteIOUtils.write(true, stream);
-      ReadWriteIOUtils.write(qualifiedObjectName.getDatabaseName(), stream);
-    } else {
-      ReadWriteIOUtils.write(false, stream);
-    }
-    ReadWriteIOUtils.write(qualifiedObjectName.getObjectName(), stream);
-
-    ReadWriteIOUtils.write(assignments.size(), stream);
-    for (Map.Entry<Symbol, ColumnSchema> entry : assignments.entrySet()) {
-      Symbol.serialize(entry.getKey(), stream);
-      ColumnSchema.serialize(entry.getValue(), stream);
-    }
-
-    ReadWriteIOUtils.write(deviceEntries.size(), stream);
-    for (DeviceEntry entry : deviceEntries) {
-      entry.serialize(stream);
-    }
-
-    ReadWriteIOUtils.write(idAndAttributeIndexMap.size(), stream);
-    for (Map.Entry<Symbol, Integer> entry : idAndAttributeIndexMap.entrySet()) {
-      Symbol.serialize(entry.getKey(), stream);
-      ReadWriteIOUtils.write(entry.getValue(), stream);
-    }
-
-    ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
-
-    if (timePredicate != null) {
-      ReadWriteIOUtils.write(true, stream);
-      Expression.serialize(timePredicate, stream);
-    } else {
-      ReadWriteIOUtils.write(false, stream);
-    }
-
-    if (pushDownPredicate != null) {
-      ReadWriteIOUtils.write(true, stream);
-      Expression.serialize(pushDownPredicate, stream);
-    } else {
-      ReadWriteIOUtils.write(false, stream);
-    }
-
-    ReadWriteIOUtils.write(pushDownLimit, stream);
-    ReadWriteIOUtils.write(pushDownOffset, stream);
-    ReadWriteIOUtils.write(pushLimitToEachDevice, stream);
-
-    if (projection != null) {
-      ReadWriteIOUtils.write(true, stream);
-      ReadWriteIOUtils.write(projection.getMap().size(), stream);
-      for (Map.Entry<Symbol, Expression> entry : projection.getMap().entrySet()) {
+      ReadWriteIOUtils.write(node.projection.getMap().size(), stream);
+      for (Map.Entry<Symbol, Expression> entry : node.projection.getMap().entrySet()) {
         Symbol.serialize(entry.getKey(), stream);
         Expression.serialize(entry.getValue(), stream);
       }
@@ -476,72 +462,33 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
       ReadWriteIOUtils.write(false, stream);
     }
 
-    ReadWriteIOUtils.write(aggregations.size(), stream);
-    for (Map.Entry<Symbol, AggregationNode.Aggregation> aggregation : aggregations.entrySet()) {
+    ReadWriteIOUtils.write(node.aggregations.size(), stream);
+    for (Map.Entry<Symbol, AggregationNode.Aggregation> aggregation :
+        node.aggregations.entrySet()) {
       Symbol.serialize(aggregation.getKey(), stream);
       aggregation.getValue().serialize(stream);
     }
 
-    groupingSets.serialize(stream);
+    node.groupingSets.serialize(stream);
 
-    ReadWriteIOUtils.write(preGroupedSymbols.size(), stream);
-    for (Symbol preGroupedSymbol : preGroupedSymbols) {
+    ReadWriteIOUtils.write(node.preGroupedSymbols.size(), stream);
+    for (Symbol preGroupedSymbol : node.preGroupedSymbols) {
       Symbol.serialize(preGroupedSymbol, stream);
     }
 
-    step.serialize(stream);
+    node.step.serialize(stream);
 
-    ReadWriteIOUtils.write(groupIdSymbol.isPresent(), stream);
-    if (groupIdSymbol.isPresent()) {
-      Symbol.serialize(groupIdSymbol.get(), stream);
+    ReadWriteIOUtils.write(node.groupIdSymbol.isPresent(), stream);
+    if (node.groupIdSymbol.isPresent()) {
+      Symbol.serialize(node.groupIdSymbol.get(), stream);
     }
   }
 
-  public static AggregationTableScanNode deserialize(ByteBuffer byteBuffer) {
-    boolean hasDatabaseName = ReadWriteIOUtils.readBool(byteBuffer);
-    String databaseName = null;
-    if (hasDatabaseName) {
-      databaseName = ReadWriteIOUtils.readString(byteBuffer);
-    }
-    String tableName = ReadWriteIOUtils.readString(byteBuffer);
-    QualifiedObjectName qualifiedObjectName = new QualifiedObjectName(databaseName, tableName);
+  protected static void deserializeMemberVariables(
+      ByteBuffer byteBuffer, AggregationTableScanNode node) {
+    DeviceTableScanNode.deserializeMemberVariables(byteBuffer, node, false);
 
-    int size = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<Symbol, ColumnSchema> assignments = new LinkedHashMap<>(size);
-    for (int i = 0; i < size; i++) {
-      assignments.put(Symbol.deserialize(byteBuffer), ColumnSchema.deserialize(byteBuffer));
-    }
-
-    size = ReadWriteIOUtils.readInt(byteBuffer);
-    List<DeviceEntry> deviceEntries = new ArrayList<>(size);
-    while (size-- > 0) {
-      deviceEntries.add(DeviceEntry.deserialize(byteBuffer));
-    }
-
-    size = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<Symbol, Integer> idAndAttributeIndexMap = new HashMap<>(size);
-    while (size-- > 0) {
-      idAndAttributeIndexMap.put(
-          Symbol.deserialize(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
-    }
-
-    Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
-
-    Expression timePredicate = null;
-    boolean hasTimePredicate = ReadWriteIOUtils.readBool(byteBuffer);
-    if (hasTimePredicate) {
-      timePredicate = Expression.deserialize(byteBuffer);
-    }
-
-    Expression pushDownPredicate = null;
-    boolean hasPushDownPredicate = ReadWriteIOUtils.readBool(byteBuffer);
-    if (hasPushDownPredicate) {
-      pushDownPredicate = Expression.deserialize(byteBuffer);
-    }
-
-    long pushDownLimit = ReadWriteIOUtils.readLong(byteBuffer);
-    long pushDownOffset = ReadWriteIOUtils.readLong(byteBuffer);
-    boolean pushLimitToEachDevice = ReadWriteIOUtils.readBool(byteBuffer);
+    int size;
 
     Assignments.Builder projection = Assignments.builder();
     boolean hasProjection = ReadWriteIOUtils.readBool(byteBuffer);
@@ -551,6 +498,7 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
         projection.put(Symbol.deserialize(byteBuffer), Expression.deserialize(byteBuffer));
       }
     }
+    node.projection = projection.build();
 
     size = ReadWriteIOUtils.readInt(byteBuffer);
     final Map<Symbol, AggregationNode.Aggregation> aggregations = new LinkedHashMap<>(size);
@@ -559,42 +507,47 @@ public class AggregationTableScanNode extends DeviceTableScanNode {
           Symbol.deserialize(byteBuffer), AggregationNode.Aggregation.deserialize(byteBuffer));
     }
 
-    AggregationNode.GroupingSetDescriptor groupingSetDescriptor =
-        AggregationNode.GroupingSetDescriptor.deserialize(byteBuffer);
+    node.aggregations = transformCountStar(aggregations, node.getAssignments());
+
+    node.groupingSets = AggregationNode.GroupingSetDescriptor.deserialize(byteBuffer);
 
     size = ReadWriteIOUtils.readInt(byteBuffer);
     List<Symbol> preGroupedSymbols = new ArrayList<>(size);
     while (size-- > 0) {
       preGroupedSymbols.add(Symbol.deserialize(byteBuffer));
     }
+    node.preGroupedSymbols = preGroupedSymbols;
 
-    AggregationNode.Step step = AggregationNode.Step.deserialize(byteBuffer);
+    node.step = AggregationNode.Step.deserialize(byteBuffer);
 
     Optional<Symbol> groupIdSymbol = Optional.empty();
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
       groupIdSymbol = Optional.of(Symbol.deserialize(byteBuffer));
     }
+    node.groupIdSymbol = groupIdSymbol;
 
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    node.outputSymbols = constructOutputSymbols(node.getGroupingSets(), node.getAggregations());
+  }
 
-    return new AggregationTableScanNode(
-        planNodeId,
-        qualifiedObjectName,
-        null,
-        assignments,
-        deviceEntries,
-        idAndAttributeIndexMap,
-        scanOrder,
-        timePredicate,
-        pushDownPredicate,
-        pushDownLimit,
-        pushDownOffset,
-        pushLimitToEachDevice,
-        projection.build(),
-        aggregations,
-        groupingSetDescriptor,
-        preGroupedSymbols,
-        step,
-        groupIdSymbol);
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.TABLE_AGGREGATION_TABLE_SCAN_NODE.serialize(byteBuffer);
+
+    AggregationTableScanNode.serializeMemberVariables(this, byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.TABLE_AGGREGATION_TABLE_SCAN_NODE.serialize(stream);
+
+    AggregationTableScanNode.serializeMemberVariables(this, stream);
+  }
+
+  public static AggregationTableScanNode deserialize(ByteBuffer byteBuffer) {
+    AggregationTableScanNode node = new AggregationTableScanNode();
+    AggregationTableScanNode.deserializeMemberVariables(byteBuffer, node);
+
+    node.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
+    return node;
   }
 }

@@ -53,6 +53,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -466,7 +467,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       InsertionCrossCompactionTaskResource result = new InsertionCrossCompactionTaskResource();
 
       boolean hasPreviousSeqFile = false;
-      for (DeviceInfo unseqDeviceInfo : unseqFile.getDeviceInfoList()) {
+      for (Iterator<DeviceInfo> it = unseqFile.getDeviceInfoIterator(); it.hasNext(); ) {
+        DeviceInfo unseqDeviceInfo = it.next();
         IDeviceID deviceId = unseqDeviceInfo.deviceId;
         long startTimeOfUnSeqDevice = unseqDeviceInfo.startTime;
         long endTimeOfUnSeqDevice = unseqDeviceInfo.endTime;
@@ -613,7 +615,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         return true;
       }
 
-      for (DeviceInfo device : candidate2.getDeviceInfoList()) {
+      for (Iterator<DeviceInfo> it = candidate2.getDeviceInfoIterator(); it.hasNext(); ) {
+        DeviceInfo device = it.next();
         IDeviceID deviceId = device.deviceId;
         if (!candidate1.containsDevice(deviceId)) {
           continue;

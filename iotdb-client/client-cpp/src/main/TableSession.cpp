@@ -21,7 +21,7 @@
 
 #include "TableSession.h"
 
-void TableSession::insert(Tablet &tablet, bool sorted = false) {
+void TableSession::insert(Tablet &tablet, bool sorted) {
     session->insertRelationalTablet(tablet, sorted);
 }
 void TableSession::executeNonQueryStatement(const string &sql) {

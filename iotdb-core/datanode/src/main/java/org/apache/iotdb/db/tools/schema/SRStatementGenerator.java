@@ -158,7 +158,9 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
           lastExcept = ioe;
           try {
             inputStream.close();
-            tagFileChannel.close();
+            if (tagFileChannel != null) {
+              tagFileChannel.close();
+            }
 
           } catch (IOException e) {
             lastExcept = e;
