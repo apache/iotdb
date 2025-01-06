@@ -589,7 +589,7 @@ public interface IManager {
 
   TSStatus killQuery(String queryId, int dataNodeId);
 
-  TGetDataNodeLocationsResp getRunningDataNodeLocations();
+  TGetDataNodeLocationsResp getReadableDataNodeLocations();
 
   /**
    * Get the latest RegionRouteMap.
