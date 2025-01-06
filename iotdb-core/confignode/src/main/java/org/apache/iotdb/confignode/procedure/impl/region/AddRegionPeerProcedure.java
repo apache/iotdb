@@ -49,6 +49,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.utils.KillPoint.KillPoint.setKillPoint;
+import static org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler.simplifiedLocation;
 import static org.apache.iotdb.confignode.procedure.state.AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
 
@@ -57,7 +58,7 @@ public class AddRegionPeerProcedure extends RegionMemberChangeProcedure<AddRegio
 
   private TDataNodeLocation coordinator;
 
-  private TDataNodeLocation destDataNode;
+  private TDataNodeLocation targetDataNode;
 
   public AddRegionPeerProcedure() {
     super();
@@ -66,10 +67,10 @@ public class AddRegionPeerProcedure extends RegionMemberChangeProcedure<AddRegio
   public AddRegionPeerProcedure(
       TConsensusGroupId consensusGroupId,
       TDataNodeLocation coordinator,
-      TDataNodeLocation destDataNode) {
+      TDataNodeLocation targetDataNode) {
     super(consensusGroupId);
     this.coordinator = coordinator;
-    this.destDataNode = destDataNode;
+    this.targetDataNode = targetDataNode;
   }
 
   @Override
@@ -87,10 +88,10 @@ public class AddRegionPeerProcedure extends RegionMemberChangeProcedure<AddRegio
               "[pid{}][AddRegion] started, {} will be added to DataNode {}.",
               getProcId(),
               regionId,
-              handler.simplifiedLocation(destDataNode));
-          handler.addRegionLocation(regionId, destDataNode);
-          handler.forceUpdateRegionCache(regionId, destDataNode, RegionStatus.Adding);
-          TSStatus status = handler.createNewRegionPeer(regionId, destDataNode);
+              simplifiedLocation(targetDataNode));
+          handler.addRegionLocation(regionId, targetDataNode);
+          handler.forceUpdateRegionCache(regionId, targetDataNode, RegionStatus.Adding);
+          TSStatus status = handler.createNewRegionPeer(regionId, targetDataNode);
           setKillPoint(state);
           if (status.getCode() != SUCCESS_STATUS.getStatusCode()) {
             return warnAndRollBackAndNoMoreState(env, handler, "CREATE_NEW_REGION_PEER fail");
@@ -98,12 +99,12 @@ public class AddRegionPeerProcedure extends RegionMemberChangeProcedure<AddRegio
           setNextState(AddRegionPeerState.DO_ADD_REGION_PEER);
           break;
         case DO_ADD_REGION_PEER:
-          handler.forceUpdateRegionCache(regionId, destDataNode, RegionStatus.Adding);
+          handler.forceUpdateRegionCache(regionId, targetDataNode, RegionStatus.Adding);
           // We don't want to re-submit AddRegionPeerTask when leader change or ConfigNode reboot
           if (!this.isStateDeserialized()) {
             TSStatus tsStatus =
                 handler.submitAddRegionPeerTask(
-                    this.getProcId(), destDataNode, regionId, coordinator);
+                    this.getProcId(), targetDataNode, regionId, coordinator);
             setKillPoint(state);
             if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
               return warnAndRollBackAndNoMoreState(
@@ -130,14 +131,14 @@ public class AddRegionPeerProcedure extends RegionMemberChangeProcedure<AddRegio
                   env, handler, String.format("status %s is unsupported", result.getTaskStatus()));
           }
         case UPDATE_REGION_LOCATION_CACHE:
-          handler.forceUpdateRegionCache(regionId, destDataNode, RegionStatus.Running);
+          handler.forceUpdateRegionCache(regionId, targetDataNode, RegionStatus.Running);
           setKillPoint(state);
           LOGGER.info("[pid{}][AddRegion] state {} complete", getProcId(), state);
           LOGGER.info(
               "[pid{}][AddRegion] success, {} has been added to DataNode {}. Procedure took {} (start at {}).",
               getProcId(),
               regionId,
-              handler.simplifiedLocation(destDataNode),
+              simplifiedLocation(targetDataNode),
               CommonDateTimeUtils.convertMillisecondToDurationStr(
                   System.currentTimeMillis() - getSubmittedTime()),
               DateTimeUtils.convertLongToDate(getSubmittedTime(), "ms"));
@@ -167,7 +168,7 @@ public class AddRegionPeerProcedure extends RegionMemberChangeProcedure<AddRegio
     } else {
       LOGGER.warn("[pid{}][AddRegion] Start to roll back, because: {}", getProcId(), reason);
     }
-    handler.removeRegionLocation(regionId, destDataNode);
+    handler.removeRegionLocation(regionId, targetDataNode);
 
     List<TDataNodeLocation> correctDataNodeLocations =
         env.getConfigManager().getPartitionManager().getAllReplicaSets().stream()
@@ -178,7 +179,7 @@ public class AddRegionPeerProcedure extends RegionMemberChangeProcedure<AddRegio
                     new ProcedureException(
                         "[pid{}][AddRegion] Cannot roll back, because cannot find the correct locations"))
             .getDataNodeLocations();
-    if (correctDataNodeLocations.remove(destDataNode)) {
+    if (correctDataNodeLocations.remove(targetDataNode)) {
       LOGGER.warn(
           "[pid{}][AddRegion] It appears that consensus write has not modified the local partition table. "
               + "Please verify whether a leader change has occurred during this stage. "
@@ -191,7 +192,7 @@ public class AddRegionPeerProcedure extends RegionMemberChangeProcedure<AddRegio
             .collect(Collectors.toList())
             .toString();
     List<TDataNodeLocation> relatedDataNodeLocations = new ArrayList<>(correctDataNodeLocations);
-    relatedDataNodeLocations.add(destDataNode);
+    relatedDataNodeLocations.add(targetDataNode);
     Map<Integer, TDataNodeLocation> relatedDataNodeLocationMap =
         relatedDataNodeLocations.stream()
             .collect(
@@ -256,7 +257,7 @@ public class AddRegionPeerProcedure extends RegionMemberChangeProcedure<AddRegio
     stream.writeShort(ProcedureType.ADD_REGION_PEER_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ThriftCommonsSerDeUtils.serializeTConsensusGroupId(regionId, stream);
-    ThriftCommonsSerDeUtils.serializeTDataNodeLocation(destDataNode, stream);
+    ThriftCommonsSerDeUtils.serializeTDataNodeLocation(targetDataNode, stream);
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(coordinator, stream);
   }
 
@@ -265,7 +266,7 @@ public class AddRegionPeerProcedure extends RegionMemberChangeProcedure<AddRegio
     super.deserialize(byteBuffer);
     try {
       regionId = ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(byteBuffer);
-      destDataNode = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
+      targetDataNode = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
       coordinator = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
     } catch (ThriftSerDeException e) {
       LOGGER.error("Error in deserialize {}", this.getClass(), e);
@@ -283,12 +284,24 @@ public class AddRegionPeerProcedure extends RegionMemberChangeProcedure<AddRegio
     }
     AddRegionPeerProcedure procedure = (AddRegionPeerProcedure) obj;
     return this.regionId.equals(procedure.regionId)
-        && this.destDataNode.equals(procedure.destDataNode)
+        && this.targetDataNode.equals(procedure.targetDataNode)
         && this.coordinator.equals(procedure.coordinator);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(regionId, destDataNode, coordinator);
+    return Objects.hash(regionId, targetDataNode, coordinator);
+  }
+
+  @Override
+  public String toString() {
+    return "AddRegionPeerProcedure{"
+        + "regionId="
+        + regionId
+        + ", coordinator="
+        + simplifiedLocation(coordinator)
+        + ", targetDataNode="
+        + simplifiedLocation(targetDataNode)
+        + '}';
   }
 }

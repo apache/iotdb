@@ -1241,12 +1241,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus extendRegion(TExtendRegionReq req) throws TException {
-    return null;
+    return configManager.extendRegion(req);
   }
 
   @Override
   public TSStatus removeRegion(TRemoveRegionReq req) throws TException {
-    return null;
+    return configManager.removeRegion(req);
   }
 
   @Override
