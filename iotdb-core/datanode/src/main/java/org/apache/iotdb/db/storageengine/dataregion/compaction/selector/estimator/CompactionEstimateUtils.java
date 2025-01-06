@@ -149,7 +149,7 @@ public class CompactionEstimateUtils {
     return deviceMetadataSizeMap;
   }
 
-  public static boolean shouldUseRoughEstimateResult(long roughEstimatedMemCost) {
+  public static boolean shouldUseRoughEstimatedResult(long roughEstimatedMemCost) {
     return roughEstimatedMemCost > 0
         && IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                 * roughEstimatedMemCost

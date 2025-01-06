@@ -681,7 +681,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             innerSpaceEstimator.roughEstimateInnerCompactionMemory(
                 filesView.sourceFilesInCompactionPerformer);
         memoryCost =
-            CompactionEstimateUtils.shouldUseRoughEstimateResult(roughEstimatedMemoryCost)
+            CompactionEstimateUtils.shouldUseRoughEstimatedResult(roughEstimatedMemoryCost)
                 ? roughEstimatedMemoryCost
                 : innerSpaceEstimator.estimateInnerCompactionMemory(
                     filesView.sourceFilesInCompactionPerformer);

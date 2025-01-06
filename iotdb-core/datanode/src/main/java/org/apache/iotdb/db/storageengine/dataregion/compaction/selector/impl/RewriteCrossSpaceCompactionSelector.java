@@ -229,7 +229,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           compactionEstimator.roughEstimateCrossCompactionMemory(
               newSelectedSeqResources, newSelectedUnseqResources);
       long memoryCost =
-          CompactionEstimateUtils.shouldUseRoughEstimateResult(roughEstimatedMemoryCost)
+          CompactionEstimateUtils.shouldUseRoughEstimatedResult(roughEstimatedMemoryCost)
               ? roughEstimatedMemoryCost
               : compactionEstimator.estimateCrossCompactionMemory(
                   newSelectedSeqResources, newSelectedUnseqResources);
