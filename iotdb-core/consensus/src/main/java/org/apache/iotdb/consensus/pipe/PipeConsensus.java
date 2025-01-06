@@ -72,7 +72,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -135,12 +134,10 @@ public class PipeConsensus implements IConsensus {
       throw new IOException(e);
     }
 
-    if (Objects.nonNull(recoverFuture)) {
-      try {
-        recoverFuture.get();
-      } catch (InterruptedException | ExecutionException e) {
-        LOGGER.error("Exception while waiting for recover future completion", e);
-      }
+    try {
+      recoverFuture.get();
+    } catch (InterruptedException | ExecutionException e) {
+      LOGGER.error("Exception while waiting for recover future completion", e);
     }
     // only when we recover all consensus group can we launch async backend checker thread
     consensusPipeGuardian.start(
@@ -156,7 +153,7 @@ public class PipeConsensus implements IConsensus {
         LOGGER.warn("Unable to create consensus dir at {}", storageDir);
         throw new IOException(String.format("Unable to create consensus dir at %s", storageDir));
       }
-      return null;
+      return CompletableFuture.completedFuture(null);
     } else {
       // asynchronously recover, retry logic is implemented at PipeConsensusImpl
       CompletableFuture<Void> future =
