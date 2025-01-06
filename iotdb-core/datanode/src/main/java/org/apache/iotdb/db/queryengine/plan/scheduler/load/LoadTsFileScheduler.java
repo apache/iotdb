@@ -133,11 +133,11 @@ public class LoadTsFileScheduler implements IScheduler {
   private final LoadTsFileDispatcherImpl dispatcher;
   private final DataPartitionBatchFetcher partitionFetcher;
   private final List<LoadSingleTsFileNode> tsFileNodeList;
+  private final List<Integer> failedTsFileNodeIndexes;
   private final PlanFragmentId fragmentId;
   private final Set<TRegionReplicaSet> allReplicaSets;
   private final boolean isGeneratedByPipe;
   private final LoadTsFileDataCacheMemoryBlock block;
-  private final List<Integer> failedLoadTsFileIndexes = new ArrayList<>();
 
   public LoadTsFileScheduler(
       DistributedQueryPlan distributedQueryPlan,
@@ -149,6 +149,7 @@ public class LoadTsFileScheduler implements IScheduler {
     this.queryContext = queryContext;
     this.stateMachine = stateMachine;
     this.tsFileNodeList = new ArrayList<>();
+    this.failedTsFileNodeIndexes = new ArrayList<>();
     this.fragmentId = distributedQueryPlan.getRootSubPlan().getPlanFragment().getId();
     this.dispatcher = new LoadTsFileDispatcherImpl(internalServiceClientManager, isGeneratedByPipe);
     this.partitionFetcher = new DataPartitionBatchFetcher(partitionFetcher);
@@ -192,7 +193,6 @@ public class LoadTsFileScheduler implements IScheduler {
 
           if (node.isTsFileEmpty()) {
             LOGGER.info("Load skip TsFile {}, because it has no data.", filePath);
-
           } else if (!node.needDecodeTsFile(
               slotList ->
                   partitionFetcher.queryDataPartition(
@@ -205,9 +205,8 @@ public class LoadTsFileScheduler implements IScheduler {
               LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
                   LoadTsFileCostMetricsSet.LOAD_LOCALLY, System.nanoTime() - startTime);
             }
-
-            // need decode, load locally or remotely, use two phases method
           } else {
+            // need decode, load locally or remotely, use two phases method
             String uuid = UUID.randomUUID().toString();
             dispatcher.setUuid(uuid);
             allReplicaSets.clear();
@@ -246,7 +245,7 @@ public class LoadTsFileScheduler implements IScheduler {
                 tsFileNodeListSize);
           } else {
             isLoadSuccess = false;
-            failedLoadTsFileIndexes.add(i);
+            failedTsFileNodeIndexes.add(i);
             LOGGER.warn(
                 "Can not Load TsFile {}, load process [{}/{}]",
                 filePath,
@@ -255,7 +254,7 @@ public class LoadTsFileScheduler implements IScheduler {
           }
         } catch (Exception e) {
           isLoadSuccess = false;
-          failedLoadTsFileIndexes.add(i);
+          failedTsFileNodeIndexes.add(i);
           stateMachine.transitionToFailed(e);
           LOGGER.warn("LoadTsFileScheduler loads TsFile {} error", filePath, e);
         } finally {
@@ -270,64 +269,17 @@ public class LoadTsFileScheduler implements IScheduler {
       if (isLoadSuccess) {
         stateMachine.transitionToFinished();
       } else {
-        // if failed to load some TsFiles, then try to convert the TsFiles to Tablets
-        convertFailedTsFilesToTablets();
+        final long startTime = System.nanoTime();
+        try {
+          // if failed to load some TsFiles, then try to convert the TsFiles to Tablets
+          convertFailedTsFilesToTabletsAndRetry();
+        } finally {
+          LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
+              LoadTsFileCostMetricsSet.CAST_TABLETS, System.nanoTime() - startTime);
+        }
       }
     } finally {
       LoadTsFileMemoryManager.getInstance().releaseDataCacheMemoryBlock();
-    }
-  }
-
-  private void convertFailedTsFilesToTablets() {
-    final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-        new LoadTsFileDataTypeConverter();
-
-    for (final int failedLoadTsFileIndex : failedLoadTsFileIndexes) {
-      final LoadSingleTsFileNode failedNode = tsFileNodeList.get(failedLoadTsFileIndex);
-      final String filePath = failedNode.getTsFileResource().getTsFilePath();
-
-      try {
-        TSStatus status;
-        if (failedNode.isTableModel()) {
-          status =
-              loadTsFileDataTypeConverter.convertForTableModel(
-                  new LoadTsFile(null, filePath, null).setDatabase(failedNode.getDatabase()));
-        } else {
-          status =
-              loadTsFileDataTypeConverter.convertForTreeModel(new LoadTsFileStatement(filePath));
-        }
-
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          LOGGER.warn(
-              "Load: Failed to convert to Tablet from TsFile: {}. Status code: {}. Status message: {}.",
-              failedNode.getTsFileResource().getTsFilePath(),
-              TSStatusCode.representOf(status.getCode()).toString(),
-              status.getMessage());
-        } else {
-          failedLoadTsFileIndexes.remove(failedLoadTsFileIndex);
-          LOGGER.info(
-              "Load: Successfully convert to Tablet from TsFile: {}.",
-              failedNode.getTsFileResource().getTsFilePath());
-        }
-      } catch (Exception e) {
-        LOGGER.warn(
-            "Load: Failed to convert to Tablet from TsFile: {}.",
-            failedNode.getTsFileResource().getTsFilePath(),
-            e);
-      }
-    }
-
-    // if all failed TsFiles are converted to Tablets, then the load process is finished
-    // successfully
-    if (failedLoadTsFileIndexes.isEmpty()) {
-      stateMachine.transitionToFinished();
-    } else {
-      stateMachine.transitionToFailed(
-          new LoadFileException(
-              "Failed to load some TsFiles and convert them to Tablets. Failed TsFiles: "
-                  + failedLoadTsFileIndexes.stream()
-                      .map(i -> tsFileNodeList.get(i).getTsFileResource().getTsFilePath())
-                      .collect(Collectors.joining(", "))));
     }
   }
 
@@ -598,6 +550,59 @@ public class LoadTsFileScheduler implements IScheduler {
             });
 
     return true;
+  }
+
+  private void convertFailedTsFilesToTabletsAndRetry() {
+    final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
+        new LoadTsFileDataTypeConverter();
+
+    for (final int failedLoadTsFileIndex : failedTsFileNodeIndexes) {
+      final LoadSingleTsFileNode failedNode = tsFileNodeList.get(failedLoadTsFileIndex);
+      final String filePath = failedNode.getTsFileResource().getTsFilePath();
+
+      try {
+        TSStatus status;
+        if (failedNode.isTableModel()) {
+          status =
+              loadTsFileDataTypeConverter.convertForTableModel(
+                  new LoadTsFile(null, filePath, null).setDatabase(failedNode.getDatabase()));
+        } else {
+          status =
+              loadTsFileDataTypeConverter.convertForTreeModel(new LoadTsFileStatement(filePath));
+        }
+
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          LOGGER.warn(
+              "Load: Failed to convert to Tablet from TsFile: {}. Status code: {}. Status message: {}.",
+              failedNode.getTsFileResource().getTsFilePath(),
+              TSStatusCode.representOf(status.getCode()).toString(),
+              status.getMessage());
+        } else {
+          failedTsFileNodeIndexes.remove(failedLoadTsFileIndex);
+          LOGGER.info(
+              "Load: Successfully convert to Tablet from TsFile: {}.",
+              failedNode.getTsFileResource().getTsFilePath());
+        }
+      } catch (Exception e) {
+        LOGGER.warn(
+            "Load: Failed to convert to Tablet from TsFile: {}.",
+            failedNode.getTsFileResource().getTsFilePath(),
+            e);
+      }
+    }
+
+    // if all failed TsFiles are converted to Tablets, then the load process is finished
+    // successfully
+    if (failedTsFileNodeIndexes.isEmpty()) {
+      stateMachine.transitionToFinished();
+    } else {
+      stateMachine.transitionToFailed(
+          new LoadFileException(
+              "Failed to load some TsFiles and convert them to Tablets. Failed TsFiles: "
+                  + failedTsFileNodeIndexes.stream()
+                      .map(i -> tsFileNodeList.get(i).getTsFileResource().getTsFilePath())
+                      .collect(Collectors.joining(", "))));
+    }
   }
 
   @Override
