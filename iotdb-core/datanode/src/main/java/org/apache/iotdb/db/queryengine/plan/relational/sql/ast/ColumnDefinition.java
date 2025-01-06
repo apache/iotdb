@@ -63,7 +63,7 @@ public final class ColumnDefinition extends Node {
     this.name = requireNonNull(name, "name is null");
     this.columnCategory = requireNonNull(columnCategory, "columnCategory is null");
     if (Objects.isNull(type)) {
-      if ((columnCategory == TsTableColumnCategory.ID
+      if ((columnCategory == TsTableColumnCategory.TAG
           || columnCategory == TsTableColumnCategory.ATTRIBUTE)) {
         type = new GenericDataType(new Identifier("string"), new ArrayList<>());
       } else if (columnCategory == TsTableColumnCategory.TIME) {

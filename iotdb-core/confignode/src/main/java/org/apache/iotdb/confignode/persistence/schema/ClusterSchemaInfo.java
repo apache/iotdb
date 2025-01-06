@@ -471,8 +471,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       }
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final MetadataException e) {
-      LOGGER.error(ERROR_NAME, e);
-      result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
+      LOGGER.info(
+          "Database inconsistency detected when adjusting max region group count, message: {}, will be corrected by the following adjusting plans",
+          e.getMessage());
+      result.setCode(e.getErrorCode()).setMessage(e.getMessage());
     } finally {
       databaseReadWriteLock.writeLock().unlock();
     }

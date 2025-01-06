@@ -29,8 +29,6 @@ import org.apache.iotdb.confignode.manager.load.subscriber.RegionGroupStatistics
 import org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat.PipeHeartbeat;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat.PipeHeartbeatScheduler;
 
-import javax.validation.constraints.NotNull;
-
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -106,7 +104,7 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
 
   public void parseHeartbeat(
       final int dataNodeId,
-      @NotNull final List<ByteBuffer> pipeMetaByteBufferListFromDataNode,
+      /* @Nullable */ final List<ByteBuffer> pipeMetaByteBufferListFromDataNode,
       /* @Nullable */ final List<Boolean> pipeCompletedListFromAgent,
       /* @Nullable */ final List<Long> pipeRemainingEventCountListFromAgent,
       /* @Nullable */ final List<Double> pipeRemainingTimeListFromAgent) {

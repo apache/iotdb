@@ -36,7 +36,15 @@ public interface GroupedAccumulator {
 
   void evaluateFinal(int groupId, ColumnBuilder columnBuilder);
 
+  /**
+   * This interface will be used for order by in agg function (not implemented), implementations are
+   * all empty now.
+   */
   void prepareFinal();
 
   void reset();
+
+  default void close() {
+    // do nothing
+  }
 }

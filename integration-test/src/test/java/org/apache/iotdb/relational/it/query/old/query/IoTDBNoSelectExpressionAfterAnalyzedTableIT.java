@@ -42,7 +42,7 @@ public class IoTDBNoSelectExpressionAfterAnalyzedTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE sg(device STRING ID, s1 INT32 MEASUREMENT)",
+        "CREATE TABLE sg(device STRING TAG, s1 INT32 FIELD)",
         "insert into sg(time,device,s1) values(1,'d1',1)",
         "insert into sg(time,device,s1,s2) values(1,'d1',1,1)"
       };

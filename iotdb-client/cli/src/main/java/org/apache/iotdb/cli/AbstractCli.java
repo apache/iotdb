@@ -20,6 +20,7 @@
 package org.apache.iotdb.cli;
 
 import org.apache.iotdb.cli.utils.CliContext;
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
@@ -47,6 +48,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import static org.apache.iotdb.jdbc.Config.SQL_DIALECT;
@@ -98,7 +100,8 @@ public abstract class AbstractCli {
   static final String SET_FETCH_SIZE = "set fetch_size";
   static final String SHOW_FETCH_SIZE = "show fetch_size";
   private static final String HELP = "help";
-  static final String IOTDB_CLI_PREFIX = "IoTDB";
+  static final String IOTDB = "IoTDB";
+  static String cliPrefix = IOTDB;
   static final String SCRIPT_HINT = "./start-cli.sh(start-cli.bat if Windows)";
   static final String QUIT_COMMAND = "quit";
   static final String EXIT_COMMAND = "exit";
@@ -142,6 +145,7 @@ public abstract class AbstractCli {
   static int lastProcessStatus = CODE_OK;
 
   static String sqlDialect = "tree";
+  static String usingDatabase = null;
 
   static void init() {
     keywordSet.add("-" + HOST_ARGS);
@@ -266,15 +270,12 @@ public abstract class AbstractCli {
     String str = commandLine.getOptionValue(arg);
     if (str == null) {
       if (isRequired) {
-        String msg =
-            String.format(
-                "%s: Required values for option '%s' not provided", IOTDB_CLI_PREFIX, name);
+        String msg = String.format("%s: Required values for option '%s' not provided", IOTDB, name);
         ctx.getPrinter().println(msg);
         ctx.getPrinter().println("Use -help for more information");
         throw new ArgsErrorException(msg);
       } else if (defaultValue == null) {
-        String msg =
-            String.format("%s: Required values for option '%s' is null.", IOTDB_CLI_PREFIX, name);
+        String msg = String.format("%s: Required values for option '%s' is null.", IOTDB, name);
         throw new ArgsErrorException(msg);
       } else {
         return defaultValue;
@@ -568,6 +569,7 @@ public abstract class AbstractCli {
       ZoneId zoneId = ZoneId.of(connection.getTimeZone());
       statement.setFetchSize(fetchSize);
       boolean hasResultSet = statement.execute(cmd.trim());
+      updateUsingDatabaseIfNecessary(connection.getParams().getDb().orElse(null));
       if (hasResultSet) {
         // print the result
         try (ResultSet resultSet = statement.getResultSet()) {
@@ -886,5 +888,17 @@ public abstract class AbstractCli {
       }
     }
     return true;
+  }
+
+  private static void updateUsingDatabaseIfNecessary(String database) {
+    if (!Objects.equals(usingDatabase, database)) {
+      usingDatabase = database;
+      if (sqlDialect != null && Model.TABLE.name().equals(sqlDialect.toUpperCase())) {
+        cliPrefix = IOTDB;
+        if (database != null) {
+          cliPrefix += ":" + database;
+        }
+      }
+    }
   }
 }

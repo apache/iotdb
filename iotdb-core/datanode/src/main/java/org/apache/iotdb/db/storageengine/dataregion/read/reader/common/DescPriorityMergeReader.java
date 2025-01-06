@@ -19,15 +19,13 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.common;
 
-import org.apache.tsfile.read.reader.IPointReader;
-
-import java.io.IOException;
 import java.util.PriorityQueue;
 
 public class DescPriorityMergeReader extends PriorityMergeReader {
 
   public DescPriorityMergeReader() {
-    super.heap =
+    currentReadStopTime = Long.MAX_VALUE;
+    heap =
         new PriorityQueue<>(
             (o1, o2) -> {
               int timeCompare =
@@ -37,13 +35,7 @@ public class DescPriorityMergeReader extends PriorityMergeReader {
   }
 
   @Override
-  public void addReader(IPointReader reader, MergeReaderPriority priority, long endTime)
-      throws IOException {
-    if (reader.hasNextTimeValuePair()) {
-      heap.add(new Element(reader, reader.nextTimeValuePair(), priority));
-      super.currentReadStopTime = Math.min(currentReadStopTime, endTime);
-    } else {
-      reader.close();
-    }
+  protected void updateCurrentReadStopTime(long endTime) {
+    currentReadStopTime = Math.min(currentReadStopTime, endTime);
   }
 }

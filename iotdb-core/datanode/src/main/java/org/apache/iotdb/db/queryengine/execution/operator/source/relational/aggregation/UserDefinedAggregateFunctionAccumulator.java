@@ -120,4 +120,10 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
   public void reset() {
     state.reset();
   }
+
+  @Override
+  public void close() {
+    aggregateFunction.beforeDestroy();
+    state.destroyState();
+  }
 }

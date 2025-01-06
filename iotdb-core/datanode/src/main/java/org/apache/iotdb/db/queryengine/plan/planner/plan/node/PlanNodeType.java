@@ -116,11 +116,14 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
@@ -282,6 +285,9 @@ public enum PlanNodeType {
   TABLE_EXPLAIN_ANALYZE_NODE((short) 1019),
   TABLE_ENFORCE_SINGLE_ROW_NODE((short) 1020),
   INFORMATION_SCHEMA_TABLE_SCAN_NODE((short) 1021),
+  AGGREGATION_TREE_DEVICE_VIEW_SCAN_NODE((short) 1022),
+  TREE_ALIGNED_DEVICE_VIEW_SCAN_NODE((short) 1023),
+  TREE_NONALIGNED_DEVICE_VIEW_SCAN_NODE((short) 1024),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -641,6 +647,12 @@ public enum PlanNodeType {
         return EnforceSingleRowNode.deserialize(buffer);
       case 1021:
         return InformationSchemaTableScanNode.deserialize(buffer);
+      case 1022:
+        return AggregationTreeDeviceViewScanNode.deserialize(buffer);
+      case 1023:
+        return TreeAlignedDeviceViewScanNode.deserialize(buffer);
+      case 1024:
+        return TreeNonAlignedDeviceViewScanNode.deserialize(buffer);
 
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
