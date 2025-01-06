@@ -174,25 +174,24 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
 
   protected void executeDataTypeConversionOnTypeMismatch(
       final IAnalysis analysis, final VerifyMetadataTypeMismatchException e) {
-    final TSStatus status;
+    final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
+        new LoadTsFileDataTypeConverter();
 
-    if (isConvertOnTypeMismatch) {
-      final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-          new LoadTsFileDataTypeConverter();
-      status =
-          isTableModelStatement
-              ? loadTsFileDataTypeConverter.convertForTableModel(loadTsFileTableStatement)
-              : loadTsFileDataTypeConverter.convertForTreeModel(loadTsFileTreeStatement);
-    } else {
-      status = null;
-    }
+    final TSStatus status =
+        isConvertOnTypeMismatch
+            ? (isTableModelStatement
+                ? loadTsFileDataTypeConverter
+                    .convertForTableModel(loadTsFileTableStatement)
+                    .orElse(null)
+                : loadTsFileDataTypeConverter
+                    .convertForTreeModel(loadTsFileTreeStatement)
+                    .orElse(null))
+            : null;
 
     if (status == null) {
       analysis.setFailStatus(
           new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
-    } else if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
-        && status.getCode() != TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()) {
+    } else if (!loadTsFileDataTypeConverter.isSuccessful(status)) {
       analysis.setFailStatus(status);
     }
     analysis.setFinishQueryAfterAnalyze(true);

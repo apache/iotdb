@@ -561,32 +561,33 @@ public class LoadTsFileScheduler implements IScheduler {
       final String filePath = failedNode.getTsFileResource().getTsFilePath();
 
       try {
-        TSStatus status;
-        if (failedNode.isTableModel()) {
-          status =
-              loadTsFileDataTypeConverter.convertForTableModel(
-                  new LoadTsFile(null, filePath, null).setDatabase(failedNode.getDatabase()));
-        } else {
-          status =
-              loadTsFileDataTypeConverter.convertForTreeModel(new LoadTsFileStatement(filePath));
-        }
+        final TSStatus status =
+            failedNode.isTableModel()
+                ? loadTsFileDataTypeConverter
+                    .convertForTableModel(
+                        new LoadTsFile(null, filePath, Collections.emptyMap())
+                            .setDatabase(failedNode.getDatabase()))
+                    .orElse(null)
+                : loadTsFileDataTypeConverter
+                    .convertForTreeModel(new LoadTsFileStatement(filePath))
+                    .orElse(null);
 
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          LOGGER.warn(
-              "Load: Failed to convert to Tablet from TsFile: {}. Status code: {}. Status message: {}.",
-              failedNode.getTsFileResource().getTsFilePath(),
-              TSStatusCode.representOf(status.getCode()).toString(),
-              status.getMessage());
-        } else {
+        if (loadTsFileDataTypeConverter.isSuccessful(status)) {
           failedTsFileNodeIndexes.remove(failedLoadTsFileIndex);
           LOGGER.info(
-              "Load: Successfully convert to Tablet from TsFile: {}.",
+              "Load: Successfully converted TsFile {} into tablets and inserted.",
               failedNode.getTsFileResource().getTsFilePath());
+        } else {
+          LOGGER.warn(
+              "Load: Failed to convert to tablets from TsFile {}. Status: {}",
+              failedNode.getTsFileResource().getTsFilePath(),
+              status);
         }
-      } catch (Exception e) {
+      } catch (final Exception e) {
         LOGGER.warn(
-            "Load: Failed to convert to Tablet from TsFile: {}.",
+            "Load: Failed to convert to tablets from TsFile {}. Exception: {}",
             failedNode.getTsFileResource().getTsFilePath(),
+            e.getMessage(),
             e);
       }
     }
