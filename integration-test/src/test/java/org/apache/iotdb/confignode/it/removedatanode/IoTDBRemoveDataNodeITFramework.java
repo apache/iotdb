@@ -51,8 +51,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework.closeQuietly;
-import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework.getRegionMap;
+import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
+import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework.getRegionMap;
 
 public class IoTDBRemoveDataNodeITFramework {
   private static final Logger LOGGER =
@@ -143,9 +143,9 @@ public class IoTDBRemoveDataNodeITFramework {
             dataRegionPerDataNode * dataNodeNum / dataReplicateFactor);
     EnvFactory.getEnv().initClusterEnvironment(configNodeNum, dataNodeNum);
 
-    try (final Connection connection = closeQuietly(EnvFactory.getEnv().getConnection());
-        final Statement statement = closeQuietly(connection.createStatement());
-        SyncConfigNodeIServiceClient client =
+    try (final Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+         final Statement statement = makeItCloseQuietly(connection.createStatement());
+         SyncConfigNodeIServiceClient client =
             (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
       // Insert data
@@ -238,8 +238,8 @@ public class IoTDBRemoveDataNodeITFramework {
       LOGGER.error("Unexpected error:", e);
     }
 
-    try (final Connection connection = closeQuietly(EnvFactory.getEnv().getConnection());
-        final Statement statement = closeQuietly(connection.createStatement())) {
+    try (final Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+         final Statement statement = makeItCloseQuietly(connection.createStatement())) {
 
       // Check the data region distribution after removing data nodes
       ResultSet result = statement.executeQuery(SHOW_REGIONS);

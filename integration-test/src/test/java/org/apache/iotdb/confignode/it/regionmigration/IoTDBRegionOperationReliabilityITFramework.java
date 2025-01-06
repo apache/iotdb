@@ -39,6 +39,7 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.exception.InconsistentDataException;
 import org.apache.iotdb.metrics.utils.SystemType;
 
+import org.apache.iotdb.util.MagicUtils;
 import org.apache.thrift.TException;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
@@ -52,9 +53,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -77,9 +75,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-public class IoTDBRegionMigrateReliabilityITFramework {
+public class IoTDBRegionOperationReliabilityITFramework {
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(IoTDBRegionMigrateReliabilityITFramework.class);
+      LoggerFactory.getLogger(IoTDBRegionOperationReliabilityITFramework.class);
   private static final String INSERTION1 =
       "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(100, 1, 2)";
   private static final String INSERTION2 =
@@ -208,9 +206,9 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     EnvFactory.getEnv().registerDataNodeKillPoints(new ArrayList<>(dataNodeKeywords));
     EnvFactory.getEnv().initClusterEnvironment(configNodeNum, dataNodeNum);
 
-    try (final Connection connection = closeQuietly(EnvFactory.getEnv().getConnection());
-        final Statement statement = closeQuietly(connection.createStatement());
-        SyncConfigNodeIServiceClient client =
+    try (final Connection connection = MagicUtils.makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+         final Statement statement = MagicUtils.makeItCloseQuietly(connection.createStatement());
+         SyncConfigNodeIServiceClient client =
             (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       statement.execute(INSERTION1);
 
@@ -703,26 +701,4 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     return result;
   }
 
-  public static <T> T closeQuietly(T t) {
-    InvocationHandler handler =
-        (proxy, method, args) -> {
-          try {
-            if (method.getName().equals("close")) {
-              try {
-                method.invoke(t, args);
-              } catch (Throwable e) {
-                LOGGER.warn("Exception happens during close(): ", e);
-              }
-              return null;
-            } else {
-              return method.invoke(t, args);
-            }
-          } catch (InvocationTargetException e) {
-            throw e.getTargetException();
-          }
-        };
-    return (T)
-        Proxy.newProxyInstance(
-            t.getClass().getClassLoader(), t.getClass().getInterfaces(), handler);
-  }
 }
