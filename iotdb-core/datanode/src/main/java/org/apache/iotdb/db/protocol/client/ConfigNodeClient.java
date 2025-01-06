@@ -807,9 +807,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TGetDataNodeLocationsResp getRunningDataNodeLocations() throws TException {
+  public TGetDataNodeLocationsResp getReadableDataNodeLocations() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getRunningDataNodeLocations(), resp -> !updateConfigNodeLeader(resp.status));
+        () -> client.getReadableDataNodeLocations(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
