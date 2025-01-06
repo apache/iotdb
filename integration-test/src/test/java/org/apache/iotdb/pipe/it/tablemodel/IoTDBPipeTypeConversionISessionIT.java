@@ -135,7 +135,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
                   validateResultSet(
                       query(receiverSession, tablet.getSchemas(), tablet.getTableName()),
                       expectedValues,
-                      tablet.timestamps);
+                      tablet.getTimestamps());
                 } catch (Exception e) {
                   fail(e.getMessage());
                 }
@@ -283,13 +283,11 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
     }
   }
 
-  private long[] createTestDataForTimestamp() {
+  private void createTestDataForTimeColumn(Tablet tablet) {
     long time = new Date().getTime();
-    long[] data = new long[generateDataSize];
-    for (int i = 0; i < data.length; i++) {
-      data[i] = time++;
+    for (int i = 0; i < generateDataSize; i++) {
+      tablet.addTimestamp(i, time++);
     }
-    return data;
   }
 
   private void createTestDataForDate(Tablet tablet, int j) {
@@ -336,7 +334,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
       final Tablet tablet, List<Pair<MeasurementSchema, MeasurementSchema>> pairs) {
     List<List<Object>> insertRecords = new ArrayList<>(tablet.getRowSize());
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
-    final Object[] values = tablet.values;
+    final Object[] values = tablet.getValues();
     for (int i = 0; i < tablet.getRowSize(); i++) {
       List<Object> insertRecord = new ArrayList<>();
       for (int j = 0; j < schemas.size(); j++) {
@@ -417,7 +415,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
             columnTypes,
             generateDataSize);
     tablet.initBitMaps();
-    tablet.timestamps = createTestDataForTimestamp();
+    createTestDataForTimeColumn(tablet);
     for (int i = 0; i < pairs.size(); i++) {
       MeasurementSchema schema = pairs.get(i).left;
       switch (schema.getType()) {
