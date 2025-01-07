@@ -20,7 +20,8 @@ public class Subcolumn5QueryEqualTest {
 
         int encode_pos = 0;
 
-        int data_length = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+        int data_length = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16)
+                |
                 ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
         encode_pos += 4;
 
@@ -45,8 +46,8 @@ public class Subcolumn5QueryEqualTest {
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
                 int value = ((encoded_result[encode_pos] & 0xFF) << 24) |
-                ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
-                ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
+                        ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
+                        ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
                 if (value == target) {
                     result[result_length[0]] = value;
                     result_length[0]++;
@@ -105,7 +106,6 @@ public class Subcolumn5QueryEqualTest {
 
         encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, 8, l, bitWidthList);
 
-
         int[][] subcolumnList = new int[l][remainder];
 
         int[] encodingType = new int[l];
@@ -130,14 +130,14 @@ public class Subcolumn5QueryEqualTest {
                     int index = candidate_indices[j];
 
                     subcolumnList[i][index] = Subcolumn5Test.bytesToInt(encoded_result,
-                    encode_pos + index * bitWidthList[i], bitWidthList[i]);
+                            encode_pos + index * bitWidthList[i], bitWidthList[i]);
                     int value = (target >> (i * beta)) & ((1 << beta) - 1);
                     // if (subcolumnList[i][index] < value) {
-                    //     result[result_length[0]] = block_size * block_index + index;
-                    //     result_length[0]++;
+                    // result[result_length[0]] = block_size * block_index + index;
+                    // result_length[0]++;
                     // } else if (subcolumnList[i][index] == value) {
-                    //     candidate_indices[new_length] = index;
-                    //     new_length++;
+                    // candidate_indices[new_length] = index;
+                    // new_length++;
                     // }
                     if (subcolumnList[i][index] == value) {
                         candidate_indices[new_length] = index;
@@ -171,7 +171,8 @@ public class Subcolumn5QueryEqualTest {
                 int[] rle_values = new int[index];
 
                 encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, bw, index, run_length);
-                encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, bitWidthList[i], index, rle_values);
+                encode_pos = Subcolumn5Test.decodeBitPacking(encoded_result, encode_pos, bitWidthList[i], index,
+                        rle_values);
 
                 int new_length = 0;
                 int rleIndex = 0;
@@ -188,11 +189,11 @@ public class Subcolumn5QueryEqualTest {
 
                     if (rleIndex < index) {
                         // if (rle_values[rleIndex] < value) {
-                        //     result[result_length[0]] = block_size * block_index + index_candidate;
-                        //     result_length[0]++;
+                        // result[result_length[0]] = block_size * block_index + index_candidate;
+                        // result_length[0]++;
                         // } else if (rle_values[rleIndex] == value) {
-                        //     candidate_indices[new_length] = index_candidate;
-                        //     new_length++;
+                        // candidate_indices[new_length] = index_candidate;
+                        // new_length++;
                         // }
                         if (rle_values[rleIndex] == value) {
                             candidate_indices[new_length] = index_candidate;
@@ -207,11 +208,11 @@ public class Subcolumn5QueryEqualTest {
         }
 
         // if (target <= 0) {
-        //     for (int i = 0; i < remainder; i++) {
-        //         result[result_length[0]] = block_size * block_index + i;
-        //         result_length[0]++;
-        //     }
-        //     return encode_pos;
+        // for (int i = 0; i < remainder; i++) {
+        // result[result_length[0]] = block_size * block_index + i;
+        // result_length[0]++;
+        // }
+        // return encode_pos;
         // }
         for (int i = 0; i < candidate_length; i++) {
             result[result_length[0]] = block_size * block_index + candidate_indices[i];
@@ -258,10 +259,7 @@ public class Subcolumn5QueryEqualTest {
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        String outputPath = output_parent_dir + "query_equal5.csv";
-
-        // int block_size = 1024;
-        int block_size = 512;
+        int[] block_size_list = { 32, 64, 128, 256, 512, 1024 };
 
         HashMap<String, Integer> queryRange = new HashMap<>();
         queryRange.put("Air-pressure", 8820000);
@@ -281,93 +279,101 @@ public class Subcolumn5QueryEqualTest {
         // TODO 真正计算时，记得注释掉将下面的内容
         // repeatTime = 1;
 
-        CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
+        for (int block_size : block_size_list) {
+            String outputPath = output_parent_dir + "subcolumn5_query_equal_block_" + block_size + ".csv";
 
-        String[] head = {
-                "Dataset",
-                "Encoding Algorithm",
-                "Encoding Time",
-                "Decoding Time",
-                "Points",
-                "Compressed Size",
-                "Compression Ratio"
-        };
-        writer.writeRecord(head);
+            CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
+            writer.setRecordDelimiter('\n');
 
-        File directory = new File(parent_dir);
-        // File[] csvFiles = directory.listFiles();
-        File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
-
-        for (File file : csvFiles) {
-            String datasetName = extractFileName(file.toString());
-            System.out.println(datasetName);
-
-            InputStream inputStream = Files.newInputStream(file.toPath());
-
-            CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-            ArrayList<Float> data1 = new ArrayList<>();
-
-            int max_decimal = 0;
-            while (loader.readRecord()) {
-                String f_str = loader.getValues()[0];
-                int cur_decimal = getDecimalPrecision(f_str);
-                if (cur_decimal > max_decimal)
-                    max_decimal = cur_decimal;
-                data1.add(Float.valueOf(f_str));
-            }
-            inputStream.close();
-            int[] data2_arr = new int[data1.size()];
-            int max_mul = (int) Math.pow(10, max_decimal);
-            for (int i = 0; i < data1.size(); i++) {
-                data2_arr[i] = (int) (data1.get(i) * max_mul);
-            }
-
-            System.out.println(max_decimal);
-            byte[] encoded_result = new byte[data2_arr.length * 4];
-
-            long encodeTime = 0;
-            long decodeTime = 0;
-            double ratio = 0;
-            double compressed_size = 0;
-
-            int length = 0;
-
-            long s = System.nanoTime();
-            for (int repeat = 0; repeat < repeatTime; repeat++) {
-                length = Subcolumn5Test.Encoder(data2_arr, block_size, encoded_result);
-            }
-
-            long e = System.nanoTime();
-            encodeTime += ((e - s) / repeatTime);
-            // compressed_size += length / 8;
-            compressed_size += length;
-            double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
-            ratio += ratioTmp;
-
-            System.out.println("Query");
-
-            s = System.nanoTime();
-
-            for (int repeat = 0; repeat < repeatTime; repeat++) {
-                Query(encoded_result, queryRange.get(datasetName));
-            }
-
-            e = System.nanoTime();
-            decodeTime += ((e - s) / repeatTime);
-
-            String[] record = {
-                    datasetName,
-                    "Subcolumn",
-                    String.valueOf(encodeTime),
-                    String.valueOf(decodeTime),
-                    String.valueOf(data1.size()),
-                    String.valueOf(compressed_size),
-                    String.valueOf(ratio)
+            String[] head = {
+                    "Dataset",
+                    "Encoding Algorithm",
+                    "Encoding Time",
+                    "Decoding Time",
+                    "Points",
+                    "Compressed Size",
+                    "Compression Ratio"
             };
-            writer.writeRecord(record);
-            System.out.println(ratio);
-        }
+            writer.writeRecord(head);
 
-        writer.close();
+            File directory = new File(parent_dir);
+            // File[] csvFiles = directory.listFiles();
+            File[] csvFiles = directory.listFiles((dir, name) -> name.endsWith(".csv"));
+
+            for (File file : csvFiles) {
+                String datasetName = extractFileName(file.toString());
+                System.out.println(datasetName);
+
+                InputStream inputStream = Files.newInputStream(file.toPath());
+
+                CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+                ArrayList<Float> data1 = new ArrayList<>();
+
+                int max_decimal = 0;
+                while (loader.readRecord()) {
+                    String f_str = loader.getValues()[0];
+                    int cur_decimal = getDecimalPrecision(f_str);
+                    if (cur_decimal > max_decimal)
+                        max_decimal = cur_decimal;
+                    data1.add(Float.valueOf(f_str));
+                }
+                inputStream.close();
+                int[] data2_arr = new int[data1.size()];
+                int max_mul = (int) Math.pow(10, max_decimal);
+                for (int i = 0; i < data1.size(); i++) {
+                    data2_arr[i] = (int) (data1.get(i) * max_mul);
+                }
+
+                System.out.println(max_decimal);
+                byte[] encoded_result = new byte[data2_arr.length * 4];
+
+                long encodeTime = 0;
+                long decodeTime = 0;
+                double ratio = 0;
+                double compressed_size = 0;
+
+                int length = 0;
+
+                long s = System.nanoTime();
+                for (int repeat = 0; repeat < repeatTime; repeat++) {
+                    length = Subcolumn5Test.Encoder(data2_arr, block_size, encoded_result);
+                }
+
+                long e = System.nanoTime();
+                encodeTime += ((e - s) / repeatTime);
+                // compressed_size += length / 8;
+                compressed_size += length;
+                double ratioTmp = compressed_size / (double) (data1.size() * Long.BYTES);
+                ratio += ratioTmp;
+
+                System.out.println("Query");
+
+                s = System.nanoTime();
+
+                for (int repeat = 0; repeat < repeatTime; repeat++) {
+                    Query(encoded_result, queryRange.get(datasetName));
+                }
+
+                e = System.nanoTime();
+                decodeTime += ((e - s) / repeatTime);
+
+                String[] record = {
+                        datasetName,
+                        "Subcolumn",
+                        String.valueOf(encodeTime),
+                        String.valueOf(decodeTime),
+                        String.valueOf(data1.size()),
+                        String.valueOf(compressed_size),
+                        String.valueOf(ratio)
+                };
+                writer.writeRecord(record);
+
+                System.out.println("block_size: " + block_size);
+
+                System.out.println(ratio);
+            }
+
+            writer.close();
+        }
     }
 }

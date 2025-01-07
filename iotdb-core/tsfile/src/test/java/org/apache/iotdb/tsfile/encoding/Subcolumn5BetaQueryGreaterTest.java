@@ -13,10 +13,10 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class Subcolumn5QueryLessTest {
-    // Subcolumn5Test Query Less
+public class Subcolumn5BetaQueryGreaterTest {
+    // Subcolumn5Test Query Greater
 
-    public static void Query(byte[] encoded_result, int upper_bound) {
+    public static void Query(byte[] encoded_result, int lower_bound) {
 
         int encode_pos = 0;
 
@@ -37,7 +37,7 @@ public class Subcolumn5QueryLessTest {
 
         for (int i = 0; i < num_blocks; i++) {
             encode_pos = BlockQueryIndex(encoded_result, i, block_size,
-                    block_size, encode_pos, upper_bound,
+                    block_size, encode_pos, lower_bound,
                     result, result_length);
         }
 
@@ -48,7 +48,7 @@ public class Subcolumn5QueryLessTest {
                 int value = ((encoded_result[encode_pos] & 0xFF) << 24) |
                         ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
                         ((encoded_result[encode_pos + 2] & 0xFF) << 8) | (encoded_result[encode_pos + 3] & 0xFF);
-                if (value < upper_bound) {
+                if (value > lower_bound) {
                     result[result_length[0]] = value;
                     result_length[0]++;
                 }
@@ -56,14 +56,14 @@ public class Subcolumn5QueryLessTest {
             }
         } else {
             encode_pos = BlockQueryIndex(encoded_result, num_blocks, block_size,
-                    remainder, encode_pos, upper_bound,
+                    remainder, encode_pos, lower_bound,
                     result, result_length);
         }
 
     }
 
     public static int BlockQueryIndex(byte[] encoded_result, int block_index, int block_size, int remainder,
-            int encode_pos, int upper_bound, int[] result, int[] result_length) {
+            int encode_pos, int lower_bound, int[] result, int[] result_length) {
         int[] min_delta = new int[3];
 
         min_delta[0] = ((encoded_result[encode_pos] & 0xFF) << 24) | ((encoded_result[encode_pos + 1] & 0xFF) << 16) |
@@ -75,9 +75,9 @@ public class Subcolumn5QueryLessTest {
         int m = encoded_result[encode_pos];
         encode_pos += 1;
 
-        upper_bound -= min_delta[0];
+        lower_bound -= min_delta[0];
 
-        // 候选索引列表，当前分列值和 upper_bound 相应值相等的索引
+        // 候选索引列表，当前分列值和 lower_bound 相应值相等的索引
         int[] candidate_indices = new int[remainder];
         int candidate_length = 0;
         for (int i = 0; i < remainder; i++) {
@@ -86,7 +86,7 @@ public class Subcolumn5QueryLessTest {
         }
 
         if (m == 0) {
-            if (upper_bound > 0) {
+            if (lower_bound <= 0) {
                 for (int i = 0; i < remainder; i++) {
                     result[result_length[0]] = block_size * block_index + i;
                     result_length[0]++;
@@ -116,7 +116,7 @@ public class Subcolumn5QueryLessTest {
             int type = encodingType[i];
             if (type == 0) {
 
-                if (upper_bound <= 0) {
+                if (lower_bound <= 0) {
                     encode_pos *= 8;
                     encode_pos += bitWidthList[i] * remainder;
                     encode_pos = (encode_pos + 7) / 8;
@@ -131,8 +131,8 @@ public class Subcolumn5QueryLessTest {
 
                     subcolumnList[i][index] = Subcolumn5Test.bytesToInt(encoded_result,
                             encode_pos + index * bitWidthList[i], bitWidthList[i]);
-                    int value = (upper_bound >> (i * beta)) & ((1 << beta) - 1);
-                    if (subcolumnList[i][index] < value) {
+                    int value = (lower_bound >> (i * beta)) & ((1 << beta) - 1);
+                    if (subcolumnList[i][index] > value) {
                         result[result_length[0]] = block_size * block_index + index;
                         result_length[0]++;
                     } else if (subcolumnList[i][index] == value) {
@@ -152,7 +152,7 @@ public class Subcolumn5QueryLessTest {
 
                 encode_pos += 2;
 
-                if (upper_bound <= 0) {
+                if (lower_bound <= 0) {
                     encode_pos *= 8;
                     encode_pos += bw * index;
                     encode_pos = (encode_pos + 7) / 8;
@@ -173,7 +173,7 @@ public class Subcolumn5QueryLessTest {
                 int new_length = 0;
                 int rleIndex = 0;
                 int currentPos = 0;
-                int value = (upper_bound >> (i * beta)) & ((1 << beta) - 1);
+                int value = (lower_bound >> (i * beta)) & ((1 << beta) - 1);
 
                 for (int j = 0; j < candidate_length; j++) {
                     int index_candidate = candidate_indices[j];
@@ -184,7 +184,7 @@ public class Subcolumn5QueryLessTest {
                     }
 
                     if (rleIndex < index) {
-                        if (rle_values[rleIndex] < value) {
+                        if (rle_values[rleIndex] > value) {
                             result[result_length[0]] = block_size * block_index + index_candidate;
                             result_length[0]++;
                         } else if (rle_values[rleIndex] == value) {
@@ -199,13 +199,13 @@ public class Subcolumn5QueryLessTest {
             }
         }
 
-        // if (upper_bound <= 0) {
-        // for (int i = 0; i < remainder; i++) {
-        // result[result_length[0]] = block_size * block_index + i;
-        // result_length[0]++;
-        // }
-        // return encode_pos;
-        // }
+        if (lower_bound <= 0) {
+            for (int i = 0; i < remainder; i++) {
+                result[result_length[0]] = block_size * block_index + i;
+                result_length[0]++;
+            }
+            return encode_pos;
+        }
 
         return encode_pos;
     }
@@ -247,28 +247,32 @@ public class Subcolumn5QueryLessTest {
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        int[] block_size_list = { 32, 64, 128, 256, 512, 1024 };
+        // int[] block_size_list = { 32, 64, 128, 256, 512, 1024 };
+        int[] beta_list = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31 };
+        
+        int block_size = 512;
 
         HashMap<String, Integer> queryRange = new HashMap<>();
-        queryRange.put("Air-pressure", 8820000);
-        queryRange.put("Bird-migration", 2600000);
-        queryRange.put("Bitcoin-price", 170000000);
-        queryRange.put("Blockchain-tr", 300000);
-        queryRange.put("City-temp", 700);
-        queryRange.put("Dewpoint-temp", 9600);
-        queryRange.put("IR-bio-temp", -200);
-        queryRange.put("PM10-dust", 2000);
-        queryRange.put("Stocks-DE", 90000);
-        queryRange.put("Stocks-UK", 30000);
-        queryRange.put("Stocks-USA", 6000);
-        queryRange.put("Wind-Speed", 60);
+        queryRange.put("Air-pressure", 8720000);
+        queryRange.put("Bird-migration", 2500000);
+        queryRange.put("Bitcoin-price", 160000000);
+        queryRange.put("Blockchain-tr", 100000);
+        queryRange.put("City-temp", 480);
+        queryRange.put("Dewpoint-temp", 9500);
+        queryRange.put("IR-bio-temp", -300);
+        queryRange.put("PM10-dust", 1000);
+        queryRange.put("Stocks-DE", 40000);
+        queryRange.put("Stocks-UK", 20000);
+        queryRange.put("Stocks-USA", 5000);
+        queryRange.put("Wind-Speed", 50);
 
-        int repeatTime = 500;
+        int repeatTime = 100;
         // TODO 真正计算时，记得注释掉将下面的内容
         // repeatTime = 1;
 
-        for (int block_size : block_size_list) {
-            String outputPath = output_parent_dir + "subcolumn5_query_less_block_" + block_size + ".csv";
+        for (int beta : beta_list) {
+            String outputPath = output_parent_dir + "subcolumn5_query_greater_beta_" + beta + ".csv";
 
             CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
             writer.setRecordDelimiter('\n');
@@ -324,7 +328,7 @@ public class Subcolumn5QueryLessTest {
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime; repeat++) {
-                    length = Subcolumn5Test.Encoder(data2_arr, block_size, encoded_result);
+                    length = Subcolumn5BetaTest.Encoder(data2_arr, block_size, encoded_result, beta);
                 }
 
                 long e = System.nanoTime();
@@ -356,7 +360,7 @@ public class Subcolumn5QueryLessTest {
                 };
                 writer.writeRecord(record);
 
-                System.out.println("block_size: " + block_size);
+                System.out.println("beta: " + beta);
 
                 System.out.println(ratio);
             }
