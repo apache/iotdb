@@ -21,7 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.VerifyMetadataTypeMismatchException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -86,8 +87,8 @@ public class LoadTsFileToTreeModelAnalyzer extends LoadTsFileAnalyzer {
     } catch (AuthException e) {
       setFailAnalysisForAuthException(analysis, e);
       return analysis;
-    } catch (VerifyMetadataTypeMismatchException e) {
-      executeDataTypeConversionOnTypeMismatch(analysis, e);
+    } catch (LoadAnalyzeException e) {
+      executeTabletConversion(analysis, e);
       return analysis;
     } catch (Exception e) {
       final String exceptionMessage =
@@ -110,7 +111,7 @@ public class LoadTsFileToTreeModelAnalyzer extends LoadTsFileAnalyzer {
 
   @Override
   protected void analyzeSingleTsFile(final File tsFile)
-      throws IOException, AuthException, VerifyMetadataTypeMismatchException {
+      throws IOException, AuthException, LoadAnalyzeTypeMismatchException {
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       // can be reused when constructing tsfile resource
       final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =

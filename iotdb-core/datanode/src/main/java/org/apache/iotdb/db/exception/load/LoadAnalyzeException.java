@@ -17,18 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.load;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class VerifyMetadataException extends IoTDBException {
+public class LoadAnalyzeException extends IoTDBException {
 
-  public VerifyMetadataException(String message) {
+  public LoadAnalyzeException(String message) {
     super(message, TSStatusCode.VERIFY_METADATA_ERROR.getStatusCode());
   }
 
-  public VerifyMetadataException(String message, int errorCode) {
+  public LoadAnalyzeException(String message, int errorCode) {
     super(message, errorCode);
   }
 }

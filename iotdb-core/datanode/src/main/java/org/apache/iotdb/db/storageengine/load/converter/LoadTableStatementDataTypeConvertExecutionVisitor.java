@@ -89,7 +89,8 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
                   PipeTransferTabletRawReq.toTPipeTransferRawReq(
                           rawTabletInsertionEvent.convertToTablet(),
                           rawTabletInsertionEvent.isAligned())
-                      .constructStatement());
+                      .constructStatement(),
+                  loadTsFileStatement.isConvertOnTypeMismatch());
 
           TSStatus result;
           try {
