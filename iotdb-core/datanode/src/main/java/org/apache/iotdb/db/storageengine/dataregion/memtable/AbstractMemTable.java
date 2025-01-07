@@ -29,11 +29,15 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
@@ -1056,5 +1060,31 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public boolean isTotallyGeneratedByPipe() {
     return this.isTotallyGeneratedByPipe.get();
+  }
+
+  @Override
+  public void checkDataType(InsertNode node) throws DataTypeInconsistentException {
+    if (node instanceof InsertRowsNode) {
+      List<InsertRowNode> insertRowNodeList = ((InsertRowsNode) node).getInsertRowNodeList();
+      for (InsertRowNode insertRowNode : insertRowNodeList) {
+        doCheckDataType(insertRowNode);
+      }
+    } else if (node instanceof InsertMultiTabletsNode) {
+      List<InsertTabletNode> insertTabletNodeList =
+          ((InsertMultiTabletsNode) node).getInsertTabletNodeList();
+      for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
+        doCheckDataType(insertTabletNode);
+      }
+    } else {
+      doCheckDataType(node);
+    }
+  }
+
+  private void doCheckDataType(InsertNode node) throws DataTypeInconsistentException {
+    IWritableMemChunkGroup memChunkGroup = memTableMap.get(node.getDeviceID());
+    if (memChunkGroup == null) {
+      return;
+    }
+    memChunkGroup.checkDataType(node);
   }
 }

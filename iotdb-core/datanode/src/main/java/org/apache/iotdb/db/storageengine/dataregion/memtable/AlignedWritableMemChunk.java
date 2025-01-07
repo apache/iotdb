@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
@@ -557,5 +559,22 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   public boolean isAllDeleted() {
     return list.isAllDeleted();
+  }
+
+  public void checkDataType(InsertNode node) throws DataTypeInconsistentException {
+    for (MeasurementSchema incomingSchema : node.getMeasurementSchemas()) {
+      if (incomingSchema == null) {
+        continue;
+      }
+
+      Integer index = measurementIndexMap.get(incomingSchema.getMeasurementName());
+      if (index != null) {
+        IMeasurementSchema existingSchema = schemaList.get(index);
+        if (existingSchema.getType() != incomingSchema.getType()) {
+          throw new DataTypeInconsistentException(
+              existingSchema.getType(), incomingSchema.getType());
+        }
+      }
+    }
   }
 }

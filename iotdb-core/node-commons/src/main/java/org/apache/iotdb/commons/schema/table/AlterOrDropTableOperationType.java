@@ -53,6 +53,8 @@ public enum AlterOrDropTableOperationType {
         return RENAME_TABLE;
       case 5:
         return DROP_TABLE;
+      case 6:
+        return ALTER_COLUMN_DATA_TYPE;
       default:
         throw new IllegalArgumentException();
     }

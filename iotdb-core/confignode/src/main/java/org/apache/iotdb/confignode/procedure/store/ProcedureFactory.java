@@ -437,6 +437,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.NEVER_FINISH_PROCEDURE;
     } else if (procedure instanceof AddNeverFinishSubProcedureProcedure) {
       return ProcedureType.ADD_NEVER_FINISH_SUB_PROCEDURE_PROCEDURE;
+    } else if (procedure instanceof AlterTableColumnDataTypeProcedure) {
+      return ProcedureType.ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE;
     }
     throw new UnsupportedOperationException(
         "Procedure type " + procedure.getClass() + " is not supported");
