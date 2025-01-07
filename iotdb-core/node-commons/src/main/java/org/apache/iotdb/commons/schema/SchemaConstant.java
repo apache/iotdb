@@ -97,7 +97,7 @@ public class SchemaConstant {
 
   public static final byte LOGICAL_VIEW_MNODE_TYPE = 5;
 
-  public static final byte TABLE_DEVICE_MNODE_TYPE = 6;
+  public static final byte TABLE_MNODE_TYPE = 6;
 
   public static final String INTERNAL_MNODE_TYPE_NAME = "InternalMNode";
   public static final String STORAGE_GROUP_MNODE_TYPE_NAME = "StorageGroupMNode";
@@ -129,7 +129,7 @@ public class SchemaConstant {
         return STORAGE_GROUP_ENTITY_MNODE_TYPE_NAME;
       case LOGICAL_VIEW_MNODE_TYPE:
         return LOGICAL_VIEW_MNODE_TYPE_NAME;
-      case TABLE_DEVICE_MNODE_TYPE:
+      case TABLE_MNODE_TYPE:
         return TABLE_MNODE_TYPE_NAME;
       default:
         throw new RuntimeException("Undefined MNode type " + type);
