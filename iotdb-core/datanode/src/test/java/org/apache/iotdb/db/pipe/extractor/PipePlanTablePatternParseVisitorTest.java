@@ -102,7 +102,8 @@ public class PipePlanTablePatternParseVisitorTest {
         new RelationalDeleteDataNode(
             new PlanNodeId(""),
             new TableDeletionEntry(
-                new DeletionPredicate("ab"), new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE))),
+                new DeletionPredicate("ab"), new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
+            "db1"),
         IoTDBSchemaRegionExtractor.TABLE_PATTERN_PARSE_VISITOR
             .process(
                 new RelationalDeleteDataNode(
@@ -120,7 +121,8 @@ public class PipePlanTablePatternParseVisitorTest {
                                             .getDeviceID(
                                                 new PartialPath(new String[] {"ac", "device1"}))),
                                     new IDPredicate.SegmentExactMatch("device2", 1))),
-                            new TimeRange(0, 1)))),
+                            new TimeRange(0, 1))),
+                    "db1"),
                 tablePattern)
             .orElse(null));
   }

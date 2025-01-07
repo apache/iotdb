@@ -224,8 +224,9 @@ public class PipeDataNodeThriftRequestTest {
                                         .getDeviceID(
                                             new PartialPath(new String[] {"ac", "device1"}))),
                                 new IDPredicate.SegmentExactMatch("device2", 1))),
-                        new TimeRange(0, 1)))),
-            "db");
+                        new TimeRange(0, 1))),
+                "db1"),
+            "db1");
 
     final PipeTransferPlanNodeWithDatabaseReq deserializeReq =
         PipeTransferPlanNodeWithDatabaseReq.fromTPipeTransferReq(req);
