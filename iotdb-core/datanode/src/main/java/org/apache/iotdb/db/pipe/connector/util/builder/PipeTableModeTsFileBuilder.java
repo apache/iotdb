@@ -66,7 +66,7 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
   }
 
   @Override
-  public List<Pair<String, File>> convertTabletToTSFileWithDBInfo() throws IOException {
+  public List<Pair<String, File>> convertTabletToTsFileWithDBInfo() throws IOException {
     if (dataBase2TabletList.isEmpty()) {
       return new ArrayList<>(0);
     }

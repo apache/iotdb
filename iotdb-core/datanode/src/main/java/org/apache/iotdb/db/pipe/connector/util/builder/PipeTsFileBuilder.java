@@ -108,7 +108,7 @@ public abstract class PipeTsFileBuilder {
 
   public abstract void bufferTreeModelTablet(Tablet tablet, Boolean isAligned);
 
-  public abstract List<Pair<String, File>> convertTabletToTSFileWithDBInfo()
+  public abstract List<Pair<String, File>> convertTabletToTsFileWithDBInfo()
       throws IOException, WriteProcessException;
 
   public abstract boolean isEmpty();

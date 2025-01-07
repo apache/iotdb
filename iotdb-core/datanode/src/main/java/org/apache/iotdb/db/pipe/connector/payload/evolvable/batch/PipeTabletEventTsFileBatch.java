@@ -53,6 +53,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   private final AtomicLong currentBatchId = new AtomicLong(BATCH_ID_GENERATOR.incrementAndGet());
 
   private final long maxSizeInBytes;
+
   private final PipeTsFileBuilder treeModeTsFileBuilder;
   private final PipeTsFileBuilder tableModeTsFileBuilder;
 
@@ -62,7 +63,8 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     super(maxDelayInMs);
 
     this.maxSizeInBytes = requestMaxBatchSizeInBytes;
-    AtomicLong tsFileIdGenerator = new AtomicLong(0);
+
+    final AtomicLong tsFileIdGenerator = new AtomicLong(0);
     treeModeTsFileBuilder = new PipeTreeModelTsFileBuilder(currentBatchId, tsFileIdGenerator);
     tableModeTsFileBuilder = new PipeTableModeTsFileBuilder(currentBatchId, tsFileIdGenerator);
   }
@@ -79,22 +81,21 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
         if (tablet.getRowSize() == 0) {
           continue;
         }
-        // table Model
         if (isTableModel) {
+          // table Model
           bufferTableModelTablet(
               insertNodeTabletInsertionEvent.getPipeName(),
               insertNodeTabletInsertionEvent.getCreationTime(),
               tablet,
               insertNodeTabletInsertionEvent.getTableModelDatabaseName());
-          continue;
+        } else {
+          // tree Model
+          bufferTreeModelTablet(
+              insertNodeTabletInsertionEvent.getPipeName(),
+              insertNodeTabletInsertionEvent.getCreationTime(),
+              tablet,
+              insertNodeTabletInsertionEvent.isAligned(i));
         }
-
-        // tree Model
-        bufferTreeModelTablet(
-            insertNodeTabletInsertionEvent.getPipeName(),
-            insertNodeTabletInsertionEvent.getCreationTime(),
-            tablet,
-            insertNodeTabletInsertionEvent.isAligned(i));
       }
     } else if (event instanceof PipeRawTabletInsertionEvent) {
       final PipeRawTabletInsertionEvent rawTabletInsertionEvent =
@@ -103,21 +104,21 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       if (tablet.getRowSize() == 0) {
         return true;
       }
-      // table Model
       if (rawTabletInsertionEvent.isTableModelEvent()) {
+        // table Model
         bufferTableModelTablet(
             rawTabletInsertionEvent.getPipeName(),
             rawTabletInsertionEvent.getCreationTime(),
             tablet,
             rawTabletInsertionEvent.getTableModelDatabaseName());
-        return true;
+      } else {
+        // tree Model
+        bufferTreeModelTablet(
+            rawTabletInsertionEvent.getPipeName(),
+            rawTabletInsertionEvent.getCreationTime(),
+            tablet,
+            rawTabletInsertionEvent.isAligned());
       }
-      // tree Model
-      bufferTreeModelTablet(
-          rawTabletInsertionEvent.getPipeName(),
-          rawTabletInsertionEvent.getCreationTime(),
-          tablet,
-          rawTabletInsertionEvent.isAligned());
     } else {
       LOGGER.warn(
           "Batch id = {}: Unsupported event {} type {} when constructing tsfile batch",
@@ -180,13 +181,12 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       return Collections.emptyList();
     }
 
-    List<Pair<String, File>> list = new ArrayList<>();
+    final List<Pair<String, File>> list = new ArrayList<>();
     if (!treeModeTsFileBuilder.isEmpty()) {
-      list.addAll(treeModeTsFileBuilder.convertTabletToTSFileWithDBInfo());
+      list.addAll(treeModeTsFileBuilder.convertTabletToTsFileWithDBInfo());
     }
-
     if (!tableModeTsFileBuilder.isEmpty()) {
-      list.addAll(tableModeTsFileBuilder.convertTabletToTSFileWithDBInfo());
+      list.addAll(tableModeTsFileBuilder.convertTabletToTsFileWithDBInfo());
     }
     return list;
   }

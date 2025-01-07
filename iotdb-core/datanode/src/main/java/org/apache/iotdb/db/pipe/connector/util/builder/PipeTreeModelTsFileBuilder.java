@@ -67,7 +67,7 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
   }
 
   @Override
-  public List<Pair<String, File>> convertTabletToTSFileWithDBInfo()
+  public List<Pair<String, File>> convertTabletToTsFileWithDBInfo()
       throws IOException, WriteProcessException {
     return writeTabletsToTsFiles();
   }
