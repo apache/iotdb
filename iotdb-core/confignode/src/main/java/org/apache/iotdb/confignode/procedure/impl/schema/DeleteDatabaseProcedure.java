@@ -204,8 +204,6 @@ public class DeleteDatabaseProcedure
               MetricService.getInstance(), deleteDatabaseSchema.getName());
 
           // Delete DatabasePartitionTable
-          // Write the whole schema for pipe to tell whether the database
-          // is in table model
           final TSStatus deleteConfigResult =
               env.deleteDatabaseConfig(deleteDatabaseSchema.getName(), isGeneratedByPipe);
 
