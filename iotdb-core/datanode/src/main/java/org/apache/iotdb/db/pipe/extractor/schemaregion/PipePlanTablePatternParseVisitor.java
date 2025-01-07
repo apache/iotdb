@@ -55,7 +55,6 @@ public class PipePlanTablePatternParseVisitor
         : Optional.empty();
   }
 
-  // If "matches" database is false, the pipeTask is not assumed to exist
   @Override
   public Optional<PlanNode> visitDeleteData(
       final RelationalDeleteDataNode node, final TablePattern pattern) {
