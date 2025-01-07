@@ -39,10 +39,10 @@ import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.metrics.utils.SystemType;
-
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+
 import org.apache.thrift.TException;
 import org.apache.tsfile.read.common.Field;
 import org.awaitility.Awaitility;
@@ -750,7 +750,8 @@ public class IoTDBRegionOperationReliabilityITFramework {
     return result;
   }
 
-  protected static Map<Integer, String> getRegionStatusWithoutRunning(Session session) throws IoTDBConnectionException, StatementExecutionException {
+  protected static Map<Integer, String> getRegionStatusWithoutRunning(Session session)
+      throws IoTDBConnectionException, StatementExecutionException {
     SessionDataSet dataSet = session.executeQueryStatement("show regions");
     final int regionIdIndex = dataSet.getColumnNames().indexOf("RegionId");
     final int regionStatusIndex = dataSet.getColumnNames().indexOf("Status");

@@ -631,12 +631,13 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   }
 
   public String getDataPath() {
-    return getNodePath() + File.separator
-            + IoTDBConstant.DATA_FOLDER_NAME
-            + File.separator
-            + getNodeType()
-            + File.separator
-            + IoTDBConstant.DATA_FOLDER_NAME;
+    return getNodePath()
+        + File.separator
+        + IoTDBConstant.DATA_FOLDER_NAME
+        + File.separator
+        + getNodeType()
+        + File.separator
+        + IoTDBConstant.DATA_FOLDER_NAME;
   }
 
   abstract String getNodeType();
