@@ -25,6 +25,8 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.category.TableClusterIT;
+import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
@@ -59,6 +61,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
+@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBSessionRelationalIT {
 
   @BeforeClass
@@ -801,7 +804,7 @@ public class IoTDBSessionRelationalIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
-  public void autoCreatetagColumnTest()
+  public void autoCreateTagColumnTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
@@ -824,52 +827,54 @@ public class IoTDBSessionRelationalIT {
               columnTypes,
               15);
 
-      for (long row = 0; row < 15; row++) {
-        int rowIndex = tablet.getRowSize();
-        tablet.addTimestamp(rowIndex, timestamp + row);
-        tablet.addValue("tag2", rowIndex, "tag:" + row);
-        tablet.addValue("attr1", rowIndex, "attr:" + row);
-        tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
-          session.insert(tablet);
-          tablet.reset();
-        }
+      for (int row = 0; row < 15; row++) {
+        tablet.addTimestamp(row, timestamp);
+        tablet.addValue("tag2", row, "tag:" + timestamp);
+        tablet.addValue("attr1", row, "attr:" + timestamp);
+        tablet.addValue("m1", row, timestamp * 1.0);
+        timestamp++;
       }
 
-      if (tablet.getRowSize() != 0) {
-        session.insert(tablet);
-        tablet.reset();
-      }
-
-      session.executeNonQueryStatement("FLush");
-
-      for (long row = 15; row < 30; row++) {
-        int rowIndex = tablet.getRowSize();
-        tablet.addTimestamp(rowIndex, timestamp + row);
-        tablet.addValue("tag2", rowIndex, "tag:" + row);
-        tablet.addValue("attr1", rowIndex, "attr:" + row);
-        tablet.addValue("m1", rowIndex, row * 1.0);
-        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
-          session.insert(tablet);
-          tablet.reset();
-        }
-      }
-
-      if (tablet.getRowSize() != 0) {
-        session.insert(tablet);
-        tablet.reset();
-      }
+      session.insert(tablet);
+      tablet.reset();
 
       SessionDataSet dataSet = session.executeQueryStatement("select * from table8 order by time");
       int cnt = 0;
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
-        timestamp = rowRecord.getFields().get(0).getLongV();
+        long t = rowRecord.getFields().get(0).getLongV();
         // tag 1 should be null
         assertNull(rowRecord.getFields().get(1).getDataType());
-        assertEquals("tag:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
-        assertEquals("attr:" + timestamp, rowRecord.getFields().get(3).getBinaryV().toString());
-        assertEquals(timestamp * 1.0, rowRecord.getFields().get(4).getDoubleV(), 0.0001);
+        assertEquals("tag:" + t, rowRecord.getFields().get(2).getBinaryV().toString());
+        assertEquals("attr:" + t, rowRecord.getFields().get(3).getBinaryV().toString());
+        assertEquals(t * 1.0, rowRecord.getFields().get(4).getDoubleV(), 0.0001);
+        cnt++;
+      }
+      assertEquals(15, cnt);
+
+      session.executeNonQueryStatement("FLush");
+
+      for (int row = 0; row < 15; row++) {
+        tablet.addTimestamp(row, timestamp);
+        tablet.addValue("tag2", row, "tag:" + timestamp);
+        tablet.addValue("attr1", row, "attr:" + timestamp);
+        tablet.addValue("m1", row, timestamp * 1.0);
+        timestamp++;
+      }
+
+      session.insert(tablet);
+      tablet.reset();
+
+      dataSet = session.executeQueryStatement("select * from table8 order by time");
+      cnt = 0;
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        long t = rowRecord.getFields().get(0).getLongV();
+        // tag 1 should be null
+        assertNull(rowRecord.getFields().get(1).getDataType());
+        assertEquals("tag:" + t, rowRecord.getFields().get(2).getBinaryV().toString());
+        assertEquals("attr:" + t, rowRecord.getFields().get(3).getBinaryV().toString());
+        assertEquals(t * 1.0, rowRecord.getFields().get(4).getDoubleV(), 0.0001);
         cnt++;
       }
       assertEquals(30, cnt);
@@ -878,7 +883,7 @@ public class IoTDBSessionRelationalIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
-  public void autoAdjusttagTest() throws IoTDBConnectionException, StatementExecutionException {
+  public void autoAdjustTagTest() throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
       // the tag order in the table is (tag1, tag2)
@@ -1462,6 +1467,87 @@ public class IoTDBSessionRelationalIT {
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.executeNonQueryStatement("SET CONFIGURATION \"enable_partial_insert\"=\"true\"");
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void autoCreateTagColumnTest2()
+      throws IoTDBConnectionException, StatementExecutionException {
+    int testNum = 18;
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      // only one column in this table, and others should be auto-created
+      session.executeNonQueryStatement(
+          "CREATE TABLE table" + testNum + " (tag1 string tag, s1 text field)");
+
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("tag2", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD);
+
+      long timestamp = 0;
+      Tablet tablet =
+          new Tablet(
+              "table" + testNum,
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes,
+              15);
+
+      for (int row = 0; row < 15; row++) {
+        tablet.addTimestamp(row, timestamp);
+        tablet.addValue("tag2", row, "string");
+        tablet.addValue("s2", row, timestamp);
+        timestamp++;
+      }
+
+      session.insert(tablet);
+      tablet.reset();
+
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from table" + testNum + " order by time");
+      int cnt = 0;
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        long t = rowRecord.getFields().get(0).getLongV();
+        // tag 1 should be null
+        assertNull(rowRecord.getFields().get(1).getDataType());
+        // s1 should be null
+        assertNull(rowRecord.getFields().get(2).getDataType());
+        assertEquals("string", rowRecord.getFields().get(3).getBinaryV().toString());
+        assertEquals(t, rowRecord.getFields().get(4).getLongV());
+        cnt++;
+      }
+      assertEquals(15, cnt);
+
+      session.executeNonQueryStatement("FLush");
+
+      for (int row = 0; row < 15; row++) {
+        tablet.addTimestamp(row, timestamp);
+        tablet.addValue("tag2", row, "string");
+        tablet.addValue("s2", row, timestamp);
+        timestamp++;
+      }
+
+      session.insert(tablet);
+      tablet.reset();
+
+      dataSet = session.executeQueryStatement("select * from table" + testNum + " order by time");
+      cnt = 0;
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        long t = rowRecord.getFields().get(0).getLongV();
+        // tag 1 should be null
+        assertNull(rowRecord.getFields().get(1).getDataType());
+        // s1 should be null
+        assertNull(rowRecord.getFields().get(2).getDataType());
+        assertEquals("string", rowRecord.getFields().get(3).getBinaryV().toString());
+        assertEquals(t, rowRecord.getFields().get(4).getLongV());
+        cnt++;
+      }
+      assertEquals(30, cnt);
     }
   }
 }

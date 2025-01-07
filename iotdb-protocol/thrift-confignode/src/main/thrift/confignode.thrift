@@ -1565,8 +1565,8 @@ service IConfigNodeRPCService {
   /** Kill query */
   common.TSStatus killQuery(string queryId, i32 dataNodeId)
 
-  /** Get all DataNodeLocations of Running DataNodes */
-  TGetDataNodeLocationsResp getRunningDataNodeLocations()
+  /** Get all DataNodeLocations of Readable DataNodes */
+  TGetDataNodeLocationsResp getReadableDataNodeLocations()
 
   // ======================================================
   // Cluster Tools

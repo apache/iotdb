@@ -573,6 +573,14 @@ public class TableMetadataImpl implements Metadata {
                   "Aggregate functions [%s] should only have one argument", functionName));
         }
         break;
+      case SqlConstant.COUNT_IF:
+        if (argumentTypes.size() != 1 || !isBool(argumentTypes.get(0))) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregate functions [%s] should only have one boolean expression as argument",
+                  functionName));
+        }
+        break;
       case SqlConstant.FIRST_AGGREGATION:
       case SqlConstant.LAST_AGGREGATION:
         if (argumentTypes.size() != 2) {
@@ -615,6 +623,7 @@ public class TableMetadataImpl implements Metadata {
     // get return type
     switch (functionName.toLowerCase(Locale.ENGLISH)) {
       case SqlConstant.COUNT:
+      case SqlConstant.COUNT_IF:
         return INT64;
       case SqlConstant.FIRST_AGGREGATION:
       case SqlConstant.LAST_AGGREGATION:
