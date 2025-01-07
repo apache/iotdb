@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.util;
+package org.apache.iotdb.db.pipe.connector.util.sorter;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -142,17 +142,18 @@ public class PipeTableModelTabletEventSorter {
     int columnIndex = 0;
     tablet.timestamps =
         (long[])
-            TabletSortUtil.reorderValueList(
+            PipeTabletEventSorter.reorderValueList(
                 deduplicatedSize, tablet.timestamps, TSDataType.TIMESTAMP, index);
     for (int i = 0, size = tablet.getSchemas().size(); i < size; i++) {
       final IMeasurementSchema schema = tablet.getSchemas().get(i);
       if (schema != null) {
         tablet.values[columnIndex] =
-            TabletSortUtil.reorderValueList(
+            PipeTabletEventSorter.reorderValueList(
                 deduplicatedSize, tablet.values[columnIndex], schema.getType(), index);
         if (tablet.bitMaps != null && tablet.bitMaps[columnIndex] != null) {
           tablet.bitMaps[columnIndex] =
-              TabletSortUtil.reorderBitMap(deduplicatedSize, tablet.bitMaps[columnIndex], index);
+              PipeTabletEventSorter.reorderBitMap(
+                  deduplicatedSize, tablet.bitMaps[columnIndex], index);
         }
         columnIndex++;
       }
@@ -254,11 +255,12 @@ public class PipeTableModelTabletEventSorter {
       final IMeasurementSchema schema = tablet.getSchemas().get(i);
       if (schema != null) {
         tablet.values[columnIndex] =
-            TabletSortUtil.reorderValueList(
+            PipeTabletEventSorter.reorderValueList(
                 deduplicatedSize, tablet.values[columnIndex], schema.getType(), index);
         if (tablet.bitMaps != null && tablet.bitMaps[columnIndex] != null) {
           tablet.bitMaps[columnIndex] =
-              TabletSortUtil.reorderBitMap(deduplicatedSize, tablet.bitMaps[columnIndex], index);
+              PipeTabletEventSorter.reorderBitMap(
+                  deduplicatedSize, tablet.bitMaps[columnIndex], index);
         }
         columnIndex++;
       }

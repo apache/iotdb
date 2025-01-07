@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.batch;
 
-import org.apache.iotdb.db.pipe.connector.util.PipeTableModeTsFileBuilder;
-import org.apache.iotdb.db.pipe.connector.util.PipeTableModelTabletEventSorter;
-import org.apache.iotdb.db.pipe.connector.util.PipeTreeModelTSFileBuilder;
-import org.apache.iotdb.db.pipe.connector.util.PipeTreeModelTabletEventSorter;
-import org.apache.iotdb.db.pipe.connector.util.PipeTsFileBuilder;
+import org.apache.iotdb.db.pipe.connector.util.builder.PipeTableModeTsFileBuilder;
+import org.apache.iotdb.db.pipe.connector.util.builder.PipeTreeModelTsFileBuilder;
+import org.apache.iotdb.db.pipe.connector.util.builder.PipeTsFileBuilder;
+import org.apache.iotdb.db.pipe.connector.util.sorter.PipeTableModelTabletEventSorter;
+import org.apache.iotdb.db.pipe.connector.util.sorter.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
@@ -63,7 +63,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
     this.maxSizeInBytes = requestMaxBatchSizeInBytes;
     AtomicLong tsFileIdGenerator = new AtomicLong(0);
-    treeModeTsFileBuilder = new PipeTreeModelTSFileBuilder(currentBatchId, tsFileIdGenerator);
+    treeModeTsFileBuilder = new PipeTreeModelTsFileBuilder(currentBatchId, tsFileIdGenerator);
     tableModeTsFileBuilder = new PipeTableModeTsFileBuilder(currentBatchId, tsFileIdGenerator);
   }
 

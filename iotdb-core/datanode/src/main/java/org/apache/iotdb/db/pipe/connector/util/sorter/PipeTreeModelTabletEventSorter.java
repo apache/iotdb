@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.util;
+package org.apache.iotdb.db.pipe.connector.util.sorter;
 
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -107,11 +107,12 @@ public class PipeTreeModelTabletEventSorter {
       final IMeasurementSchema schema = tablet.getSchemas().get(i);
       if (schema != null) {
         tablet.values[columnIndex] =
-            TabletSortUtil.reorderValueList(
+            PipeTabletEventSorter.reorderValueList(
                 deduplicatedSize, tablet.values[columnIndex], schema.getType(), index);
         if (tablet.bitMaps != null && tablet.bitMaps[columnIndex] != null) {
           tablet.bitMaps[columnIndex] =
-              TabletSortUtil.reorderBitMap(deduplicatedSize, tablet.bitMaps[columnIndex], index);
+              PipeTabletEventSorter.reorderBitMap(
+                  deduplicatedSize, tablet.bitMaps[columnIndex], index);
         }
         columnIndex++;
       }

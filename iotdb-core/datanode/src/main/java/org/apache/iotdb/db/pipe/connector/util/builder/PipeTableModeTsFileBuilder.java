@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.util;
+package org.apache.iotdb.db.pipe.connector.util.builder;
 
 import org.apache.iotdb.pipe.api.exception.PipeException;
 

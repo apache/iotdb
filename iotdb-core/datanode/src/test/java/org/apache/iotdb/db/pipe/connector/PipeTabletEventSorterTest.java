@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.pipe.connector;
 
-import org.apache.iotdb.db.pipe.connector.util.PipeTableModelTabletEventSorter;
-import org.apache.iotdb.db.pipe.connector.util.PipeTreeModelTabletEventSorter;
+import org.apache.iotdb.db.pipe.connector.util.sorter.PipeTableModelTabletEventSorter;
+import org.apache.iotdb.db.pipe.connector.util.sorter.PipeTreeModelTabletEventSorter;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;

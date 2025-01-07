@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.util;
+package org.apache.iotdb.db.pipe.connector.util.builder;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -42,14 +42,14 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class PipeTreeModelTSFileBuilder extends PipeTsFileBuilder {
+public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTreeModelTSFileBuilder.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTreeModelTsFileBuilder.class);
 
   private final List<Tablet> tabletList = new ArrayList<>();
   private final List<Boolean> isTabletAlignedList = new ArrayList<>();
 
-  public PipeTreeModelTSFileBuilder(
+  public PipeTreeModelTsFileBuilder(
       final AtomicLong currentBatchId, final AtomicLong tsFileIdGenerator) {
     super(currentBatchId, tsFileIdGenerator);
   }
@@ -57,7 +57,7 @@ public class PipeTreeModelTSFileBuilder extends PipeTsFileBuilder {
   @Override
   public void bufferTableModelTablet(final String dataBase, final Tablet tablet) {
     throw new UnsupportedOperationException(
-        "PipeTreeModelTSFileBuilder does not support table model tablet to build TSFile");
+        "PipeTreeModelTsFileBuilder does not support table model tablet to build TSFile");
   }
 
   @Override

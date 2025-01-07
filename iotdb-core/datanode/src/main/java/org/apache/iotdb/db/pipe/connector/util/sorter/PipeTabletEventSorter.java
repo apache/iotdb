@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.util;
+package org.apache.iotdb.db.pipe.connector.util.sorter;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
@@ -26,7 +26,7 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.time.LocalDate;
 
-public class TabletSortUtil {
+public class PipeTabletEventSorter {
 
   public static Object reorderValueList(
       final int deduplicatedSize,
