@@ -2718,31 +2718,32 @@ public class DataRegion implements IDataRegionForQuery {
     if (!isCompactionSelecting.compareAndSet(false, true)) {
       return 0;
     }
-    int trySubmitCount = 0;
+    CompactionScheduleContext context = new CompactionScheduleContext();
     try {
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
       // Sort the time partition from largest to smallest
       timePartitions.sort(Comparator.reverseOrder());
 
-      CompactionScheduleContext context = new CompactionScheduleContext();
-
       // schedule insert compaction
-      trySubmitCount += executeInsertionCompaction(timePartitions, context);
-      context.incrementSubmitTaskNum(CompactionTaskType.INSERTION, trySubmitCount);
+      int[] submitCountOfTimePartitions = executeInsertionCompaction(timePartitions, context);
 
       // schedule the other compactions
-      if (trySubmitCount == 0) {
-        // the name of this variable is trySubmitCount, because the task submitted to the queue
-        // could be evicted due to the low priority of the task
-        for (long timePartition : timePartitions) {
-          CompactionScheduler.sharedLockCompactionSelection();
-          try {
-            trySubmitCount +=
-                CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, context);
-          } finally {
-            context.clearTimePartitionDeviceInfoCache();
-            CompactionScheduler.sharedUnlockCompactionSelection();
-          }
+      for (int i = 0; i < timePartitions.size(); i++) {
+        boolean skipOtherCompactionSchedule =
+            submitCountOfTimePartitions[i] > 0
+                && !config
+                    .getDataRegionConsensusProtocolClass()
+                    .equals(ConsensusFactory.IOT_CONSENSUS_V2);
+        if (skipOtherCompactionSchedule) {
+          continue;
+        }
+        long timePartition = timePartitions.get(i);
+        CompactionScheduler.sharedLockCompactionSelection();
+        try {
+          CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, context);
+        } finally {
+          context.clearTimePartitionDeviceInfoCache();
+          CompactionScheduler.sharedUnlockCompactionSelection();
         }
       }
       if (context.hasSubmitTask()) {
@@ -2755,7 +2756,7 @@ public class DataRegion implements IDataRegionForQuery {
     } finally {
       isCompactionSelecting.set(false);
     }
-    return trySubmitCount;
+    return context.getSubmitCompactionTaskNum();
   }
 
   /** Schedule settle compaction for ttl check. */
@@ -2802,14 +2803,15 @@ public class DataRegion implements IDataRegionForQuery {
     return trySubmitCount;
   }
 
-  protected int executeInsertionCompaction(
+  protected int[] executeInsertionCompaction(
       List<Long> timePartitions, CompactionScheduleContext context) throws InterruptedException {
-    int trySubmitCount = 0;
+    int[] trySubmitCountOfTimePartitions = new int[timePartitions.size()];
     CompactionScheduler.sharedLockCompactionSelection();
     try {
       while (true) {
         int currentSubmitCount = 0;
-        for (long timePartition : timePartitions) {
+        for (int i = 0; i < timePartitions.size(); i++) {
+          long timePartition = timePartitions.get(i);
           while (true) {
             Phaser insertionTaskPhaser = new Phaser(1);
             int selectedTaskNum =
@@ -2817,6 +2819,7 @@ public class DataRegion implements IDataRegionForQuery {
                     tsFileManager, timePartition, insertionTaskPhaser, context);
             insertionTaskPhaser.awaitAdvanceInterruptibly(insertionTaskPhaser.arrive());
             currentSubmitCount += selectedTaskNum;
+            trySubmitCountOfTimePartitions[i] += selectedTaskNum;
             if (selectedTaskNum <= 0) {
               break;
             }
@@ -2826,7 +2829,7 @@ public class DataRegion implements IDataRegionForQuery {
         if (currentSubmitCount <= 0) {
           break;
         }
-        trySubmitCount += currentSubmitCount;
+        context.incrementSubmitTaskNum(CompactionTaskType.INSERTION, currentSubmitCount);
       }
     } catch (InterruptedException e) {
       throw e;
@@ -2835,7 +2838,7 @@ public class DataRegion implements IDataRegionForQuery {
     } finally {
       CompactionScheduler.sharedUnlockCompactionSelection();
     }
-    return trySubmitCount;
+    return trySubmitCountOfTimePartitions;
   }
 
   /**

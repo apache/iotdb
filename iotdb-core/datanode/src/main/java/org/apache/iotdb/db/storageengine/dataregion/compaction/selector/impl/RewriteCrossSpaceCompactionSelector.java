@@ -69,7 +69,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   protected TsFileManager tsFileManager;
 
   private static boolean hasPrintedLog = false;
-  private static int maxDeserializedFileNumToCheckInsertionCandidateValid = 500;
+  private static int maxDeserializedFileNumToCheckInsertionCandidateValid = 100;
+  private static int maxFileNumToSelectInsertionTaskInOnePartition = 200;
 
   private final long memoryBudget;
   private final int maxCrossCompactionFileNum;
@@ -434,7 +435,10 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     private InsertionCrossCompactionTaskResource executeInsertionCrossSpaceCompactionTaskSelection()
         throws IOException {
       InsertionCrossCompactionTaskResource result = new InsertionCrossCompactionTaskResource();
-      if (unseqFiles.isEmpty()) {
+      boolean shouldSelectInsertionTask =
+          (seqFiles.size() + unseqFiles.size() <= maxFileNumToSelectInsertionTaskInOnePartition)
+              && (!unseqFiles.isEmpty());
+      if (!shouldSelectInsertionTask) {
         return result;
       }
       if (seqFiles.isEmpty()) {

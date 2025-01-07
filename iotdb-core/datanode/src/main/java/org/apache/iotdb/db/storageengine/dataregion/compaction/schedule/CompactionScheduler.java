@@ -351,6 +351,7 @@ public class CompactionScheduler {
         trySubmitCount++;
       }
     }
+    context.incrementSubmitTaskNum(CompactionTaskType.SETTLE, trySubmitCount);
     return trySubmitCount;
   }
 }

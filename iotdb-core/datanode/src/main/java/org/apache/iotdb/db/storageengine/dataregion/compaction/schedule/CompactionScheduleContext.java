@@ -135,6 +135,14 @@ public class CompactionScheduleContext {
     return submitSettleCompactionTaskNum;
   }
 
+  public int getSubmitCompactionTaskNum() {
+    return submitSeqInnerSpaceCompactionTaskNum
+        + submitUnseqInnerSpaceCompactionTaskNum
+        + submitCrossSpaceCompactionTaskNum
+        + submitInsertionCrossSpaceCompactionTaskNum
+        + submitSettleCompactionTaskNum;
+  }
+
   public boolean hasSubmitTask() {
     return submitCrossSpaceCompactionTaskNum
             + submitInsertionCrossSpaceCompactionTaskNum

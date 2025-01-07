@@ -606,9 +606,10 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     }
 
     public int executeInsertionCompaction() throws InterruptedException {
-      return super.executeInsertionCompaction(
-          new ArrayList<>(this.getTsFileManager().getTimePartitions()),
-          new CompactionScheduleContext());
+      CompactionScheduleContext context = new CompactionScheduleContext();
+      super.executeInsertionCompaction(
+          new ArrayList<>(this.getTsFileManager().getTimePartitions()), context);
+      return context.getSubmitCompactionTaskNum();
     }
   }
 }
