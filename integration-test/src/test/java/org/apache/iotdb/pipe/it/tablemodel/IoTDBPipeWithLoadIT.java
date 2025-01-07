@@ -206,7 +206,7 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select * from t1",
-          "time,tag3,tag4,s3,s4,",
+          "time,tag3,tag4,s3,s4,tag1,tag2,s1,s2",
           expectedResSet,
           "db",
           handleFailure);
