@@ -979,8 +979,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TGetDataNodeLocationsResp getRunningDataNodeLocations() {
-    return configManager.getRunningDataNodeLocations();
+  public TGetDataNodeLocationsResp getReadableDataNodeLocations() {
+    return configManager.getReadableDataNodeLocations();
   }
 
   @Override

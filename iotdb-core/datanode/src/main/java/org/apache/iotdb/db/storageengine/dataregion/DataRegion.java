@@ -2290,9 +2290,9 @@ public class DataRegion implements IDataRegionForQuery {
             unsealedTsFileResource,
             modEntry.getStartTime(),
             modEntry.getEndTime());
-        logger.info("[Deletion] unsealed files for {}: {}", modEntry, unsealedTsFileResource);
+        logger.debug("[Deletion] unsealed files for {}: {}", modEntry, unsealedTsFileResource);
         deleteDataInUnsealedFiles(unsealedTsFileResource, modEntry, sealedTsFileResource);
-        logger.info("[Deletion] sealed files for {}: {}", modEntry, sealedTsFileResource);
+        logger.debug("[Deletion] sealed files for {}: {}", modEntry, sealedTsFileResource);
         sealedTsFileResourceLists.add(sealedTsFileResource);
       }
 
@@ -2468,7 +2468,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     if (!ModificationUtils.overlap(
         deletion.getStartTime(), deletion.getEndTime(), fileStartTime, fileEndTime)) {
-      logger.info(
+      logger.debug(
           "[Deletion] {} skipped {}, file time [{}, {}]",
           deletion,
           tsFileResource,
@@ -2492,7 +2492,7 @@ public class DataRegion implements IDataRegionForQuery {
         return false;
       }
     }
-    logger.info("[Deletion] {} skipped {}, file time {}", deletion, tsFileResource, timeIndex);
+    logger.debug("[Deletion] {} skipped {}, file time {}", deletion, tsFileResource, timeIndex);
     return true;
   }
 
@@ -2600,10 +2600,8 @@ public class DataRegion implements IDataRegionForQuery {
       // The file size may be smaller than the original file, so the increment here may be
       // negative
       involvedModificationFile.close();
-      logger.info(
-          "[Deletion] Deletion with path {} written into mods file:{}.",
-          modEntry,
-          involvedModificationFile);
+      logger.debug(
+          "[Deletion] Deletion {} written into mods file:{}.", modEntry, involvedModificationFile);
     }
 
     // can be deleted by files
