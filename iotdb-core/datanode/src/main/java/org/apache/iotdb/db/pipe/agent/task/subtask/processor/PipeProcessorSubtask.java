@@ -59,13 +59,13 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       new AtomicReference<>();
 
   // Record these variables to provide corresponding value to tag key of monitoring metrics
-  private final String pipeName;
-  private final String pipeNameWithCreationTime; // cache for better performance
-  private final int regionId;
+  protected final String pipeName;
+  protected final String pipeNameWithCreationTime; // cache for better performance
+  protected final int regionId;
 
-  private final EventSupplier inputEventSupplier;
-  private final PipeProcessor pipeProcessor;
-  private final PipeEventCollector outputEventCollector;
+  protected final EventSupplier inputEventSupplier;
+  protected final PipeProcessor pipeProcessor;
+  protected final PipeEventCollector outputEventCollector;
 
   // This variable is used to distinguish between old and new subtasks before and after stuck
   // restart.
@@ -109,7 +109,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
         if (subtaskWorkerManager.get() == null) {
           subtaskWorkerManager.set(
               new PipeProcessorSubtaskWorkerManager(
-                  subtaskWorkerThreadPoolExecutor, timeoutExecutor));
+                  subtaskWorkerThreadPoolExecutor, timeoutExecutor, false));
         }
       }
     }
@@ -298,5 +298,19 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
   @Override
   protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
     PipeDataNodeAgent.runtime().report(event, exception);
+  }
+
+  public long getStartRunningTime() {
+    return System.currentTimeMillis();
+  }
+
+  public boolean isScheduled() {
+    return true;
+  }
+
+  public void markTimeoutStatus(boolean isTimeOut) {}
+
+  public boolean isTimeOut() {
+    return false;
   }
 }

@@ -27,6 +27,7 @@ import com.google.common.util.concurrent.ListeningExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -44,7 +45,9 @@ public class PipeProcessorSubtaskWorkerManager {
   private final AtomicLong scheduledTaskNumber;
 
   public PipeProcessorSubtaskWorkerManager(
-      ListeningExecutorService workerThreadPoolExecutor, ScheduledExecutorService timeoutExecutor) {
+      ListeningExecutorService workerThreadPoolExecutor,
+      ScheduledExecutorService timeoutExecutor,
+      boolean isCheckTimeOut) {
     workers = new PipeProcessorSubtaskWorker[MAX_THREAD_NUM];
     listenableFuture = new ListenableFuture[MAX_THREAD_NUM];
     for (int i = 0; i < MAX_THREAD_NUM; i++) {
@@ -52,8 +55,11 @@ public class PipeProcessorSubtaskWorkerManager {
       listenableFuture[i] = workerThreadPoolExecutor.submit(workers[i]);
     }
 
-    PipeProcessorTimedTimeOutChecker checker =
-        new PipeProcessorTimedTimeOutChecker(workers, listenableFuture, workerThreadPoolExecutor);
+    if (isCheckTimeOut) {
+      PipeProcessorTimedTimeOutChecker checker =
+          new PipeProcessorTimedTimeOutChecker(workers, listenableFuture, workerThreadPoolExecutor);
+      timeoutExecutor.submit(checker);
+    }
 
     scheduledTaskNumber = new AtomicLong(0);
   }
@@ -68,14 +74,14 @@ public class PipeProcessorSubtaskWorkerManager {
     private static final Logger LOGGER =
         LoggerFactory.getLogger(PipeProcessorTimedTimeOutChecker.class);
 
-    PipeProcessorSubtaskWorker[] workers;
-    ListenableFuture[] listenableFuture;
-    ListeningExecutorService workerThreadPoolExecutor;
+    final PipeProcessorSubtaskWorker[] workers;
+    final ListenableFuture[] listenableFuture;
+    final ListeningExecutorService workerThreadPoolExecutor;
 
     PipeProcessorTimedTimeOutChecker(
-        PipeProcessorSubtaskWorker[] workers,
-        ListenableFuture[] listenableFuture,
-        ListeningExecutorService workerThreadPoolExecutor) {
+        final PipeProcessorSubtaskWorker[] workers,
+        final ListenableFuture[] listenableFuture,
+        final ListeningExecutorService workerThreadPoolExecutor) {
       this.workers = workers;
       this.listenableFuture = listenableFuture;
       this.workerThreadPoolExecutor = workerThreadPoolExecutor;
@@ -84,45 +90,52 @@ public class PipeProcessorSubtaskWorkerManager {
     @Override
     public void run() {
       while (true) {
-        int minTimeIndex = 0;
-        long minTime =
-            workers[0] != null ? workers[0].getStartRunningTime() : System.currentTimeMillis();
-
-        for (int i = 1; i < workers.length; i++) {
-          final PipeProcessorSubtaskWorker w = workers[i];
-          if (w != null && w.getStartRunningTime() < minTime) {
-            minTime = w.getStartRunningTime();
-            minTimeIndex = i;
-          }
+        if (Objects.isNull(workers)) {
+          LOGGER.info("Worker thread pool is empty. No workers available for processing.");
         }
 
+        for (int i = 0; i < MAX_THREAD_NUM; i++) {
+          PipeProcessorSubtaskWorker worker = workers[i];
+          if (Objects.isNull(worker)) {
+            LOGGER.info("Worker at index {} is null. Skipping.", i);
+            continue;
+          }
+          for (PipeProcessorSubtask subtask : worker.getAllProcessorSubtasks()) {
+            if (Objects.isNull(subtask)) {
+              LOGGER.info("Subtask for worker {} is null Skipping.", workers[i]);
+              continue;
+            }
+            synchronized (subtask) {
+              if (!subtask.isScheduled()) {
+                continue;
+              }
+              final long currTime = System.currentTimeMillis();
+              if (currTime - subtask.getStartRunningTime() > PIPE_SUBTASK_EXECUTION_TIMEOUT_MS) {
+                ListenableFuture futures = listenableFuture[i];
+                if (Objects.isNull(futures) || futures.isDone()) {
+                  LOGGER.info(
+                      "Future for subtask {}@{} is null or already done. Resubmitting.",
+                      subtask.getPipeName(),
+                      subtask.getRegionId());
+                  listenableFuture[i] = workerThreadPoolExecutor.submit(worker);
+                }
+
+                // Interrupt a running thread
+                futures.cancel(true);
+                listenableFuture[i] = workerThreadPoolExecutor.submit(worker);
+                LOGGER.info(
+                    "Resubmitted worker {} for subtask {}@{} due to timeout.",
+                    worker,
+                    subtask.getPipeName(),
+                    subtask.getRegionId());
+              }
+            }
+          }
+        }
         try {
-          Thread.sleep(PIPE_SUBTASK_EXECUTION_TIMEOUT_MS - (System.currentTimeMillis() - minTime));
+          Thread.sleep(PIPE_SUBTASK_EXECUTION_TIMEOUT_MS / 2);
+        } catch (InterruptedException ignored) {
 
-          // Check if the worker has exceeded the timeout and hasn't processed the next task
-          if (workers[minTimeIndex] == null
-              || workers[minTimeIndex].getStartRunningTime() != minTime) {
-            continue;
-          }
-
-          // If cancel is successful, it means the thread was interrupted and needs to be
-          // resubmitted to the thread pool
-          if (listenableFuture[minTimeIndex] == null
-              || !listenableFuture[minTimeIndex].cancel(true)) {
-            continue;
-          }
-
-          if (listenableFuture[minTimeIndex].isDone()) {
-            listenableFuture[minTimeIndex] = workerThreadPoolExecutor.submit(workers[minTimeIndex]);
-          }
-
-        } catch (InterruptedException e) {
-          // The thread was interrupted, log the exception
-          LOGGER.warn("Thread was interrupted: {}", e.getMessage(), e);
-          Thread.currentThread().interrupt(); // Reset the interrupt status
-        } catch (Exception e) {
-          // Log any other exceptions that occur
-          LOGGER.warn("An exception occurred  {}", e.getMessage(), e);
         }
       }
     }

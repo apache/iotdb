@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.agent.task.subtask.processor;
 
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,8 +33,6 @@ import java.util.stream.Collectors;
 public class PipeProcessorSubtaskWorker extends WrappedRunnable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorSubtaskWorker.class);
-
-  private volatile long startRunningTime = System.currentTimeMillis();
 
   private static final long CLOSED_SUBTASK_CLEANUP_ROUND_INTERVAL = 1000;
   private long closedSubtaskCleanupRoundCounter = 0;
@@ -49,12 +48,15 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
   @Override
   @SuppressWarnings("squid:S2189")
   public void runMayThrow() {
-    while (true) {
-      startRunningTime = System.currentTimeMillis();
-      cleanupClosedSubtasksIfNecessary();
-      final boolean canSleepBeforeNextRound = runSubtasks();
-      sleepIfNecessary(canSleepBeforeNextRound);
-      adjustSleepingTimeIfNecessary();
+    try {
+      while (true) {
+        cleanupClosedSubtasksIfNecessary();
+        final boolean canSleepBeforeNextRound = runSubtasks();
+        sleepIfNecessary(canSleepBeforeNextRound);
+        adjustSleepingTimeIfNecessary();
+      }
+    } catch (PipeException ignore) {
+      //
     }
   }
 
@@ -84,15 +86,15 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
         }
         subtask.onSuccess(hasAtLeastOneEventProcessed);
       } catch (final Exception e) {
-        if (Thread.interrupted()) {
-          LOGGER.warn(
-              "The thread was interrupted, and the pipe processor subtask being executed has timed out.");
-        }
         if (subtask.isClosed()) {
           LOGGER.warn("subtask {} is closed, ignore exception", subtask, e);
         } else {
           subtask.onFailure(e);
         }
+      }
+
+      if (subtask.isTimeOut()) {
+        throw new PipeException("subtask " + subtask + " is timeout");
       }
     }
 
@@ -134,7 +136,7 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
     subtasks.add(pipeProcessorSubtask);
   }
 
-  public long getStartRunningTime() {
-    return startRunningTime;
+  public Set<PipeProcessorSubtask> getAllProcessorSubtasks() {
+    return subtasks;
   }
 }
