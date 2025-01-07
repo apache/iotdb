@@ -25,8 +25,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.ConstantViewOperand;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
@@ -378,10 +378,10 @@ public class PipeEnrichedProcedureTest {
   @Test
   public void createTableTest() throws IOException {
     final TsTable table = new TsTable("table1");
-    table.addColumnSchema(new IdColumnSchema("Id", TSDataType.STRING));
+    table.addColumnSchema(new TagColumnSchema("Id", TSDataType.STRING));
     table.addColumnSchema(new AttributeColumnSchema("Attr", TSDataType.STRING));
     table.addColumnSchema(
-        new MeasurementColumnSchema(
+        new FieldColumnSchema(
             "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
     final CreateTableProcedure createTableProcedure =
         new CreateTableProcedure("root.database1", table, true);
@@ -416,7 +416,7 @@ public class PipeEnrichedProcedureTest {
             "root.database1",
             "table1",
             "0",
-            Collections.singletonList(new IdColumnSchema("Id", TSDataType.STRING)),
+            Collections.singletonList(new TagColumnSchema("Id", TSDataType.STRING)),
             true);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();

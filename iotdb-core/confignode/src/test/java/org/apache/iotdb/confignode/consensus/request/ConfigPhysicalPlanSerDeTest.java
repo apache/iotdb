@@ -1686,10 +1686,10 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void pipeCreateTablePlanTest() throws IOException {
     final TsTable table = new TsTable("table1");
-    table.addColumnSchema(new IdColumnSchema("Id", TSDataType.STRING));
+    table.addColumnSchema(new TagColumnSchema("Id", TSDataType.STRING));
     table.addColumnSchema(new AttributeColumnSchema("Attr", TSDataType.STRING));
     table.addColumnSchema(
-        new MeasurementColumnSchema(
+        new FieldColumnSchema(
             "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
     final PipeCreateTablePlan pipeCreateTablePlan0 =
         new PipeCreateTablePlan("root.database1", table);
