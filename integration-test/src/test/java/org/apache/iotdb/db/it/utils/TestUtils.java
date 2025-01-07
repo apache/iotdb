@@ -1145,7 +1145,7 @@ public class TestUtils {
       final String expectedHeader,
       final Set<String> expectedResSet,
       final long timeoutSeconds,
-      final String dataBaseName,
+      final String databaseName,
       final Consumer<String> handleFailure) {
     try (Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
@@ -1158,8 +1158,8 @@ public class TestUtils {
           .untilAsserted(
               () -> {
                 try {
-                  if (dataBaseName != null) {
-                    statement.execute("use " + dataBaseName);
+                  if (databaseName != null) {
+                    statement.execute("use " + databaseName);
                   }
                   if (sql != null && !sql.isEmpty()) {
                     TestUtils.assertResultSetEqual(

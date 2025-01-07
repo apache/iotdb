@@ -177,7 +177,7 @@ public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
           receiverEnv,
           "show databases",
           "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
-          Collections.emptySet(),
+          Collections.singleton("information_schema,INF,null,null,null,"),
           (String) null);
     }
   }
@@ -284,7 +284,7 @@ public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
           receiverEnv,
           "show databases",
           "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
-          Collections.emptySet(),
+          Collections.singleton("information_schema,INF,null,null,null,"),
           dbName);
     }
   }

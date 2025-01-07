@@ -543,6 +543,6 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
     TableModelUtils.createDatabase(senderEnv, "test2");
 
     // Assume that the "database" is executed on receiverEnv
-    TestUtils.assertDataSizeEventuallyOnEnv(receiverEnv, "show databases", 2, null);
+    TestUtils.assertDataSizeEventuallyOnEnv(receiverEnv, "show databases", 3, null);
   }
 }
