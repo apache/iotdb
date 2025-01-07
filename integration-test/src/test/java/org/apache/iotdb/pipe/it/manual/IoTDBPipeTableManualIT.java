@@ -125,6 +125,14 @@ public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
           receiverEnv, "show devices from table1", "a,b,", Collections.singleton("1,3,"), dbName);
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
+          dbName, BaseEnv.TABLE_SQL_DIALECT, senderEnv, "delete from table1")) {
+        return;
+      }
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv, "select * from table1", "a,b,d,", Collections.emptySet(), dbName);
+
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
           dbName,
           BaseEnv.TABLE_SQL_DIALECT,
           senderEnv,
