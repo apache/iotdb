@@ -26,6 +26,7 @@ import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionSourceFileDeletedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
@@ -680,10 +681,13 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             innerSpaceEstimator.roughEstimateInnerCompactionMemory(
                 filesView.sourceFilesInCompactionPerformer);
         memoryCost =
-            CompactionEstimateUtils.shouldAccurateEstimate(roughEstimatedMemoryCost)
+            CompactionEstimateUtils.shouldUseRoughEstimatedResult(roughEstimatedMemoryCost)
                 ? roughEstimatedMemoryCost
                 : innerSpaceEstimator.estimateInnerCompactionMemory(
                     filesView.sourceFilesInCompactionPerformer);
+      } catch (CompactionSourceFileDeletedException e) {
+        innerSpaceEstimator.cleanup();
+        return -1;
       } catch (Exception e) {
         if (e instanceof StopReadTsFileByInterruptException || Thread.interrupted()) {
           Thread.currentThread().interrupt();

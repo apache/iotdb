@@ -32,14 +32,14 @@ def prepare_data():
     session.execute_non_query_statement("CREATE DATABASE IF NOT EXISTS db1")
     session.execute_non_query_statement('USE "db1"')
     session.execute_non_query_statement(
-        "CREATE TABLE table0 (id1 string id, attr1 string attribute, "
+        "CREATE TABLE table0 (id1 string tag, attr1 string attribute, "
         + "m1 double "
-        + "measurement)"
+        + "field)"
     )
     session.execute_non_query_statement(
-        "CREATE TABLE table1 (id1 string id, attr1 string attribute, "
+        "CREATE TABLE table1 (id1 string tag, attr1 string attribute, "
         + "m1 double "
-        + "measurement)"
+        + "field)"
     )
 
     print("now the tables are:")
