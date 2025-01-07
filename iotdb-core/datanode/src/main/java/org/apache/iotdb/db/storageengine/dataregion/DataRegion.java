@@ -175,7 +175,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.Phaser;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -2812,18 +2811,11 @@ public class DataRegion implements IDataRegionForQuery {
         int currentSubmitCount = 0;
         for (int i = 0; i < timePartitions.size(); i++) {
           long timePartition = timePartitions.get(i);
-          while (true) {
-            Phaser insertionTaskPhaser = new Phaser(1);
-            int selectedTaskNum =
-                CompactionScheduler.scheduleInsertionCompaction(
-                    tsFileManager, timePartition, insertionTaskPhaser, context);
-            insertionTaskPhaser.awaitAdvanceInterruptibly(insertionTaskPhaser.arrive());
-            currentSubmitCount += selectedTaskNum;
-            trySubmitCountOfTimePartitions[i] += selectedTaskNum;
-            if (selectedTaskNum <= 0) {
-              break;
-            }
-          }
+          int selectedTaskNum =
+              CompactionScheduler.scheduleInsertionCompaction(
+                  tsFileManager, timePartition, context);
+          currentSubmitCount += selectedTaskNum;
+          trySubmitCountOfTimePartitions[i] += selectedTaskNum;
           context.clearTimePartitionDeviceInfoCache();
         }
         if (currentSubmitCount <= 0) {
@@ -2836,6 +2828,7 @@ public class DataRegion implements IDataRegionForQuery {
     } catch (Throwable e) {
       logger.error("Meet error in insertion compaction schedule.", e);
     } finally {
+      context.clearTimePartitionDeviceInfoCache();
       CompactionScheduler.sharedUnlockCompactionSelection();
     }
     return trySubmitCountOfTimePartitions;

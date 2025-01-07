@@ -167,6 +167,14 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           "Selecting insertion cross compaction task resources from {} seqFile, {} unseqFiles",
           candidate.getSeqFiles().size(),
           candidate.getUnseqFiles().size());
+      boolean delaySelection =
+          candidate.getSeqFiles().size() + candidate.getUnseqFiles().size()
+              > maxFileNumToSelectInsertionTaskInOnePartition;
+      if (delaySelection) {
+        context.delayInsertionSelection(timePartition);
+        return new InsertionCrossCompactionTaskResource();
+      }
+
       InsertionCrossCompactionTaskResource result =
           insertionCrossSpaceCompactionSelector.executeInsertionCrossSpaceCompactionTaskSelection();
       if (result.isValid()) {
@@ -435,10 +443,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     private InsertionCrossCompactionTaskResource executeInsertionCrossSpaceCompactionTaskSelection()
         throws IOException {
       InsertionCrossCompactionTaskResource result = new InsertionCrossCompactionTaskResource();
-      boolean shouldSelectInsertionTask =
-          (seqFiles.size() + unseqFiles.size() <= maxFileNumToSelectInsertionTaskInOnePartition)
-              && (!unseqFiles.isEmpty());
-      if (!shouldSelectInsertionTask) {
+      if (unseqFiles.isEmpty()) {
         return result;
       }
       if (seqFiles.isEmpty()) {
