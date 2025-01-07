@@ -95,7 +95,11 @@ public class ActiveLoadTsFileLoader {
         if (!Objects.equals(failDir.get(), IOTDB_CONFIG.getLoadActiveListeningFailDir())) {
           final File failDirFile = new File(IOTDB_CONFIG.getLoadActiveListeningFailDir());
           try {
-            FileUtils.forceMkdir(failDirFile);
+            RetryUtils.retryOnException(
+                () -> {
+                  FileUtils.forceMkdir(failDirFile);
+                  return null;
+                });
           } catch (final IOException e) {
             LOGGER.warn(
                 "Error occurred during creating fail directory {} for active load.",
