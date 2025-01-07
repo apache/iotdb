@@ -216,8 +216,8 @@ public abstract class BinaryTVList extends TVList {
       time = clonedTime;
       timeIdxOffset = start;
       // value array is a reference, should clone necessary value array
-      Binary[] clonedValue = new Binary[end - start];
-      System.arraycopy(value, start, clonedValue, 0, end - start);
+      Binary[] clonedValue = new Binary[value.length];
+      System.arraycopy(value, 0, clonedValue, 0, value.length);
       value = clonedValue;
       // drop null at the end of value array
       int nullCnt =

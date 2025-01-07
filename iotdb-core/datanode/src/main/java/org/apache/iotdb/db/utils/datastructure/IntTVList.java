@@ -173,8 +173,8 @@ public abstract class IntTVList extends TVList {
       time = clonedTime;
       timeIdxOffset = start;
       // value array is a reference, should clone necessary value array
-      int[] clonedValue = new int[end - start];
-      System.arraycopy(value, start, clonedValue, 0, end - start);
+      int[] clonedValue = new int[value.length];
+      System.arraycopy(value, 0, clonedValue, 0, value.length);
       value = clonedValue;
       // drop null at the end of value array
       int nullCnt =

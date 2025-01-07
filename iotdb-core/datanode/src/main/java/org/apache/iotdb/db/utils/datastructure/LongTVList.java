@@ -173,8 +173,8 @@ public abstract class LongTVList extends TVList {
       time = clonedTime;
       timeIdxOffset = start;
       // value array is a reference, should clone necessary value array
-      long[] clonedValue = new long[end - start];
-      System.arraycopy(value, start, clonedValue, 0, end - start);
+      long[] clonedValue = new long[value.length];
+      System.arraycopy(value, 0, clonedValue, 0, value.length);
       value = clonedValue;
       // drop null at the end of value array
       int nullCnt =

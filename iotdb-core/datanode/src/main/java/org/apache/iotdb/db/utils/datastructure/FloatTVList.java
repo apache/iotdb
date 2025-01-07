@@ -180,8 +180,8 @@ public abstract class FloatTVList extends TVList {
       time = clonedTime;
       timeIdxOffset = start;
       // value array is a reference, should clone necessary value array
-      float[] clonedValue = new float[end - start];
-      System.arraycopy(value, start, clonedValue, 0, end - start);
+      float[] clonedValue = new float[value.length];
+      System.arraycopy(value, 0, clonedValue, 0, value.length);
       value = clonedValue;
       // drop null at the end of value array
       int nullCnt =
