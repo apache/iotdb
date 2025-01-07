@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
+import org.apache.iotdb.db.exception.VerifyMetadataTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -276,7 +277,7 @@ public class LoadTsFileTableSchemaCache {
     int idColumnIndex = 0;
     for (int i = 0; i < fileSchema.getColumns().size(); i++) {
       final ColumnSchema fileColumn = fileSchema.getColumns().get(i);
-      if (fileColumn.getColumnCategory() == TsTableColumnCategory.ID) {
+      if (fileColumn.getColumnCategory() == TsTableColumnCategory.TAG) {
         final int realIndex = realSchema.getIndexAmongIdColumns(fileColumn.getName());
         if (realIndex != -1) {
           idColumnMapping.put(idColumnIndex++, realIndex);
@@ -286,11 +287,11 @@ public class LoadTsFileTableSchemaCache {
                   "Id column %s in TsFile is not found in IoTDB table %s",
                   fileColumn.getName(), realSchema.getTableName()));
         }
-      } else if (fileColumn.getColumnCategory() == TsTableColumnCategory.MEASUREMENT) {
+      } else if (fileColumn.getColumnCategory() == TsTableColumnCategory.FIELD) {
         final ColumnSchema realColumn =
             realSchema.getColumn(fileColumn.getName(), fileColumn.getColumnCategory());
         if (!fileColumn.getType().equals(realColumn.getType())) {
-          throw new VerifyMetadataException(
+          throw new VerifyMetadataTypeMismatchException(
               String.format(
                   "Data type mismatch for column %s in table %s, type in TsFile: %s, type in IoTDB: %s",
                   realColumn.getName(),

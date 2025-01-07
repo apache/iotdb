@@ -23,16 +23,12 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class VerifyMetadataException extends IoTDBException {
-  public VerifyMetadataException(
-      String path, String compareInfo, String tsFileInfo, String tsFilePath, String IoTDBInfo) {
-    super(
-        String.format(
-            "%s %s mismatch, %s in tsfile %s, but %s in IoTDB.",
-            path, compareInfo, tsFileInfo, tsFilePath, IoTDBInfo),
-        TSStatusCode.VERIFY_METADATA_ERROR.getStatusCode());
-  }
 
   public VerifyMetadataException(String message) {
     super(message, TSStatusCode.VERIFY_METADATA_ERROR.getStatusCode());
+  }
+
+  public VerifyMetadataException(String message, int errorCode) {
+    super(message, errorCode);
   }
 }

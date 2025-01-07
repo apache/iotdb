@@ -43,7 +43,7 @@ public class IoTDBFillTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE table1(device_id STRING ID, s1 INT32 MEASUREMENT, s2 INT64 MEASUREMENT, s3 FLOAT MEASUREMENT, s4 DOUBLE MEASUREMENT, s5 BOOLEAN MEASUREMENT, s6 TEXT MEASUREMENT, s7 STRING MEASUREMENT, s8 BLOB MEASUREMENT, s9 TIMESTAMP MEASUREMENT, s10 DATE MEASUREMENT)",
+        "CREATE TABLE table1(device_id STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 BOOLEAN FIELD, s6 TEXT FIELD, s7 STRING FIELD, s8 BLOB FIELD, s9 TIMESTAMP FIELD, s10 DATE FIELD)",
         "INSERT INTO table1(time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) "
             + " values(1, 'd1', 1, 11, 1.1, 11.1, true, 'text1', 'string1', X'cafebabe01', 1, '2024-10-01')",
         "INSERT INTO table1(time,device_id,s1,s2,s3,s4,s5) "
@@ -59,7 +59,7 @@ public class IoTDBFillTableIT {
             + " values(7, 'd1', 7, 77, 7.7, 77.7, true)",
         "INSERT INTO table1(time,device_id,s6,s7,s8,s9,s10) "
             + " values(8, 'd1', 'text8', 'string8', X'cafebabe08', 8, '2024-10-08')",
-        "CREATE TABLE table2(city STRING ID, device_id STRING ID, s1 INT32 MEASUREMENT, s2 INT64 MEASUREMENT)",
+        "CREATE TABLE table2(city STRING TAG, device_id STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD)",
         "INSERT INTO table2(time,city,device_id,s2) values(1, 'shanghai', 'd1', 02111)",
         "INSERT INTO table2(time,city,device_id,s1) values(2, 'shanghai', 'd1', 0212)",
         "INSERT INTO table2(time,city,device_id,s2) values(1, 'beijing', 'd1', 01011)",
@@ -70,7 +70,7 @@ public class IoTDBFillTableIT {
         "INSERT INTO table2(time,city,device_id,s2) values(2, 'beijing', 'd2', 01022)",
         "INSERT INTO table2(time,city,device_id,s2) values(3, 'beijing', 'd2', 01033)",
         "INSERT INTO table2(time,city,device_id,s2) values(4, 'beijing', 'd2', 01044)",
-        "CREATE TABLE table3(city STRING ID, device_id STRING ID, s1 INT32 MEASUREMENT, s2 INT64 MEASUREMENT)",
+        "CREATE TABLE table3(city STRING TAG, device_id STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD)",
         "INSERT INTO table3(time,city,device_id,s2) values(1, 'shanghai', 'd1', 02111)",
         "INSERT INTO table3(time,city,device_id,s1) values(2, 'shanghai', 'd1', 0212)",
         "INSERT INTO table3(time,city,device_id,s2) values(1, 'beijing', 'd1', 01011)",

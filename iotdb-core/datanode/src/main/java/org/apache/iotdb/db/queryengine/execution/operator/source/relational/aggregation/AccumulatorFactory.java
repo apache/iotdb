@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.execution.aggregation.VarianceAccumulator
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAvgAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountIfAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedExtremeAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedFirstAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedFirstByAccumulator;
@@ -53,6 +54,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.FIRST_BY;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST_BY;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
 
@@ -92,6 +94,11 @@ public class AccumulatorFactory {
             : new FirstByDescAccumulator(
                 inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn);
       }
+    } else if (LAST.getFunctionName().equals(functionName)) {
+      boolean isTimeColumn = isTimeColumn(inputExpressions.get(0), timeColumnName);
+      return ascending
+          ? new LastAccumulator(inputDataTypes.get(0), isTimeColumn)
+          : new LastDescAccumulator(inputDataTypes.get(0), isTimeColumn);
     } else {
       return createBuiltinAccumulator(
           aggregationType, inputDataTypes, inputExpressions, inputAttributes, ascending);
@@ -149,6 +156,8 @@ public class AccumulatorFactory {
     switch (aggregationType) {
       case COUNT:
         return new GroupedCountAccumulator();
+      case COUNT_IF:
+        return new GroupedCountIfAccumulator();
       case AVG:
         return new GroupedAvgAccumulator(inputDataTypes.get(0));
       case SUM:
@@ -201,14 +210,16 @@ public class AccumulatorFactory {
     switch (aggregationType) {
       case COUNT:
         return new CountAccumulator();
+      case COUNT_IF:
+        return new CountIfAccumulator();
       case AVG:
         return new AvgAccumulator(inputDataTypes.get(0));
       case SUM:
         return new SumAccumulator(inputDataTypes.get(0));
       case LAST:
         return ascending
-            ? new LastAccumulator(inputDataTypes.get(0))
-            : new LastDescAccumulator(inputDataTypes.get(0));
+            ? new LastAccumulator(inputDataTypes.get(0), false)
+            : new LastDescAccumulator(inputDataTypes.get(0), false);
       case FIRST:
         return ascending
             ? new FirstAccumulator(inputDataTypes.get(0))

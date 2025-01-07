@@ -2249,11 +2249,18 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public void deleteByTable(RelationalDeleteDataNode node) throws IOException {
+    if (node.getDatabaseName() != null && !node.getDatabaseName().equals(databaseName)) {
+      // not targeted on this database, return
+      return;
+    }
+
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
       throw new IOException(
           "Delete failed. " + "Please do not delete until the old files settled.");
     }
     List<TableDeletionEntry> modEntries = node.getModEntries();
+
+    logger.info("[Deletion] Executing table deletion {}", node);
 
     writeLock("delete");
     boolean hasReleasedLock = false;
@@ -2281,7 +2288,9 @@ public class DataRegion implements IDataRegionForQuery {
             unsealedTsFileResource,
             modEntry.getStartTime(),
             modEntry.getEndTime());
+        logger.debug("[Deletion] unsealed files for {}: {}", modEntry, unsealedTsFileResource);
         deleteDataInUnsealedFiles(unsealedTsFileResource, modEntry, sealedTsFileResource);
+        logger.debug("[Deletion] sealed files for {}: {}", modEntry, sealedTsFileResource);
         sealedTsFileResourceLists.add(sealedTsFileResource);
       }
 
@@ -2458,6 +2467,12 @@ public class DataRegion implements IDataRegionForQuery {
 
     if (!ModificationUtils.overlap(
         deletion.getStartTime(), deletion.getEndTime(), fileStartTime, fileEndTime)) {
+      logger.debug(
+          "[Deletion] {} skipped {}, file time [{}, {}]",
+          deletion,
+          tsFileResource,
+          fileStartTime,
+          fileEndTime);
       return true;
     }
     ITimeIndex timeIndex = tsFileResource.getTimeIndex();
@@ -2475,6 +2490,7 @@ public class DataRegion implements IDataRegionForQuery {
         return false;
       }
     }
+    logger.debug("[Deletion] {} skipped {}, file time {}", deletion, tsFileResource, timeIndex);
     return true;
   }
 
@@ -2498,7 +2514,9 @@ public class DataRegion implements IDataRegionForQuery {
           tsFileResource.getProcessor().getFlushQueryLock().writeLock().unlock();
         } else {
           try {
-            tsFileResource.getProcessor().deleteDataInMemory(deletion);
+            if (!tsFileResource.getProcessor().deleteDataInMemory(deletion)) {
+              sealedTsFiles.add(tsFileResource);
+            } // else do nothing
           } finally {
             tsFileResource.getProcessor().getFlushQueryLock().writeLock().unlock();
           }
@@ -2519,6 +2537,11 @@ public class DataRegion implements IDataRegionForQuery {
         involvedModificationFiles.add(sealedTsFile.getCompactionModFile());
       }
       involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
+    }
+
+    if (involvedModificationFiles.isEmpty()) {
+      logger.info("[Deletion] Deletion {} does not involve any file", deletion);
+      return;
     }
 
     List<Exception> exceptions =
@@ -2545,6 +2568,10 @@ public class DataRegion implements IDataRegionForQuery {
             "Multiple errors occurred while writing mod files, see logs for details.");
       }
     }
+    logger.info(
+        "[Deletion] Deletion {} is written into {} mod files",
+        deletion,
+        involvedModificationFiles.size());
   }
 
   private void deleteDataDirectlyInFile(List<TsFileResource> tsfileResourceList, ModEntry modEntry)
@@ -2556,15 +2583,13 @@ public class DataRegion implements IDataRegionForQuery {
     // can be deleted by mods.
     Set<ModificationFile> involvedModificationFiles = new HashSet<>();
     for (TsFileResource tsFileResource : deletedByMods) {
-      if (tsFileResource.isClosed()) {
+      if (tsFileResource.isClosed()
+          || !tsFileResource.getProcessor().deleteDataInMemory(modEntry)) {
         if (tsFileResource.isCompacting()) {
           involvedModificationFiles.add(tsFileResource.getCompactionModFile());
         }
         involvedModificationFiles.add(tsFileResource.getModFileForWrite());
-      } else {
-        // delete data in memory of unsealed file
-        tsFileResource.getProcessor().deleteDataInMemory(modEntry);
-      }
+      } // else do nothing
     }
 
     for (ModificationFile involvedModificationFile : involvedModificationFiles) {
@@ -2573,10 +2598,8 @@ public class DataRegion implements IDataRegionForQuery {
       // The file size may be smaller than the original file, so the increment here may be
       // negative
       involvedModificationFile.close();
-      logger.info(
-          "[Deletion] Deletion with path {} written into mods file:{}.",
-          modEntry,
-          involvedModificationFile);
+      logger.debug(
+          "[Deletion] Deletion {} written into mods file:{}.", modEntry, involvedModificationFile);
     }
 
     // can be deleted by files

@@ -8,6 +8,7 @@ on:
       - master
       - 'rel/1.*'
       - 'rc/1.*'
+      - 'force_ci/**'
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -16,6 +17,7 @@ on:
       - master
       - 'rel/1.*'
       - 'rc/1.*'
+      - 'force_ci/**'
     paths-ignore:
       - 'docs/**'
       - 'site/**'
