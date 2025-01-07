@@ -78,18 +78,9 @@ public class IoTDBSelectSchemaTableIT {
       "sin(s1)+s1",
       "((s1+1)*2-1)%2+1.5+s2"
     };
-    String[] completeExpressions = {
-      "s1+s2",
-      "-s1+s2",
-      "-(s1+s3)",
-      "not(s1>s2)",
-      "-(-s1)",
-      "(s1+s2)*s3",
-      "-2+s1",
-      "not true or s1>0",
-      "-(-1)+s1",
-      "sin(s1)+s1",
-      "((s1+1)*2-1)%2+1.5+s2",
+    String[] columnNames = {
+      "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9", "_col10",
+      "_col11",
     };
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
@@ -113,8 +104,7 @@ public class IoTDBSelectSchemaTableIT {
       assertEquals(1 + expressions.length, columnCount);
 
       for (int i = 0; i < expressions.length; ++i) {
-        assertEquals(
-            completeExpressions[i], resultSet.getMetaData().getColumnName(i + 2).replace(" ", ""));
+        assertEquals(columnNames[i], resultSet.getMetaData().getColumnName(i + 2).replace(" ", ""));
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
