@@ -330,6 +330,8 @@ public class CNPhysicalPlanGenerator
       IConfigMNode internalMNode;
       ConfigTableNode tableNode;
 
+      final Set<TsTable> tableSet = new HashSet<>();
+
       if (type == STORAGE_GROUP_MNODE_TYPE) {
         databaseMNode = deserializeDatabaseMNode(bufferedInputStream);
         name = databaseMNode.getName();
@@ -338,6 +340,7 @@ public class CNPhysicalPlanGenerator
         tableNode = deserializeTableMNode(inputStream);
         name = tableNode.getName();
         stack.push(new Pair<>(tableNode, false));
+        tableSet.add(tableNode.getTable());
       } else {
         internalMNode = deserializeInternalMNode(bufferedInputStream);
         // Child num
@@ -345,8 +348,6 @@ public class CNPhysicalPlanGenerator
         name = internalMNode.getName();
         stack.push(new Pair<>(internalMNode, false));
       }
-
-      final Set<TsTable> tableSet = new HashSet<>();
 
       while (!PATH_ROOT.equals(name)) {
         type = ReadWriteIOUtils.readByte(bufferedInputStream);
