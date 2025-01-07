@@ -1052,7 +1052,8 @@ public class ConfigMTree {
     return databaseMNode.getAsMNode();
   }
 
-  private IConfigMNode deserializeTableMNode(final InputStream inputStream) throws IOException {
+  public static ConfigTableNode deserializeTableMNode(final InputStream inputStream)
+      throws IOException {
     final ConfigTableNode tableNode =
         new ConfigTableNode(null, ReadWriteIOUtils.readString(inputStream));
     tableNode.setTable(TsTable.deserialize(inputStream));

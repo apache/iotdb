@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
-import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -337,7 +336,7 @@ public class CNPhysicalPlanGenerator
         name = databaseMNode.getName();
         stack.push(new Pair<>(databaseMNode, true));
       } else if (type == TABLE_DEVICE_MNODE_TYPE) {
-        tableNode = deserializeTableMNode(inputStream);
+        tableNode = ConfigMTree.deserializeTableMNode(inputStream);
         name = tableNode.getName();
         stack.push(new Pair<>(tableNode, false));
         tableSet.add(tableNode.getTable());
@@ -372,12 +371,12 @@ public class CNPhysicalPlanGenerator
             stack.push(new Pair<>(databaseMNode, true));
             name = databaseMNode.getName();
             for (final TsTable table : tableSet) {
-              planDeque.add(new PipeCreateTablePlan(PathUtils.qualifyDatabaseName(name), table));
+              planDeque.add(new PipeCreateTablePlan(name, table));
             }
             tableSet.clear();
             break;
           case TABLE_DEVICE_MNODE_TYPE:
-            tableNode = deserializeTableMNode(bufferedInputStream);
+            tableNode = ConfigMTree.deserializeTableMNode(bufferedInputStream);
             name = tableNode.getName();
             stack.push(new Pair<>(tableNode, false));
             tableSet.add(tableNode.getTable());
@@ -455,17 +454,5 @@ public class CNPhysicalPlanGenerator
       templateNodeList.add(basicMNode);
     }
     return basicMNode;
-  }
-
-  private ConfigTableNode deserializeTableMNode(final InputStream inputStream) throws IOException {
-    final ConfigTableNode tableNode =
-        new ConfigTableNode(null, ReadWriteIOUtils.readString(inputStream));
-    tableNode.setTable(TsTable.deserialize(inputStream));
-    tableNode.setStatus(TableNodeStatus.deserialize(inputStream));
-    final int size = ReadWriteIOUtils.readInt(inputStream);
-    for (int i = 0; i < size; ++i) {
-      tableNode.addPreDeletedColumn(ReadWriteIOUtils.readString(inputStream));
-    }
-    return tableNode;
   }
 }

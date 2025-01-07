@@ -384,7 +384,7 @@ public class PipeEnrichedProcedureTest {
         new FieldColumnSchema(
             "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
     final CreateTableProcedure createTableProcedure =
-        new CreateTableProcedure("root.database1", table, true);
+        new CreateTableProcedure("database1", table, true);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -413,7 +413,7 @@ public class PipeEnrichedProcedureTest {
   public void addTableColumnTest() throws IOException {
     final AddTableColumnProcedure addTableColumnProcedure =
         new AddTableColumnProcedure(
-            "root.database1",
+            "database1",
             "table1",
             "0",
             Collections.singletonList(new TagColumnSchema("Id", TSDataType.STRING)),
@@ -441,7 +441,7 @@ public class PipeEnrichedProcedureTest {
   public void setTablePropertiesTest() throws IOException {
     final SetTablePropertiesProcedure setTablePropertiesProcedure =
         new SetTablePropertiesProcedure(
-            "root.database1",
+            "database1",
             "table1",
             "0",
             new HashMap<String, String>() {
@@ -471,7 +471,7 @@ public class PipeEnrichedProcedureTest {
   @Test
   public void renameTableColumnTest() throws IOException {
     final RenameTableColumnProcedure renameTableColumnProcedure =
-        new RenameTableColumnProcedure("root.database1", "table1", "0", "oldName", "newName", true);
+        new RenameTableColumnProcedure("database1", "table1", "0", "oldName", "newName", true);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -492,7 +492,7 @@ public class PipeEnrichedProcedureTest {
   @Test
   public void dropTableTest() throws IOException {
     final DropTableProcedure dropTableProcedure =
-        new DropTableProcedure("root.database1", "table1", "0", true);
+        new DropTableProcedure("database1", "table1", "0", true);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -512,7 +512,7 @@ public class PipeEnrichedProcedureTest {
   @Test
   public void dropTableColumnTest() throws IOException {
     final DropTableColumnProcedure dropTableColumnProcedure =
-        new DropTableColumnProcedure("root.database1", "table1", "0", "columnName", true);
+        new DropTableColumnProcedure("database1", "table1", "0", "columnName", true);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -534,7 +534,7 @@ public class PipeEnrichedProcedureTest {
   public void deleteDevicesProcedureTest() throws IOException {
     final DeleteDevicesProcedure deleteDevicesProcedure =
         new DeleteDevicesProcedure(
-            "root.database1",
+            "database1",
             "table1",
             "0",
             new byte[] {0, 1, 2},
