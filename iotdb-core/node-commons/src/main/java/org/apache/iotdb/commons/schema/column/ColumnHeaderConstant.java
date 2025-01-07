@@ -602,7 +602,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_TTL, TSDataType.TEXT),
           new ColumnHeader(STATUS, TSDataType.TEXT));
 
-  public static final List<ColumnHeader> LIST_USER_PRIVILEGES_Column_HEADERS =
+  public static final List<ColumnHeader> LIST_USER_OR_ROLE_PRIVILEGES_COLUMN_HEADERS =
       ImmutableList.of(
           new ColumnHeader(ROLE, TSDataType.TEXT),
           new ColumnHeader(SCOPE, TSDataType.TEXT),

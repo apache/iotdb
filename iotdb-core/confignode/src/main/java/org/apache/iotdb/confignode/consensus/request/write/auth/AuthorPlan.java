@@ -36,6 +36,8 @@ public abstract class AuthorPlan extends ConfigPhysicalReadPlan {
     super(type);
   }
 
+  // To maintain compatibility between TreeAuthorPlan and RelationalAuthorPlan,
+  // the newPassword field is retained here.
   public AuthorPlan(
       ConfigPhysicalPlanType type,
       String userName,

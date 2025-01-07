@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerRelationalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
@@ -466,6 +467,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     cacheOutDate = false;
   }
 
+  @TestOnly
   public void setAcceptCache(boolean acceptCache) {
     this.acceptCache = acceptCache;
   }
