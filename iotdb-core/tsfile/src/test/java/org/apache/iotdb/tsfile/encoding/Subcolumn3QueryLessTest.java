@@ -13,10 +13,10 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class Subcolumn3QueryIndexTest {
-    // Subcolumn3Test Query Index
+public class Subcolumn3QueryLessTest {
+    // Subcolumn3Test Query Less
 
-    public static void Query(byte[] encoded_result, int lower_bound, int upper_bound) {
+    public static void Query(byte[] encoded_result, int upper_bound) {
 
         int startBitPosition = 0;
         int data_length = Subcolumn3Test.bytesToInt(encoded_result, startBitPosition, 32);
@@ -33,7 +33,7 @@ public class Subcolumn3QueryIndexTest {
 
         for (int i = 0; i < num_blocks; i++) {
             startBitPosition = BlockQueryIndex(encoded_result, i, block_size,
-                    block_size, startBitPosition, lower_bound,
+                    block_size, startBitPosition, upper_bound,
                     result, result_length);
         }
 
@@ -42,7 +42,7 @@ public class Subcolumn3QueryIndexTest {
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
                 int value = Subcolumn3Test.bytesToIntSigned(encoded_result, startBitPosition, 32);
-                if (value >= lower_bound) {
+                if (value < upper_bound) {
                     result[result_length[0]] = value;
                     result_length[0]++;
                 }
@@ -50,19 +50,14 @@ public class Subcolumn3QueryIndexTest {
             }
         } else {
             startBitPosition = BlockQueryIndex(encoded_result, num_blocks, block_size,
-                    remainder, startBitPosition, lower_bound,
+                    remainder, startBitPosition, upper_bound,
                     result, result_length);
         }
-
-        // for (int i = 0; i < result_length[0]; i++) {
-        // System.out.print(result[i] + " ");
-        // }
-        // System.out.println();
 
     }
 
     public static int BlockQueryIndex(byte[] encoded_result, int block_index, int block_size, int remainder,
-            int startBitPosition, int lower_bound, int[] result, int[] result_length) {
+            int startBitPosition, int upper_bound, int[] result, int[] result_length) {
         int[] min_delta = new int[3];
 
         min_delta[0] = Subcolumn3Test.bytesToIntSigned(encoded_result, startBitPosition, 32);
@@ -73,9 +68,9 @@ public class Subcolumn3QueryIndexTest {
         int m = Subcolumn3Test.bytesToInt(encoded_result, startBitPosition, 6);
         startBitPosition += 6;
 
-        lower_bound -= min_delta[0];
+        upper_bound -= min_delta[0];
 
-        // 候选索引列表，当前分列值和 lower_bound 相应值相等的索引
+        // 候选索引列表，当前分列值和 upper_bound 相应值相等的索引
         int[] candidate_indices = new int[remainder];
         int candidate_length = 0;
         for (int i = 0; i < remainder; i++) {
@@ -84,7 +79,7 @@ public class Subcolumn3QueryIndexTest {
         }
 
         if (m == 0) {
-            if (lower_bound <= 0) {
+            if (upper_bound >= 0) {
                 for (int i = 0; i < remainder; i++) {
                     result[result_length[0]] = block_size * block_index + i;
                     result_length[0]++;
@@ -110,7 +105,7 @@ public class Subcolumn3QueryIndexTest {
             startBitPosition += 1;
             if (!type) {
 
-                if (lower_bound <= 0) {
+                if (upper_bound < 0) {
                     startBitPosition += bitWidthList[i] * remainder;
                     continue;
                 }
@@ -121,8 +116,8 @@ public class Subcolumn3QueryIndexTest {
 
                     subcolumnList[i][index] = Subcolumn3Test.bytesToInt(encoded_result,
                             startBitPosition + index * bitWidthList[i], bitWidthList[i]);
-                    int value = (lower_bound >> (i * beta)) & ((1 << beta) - 1);
-                    if (subcolumnList[i][index] > value) {
+                    int value = (upper_bound >> (i * beta)) & ((1 << beta) - 1);
+                    if (subcolumnList[i][index] < value) {
                         result[result_length[0]] = block_size * block_index + index;
                         result_length[0]++;
                     } else if (subcolumnList[i][index] == value) {
@@ -140,7 +135,7 @@ public class Subcolumn3QueryIndexTest {
                 int index = Subcolumn3Test.bytesToInt(encoded_result, startBitPosition, 16);
                 startBitPosition += 16;
 
-                if (lower_bound <= 0) {
+                if (upper_bound < 0) {
                     startBitPosition += bw * index;
                     startBitPosition += bitWidthList[i] * index;
                     continue;
@@ -156,7 +151,7 @@ public class Subcolumn3QueryIndexTest {
                 int new_length = 0;
                 int rleIndex = 0;
                 int currentPos = 0;
-                int value = (lower_bound >> (i * beta)) & ((1 << beta) - 1);
+                int value = (upper_bound >> (i * beta)) & ((1 << beta) - 1);
 
                 for (int j = 0; j < candidate_length; j++) {
                     int index_candidate = candidate_indices[j];
@@ -167,7 +162,7 @@ public class Subcolumn3QueryIndexTest {
                     }
 
                     if (rleIndex < index) {
-                        if (rle_values[rleIndex] > value) {
+                        if (rle_values[rleIndex] < value) {
                             result[result_length[0]] = block_size * block_index + index_candidate;
                             result_length[0]++;
                         } else if (rle_values[rleIndex] == value) {
@@ -182,13 +177,13 @@ public class Subcolumn3QueryIndexTest {
             }
         }
 
-        if (lower_bound <= 0) {
-            for (int i = 0; i < remainder; i++) {
-                result[result_length[0]] = block_size * block_index + i;
-                result_length[0]++;
-            }
-            return startBitPosition;
-        }
+        // if (lower_bound <= 0) {
+        //     for (int i = 0; i < remainder; i++) {
+        //         result[result_length[0]] = block_size * block_index + i;
+        //         result_length[0]++;
+        //     }
+        //     return startBitPosition;
+        // }
 
         return startBitPosition;
     }
@@ -230,24 +225,24 @@ public class Subcolumn3QueryIndexTest {
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        String outputPath = output_parent_dir + "query_index_512.csv";
+        String outputPath = output_parent_dir + "query_less.csv";
 
         // int block_size = 1024;
         int block_size = 512;
 
-        HashMap<String, int[]> queryRange = new HashMap<>();
-        queryRange.put("Air-pressure", new int[] { 8720000, 8820000 });
-        queryRange.put("Bird-migration", new int[] { 2500000, 2600000 });
-        queryRange.put("Bitcoin-price", new int[] { 160000000, 170000000 });
-        queryRange.put("Blockchain-tr", new int[] { 100000, 300000 });
-        queryRange.put("City-temp", new int[] { 480, 700 });
-        queryRange.put("Dewpoint-temp", new int[] { 9500, 9600 });
-        queryRange.put("IR-bio-temp", new int[] { -300, -200 });
-        queryRange.put("PM10-dust", new int[] { 1000, 2000 });
-        queryRange.put("Stocks-DE", new int[] { 40000, 50000 });
-        queryRange.put("Stocks-UK", new int[] { 20000, 30000 });
-        queryRange.put("Stocks-USA", new int[] { 5000, 6000 });
-        queryRange.put("Wind-Speed", new int[] { 50, 60 });
+        HashMap<String, Integer> queryRange = new HashMap<>();
+        queryRange.put("Air-pressure", 8820000);
+        queryRange.put("Bird-migration", 2600000);
+        queryRange.put("Bitcoin-price", 170000000);
+        queryRange.put("Blockchain-tr", 300000);
+        queryRange.put("City-temp", 700);
+        queryRange.put("Dewpoint-temp", 9600);
+        queryRange.put("IR-bio-temp", -200);
+        queryRange.put("PM10-dust", 2000);
+        queryRange.put("Stocks-DE", 90000);
+        queryRange.put("Stocks-UK", 30000);
+        queryRange.put("Stocks-USA", 6000);
+        queryRange.put("Wind-Speed", 60);
 
         int repeatTime = 100;
         // TODO 真正计算时，记得注释掉将下面的内容
@@ -320,8 +315,7 @@ public class Subcolumn3QueryIndexTest {
             s = System.nanoTime();
 
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                Query(encoded_result, queryRange.get(datasetName)[0],
-                        queryRange.get(datasetName)[1]);
+                Query(encoded_result, queryRange.get(datasetName));
             }
 
             e = System.nanoTime();

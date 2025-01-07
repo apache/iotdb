@@ -777,6 +777,7 @@ public class Subcolumn5BetaTest {
                         String.valueOf(ratio)
                 };
                 writer.writeRecord(record);
+                System.out.println("beta: " + beta);
                 System.out.println(ratio);
             }
 

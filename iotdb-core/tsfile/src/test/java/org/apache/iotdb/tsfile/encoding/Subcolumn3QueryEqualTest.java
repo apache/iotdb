@@ -13,16 +13,16 @@ import org.junit.Test;
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
 
-public class Subcolumn4QueryMaxTest {
-    // Subcolumn4Test Query Max
+public class Subcolumn3QueryEqualTest {
+    // Subcolumn3Test Query Equal
 
-    public static void Query(byte[] encoded_result) {
+    public static void Query(byte[] encoded_result, int target) {
 
         int startBitPosition = 0;
-        int data_length = Subcolumn4Test.bytesToInt(encoded_result, startBitPosition, 32);
+        int data_length = Subcolumn3Test.bytesToInt(encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
-        int block_size = Subcolumn4Test.bytesToInt(encoded_result, startBitPosition, 32);
+        int block_size = Subcolumn3Test.bytesToInt(encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
         int num_blocks = data_length / block_size;
@@ -32,41 +32,45 @@ public class Subcolumn4QueryMaxTest {
         int[] result_length = new int[1];
 
         for (int i = 0; i < num_blocks; i++) {
-            startBitPosition = BlockQueryMax(encoded_result, i, block_size, block_size, startBitPosition, result,
-                    result_length);
+            startBitPosition = BlockQueryIndex(encoded_result, i, block_size,
+                    block_size, startBitPosition, target,
+                    result, result_length);
         }
 
         int remainder = data_length % block_size;
 
         if (remainder <= 3) {
             for (int i = 0; i < remainder; i++) {
-                int value = Subcolumn4Test.bytesToIntSigned(encoded_result, startBitPosition, 32);
-                result[result_length[0]] = value;
-                result_length[0]++;
+                int value = Subcolumn3Test.bytesToIntSigned(encoded_result, startBitPosition, 32);
+                if (value == target) {
+                    result[result_length[0]] = value;
+                    result_length[0]++;
+                }
                 startBitPosition += 32;
             }
         } else {
-            startBitPosition = BlockQueryMax(encoded_result, num_blocks, block_size, remainder, startBitPosition,
+            startBitPosition = BlockQueryIndex(encoded_result, num_blocks, block_size,
+                    remainder, startBitPosition, target,
                     result, result_length);
         }
 
-        // for (int i = 0; i < result_length[0]; i++) {
-        // System.out.print(result[i] + " ");
-        // }
-        // System.out.println();
-
     }
 
-    public static int BlockQueryMax(byte[] encoded_result, int block_index, int block_size, int remainder,
-            int startBitPosition, int[] result, int[] result_length) {
+    public static int BlockQueryIndex(byte[] encoded_result, int block_index, int block_size, int remainder,
+            int startBitPosition, int target, int[] result, int[] result_length) {
         int[] min_delta = new int[3];
 
-        min_delta[0] = Subcolumn4Test.bytesToIntSigned(encoded_result, startBitPosition, 32);
+        min_delta[0] = Subcolumn3Test.bytesToIntSigned(encoded_result, startBitPosition, 32);
         startBitPosition += 32;
 
-        int m = Subcolumn4Test.bytesToInt(encoded_result, startBitPosition, 6);
+        // int[] block_data = new int[remainder];
+
+        int m = Subcolumn3Test.bytesToInt(encoded_result, startBitPosition, 6);
         startBitPosition += 6;
 
+        target -= min_delta[0];
+
+        // 候选索引列表，当前分列值和 target 相应值相等的索引
         int[] candidate_indices = new int[remainder];
         int candidate_length = 0;
         for (int i = 0; i < remainder; i++) {
@@ -75,85 +79,76 @@ public class Subcolumn4QueryMaxTest {
         }
 
         if (m == 0) {
-            result[result_length[0]] = min_delta[0];
-            result_length[0]++;
+            if (target == 0) {
+                for (int i = 0; i < remainder; i++) {
+                    result[result_length[0]] = block_size * block_index + i;
+                    result_length[0]++;
+                }
+            }
             return startBitPosition;
         }
 
-        byte bw = Subcolumn4Test.bitWidthByte(block_size);
+        int bw = Subcolumn3Test.bitWidth(block_size);
 
-        byte beta = Subcolumn4Test.bytesToByte(encoded_result, startBitPosition, 6);
+        int beta = Subcolumn3Test.bytesToInt(encoded_result, startBitPosition, 6);
         startBitPosition += 6;
 
         int l = (m + beta - 1) / beta;
 
-        byte[] bitWidthList = Subcolumn4Test.bitUnpackingByte(encoded_result, startBitPosition, 8, l);
+        int[] bitWidthList = Subcolumn3Test.bitUnpacking(encoded_result, startBitPosition, 8, l);
         startBitPosition += 8 * l;
 
-        byte[][] subcolumnList = new byte[l][remainder];
+        int[][] subcolumnList = new int[l][remainder];
 
         for (int i = l - 1; i >= 0; i--) {
-            boolean type = Subcolumn4Test.bytesToBool(encoded_result, startBitPosition);
+            boolean type = Subcolumn3Test.bytesToBool(encoded_result, startBitPosition);
             startBitPosition += 1;
             if (!type) {
-                if (candidate_length == 1) {
+
+                if (target < 0) {
+                    startBitPosition += bitWidthList[i] * remainder;
                     continue;
                 }
-
-                byte maxPart = 0;
 
                 int new_length = 0;
                 for (int j = 0; j < candidate_length; j++) {
                     int index = candidate_indices[j];
-                    subcolumnList[i][index] = Subcolumn4Test.bytesToByte(encoded_result,
+
+                    subcolumnList[i][index] = Subcolumn3Test.bytesToInt(encoded_result,
                             startBitPosition + index * bitWidthList[i], bitWidthList[i]);
-
-                    if (subcolumnList[i][index] > maxPart) {
-                        maxPart = subcolumnList[i][index];
-
-                        new_length = 0;
-                        candidate_indices[new_length] = index;
-                        new_length++;
-                        } else if (subcolumnList[i][index] == maxPart) {
+                    int value = (target >> (i * beta)) & ((1 << beta) - 1);
+                    if (subcolumnList[i][index] == value) {
                         candidate_indices[new_length] = index;
                         new_length++;
                     }
                 }
-
-                // for (int j = 0; j < candidate_length; j++) {
-                //     int index = candidate_indices[j];
-                //     if (subcolumnList[i][index] == maxPart) {
-                //         candidate_indices[new_length] = index;
-                //         new_length++;
-                //     }
-                // }
 
                 candidate_length = new_length;
 
                 startBitPosition += bitWidthList[i] * remainder;
 
             } else {
-                int index = Subcolumn4Test.bytesToInt(encoded_result, startBitPosition, 16);
+
+                int index = Subcolumn3Test.bytesToInt(encoded_result, startBitPosition, 16);
                 startBitPosition += 16;
 
-                if (candidate_length == 1) {
+                if (target < 0) {
                     startBitPosition += bw * index;
                     startBitPosition += bitWidthList[i] * index;
                     continue;
                 }
 
-                int[] run_length = Subcolumn4Test.bitUnpacking(encoded_result, startBitPosition, bw, index);
+                int[] run_length = Subcolumn3Test.bitUnpacking(encoded_result, startBitPosition, bw, index);
                 startBitPosition += bw * index;
 
-                byte[] rle_values = Subcolumn4Test.bitUnpackingByte(encoded_result, startBitPosition, bitWidthList[i],
+                int[] rle_values = Subcolumn3Test.bitUnpacking(encoded_result, startBitPosition, bitWidthList[i],
                         index);
                 startBitPosition += bitWidthList[i] * index;
-
-                int maxPart = 0;
 
                 int new_length = 0;
                 int rleIndex = 0;
                 int currentPos = 0;
+                int value = (target >> (i * beta)) & ((1 << beta) - 1);
 
                 for (int j = 0; j < candidate_length; j++) {
                     int index_candidate = candidate_indices[j];
@@ -164,39 +159,22 @@ public class Subcolumn4QueryMaxTest {
                     }
 
                     if (rleIndex < index) {
-                        if (rle_values[rleIndex] > maxPart) {
-                            maxPart = rle_values[rleIndex];
-
-                            new_length = 0;
-                            } else if (rle_values[rleIndex] == maxPart) {
+                        if (rle_values[rleIndex] == value) {
                             candidate_indices[new_length] = index_candidate;
                             new_length++;
                         }
                     }
                 }
 
-                // for (int j = 0; j < candidate_length; j++) {
-                //     int index_candidate = candidate_indices[j];
-
-                //     while (rleIndex < index && currentPos + run_length[rleIndex] <= index_candidate) {
-                //         currentPos += run_length[rleIndex];
-                //         rleIndex++;
-                //     }
-
-                //     if (rleIndex < index) {
-                //         if (rle_values[rleIndex] == maxPart) {
-                //             candidate_indices[new_length] = index_candidate;
-                //             new_length++;
-                //         }
-                //     }
-                // }
-
                 candidate_length = new_length;
+
             }
         }
 
-        result[result_length[0]] = candidate_indices[0];
-        result_length[0]++;
+        for (int i = 0; i < candidate_length; i++) {
+            result[result_length[0]] = block_size * block_index + candidate_indices[i];
+            result_length[0]++;
+        }
 
         return startBitPosition;
     }
@@ -233,19 +211,33 @@ public class Subcolumn4QueryMaxTest {
 
     @Test
     public void testQuery() throws IOException {
-        // String parent_dir = "D:/github/xjz17/subcolumn/elf_resources/dataset/";
-        String parent_dir = "D:/compress-subcolumn/dataset/";
+        String parent_dir = "D:/github/xjz17/subcolumn/elf_resources/dataset/";
+        // String parent_dir = "D:/compress-subcolumn/dataset/";
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        String outputPath = output_parent_dir + "test01.csv";
+        String outputPath = output_parent_dir + "query_equal.csv";
 
         // int block_size = 1024;
         int block_size = 512;
 
+        HashMap<String, Integer> queryRange = new HashMap<>();
+        queryRange.put("Air-pressure", 8820000);
+        queryRange.put("Bird-migration", 2600000);
+        queryRange.put("Bitcoin-price", 170000000);
+        queryRange.put("Blockchain-tr", 300000);
+        queryRange.put("City-temp", 700);
+        queryRange.put("Dewpoint-temp", 9600);
+        queryRange.put("IR-bio-temp", -200);
+        queryRange.put("PM10-dust", 2000);
+        queryRange.put("Stocks-DE", 90000);
+        queryRange.put("Stocks-UK", 30000);
+        queryRange.put("Stocks-USA", 6000);
+        queryRange.put("Wind-Speed", 60);
+
         int repeatTime = 100;
         // TODO 真正计算时，记得注释掉将下面的内容
-        repeatTime = 1;
+        // repeatTime = 1;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
 
@@ -300,7 +292,7 @@ public class Subcolumn4QueryMaxTest {
 
             long s = System.nanoTime();
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                length = Subcolumn4Test.Encoder(data2_arr, block_size, encoded_result);
+                length = Subcolumn3Test.Encoder(data2_arr, block_size, encoded_result);
             }
 
             long e = System.nanoTime();
@@ -314,7 +306,7 @@ public class Subcolumn4QueryMaxTest {
             s = System.nanoTime();
 
             for (int repeat = 0; repeat < repeatTime; repeat++) {
-                Query(encoded_result);
+                Query(encoded_result, queryRange.get(datasetName));
             }
 
             e = System.nanoTime();

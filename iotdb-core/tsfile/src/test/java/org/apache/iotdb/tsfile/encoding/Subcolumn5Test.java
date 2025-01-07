@@ -319,19 +319,19 @@ public class Subcolumn5Test {
         int l;
 
         // int betaBest = beta[0];
-        byte betaBest = (byte) beta[0];
+        // byte betaBest = (byte) beta[0];
 
-        l = (m + betaBest - 1) / betaBest;
+        l = (m + beta[0] - 1) / beta[0];
 
-        encoded_result[encode_pos] = betaBest;
+        encoded_result[encode_pos] = (byte) beta[0];
         encode_pos += 1;
 
         int bw = bitWidth(block_size);
-        int mask = (1 << betaBest) - 1;
+        int mask = (1 << beta[0]) - 1;
 
         for (int i = 0; i < l; i++) {
             int maxValuePart = 0;
-            int shiftAmount = i * betaBest;
+            int shiftAmount = i * beta[0];
             for (int j = 0; j < list_length; j++) {
                 subcolumnList[i][j] = (list[j] >> shiftAmount) & mask;
                 if (subcolumnList[i][j] > maxValuePart) {
