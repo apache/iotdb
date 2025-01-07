@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
@@ -39,7 +40,11 @@ import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.metrics.utils.SystemType;
 
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.Session;
 import org.apache.thrift.TException;
+import org.apache.tsfile.read.common.Field;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.After;
@@ -66,6 +71,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentHashMap.KeySetView;
 import java.util.concurrent.ExecutorService;
@@ -741,6 +747,23 @@ public class IoTDBRegionOperationReliabilityITFramework {
     KeySetView<String, Boolean> result = ConcurrentHashMap.newKeySet();
     result.addAll(
         Arrays.stream(keywords).map(KillPoint::enumToString).collect(Collectors.toList()));
+    return result;
+  }
+
+  protected static Map<Integer, String> getRegionStatusWithoutRunning(Session session) throws IoTDBConnectionException, StatementExecutionException {
+    SessionDataSet dataSet = session.executeQueryStatement("show regions");
+    final int regionIdIndex = dataSet.getColumnNames().indexOf("RegionId");
+    final int regionStatusIndex = dataSet.getColumnNames().indexOf("Status");
+    dataSet.setFetchSize(1024);
+    Map<Integer, String> result = new TreeMap<>();
+    while (dataSet.hasNext()) {
+      List<Field> fields = dataSet.next().getFields();
+      final int regionId = fields.get(regionIdIndex).getIntV();
+      final String regionStatus = fields.get(regionStatusIndex).toString();
+      if (!"Running".equals(regionStatus)) {
+        result.putIfAbsent(regionId, regionStatus);
+      }
+    }
     return result;
   }
 }

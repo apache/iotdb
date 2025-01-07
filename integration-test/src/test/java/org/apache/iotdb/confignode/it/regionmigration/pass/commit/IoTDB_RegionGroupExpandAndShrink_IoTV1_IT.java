@@ -67,7 +67,8 @@ public class IoTDB_RegionGroupExpandAndShrink_IoTV1_IT
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS_V2)
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataReplicationFactor(1)
         .setSchemaReplicationFactor(1);
 
