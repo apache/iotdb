@@ -35,7 +35,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
-import org.apache.iotdb.db.pipe.connector.util.LeaderCacheUtils;
+import org.apache.iotdb.db.pipe.connector.util.cacher.LeaderCacheUtils;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -306,13 +306,13 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
   private void doTransfer(final PipeTabletEventTsFileBatch batchToTransfer)
       throws IOException, WriteProcessException {
-    final List<File> sealedFiles = batchToTransfer.sealTsFiles();
+    final List<Pair<String, File>> dbTsFilePairs = batchToTransfer.sealTsFiles();
     final Map<Pair<String, Long>, Double> pipe2WeightMap = batchToTransfer.deepCopyPipe2WeightMap();
 
-    for (final File tsFile : sealedFiles) {
-      doTransfer(pipe2WeightMap, tsFile, null, null);
+    for (final Pair<String, File> tsFile : dbTsFilePairs) {
+      doTransfer(pipe2WeightMap, tsFile.right, null, tsFile.left);
       try {
-        FileUtils.delete(tsFile);
+        FileUtils.delete(tsFile.right);
       } catch (final NoSuchFileException e) {
         LOGGER.info("The file {} is not found, may already be deleted.", tsFile);
       } catch (final Exception e) {
