@@ -46,10 +46,10 @@ import java.nio.ByteBuffer;
  *
  * <p>SHOW FUNCTIONS;
  *
- * <p>SELECT time, device_id, my_count(s1) as s1_count, my_count(s2) as s2_count FROM t1 group by
+ * <p>SELECT device_id, my_count(s1) as s1_count, my_count(s2) as s2_count FROM t1 group by
  * device_id;
  *
- * <p>SELECT time, my_count(s1) as s1_count, my_count(s2) as s2_count FROM t1;
+ * <p>SELECT my_count(s1) as s1_count, my_count(s2) as s2_count FROM t1;
  */
 public class AggregateFunctionExample implements AggregateFunction {
 
