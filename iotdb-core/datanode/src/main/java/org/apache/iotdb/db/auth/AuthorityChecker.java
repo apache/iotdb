@@ -56,7 +56,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LIST_USER_PRIVILEGES_Column_HEADERS;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LIST_USER_OR_ROLE_PRIVILEGES_COLUMN_HEADERS;
 
 // Authority checker is SingleTon working at datanode.
 // It checks permission in local. DCL statement will send to configNode.
@@ -337,9 +337,9 @@ public class AuthorityChecker {
         builder.declarePosition();
       }
     } else {
-      headerList = LIST_USER_PRIVILEGES_Column_HEADERS;
+      headerList = LIST_USER_OR_ROLE_PRIVILEGES_COLUMN_HEADERS;
       types =
-          LIST_USER_PRIVILEGES_Column_HEADERS.stream()
+          LIST_USER_OR_ROLE_PRIVILEGES_COLUMN_HEADERS.stream()
               .map(ColumnHeader::getColumnType)
               .collect(Collectors.toList());
       builder = new TsBlockBuilder(types);

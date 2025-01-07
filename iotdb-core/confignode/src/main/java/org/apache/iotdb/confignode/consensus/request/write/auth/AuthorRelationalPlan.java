@@ -49,14 +49,10 @@ public class AuthorRelationalPlan extends AuthorPlan {
       final int permission,
       final boolean grantOpt,
       final String password) {
-    super(authorType);
-    this.userName = userName;
-    this.roleName = roleName;
-    this.grantOpt = grantOpt;
+    super(authorType, userName, roleName, password, "", grantOpt);
     this.databaseName = databaseName;
     this.tableName = tableName;
     this.permission = permission;
-    this.password = password;
   }
 
   public String getDatabaseName() {
@@ -125,19 +121,8 @@ public class AuthorRelationalPlan extends AuthorPlan {
     BasicStructureSerDeUtil.write(userName, stream);
     BasicStructureSerDeUtil.write(roleName, stream);
     BasicStructureSerDeUtil.write(password, stream);
-    if (databaseName == null) {
-      stream.write((byte) 0);
-    } else {
-      stream.write((byte) 1);
-      BasicStructureSerDeUtil.write(databaseName, stream);
-    }
-
-    if (this.tableName == null) {
-      stream.write((byte) 0);
-    } else {
-      stream.write((byte) 1);
-      BasicStructureSerDeUtil.write(tableName, stream);
-    }
+    BasicStructureSerDeUtil.write(databaseName, stream);
+    BasicStructureSerDeUtil.write(tableName, stream);
     BasicStructureSerDeUtil.write(this.permission, stream);
     stream.write(grantOpt ? (byte) 1 : (byte) 0);
   }
@@ -147,12 +132,8 @@ public class AuthorRelationalPlan extends AuthorPlan {
     userName = BasicStructureSerDeUtil.readString(buffer);
     roleName = BasicStructureSerDeUtil.readString(buffer);
     password = BasicStructureSerDeUtil.readString(buffer);
-    if (buffer.get() == (byte) 1) {
-      this.databaseName = BasicStructureSerDeUtil.readString(buffer);
-    }
-    if (buffer.get() == (byte) 1) {
-      this.tableName = BasicStructureSerDeUtil.readString(buffer);
-    }
+    databaseName = BasicStructureSerDeUtil.readString(buffer);
+    tableName = BasicStructureSerDeUtil.readString(buffer);
     this.permission = BasicStructureSerDeUtil.readInt(buffer);
     grantOpt = buffer.get() == (byte) 1;
   }

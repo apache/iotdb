@@ -73,7 +73,7 @@ public class RoleTest {
         databasePrivilege.grantTablePrivilege("testTable", item);
       }
     }
-    admin.getObjectPrivilegeMap().put("testDB", databasePrivilege);
+    admin.getDBScopePrivilegeMap().put("testDB", databasePrivilege);
     admin.getPathPrivilegeList().add(pathPri);
     Assert.assertEquals(
         "Role{name='root', pathPrivilegeList=[root.** : "

@@ -162,12 +162,12 @@ public class LocalFileAuthorizerTest {
         userName, new PrivilegeUnion(database, table, PrivilegeType.INSERT, true));
     authorizer.grantPrivilegeToUser(
         userName, new PrivilegeUnion(database, table, PrivilegeType.DELETE, true));
-    assertEquals(1, authorizer.getUser(userName).getObjectPrivilegeMap().size());
+    assertEquals(1, authorizer.getUser(userName).getDBScopePrivilegeMap().size());
     assertEquals(
         1,
         authorizer
             .getUser(userName)
-            .getObjectPrivilegeMap()
+            .getDBScopePrivilegeMap()
             .get(database)
             .getTablePrivilegeMap()
             .size());

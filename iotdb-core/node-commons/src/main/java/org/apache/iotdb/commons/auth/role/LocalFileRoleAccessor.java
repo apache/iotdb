@@ -119,10 +119,10 @@ public class LocalFileRoleAccessor implements IEntryAccessor {
       IOUtils.writePathPrivilege(outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
     }
     IOUtils.writeInt(outputStream, role.getAnyScopePrivileges(), encodingBufferLocal);
-    privilegeNum = role.getObjectPrivilegeMap().size();
+    privilegeNum = role.getDBScopePrivilegeMap().size();
     IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
     for (Map.Entry<String, DatabasePrivilege> objectPrivilegeMap :
-        role.getObjectPrivilegeMap().entrySet()) {
+        role.getDBScopePrivilegeMap().entrySet()) {
       IOUtils.writeObjectPrivilege(
           outputStream, objectPrivilegeMap.getValue(), STRING_ENCODING, encodingBufferLocal);
     }

@@ -104,6 +104,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
     return (User) super.getEntry(username);
   }
 
+
   public boolean createEntry(
       String username, String password, boolean validCheck, boolean enableEncrypt)
       throws AuthException {

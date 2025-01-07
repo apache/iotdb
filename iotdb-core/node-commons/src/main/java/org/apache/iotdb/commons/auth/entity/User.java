@@ -202,7 +202,7 @@ public class User extends Role {
         + ", sysPrivilegeSet="
         + priSetToString(sysPrivilegeSet, sysPriGrantOpt)
         + ", AnyScopePrivilegeMap="
-        + priSetToString(anyScopePrivilegeSet, anyScopePrivileGrantOptSet)
+        + priSetToString(anyScopePrivilegeSet, anyScopePrivilegeGrantOptSet)
         + ", objectPrivilegeMap="
         + objectPrivilegeMap
         + ", roleList="
