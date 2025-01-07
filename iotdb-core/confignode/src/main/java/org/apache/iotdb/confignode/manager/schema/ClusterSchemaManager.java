@@ -268,7 +268,8 @@ public class ClusterSchemaManager {
   }
 
   /** Delete DatabaseSchema. */
-  public TSStatus deleteDatabase(DeleteDatabasePlan deleteDatabasePlan, boolean isGeneratedByPipe) {
+  public TSStatus deleteDatabase(
+      final DeleteDatabasePlan deleteDatabasePlan, final boolean isGeneratedByPipe) {
     TSStatus result;
     try {
       result =
