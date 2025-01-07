@@ -131,8 +131,6 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private final SchemaAutoCreatorAndVerifier schemaAutoCreatorAndVerifier;
 
-  private final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter;
-
   LoadTsFileAnalyzer(
       LoadTsFileStatement loadTsFileStatement,
       MPPQueryContext context,
@@ -145,7 +143,6 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.schemaFetcher = schemaFetcher;
 
     this.schemaAutoCreatorAndVerifier = new SchemaAutoCreatorAndVerifier();
-    this.loadTsFileDataTypeConverter = new LoadTsFileDataTypeConverter();
   }
 
   public Analysis analyzeFileByFile(final boolean isDeleteAfterLoad) {
@@ -231,17 +228,17 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private void executeDataTypeConversionOnTypeMismatch(
       final Analysis analysis, final VerifyMetadataTypeMismatchException e) {
+    final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
+        new LoadTsFileDataTypeConverter();
     final TSStatus status =
         loadTsFileStatement.isConvertOnTypeMismatch()
-            ? loadTsFileDataTypeConverter.convertForTreeModel(loadTsFileStatement)
+            ? loadTsFileDataTypeConverter.convertForTreeModel(loadTsFileStatement).orElse(null)
             : null;
 
     if (status == null) {
       analysis.setFailStatus(
           new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
-    } else if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
-        && status.getCode() != TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()) {
+    } else if (!loadTsFileDataTypeConverter.isSuccessful(status)) {
       analysis.setFailStatus(status);
     }
 
