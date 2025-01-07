@@ -49,7 +49,7 @@ public class IoTDBSelectSchemaTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE sg(device STRING ID, s1 INT32 MEASUREMENT, s2 INT64 MEASUREMENT, s3 DOUBLE MEASUREMENT)",
+        "CREATE TABLE sg(device STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 DOUBLE FIELD)",
         "insert into sg(time, device, s1, s2, s3) values (1, 'd1', 1, 2, 3.0)"
       };
 
@@ -64,7 +64,6 @@ public class IoTDBSelectSchemaTableIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  @Ignore // TODO After sin supported
   @Test
   public void testSchemaExpression() {
     String[] expressions = {

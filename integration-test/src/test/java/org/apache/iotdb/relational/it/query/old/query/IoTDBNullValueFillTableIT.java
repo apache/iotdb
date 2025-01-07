@@ -35,7 +35,6 @@ import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualWithDescOrderTest;
 
-@Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBNullValueFillTableIT {
@@ -72,7 +71,7 @@ public class IoTDBNullValueFillTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE testNullFilter(device STRING ID, s1 INT32 MEASUREMENT, s2 BOOLEAN MEASUREMENT, s3 DOUBLE MEASUREMENT)",
+        "CREATE TABLE testNullFilter(device STRING TAG, s1 INT32 FIELD, s2 BOOLEAN FIELD, s3 DOUBLE FIELD)",
         "create aligned timeseries root.sg1.d1(s1 INT32, s2 INT64, s3 FLOAT, s4 DOUBLE, s5 BOOLEAN, s6 TEXT)",
         "insert into root.sg1.d1(time, s2, s4, s6) aligned values(1, 1, 1.0, 't1')",
         "insert into root.sg1.d1(time, s1, s2, s3, s4, s5, s6) aligned values(2, 2, 2, 2.0, 2.0, true, 't2')",
