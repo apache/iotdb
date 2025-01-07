@@ -696,15 +696,17 @@ public class TableDistributedPlanGenerator
   }
 
   @Override
-  public List<PlanNode> visitTableFunctionProcessor(TableFunctionProcessorNode node, PlanContext context) {
+  public List<PlanNode> visitTableFunctionProcessor(
+      TableFunctionProcessorNode node, PlanContext context) {
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
-    if(childrenNodes.size() == 1) {
+    if (childrenNodes.size() == 1) {
       node.setChild(childrenNodes.get(0));
       return Collections.singletonList(node);
-    }else{
-      CollectNode collectNode = new CollectNode(queryId.genPlanNodeId(), node.getChildren().get(0).getOutputSymbols());
-        childrenNodes.forEach(collectNode::addChild);
-        return Collections.singletonList(collectNode);
+    } else {
+      CollectNode collectNode =
+          new CollectNode(queryId.genPlanNodeId(), node.getChildren().get(0).getOutputSymbols());
+      childrenNodes.forEach(collectNode::addChild);
+      return Collections.singletonList(collectNode);
     }
   }
 

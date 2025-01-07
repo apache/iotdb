@@ -121,9 +121,8 @@ public class HOPTableFunction extends TableFunction {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
         return new HOPDataProcessor(
-                (Long) ((ScalarArgument) arguments.get(SLIDE_PARAMETER_NAME)).getValue()*1000,
-                (Long) ((ScalarArgument) arguments.get(SLIDE_PARAMETER_NAME)).getValue()*1000
-        );
+            (Long) ((ScalarArgument) arguments.get(SLIDE_PARAMETER_NAME)).getValue() * 1000,
+            (Long) ((ScalarArgument) arguments.get(SLIDE_PARAMETER_NAME)).getValue() * 1000);
       }
     };
   }
@@ -142,7 +141,7 @@ public class HOPTableFunction extends TableFunction {
     @Override
     public void process(Record input, List<ColumnBuilder> columnBuilders) {
       long curTime = input.getLong(0);
-      if(startTime==Long.MIN_VALUE) {
+      if (startTime == Long.MIN_VALUE) {
         startTime = curTime;
       }
       while (curTime - startTime >= size) {
@@ -150,14 +149,14 @@ public class HOPTableFunction extends TableFunction {
       }
 
       for (int i = 0; i < input.size(); i++) {
-        if(input.isNull(i)) {
+        if (input.isNull(i)) {
           columnBuilders.get(i + 2).appendNull();
         } else {
           columnBuilders.get(i + 2).writeObject(input.getObject(i));
         }
       }
-        columnBuilders.get(0).writeLong(startTime);
-        columnBuilders.get(1).writeLong(startTime + size);
+      columnBuilders.get(0).writeLong(startTime);
+      columnBuilders.get(1).writeLong(startTime + size);
     }
 
     @Override
