@@ -53,7 +53,9 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.counter.Dat
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +63,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -71,6 +72,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -850,7 +852,7 @@ public class ConfigMTree {
     }
     if (columnSchema.getColumnCategory() == TsTableColumnCategory.TAG
         || columnSchema.getColumnCategory() == TsTableColumnCategory.TIME) {
-      throw new SemanticException("Dropping id or time column is not supported.");
+      throw new SemanticException("Dropping tag or time column is not supported.");
     }
 
     node.addPreDeletedColumn(columnName);
@@ -868,21 +870,70 @@ public class ConfigMTree {
     }
   }
 
+  public void preAlterColumnDataType(
+      PartialPath database, String tableName, String columnName, TSDataType dataType)
+      throws MetadataException {
+    final ConfigTableNode node = getTableNode(database, tableName);
+    final TsTableColumnSchema columnSchema = node.getTable().getColumnSchema(columnName);
+    if (Objects.isNull(columnSchema)) {
+      throw new ColumnNotExistsException(
+          PathUtils.unQualifyDatabaseName(database.getFullPath()), tableName, columnName);
+    }
+    if (columnSchema.getColumnCategory() != TsTableColumnCategory.FIELD) {
+      throw new SemanticException("Can only alter datatype of FIELD columns");
+    }
+    if (!dataType.isCompatible(columnSchema.getDataType())) {
+      throw new SemanticException(
+          String.format(
+              "New type %s is not compatible with the existing one %s",
+              dataType, columnSchema.getDataType()));
+    }
+
+    node.addPreAlteredColumn(columnName, dataType);
+  }
+
+  public void commitAlterColumnDataType(
+      PartialPath database, String tableName, String columnName, TSDataType dataType)
+      throws MetadataException {
+    final ConfigTableNode node = getTableNode(database, tableName);
+    final TsTable table = getTable(database, tableName);
+    if (Objects.nonNull(table.getColumnSchema(columnName))) {
+      table.getColumnSchema(columnName).setDataType(dataType);
+      node.removePreAlteredColumn(columnName);
+    }
+  }
+
   public TsTable getUsingTableSchema(final PartialPath database, final String tableName)
       throws MetadataException {
     final ConfigTableNode node = getTableNode(database, tableName);
-    if (node.getPreDeletedColumns().isEmpty()) {
+    if (node.getPreDeletedColumns().isEmpty() && node.getPreAlteredColumns().isEmpty()) {
       return node.getTable();
     }
-    final TsTable newTable = TsTable.deserialize(ByteBuffer.wrap(node.getTable().serialize()));
-    node.getPreDeletedColumns().forEach(newTable::removeColumnSchema);
+    final TsTable newTable = new TsTable(node.getTable());
+    if (!node.getPreDeletedColumns().isEmpty()) {
+      node.getPreDeletedColumns().forEach(newTable::removeColumnSchema);
+    }
+    if (!node.getPreAlteredColumns().isEmpty()) {
+      node.getPreAlteredColumns()
+          .forEach((col, type) -> newTable.getColumnSchema(col).setDataType(type));
+    }
     return newTable;
   }
 
-  public Pair<TsTable, Set<String>> getTableSchemaDetails(
+  public TableSchemaDetails getTableSchemaDetails(
       final PartialPath database, final String tableName) throws MetadataException {
     final ConfigTableNode node = getTableNode(database, tableName);
-    return new Pair<>(node.getTable(), node.getPreDeletedColumns());
+    TableSchemaDetails tableSchemaDetails = new TableSchemaDetails();
+    tableSchemaDetails.table = node.getTable();
+    tableSchemaDetails.preDeletedColumns = node.getPreDeletedColumns();
+    tableSchemaDetails.preAlteredColumns = node.getPreAlteredColumns();
+    return tableSchemaDetails;
+  }
+
+  public static class TableSchemaDetails {
+    public TsTable table;
+    public Set<String> preDeletedColumns;
+    public Map<String, TSDataType> preAlteredColumns;
   }
 
   private TsTable getTable(final PartialPath database, final String tableName)
@@ -963,6 +1014,11 @@ public class ConfigMTree {
     ReadWriteIOUtils.write(preDeletedColumns.size(), outputStream);
     for (final String column : preDeletedColumns) {
       ReadWriteIOUtils.write(column, outputStream);
+    }
+    ReadWriteForEncodingUtils.writeVarInt(tableNode.getPreAlteredColumns().size(), outputStream);
+    for (Entry<String, TSDataType> entry : tableNode.getPreAlteredColumns().entrySet()) {
+      ReadWriteIOUtils.writeVar(entry.getKey(), outputStream);
+      ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
   }
 
@@ -1057,9 +1113,16 @@ public class ConfigMTree {
         new ConfigTableNode(null, ReadWriteIOUtils.readString(inputStream));
     tableNode.setTable(TsTable.deserialize(inputStream));
     tableNode.setStatus(TableNodeStatus.deserialize(inputStream));
-    final int size = ReadWriteIOUtils.readInt(inputStream);
+    int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
       tableNode.addPreDeletedColumn(ReadWriteIOUtils.readString(inputStream));
+    }
+
+    size = ReadWriteForEncodingUtils.readVarInt(inputStream);
+    for (int i = 0; i < size; i++) {
+      tableNode.addPreAlteredColumn(
+          ReadWriteIOUtils.readVarIntString(inputStream),
+          ReadWriteIOUtils.readDataType(inputStream));
     }
     return tableNode;
   }

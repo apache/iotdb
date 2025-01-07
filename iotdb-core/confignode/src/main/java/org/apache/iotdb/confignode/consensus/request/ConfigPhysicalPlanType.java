@@ -171,6 +171,8 @@ public enum ConfigPhysicalPlanType {
   PreDeleteColumn((short) 860),
   CommitDeleteColumn((short) 861),
   DescTable((short) 862),
+  AlterColumnDataType((short) 863),
+  CommitAlterColumnDataType((short) 864),
 
   /** Deprecated types for sync, restored them for upgrade. */
   @Deprecated

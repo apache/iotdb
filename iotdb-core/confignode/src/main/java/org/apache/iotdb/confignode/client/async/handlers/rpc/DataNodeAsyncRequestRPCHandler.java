@@ -89,6 +89,7 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
       case ROLLBACK_VIEW_SCHEMA_BLACK_LIST:
       case DELETE_VIEW:
       case ALTER_VIEW:
+      case ALTER_COLUMN_DATATYPE:
         return new SchemaUpdateRPCHandler(
             requestType,
             requestId,

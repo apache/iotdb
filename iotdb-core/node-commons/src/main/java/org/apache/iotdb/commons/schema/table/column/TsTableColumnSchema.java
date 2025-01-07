@@ -76,4 +76,6 @@ public abstract class TsTableColumnSchema {
   public void setDataType(final TSDataType dataType) {
     this.dataType = dataType;
   }
+
+  public abstract TsTableColumnSchema copy();
 }
