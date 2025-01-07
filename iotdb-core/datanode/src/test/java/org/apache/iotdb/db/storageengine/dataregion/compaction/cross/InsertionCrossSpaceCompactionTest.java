@@ -452,7 +452,7 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testInsertionCompactionScheduleWithMultiTimePartitions()
+  public void testInsertionCompactionScheduleWithMultiTimePartitions1()
       throws IOException, InterruptedException {
     TsFileResource unseqResource1 =
         generateSingleNonAlignedSeriesFileWithDevices(
@@ -502,6 +502,53 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     Assert.assertEquals(
         tsFileManager.size(true) + tsFileManager.size(false),
         TsFileResourceManager.getInstance().getPriorityQueueSize());
+  }
+
+  @Test
+  public void testInsertionCompactionScheduleWithMultiTimePartitions2()
+      throws IOException, InterruptedException {
+    TsFileResource unseqResource1 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "2-2-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(1, 4)}, false);
+    unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
+
+    TsFileResource unseqResource2 =
+        generateSingleNonAlignedSeriesFileWithDevices(
+            "3-3-0-0.tsfile", new String[] {"d1"}, new TimeRange[] {new TimeRange(6, 9)}, false);
+    unseqResource2.setStatusForTest(TsFileResourceStatus.NORMAL);
+    createTimePartitionDirIfNotExist(2808L);
+    TsFileResource unseqResource3 =
+        generateSingleNonAlignedSeriesFileWithDevicesWithTimePartition(
+            "4-4-0-0.tsfile",
+            new String[] {"d1"},
+            new TimeRange[] {new TimeRange(1698301490305L, 1698301490405L)},
+            2808L,
+            true);
+    TsFileResource unseqResource4 =
+        generateSingleNonAlignedSeriesFileWithDevicesWithTimePartition(
+            "5-5-0-0.tsfile",
+            new String[] {"d1"},
+            new TimeRange[] {new TimeRange(1698301490306L, 1698301490406L)},
+            2808L,
+            true);
+    unseqResource3.setStatusForTest(TsFileResourceStatus.NORMAL);
+    unseqResources.add(unseqResource1);
+    unseqResources.add(unseqResource2);
+    seqResources.add(unseqResource3);
+    seqResources.add(unseqResource4);
+
+    DataRegionForCompactionTest dataRegion = createDataRegion();
+    TsFileManager tsFileManager = dataRegion.getTsFileManager();
+    TsFileResourceManager.getInstance().registerSealedTsFileResource(unseqResource1);
+    TsFileResourceManager.getInstance().registerSealedTsFileResource(unseqResource2);
+    TsFileResourceManager.getInstance().registerSealedTsFileResource(unseqResource3);
+    TsFileResourceManager.getInstance().registerSealedTsFileResource(unseqResource4);
+    tsFileManager.getOrCreateUnsequenceListByTimePartition(0).keepOrderInsert(unseqResource1);
+    tsFileManager.getOrCreateUnsequenceListByTimePartition(0).keepOrderInsert(unseqResource2);
+    tsFileManager.getOrCreateSequenceListByTimePartition(2808).keepOrderInsert(unseqResource3);
+    tsFileManager.getOrCreateSequenceListByTimePartition(2808).keepOrderInsert(unseqResource4);
+    // 2 insertion task + 1 inner task
+    Assert.assertEquals(3, dataRegion.executeCompaction());
   }
 
   @Test
