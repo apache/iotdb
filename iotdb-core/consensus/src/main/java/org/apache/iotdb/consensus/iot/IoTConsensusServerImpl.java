@@ -662,7 +662,7 @@ public class IoTConsensusServerImpl {
     configuration.add(targetPeer);
     // step 3, persist configuration
     persistConfiguration();
-    logger.info("[IoTConsensus] persist new configuration: {}", configuration);
+    logger.info("[IoTConsensus Configuration] persist new configuration: {}", configuration);
   }
 
   /**
@@ -674,6 +674,7 @@ public class IoTConsensusServerImpl {
     String suggestion = "";
     try {
       logDispatcher.removeLogDispatcherThread(targetPeer);
+      logger.info("[IoTConsensus] log dispatcher to {} removed and cleanup", targetPeer);
     } catch (Exception e) {
       logger.warn(
           "[IoTConsensus] Exception happened during removing log dispatcher thread, but configuration.dat will still be removed.",
@@ -690,7 +691,10 @@ public class IoTConsensusServerImpl {
     checkAndUpdateSafeDeletedSearchIndex();
     // step 3, persist configuration
     persistConfiguration();
-    logger.info("[IoTConsensus] Configuration updated to {}. {}", this.configuration, suggestion);
+    logger.info(
+        "[IoTConsensus Configuration] Configuration updated to {}. {}",
+        this.configuration,
+        suggestion);
     return !exceptionHappened;
   }
 
@@ -721,20 +725,33 @@ public class IoTConsensusServerImpl {
       if (Files.exists(tmpConfigurationPath)) {
         Files.deleteIfExists(configurationPath);
         Files.move(tmpConfigurationPath, configurationPath);
+        logger.info(
+            "[IoTConsensus Configuration] recover configuration from tmpConfigurationFile, {}",
+            tmpConfigurationPath);
       }
       if (Files.exists(configurationPath)) {
         recoverFromOldConfigurationFile(configurationPath);
+        logger.info(
+            "[IoTConsensus Configuration] recover configuration from oldConfigurationFile, {}",
+            configurationPath);
       } else {
         // recover from split configuration file
+        logger.info(
+            "[IoTConsensus Configuration] recover configuration from old split configuration file");
         Path dirPath = Paths.get(storageDir);
         List<Peer> tmpPeerList = getConfiguration(dirPath, CONFIGURATION_TMP_FILE_NAME);
         configuration.addAll(tmpPeerList);
+        logger.info(
+            "[IoTConsensus Configuration] recover configuration from tmpPeerList, {}",
+            configuration);
         List<Peer> peerList = getConfiguration(dirPath, CONFIGURATION_FILE_NAME);
         for (Peer peer : peerList) {
           if (!configuration.contains(peer)) {
             configuration.add(peer);
           }
         }
+        logger.info(
+            "[IoTConsensus Configuration] recover configuration from peerList, {}", configuration);
         persistConfiguration();
       }
       logger.info("Recover IoTConsensus server Impl, configuration: {}", configuration);
@@ -767,6 +784,10 @@ public class IoTConsensusServerImpl {
             .filter(Files::isRegularFile)
             .filter(filePath -> filePath.getFileName().toString().contains(configurationFileName))
             .toArray(Path[]::new);
+    logger.info(
+        "[IoTConsensus Configuration] getConfiguration: fileName, {}, fileList: {}",
+        configurationFileName,
+        files);
     for (Path file : files) {
       buffer = ByteBuffer.wrap(Files.readAllBytes(file));
       tmpConfiguration.add(Peer.deserialize(buffer));
@@ -979,6 +1000,7 @@ public class IoTConsensusServerImpl {
           // ignore sync exception
         }
       }
+      logger.info("[IoTConsensus Configuration] serializeConfiguration: {}", peer);
     }
   }
 
@@ -1005,6 +1027,7 @@ public class IoTConsensusServerImpl {
         if (!filePath.toFile().renameTo(targetFile)) {
           logger.error("Unexpected error occurs when rename file: {} -> {}", filePath, targetPath);
         }
+        logger.info("[IoTConsensus Configuration] renameTmpConfigurationFile: {}", targetPath);
       }
     } catch (UncheckedIOException e) {
       throw e.getCause();
@@ -1026,6 +1049,7 @@ public class IoTConsensusServerImpl {
                       filePath,
                       e);
                 }
+                logger.info("[IoTConsensus Configuration] deleteConfiguration: {}", filePath);
               });
     } catch (UncheckedIOException e) {
       throw e.getCause();

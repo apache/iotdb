@@ -112,7 +112,7 @@ components:
           type: array
           items:
             type: string
-        column_types:
+        column_catogories:
           type: array
           items:
             type: string

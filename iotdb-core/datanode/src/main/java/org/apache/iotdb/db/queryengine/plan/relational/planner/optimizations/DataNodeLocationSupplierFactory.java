@@ -46,6 +46,25 @@ public class DataNodeLocationSupplierFactory {
     List<TDataNodeLocation> getDataNodeLocations(String table);
   }
 
+  /** DataNode in these states is readable: Running, ReadOnly, Removing */
+  public static List<TDataNodeLocation> getReadableDataNodeLocations() {
+    try (final ConfigNodeClient client =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TGetDataNodeLocationsResp showDataNodesResp = client.getReadableDataNodeLocations();
+      if (showDataNodesResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new IoTDBRuntimeException(
+            "An error occurred when executing getReadableDataNodeLocations():"
+                + showDataNodesResp.getStatus().getMessage(),
+            QUERY_PROCESS_ERROR.getStatusCode());
+      }
+      return showDataNodesResp.getDataNodeLocationList();
+    } catch (final ClientManagerException | TException e) {
+      throw new IoTDBRuntimeException(
+          "An error occurred when executing getReadableDataNodeLocations():" + e.getMessage(),
+          QUERY_PROCESS_ERROR.getStatusCode());
+    }
+  }
+
   private static class InformationSchemaTableDataNodeLocationSupplier
       implements DataNodeLocationSupplier {
     private InformationSchemaTableDataNodeLocationSupplier() {}
@@ -59,29 +78,10 @@ public class DataNodeLocationSupplierFactory {
       return SingletonHolder.INSTANCE;
     }
 
-    private List<TDataNodeLocation> getRunningDataNodeLocations() {
-      try (final ConfigNodeClient client =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        final TGetDataNodeLocationsResp showDataNodesResp = client.getRunningDataNodeLocations();
-        if (showDataNodesResp.getStatus().getCode()
-            != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new IoTDBRuntimeException(
-              "An error occurred when executing getRunningDataNodeLocations():"
-                  + showDataNodesResp.getStatus().getMessage(),
-              QUERY_PROCESS_ERROR.getStatusCode());
-        }
-        return showDataNodesResp.getDataNodeLocationList();
-      } catch (final ClientManagerException | TException e) {
-        throw new IoTDBRuntimeException(
-            "An error occurred when executing getRunningDataNodeLocations():" + e.getMessage(),
-            QUERY_PROCESS_ERROR.getStatusCode());
-      }
-    }
-
     @Override
     public List<TDataNodeLocation> getDataNodeLocations(final String tableName) {
       if (tableName.equals(InformationSchema.QUERIES)) {
-        return getRunningDataNodeLocations();
+        return getReadableDataNodeLocations();
       } else {
         throw new UnsupportedOperationException("Unknown table: " + tableName);
       }

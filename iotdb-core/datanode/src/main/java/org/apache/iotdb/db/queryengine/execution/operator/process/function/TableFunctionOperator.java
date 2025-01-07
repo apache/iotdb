@@ -127,7 +127,7 @@ public class TableFunctionOperator implements ProcessOperator {
           processor.finish(columnBuilders);
         }
         finished = true;
-        return buildTsBlock();
+        return buildTsBlock(columnBuilders);
       }
       if (stateType == PartitionState.StateType.NEW_PARTITION) {
         if (processor != null) {
@@ -139,7 +139,7 @@ public class TableFunctionOperator implements ProcessOperator {
       while (recordIterator.hasNext()) {
         processor.process(recordIterator.next(), columnBuilders);
       }
-      return buildTsBlock();
+      return buildTsBlock(columnBuilders);
     }
   }
 
@@ -148,9 +148,8 @@ public class TableFunctionOperator implements ProcessOperator {
     return Arrays.asList(blockBuilder.getValueColumnBuilders());
   }
 
-  private TsBlock buildTsBlock() {
-    // TODO(UDF): it should be implemented in the other way
-    int positionCount = getOutputColumnBuilders().get(0).build().getPositionCount();
+  private TsBlock buildTsBlock(List<ColumnBuilder> columnBuilders) {
+    int positionCount = columnBuilders.get(0).getPositionCount();
     blockBuilder.declarePositions(positionCount);
     return blockBuilder.build(new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, positionCount));
   }

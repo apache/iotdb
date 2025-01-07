@@ -35,6 +35,7 @@ import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecific
 import org.apache.iotdb.udf.api.relational.table.specification.ReturnTypeSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
+import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 
@@ -64,11 +65,11 @@ public class HOPTableFunction extends TableFunction {
         DescriptorParameterSpecification.builder().name(TIMECOL_PARAMETER_NAME).build(),
         ScalarParameterSpecification.builder()
             .name(SLIDE_PARAMETER_NAME)
-            .type(org.apache.iotdb.udf.api.type.Type.INT64)
+            .type(Type.INT64)
             .build(),
         ScalarParameterSpecification.builder()
             .name(SIZE_PARAMETER_NAME)
-            .type(org.apache.iotdb.udf.api.type.Type.INT64)
+            .type(Type.INT64)
             .build());
   }
 
@@ -82,9 +83,7 @@ public class HOPTableFunction extends TableFunction {
     return Optional.of(
         Descriptor.descriptor(
             Arrays.asList("window_start", "window_end"),
-            Arrays.asList(
-                org.apache.iotdb.udf.api.type.Type.TIMESTAMP,
-                org.apache.iotdb.udf.api.type.Type.TIMESTAMP)));
+            Arrays.asList(Type.TIMESTAMP, Type.TIMESTAMP)));
   }
 
   @Override

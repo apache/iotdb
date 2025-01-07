@@ -52,11 +52,6 @@ public class PartitionRecognizer {
     }
   }
 
-  public boolean needInput() {
-    return PartitionState.NEED_MORE_DATA_STATE.equals(state)
-        || PartitionState.INIT_STATE.equals(state);
-  }
-
   // TsBlock is sorted by partition columns already
   public void addTsBlock(TsBlock tsBlock) {
     if (noMoreData) {
