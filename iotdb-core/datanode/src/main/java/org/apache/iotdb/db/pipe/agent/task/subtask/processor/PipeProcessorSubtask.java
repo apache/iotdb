@@ -308,7 +308,9 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     return true;
   }
 
-  public void markTimeoutStatus(boolean isTimeOut) {}
+  public void markTimeoutStatus(boolean isTimeOut) {
+    // do nothing
+  }
 
   public boolean isTimeOut() {
     return false;

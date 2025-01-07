@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
 public class PipeProcessorSubtaskWorker extends WrappedRunnable {
@@ -45,10 +46,16 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
   private final Set<PipeProcessorSubtask> subtasks =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
 
+  private Semaphore running = new Semaphore(1);
+
   @Override
   @SuppressWarnings("squid:S2189")
   public void runMayThrow() {
+    // The current exception capture will not affect the operation of the Pipe kernel Processor. The
+    // running variable is to ensure that the Worker will not be executed by two threads at the same
+    // time. It only affects the user-defined Pipe Processor.
     try {
+      running.acquire();
       while (true) {
         cleanupClosedSubtasksIfNecessary();
         final boolean canSleepBeforeNextRound = runSubtasks();
@@ -56,7 +63,12 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
         adjustSleepingTimeIfNecessary();
       }
     } catch (PipeException ignore) {
-      //
+      // This exception is to exit While true, and the SubTask provided by the Pipe kernel will not
+      // exit the thread
+    } catch (InterruptedException e) {
+      LOGGER.warn("Subtask thread interrupted", e);
+    } finally {
+      running.release();
     }
   }
 
@@ -94,7 +106,14 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
       }
 
       if (subtask.isTimeOut()) {
-        throw new PipeException("subtask " + subtask + " is timeout");
+        // Clean up the timeout status and exit the current thread
+        subtask.markTimeoutStatus(false);
+        final String message =
+            String.format(
+                "Pipe %s@%s processor subtask exits the current thread",
+                subtask.pipeName, subtask.regionId);
+        LOGGER.info(message);
+        throw new PipeException(message);
       }
     }
 

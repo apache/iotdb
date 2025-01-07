@@ -110,32 +110,35 @@ public class PipeProcessorSubtaskWorkerManager {
                 continue;
               }
               final long currTime = System.currentTimeMillis();
-              if (currTime - subtask.getStartRunningTime() > PIPE_SUBTASK_EXECUTION_TIMEOUT_MS) {
-                ListenableFuture futures = listenableFuture[i];
-                if (Objects.isNull(futures) || futures.isDone()) {
-                  LOGGER.info(
-                      "Future for subtask {}@{} is null or already done. Resubmitting.",
-                      subtask.getPipeName(),
-                      subtask.getRegionId());
-                  listenableFuture[i] = workerThreadPoolExecutor.submit(worker);
-                }
-
-                // Interrupt a running thread
-                futures.cancel(true);
-                listenableFuture[i] = workerThreadPoolExecutor.submit(worker);
+              if (currTime - subtask.getStartRunningTime() <= PIPE_SUBTASK_EXECUTION_TIMEOUT_MS) {
+                continue;
+              }
+              ListenableFuture futures = listenableFuture[i];
+              if (Objects.isNull(futures) || futures.isDone()) {
+                subtask.markTimeoutStatus(true);
                 LOGGER.info(
-                    "Resubmitted worker {} for subtask {}@{} due to timeout.",
-                    worker,
+                    "Future for subtask {}@{} is null or already done. Resubmitting.",
                     subtask.getPipeName(),
                     subtask.getRegionId());
+                listenableFuture[i] = workerThreadPoolExecutor.submit(worker);
               }
+
+              subtask.markTimeoutStatus(true);
+              // Interrupt a running thread
+              futures.cancel(true);
+              listenableFuture[i] = workerThreadPoolExecutor.submit(worker);
+              LOGGER.info(
+                  "Resubmitted worker {} for subtask {}@{} due to timeout.",
+                  worker,
+                  subtask.getPipeName(),
+                  subtask.getRegionId());
             }
           }
         }
         try {
           Thread.sleep(PIPE_SUBTASK_EXECUTION_TIMEOUT_MS / 2);
         } catch (InterruptedException ignored) {
-
+          LOGGER.info("time out check waiting to be interrupted");
         }
       }
     }
