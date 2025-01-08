@@ -63,7 +63,7 @@ public class MyAvg implements AggregateFunction {
   @Override
   public AggregateFunctionAnalysis analyze(FunctionArguments arguments)
       throws UDFArgumentNotValidException {
-    if (arguments.getChildExpressionsSize() != 1) {
+    if (arguments.getArgumentsSize() != 1) {
       throw new UDFArgumentNotValidException("MyAvg only accepts one column as input");
     }
     if (arguments.getDataType(0) != Type.INT32
