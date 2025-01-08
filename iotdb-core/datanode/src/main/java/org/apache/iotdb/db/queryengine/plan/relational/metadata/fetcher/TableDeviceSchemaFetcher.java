@@ -261,7 +261,8 @@ public class TableDeviceSchemaFetcher {
             check,
             attributeColumns,
             fetchPaths,
-            isDirectDeviceQuery)) {
+            isDirectDeviceQuery,
+            queryContext)) {
           idSingleMatchPredicateNotInCache.add(index);
         }
       }
@@ -312,7 +313,8 @@ public class TableDeviceSchemaFetcher {
       final Predicate<DeviceEntry> check,
       final List<String> attributeColumns,
       final List<IDeviceID> fetchPaths,
-      final boolean isDirectDeviceQuery) {
+      final boolean isDirectDeviceQuery,
+      final MPPQueryContext queryContext) {
     final String[] idValues = new String[tableInstance.getIdNums()];
     for (final List<SchemaFilter> schemaFilters : idFilters.values()) {
       final IdFilter idFilter = (IdFilter) schemaFilters.get(0);
@@ -342,6 +344,7 @@ public class TableDeviceSchemaFetcher {
     // TODO table metadata: process cases that selected attr columns different from those used for
     // predicate
     if (check.test(deviceEntry)) {
+      queryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
       deviceEntryList.add(deviceEntry);
       // If we partially hit cache in direct device query, we must fetch for all the predicates
       // because now we do not support combining memory source and other sources
