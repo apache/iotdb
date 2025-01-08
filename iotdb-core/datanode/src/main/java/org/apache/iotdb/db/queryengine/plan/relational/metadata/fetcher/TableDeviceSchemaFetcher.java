@@ -334,6 +334,10 @@ public class TableDeviceSchemaFetcher {
       if (Objects.nonNull(fetchPaths)) {
         fetchPaths.add(deviceID);
       }
+      if (isDirectDeviceQuery && Objects.nonNull(deviceEntryList)) {
+        queryContext.releaseMemoryReservedForFrontEnd(
+            deviceEntryList.stream().map(DeviceEntry::ramBytesUsed).reduce(0L, Long::sum));
+      }
       return false;
     }
 
