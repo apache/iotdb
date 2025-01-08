@@ -47,7 +47,6 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
   private Timer transferTsFilePieceWithModTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer transferTsFileSealWithModTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer transferSchemaPlanTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer transferPlanNodeWithDatabaseTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer transferSchemaSnapshotPieceTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer transferSchemaSnapshotSealTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer transferConfigPlanTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
@@ -116,10 +115,6 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
 
   public void recordTransferSchemaPlanTimer(final long costTimeInNanos) {
     transferSchemaPlanTimer.updateNanos(costTimeInNanos);
-  }
-
-  public void recordTransferPlanNodeWithDatabaseTimer(final long costTimeInNanos) {
-    transferPlanNodeWithDatabaseTimer.updateNanos(costTimeInNanos);
   }
 
   public void recordTransferSchemaSnapshotPieceTimer(final long costTimeInNanos) {
@@ -268,14 +263,6 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
             RECEIVER,
             Tag.TYPE.toString(),
             "transferSchemaPlan");
-    transferPlanNodeWithDatabaseTimer =
-        metricService.getOrCreateTimer(
-            Metric.PIPE_DATANODE_RECEIVER.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            RECEIVER,
-            Tag.TYPE.toString(),
-            "transferPlanNodeWithDatabase");
     transferSchemaSnapshotPieceTimer =
         metricService.getOrCreateTimer(
             Metric.PIPE_DATANODE_RECEIVER.toString(),
@@ -339,7 +326,6 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
     transferTsFilePieceWithModTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     transferTsFileSealWithModTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     transferSchemaPlanTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    transferPlanNodeWithDatabaseTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     transferSchemaSnapshotPieceTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     transferSchemaSnapshotSealTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     transferConfigPlanTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
