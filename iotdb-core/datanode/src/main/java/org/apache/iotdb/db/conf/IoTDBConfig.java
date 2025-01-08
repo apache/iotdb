@@ -1064,7 +1064,7 @@ public class IoTDBConfig {
   private int driverTaskExecutionTimeSliceInMs = 200;
 
   /** Maximum size of wal buffer used in IoTConsensus. Unit: byte */
-  private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
+  private long throttleThreshold = 200 * 1024 * 1024 * 1024L;
 
   /** Maximum wait time of write cache in IoTConsensus. Unit: ms */
   private long cacheWindowTimeInMs = 10 * 1000L;
