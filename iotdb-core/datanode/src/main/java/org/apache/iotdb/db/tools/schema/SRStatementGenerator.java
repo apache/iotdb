@@ -301,10 +301,6 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
       case TABLE_MNODE_TYPE:
         childrenNum = ReadWriteIOUtils.readInt(inputStream);
         node = deserializer.deserializeTableDeviceMNode(inputStream);
-        if (ancestors.size() == 1) {
-          emitDevice();
-          this.tableName = node.getName();
-        }
         break;
       default:
         throw new IOException("Unrecognized MNode type" + type);
