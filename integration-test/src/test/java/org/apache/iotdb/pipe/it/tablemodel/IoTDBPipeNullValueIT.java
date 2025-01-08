@@ -69,7 +69,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeTableModelTestIT {
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
 
       if (insertType == InsertType.SESSION_INSERT_TABLET) {
-        TableModelUtils.insertDataByTablet("test", "test", 0, 200, senderEnv, true);
+        TableModelUtils.insertTablet("test", "test", 0, 200, senderEnv, true);
       } else if (insertType == InsertType.SQL_INSERT) {
         TableModelUtils.insertData("test", "test", 0, 200, senderEnv, true);
       }
@@ -96,7 +96,7 @@ public class IoTDBPipeNullValueIT extends AbstractPipeTableModelTestIT {
     }
 
     if (insertType == InsertType.SESSION_INSERT_TABLET) {
-      TableModelUtils.insertDataByTablet("test", "test", 200, 400, senderEnv, true);
+      TableModelUtils.insertTablet("test", "test", 200, 400, senderEnv, true);
     } else if (insertType == InsertType.SQL_INSERT) {
       TableModelUtils.insertData("test", "test", 200, 400, senderEnv, true);
     }
