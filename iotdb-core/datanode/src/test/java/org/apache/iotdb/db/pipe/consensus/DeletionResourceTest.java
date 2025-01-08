@@ -201,7 +201,7 @@ public class DeletionResourceTest {
       deleteDataNode.setProgressIndex(
           new RecoverProgressIndex(THIS_DATANODE_ID, new SimpleProgressIndex(rebootTimes, i)));
       final PipeDeleteDataNodeEvent deletionEvent =
-          new PipeDeleteDataNodeEvent(deleteDataNode, true, "root.vehicle");
+          new PipeDeleteDataNodeEvent(deleteDataNode, true);
       deletionEvents.add(deletionEvent);
       final DeletionResource deletionResource =
           deletionResourceManager.registerDeletionResource(deleteDataNode);
