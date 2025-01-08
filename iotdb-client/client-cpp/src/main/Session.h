@@ -547,13 +547,13 @@ public:
 };
 
 enum class ColumnCategory {
-    ID,
-    MEASUREMENT,
+    TAG,
+    FIELD,
     ATTRIBUTE
 };
 
 template<typename T, typename Target>
-const Target* safe_cast(const T& value) {
+void safe_cast(const T& value, Target &target) {
     /*
         Target	Allowed Source Types
         BOOLEAN	BOOLEAN
@@ -564,24 +564,27 @@ const Target* safe_cast(const T& value) {
         TEXT	TEXT
     */
     if (std::is_same<Target, T>::value) {
-        return (Target*)&value;
+        target = *(Target*)&value;
+    } else if (std::is_same<Target, string>::value && std::is_array<T>::value && std::is_same<char, typename std::remove_extent<T>::type>::value) {
+        string tmp((const char*)&value);
+        target = *(Target*)&tmp;
     } else if (std::is_same<Target, int64_t>::value && std::is_same<T, int32_t>::value) {
         int64_t tmp = *(int32_t*)&value;
-        return (Target*)&tmp;
+        target = *(Target*)&tmp;
     } else if (std::is_same<Target, float>::value && std::is_same<T, int32_t>::value) {
         float tmp = *(int32_t*)&value;
-        return (Target*)&tmp;
+        target = *(Target*)&tmp;
     } else if (std::is_same<Target, double>::value && std::is_same<T, int32_t>::value) {
         double tmp = *(int32_t*)&value;
-        return (Target*)&tmp;
+        target = *(Target*)&tmp;
     } else if (std::is_same<Target, double>::value && std::is_same<T, int64_t>::value) {
         double tmp = *(int64_t*)&value;
-        return (Target*)&tmp;
+        target = *(Target*)&tmp;
     } else if (std::is_same<Target, double>::value && std::is_same<T, float>::value) {
         double tmp = *(float*)&value;
-        return (Target*)&tmp;
+        target = *(Target*)&tmp;
     } else {
-        throw UnSupportedDataTypeException("Parameter type " +
+        throw UnSupportedDataTypeException("Error: Parameter type " +
                                            std::string(typeid(T).name()) + " cannot be converted to DataType" +
                                            std::string(typeid(Target).name()));
     }
@@ -652,7 +655,7 @@ public:
     Tablet(const std::string &deviceId,
         const std::vector<std::pair<std::string, TSDataType::TSDataType>> &schemas,
         int maxRowNumber)
-        : Tablet(deviceId, schemas, std::vector<ColumnCategory>(schemas.size(), ColumnCategory::MEASUREMENT), maxRowNumber) {}
+        : Tablet(deviceId, schemas, std::vector<ColumnCategory>(schemas.size(), ColumnCategory::FIELD), maxRowNumber) {}
     Tablet(const std::string &deviceId, const std::vector<std::pair<std::string, TSDataType::TSDataType>> &schemas,
            const std::vector<ColumnCategory> columnTypes,
            size_t maxRowNumber, bool _isAligned = false) : deviceId(deviceId), schemas(schemas), columnTypes(columnTypes),
@@ -699,27 +702,27 @@ public:
         TSDataType::TSDataType dataType = schemas[schemaId].second;
         switch (dataType) {
             case TSDataType::BOOLEAN: {
-                ((bool*)values[schemaId])[rowIndex] = *safe_cast<T, bool>(value);
+                safe_cast<T, bool>(value, ((bool*)values[schemaId])[rowIndex]);
                 break;
             }
             case TSDataType::INT32: {
-                ((int*)values[schemaId])[rowIndex] = *safe_cast<T, int>(value);
+                safe_cast<T, int>(value, ((int*)values[schemaId])[rowIndex]);
                 break;
             }
             case TSDataType::INT64: {
-                ((int64_t*)values[schemaId])[rowIndex] = *safe_cast<T, int64_t>(value);
+                safe_cast<T, int64_t>(value, ((int64_t*)values[schemaId])[rowIndex]);
                 break;
             }
             case TSDataType::FLOAT: {
-                ((float*)values[schemaId])[rowIndex] = *safe_cast<T, float>(value);
+                safe_cast<T, float>(value, ((float*)values[schemaId])[rowIndex]);
                 break;
             }
             case TSDataType::DOUBLE: {
-                ((double*)values[schemaId])[rowIndex] = *safe_cast<T, double>(value);
+                safe_cast<T, double>(value, ((double*)values[schemaId])[rowIndex]);
                 break;
             }
             case TSDataType::TEXT: {
-                ((string*)values[schemaId])[rowIndex] = *safe_cast<T, string>(value);
+                safe_cast<T, string>(value, ((string*)values[schemaId])[rowIndex]);
                 break;
             }
             default:

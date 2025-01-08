@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.query.udf.example.relational;
 
 import org.apache.iotdb.udf.api.State;
-import org.apache.iotdb.udf.api.customizer.config.AggregateFunctionConfig;
-import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
+import org.apache.iotdb.udf.api.customizer.analysis.AggregateFunctionAnalysis;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
+import org.apache.iotdb.udf.api.exception.UDFArgumentNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
@@ -60,21 +61,22 @@ public class MyAvg implements AggregateFunction {
   }
 
   @Override
-  public void validate(FunctionParameters parameters) throws UDFException {
-    if (parameters.getChildExpressionsSize() != 1) {
-      throw new UDFException("MyAvg only accepts one column as input");
+  public AggregateFunctionAnalysis analyze(FunctionArguments arguments)
+      throws UDFArgumentNotValidException {
+    if (arguments.getArgumentsSize() != 1) {
+      throw new UDFArgumentNotValidException("MyAvg only accepts one column as input");
     }
-    if (parameters.getDataType(0) != Type.INT32
-        && parameters.getDataType(0) != Type.INT64
-        && parameters.getDataType(0) != Type.FLOAT
-        && parameters.getDataType(0) != Type.DOUBLE) {
-      throw new UDFException("MyAvg only accepts INT32, INT64, FLOAT, DOUBLE as input");
+    if (arguments.getDataType(0) != Type.INT32
+        && arguments.getDataType(0) != Type.INT64
+        && arguments.getDataType(0) != Type.FLOAT
+        && arguments.getDataType(0) != Type.DOUBLE) {
+      throw new UDFArgumentNotValidException(
+          "MyAvg only accepts INT32, INT64, FLOAT, DOUBLE as input");
     }
-  }
-
-  @Override
-  public void beforeStart(FunctionParameters parameters, AggregateFunctionConfig configurations) {
-    configurations.setOutputDataType(Type.DOUBLE);
+    return new AggregateFunctionAnalysis.Builder()
+        .outputDataType(Type.DOUBLE)
+        .removable(true)
+        .build();
   }
 
   @Override

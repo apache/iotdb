@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -42,10 +43,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
@@ -2248,11 +2249,18 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public void deleteByTable(RelationalDeleteDataNode node) throws IOException {
+    if (node.getDatabaseName() != null && !node.getDatabaseName().equals(databaseName)) {
+      // not targeted on this database, return
+      return;
+    }
+
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
       throw new IOException(
           "Delete failed. " + "Please do not delete until the old files settled.");
     }
     List<TableDeletionEntry> modEntries = node.getModEntries();
+
+    logger.info("[Deletion] Executing table deletion {}", node);
 
     writeLock("delete");
     boolean hasReleasedLock = false;
@@ -2280,7 +2288,9 @@ public class DataRegion implements IDataRegionForQuery {
             unsealedTsFileResource,
             modEntry.getStartTime(),
             modEntry.getEndTime());
+        logger.debug("[Deletion] unsealed files for {}: {}", modEntry, unsealedTsFileResource);
         deleteDataInUnsealedFiles(unsealedTsFileResource, modEntry, sealedTsFileResource);
+        logger.debug("[Deletion] sealed files for {}: {}", modEntry, sealedTsFileResource);
         sealedTsFileResourceLists.add(sealedTsFileResource);
       }
 
@@ -2455,6 +2465,12 @@ public class DataRegion implements IDataRegionForQuery {
 
     if (!ModificationUtils.overlap(
         deletion.getStartTime(), deletion.getEndTime(), fileStartTime, fileEndTime)) {
+      logger.debug(
+          "[Deletion] {} skipped {}, file time [{}, {}]",
+          deletion,
+          tsFileResource,
+          fileStartTime,
+          fileEndTime);
       return true;
     }
     ITimeIndex timeIndex = tsFileResource.getTimeIndex();
@@ -2472,6 +2488,7 @@ public class DataRegion implements IDataRegionForQuery {
         return false;
       }
     }
+    logger.debug("[Deletion] {} skipped {}, file time {}", deletion, tsFileResource, timeIndex);
     return true;
   }
 
@@ -2495,7 +2512,9 @@ public class DataRegion implements IDataRegionForQuery {
           tsFileResource.getProcessor().getFlushQueryLock().writeLock().unlock();
         } else {
           try {
-            tsFileResource.getProcessor().deleteDataInMemory(deletion);
+            if (!tsFileResource.getProcessor().deleteDataInMemory(deletion)) {
+              sealedTsFiles.add(tsFileResource);
+            } // else do nothing
           } finally {
             tsFileResource.getProcessor().getFlushQueryLock().writeLock().unlock();
           }
@@ -2516,6 +2535,11 @@ public class DataRegion implements IDataRegionForQuery {
         involvedModificationFiles.add(sealedTsFile.getCompactionModFile());
       }
       involvedModificationFiles.add(sealedTsFile.getModFileForWrite());
+    }
+
+    if (involvedModificationFiles.isEmpty()) {
+      logger.info("[Deletion] Deletion {} does not involve any file", deletion);
+      return;
     }
 
     List<Exception> exceptions =
@@ -2542,6 +2566,10 @@ public class DataRegion implements IDataRegionForQuery {
             "Multiple errors occurred while writing mod files, see logs for details.");
       }
     }
+    logger.info(
+        "[Deletion] Deletion {} is written into {} mod files",
+        deletion,
+        involvedModificationFiles.size());
   }
 
   private void deleteDataDirectlyInFile(List<TsFileResource> tsfileResourceList, ModEntry modEntry)
@@ -2553,15 +2581,13 @@ public class DataRegion implements IDataRegionForQuery {
     // can be deleted by mods.
     Set<ModificationFile> involvedModificationFiles = new HashSet<>();
     for (TsFileResource tsFileResource : deletedByMods) {
-      if (tsFileResource.isClosed()) {
+      if (tsFileResource.isClosed()
+          || !tsFileResource.getProcessor().deleteDataInMemory(modEntry)) {
         if (tsFileResource.isCompacting()) {
           involvedModificationFiles.add(tsFileResource.getCompactionModFile());
         }
         involvedModificationFiles.add(tsFileResource.getModFileForWrite());
-      } else {
-        // delete data in memory of unsealed file
-        tsFileResource.getProcessor().deleteDataInMemory(modEntry);
-      }
+      } // else do nothing
     }
 
     for (ModificationFile involvedModificationFile : involvedModificationFiles) {
@@ -2570,10 +2596,8 @@ public class DataRegion implements IDataRegionForQuery {
       // The file size may be smaller than the original file, so the increment here may be
       // negative
       involvedModificationFile.close();
-      logger.info(
-          "[Deletion] Deletion with path {} written into mods file:{}.",
-          modEntry,
-          involvedModificationFile);
+      logger.debug(
+          "[Deletion] Deletion {} written into mods file:{}.", modEntry, involvedModificationFile);
     }
 
     // can be deleted by files
@@ -3002,8 +3026,7 @@ public class DataRegion implements IDataRegionForQuery {
       final boolean deleteOriginFile,
       boolean isGeneratedByPipe)
       throws LoadFileException, DiskSpaceInsufficientException {
-    final File targetFile;
-    targetFile =
+    final File targetFile =
         fsFactory.getFile(
             TierManager.getInstance().getNextFolderForTsFile(0, false),
             databaseName
@@ -3015,7 +3038,7 @@ public class DataRegion implements IDataRegionForQuery {
                 + tsFileResource.getTsFile().getName());
     tsFileResource.setFile(targetFile);
     if (tsFileManager.contains(tsFileResource, false)) {
-      logger.error("The file {} has already been loaded in unsequence list", tsFileResource);
+      logger.warn("The file {} has already been loaded in unsequence list", tsFileResource);
       return false;
     }
 
@@ -3032,12 +3055,20 @@ public class DataRegion implements IDataRegionForQuery {
     }
     try {
       if (deleteOriginFile) {
-        FileUtils.moveFile(tsFileToLoad, targetFile);
+        RetryUtils.retryOnException(
+            () -> {
+              FileUtils.moveFile(tsFileToLoad, targetFile);
+              return null;
+            });
       } else {
-        Files.copy(tsFileToLoad.toPath(), targetFile.toPath());
+        RetryUtils.retryOnException(
+            () -> {
+              Files.copy(tsFileToLoad.toPath(), targetFile.toPath());
+              return null;
+            });
       }
     } catch (final IOException e) {
-      logger.error(
+      logger.warn(
           "File renaming failed when loading tsfile. Origin: {}, Target: {}",
           tsFileToLoad.getAbsolutePath(),
           targetFile.getAbsolutePath(),
@@ -3054,13 +3085,20 @@ public class DataRegion implements IDataRegionForQuery {
         fsFactory.getFile(targetFile.getAbsolutePath() + RESOURCE_SUFFIX);
     try {
       if (deleteOriginFile) {
-        FileUtils.moveFile(resourceFileToLoad, targetResourceFile);
+        RetryUtils.retryOnException(
+            () -> {
+              FileUtils.moveFile(resourceFileToLoad, targetResourceFile);
+              return null;
+            });
       } else {
-        Files.copy(resourceFileToLoad.toPath(), targetResourceFile.toPath());
+        RetryUtils.retryOnException(
+            () -> {
+              Files.copy(resourceFileToLoad.toPath(), targetResourceFile.toPath());
+              return null;
+            });
       }
-
     } catch (final IOException e) {
-      logger.error(
+      logger.warn(
           "File renaming failed when loading .resource file. Origin: {}, Target: {}",
           resourceFileToLoad.getAbsolutePath(),
           targetResourceFile.getAbsolutePath(),
@@ -3110,18 +3148,30 @@ public class DataRegion implements IDataRegionForQuery {
       // when successfully loaded, the filepath of the resource will be changed to the IoTDB data
       // dir, so we can add a suffix to find the old modification file.
       try {
-        Files.deleteIfExists(targetModFile.toPath());
+        RetryUtils.retryOnException(
+            () -> {
+              Files.deleteIfExists(targetModFile.toPath());
+              return null;
+            });
       } catch (final IOException e) {
         logger.warn("Cannot delete localModFile {}", targetModFile, e);
       }
       try {
         if (deleteOriginFile) {
-          FileUtils.moveFile(modFileToLoad, targetModFile);
+          RetryUtils.retryOnException(
+              () -> {
+                FileUtils.moveFile(modFileToLoad, targetModFile);
+                return null;
+              });
         } else {
-          Files.copy(modFileToLoad.toPath(), targetModFile.toPath());
+          RetryUtils.retryOnException(
+              () -> {
+                Files.copy(modFileToLoad.toPath(), targetModFile.toPath());
+                return null;
+              });
         }
       } catch (final IOException e) {
-        logger.error(
+        logger.warn(
             "File renaming failed when loading .mod file. Origin: {}, Target: {}",
             modFileToLoad.getAbsolutePath(),
             targetModFile.getAbsolutePath(),
@@ -3710,8 +3760,6 @@ public class DataRegion implements IDataRegionForQuery {
       if (!deleted) {
         deletedCondition.await();
       }
-      FileMetrics.getInstance().deleteRegion(databaseName, dataRegionId);
-      MetricService.getInstance().removeMetricSet(metrics);
     } catch (InterruptedException e) {
       logger.error("Interrupted When waiting for data region deleted.");
       Thread.currentThread().interrupt();
@@ -3726,6 +3774,7 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       deleted = true;
       releaseDirectBufferMemory();
+      MetricService.getInstance().removeMetricSet(metrics);
       deletedCondition.signalAll();
     } finally {
       writeUnlock();

@@ -324,10 +324,6 @@ public class ReplicateTest {
     for (int i = 0; i < CHECK_POINT_GAP; i++) {
       servers.get(0).write(gid, new TestEntry(i, peers.get(0)));
     }
-    List<ConsensusGroupId> ids = servers.get(0).getAllConsensusGroupIdsWithoutStarting();
-
-    Assert.assertEquals(1, ids.size());
-    Assert.assertEquals(gid, ids.get(0));
 
     String regionDir = servers.get(0).getRegionDirFromConsensusGroupId(gid);
     try {

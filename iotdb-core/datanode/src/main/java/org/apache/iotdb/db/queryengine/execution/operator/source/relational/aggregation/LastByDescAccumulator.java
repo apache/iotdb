@@ -30,6 +30,11 @@ public class LastByDescAccumulator extends LastByAccumulator {
   }
 
   @Override
+  public TableAccumulator copy() {
+    return new LastByDescAccumulator(xDataType, yDataType, xIsTimeColumn, yIsTimeColumn);
+  }
+
+  @Override
   public boolean hasFinalResult() {
     return initResult;
   }
