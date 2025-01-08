@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -468,7 +469,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final File sourceFile = new File(absolutePath);
       if (!Objects.equals(
           loadActiveListeningPipeDir, sourceFile.getParentFile().getAbsolutePath())) {
-        FileUtils.moveFileWithMD5Check(sourceFile, new File(loadActiveListeningPipeDir));
+        RetryUtils.retryOnException(
+            () -> {
+              FileUtils.moveFileWithMD5Check(sourceFile, new File(loadActiveListeningPipeDir));
+              return null;
+            });
       }
     }
 
