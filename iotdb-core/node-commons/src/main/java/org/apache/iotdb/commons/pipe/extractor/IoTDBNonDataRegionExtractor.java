@@ -199,7 +199,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
               creationTime,
               pipeTaskMeta,
               treePattern,
-              null,
+              tablePattern,
               Long.MIN_VALUE,
               Long.MAX_VALUE);
       event.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
@@ -214,7 +214,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
                 creationTime,
                 pipeTaskMeta,
                 treePattern,
-                null,
+                tablePattern,
                 Long.MIN_VALUE,
                 Long.MAX_VALUE);
     realtimeEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
