@@ -57,7 +57,7 @@ public class UserDefinedProcessorSubTask extends PipeProcessorSubtask {
 
   private volatile boolean scheduled = false;
 
-  private volatile boolean isTimeOut = false;
+  private volatile boolean isTimeout = false;
 
   public UserDefinedProcessorSubTask(
       final String taskID,
@@ -102,6 +102,10 @@ public class UserDefinedProcessorSubTask extends PipeProcessorSubtask {
 
   @Override
   protected boolean executeOnce() throws Exception {
+    if (isClosed.get()) {
+      return false;
+    }
+
     Event event = null;
     try {
       beginSubtaskProcessing();
@@ -236,11 +240,11 @@ public class UserDefinedProcessorSubTask extends PipeProcessorSubtask {
     }
   }
 
-  public void markTimeoutStatus(boolean isTimeOut) {
-    this.isTimeOut = isTimeOut;
+  public void markTimeoutStatus(boolean isTimeout) {
+    this.isTimeout = isTimeout;
   }
 
-  public boolean isTimeOut() {
-    return isTimeOut;
+  public boolean isTimeout() {
+    return isTimeout;
   }
 }

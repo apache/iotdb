@@ -106,7 +106,7 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
         }
       }
 
-      if (subtask.isTimeOut()) {
+      if (subtask.isTimeout()) {
         // Clean up the timeout status and exit the current thread
         subtask.markTimeoutStatus(false);
         final String message =

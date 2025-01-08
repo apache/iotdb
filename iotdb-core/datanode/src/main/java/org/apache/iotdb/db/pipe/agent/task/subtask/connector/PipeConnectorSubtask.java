@@ -135,10 +135,6 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
 
       decreaseReferenceCountAndReleaseLastEvent(event, true);
     } catch (final PipeException e) {
-      if (Thread.interrupted()) {
-        LOGGER.warn(
-            "The thread was interrupted, and the pipe connector subtask being executed has timed out.");
-      }
       if (!isClosed.get()) {
         setLastExceptionEvent(event);
         throw e;
@@ -150,10 +146,6 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
         clearReferenceCountAndReleaseLastEvent(event);
       }
     } catch (final Exception e) {
-      if (Thread.interrupted()) {
-        LOGGER.warn(
-            "The thread was interrupted, and the pipe connector subtask being executed has timed out.");
-      }
       if (!isClosed.get()) {
         setLastExceptionEvent(event);
         throw new PipeException(

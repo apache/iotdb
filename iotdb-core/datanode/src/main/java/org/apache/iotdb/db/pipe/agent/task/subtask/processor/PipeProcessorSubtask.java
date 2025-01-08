@@ -313,7 +313,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     // do nothing
   }
 
-  public boolean isTimeOut() {
+  public boolean isTimeout() {
     return false;
   }
 }
