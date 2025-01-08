@@ -37,9 +37,6 @@ public class SystemConstant {
   public static final String SQL_DIALECT_TREE_VALUE = "tree";
   public static final String SQL_DIALECT_TABLE_VALUE = "table";
 
-  public static final String INNER_INCLUSION_KEY = "__system.inclusion";
-  public static final String INNER_EXCLUSION_KEY = "__system.inclusion.exclusion";
-
   /////////////////////////////////// Utility ///////////////////////////////////
 
   public static final Set<String> SYSTEM_KEYS = new HashSet<>();
