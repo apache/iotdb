@@ -258,7 +258,7 @@ public class SchemaRegionSnapshotParserTest {
     if (testParams.testModeName.equals("PBTree")) {
       return;
     }
-    final ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+    final ISchemaRegion schemaRegion = getSchemaRegion("sg", 0);
     final String tableName = "t";
     final PartialPath databasePath = new PartialPath("root.sg");
 
