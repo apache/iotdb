@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.DataExecutionVisitor;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -83,6 +84,16 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
   @Override
   public ByteBuffer serializeToDAL() {
     return deleteDataNode.serializeToDAL();
+  }
+
+  @Override
+  public ProgressIndex getProgressIndex() {
+    return deleteDataNode.getProgressIndex();
+  }
+
+  @Override
+  public void setProgressIndex(ProgressIndex progressIndex) {
+    deleteDataNode.setProgressIndex(progressIndex);
   }
 
   @Override
