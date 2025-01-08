@@ -44,71 +44,65 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
   @Test
   public void testCreateDatabase() {
     testInput(
-        new DatabaseSchemaPlan(
-            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.db1")),
-        new DatabaseSchemaPlan(
-            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.da")),
-        new DatabaseSchemaPlan(
-            ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.dc")));
+        new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("db1")),
+        new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("da")),
+        new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("dc")));
   }
 
   @Test
   public void testAlterDatabase() {
     testInput(
-        new DatabaseSchemaPlan(
-            ConfigPhysicalPlanType.AlterDatabase, new TDatabaseSchema("root.db1")),
-        new DatabaseSchemaPlan(
-            ConfigPhysicalPlanType.AlterDatabase, new TDatabaseSchema("root.da")),
-        new DatabaseSchemaPlan(
-            ConfigPhysicalPlanType.AlterDatabase, new TDatabaseSchema("root.dc")));
+        new DatabaseSchemaPlan(ConfigPhysicalPlanType.AlterDatabase, new TDatabaseSchema("db1")),
+        new DatabaseSchemaPlan(ConfigPhysicalPlanType.AlterDatabase, new TDatabaseSchema("da")),
+        new DatabaseSchemaPlan(ConfigPhysicalPlanType.AlterDatabase, new TDatabaseSchema("dc")));
   }
 
   @Test
   public void testCreateTable() {
     testInput(
-        new PipeCreateTablePlan("root.db1", new TsTable("ab")),
-        new PipeCreateTablePlan("root.db1", new TsTable("ac")),
-        new PipeCreateTablePlan("root.da", new TsTable("a2b")));
+        new PipeCreateTablePlan("db1", new TsTable("ab")),
+        new PipeCreateTablePlan("db1", new TsTable("ac")),
+        new PipeCreateTablePlan("da", new TsTable("a2b")));
   }
 
   @Test
   public void testAddTableColumn() {
     testInput(
-        new AddTableColumnPlan("root.db1", "ab", new ArrayList<>(), false),
-        new AddTableColumnPlan("root.db1", "ac", new ArrayList<>(), false),
-        new AddTableColumnPlan("root.da", "ac", new ArrayList<>(), false));
+        new AddTableColumnPlan("db1", "ab", new ArrayList<>(), false),
+        new AddTableColumnPlan("db1", "ac", new ArrayList<>(), false),
+        new AddTableColumnPlan("da", "ac", new ArrayList<>(), false));
   }
 
   @Test
   public void testSetTableProperties() {
     testInput(
-        new SetTablePropertiesPlan("root.db1", "ab", Collections.singletonMap("ttl", "2")),
-        new SetTablePropertiesPlan("root.db1", "ac", Collections.singletonMap("ttl", "2")),
-        new SetTablePropertiesPlan("root.da", "ac", Collections.singletonMap("ttl", "2")));
+        new SetTablePropertiesPlan("db1", "ab", Collections.singletonMap("ttl", "2")),
+        new SetTablePropertiesPlan("db1", "ac", Collections.singletonMap("ttl", "2")),
+        new SetTablePropertiesPlan("da", "ac", Collections.singletonMap("ttl", "2")));
   }
 
   @Test
   public void testCommitDeleteColumn() {
     testInput(
-        new CommitDeleteColumnPlan("root.db1", "ab", "a"),
-        new CommitDeleteColumnPlan("root.db1", "ac", "a"),
-        new CommitDeleteColumnPlan("root.da", "ac", "a"));
+        new CommitDeleteColumnPlan("db1", "ab", "a"),
+        new CommitDeleteColumnPlan("db1", "ac", "a"),
+        new CommitDeleteColumnPlan("da", "ac", "a"));
   }
 
   @Test
   public void testRenameTableColumn() {
     testInput(
-        new RenameTableColumnPlan("root.db1", "ab", "old", "new"),
-        new RenameTableColumnPlan("root.db1", "ac", "old", "new"),
-        new RenameTableColumnPlan("root.da", "ac", "old", "new"));
+        new RenameTableColumnPlan("db1", "ab", "old", "new"),
+        new RenameTableColumnPlan("db1", "ac", "old", "new"),
+        new RenameTableColumnPlan("da", "ac", "old", "new"));
   }
 
   @Test
   public void testCommitDeleteTable() {
     testInput(
-        new CommitDeleteTablePlan("root.db1", "ab"),
-        new CommitDeleteTablePlan("root.db1", "ac"),
-        new CommitDeleteTablePlan("root.da", "ac"));
+        new CommitDeleteTablePlan("db1", "ab"),
+        new CommitDeleteTablePlan("db1", "ac"),
+        new CommitDeleteTablePlan("da", "ac"));
   }
 
   private void testInput(
