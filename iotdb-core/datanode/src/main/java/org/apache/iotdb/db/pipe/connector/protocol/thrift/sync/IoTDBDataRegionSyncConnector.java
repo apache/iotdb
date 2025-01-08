@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventPlainBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
@@ -35,7 +36,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
-import org.apache.iotdb.db.pipe.connector.util.LeaderCacheUtils;
+import org.apache.iotdb.db.pipe.connector.util.cacher.LeaderCacheUtils;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -306,18 +307,22 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
   private void doTransfer(final PipeTabletEventTsFileBatch batchToTransfer)
       throws IOException, WriteProcessException {
-    final List<File> sealedFiles = batchToTransfer.sealTsFiles();
+    final List<Pair<String, File>> dbTsFilePairs = batchToTransfer.sealTsFiles();
     final Map<Pair<String, Long>, Double> pipe2WeightMap = batchToTransfer.deepCopyPipe2WeightMap();
 
-    for (final File tsFile : sealedFiles) {
-      doTransfer(pipe2WeightMap, tsFile, null, null);
+    for (final Pair<String, File> dbTsFile : dbTsFilePairs) {
+      doTransfer(pipe2WeightMap, dbTsFile.right, null, dbTsFile.left);
       try {
-        FileUtils.delete(tsFile);
+        RetryUtils.retryOnException(
+            () -> {
+              FileUtils.delete(dbTsFile.right);
+              return null;
+            });
       } catch (final NoSuchFileException e) {
-        LOGGER.info("The file {} is not found, may already be deleted.", tsFile);
+        LOGGER.info("The file {} is not found, may already be deleted.", dbTsFile);
       } catch (final Exception e) {
         LOGGER.warn(
-            "Failed to delete batch file {}, this file should be deleted manually later", tsFile);
+            "Failed to delete batch file {}, this file should be deleted manually later", dbTsFile);
       }
     }
   }

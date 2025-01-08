@@ -379,12 +379,6 @@ public class CommonUtils {
         break;
       case TEXT:
       case STRING:
-        if (columnCategory.equals(TsTableColumnCategory.MEASUREMENT)) {
-          valueColumn = new Binary[rowNum];
-        } else {
-          valueColumn = new String[rowNum];
-        }
-        break;
       case BLOB:
         valueColumn = new Binary[rowNum];
         break;

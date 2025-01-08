@@ -305,7 +305,7 @@ public abstract class InsertBaseStatement extends Statement {
     if (idColumnIndices == null && columnCategories != null) {
       idColumnIndices = new ArrayList<>();
       for (int i = 0; i < columnCategories.length; i++) {
-        if (columnCategories[i].equals(TsTableColumnCategory.ID)) {
+        if (columnCategories[i].equals(TsTableColumnCategory.TAG)) {
           idColumnIndices.add(i);
         }
       }
@@ -585,7 +585,10 @@ public abstract class InsertBaseStatement extends Statement {
     }
     if (measurementSchemas != null) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
-        measurementSchema.setMeasurementName(measurementSchema.getMeasurementName().toLowerCase());
+        if (measurementSchema != null) {
+          measurementSchema.setMeasurementName(
+              measurementSchema.getMeasurementName().toLowerCase());
+        }
       }
     }
   }
@@ -604,5 +607,11 @@ public abstract class InsertBaseStatement extends Statement {
   @TableModel
   public String getTableName() {
     return devicePath.getFullPath();
+  }
+
+  // Only Pipe will set the return value to true
+  @TableModel
+  public boolean isForceTypeConversion() {
+    return false;
   }
 }

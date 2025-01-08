@@ -35,31 +35,24 @@ public class LeaderPriorityBalancer extends GreedyPriorityBalancer implements IP
 
   @Override
   public Map<TConsensusGroupId, TRegionReplicaSet> generateOptimalRoutePriority(
-      List<TRegionReplicaSet> replicaSets,
-      Map<TConsensusGroupId, Integer> regionLeaderMap,
-      Map<Integer, Long> dataNodeLoadScoreMap) {
-
+      List<TRegionReplicaSet> replicaSets, Map<TConsensusGroupId, Integer> regionLeaderMap) {
     Map<TConsensusGroupId, TRegionReplicaSet> regionPriorityMap = new TreeMap<>();
 
     replicaSets.forEach(
         replicaSet -> {
-          /* 1. Sort replicaSet by loadScore */
-          TRegionReplicaSet sortedReplicaSet =
-              sortReplicasByLoadScore(replicaSet, dataNodeLoadScoreMap);
 
-          /* 2. Pick leader if leader exists and available */
+          /* 1. Pick leader if leader exists and available */
           int leaderId = regionLeaderMap.getOrDefault(replicaSet.getRegionId(), -1);
-          if (leaderId != -1
-              && dataNodeLoadScoreMap.getOrDefault(leaderId, Long.MAX_VALUE) < Long.MAX_VALUE) {
-            for (int i = 0; i < sortedReplicaSet.getDataNodeLocationsSize(); i++) {
-              if (sortedReplicaSet.getDataNodeLocations().get(i).getDataNodeId() == leaderId) {
-                Collections.swap(sortedReplicaSet.getDataNodeLocations(), 0, i);
+          if (leaderId != -1) {
+            for (int i = 0; i < replicaSet.getDataNodeLocationsSize(); i++) {
+              if (replicaSet.getDataNodeLocations().get(i).getDataNodeId() == leaderId) {
+                Collections.swap(replicaSet.getDataNodeLocations(), 0, i);
                 break;
               }
             }
           }
 
-          regionPriorityMap.put(sortedReplicaSet.getRegionId(), sortedReplicaSet);
+          regionPriorityMap.put(replicaSet.getRegionId(), replicaSet);
         });
 
     return regionPriorityMap;

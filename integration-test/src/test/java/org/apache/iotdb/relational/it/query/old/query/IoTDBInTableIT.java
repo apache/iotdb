@@ -58,7 +58,7 @@ public class IoTDBInTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE sg(device1 STRING ID, device2 STRING ID, qrcode TEXT MEASUREMENT, date_v DATE MEASUREMENT, blob_v BLOB MEASUREMENT, timestamp_v TIMESTAMP MEASUREMENT)",
+        "CREATE TABLE sg(device1 STRING TAG, device2 STRING TAG, qrcode TEXT FIELD, date_v DATE FIELD, blob_v BLOB FIELD, timestamp_v TIMESTAMP FIELD)",
         "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465600000,'d1','s1','qrcode001', '2024-08-01', X'abc0',1509465600000)",
         "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465660000,'d1','s1','qrcode002', '2024-08-02', X'abc1',1509465660000)",
         "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465720000,'d1','s1','qrcode003', '2024-08-03', X'abc2',1509465720000)",
@@ -71,7 +71,7 @@ public class IoTDBInTableIT {
         "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465840000,'d2','s1','qrcode003', '2024-08-10', X'abc9',1509465840000)",
         "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465900000,'d2','s1','qrcode004', '2024-08-11', X'abca',1509465900000)",
         "insert into sg(time,device1,device2,qrcode,date_v,blob_v,timestamp_v) values(1509465960000,'d2','s1','qrcode005', '2024-08-12', X'abcb',1509465960000)",
-        "CREATE TABLE table1(device STRING ID, s1 INT32 MEASUREMENT, s2 INT64 MEASUREMENT, s3 FLOAT MEASUREMENT, s4 DOUBLE MEASUREMENT, s5 BOOLEAN MEASUREMENT)",
+        "CREATE TABLE table1(device STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 BOOLEAN FIELD)",
       };
 
   @BeforeClass

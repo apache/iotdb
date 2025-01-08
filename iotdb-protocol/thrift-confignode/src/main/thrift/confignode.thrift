@@ -134,7 +134,7 @@ struct TDataNodeRestartResp {
   1: required common.TSStatus status
   2: required list<common.TConfigNodeLocation> configNodeList
   3: optional TRuntimeConfiguration runtimeConfiguration
-  4: optional list<common.TConsensusGroupId> consensusGroupIds
+  4: optional list<common.TRegionReplicaSet> correctConsensusGroups
 }
 
 struct TDataNodeRemoveReq {
@@ -1550,8 +1550,8 @@ service IConfigNodeRPCService {
   /** Kill query */
   common.TSStatus killQuery(string queryId, i32 dataNodeId)
 
-  /** Get all DataNodeLocations of Running DataNodes */
-  TGetDataNodeLocationsResp getRunningDataNodeLocations()
+  /** Get all DataNodeLocations of Readable DataNodes */
+  TGetDataNodeLocationsResp getReadableDataNodeLocations()
 
   // ======================================================
   // Cluster Tools

@@ -51,7 +51,7 @@ public class DeviceTableScanNode extends TableScanNode {
   // For example, for DeviceEntry `table1.tag1.tag2.attribute1.attribute2.s1.s2`, the content of
   // `idAndAttributeIndexMap` will
   // be `tag1: 0, tag2: 1, attribute1: 0, attribute2: 1`.
-  protected final Map<Symbol, Integer> idAndAttributeIndexMap;
+  protected Map<Symbol, Integer> idAndAttributeIndexMap;
 
   // The order to traverse the data.
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
@@ -65,7 +65,7 @@ public class DeviceTableScanNode extends TableScanNode {
   // 1 or time < 10
   @Nullable protected Expression timePredicate;
 
-  protected Filter timeFilter;
+  protected transient Filter timeFilter;
 
   // pushLimitToEachDevice == true means that each device in DeviceTableScanNode need to return
   // `pushDownLimit` row number
@@ -73,6 +73,10 @@ public class DeviceTableScanNode extends TableScanNode {
   // return
   // `pushDownLimit` row number
   protected boolean pushLimitToEachDevice = false;
+
+  protected transient boolean containsNonAlignedDevice;
+
+  protected DeviceTableScanNode() {}
 
   public DeviceTableScanNode(
       PlanNodeId id,
@@ -96,7 +100,8 @@ public class DeviceTableScanNode extends TableScanNode {
       Expression pushDownPredicate,
       long pushDownLimit,
       long pushDownOffset,
-      boolean pushLimitToEachDevice) {
+      boolean pushLimitToEachDevice,
+      boolean containsNonAlignedDevice) {
     super(
         id,
         qualifiedObjectName,
@@ -111,6 +116,7 @@ public class DeviceTableScanNode extends TableScanNode {
     this.timePredicate = timePredicate;
     this.pushDownPredicate = pushDownPredicate;
     this.pushLimitToEachDevice = pushLimitToEachDevice;
+    this.containsNonAlignedDevice = containsNonAlignedDevice;
   }
 
   @Override
@@ -132,142 +138,75 @@ public class DeviceTableScanNode extends TableScanNode {
         pushDownPredicate,
         pushDownLimit,
         pushDownOffset,
-        pushLimitToEachDevice);
+        pushLimitToEachDevice,
+        containsNonAlignedDevice);
   }
 
-  @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.DEVICE_TABLE_SCAN_NODE.serialize(byteBuffer);
+  protected static void serializeMemberVariables(
+      DeviceTableScanNode node, ByteBuffer byteBuffer, boolean serializeOutputSymbols) {
+    TableScanNode.serializeMemberVariables(node, byteBuffer, serializeOutputSymbols);
 
-    if (qualifiedObjectName.getDatabaseName() != null) {
-      ReadWriteIOUtils.write(true, byteBuffer);
-      ReadWriteIOUtils.write(qualifiedObjectName.getDatabaseName(), byteBuffer);
-    } else {
-      ReadWriteIOUtils.write(false, byteBuffer);
-    }
-    ReadWriteIOUtils.write(qualifiedObjectName.getObjectName(), byteBuffer);
-
-    ReadWriteIOUtils.write(outputSymbols.size(), byteBuffer);
-    outputSymbols.forEach(symbol -> ReadWriteIOUtils.write(symbol.getName(), byteBuffer));
-
-    ReadWriteIOUtils.write(assignments.size(), byteBuffer);
-    for (Map.Entry<Symbol, ColumnSchema> entry : assignments.entrySet()) {
-      Symbol.serialize(entry.getKey(), byteBuffer);
-      ColumnSchema.serialize(entry.getValue(), byteBuffer);
-    }
-
-    ReadWriteIOUtils.write(deviceEntries.size(), byteBuffer);
-    for (DeviceEntry entry : deviceEntries) {
+    ReadWriteIOUtils.write(node.deviceEntries.size(), byteBuffer);
+    for (DeviceEntry entry : node.deviceEntries) {
       entry.serialize(byteBuffer);
     }
 
-    ReadWriteIOUtils.write(idAndAttributeIndexMap.size(), byteBuffer);
-    for (Map.Entry<Symbol, Integer> entry : idAndAttributeIndexMap.entrySet()) {
+    ReadWriteIOUtils.write(node.idAndAttributeIndexMap.size(), byteBuffer);
+    for (Map.Entry<Symbol, Integer> entry : node.idAndAttributeIndexMap.entrySet()) {
       Symbol.serialize(entry.getKey(), byteBuffer);
       ReadWriteIOUtils.write(entry.getValue(), byteBuffer);
     }
 
-    ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
+    ReadWriteIOUtils.write(node.scanOrder.ordinal(), byteBuffer);
 
-    if (timePredicate != null) {
+    if (node.timePredicate != null) {
       ReadWriteIOUtils.write(true, byteBuffer);
-      Expression.serialize(timePredicate, byteBuffer);
+      Expression.serialize(node.timePredicate, byteBuffer);
     } else {
       ReadWriteIOUtils.write(false, byteBuffer);
     }
 
-    if (pushDownPredicate != null) {
-      ReadWriteIOUtils.write(true, byteBuffer);
-      Expression.serialize(pushDownPredicate, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write(false, byteBuffer);
-    }
-
-    ReadWriteIOUtils.write(pushDownLimit, byteBuffer);
-    ReadWriteIOUtils.write(pushDownOffset, byteBuffer);
-    ReadWriteIOUtils.write(pushLimitToEachDevice, byteBuffer);
+    ReadWriteIOUtils.write(node.pushLimitToEachDevice, byteBuffer);
   }
 
-  @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.DEVICE_TABLE_SCAN_NODE.serialize(stream);
-    if (qualifiedObjectName.getDatabaseName() != null) {
-      ReadWriteIOUtils.write(true, stream);
-      ReadWriteIOUtils.write(qualifiedObjectName.getDatabaseName(), stream);
-    } else {
-      ReadWriteIOUtils.write(false, stream);
-    }
-    ReadWriteIOUtils.write(qualifiedObjectName.getObjectName(), stream);
+  protected static void serializeMemberVariables(
+      DeviceTableScanNode node, DataOutputStream stream, boolean serializeOutputSymbols)
+      throws IOException {
+    TableScanNode.serializeMemberVariables(node, stream, serializeOutputSymbols);
 
-    ReadWriteIOUtils.write(outputSymbols.size(), stream);
-    for (Symbol symbol : outputSymbols) {
-      ReadWriteIOUtils.write(symbol.getName(), stream);
-    }
-
-    ReadWriteIOUtils.write(assignments.size(), stream);
-    for (Map.Entry<Symbol, ColumnSchema> entry : assignments.entrySet()) {
-      Symbol.serialize(entry.getKey(), stream);
-      ColumnSchema.serialize(entry.getValue(), stream);
-    }
-
-    ReadWriteIOUtils.write(deviceEntries.size(), stream);
-    for (DeviceEntry entry : deviceEntries) {
+    ReadWriteIOUtils.write(node.deviceEntries.size(), stream);
+    for (DeviceEntry entry : node.deviceEntries) {
       entry.serialize(stream);
     }
 
-    ReadWriteIOUtils.write(idAndAttributeIndexMap.size(), stream);
-    for (Map.Entry<Symbol, Integer> entry : idAndAttributeIndexMap.entrySet()) {
+    ReadWriteIOUtils.write(node.idAndAttributeIndexMap.size(), stream);
+    for (Map.Entry<Symbol, Integer> entry : node.idAndAttributeIndexMap.entrySet()) {
       Symbol.serialize(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
 
-    ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
+    ReadWriteIOUtils.write(node.scanOrder.ordinal(), stream);
 
-    if (timePredicate != null) {
+    if (node.timePredicate != null) {
       ReadWriteIOUtils.write(true, stream);
-      Expression.serialize(timePredicate, stream);
+      Expression.serialize(node.timePredicate, stream);
     } else {
       ReadWriteIOUtils.write(false, stream);
     }
 
-    if (pushDownPredicate != null) {
-      ReadWriteIOUtils.write(true, stream);
-      Expression.serialize(pushDownPredicate, stream);
-    } else {
-      ReadWriteIOUtils.write(false, stream);
-    }
-
-    ReadWriteIOUtils.write(pushDownLimit, stream);
-    ReadWriteIOUtils.write(pushDownOffset, stream);
-    ReadWriteIOUtils.write(pushLimitToEachDevice, stream);
+    ReadWriteIOUtils.write(node.pushLimitToEachDevice, stream);
   }
 
-  public static DeviceTableScanNode deserialize(ByteBuffer byteBuffer) {
-    boolean hasDatabaseName = ReadWriteIOUtils.readBool(byteBuffer);
-    String databaseName = null;
-    if (hasDatabaseName) {
-      databaseName = ReadWriteIOUtils.readString(byteBuffer);
-    }
-    String tableName = ReadWriteIOUtils.readString(byteBuffer);
-    QualifiedObjectName qualifiedObjectName = new QualifiedObjectName(databaseName, tableName);
+  protected static void deserializeMemberVariables(
+      ByteBuffer byteBuffer, DeviceTableScanNode node, boolean deserializeOutputSymbols) {
+    TableScanNode.deserializeMemberVariables(byteBuffer, node, deserializeOutputSymbols);
 
     int size = ReadWriteIOUtils.readInt(byteBuffer);
-    List<Symbol> outputSymbols = new ArrayList<>(size);
-    for (int i = 0; i < size; i++) {
-      outputSymbols.add(Symbol.deserialize(byteBuffer));
-    }
-
-    size = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<Symbol, ColumnSchema> assignments = new HashMap<>(size);
-    for (int i = 0; i < size; i++) {
-      assignments.put(Symbol.deserialize(byteBuffer), ColumnSchema.deserialize(byteBuffer));
-    }
-
-    size = ReadWriteIOUtils.readInt(byteBuffer);
     List<DeviceEntry> deviceEntries = new ArrayList<>(size);
     while (size-- > 0) {
       deviceEntries.add(DeviceEntry.deserialize(byteBuffer));
     }
+    node.deviceEntries = deviceEntries;
 
     size = ReadWriteIOUtils.readInt(byteBuffer);
     Map<Symbol, Integer> idAndAttributeIndexMap = new HashMap<>(size);
@@ -275,40 +214,38 @@ public class DeviceTableScanNode extends TableScanNode {
       idAndAttributeIndexMap.put(
           Symbol.deserialize(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
     }
+    node.idAndAttributeIndexMap = idAndAttributeIndexMap;
 
-    Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    node.scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
 
-    Expression timePredicate = null;
     boolean hasTimePredicate = ReadWriteIOUtils.readBool(byteBuffer);
     if (hasTimePredicate) {
-      timePredicate = Expression.deserialize(byteBuffer);
+      node.timePredicate = Expression.deserialize(byteBuffer);
     }
 
-    Expression pushDownPredicate = null;
-    boolean hasPushDownPredicate = ReadWriteIOUtils.readBool(byteBuffer);
-    if (hasPushDownPredicate) {
-      pushDownPredicate = Expression.deserialize(byteBuffer);
-    }
+    node.pushLimitToEachDevice = ReadWriteIOUtils.readBool(byteBuffer);
+  }
 
-    long pushDownLimit = ReadWriteIOUtils.readLong(byteBuffer);
-    long pushDownOffset = ReadWriteIOUtils.readLong(byteBuffer);
-    boolean pushLimitToEachDevice = ReadWriteIOUtils.readBool(byteBuffer);
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.DEVICE_TABLE_SCAN_NODE.serialize(byteBuffer);
 
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    DeviceTableScanNode.serializeMemberVariables(this, byteBuffer, true);
+  }
 
-    return new DeviceTableScanNode(
-        planNodeId,
-        qualifiedObjectName,
-        outputSymbols,
-        assignments,
-        deviceEntries,
-        idAndAttributeIndexMap,
-        scanOrder,
-        timePredicate,
-        pushDownPredicate,
-        pushDownLimit,
-        pushDownOffset,
-        pushLimitToEachDevice);
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.DEVICE_TABLE_SCAN_NODE.serialize(stream);
+
+    DeviceTableScanNode.serializeMemberVariables(this, stream, true);
+  }
+
+  public static DeviceTableScanNode deserialize(ByteBuffer byteBuffer) {
+    DeviceTableScanNode node = new DeviceTableScanNode();
+    DeviceTableScanNode.deserializeMemberVariables(byteBuffer, node, true);
+
+    node.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
+    return node;
   }
 
   public void setDeviceEntries(List<DeviceEntry> deviceEntries) {
@@ -357,5 +294,17 @@ public class DeviceTableScanNode extends TableScanNode {
 
   public void setTimeFilter(Filter timeFilter) {
     this.timeFilter = timeFilter;
+  }
+
+  public boolean containsNonAlignedDevice() {
+    return containsNonAlignedDevice;
+  }
+
+  public void setContainsNonAlignedDevice() {
+    this.containsNonAlignedDevice = true;
+  }
+
+  public String toString() {
+    return "DeviceTableScanNode-" + this.getPlanNodeId();
   }
 }
