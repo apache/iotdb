@@ -184,11 +184,11 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
       ReadWriteIOUtils.write(attributeName, byteBuffer);
     }
     ReadWriteIOUtils.write(attributeValueList.size(), byteBuffer);
-    for (final Object[] deviceValueList : attributeValueList) {
-      for (final Object value : deviceValueList) {
+    for (final Object[] deviceAttributeValueList : attributeValueList) {
+      for (final Object value : deviceAttributeValueList) {
         ReadWriteIOUtils.writeObject(value, byteBuffer);
       }
-      for (int i = 0; i < attributeNameList.size() - deviceValueList.length; ++i) {
+      for (int i = 0; i < attributeNameList.size() - deviceAttributeValueList.length; ++i) {
         ReadWriteIOUtils.writeObject(null, byteBuffer);
       }
     }
@@ -210,11 +210,11 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
     for (final String attributeName : attributeNameList) {
       ReadWriteIOUtils.write(attributeName, stream);
     }
-    for (final Object[] deviceValueList : attributeValueList) {
-      for (final Object value : deviceValueList) {
+    for (final Object[] deviceAttributeValueList : attributeValueList) {
+      for (final Object value : deviceAttributeValueList) {
         ReadWriteIOUtils.writeObject(value, stream);
       }
-      for (int i = 0; i < attributeNameList.size() - deviceValueList.length; ++i) {
+      for (int i = 0; i < attributeNameList.size() - deviceAttributeValueList.length; ++i) {
         ReadWriteIOUtils.writeObject(null, stream);
       }
     }
