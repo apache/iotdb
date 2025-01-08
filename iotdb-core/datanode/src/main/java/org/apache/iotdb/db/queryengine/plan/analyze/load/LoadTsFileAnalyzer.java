@@ -96,9 +96,9 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     this.databaseLevel = loadTsFileStatement.getDatabaseLevel();
     this.database = loadTsFileStatement.getDatabase();
 
-    this.isGeneratedByPipe = isGeneratedByPipe;
     this.loadTsFileTableStatement = null;
     this.isTableModelStatement = false;
+    this.isGeneratedByPipe = isGeneratedByPipe;
     this.context = context;
   }
 
@@ -114,9 +114,9 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     this.databaseLevel = loadTsFileTableStatement.getDatabaseLevel();
     this.database = loadTsFileTableStatement.getDatabase();
 
-    this.isGeneratedByPipe = isGeneratedByPipe;
     this.loadTsFileTreeStatement = null;
     this.isTableModelStatement = true;
+    this.isGeneratedByPipe = isGeneratedByPipe;
     this.context = context;
   }
 
