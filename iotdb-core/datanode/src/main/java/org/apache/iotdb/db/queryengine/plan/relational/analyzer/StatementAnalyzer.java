@@ -554,7 +554,13 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitPipeEnriched(final PipeEnriched node, final Optional<Scope> scope) {
+    protected Scope visitPipeEnriched(PipeEnriched node, Optional<Scope> scope) {
+      // The LoadTsFile statement is a special case, it needs isGeneratedByPipe information
+      // in the analyzer to execute the tsfile-tablet conversion in some cases.
+      if (node.getInnerStatement() instanceof LoadTsFile) {
+        ((LoadTsFile) node.getInnerStatement()).markIsGeneratedByPipe();
+      }
+
       final Scope ret = node.getInnerStatement().accept(this, scope);
       createAndAssignScope(node, scope);
       analysis.setScope(node, ret);
@@ -594,10 +600,12 @@ public class StatementAnalyzer {
           }
           loadTsFile.setDatabase(queryContext.getDatabaseName().get());
         }
-        return new LoadTsFileToTableModelAnalyzer(loadTsFile, metadata, queryContext);
+        return new LoadTsFileToTableModelAnalyzer(
+            loadTsFile, loadTsFile.isGeneratedByPipe(), metadata, queryContext);
       } else {
         // Load to tree-model
-        return new LoadTsFileToTreeModelAnalyzer(loadTsFile, queryContext);
+        return new LoadTsFileToTreeModelAnalyzer(
+            loadTsFile, loadTsFile.isGeneratedByPipe(), queryContext);
       }
     }
 
