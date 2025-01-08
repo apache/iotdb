@@ -612,7 +612,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         PipeSchemaRegionSnapshotEvent.getStatementTypeSet(
             parameters.get(ColumnHeaderConstant.TYPE));
     final IoTDBTreePattern treePattern =
-        new IoTDBTreePattern(parameters.get(ColumnHeaderConstant.PATH_PATTERN));
+        new IoTDBTreePattern(
+            parameters.containsKey(PipeTransferFileSealReqV2.TREE),
+            parameters.get(ColumnHeaderConstant.PATH_PATTERN));
     final TablePattern tablePattern =
         new TablePattern(
             parameters.containsKey(PipeTransferFileSealReqV2.TABLE),
