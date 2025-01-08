@@ -290,8 +290,10 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Object, Void> {
       final TableDeviceAttributeUpdateNode node, final Void context) {
     final Update update =
         new Update(
-            null, new Table(QualifiedName.of(node.getDatabase(), node.getTableName())), null, null);
-    update.setAssignments(node.getAssignments());
+            null,
+            new Table(QualifiedName.of(node.getDatabase(), node.getTableName())),
+            node.getAssignments(),
+            null);
     update.setIdDeterminedFilterList(node.getIdDeterminedFilterList());
     update.setIdFuzzyPredicate(node.getIdFuzzyPredicate());
     update.setDatabase(node.getDatabase());

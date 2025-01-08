@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
+import static java.util.Objects.requireNonNull;
 
 public class Update extends AbstractTraverseDevice {
   private List<UpdateAssignment> assignments;
@@ -34,10 +35,10 @@ public class Update extends AbstractTraverseDevice {
   public Update(
       final @Nullable NodeLocation location,
       final Table table,
-      final @Nullable List<UpdateAssignment> assignments,
+      final List<UpdateAssignment> assignments,
       final Expression where) {
     super(location, table, where);
-    this.assignments = assignments;
+    this.assignments = requireNonNull(assignments, "assignments is null");
   }
 
   public List<UpdateAssignment> getAssignments() {
