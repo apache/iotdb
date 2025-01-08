@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
@@ -55,6 +56,12 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
         new DatabaseSchemaPlan(ConfigPhysicalPlanType.AlterDatabase, new TDatabaseSchema("db1")),
         new DatabaseSchemaPlan(ConfigPhysicalPlanType.AlterDatabase, new TDatabaseSchema("da")),
         new DatabaseSchemaPlan(ConfigPhysicalPlanType.AlterDatabase, new TDatabaseSchema("dc")));
+  }
+
+  @Test
+  public void testDeleteDatabase() {
+    testInput(
+        new DeleteDatabasePlan("db1"), new DeleteDatabasePlan("da"), new DeleteDatabasePlan("dc"));
   }
 
   @Test

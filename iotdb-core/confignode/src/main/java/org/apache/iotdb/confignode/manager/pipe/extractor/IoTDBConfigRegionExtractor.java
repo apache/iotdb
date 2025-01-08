@@ -29,10 +29,12 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.event.PipeWritePlanEvent;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBNonDataRegionExtractor;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
@@ -136,15 +138,14 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
       final IoTDBTreePattern treePattern,
       final TablePattern tablePattern) {
     Optional<ConfigPhysicalPlan> result = Optional.empty();
-    if (!(plan instanceof DatabaseSchemaPlan
-        && ((DatabaseSchemaPlan) plan).getSchema().isIsTableModel())) {
+    final Boolean isTableDatabasePlan = isTableDatabasePlan(plan);
+    if (!Boolean.TRUE.equals(isTableDatabasePlan)) {
       result = TREE_PATTERN_PARSE_VISITOR.process(plan, treePattern);
       if (!result.isPresent()) {
         return result;
       }
     }
-    if (!(plan instanceof DatabaseSchemaPlan
-        && !((DatabaseSchemaPlan) plan).getSchema().isIsTableModel())) {
+    if (!Boolean.FALSE.equals(isTableDatabasePlan)) {
       result = TABLE_PATTERN_PARSE_VISITOR.process(plan, tablePattern);
     }
     return result;
@@ -164,12 +165,26 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
       final Set<ConfigPhysicalPlanType> listenedTypeSet,
       final IoTDBTreePattern treePattern,
       final TablePattern tablePattern) {
+    final Boolean isTableDatabasePlan = isTableDatabasePlan(plan);
     return listenedTypeSet.contains(plan.getType())
-        && (!(plan instanceof DatabaseSchemaPlan)
-            || ((DatabaseSchemaPlan) plan).getSchema().isIsTableModel()
+        && (Objects.isNull(isTableDatabasePlan)
+            || Boolean.TRUE.equals(isTableDatabasePlan)
                 && tablePattern.isTableModelDataAllowedToBeCaptured()
-            || !((DatabaseSchemaPlan) plan).getSchema().isIsTableModel()
+            || Boolean.FALSE.equals(isTableDatabasePlan)
                 && treePattern.isTreeModelDataAllowedToBeCaptured());
+  }
+
+  private static Boolean isTableDatabasePlan(final ConfigPhysicalPlan plan) {
+    if (plan instanceof DatabaseSchemaPlan) {
+      return ((DatabaseSchemaPlan) plan).getSchema().isIsTableModel()
+          ? Boolean.TRUE
+          : Boolean.FALSE;
+    } else if (plan instanceof DeleteDatabasePlan) {
+      return PathUtils.isTableModelDatabase(((DeleteDatabasePlan) plan).getName())
+          ? Boolean.TRUE
+          : Boolean.FALSE;
+    }
+    return null;
   }
 
   @Override

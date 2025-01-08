@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
@@ -59,6 +60,14 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitor
     return pattern.matchesDatabase(
             PathUtils.unQualifyDatabaseName(databaseSchemaPlan.getSchema().getName()))
         ? Optional.of(databaseSchemaPlan)
+        : Optional.empty();
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitDeleteDatabase(
+      final DeleteDatabasePlan deleteDatabasePlan, final TablePattern pattern) {
+    return pattern.matchesDatabase(PathUtils.unQualifyDatabaseName(deleteDatabasePlan.getName()))
+        ? Optional.of(deleteDatabasePlan)
         : Optional.empty();
   }
 
