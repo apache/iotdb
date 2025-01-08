@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.tools.schema;
 
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -86,7 +84,6 @@ import static org.apache.iotdb.db.schemaengine.schemaregion.tag.TagLogFile.parse
 public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SRStatementGenerator.class);
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   private IMemMNode curNode;
 
   // Iterable<> cannot throw exception, so you should check lastExcept to make sure
