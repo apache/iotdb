@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -94,7 +95,11 @@ public class ActiveLoadTsFileLoader {
         if (!Objects.equals(failDir.get(), IOTDB_CONFIG.getLoadActiveListeningFailDir())) {
           final File failDirFile = new File(IOTDB_CONFIG.getLoadActiveListeningFailDir());
           try {
-            FileUtils.forceMkdir(failDirFile);
+            RetryUtils.retryOnException(
+                () -> {
+                  FileUtils.forceMkdir(failDirFile);
+                  return null;
+                });
           } catch (final IOException e) {
             LOGGER.warn(
                 "Error occurred during creating fail directory {} for active load.",
@@ -258,7 +263,11 @@ public class ActiveLoadTsFileLoader {
 
     final File targetDir = new File(failDir.get());
     try {
-      org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check(sourceFile, targetDir);
+      RetryUtils.retryOnException(
+          () -> {
+            org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check(sourceFile, targetDir);
+            return null;
+          });
     } catch (final IOException e) {
       LOGGER.warn("Error occurred during moving file {} to fail directory.", filePath, e);
     }

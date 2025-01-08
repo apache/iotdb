@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventPlainBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
@@ -309,15 +310,19 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     final List<Pair<String, File>> dbTsFilePairs = batchToTransfer.sealTsFiles();
     final Map<Pair<String, Long>, Double> pipe2WeightMap = batchToTransfer.deepCopyPipe2WeightMap();
 
-    for (final Pair<String, File> tsFile : dbTsFilePairs) {
-      doTransfer(pipe2WeightMap, tsFile.right, null, tsFile.left);
+    for (final Pair<String, File> dbTsFile : dbTsFilePairs) {
+      doTransfer(pipe2WeightMap, dbTsFile.right, null, dbTsFile.left);
       try {
-        FileUtils.delete(tsFile.right);
+        RetryUtils.retryOnException(
+            () -> {
+              FileUtils.delete(dbTsFile.right);
+              return null;
+            });
       } catch (final NoSuchFileException e) {
-        LOGGER.info("The file {} is not found, may already be deleted.", tsFile);
+        LOGGER.info("The file {} is not found, may already be deleted.", dbTsFile);
       } catch (final Exception e) {
         LOGGER.warn(
-            "Failed to delete batch file {}, this file should be deleted manually later", tsFile);
+            "Failed to delete batch file {}, this file should be deleted manually later", dbTsFile);
       }
     }
   }

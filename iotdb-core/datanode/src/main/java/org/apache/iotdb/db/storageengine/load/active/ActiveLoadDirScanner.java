@@ -102,17 +102,22 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
           listeningDir.equals(IOTDB_CONFIG.getLoadActiveListeningPipeDir());
       try (final Stream<File> fileStream =
           FileUtils.streamFiles(new File(listeningDir), true, (String[]) null)) {
-        fileStream
-            .filter(file -> !activeLoadTsFileLoader.isFilePendingOrLoading(file))
-            .filter(File::exists)
-            .map(
-                file ->
-                    (file.getName().endsWith(RESOURCE) || file.getName().endsWith(MODS))
-                        ? getTsFilePath(file.getAbsolutePath())
-                        : file.getAbsolutePath())
-            .filter(this::isTsFileCompleted)
-            .limit(currentAllowedPendingSize)
-            .forEach(file -> activeLoadTsFileLoader.tryTriggerTsFileLoad(file, isGeneratedByPipe));
+        try {
+          fileStream
+              .filter(file -> !activeLoadTsFileLoader.isFilePendingOrLoading(file))
+              .filter(File::exists)
+              .map(
+                  file ->
+                      (file.getName().endsWith(RESOURCE) || file.getName().endsWith(MODS))
+                          ? getTsFilePath(file.getAbsolutePath())
+                          : file.getAbsolutePath())
+              .filter(this::isTsFileCompleted)
+              .limit(currentAllowedPendingSize)
+              .forEach(
+                  file -> activeLoadTsFileLoader.tryTriggerTsFileLoad(file, isGeneratedByPipe));
+        } catch (final Exception e) {
+          LOGGER.warn("Exception occurred during scanning dir: {}", listeningDir, e);
+        }
       }
     }
   }
