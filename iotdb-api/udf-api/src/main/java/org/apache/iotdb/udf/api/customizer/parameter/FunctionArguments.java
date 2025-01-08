@@ -25,14 +25,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * FunctionParameters is used to provide the information of the function parameters to the UDF
+ * FunctionArguments is used to provide the information of the function parameters to the UDF
  * implementation. It contains the data types of the child expressions, system attributes, etc.
  */
-public class FunctionParameters {
+public class FunctionArguments {
   private final List<Type> childExpressionDataTypes;
   private final Map<String, String> systemAttributes;
 
-  public FunctionParameters(
+  public FunctionArguments(
       List<Type> childExpressionDataTypes, Map<String, String> systemAttributes) {
     this.childExpressionDataTypes = childExpressionDataTypes;
     this.systemAttributes = systemAttributes;
