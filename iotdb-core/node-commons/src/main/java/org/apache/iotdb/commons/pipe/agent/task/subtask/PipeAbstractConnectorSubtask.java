@@ -34,7 +34,6 @@ import com.google.common.util.concurrent.ListeningExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -235,10 +234,6 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
 
   protected void registerCallbackHookAfterSubmit(final ListenableFuture<Boolean> future) {
     Futures.addCallback(future, this, subtaskCallbackListeningExecutor);
-    Futures.withTimeout(
-        future,
-        Duration.ofMinutes(EXECUTOR_PRE_SUBTASK_TIMEOUT_MS),
-        subtaskTimeoutListeningExecutor);
   }
 
   protected synchronized void setLastExceptionEvent(final Event event) {

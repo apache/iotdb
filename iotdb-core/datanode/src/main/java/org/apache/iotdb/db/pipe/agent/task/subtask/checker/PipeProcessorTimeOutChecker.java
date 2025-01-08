@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.agent.task.subtask.connector.checker;
+package org.apache.iotdb.db.pipe.agent.task.subtask.checker;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtask;
@@ -58,6 +58,12 @@ public class PipeProcessorTimeOutChecker implements Runnable {
     while (true) {
       if (Objects.isNull(workers)) {
         LOGGER.info("Worker thread pool is empty. No workers available for processing.");
+        try {
+          Thread.sleep(PIPE_SUBTASK_EXECUTION_TIMEOUT_MS / 2);
+        } catch (InterruptedException ignored) {
+          LOGGER.info("time out check waiting to be interrupted");
+        }
+        continue;
       }
 
       for (int i = 0; i < MAX_THREAD_NUM; i++) {

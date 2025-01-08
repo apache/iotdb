@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.agent.task.subtask.processor;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.agent.task.subtask.connector.checker.PipeProcessorTimeOutChecker;
+import org.apache.iotdb.db.pipe.agent.task.subtask.checker.PipeProcessorTimeOutChecker;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;

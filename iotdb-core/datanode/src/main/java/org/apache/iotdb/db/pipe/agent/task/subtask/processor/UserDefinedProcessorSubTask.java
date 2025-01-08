@@ -210,12 +210,24 @@ public class UserDefinedProcessorSubTask extends PipeProcessorSubtask {
     return event;
   }
 
+  @Override
   public long getStartRunningTime() {
     return startRunningTime;
   }
 
+  @Override
   public boolean isScheduled() {
     return scheduled;
+  }
+
+  @Override
+  public void markTimeoutStatus(boolean isTimeout) {
+    this.isTimeout = isTimeout;
+  }
+
+  @Override
+  public boolean isTimeout() {
+    return isTimeout;
   }
 
   // The task starts running. Only after the task starts running can the interruption be checked to
@@ -238,13 +250,5 @@ public class UserDefinedProcessorSubTask extends PipeProcessorSubtask {
     if (Thread.currentThread().isInterrupted()) {
       LOGGER.warn("Pipe {} Processor SubTask execution time timeout", pipeName);
     }
-  }
-
-  public void markTimeoutStatus(boolean isTimeout) {
-    this.isTimeout = isTimeout;
-  }
-
-  public boolean isTimeout() {
-    return isTimeout;
   }
 }
