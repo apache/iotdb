@@ -70,7 +70,7 @@ public class FirstTwoSum implements AggregateFunction {
   @Override
   public AggregateFunctionAnalysis analyze(FunctionArguments arguments)
       throws UDFArgumentNotValidException {
-    if (arguments.getChildExpressionsSize() != 3) {
+    if (arguments.getArgumentsSize() != 3) {
       throw new UDFArgumentNotValidException("FirstTwoSum should accept three column as input");
     }
     for (int i = 0; i < 2; i++) {

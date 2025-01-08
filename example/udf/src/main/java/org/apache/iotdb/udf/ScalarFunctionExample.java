@@ -51,7 +51,7 @@ public class ScalarFunctionExample implements ScalarFunction {
   @Override
   public ScalarFunctionAnalysis analyze(FunctionArguments arguments)
       throws UDFArgumentNotValidException {
-    if (arguments.getChildExpressionsSize() < 1) {
+    if (arguments.getArgumentsSize() < 1) {
       throw new UDFArgumentNotValidException("At least one parameter is required.");
     }
     return new ScalarFunctionAnalysis.Builder().outputDataType(Type.BOOLEAN).build();

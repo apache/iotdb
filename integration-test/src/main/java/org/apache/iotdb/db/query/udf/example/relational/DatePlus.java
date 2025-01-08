@@ -33,7 +33,7 @@ public class DatePlus implements ScalarFunction {
   @Override
   public ScalarFunctionAnalysis analyze(FunctionArguments arguments)
       throws UDFArgumentNotValidException {
-    if (arguments.getChildExpressionsSize() != 2) {
+    if (arguments.getArgumentsSize() != 2) {
       throw new UDFArgumentNotValidException("Only two parameter is required.");
     }
     if (arguments.getDataType(0) != Type.DATE) {
