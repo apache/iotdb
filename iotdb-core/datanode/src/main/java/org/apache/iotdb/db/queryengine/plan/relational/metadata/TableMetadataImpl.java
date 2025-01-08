@@ -49,9 +49,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundExceptio
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
-import org.apache.iotdb.udf.api.customizer.config.AggregateFunctionConfig;
-import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
-import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
+import org.apache.iotdb.udf.api.customizer.analysis.AggregateFunctionAnalysis;
+import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 
@@ -652,17 +652,16 @@ public class TableMetadataImpl implements Metadata {
     // User-defined scalar function
     if (TableUDFUtils.isScalarFunction(functionName)) {
       ScalarFunction scalarFunction = TableUDFUtils.getScalarFunction(functionName);
-      FunctionParameters functionParameters =
-          new FunctionParameters(
+      FunctionArguments functionArguments =
+          new FunctionArguments(
               argumentTypes.stream()
                   .map(UDFDataTypeTransformer::transformReadTypeToUDFDataType)
                   .collect(Collectors.toList()),
               Collections.emptyMap());
       try {
-        scalarFunction.validate(functionParameters);
-        ScalarFunctionConfig config = new ScalarFunctionConfig();
-        scalarFunction.beforeStart(functionParameters, config);
-        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(config.getOutputDataType());
+        ScalarFunctionAnalysis scalarFunctionAnalysis = scalarFunction.analyze(functionArguments);
+        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(
+            scalarFunctionAnalysis.getOutputDataType());
       } catch (Exception e) {
         throw new SemanticException("Invalid function parameters: " + e.getMessage());
       } finally {
@@ -670,17 +669,17 @@ public class TableMetadataImpl implements Metadata {
       }
     } else if (TableUDFUtils.isAggregateFunction(functionName)) {
       AggregateFunction aggregateFunction = TableUDFUtils.getAggregateFunction(functionName);
-      FunctionParameters functionParameters =
-          new FunctionParameters(
+      FunctionArguments functionArguments =
+          new FunctionArguments(
               argumentTypes.stream()
                   .map(UDFDataTypeTransformer::transformReadTypeToUDFDataType)
                   .collect(Collectors.toList()),
               Collections.emptyMap());
       try {
-        aggregateFunction.validate(functionParameters);
-        AggregateFunctionConfig config = new AggregateFunctionConfig();
-        aggregateFunction.beforeStart(functionParameters, config);
-        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(config.getOutputDataType());
+        AggregateFunctionAnalysis aggregateFunctionAnalysis =
+            aggregateFunction.analyze(functionArguments);
+        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(
+            aggregateFunctionAnalysis.getOutputDataType());
       } catch (Exception e) {
         throw new SemanticException("Invalid function parameters: " + e.getMessage());
       } finally {

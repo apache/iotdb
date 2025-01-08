@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionSourceFileDeletedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
@@ -140,6 +141,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           candidate.getUnseqFiles().size());
 
       return executeTaskResourceSelection(candidate);
+    } catch (CompactionSourceFileDeletedException e) {
+      return new CrossCompactionTaskResource();
     } catch (Exception e) {
       if (e instanceof StopReadTsFileByInterruptException || Thread.interrupted()) {
         Thread.currentThread().interrupt();
@@ -227,7 +230,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           compactionEstimator.roughEstimateCrossCompactionMemory(
               newSelectedSeqResources, newSelectedUnseqResources);
       long memoryCost =
-          CompactionEstimateUtils.shouldAccurateEstimate(roughEstimatedMemoryCost)
+          CompactionEstimateUtils.shouldUseRoughEstimatedResult(roughEstimatedMemoryCost)
               ? roughEstimatedMemoryCost
               : compactionEstimator.estimateCrossCompactionMemory(
                   newSelectedSeqResources, newSelectedUnseqResources);
