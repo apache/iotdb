@@ -41,18 +41,15 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
   private DeletionResource deletionResource;
   private boolean isGeneratedByPipe;
   private ProgressIndex progressIndex;
-  private final transient String database;
 
   public PipeDeleteDataNodeEvent() {
     // Used for deserialization
-    this(null, false, null);
+    this(null, false);
   }
 
   public PipeDeleteDataNodeEvent(
-      final AbstractDeleteDataNode deleteDataNode,
-      final boolean isGeneratedByPipe,
-      final String database) {
-    this(deleteDataNode, null, 0, null, null, null, isGeneratedByPipe, database);
+      final AbstractDeleteDataNode deleteDataNode, final boolean isGeneratedByPipe) {
+    this(deleteDataNode, null, 0, null, null, null, isGeneratedByPipe);
   }
 
   public PipeDeleteDataNodeEvent(
@@ -62,8 +59,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
-      final boolean isGeneratedByPipe,
-      final String database) {
+      final boolean isGeneratedByPipe) {
     super(
         pipeName,
         creationTime,
@@ -74,7 +70,6 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
         Long.MAX_VALUE);
     this.isGeneratedByPipe = isGeneratedByPipe;
     this.deleteDataNode = deleteDataNode;
-    this.database = database;
     Optional.ofNullable(deleteDataNode)
         .ifPresent(node -> this.progressIndex = deleteDataNode.getProgressIndex());
   }
@@ -89,10 +84,6 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
 
   public void setDeletionResource(final DeletionResource deletionResource) {
     this.deletionResource = deletionResource;
-  }
-
-  public String getDatabase() {
-    return database;
   }
 
   @Override
@@ -134,8 +125,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
         pipeTaskMeta,
         treePattern,
         tablePattern,
-        isGeneratedByPipe,
-        database);
+        isGeneratedByPipe);
   }
 
   @Override

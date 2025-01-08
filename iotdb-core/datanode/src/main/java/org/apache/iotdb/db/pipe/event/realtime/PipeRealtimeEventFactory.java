@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.event.realtime;
 
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -68,15 +67,9 @@ public class PipeRealtimeEventFactory {
         new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null, null, null);
   }
 
-  public static PipeRealtimeEvent createRealtimeEvent(
-      final String databaseName, final AbstractDeleteDataNode node) {
+  public static PipeRealtimeEvent createRealtimeEvent(final AbstractDeleteDataNode node) {
     return new PipeRealtimeEvent(
-        new PipeDeleteDataNodeEvent(
-            node, node.isGeneratedByPipe(), PathUtils.unQualifyDatabaseName(databaseName)),
-        null,
-        null,
-        null,
-        null);
+        new PipeDeleteDataNodeEvent(node, node.isGeneratedByPipe()), null, null, null, null);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(final ProgressReportEvent event) {

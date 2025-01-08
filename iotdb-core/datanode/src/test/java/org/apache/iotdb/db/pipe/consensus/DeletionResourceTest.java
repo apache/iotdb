@@ -260,7 +260,7 @@ public class DeletionResourceTest {
         new RecoverProgressIndex(THIS_DATANODE_ID, new SimpleProgressIndex(rebootTimes, 1)));
     final DeletionResource deletionResource =
         PipeInsertionDataNodeListener.getInstance()
-            .listenToDeleteData(FAKE_DATA_REGION_IDS[4], "root.vehicle", deleteDataNode);
+            .listenToDeleteData(FAKE_DATA_REGION_IDS[4], deleteDataNode);
     Assert.assertSame(Status.SUCCESS, deletionResource.waitForResult());
     // close pipe resource
     PipeInsertionDataNodeListener.getInstance()

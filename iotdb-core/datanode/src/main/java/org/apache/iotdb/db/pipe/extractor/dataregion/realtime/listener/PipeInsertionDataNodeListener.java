@@ -141,7 +141,7 @@ public class PipeInsertionDataNodeListener {
   }
 
   public DeletionResource listenToDeleteData(
-      final String regionId, final String databaseName, final AbstractDeleteDataNode node) {
+      final String regionId, final AbstractDeleteDataNode node) {
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(regionId);
     // only events from registered data region will be extracted
     if (assigner == null) {
@@ -163,7 +163,7 @@ public class PipeInsertionDataNodeListener {
       deletionResource = null;
     }
 
-    assigner.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(databaseName, node));
+    assigner.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(node));
 
     return deletionResource;
   }
