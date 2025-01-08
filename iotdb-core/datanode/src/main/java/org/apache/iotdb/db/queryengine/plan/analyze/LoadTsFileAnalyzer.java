@@ -229,7 +229,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private void executeDataTypeConversionOnTypeMismatch(
       final Analysis analysis, final VerifyMetadataTypeMismatchException e) {
     final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-        new LoadTsFileDataTypeConverter();
+        new LoadTsFileDataTypeConverter(loadTsFileStatement.isGeneratedByPipe());
     final TSStatus status =
         loadTsFileStatement.isConvertOnTypeMismatch()
             ? loadTsFileDataTypeConverter.convertForTreeModel(loadTsFileStatement).orElse(null)

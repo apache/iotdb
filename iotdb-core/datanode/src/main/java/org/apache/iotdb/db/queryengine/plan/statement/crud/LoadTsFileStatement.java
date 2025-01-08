@@ -47,6 +47,7 @@ public class LoadTsFileStatement extends Statement {
   private boolean deleteAfterLoad = false;
   private boolean convertOnTypeMismatch = true;
   private boolean autoCreateDatabase = true;
+  private boolean isGeneratedByPipe = false;
 
   private Map<String, String> loadAttributes;
 
@@ -166,6 +167,14 @@ public class LoadTsFileStatement extends Statement {
 
   public boolean isAutoCreateDatabase() {
     return autoCreateDatabase;
+  }
+
+  public void markIsGeneratedByPipe() {
+    isGeneratedByPipe = true;
+  }
+
+  public boolean isGeneratedByPipe() {
+    return isGeneratedByPipe;
   }
 
   public List<File> getTsFiles() {
