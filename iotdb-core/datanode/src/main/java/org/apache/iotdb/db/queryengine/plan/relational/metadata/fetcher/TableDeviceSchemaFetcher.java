@@ -334,10 +334,6 @@ public class TableDeviceSchemaFetcher {
       if (Objects.nonNull(fetchPaths)) {
         fetchPaths.add(deviceID);
       }
-      if (isDirectDeviceQuery && Objects.nonNull(deviceEntryList)) {
-        queryContext.releaseMemoryReservedForFrontEnd(
-            deviceEntryList.stream().map(DeviceEntry::ramBytesUsed).reduce(0L, Long::sum));
-      }
       return false;
     }
 
@@ -348,12 +344,13 @@ public class TableDeviceSchemaFetcher {
     // TODO table metadata: process cases that selected attr columns different from those used for
     // predicate
     if (check.test(deviceEntry)) {
-      queryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
       deviceEntryList.add(deviceEntry);
       // If we partially hit cache in direct device query, we must fetch for all the predicates
       // because now we do not support combining memory source and other sources
       if (isDirectDeviceQuery) {
         fetchPaths.add(deviceID);
+      } else {
+        queryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
       }
     }
     return true;
