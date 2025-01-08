@@ -123,6 +123,7 @@ public class AggregationOperator implements ProcessOperator {
   @Override
   public void close() throws Exception {
     child.close();
+    aggregators.forEach(TableAggregator::close);
   }
 
   @Override
