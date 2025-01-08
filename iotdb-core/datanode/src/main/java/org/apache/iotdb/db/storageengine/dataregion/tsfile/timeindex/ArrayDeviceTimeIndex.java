@@ -86,6 +86,10 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
     this.startTimes = startTimes;
     this.endTimes = endTimes;
     this.deviceToIndex = deviceToIndex;
+    for (Integer index : deviceToIndex.values()) {
+      this.minStartTime = Math.min(minStartTime, startTimes[index]);
+      this.maxEndTime = Math.max(maxEndTime, endTimes[index]);
+    }
   }
 
   @Override

@@ -313,7 +313,8 @@ public class TsFileResource implements PersistentResource {
 
       if (inputStream.available() > 0) {
         String modFilePath = ReadWriteIOUtils.readString(inputStream);
-        if (modFilePath != null && !modFilePath.isEmpty()) {
+        // ends with ".mods2" means it is a new version resource file
+        if (modFilePath != null && modFilePath.endsWith(ModificationFile.FILE_SUFFIX)) {
           sharedModFileOffset = ReadWriteIOUtils.readLong(inputStream);
           if (sharedModFilePathFuture != null) {
             sharedModFilePathFuture.complete(modFilePath);
