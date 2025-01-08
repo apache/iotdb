@@ -70,15 +70,21 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
   private final LoadTsFileTableSchemaCache schemaCache;
 
   public LoadTsFileToTableModelAnalyzer(
-      LoadTsFileStatement loadTsFileStatement, Metadata metadata, MPPQueryContext context) {
-    super(loadTsFileStatement, context);
+      LoadTsFileStatement loadTsFileStatement,
+      boolean isGeneratedByPipe,
+      Metadata metadata,
+      MPPQueryContext context) {
+    super(loadTsFileStatement, isGeneratedByPipe, context);
     this.metadata = metadata;
     this.schemaCache = new LoadTsFileTableSchemaCache(metadata, context);
   }
 
   public LoadTsFileToTableModelAnalyzer(
-      LoadTsFile loadTsFileTableStatement, Metadata metadata, MPPQueryContext context) {
-    super(loadTsFileTableStatement, context);
+      LoadTsFile loadTsFileTableStatement,
+      boolean isGeneratedByPipe,
+      Metadata metadata,
+      MPPQueryContext context) {
+    super(loadTsFileTableStatement, isGeneratedByPipe, context);
     this.metadata = metadata;
     this.schemaCache = new LoadTsFileTableSchemaCache(metadata, context);
   }

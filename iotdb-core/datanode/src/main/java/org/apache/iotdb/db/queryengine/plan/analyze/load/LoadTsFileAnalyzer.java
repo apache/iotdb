@@ -63,6 +63,8 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
 
   private final boolean isTableModelStatement;
 
+  private final boolean isGeneratedByPipe;
+
   protected final List<File> tsFiles;
   protected final String statementString;
   protected final boolean isVerifySchema;
@@ -82,7 +84,8 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
   final ISchemaFetcher schemaFetcher = ClusterSchemaFetcher.getInstance();
 
-  LoadTsFileAnalyzer(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
+  LoadTsFileAnalyzer(
+      LoadTsFileStatement loadTsFileStatement, boolean isGeneratedByPipe, MPPQueryContext context) {
     this.loadTsFileTreeStatement = loadTsFileStatement;
     this.tsFiles = loadTsFileStatement.getTsFiles();
     this.statementString = loadTsFileStatement.toString();
@@ -93,12 +96,14 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     this.databaseLevel = loadTsFileStatement.getDatabaseLevel();
     this.database = loadTsFileStatement.getDatabase();
 
+    this.isGeneratedByPipe = isGeneratedByPipe;
     this.loadTsFileTableStatement = null;
     this.isTableModelStatement = false;
     this.context = context;
   }
 
-  LoadTsFileAnalyzer(LoadTsFile loadTsFileTableStatement, MPPQueryContext context) {
+  LoadTsFileAnalyzer(
+      LoadTsFile loadTsFileTableStatement, boolean isGeneratedByPipe, MPPQueryContext context) {
     this.loadTsFileTableStatement = loadTsFileTableStatement;
     this.tsFiles = loadTsFileTableStatement.getTsFiles();
     this.statementString = loadTsFileTableStatement.toString();
@@ -109,6 +114,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     this.databaseLevel = loadTsFileTableStatement.getDatabaseLevel();
     this.database = loadTsFileTableStatement.getDatabase();
 
+    this.isGeneratedByPipe = isGeneratedByPipe;
     this.loadTsFileTreeStatement = null;
     this.isTableModelStatement = true;
     this.context = context;
@@ -175,7 +181,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   protected void executeDataTypeConversionOnTypeMismatch(
       final IAnalysis analysis, final VerifyMetadataTypeMismatchException e) {
     final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-        new LoadTsFileDataTypeConverter();
+        new LoadTsFileDataTypeConverter(isGeneratedByPipe);
 
     final TSStatus status =
         isConvertOnTypeMismatch

@@ -554,7 +554,7 @@ public class LoadTsFileScheduler implements IScheduler {
 
   private void convertFailedTsFilesToTabletsAndRetry() {
     final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-        new LoadTsFileDataTypeConverter();
+        new LoadTsFileDataTypeConverter(isGeneratedByPipe);
 
     for (final int failedLoadTsFileIndex : failedTsFileNodeIndexes) {
       final LoadSingleTsFileNode failedNode = tsFileNodeList.get(failedLoadTsFileIndex);
