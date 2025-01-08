@@ -3182,7 +3182,6 @@ public class StatementAnalyzer {
 
       // validate the required input columns
       // <TableArgumentName, TableColumnIndexes>
-      // TODO(UDF): mock required function here
       Map<String, List<Integer>> requiredColumns = functionAnalysis.getRequiredColumns();
       Map<String, TableArgumentAnalysis> tableArgumentsByName =
           argumentsAnalysis.getTableArgumentAnalyses().stream()
