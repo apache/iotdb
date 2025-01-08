@@ -79,7 +79,7 @@ public class AggregateFunctionExample implements AggregateFunction {
   @Override
   public AggregateFunctionAnalysis analyze(FunctionArguments arguments)
       throws UDFArgumentNotValidException {
-    if (arguments.getChildExpressionsSize() != 1) {
+    if (arguments.getArgumentsSize() != 1) {
       throw new UDFArgumentNotValidException("Only one parameter is required.");
     }
     return new AggregateFunctionAnalysis.Builder()
