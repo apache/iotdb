@@ -1539,7 +1539,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                 assignment ->
                     visitor.process(assignment.getValue(), projectColumnTransformerContext))
             .collect(Collectors.toList()),
-        (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name),
+        (pointer, name) -> deviceAttributeStore.getAttributes(pointer, name),
         (deviceId, pointer, values) ->
             updateAttribute(database, tableName, deviceId, pointer, attributeNames, values),
         attributeNames);
@@ -1583,7 +1583,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             PathUtils.unQualifyDatabaseName(storageGroupFullPath),
             constructTableDevicesBlackListNode.getTableName(),
             constructTableDevicesBlackListNode.getFilterInfo(),
-            (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name),
+            (pointer, name) -> deviceAttributeStore.getAttributes(pointer, name),
             regionStatistics);
     try {
       for (final PartialPath pattern : paths) {
@@ -1631,7 +1631,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(final IShowDevicesPlan showDevicesPlan)
       throws MetadataException {
     return mTree.getDeviceReader(
-        showDevicesPlan, (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
+        showDevicesPlan, (pointer, name) -> deviceAttributeStore.getAttributes(pointer, name));
   }
 
   @Override
@@ -1665,14 +1665,16 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(final PartialPath pathPattern)
       throws MetadataException {
     return mTree.getTableDeviceReader(
-        pathPattern, (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
+        pathPattern, (pointer, name) -> deviceAttributeStore.getAttributes(pointer, name));
   }
 
   @Override
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
       final String table, final List<Object[]> devicePathList) {
     return mTree.getTableDeviceReader(
-        table, devicePathList, (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
+        table,
+        devicePathList,
+        (pointer, name) -> deviceAttributeStore.getAttributes(pointer, name));
   }
 
   @Override

@@ -44,7 +44,7 @@ public interface IDeviceAttributeStore {
 
   void removeAttribute(final int pointer, final String attributeName);
 
-  Map<String, Binary> getAttribute(final int pointer);
+  Map<String, Binary> getAttributes(final int pointer);
 
-  Binary getAttribute(final int pointer, final String name);
+  Binary getAttributes(final int pointer, final String name);
 }

@@ -431,18 +431,18 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
         return Collections.singletonList(new ActivateTemplateStatement(path));
       } else if (deviceMNode.getDeviceInfo() instanceof TableDeviceInfo
           && ((TableDeviceInfo<?>) deviceMNode.getDeviceInfo()).getAttributePointer() > -1) {
-        final Map<String, Binary> tableAttribute =
-            deviceAttributeStore.getAttribute(
+        final Map<String, Binary> tableAttributes =
+            deviceAttributeStore.getAttributes(
                 ((TableDeviceInfo<?>) deviceMNode.getDeviceInfo()).getAttributePointer());
-        if (tableAttribute.isEmpty()) {
+        if (tableAttributes.isEmpty()) {
           return null;
         }
         if (Objects.isNull(attributeNameList)) {
-          attributeNameList = new ArrayList<>(tableAttribute.keySet());
+          attributeNameList = new ArrayList<>(tableAttributes.keySet());
         }
         final List<Object> attributeValues =
-            attributeNameList.stream().map(tableAttribute::remove).collect(Collectors.toList());
-        tableAttribute.forEach(
+            attributeNameList.stream().map(tableAttributes::remove).collect(Collectors.toList());
+        tableAttributes.forEach(
             (attributeKey, attributeValue) -> {
               attributeNameList.add(attributeKey);
               attributeValues.add(attributeValue);

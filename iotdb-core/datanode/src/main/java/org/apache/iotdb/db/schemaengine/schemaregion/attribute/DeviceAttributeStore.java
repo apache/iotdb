@@ -203,12 +203,12 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public Map<String, Binary> getAttribute(final int pointer) {
+  public Map<String, Binary> getAttributes(final int pointer) {
     return deviceAttributeList.get(pointer);
   }
 
   @Override
-  public Binary getAttribute(final int pointer, final String name) {
+  public Binary getAttributes(final int pointer, final String name) {
     return deviceAttributeList.get(pointer).get(name);
   }
 
