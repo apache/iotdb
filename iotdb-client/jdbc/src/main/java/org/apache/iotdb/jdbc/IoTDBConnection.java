@@ -20,7 +20,6 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.jdbc.relational.IoTDBRelationalDatabaseMetadata;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -297,9 +296,9 @@ public class IoTDBConnection implements Connection {
       throw new SQLException("Cannot create statement because connection is closed");
     }
     if (getSqlDialect().equals("table")) {
-      return new IoTDBRelationalDatabaseMetadata(this, getClient(), sessionId, zoneId);
+      return new IoTDBTableDatabaseMetadata(this, getClient(), sessionId, zoneId);
     }
-    return new IoTDBDatabaseMetadata(this, getClient(), sessionId, zoneId);
+    return new IoTDBTreeDatabaseMetadata(this, getClient(), sessionId, zoneId);
   }
 
   @Override
@@ -309,12 +308,12 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public String getSchema() throws SQLException {
-    throw new SQLException("Does not support getSchema");
+    return getDatabase();
   }
 
   @Override
   public void setSchema(String arg0) throws SQLException {
-    throw new SQLException("Does not support setSchema");
+    changeDefaultDatabase(arg0);
   }
 
   @Override
@@ -619,5 +618,9 @@ public class IoTDBConnection implements Connection {
 
   public int getTimeFactor() {
     return timeFactor;
+  }
+
+  public String getDatabase() {
+    return params.getDb().orElse(null);
   }
 }

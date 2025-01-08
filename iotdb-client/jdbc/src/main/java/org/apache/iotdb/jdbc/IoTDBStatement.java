@@ -269,7 +269,6 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public boolean execute(String sql) throws SQLException {
-    logger.info("execute:: sql:{}", sql);
     checkConnection("execute");
     isClosed = false;
     try {
@@ -432,12 +431,10 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public ResultSet executeQuery(String sql) throws SQLException {
-    logger.info("executeQuery:: sql:{}", sql);
     return this.executeQuery(sql, (long) queryTimeout * 1000);
   }
 
   public ResultSet executeQuery(String sql, long timeoutInMS) throws SQLException {
-    logger.info("executeQuery:: sql:{}, timeoutInMS:{}", sql, timeoutInMS);
     checkConnection("execute query");
     isClosed = false;
     try {
@@ -461,7 +458,6 @@ public class IoTDBStatement implements Statement {
   }
 
   private ResultSet executeQuerySQL(String sql, long timeoutInMS) throws TException, SQLException {
-    logger.info("executeQuerySQL:: sql:{}, timeoutInMS:{}", sql, timeoutInMS);
     isCancelled = false;
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
     int rows = fetchSize;

@@ -57,8 +57,6 @@ import java.util.TreeMap;
 
 public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
-  private static final org.slf4j.Logger logger =
-      org.slf4j.LoggerFactory.getLogger(IoTDBDatabaseMetadata.class);
   private IoTDBConnection connection;
   private IClientRPCService.Iface client;
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDatabaseMetadata.class);

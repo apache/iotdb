@@ -2293,8 +2293,6 @@ public class IoTDBRelationalDatabaseMetadata implements DatabaseMetaData {
       LOGGER.error(SHOW_TABLES_ERROR_MSG, e.getMessage());
       throw e;
     }
-    //    ResultSetMetaData resMetaData = rs.getMetaData();
-    //    int columnCount = resMetaData.getColumnCount();
 
     // Setup Fields
     Field[] fields = new Field[8];
@@ -2359,17 +2357,6 @@ public class IoTDBRelationalDatabaseMetadata implements DatabaseMetaData {
       valuesList.add(valueInRow);
       LOGGER.info("getColumns:: valueInRow: {}", valueInRow);
     }
-
-    //    for (int i = 1; i <= columnCount; i++) {
-    //      List<Object> valueInRow = new ArrayList<>();
-    //      valueInRow.add(resMetaData.getColumnName(i));
-    //      valueInRow.add(i);
-    //      valueInRow.add(resMetaData.getColumnType(i));
-    //      valueInRow.add(resMetaData.getColumnTypeName(i));
-    //      valueInRow.add(resMetaData.isNullable(i));
-    //      valueInRow.add(resMetaData.isAutoIncrement(i) ? "YES" : "NO");
-    //      valuesList.add(valueInRow);
-    //    }
 
     // Convert Values to ByteBuffer
     ByteBuffer tsBlock = null;
@@ -2744,7 +2731,7 @@ public class IoTDBRelationalDatabaseMetadata implements DatabaseMetaData {
         Arrays.asList(
             STRING,
             Types.VARCHAR,
-            0,
+            64,
             "",
             "",
             "",
@@ -2762,12 +2749,12 @@ public class IoTDBRelationalDatabaseMetadata implements DatabaseMetaData {
             10);
     List<Object> listValSub8 =
         Arrays.asList(
-            BLOB, Types.BLOB, 0, "", "", "", 1, true, "", false, true, false, "", 0, 10, 0, 0, 10);
+            BLOB, Types.BLOB, 64, "", "", "", 1, true, "", false, true, false, "", 0, 10, 0, 0, 10);
     List<Object> listValSub9 =
         Arrays.asList(
             TIMESTAMP,
             Types.TIMESTAMP,
-            0,
+            3,
             "",
             "",
             "",
