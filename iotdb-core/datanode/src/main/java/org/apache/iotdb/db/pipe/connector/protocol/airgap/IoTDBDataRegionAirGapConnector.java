@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeWithDatabaseReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReqV2;
@@ -36,7 +35,6 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -171,11 +169,8 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
         pipeDeleteDataNodeEvent.getPipeName(),
         pipeDeleteDataNodeEvent.getCreationTime(),
         socket,
-        pipeDeleteDataNodeEvent.getDeleteDataNode() instanceof RelationalDeleteDataNode
-            ? PipeTransferPlanNodeWithDatabaseReq.toTPipeTransferBytes(
-                pipeDeleteDataNodeEvent.getDeleteDataNode(), pipeDeleteDataNodeEvent.getDatabase())
-            : PipeTransferPlanNodeReq.toTPipeTransferBytes(
-                pipeDeleteDataNodeEvent.getDeleteDataNode()))) {
+        PipeTransferPlanNodeReq.toTPipeTransferBytes(
+            pipeDeleteDataNodeEvent.getDeleteDataNode()))) {
       final String errorMessage =
           String.format(
               "Transfer deletion %s error. Socket: %s.",
