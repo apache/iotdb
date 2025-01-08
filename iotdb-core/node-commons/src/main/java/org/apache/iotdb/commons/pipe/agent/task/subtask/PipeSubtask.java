@@ -66,6 +66,7 @@ public abstract class PipeSubtask
 
   public abstract void bindExecutors(
       ListeningExecutorService subtaskWorkerThreadPoolExecutor,
+      ListeningExecutorService userDefineSubtaskWorkerThreadPoolExecutor,
       ExecutorService subtaskCallbackListeningExecutor,
       ScheduledExecutorService subtaskTimeoutListeningExecutor,
       PipeSubtaskScheduler subtaskScheduler);

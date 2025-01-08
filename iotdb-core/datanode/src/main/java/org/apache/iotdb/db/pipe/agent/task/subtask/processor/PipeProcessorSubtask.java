@@ -97,6 +97,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
   @Override
   public void bindExecutors(
       final ListeningExecutorService subtaskWorkerThreadPoolExecutor,
+      final ListeningExecutorService userDefineSubtaskWorkerThreadPoolExecutor,
       final ExecutorService ignored,
       final ScheduledExecutorService timeoutExecutor,
       final PipeSubtaskScheduler subtaskScheduler) {

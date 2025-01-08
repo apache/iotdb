@@ -71,6 +71,7 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
   @Override
   public void bindExecutors(
       final ListeningExecutorService subtaskWorkerThreadPoolExecutor,
+      final ListeningExecutorService userDefineSubtaskWorkerThreadPoolExecutor,
       final ExecutorService subtaskCallbackListeningExecutor,
       final ScheduledExecutorService subtaskTimeoutListeningExecutor,
       final PipeSubtaskScheduler subtaskScheduler) {

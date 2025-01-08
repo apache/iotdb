@@ -62,11 +62,12 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
         sleepIfNecessary(canSleepBeforeNextRound);
         adjustSleepingTimeIfNecessary();
       }
-    } catch (PipeException ignore) {
+    } catch (PipeException ignored) {
       // This exception is to exit While true, and the SubTask provided by the Pipe kernel will not
       // exit the thread
     } catch (InterruptedException e) {
-      LOGGER.warn("Subtask thread interrupted", e);
+      LOGGER.warn(
+          "The thread interrupt status is not cleared and the Worker {} is terminated.", this);
     } finally {
       running.release();
     }

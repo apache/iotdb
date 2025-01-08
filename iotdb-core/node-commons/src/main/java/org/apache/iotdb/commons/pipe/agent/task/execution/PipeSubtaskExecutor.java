@@ -50,6 +50,9 @@ public abstract class PipeSubtaskExecutor {
   protected final WrappedThreadPoolExecutor underlyingThreadPool;
   protected final ListeningExecutorService subtaskWorkerThreadPoolExecutor;
 
+  protected final WrappedThreadPoolExecutor customUnderlyingThreadPool;
+  protected final ListeningExecutorService customSubtaskWorkerPool;
+
   private final Map<String, PipeSubtask> registeredIdSubtaskMapper;
 
   private final int corePoolSize;
@@ -57,6 +60,8 @@ public abstract class PipeSubtaskExecutor {
 
   protected PipeSubtaskExecutor(
       final int corePoolSize, final ThreadName threadName, final boolean disableLogInThreadPool) {
+    customUnderlyingThreadPool = null;
+    customSubtaskWorkerPool = null;
     underlyingThreadPool =
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPool(corePoolSize, threadName.getName());
@@ -64,6 +69,32 @@ public abstract class PipeSubtaskExecutor {
       underlyingThreadPool.disableErrorLog();
     }
     subtaskWorkerThreadPoolExecutor = MoreExecutors.listeningDecorator(underlyingThreadPool);
+
+    registeredIdSubtaskMapper = new ConcurrentHashMap<>();
+
+    this.corePoolSize = corePoolSize;
+    runningSubtaskNumber = 0;
+  }
+
+  protected PipeSubtaskExecutor(
+      final int corePoolSize,
+      final ThreadName threadName,
+      final ThreadName userDefinedThreadName,
+      final boolean disableLogInThreadPool) {
+    underlyingThreadPool =
+        (WrappedThreadPoolExecutor)
+            IoTDBThreadPoolFactory.newFixedThreadPool(corePoolSize, threadName.getName());
+    customUnderlyingThreadPool =
+        (WrappedThreadPoolExecutor)
+            IoTDBThreadPoolFactory.newFixedThreadPool(
+                corePoolSize, userDefinedThreadName.getName());
+
+    if (disableLogInThreadPool) {
+      underlyingThreadPool.disableErrorLog();
+      customUnderlyingThreadPool.disableErrorLog();
+    }
+    subtaskWorkerThreadPoolExecutor = MoreExecutors.listeningDecorator(underlyingThreadPool);
+    customSubtaskWorkerPool = MoreExecutors.listeningDecorator(customUnderlyingThreadPool);
 
     registeredIdSubtaskMapper = new ConcurrentHashMap<>();
 
@@ -82,6 +113,7 @@ public abstract class PipeSubtaskExecutor {
     registeredIdSubtaskMapper.put(subtask.getTaskID(), subtask);
     subtask.bindExecutors(
         subtaskWorkerThreadPoolExecutor,
+        customSubtaskWorkerPool,
         subtaskCallbackListeningExecutor,
         subtaskTimeOutListeningExecutor,
         schedulerSupplier(this));

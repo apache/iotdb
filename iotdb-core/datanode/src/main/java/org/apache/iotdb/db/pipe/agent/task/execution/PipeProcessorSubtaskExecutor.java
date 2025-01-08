@@ -29,6 +29,7 @@ public class PipeProcessorSubtaskExecutor extends PipeSubtaskExecutor {
     super(
         PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum(),
         ThreadName.PIPE_PROCESSOR_EXECUTOR_POOL,
+        ThreadName.PIPE_USER_DEFINED_PROCESSOR_EXECUTOR_POOL,
         false);
   }
 }

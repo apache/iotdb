@@ -60,13 +60,13 @@ public class UserDefinedProcessorSubTask extends PipeProcessorSubtask {
   private volatile boolean isTimeOut = false;
 
   public UserDefinedProcessorSubTask(
-      String taskID,
-      String pipeName,
-      long creationTime,
-      int regionId,
-      EventSupplier inputEventSupplier,
-      PipeProcessor pipeProcessor,
-      PipeEventCollector outputEventCollector) {
+      final String taskID,
+      final String pipeName,
+      final long creationTime,
+      final int regionId,
+      final EventSupplier inputEventSupplier,
+      final PipeProcessor pipeProcessor,
+      final PipeEventCollector outputEventCollector) {
     super(
         taskID,
         pipeName,
@@ -79,11 +79,12 @@ public class UserDefinedProcessorSubTask extends PipeProcessorSubtask {
 
   @Override
   public void bindExecutors(
-      final ListeningExecutorService subtaskWorkerThreadPoolExecutor,
-      final ExecutorService ignored,
-      final ScheduledExecutorService timeoutExecutor,
+      final ListeningExecutorService ignoredSubtaskWorkerPool,
+      final ListeningExecutorService customSubtaskWorkerPool,
+      final ExecutorService ignoredExecutor,
+      final ScheduledExecutorService timeoutScheduler,
       final PipeSubtaskScheduler subtaskScheduler) {
-    this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
+    this.subtaskWorkerThreadPoolExecutor = customSubtaskWorkerPool;
     this.subtaskScheduler = subtaskScheduler;
 
     // double check locking for constructing PipeProcessorSubtaskWorkerManager
@@ -92,7 +93,7 @@ public class UserDefinedProcessorSubTask extends PipeProcessorSubtask {
         if (subtaskWorkerManager.get() == null) {
           subtaskWorkerManager.set(
               new PipeProcessorSubtaskWorkerManager(
-                  subtaskWorkerThreadPoolExecutor, timeoutExecutor, true));
+                  customSubtaskWorkerPool, timeoutScheduler, true));
         }
       }
     }
@@ -104,6 +105,8 @@ public class UserDefinedProcessorSubTask extends PipeProcessorSubtask {
     Event event = null;
     try {
       beginSubtaskProcessing();
+      // In the processor subtask stage, the extractor and processor tasks need to be executed, so
+      // it is necessary to check whether there is a timeout in this step.
       event = executeOnceInternal();
       endSubtaskProcessing();
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
@@ -211,6 +214,8 @@ public class UserDefinedProcessorSubTask extends PipeProcessorSubtask {
     return scheduled;
   }
 
+  // The task starts running. Only after the task starts running can the interruption be checked to
+  // ensure that the thread interruption will not affect the Pipe framework.
   private void beginSubtaskProcessing() {
     startRunningTime = System.currentTimeMillis();
     synchronized (this) {
@@ -218,6 +223,8 @@ public class UserDefinedProcessorSubTask extends PipeProcessorSubtask {
     }
   }
 
+  // Mark the end. When the process is finished, you cannot check whether it has timed out to avoid
+  // affecting the pipe framework.
   private void endSubtaskProcessing() {
     // synchronized will not be interrupted by Thread.interrupt function
     synchronized (this) {

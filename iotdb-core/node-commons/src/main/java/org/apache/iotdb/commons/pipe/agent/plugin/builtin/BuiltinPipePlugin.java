@@ -126,6 +126,16 @@ public enum BuiltinPipePlugin {
     return className;
   }
 
+  public static boolean isBuiltinPipePlugin(String pipePluginName) {
+    BuiltinPipePlugin[] plugin = BuiltinPipePlugin.values();
+    for (BuiltinPipePlugin builtinPipePlugin : plugin) {
+      if (builtinPipePlugin.getPipePluginName().equals(pipePluginName)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   public static final Set<String> SHOW_PIPE_PLUGINS_BLACKLIST =
       Collections.unmodifiableSet(
           new HashSet<>(
