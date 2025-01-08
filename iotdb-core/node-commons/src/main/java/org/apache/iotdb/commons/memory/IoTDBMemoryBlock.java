@@ -24,17 +24,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.ReentrantLock;
 
-public class IoTDBMemoryBlock implements AutoCloseable {
+public class IoTDBMemoryBlock extends IIoTDBMemoryBlock{
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBMemoryBlock.class);
-  private final IoTDBMemoryManager memoryManager;
-  private final IoTDBMemoryBlockType memoryBlockType;
-  private final ReentrantLock lock = new ReentrantLock();
-  private long maxMemorySizeInByte = 0;
-  private final AtomicLong memoryUsageInBytes = new AtomicLong(0);
-  private volatile boolean isReleased = false;
 
   public IoTDBMemoryBlock(final IoTDBMemoryManager memoryManager, final long maxMemorySizeInByte) {
     this.memoryManager = memoryManager;
@@ -51,6 +43,7 @@ public class IoTDBMemoryBlock implements AutoCloseable {
     this.memoryBlockType = memoryBlockType;
   }
 
+  @Override
   public boolean useMemory(final long size) {
     if (size <= 0) {
       memoryUsageInBytes.addAndGet(-size);
@@ -80,26 +73,6 @@ public class IoTDBMemoryBlock implements AutoCloseable {
           });
       return result.get();
     }
-  }
-
-  public long getMaxMemorySizeInByte() {
-    return maxMemorySizeInByte;
-  }
-
-  public long getMemoryUsageInBytes() {
-    return memoryUsageInBytes.get();
-  }
-
-  public void setMaxMemorySizeInByte(final long maxMemorySizeInByte) {
-    this.maxMemorySizeInByte = maxMemorySizeInByte;
-  }
-
-  public boolean isReleased() {
-    return isReleased;
-  }
-
-  public void markAsReleased() {
-    isReleased = true;
   }
 
   @Override
