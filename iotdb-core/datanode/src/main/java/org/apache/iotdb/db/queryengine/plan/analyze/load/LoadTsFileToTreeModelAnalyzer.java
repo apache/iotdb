@@ -58,14 +58,14 @@ public class LoadTsFileToTreeModelAnalyzer extends LoadTsFileAnalyzer {
   private final TreeSchemaAutoCreatorAndVerifier schemaAutoCreatorAndVerifier;
 
   public LoadTsFileToTreeModelAnalyzer(
-      LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
-    super(loadTsFileStatement, context);
+      LoadTsFileStatement loadTsFileStatement, boolean isGeneratedByPipe, MPPQueryContext context) {
+    super(loadTsFileStatement, isGeneratedByPipe, context);
     this.schemaAutoCreatorAndVerifier = new TreeSchemaAutoCreatorAndVerifier(this);
   }
 
   public LoadTsFileToTreeModelAnalyzer(
-      LoadTsFile loadTsFileTableStatement, MPPQueryContext context) {
-    super(loadTsFileTableStatement, context);
+      LoadTsFile loadTsFileTableStatement, boolean isGeneratedByPipe, MPPQueryContext context) {
+    super(loadTsFileTableStatement, isGeneratedByPipe, context);
     this.schemaAutoCreatorAndVerifier = new TreeSchemaAutoCreatorAndVerifier(this);
   }
 

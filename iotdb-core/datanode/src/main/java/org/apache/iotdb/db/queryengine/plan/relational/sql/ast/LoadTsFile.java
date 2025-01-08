@@ -44,6 +44,7 @@ public class LoadTsFile extends Statement {
   private boolean deleteAfterLoad = false;
   private boolean convertOnTypeMismatch = true;
   private boolean autoCreateDatabase = true;
+  private boolean isGeneratedByPipe = false;
   private String model = LoadTsFileConfigurator.MODEL_TABLE_VALUE;
 
   private final Map<String, String> loadAttributes;
@@ -110,6 +111,14 @@ public class LoadTsFile extends Statement {
   public LoadTsFile setDatabase(String database) {
     this.database = database;
     return this;
+  }
+
+  public void markIsGeneratedByPipe() {
+    isGeneratedByPipe = true;
+  }
+
+  public boolean isGeneratedByPipe() {
+    return isGeneratedByPipe;
   }
 
   public String getModel() {
