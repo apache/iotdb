@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventPlainBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
@@ -255,7 +256,11 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     for (final File tsFile : sealedFiles) {
       doTransfer(pipe2WeightMap, tsFile, null);
       try {
-        FileUtils.delete(tsFile);
+        RetryUtils.retryOnException(
+            () -> {
+              FileUtils.delete(tsFile);
+              return null;
+            });
       } catch (final NoSuchFileException e) {
         LOGGER.info("The file {} is not found, may already be deleted.", tsFile);
       } catch (final Exception e) {
