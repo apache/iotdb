@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -32,10 +36,13 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.io.File;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 import java.util.Locale;
 
 import static org.junit.Assert.assertEquals;
@@ -463,6 +470,66 @@ public class IoTDBDeletionIT {
           cnt++;
         }
         Assert.assertEquals(1, cnt);
+      }
+    }
+  }
+
+  @Test
+  public void testDeleteWithView() throws SQLException, IOException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("INSERT INTO root.del_with_view.d1(timestamp, status) VALUES(1, 1)");
+      statement.execute("INSERT INTO root.del_with_view.d2(timestamp, status) VALUES(2, 2)");
+      statement.execute("INSERT INTO root.del_with_view.d3(timestamp, status) VALUES(3, 3)");
+      statement.execute("INSERT INTO root.del_with_view.d4(timestamp, status) VALUES(4, 4)");
+
+      statement.execute(
+          "CREATE VIEW root.del_with_view.d1_view.status as root.del_with_view.d1.status");
+      statement.execute(
+          "CREATE VIEW root.del_with_view.d2_view.status as root.del_with_view.d2.status");
+      statement.execute(
+          "CREATE VIEW root.del_with_view.d3_view.status as root.del_with_view.d3.status");
+      statement.execute(
+          "CREATE VIEW root.del_with_view.d4_view.status as root.del_with_view.d4.status");
+
+      statement.execute("FLUSH");
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select status from root.del_with_view.*")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(4, cnt);
+      }
+
+      statement.execute("DELETE FROM root.del_with_view.*.status");
+
+      for (DataNodeWrapper dataNodeWrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
+        String nodePropPath = dataNodeWrapper.getSystemPropertiesPath();
+        String nodeDatabasePath = nodePropPath + "../../../data/sequence/root.del_with_view";
+        File nodeDatabaseFile = new File(nodeDatabasePath);
+        List<File> modFiles =
+            FileUtils.listFilesRecursively(
+                nodeDatabaseFile, f -> f.getName().endsWith(ModificationFile.FILE_SUFFIX));
+        for (File modFile : modFiles) {
+          List<ModEntry> allMods;
+          try (ModificationFile modificationFile = new ModificationFile(modFile)) {
+            allMods = modificationFile.getAllMods();
+          }
+          // the source paths of the views can be matched by the pattern, so they should not appear
+          // in the mod file
+          assertEquals(1, allMods.size());
+        }
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select status from root.del_with_view.*")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(0, cnt);
       }
     }
   }

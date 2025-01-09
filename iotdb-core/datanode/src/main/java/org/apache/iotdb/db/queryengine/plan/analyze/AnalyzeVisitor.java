@@ -3521,6 +3521,18 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           logicalViewSchema = (LogicalViewSchema) measurementSchema;
           if (logicalViewSchema.isWritable()) {
             sourcePathOfAliasSeries = logicalViewSchema.getSourcePathIfWritable();
+            // if the source path can be matched by any of the deletion pattern, do not add it
+            boolean pathMatched = false;
+            for (MeasurementPath deletionPattern : deleteDataStatement.getPathList()) {
+              if (deletionPattern.matchFullPath(sourcePathOfAliasSeries)) {
+                pathMatched = true;
+                break;
+              }
+            }
+            if (pathMatched) {
+              continue;
+            }
+
             deletePatternSet.add(new MeasurementPath(sourcePathOfAliasSeries.getNodes()));
             deduplicatedDeviceIDs.add(sourcePathOfAliasSeries.getIDeviceID());
           }
