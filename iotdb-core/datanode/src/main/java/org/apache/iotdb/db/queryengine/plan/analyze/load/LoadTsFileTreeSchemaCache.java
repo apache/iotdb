@@ -25,6 +25,8 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
@@ -153,6 +155,10 @@ public class LoadTsFileTreeSchemaCache {
       TsFileResource resource, TsFileSequenceReader reader) throws IOException {
     clearModificationsAndTimeIndex();
 
+    ModificationFileV1 v1ModFile = ModificationFileV1.getNormalMods(resource);
+    if (!resource.anyModFileExists() && v1ModFile.exists()) {
+      resource.upgradeModFile(null, false);
+    }
     currentModifications = resource.getAllModEntries();
     for (final ModEntry modification : currentModifications) {
       currentModificationsMemoryUsageSizeInBytes += modification.serializedSize();

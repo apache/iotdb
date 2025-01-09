@@ -3110,19 +3110,15 @@ public class DataRegion implements IDataRegionForQuery {
   private void loadModFile(
       File tsFileToLoad, File targetTsFile, boolean deleteOriginFile, TsFileResource tsFileResource)
       throws LoadFileException {
-    final File oldModFileToLoad = ModificationFileV1.getNormalMods(tsFileToLoad);
     final File newModFileToLoad = ModificationFile.getExclusiveMods(tsFileToLoad);
-    if (oldModFileToLoad.exists()) {
-      final File oldTargetModFile = ModificationFileV1.getNormalMods(targetTsFile);
-      moveModFile(oldModFileToLoad, oldTargetModFile, deleteOriginFile);
-      try {
-        tsFileResource.upgradeModFile(upgradeModFileThreadPool);
-      } catch (IOException e) {
-        throw new LoadFileException(e);
-      }
-    } else if (newModFileToLoad.exists()) {
-      final File newTargetModFile = ModificationFile.getExclusiveMods(targetTsFile);
-      moveModFile(newModFileToLoad, newTargetModFile, deleteOriginFile);
+    final File newTargetModFile = ModificationFile.getExclusiveMods(targetTsFile);
+    moveModFile(newModFileToLoad, newTargetModFile, deleteOriginFile);
+    // remove the temporary v2 mod file in load dir
+    try {
+      tsFileResource.removeModFile();
+      tsFileResource.setExclusiveModFile(ModificationFile.getExclusiveMods(tsFileResource));
+    } catch (IOException e) {
+      throw new LoadFileException(e);
     }
   }
 

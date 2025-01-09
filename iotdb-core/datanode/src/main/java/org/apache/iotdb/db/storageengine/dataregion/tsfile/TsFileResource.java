@@ -1449,20 +1449,24 @@ public class TsFileResource implements PersistentResource {
   }
 
   public void upgradeModFile(ExecutorService upgradeModFileThreadPool) throws IOException {
+    upgradeModFile(upgradeModFileThreadPool, true);
+  }
+
+  public void upgradeModFile(ExecutorService upgradeModFileThreadPool, boolean removeOldModFile) throws IOException {
     ModificationFileV1 oldModFile = ModificationFileV1.getNormalMods(this);
     if (!oldModFile.exists()) {
       return;
     }
 
     if (upgradeModFileThreadPool != null) {
-      exclusiveModFileFuture = upgradeModFileThreadPool.submit(() -> doUpgradeModFile(oldModFile));
+      exclusiveModFileFuture = upgradeModFileThreadPool.submit(() -> doUpgradeModFile(oldModFile, remove()));
     } else {
-      exclusiveModFileFuture = CompletableFuture.completedFuture(doUpgradeModFile(oldModFile));
+      exclusiveModFileFuture = CompletableFuture.completedFuture(doUpgradeModFile(oldModFile, removeOldModFile));
     }
   }
 
   @SuppressWarnings({"java:S4042", "java:S899", "ResultOfMethodCallIgnored"})
-  private ModificationFile doUpgradeModFile(ModificationFileV1 oldModFile) throws IOException {
+  private ModificationFile doUpgradeModFile(ModificationFileV1 oldModFile, boolean removeOldModFile) throws IOException {
     ModificationFile newMFile = ModificationFile.getExclusiveMods(this);
     newMFile.getFile().delete();
     try {
@@ -1472,7 +1476,9 @@ public class TsFileResource implements PersistentResource {
     } finally {
       newMFile.close();
     }
-    oldModFile.remove();
+    if (removeOldModFile) {
+      oldModFile.remove();
+    }
     return newMFile;
   }
 
