@@ -97,6 +97,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceForRegionScan;
@@ -3111,10 +3112,13 @@ public class DataRegion implements IDataRegionForQuery {
       throws LoadFileException {
     final File newModFileToLoad = ModificationFile.getExclusiveMods(tsFileToLoad);
     final File newTargetModFile = ModificationFile.getExclusiveMods(targetTsFile);
+    final File oldModFile = ModificationFileV1.getNormalMods(tsFileToLoad);
     moveModFile(newModFileToLoad, newTargetModFile, deleteOriginFile);
-    // remove the temporary v2 mod file in load dir
     try {
-      tsFileResource.removeModFile();
+      if (oldModFile.exists()) {
+        // remove the temporary v2 mod file in load dir
+        tsFileResource.removeModFile();
+      }
       tsFileResource.setExclusiveModFile(ModificationFile.getExclusiveMods(tsFileResource));
     } catch (IOException e) {
       throw new LoadFileException(e);
