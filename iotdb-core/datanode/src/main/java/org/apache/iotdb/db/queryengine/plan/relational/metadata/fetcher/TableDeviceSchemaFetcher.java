@@ -261,7 +261,8 @@ public class TableDeviceSchemaFetcher {
             check,
             attributeColumns,
             fetchPaths,
-            isDirectDeviceQuery)) {
+            isDirectDeviceQuery,
+            queryContext)) {
           idSingleMatchPredicateNotInCache.add(index);
         }
       }
@@ -312,8 +313,9 @@ public class TableDeviceSchemaFetcher {
       final Predicate<DeviceEntry> check,
       final List<String> attributeColumns,
       final List<IDeviceID> fetchPaths,
-      final boolean isDirectDeviceQuery) {
-    String[] idValues = new String[tableInstance.getIdNums()];
+      final boolean isDirectDeviceQuery,
+      final MPPQueryContext queryContext) {
+    final String[] idValues = new String[tableInstance.getIdNums()];
     for (final List<SchemaFilter> schemaFilters : idFilters.values()) {
       final IdFilter idFilter = (IdFilter) schemaFilters.get(0);
       final SchemaFilter childFilter = idFilter.getChild();
@@ -347,6 +349,8 @@ public class TableDeviceSchemaFetcher {
       // because now we do not support combining memory source and other sources
       if (isDirectDeviceQuery) {
         fetchPaths.add(deviceID);
+      } else {
+        queryContext.reserveMemoryForFrontEnd(deviceEntry.ramBytesUsed());
       }
     }
     return true;

@@ -57,11 +57,16 @@ public class InformationSchemaUtils {
   }
 
   public static void buildDatabaseTsBlock(
-      final Predicate<String> canSeenDB, final TsBlockBuilder builder, final boolean details) {
+      final Predicate<String> canSeenDB,
+      final TsBlockBuilder builder,
+      final boolean details,
+      final boolean withTime) {
     if (!canSeenDB.test(INFORMATION_DATABASE)) {
       return;
     }
-    builder.getTimeColumnBuilder().writeLong(0L);
+    if (withTime) {
+      builder.getTimeColumnBuilder().writeLong(0L);
+    }
     builder
         .getColumnBuilder(0)
         .writeBinary(new Binary(INFORMATION_DATABASE, TSFileConfig.STRING_CHARSET));
