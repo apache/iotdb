@@ -104,7 +104,9 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   LoadTsFileAnalyzer(
-      final LoadTsFile loadTsFileTableStatement, final boolean isGeneratedByPipe, final MPPQueryContext context) {
+      final LoadTsFile loadTsFileTableStatement,
+      final boolean isGeneratedByPipe,
+      final MPPQueryContext context) {
     this.loadTsFileTableStatement = loadTsFileTableStatement;
     this.tsFiles = loadTsFileTableStatement.getTsFiles();
     this.statementString = loadTsFileTableStatement.toString();
