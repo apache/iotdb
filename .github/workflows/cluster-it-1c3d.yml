@@ -58,7 +58,6 @@ jobs:
             -P with-integration-tests \
             -DskipUTs \
             -DintegrationTest.forkCount=40 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
-            -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
             -Dit.test=IoTDBDeletionTableIT -DfailIfNoTests=false -Dsurefire.failIfNoSpecifiedTests=false -Dfailsafe.failIfNoSpecifiedTests=false\
             -pl integration-test \
             -am \
