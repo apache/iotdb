@@ -78,8 +78,7 @@ public abstract class TreePattern {
             PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
 
     final boolean isTreeModelDataAllowedToBeCaptured =
-        isDoubleLiving
-            || isTreeModelDataAllowToBeCaptured(sourceParameters);
+        isDoubleLiving || isTreeModelDataAllowToBeCaptured(sourceParameters);
 
     final String path = sourceParameters.getStringByKeys(EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY);
 
