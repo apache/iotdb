@@ -22,7 +22,7 @@ package org.apache.iotdb.commons.memory;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
-public abstract class IIoTDBMemoryBlock implements AutoCloseable {
+public abstract class IIoTDBMemoryBlock implements AutoCloseable{
   protected IoTDBMemoryManager memoryManager;
   protected IoTDBMemoryBlockType memoryBlockType;
   protected final ReentrantLock lock = new ReentrantLock();

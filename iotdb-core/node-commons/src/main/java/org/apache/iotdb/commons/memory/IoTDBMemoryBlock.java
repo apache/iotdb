@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class IoTDBMemoryBlock extends IIoTDBMemoryBlock {
+public class IoTDBMemoryBlock extends IIoTDBMemoryBlock{
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBMemoryBlock.class);
 
   public IoTDBMemoryBlock(final IoTDBMemoryManager memoryManager, final long maxMemorySizeInByte) {
