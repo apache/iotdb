@@ -37,6 +37,8 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
@@ -771,5 +773,20 @@ public class TableModelUtils {
     }
 
     return tablet;
+  }
+
+  public static int showPipesCount(final BaseEnv baseEnv, final String sqlDialect) {
+    try (final Connection connection = baseEnv.getConnection(sqlDialect);
+        final Statement statement = connection.createStatement()) {
+      final ResultSet resultSet = statement.executeQuery("show pipes");
+      int count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      return count;
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+    return 0;
   }
 }
