@@ -17,13 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.exception.load;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class VerifyMetadataTypeMismatchException extends VerifyMetadataException {
+public class LoadAnalyzeTableColumnDisorderException extends SemanticException {
 
-  public VerifyMetadataTypeMismatchException(String message) {
+  public LoadAnalyzeTableColumnDisorderException(String message) {
     super(message, TSStatusCode.VERIFY_METADATA_ERROR.getStatusCode());
   }
 }

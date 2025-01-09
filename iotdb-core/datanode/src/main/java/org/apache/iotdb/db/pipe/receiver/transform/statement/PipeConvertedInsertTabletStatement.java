@@ -71,6 +71,10 @@ public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
     return true;
   }
 
+  protected boolean originalCheckAndCastDataType(int columnIndex, TSDataType dataType) {
+    return super.checkAndCastDataType(columnIndex, dataType);
+  }
+
   @TableModel
   @Override
   public boolean isForceTypeConversion() {

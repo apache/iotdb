@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
 import org.apache.iotdb.db.exception.sql.ColumnCreationFailException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -86,7 +87,8 @@ public class TableHeaderSchemaValidator {
       final TableSchema tableSchema,
       final MPPQueryContext context,
       final boolean allowCreateTable,
-      final boolean isStrictIdColumn) {
+      final boolean isStrictIdColumn)
+      throws LoadAnalyzeTableColumnDisorderException {
     InformationSchemaUtils.checkDBNameInWrite(database);
 
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
@@ -136,7 +138,7 @@ public class TableHeaderSchemaValidator {
             final String idName = realIdColumns.get(indexReal).getColumnName();
             final int indexIncoming = tableSchema.getIndexAmongIdColumns(idName);
             if (indexIncoming != indexReal) {
-              throw new SemanticException(
+              throw new LoadAnalyzeTableColumnDisorderException(
                   String.format(
                       "Can not create table because incoming table has no less id columns than existing table, "
                           + "and the existing id columns are not the prefix of the incoming id columns. "
@@ -151,7 +153,7 @@ public class TableHeaderSchemaValidator {
             final String idName = incomingIdColumns.get(indexIncoming).getName();
             final int indexReal = table.getIdColumnOrdinal(idName);
             if (indexReal != indexIncoming) {
-              throw new SemanticException(
+              throw new LoadAnalyzeTableColumnDisorderException(
                   String.format(
                       "Can not create table because existing table has more id columns than incoming table, "
                           + "and the incoming id columns are not the prefix of the existing id columns. "
