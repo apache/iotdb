@@ -19,43 +19,42 @@
 
 package org.apache.iotdb.udf;
 
-import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
-import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
+import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
+import org.apache.iotdb.udf.api.exception.UDFArgumentNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFException;
-import org.apache.iotdb.udf.api.exception.UDFParameterNotValidException;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.type.Type;
 
-/** This is an internal example of the ScalarFunction implementation. */
+/**
+ * This is an internal example of the ScalarFunction implementation.
+ *
+ * <p>CREATE DATABASE test;
+ *
+ * <p>USE test;
+ *
+ * <p>CREATE TABLE t1(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD);
+ *
+ * <p>INSERT INTO t1(time, device_id, s1, s2) VALUES (1, 'd1', 'a', 1), (2, 'd1', null, 2), (3,
+ * 'd1', 'c', null);
+ *
+ * <p>CREATE FUNCTION contain_null AS 'org.apache.iotdb.udf.ScalarFunctionExample';
+ *
+ * <p>SHOW FUNCTIONS;
+ *
+ * <p>SELECT time, device_id, s1, s2, contain_null(s1, s2) as contain_null, contain_null(s1) as
+ * s1_isnull, contain_null(s2) as s2_isnull FROM t1;
+ */
 public class ScalarFunctionExample implements ScalarFunction {
-  /**
-   * CREATE DATABASE test;
-   *
-   * <p>USE test;
-   *
-   * <p>CREATE TABLE t1(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD);
-   *
-   * <p>INSERT INTO t1(time, device_id, s1, s2) VALUES (1, 'd1', 'a', 1), (2, 'd1', null, 2), (3,
-   * 'd1', 'c', null);
-   *
-   * <p>CREATE FUNCTION contain_null AS 'org.apache.iotdb.udf.ScalarFunctionExample';
-   *
-   * <p>SHOW FUNCTIONS;
-   *
-   * <p>SELECT time, device_id, s1, s2, contain_null(s1, s2) as contain_null, contain_null(s1) as
-   * s1_isnull, contain_null(s2) as s2_isnull FROM t1;
-   */
-  @Override
-  public void validate(FunctionParameters parameters) throws UDFException {
-    if (parameters.getChildExpressionsSize() < 1) {
-      throw new UDFParameterNotValidException("At least one parameter is required.");
-    }
-  }
 
   @Override
-  public void beforeStart(FunctionParameters parameters, ScalarFunctionConfig configurations) {
-    configurations.setOutputDataType(Type.BOOLEAN);
+  public ScalarFunctionAnalysis analyze(FunctionArguments arguments)
+      throws UDFArgumentNotValidException {
+    if (arguments.getArgumentsSize() < 1) {
+      throw new UDFArgumentNotValidException("At least one parameter is required.");
+    }
+    return new ScalarFunctionAnalysis.Builder().outputDataType(Type.BOOLEAN).build();
   }
 
   @Override

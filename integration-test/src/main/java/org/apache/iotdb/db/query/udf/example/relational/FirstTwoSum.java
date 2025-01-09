@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.query.udf.example.relational;
 
 import org.apache.iotdb.udf.api.State;
-import org.apache.iotdb.udf.api.customizer.config.AggregateFunctionConfig;
-import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
+import org.apache.iotdb.udf.api.customizer.analysis.AggregateFunctionAnalysis;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
+import org.apache.iotdb.udf.api.exception.UDFArgumentNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
@@ -67,27 +68,25 @@ public class FirstTwoSum implements AggregateFunction {
   }
 
   @Override
-  public void validate(FunctionParameters parameters) throws UDFException {
-    if (parameters.getChildExpressionsSize() != 3) {
-      throw new UDFException("FirstTwoSum should accept three column as input");
+  public AggregateFunctionAnalysis analyze(FunctionArguments arguments)
+      throws UDFArgumentNotValidException {
+    if (arguments.getArgumentsSize() != 3) {
+      throw new UDFArgumentNotValidException("FirstTwoSum should accept three column as input");
     }
     for (int i = 0; i < 2; i++) {
-      if (parameters.getDataType(i) != Type.INT32
-          && parameters.getDataType(i) != Type.INT64
-          && parameters.getDataType(i) != Type.FLOAT
-          && parameters.getDataType(i) != Type.DOUBLE) {
-        throw new UDFException(
+      if (arguments.getDataType(i) != Type.INT32
+          && arguments.getDataType(i) != Type.INT64
+          && arguments.getDataType(i) != Type.FLOAT
+          && arguments.getDataType(i) != Type.DOUBLE) {
+        throw new UDFArgumentNotValidException(
             "FirstTwoSum should accept INT32, INT64, FLOAT, DOUBLE as the first two inputs");
       }
     }
-    if (parameters.getDataType(2) != Type.TIMESTAMP) {
-      throw new UDFException("FirstTwoSum should accept TIMESTAMP as the third input");
+    if (arguments.getDataType(2) != Type.TIMESTAMP) {
+      throw new UDFArgumentNotValidException(
+          "FirstTwoSum should accept TIMESTAMP as the third input");
     }
-  }
-
-  @Override
-  public void beforeStart(FunctionParameters parameters, AggregateFunctionConfig configurations) {
-    configurations.setOutputDataType(Type.DOUBLE);
+    return new AggregateFunctionAnalysis.Builder().outputDataType(Type.DOUBLE).build();
   }
 
   @Override

@@ -50,6 +50,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 /**
  * The {@link LoadManager} at ConfigNodeGroup-Leader is active. It proactively implements the
@@ -207,6 +208,16 @@ public class LoadManager {
    */
   public List<Integer> filterDataNodeThroughStatus(NodeStatus... status) {
     return loadCache.filterDataNodeThroughStatus(status);
+  }
+
+  /**
+   * Filter DataNodes through the NodeStatus predicate.
+   *
+   * @param statusPredicate The NodeStatus predicate
+   * @return Filtered DataNodes with the predicate
+   */
+  public List<Integer> filterDataNodeThroughStatus(Function<NodeStatus, Boolean> statusPredicate) {
+    return loadCache.filterDataNodeThroughStatus(statusPredicate);
   }
 
   /**
