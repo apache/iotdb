@@ -88,7 +88,8 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
               new LoadConvertedInsertTabletStatement(
                   PipeTransferTabletRawReqV2.toTPipeTransferRawReq(
                           rawTabletInsertionEvent.convertToTablet(),
-                          rawTabletInsertionEvent.isAligned())
+                          rawTabletInsertionEvent.isAligned(),
+                          databaseName)
                       .constructStatement(),
                   loadTsFileStatement.isConvertOnTypeMismatch());
 
