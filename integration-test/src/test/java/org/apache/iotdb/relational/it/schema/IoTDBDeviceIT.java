@@ -207,7 +207,7 @@ public class IoTDBDeviceIT {
         statement.execute("update table0 set model = '1', model = '2'");
         fail("Update shall fail if an attribute occurs twice");
       } catch (final Exception e) {
-        assertEquals("550: Update attribute shall specify a attribute only once.", e.getMessage());
+        assertEquals("701: Update attribute shall specify a attribute only once.", e.getMessage());
       }
 
       try {
@@ -222,7 +222,7 @@ public class IoTDBDeviceIT {
         fail("Update shall fail when result type mismatch");
       } catch (final Exception e) {
         assertEquals(
-            "550: Result type mismatch for attribute 'model', expected class org.apache.tsfile.utils.Binary, actual class java.lang.Integer",
+            "701: Result type mismatch for attribute 'model', expected class org.apache.tsfile.utils.Binary, actual class java.lang.Integer",
             e.getMessage());
       }
 
@@ -269,7 +269,7 @@ public class IoTDBDeviceIT {
           fail("Delete devices shall fail when specifies non tag column");
         } catch (final Exception e) {
           assertEquals(
-              "550: The TIME/FIELD columns are currently not allowed in devices related operations",
+              "701: The TIME/FIELD columns are currently not allowed in devices related operations",
               e.getMessage());
         }
       }
