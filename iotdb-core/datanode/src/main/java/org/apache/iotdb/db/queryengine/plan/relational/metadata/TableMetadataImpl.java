@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
@@ -901,14 +903,13 @@ public class TableMetadataImpl implements Metadata {
   }
 
   public static void throwTableNotExistsException(final String database, final String tableName) {
-    throw new SemanticException(
-        String.format("Table '%s.%s' does not exist.", database, tableName),
-        TSStatusCode.TABLE_NOT_EXISTS.getStatusCode());
+    throw new SemanticException(new TableNotExistsException(database, tableName));
   }
 
   public static void throwColumnNotExistsException(final Object columnName) {
     throw new SemanticException(
-        String.format("Column '%s' cannot be resolved.", columnName),
-        TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
+        new IoTDBException(
+            String.format("Column '%s' cannot be resolved.", columnName),
+            TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode()));
   }
 }
