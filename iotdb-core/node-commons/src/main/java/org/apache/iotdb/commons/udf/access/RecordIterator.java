@@ -34,9 +34,9 @@ import java.util.List;
 
 public class RecordIterator implements Iterator<Record> {
 
-  protected final List<Column> childrenColumns;
-  protected final List<org.apache.tsfile.read.common.type.Type> dataTypes;
-  protected final int positionCount;
+  private final List<Column> childrenColumns;
+  private final List<org.apache.tsfile.read.common.type.Type> dataTypes;
+  private final int positionCount;
   protected int currentIndex;
 
   public RecordIterator(
@@ -63,8 +63,8 @@ public class RecordIterator implements Iterator<Record> {
 
   @Override
   public Record next() {
+    final int index = getCurrentIndex();
     return new Record() {
-      final int index = getCurrentIndex();
 
       @Override
       public int getInt(int columnIndex) {
