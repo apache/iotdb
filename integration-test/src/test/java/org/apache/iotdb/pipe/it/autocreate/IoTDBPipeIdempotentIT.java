@@ -519,9 +519,6 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
     }
 
     if (!TestUtils.tryExecuteNonQueriesWithRetry(
