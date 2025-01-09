@@ -49,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundExceptio
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.customizer.analysis.AggregateFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
@@ -897,5 +898,17 @@ public class TableMetadataImpl implements Metadata {
       return true;
     }
     return isArithmeticType(left) && isArithmeticType(right);
+  }
+
+  public static void throwTableNotExistsException(final String database, final String tableName) {
+    throw new SemanticException(
+        String.format("Table '%s.%s' does not exist.", database, tableName),
+        TSStatusCode.TABLE_NOT_EXISTS.getStatusCode());
+  }
+
+  public static void throwColumnNotExistsException(final Object columnName) {
+    throw new SemanticException(
+        String.format("Column '%s' cannot be resolved.", columnName),
+        TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
   }
 }

@@ -153,14 +153,14 @@ public class IoTDBDeviceIT {
         statement.executeQuery("show devices from table2");
         fail("Show devices shall fail for non-exist table");
       } catch (final Exception e) {
-        assertEquals("701: Table 'test.table2' does not exist.", e.getMessage());
+        assertEquals("550: Table 'test.table2' does not exist.", e.getMessage());
       }
 
       try {
         statement.executeQuery("count devices from table2");
         fail("Count devices shall fail for non-exist table");
       } catch (final Exception e) {
-        assertEquals("701: Table 'test.table2' does not exist.", e.getMessage());
+        assertEquals("550: Table 'test.table2' does not exist.", e.getMessage());
       }
 
       try {
@@ -176,7 +176,7 @@ public class IoTDBDeviceIT {
         statement.executeQuery("count devices from table0 where a = 1");
         fail("Count devices shall fail for non-exist column");
       } catch (final Exception e) {
-        assertEquals("701: Column 'a' cannot be resolved", e.getMessage());
+        assertEquals("616: Column 'a' cannot be resolved", e.getMessage());
       }
 
       // Test fully qualified name
@@ -193,28 +193,28 @@ public class IoTDBDeviceIT {
         statement.execute("update table2 set model = '1'");
         fail("Update shall fail for non-exist table");
       } catch (final Exception e) {
-        assertEquals("701: Table 'test.table2' does not exist.", e.getMessage());
+        assertEquals("550: Table 'test.table2' does not exist.", e.getMessage());
       }
 
       try {
         statement.execute("update table0 set device_id = '1'");
         fail("Update shall fail for tag");
       } catch (final Exception e) {
-        assertEquals("701: Update can only specify attribute columns.", e.getMessage());
+        assertEquals("550: Update can only specify attribute columns.", e.getMessage());
       }
 
       try {
         statement.execute("update table0 set model = '1', model = '2'");
         fail("Update shall fail if an attribute occurs twice");
       } catch (final Exception e) {
-        assertEquals("701: Update attribute shall specify a attribute only once.", e.getMessage());
+        assertEquals("550: Update attribute shall specify a attribute only once.", e.getMessage());
       }
 
       try {
         statement.execute("update table0 set col = '1'");
         fail("Update shall fail for non-exist column");
       } catch (final Exception e) {
-        assertEquals("701: Column 'col' cannot be resolved", e.getMessage());
+        assertEquals("616: Column 'col' cannot be resolved", e.getMessage());
       }
 
       try {
@@ -222,7 +222,7 @@ public class IoTDBDeviceIT {
         fail("Update shall fail when result type mismatch");
       } catch (final Exception e) {
         assertEquals(
-            "507: Result type mismatch for attribute 'model', expected class org.apache.tsfile.utils.Binary, actual class java.lang.Integer",
+            "550: Result type mismatch for attribute 'model', expected class org.apache.tsfile.utils.Binary, actual class java.lang.Integer",
             e.getMessage());
       }
 
@@ -269,7 +269,7 @@ public class IoTDBDeviceIT {
           fail("Delete devices shall fail when specifies non tag column");
         } catch (final Exception e) {
           assertEquals(
-              "701: The TIME/FIELD columns are currently not allowed in devices related operations",
+              "550: The TIME/FIELD columns are currently not allowed in devices related operations",
               e.getMessage());
         }
       }

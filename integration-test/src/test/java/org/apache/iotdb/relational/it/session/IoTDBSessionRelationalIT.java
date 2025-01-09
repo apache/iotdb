@@ -1070,7 +1070,7 @@ public class IoTDBSessionRelationalIT {
                 0, "tag:" + 0, "attr:" + 0, 0 * 1.0));
         fail("Exception expected");
       } catch (StatementExecutionException e) {
-        assertEquals("507: Table table13 does not exist", e.getMessage());
+        assertEquals("550: Table table13 does not exist", e.getMessage());
       }
 
       try {
@@ -1080,7 +1080,7 @@ public class IoTDBSessionRelationalIT {
                 0, "tag:" + 0, "attr:" + 0, 0 * 1.0));
         fail("Exception expected");
       } catch (StatementExecutionException e) {
-        assertEquals("507: Table table13 does not exist", e.getMessage());
+        assertEquals("550: Table table13 does not exist", e.getMessage());
       }
     }
   }
@@ -1098,7 +1098,7 @@ public class IoTDBSessionRelationalIT {
                 0, "tag:" + 0, "attr:" + 0, 0 * 1.0));
         fail("Exception expected");
       } catch (StatementExecutionException e) {
-        assertEquals("507: Table table13 does not exist", e.getMessage());
+        assertEquals("550: Table table13 does not exist", e.getMessage());
       }
     }
   }
@@ -1441,7 +1441,7 @@ public class IoTDBSessionRelationalIT {
         session.executeQueryStatement("select * from db2.table" + testNum + " order by time");
         fail("expected exception");
       } catch (StatementExecutionException e) {
-        assertEquals("701: Table 'db2.table16' does not exist", e.getMessage());
+        assertEquals("550: Table 'db2.table16' does not exist", e.getMessage());
       }
     }
   }
