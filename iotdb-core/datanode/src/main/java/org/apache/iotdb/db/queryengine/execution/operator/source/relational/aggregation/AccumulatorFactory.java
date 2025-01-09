@@ -44,8 +44,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.MarkDistinctHash;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
-import org.apache.iotdb.udf.api.customizer.config.AggregateFunctionConfig;
-import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 
 import com.google.common.collect.ImmutableList;
@@ -170,12 +169,12 @@ public class AccumulatorFactory {
   private static TableAccumulator createUDAFAccumulator(
       String functionName, List<TSDataType> inputDataTypes, Map<String, String> inputAttributes) {
     AggregateFunction aggregateFunction = TableUDFUtils.getAggregateFunction(functionName);
-    FunctionParameters functionParameters =
-        new FunctionParameters(
+    FunctionArguments functionArguments =
+        new FunctionArguments(
             UDFDataTypeTransformer.transformToUDFDataTypeList(inputDataTypes), inputAttributes);
-    AggregateFunctionConfig config = new AggregateFunctionConfig();
-    aggregateFunction.beforeStart(functionParameters, config);
+    aggregateFunction.beforeStart(functionArguments);
     return new UserDefinedAggregateFunctionAccumulator(
+        aggregateFunction.analyze(functionArguments),
         aggregateFunction,
         inputDataTypes.stream().map(TypeFactory::getType).collect(Collectors.toList()));
   }
@@ -183,11 +182,10 @@ public class AccumulatorFactory {
   private static GroupedAccumulator createGroupedUDAFAccumulator(
       String functionName, List<TSDataType> inputDataTypes, Map<String, String> inputAttributes) {
     AggregateFunction aggregateFunction = TableUDFUtils.getAggregateFunction(functionName);
-    FunctionParameters functionParameters =
-        new FunctionParameters(
+    FunctionArguments functionArguments =
+        new FunctionArguments(
             UDFDataTypeTransformer.transformToUDFDataTypeList(inputDataTypes), inputAttributes);
-    AggregateFunctionConfig config = new AggregateFunctionConfig();
-    aggregateFunction.beforeStart(functionParameters, config);
+    aggregateFunction.beforeStart(functionArguments);
     return new GroupedUserDefinedAggregateAccumulator(
         aggregateFunction,
         inputDataTypes.stream().map(TypeFactory::getType).collect(Collectors.toList()));

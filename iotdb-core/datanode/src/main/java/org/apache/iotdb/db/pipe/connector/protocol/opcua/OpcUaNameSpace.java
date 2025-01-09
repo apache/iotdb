@@ -22,7 +22,8 @@ package org.apache.iotdb.db.pipe.connector.protocol.opcua;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.db.pipe.connector.util.PipeTabletEventSorter;
+import org.apache.iotdb.db.pipe.connector.util.sorter.PipeTableModelTabletEventSorter;
+import org.apache.iotdb.db.pipe.connector.util.sorter.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -116,7 +117,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
     final List<IMeasurementSchema> newSchemas = new ArrayList<>();
     if (!isTableModel) {
-      new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+      new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
       final List<Long> timestamps = new ArrayList<>();
       final List<Object> values = new ArrayList<>();
@@ -137,6 +138,8 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       transferTabletRowForClientServerModel(
           tablet.getDeviceId().split("\\."), newSchemas, timestamps, values);
     } else {
+      new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByTimestampIfNecessary();
+
       final List<Integer> columnIndexes = new ArrayList<>();
       for (int i = 0; i < schemas.size(); ++i) {
         if (tablet.getColumnTypes().get(i) == Tablet.ColumnCategory.FIELD) {
@@ -144,6 +147,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
           newSchemas.add(schemas.get(i));
         }
       }
+
       for (int i = 0; i < tablet.getRowSize(); ++i) {
         final Object[] segments = tablet.getDeviceID(i).getSegments();
         final String[] folderSegments = new String[segments.length + 2];
