@@ -64,48 +64,49 @@ public class RecordIterator implements Iterator<Record> {
   @Override
   public Record next() {
     return new Record() {
+      final int index = getCurrentIndex();
+
       @Override
       public int getInt(int columnIndex) {
-        return childrenColumns.get(columnIndex).getInt(getCurrentIndex());
+        return childrenColumns.get(columnIndex).getInt(index);
       }
 
       @Override
       public long getLong(int columnIndex) {
-        return childrenColumns.get(columnIndex).getLong(getCurrentIndex());
+        return childrenColumns.get(columnIndex).getLong(index);
       }
 
       @Override
       public float getFloat(int columnIndex) {
-        return childrenColumns.get(columnIndex).getFloat(getCurrentIndex());
+        return childrenColumns.get(columnIndex).getFloat(index);
       }
 
       @Override
       public double getDouble(int columnIndex) {
-        return childrenColumns.get(columnIndex).getDouble(getCurrentIndex());
+        return childrenColumns.get(columnIndex).getDouble(index);
       }
 
       @Override
       public boolean getBoolean(int columnIndex) {
-        return childrenColumns.get(columnIndex).getBoolean(getCurrentIndex());
+        return childrenColumns.get(columnIndex).getBoolean(index);
       }
 
       @Override
       public Binary getBinary(int columnIndex) {
-        return childrenColumns.get(columnIndex).getBinary(getCurrentIndex());
+        return childrenColumns.get(columnIndex).getBinary(index);
       }
 
       @Override
       public String getString(int columnIndex) {
         return childrenColumns
             .get(columnIndex)
-            .getBinary(getCurrentIndex())
+            .getBinary(index)
             .getStringValue(TSFileConfig.STRING_CHARSET);
       }
 
       @Override
       public LocalDate getLocalDate(int columnIndex) {
-        return DateUtils.parseIntToLocalDate(
-            childrenColumns.get(columnIndex).getInt(getCurrentIndex()));
+        return DateUtils.parseIntToLocalDate(childrenColumns.get(columnIndex).getInt(index));
       }
 
       @Override
@@ -115,7 +116,7 @@ public class RecordIterator implements Iterator<Record> {
 
       @Override
       public boolean isNull(int columnIndex) {
-        return childrenColumns.get(columnIndex).isNull(getCurrentIndex());
+        return childrenColumns.get(columnIndex).isNull(index);
       }
 
       @Override
