@@ -200,7 +200,7 @@ public class IoTDBDeviceIT {
         statement.execute("update table0 set device_id = '1'");
         fail("Update shall fail for tag");
       } catch (final Exception e) {
-        assertEquals("550: Update can only specify attribute columns.", e.getMessage());
+        assertEquals("701: Update can only specify attribute columns.", e.getMessage());
       }
 
       try {
