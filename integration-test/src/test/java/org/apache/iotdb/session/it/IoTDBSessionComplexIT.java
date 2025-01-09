@@ -305,7 +305,7 @@ public class IoTDBSessionComplexIT {
       int row = tablet.getRowSize();
       tablet.addTimestamp(row, time);
       for (int i = 0; i < 3; i++) {
-        tablet.addValue(row, i, i);
+        tablet.addValue(row, i, (long) i);
       }
       if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet);
