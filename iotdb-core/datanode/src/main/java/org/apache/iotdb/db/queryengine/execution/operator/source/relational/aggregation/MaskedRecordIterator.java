@@ -20,16 +20,10 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.commons.udf.access.RecordIterator;
-import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
-import org.apache.iotdb.udf.api.relational.access.Record;
 
 import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.DateUtils;
 
-import java.time.LocalDate;
 import java.util.List;
 
 public class MaskedRecordIterator extends RecordIterator {
@@ -42,66 +36,7 @@ public class MaskedRecordIterator extends RecordIterator {
   }
 
   @Override
-  public Record next() {
-    final int index = selectedPositions[currentIndex++];
-    return new Record() {
-      @Override
-      public int getInt(int columnIndex) {
-        return childrenColumns.get(columnIndex).getInt(index);
-      }
-
-      @Override
-      public long getLong(int columnIndex) {
-        return childrenColumns.get(columnIndex).getLong(index);
-      }
-
-      @Override
-      public float getFloat(int columnIndex) {
-        return childrenColumns.get(columnIndex).getFloat(index);
-      }
-
-      @Override
-      public double getDouble(int columnIndex) {
-        return childrenColumns.get(columnIndex).getDouble(index);
-      }
-
-      @Override
-      public boolean getBoolean(int columnIndex) {
-        return childrenColumns.get(columnIndex).getBoolean(index);
-      }
-
-      @Override
-      public Binary getBinary(int columnIndex) {
-        return childrenColumns.get(columnIndex).getBinary(index);
-      }
-
-      @Override
-      public String getString(int columnIndex) {
-        return childrenColumns
-            .get(columnIndex)
-            .getBinary(index)
-            .getStringValue(TSFileConfig.STRING_CHARSET);
-      }
-
-      @Override
-      public LocalDate getLocalDate(int columnIndex) {
-        return DateUtils.parseIntToLocalDate(childrenColumns.get(columnIndex).getInt(index));
-      }
-
-      @Override
-      public org.apache.iotdb.udf.api.type.Type getDataType(int columnIndex) {
-        return UDFDataTypeTransformer.transformReadTypeToUDFDataType(dataTypes.get(columnIndex));
-      }
-
-      @Override
-      public boolean isNull(int columnIndex) {
-        return childrenColumns.get(columnIndex).isNull(index);
-      }
-
-      @Override
-      public int size() {
-        return childrenColumns.size();
-      }
-    };
+  protected int getCurrentIndex() {
+    return selectedPositions[currentIndex++];
   }
 }

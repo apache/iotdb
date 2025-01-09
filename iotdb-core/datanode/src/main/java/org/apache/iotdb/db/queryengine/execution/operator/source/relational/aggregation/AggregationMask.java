@@ -20,13 +20,6 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
 
 import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
-import org.apache.tsfile.read.common.block.column.BooleanColumnBuilder;
-import org.apache.tsfile.read.common.block.column.DoubleColumnBuilder;
-import org.apache.tsfile.read.common.block.column.FloatColumnBuilder;
-import org.apache.tsfile.read.common.block.column.IntColumnBuilder;
-import org.apache.tsfile.read.common.block.column.LongColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 
 import javax.annotation.Nullable;
@@ -35,7 +28,6 @@ import java.util.Arrays;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
-import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 public final class AggregationMask {
@@ -117,111 +109,9 @@ public final class AggregationMask {
 
     Column[] columns = new Column[originalColumns.length];
     for (int i = 0; i < originalColumns.length; i++) {
-      columns[i] = getPositions(originalColumns[i], retainedPositions, offset, length);
+      columns[i] = originalColumns[i].getPositions(retainedPositions, offset, length);
     }
     return columns;
-  }
-
-  private Column getPositions(
-      Column originalColumn, int[] retainedPositions, int offset, int length) {
-    requireNonNull(retainedPositions, "retainedPositions is null");
-    if (offset < 0 || length < 0 || offset + length > retainedPositions.length) {
-      throw new IndexOutOfBoundsException(
-          format(
-              "Invalid offset %s and length %s in array with %s elements",
-              offset, length, retainedPositions.length));
-    }
-
-    if (length == 0) {
-      return originalColumn.getRegionCopy(0, 0);
-    }
-    if (length == 1) {
-      return originalColumn.getRegion(retainedPositions[offset], 1);
-    }
-
-    if (originalColumn instanceof RunLengthEncodedColumn) {
-      return new RunLengthEncodedColumn(
-          ((RunLengthEncodedColumn) originalColumn).getValue(), positionCount);
-    }
-
-    ColumnBuilder builder;
-    switch (originalColumn.getDataType()) {
-      case INT32:
-      case DATE:
-        builder = new IntColumnBuilder(null, length);
-        for (int i = 0; i < length; i++) {
-          if (originalColumn.isNull(offset + i)) {
-            builder.appendNull();
-          } else {
-            builder.writeInt(originalColumn.getInt(offset + i));
-          }
-        }
-        break;
-
-      case INT64:
-      case TIMESTAMP:
-        builder = new LongColumnBuilder(null, length);
-        for (int i = 0; i < length; i++) {
-          if (originalColumn.isNull(offset + i)) {
-            builder.appendNull();
-          } else {
-            builder.writeLong(originalColumn.getLong(offset + i));
-          }
-        }
-        break;
-
-      case FLOAT:
-        builder = new FloatColumnBuilder(null, length);
-        for (int i = 0; i < length; i++) {
-          if (originalColumn.isNull(offset + i)) {
-            builder.appendNull();
-          } else {
-            builder.writeFloat(originalColumn.getFloat(offset + i));
-          }
-        }
-        break;
-
-      case DOUBLE:
-        builder = new DoubleColumnBuilder(null, length);
-        for (int i = 0; i < length; i++) {
-          if (originalColumn.isNull(offset + i)) {
-            builder.appendNull();
-          } else {
-            builder.writeDouble(originalColumn.getDouble(offset + i));
-          }
-        }
-        break;
-
-      case TEXT:
-      case STRING:
-      case BLOB:
-        builder = new BinaryColumnBuilder(null, length);
-        for (int i = 0; i < length; i++) {
-          if (originalColumn.isNull(offset + i)) {
-            builder.appendNull();
-          } else {
-            builder.writeBinary(originalColumn.getBinary(offset + i));
-          }
-        }
-        break;
-
-      case BOOLEAN:
-        builder = new BooleanColumnBuilder(null, length);
-        for (int i = 0; i < length; i++) {
-          if (originalColumn.isNull(offset + i)) {
-            builder.appendNull();
-          } else {
-            builder.writeBoolean(originalColumn.getBoolean(offset + i));
-          }
-        }
-        break;
-
-      default:
-        throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", originalColumn.getDataType()));
-    }
-
-    return builder.build();
   }
 
   /**

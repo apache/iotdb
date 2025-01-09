@@ -4264,6 +4264,56 @@ public class IoTDBTableAggregationIT {
   }
 
   @Test
+  public void countIfDistinctTest() {
+    String[] expectedHeader =
+        new String[] {
+          "_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
+          "_col10", "_col11", "_col12", "_col13"
+        };
+    String[] retArray =
+        new String[] {
+          "1,1,1,1,0,1,1,1,1,1,1,1,1,1,",
+        };
+    // global Aggregation
+    tableResultSetEqualTest(
+        "select count_if(distinct province = 'shanghai'), count_if(distinct city = 'shanghai'), count_if(distinct region= 'huangpu'), count_if(distinct device_id = 'd03'), count_if(distinct s1 < 0), count_if(distinct s2 is not null), count_if(distinct s3 is not null), count_if(distinct s4 is not null), count_if(distinct s5 is not null), count_if(distinct s6 is not null), count_if(distinct s7 is not null), count_if(distinct s8 is not null), count_if(distinct s9 is not null), count_if(distinct s10 is not null) from table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "province",
+          "city",
+          "region",
+          "_col3",
+          "_col4",
+          "_col5",
+          "_col6",
+          "_col7",
+          "_col8",
+          "_col9",
+          "_col10",
+          "_col11",
+          "_col12"
+        };
+    retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,0,1,1,1,1,1,1,1,1,1,",
+          "beijing,beijing,haidian,0,1,1,1,1,1,1,1,1,1,",
+          "shanghai,shanghai,huangpu,0,1,1,1,1,1,1,1,1,1,",
+          "shanghai,shanghai,pudong,0,1,1,1,1,1,1,1,1,1,"
+        };
+    // group by Aggregation
+    tableResultSetEqualTest(
+        "select province,city,region, count_if(distinct s1 < 0), count_if(distinct s2 is not null), count_if(distinct s3 is not null), count_if(distinct s4 is not null), count_if(distinct s5 is not null), count_if(distinct s6 is not null), count_if(distinct s7 is not null), count_if(distinct s8 is not null), count_if(distinct s9 is not null), count_if(distinct s10 is not null) "
+            + "from table1 group by 1,2,3 order by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void avgDistinctTest() {
     String[] expectedHeader = new String[] {"_col0", "_col1", "_col2", "_col3"};
     String[] retArray =

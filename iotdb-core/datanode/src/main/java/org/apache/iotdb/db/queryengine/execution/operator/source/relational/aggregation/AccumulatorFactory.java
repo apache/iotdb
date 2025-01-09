@@ -572,9 +572,7 @@ public class AccumulatorFactory {
     }
 
     @Override
-    public void prepareFinal() {
-      accumulator.prepareFinal();
-    }
+    public void prepareFinal() {}
 
     @Override
     public void reset() {
