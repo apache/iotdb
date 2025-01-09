@@ -24,8 +24,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 
 import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
 
 public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
 
@@ -40,9 +43,6 @@ public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
     insertTabletStatement.removeAllFailedMeasurementMarks();
     devicePath = insertTabletStatement.getDevicePath();
     isAligned = insertTabletStatement.isAligned();
-    measurementSchemas = insertTabletStatement.getMeasurementSchemas();
-    measurements = insertTabletStatement.getMeasurements();
-    dataTypes = insertTabletStatement.getDataTypes();
     columnCategories = insertTabletStatement.getColumnCategories();
     idColumnIndices = insertTabletStatement.getIdColumnIndices();
     attrColumnIndices = insertTabletStatement.getAttrColumnIndices();
@@ -55,6 +55,21 @@ public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
     deviceIDs = insertTabletStatement.getRawTableDeviceIDs();
     singleDevice = insertTabletStatement.isSingleDevice();
     rowCount = insertTabletStatement.getRowCount();
+
+    final MeasurementSchema[] measurementSchemas = insertTabletStatement.getMeasurementSchemas();
+    if (measurementSchemas != null) {
+      this.measurementSchemas = Arrays.copyOf(measurementSchemas, measurementSchemas.length);
+    }
+
+    final String[] measurements = insertTabletStatement.getMeasurements();
+    if (measurements != null) {
+      this.measurements = Arrays.copyOf(measurements, measurements.length);
+    }
+
+    final TSDataType[] dataTypes = insertTabletStatement.getDataTypes();
+    if (dataTypes != null) {
+      this.dataTypes = Arrays.copyOf(dataTypes, dataTypes.length);
+    }
   }
 
   @Override
