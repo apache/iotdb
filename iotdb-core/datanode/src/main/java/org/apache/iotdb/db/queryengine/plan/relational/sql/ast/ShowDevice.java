@@ -61,20 +61,6 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
   }
 
   @Override
-  public Query getQuery() {
-    return QueryUtil.simpleQuery(
-        new Select(false, Collections.singletonList(new AllColumns())),
-        getTable(),
-        Optional.ofNullable(where),
-        Optional.empty(),
-        Optional.empty(),
-        Optional.empty(),
-        Optional.empty(),
-        Optional.ofNullable(offset),
-        Optional.ofNullable(limit));
-  }
-
-  @Override
   public DatasetHeader getDataSetHeader() {
     return new DatasetHeader(columnHeaderList, true);
   }

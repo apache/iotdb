@@ -42,27 +42,6 @@ public class CountDevice extends AbstractQueryDeviceWithCache {
   }
 
   @Override
-  public Query getQuery() {
-    return QueryUtil.simpleQuery(
-        new Select(
-            false,
-            Collections.singletonList(
-                new SingleColumn(
-                    new FunctionCall(
-                        QualifiedName.of(Collections.singletonList(new Identifier("count"))),
-                        Collections.emptyList()),
-                    new Identifier("count(devices)")))),
-        getTable(),
-        Optional.ofNullable(where),
-        Optional.empty(),
-        Optional.empty(),
-        Optional.empty(),
-        Optional.empty(),
-        Optional.empty(),
-        Optional.empty());
-  }
-
-  @Override
   public DatasetHeader getDataSetHeader() {
     return new DatasetHeader(
         Collections.singletonList(new ColumnHeader(COUNT_DEVICE_HEADER_STRING, TSDataType.INT64)),

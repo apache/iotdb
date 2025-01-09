@@ -41,8 +41,6 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
   // For query devices fully in cache
   protected List<ShowDevicesResult> results = new ArrayList<>();
 
-  protected Query query;
-
   protected AbstractQueryDeviceWithCache(
       final NodeLocation location, final Table table, final Expression rawExpression) {
     super(location, table, rawExpression);
@@ -88,8 +86,6 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
                 new ColumnHeader(columnSchema.getColumnName(), columnSchema.getDataType()))
         .collect(Collectors.toList());
   }
-
-  public abstract Query getQuery();
 
   public abstract DatasetHeader getDataSetHeader();
 
