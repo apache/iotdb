@@ -70,8 +70,16 @@ public abstract class TreePattern {
    */
   public static TreePattern parsePipePatternFromSourceParameters(
       final PipeParameters sourceParameters) {
+    final boolean isDoubleLiving =
+        sourceParameters.getBooleanOrDefault(
+            Arrays.asList(
+                PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+                PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
+            PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+
     final boolean isTreeModelDataAllowedToBeCaptured =
-        isTreeModelDataAllowToBeCaptured(sourceParameters);
+        isDoubleLiving
+            || isTreeModelDataAllowToBeCaptured(sourceParameters);
 
     final String path = sourceParameters.getStringByKeys(EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY);
 

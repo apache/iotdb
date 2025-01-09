@@ -752,6 +752,22 @@ public class ConfigMTree {
     return result;
   }
 
+  public Map<String, List<Pair<TsTable, TableNodeStatus>>> getAllTables() {
+    return getAllDatabasePaths(true).stream()
+        .collect(
+            Collectors.toMap(
+                databasePath -> PathUtils.unQualifyDatabaseName(databasePath.getFullPath()),
+                databasePath -> {
+                  try {
+                    return getAllTablesUnderSpecificDatabase(databasePath);
+                  } catch (final MetadataException ignore) {
+                    // Database path must exist because the "getAllDatabasePaths()" is called in
+                    // databaseReadWriteLock.readLock().
+                  }
+                  return Collections.emptyList();
+                }));
+  }
+
   public Map<String, List<TsTable>> getAllUsingTables() {
     return getAllDatabasePaths(true).stream()
         .collect(

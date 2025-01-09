@@ -19,47 +19,68 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import com.google.common.collect.ImmutableList;
+
+import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public class StartPipe extends PipeStatement {
+public class CountStatement extends Statement {
+  private final String tableName;
 
-  private final String pipeName;
+  private final Optional<Expression> where;
 
-  public StartPipe(final String pipeName) {
-    this.pipeName = requireNonNull(pipeName, "pipe name can not be null");
+  public CountStatement(
+      final NodeLocation location, final String tableName, final Optional<Expression> where) {
+    super(requireNonNull(location, "location is null"));
+    this.tableName = tableName;
+    this.where = where;
   }
 
-  public String getPipeName() {
-    return pipeName;
+  public String getTableName() {
+    return tableName;
+  }
+
+  public Optional<Expression> getWhere() {
+    return where;
   }
 
   @Override
   public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitStartPipe(this, context);
+    return visitor.visitCountStatement(this, context);
+  }
+
+  @Override
+  public List<Node> getChildren() {
+    return ImmutableList.of();
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final CountStatement that = (CountStatement) o;
+    return Objects.equals(tableName, that.tableName) && Objects.equals(where, that.where);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(pipeName);
-  }
-
-  @Override
-  public boolean equals(final Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null || getClass() != obj.getClass()) {
-      return false;
-    }
-    final StartPipe that = (StartPipe) obj;
-    return Objects.equals(this.pipeName, that.pipeName);
+    return Objects.hash(tableName, where);
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("pipeName", pipeName).toString();
+    return toStringHelper(this)
+        .add("tableName", tableName)
+        .add("where", where.orElse(null))
+        .omitNullValues()
+        .toString();
   }
 }
