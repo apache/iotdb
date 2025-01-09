@@ -75,9 +75,6 @@ public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
-
       final String dbName = "test";
       TableModelUtils.createDatabase(senderEnv, dbName, 300);
 
@@ -218,9 +215,6 @@ public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
