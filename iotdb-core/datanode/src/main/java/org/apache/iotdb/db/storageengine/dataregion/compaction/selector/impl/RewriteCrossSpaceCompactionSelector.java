@@ -69,7 +69,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   protected TsFileManager tsFileManager;
 
   private static boolean hasPrintedLog = false;
-  private static int maxDeserializedFileNumToCheckInsertionCandidateValid = 500;
+  private static int maxDeserializedFileNumToCheckInsertionCandidateValid = 100;
+  private static int maxFileNumToSelectInsertionTaskInOnePartition = 200;
 
   private final long memoryBudget;
   private final int maxCrossCompactionFileNum;
@@ -166,6 +167,14 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           "Selecting insertion cross compaction task resources from {} seqFile, {} unseqFiles",
           candidate.getSeqFiles().size(),
           candidate.getUnseqFiles().size());
+      boolean delaySelection =
+          candidate.getSeqFiles().size() + candidate.getUnseqFiles().size()
+              > maxFileNumToSelectInsertionTaskInOnePartition;
+      if (delaySelection) {
+        context.delayInsertionSelection(timePartition);
+        return new InsertionCrossCompactionTaskResource();
+      }
+
       InsertionCrossCompactionTaskResource result =
           insertionCrossSpaceCompactionSelector.executeInsertionCrossSpaceCompactionTaskSelection();
       if (result.isValid()) {
