@@ -756,7 +756,7 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitSemiJoin(SemiJoinNode node, C context) {
-    return visitPlan(node, context);
+    return visitTwoChildProcess(node, context);
   }
 
   public R visitGroupReference(GroupReference node, C context) {

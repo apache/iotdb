@@ -32,6 +32,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Objects;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
@@ -122,6 +123,33 @@ public class SemiJoinNode extends TwoChildProcessNode {
   @Override
   public List<String> getOutputColumnNames() {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+
+    if (obj == null || !this.getClass().equals(obj.getClass())) {
+      return false;
+    }
+
+    if (!super.equals(obj)) {
+      return false;
+    }
+
+    SemiJoinNode other = (SemiJoinNode) obj;
+
+    return Objects.equals(this.sourceJoinSymbol, other.sourceJoinSymbol)
+        && Objects.equals(this.filteringSourceJoinSymbol, other.filteringSourceJoinSymbol)
+        && Objects.equals(this.semiJoinOutput, other.semiJoinOutput);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        super.hashCode(), sourceJoinSymbol, filteringSourceJoinSymbol, semiJoinOutput);
   }
 
   @Override
