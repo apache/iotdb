@@ -83,7 +83,8 @@ public class TsFileSplitter {
   private List<Map<Integer, long[]>> pageIndex2TimesList = null;
   private List<Boolean> isTimeChunkNeedDecodeList = new ArrayList<>();
 
-  public TsFileSplitter(File tsFile, TsFileDataConsumer consumer) {
+  public TsFileSplitter(
+      final File tsFile, final TsFileDataConsumer consumer, final boolean loadWithMods) {
     this.tsFile = tsFile;
     this.consumer = consumer;
     this.loadWithMods = loadWithMods;
