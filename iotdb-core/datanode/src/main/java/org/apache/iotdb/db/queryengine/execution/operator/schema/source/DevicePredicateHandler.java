@@ -21,9 +21,12 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -37,7 +40,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator.satisfy;
-import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource.transformToTsBlockColumns;
+import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource.transformToTableDeviceTsBlockColumns;
 
 public abstract class DevicePredicateHandler implements AutoCloseable {
   private final List<LeafColumnTransformer> filterLeafColumnTransformerList;
@@ -93,8 +96,17 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
     final TsBlockBuilder builder = new TsBlockBuilder(inputDataTypes);
     deviceSchemaBatch.forEach(
         deviceSchemaInfo ->
-            transformToTsBlockColumns(
-                deviceSchemaInfo, builder, database, tableName, columnHeaderList, 3));
+            transformToTableDeviceTsBlockColumns(
+                deviceSchemaInfo,
+                builder,
+                database,
+                tableName,
+                columnHeaderList,
+                PathUtils.isTableModelDatabase(database)
+                    ? 3
+                    : DataNodeTreeViewSchemaUtils.getPatternNodes(
+                            DataNodeTableCache.getInstance().getTable(database, tableName))
+                        .length));
 
     curBlock = builder.build();
     if (withoutFilter()) {

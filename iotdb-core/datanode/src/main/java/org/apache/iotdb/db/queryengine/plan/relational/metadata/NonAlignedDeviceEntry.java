@@ -17,11 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.state.schema;
+package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
-public enum RenameTableColumnState {
-  COLUMN_CHECK,
-  PRE_RELEASE,
-  RENAME_COLUMN,
-  COMMIT_RELEASE
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.Binary;
+
+import java.util.List;
+
+public class NonAlignedDeviceEntry extends DeviceEntry {
+
+  public NonAlignedDeviceEntry(IDeviceID deviceID, List<Binary> attributeColumnValues) {
+    super(deviceID, attributeColumnValues);
+  }
+
+  @Override
+  public String toString() {
+    return "NonAlignedDeviceEntry{"
+        + "deviceID="
+        + deviceID
+        + ", attributeColumnValues="
+        + attributeColumnValues
+        + '}';
+  }
 }

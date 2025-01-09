@@ -213,8 +213,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
               outputSymbols,
               tableColumnSchema,
               idAndAttributeIndexMap,
-              treeDeviceViewSchema.getTreeDBName(),
-              treeDeviceViewSchema.getMeasurementColumnNameMap()),
+              treeDeviceViewSchema.getTreePathPatternName(),
+              treeDeviceViewSchema.getColumn2OriginalNameMap()),
           scope,
           outputSymbols,
           outerContext);

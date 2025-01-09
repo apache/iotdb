@@ -1535,8 +1535,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus updateTable(final TUpdateTableReq req) {
-    final String database;
-    final int size;
     switch (TsTableInternalRPCType.getType(req.type)) {
       case PRE_UPDATE_TABLE:
         DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.TIMESERIES_VS_TABLE);

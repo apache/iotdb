@@ -39,8 +39,8 @@ import java.time.ZoneId;
 import java.util.Collections;
 
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata.DB1;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata.TABLE1;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata.DB1;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata.TABLE1;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_ID;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
 import static org.junit.Assert.assertEquals;

@@ -30,6 +30,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
 
@@ -41,9 +42,13 @@ public class ColumnSchema {
   private final Type type;
   private final TsTableColumnCategory columnCategory;
   private final boolean hidden;
+  private Map<String, String> props;
 
   public ColumnSchema(
-      String name, Type type, boolean hidden, TsTableColumnCategory columnCategory) {
+      final String name,
+      final Type type,
+      final boolean hidden,
+      final TsTableColumnCategory columnCategory) {
     requireNonNull(name, "name is null");
 
     this.name = name.toLowerCase(ENGLISH);
@@ -68,8 +73,16 @@ public class ColumnSchema {
     return hidden;
   }
 
+  public void setProps(final Map<String, String> props) {
+    this.props = props;
+  }
+
+  public Map<String, String> getProps() {
+    return props;
+  }
+
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
