@@ -62,6 +62,7 @@ public class LoadTsFileStatement extends Statement {
   private boolean convertOnTypeMismatch = true;
   private boolean autoCreateDatabase = true;
   private boolean loadWithMods;
+  private boolean isGeneratedByPipe = false;
   private String model = LoadTsFileConfigurator.MODEL_TREE_VALUE;
 
   private Map<String, String> loadAttributes;
@@ -203,6 +204,14 @@ public class LoadTsFileStatement extends Statement {
 
   public String getModel() {
     return model;
+  }
+
+  public void markIsGeneratedByPipe() {
+    isGeneratedByPipe = true;
+  }
+
+  public boolean isGeneratedByPipe() {
+    return isGeneratedByPipe;
   }
 
   public List<File> getTsFiles() {

@@ -26,12 +26,14 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.plan.planner.TableOperatorGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
@@ -40,6 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
@@ -57,6 +60,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.AbstractTableDeviceQueryNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
@@ -91,6 +97,7 @@ import java.util.stream.IntStream;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
+import static org.apache.iotdb.db.queryengine.plan.planner.TableOperatorGenerator.createTreeDeviceIdColumnValueExtractor;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.GROUP_KEY_SUFFIX;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.SEPARATOR;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
@@ -486,7 +493,8 @@ public class TableDistributedPlanGenerator
                           node.getPushDownPredicate(),
                           node.getPushDownLimit(),
                           node.getPushDownOffset(),
-                          node.isPushLimitToEachDevice());
+                          node.isPushLimitToEachDevice(),
+                          node.containsNonAlignedDevice());
                   scanNode.setRegionReplicaSet(regionReplicaSet);
                   return scanNode;
                 });
@@ -504,16 +512,126 @@ public class TableDistributedPlanGenerator
     int maxDeviceEntrySizeOfTableScan = 0;
     for (final Map.Entry<TRegionReplicaSet, DeviceTableScanNode> entry :
         tableScanNodeMap.entrySet()) {
-      final TRegionReplicaSet regionReplicaSet = entry.getKey();
       final DeviceTableScanNode subDeviceTableScanNode = entry.getValue();
-      subDeviceTableScanNode.setPlanNodeId(queryId.genPlanNodeId());
-      subDeviceTableScanNode.setRegionReplicaSet(regionReplicaSet);
       resultTableScanNodeList.add(subDeviceTableScanNode);
 
       if (mostUsedDataRegion == null
           || subDeviceTableScanNode.getDeviceEntries().size() > maxDeviceEntrySizeOfTableScan) {
-        mostUsedDataRegion = regionReplicaSet;
+        mostUsedDataRegion = entry.getKey();
         maxDeviceEntrySizeOfTableScan = subDeviceTableScanNode.getDeviceEntries().size();
+      }
+    }
+    context.mostUsedRegion = mostUsedDataRegion;
+
+    if (!context.hasSortProperty) {
+      return resultTableScanNodeList;
+    }
+
+    processSortProperty(node, resultTableScanNodeList, context);
+    return resultTableScanNodeList;
+  }
+
+  @Override
+  public List<PlanNode> visitTreeDeviceViewScan(TreeDeviceViewScanNode node, PlanContext context) {
+    Map<TRegionReplicaSet, Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode>>
+        tableScanNodeMap = new HashMap<>();
+
+    for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
+      List<TRegionReplicaSet> regionReplicaSets =
+          analysis.getDataRegionReplicaSetWithTimeFilter(
+              node.getTreeDBName(), deviceEntry.getDeviceID(), node.getTimeFilter());
+
+      for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
+        boolean aligned = deviceEntry instanceof AlignedDeviceEntry;
+        Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode> pair =
+            tableScanNodeMap.get(regionReplicaSet);
+
+        if (pair == null) {
+          pair = new Pair<>(null, null);
+          tableScanNodeMap.put(regionReplicaSet, pair);
+        }
+
+        if (pair.left == null && aligned) {
+          TreeAlignedDeviceViewScanNode scanNode =
+              new TreeAlignedDeviceViewScanNode(
+                  queryId.genPlanNodeId(),
+                  node.getQualifiedObjectName(),
+                  node.getOutputSymbols(),
+                  node.getAssignments(),
+                  new ArrayList<>(),
+                  node.getIdAndAttributeIndexMap(),
+                  node.getScanOrder(),
+                  node.getTimePredicate().orElse(null),
+                  node.getPushDownPredicate(),
+                  node.getPushDownLimit(),
+                  node.getPushDownOffset(),
+                  node.isPushLimitToEachDevice(),
+                  node.containsNonAlignedDevice(),
+                  node.getTreeDBName(),
+                  node.getMeasurementColumnNameMap());
+          scanNode.setRegionReplicaSet(regionReplicaSet);
+          pair.left = scanNode;
+        }
+
+        if (pair.right == null && !aligned) {
+          TreeNonAlignedDeviceViewScanNode scanNode =
+              new TreeNonAlignedDeviceViewScanNode(
+                  queryId.genPlanNodeId(),
+                  node.getQualifiedObjectName(),
+                  node.getOutputSymbols(),
+                  node.getAssignments(),
+                  new ArrayList<>(),
+                  node.getIdAndAttributeIndexMap(),
+                  node.getScanOrder(),
+                  node.getTimePredicate().orElse(null),
+                  node.getPushDownPredicate(),
+                  node.getPushDownLimit(),
+                  node.getPushDownOffset(),
+                  node.isPushLimitToEachDevice(),
+                  node.containsNonAlignedDevice(),
+                  node.getTreeDBName(),
+                  node.getMeasurementColumnNameMap());
+          scanNode.setRegionReplicaSet(regionReplicaSet);
+          pair.right = scanNode;
+        }
+
+        if (aligned) {
+          pair.left.appendDeviceEntry(deviceEntry);
+        } else {
+          pair.right.appendDeviceEntry(deviceEntry);
+        }
+      }
+    }
+
+    if (tableScanNodeMap.isEmpty()) {
+      node.setRegionReplicaSet(NOT_ASSIGNED);
+      return Collections.singletonList(node);
+    }
+
+    List<PlanNode> resultTableScanNodeList = new ArrayList<>();
+    TRegionReplicaSet mostUsedDataRegion = null;
+    int maxDeviceEntrySizeOfTableScan = 0;
+    for (Map.Entry<
+            TRegionReplicaSet,
+            Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode>>
+        entry : tableScanNodeMap.entrySet()) {
+      TRegionReplicaSet regionReplicaSet = entry.getKey();
+      Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode> pair = entry.getValue();
+      int currentDeviceEntrySize = 0;
+
+      if (pair.left != null) {
+        currentDeviceEntrySize += pair.left.getDeviceEntries().size();
+        resultTableScanNodeList.add(pair.left);
+      }
+
+      if (pair.right != null) {
+        currentDeviceEntrySize += pair.right.getDeviceEntries().size();
+        resultTableScanNodeList.add(pair.right);
+      }
+
+      if (mostUsedDataRegion == null || currentDeviceEntrySize > maxDeviceEntrySizeOfTableScan) {
+        mostUsedDataRegion = regionReplicaSet;
+        maxDeviceEntrySizeOfTableScan = currentDeviceEntrySize;
       }
     }
     context.mostUsedRegion = mostUsedDataRegion;
@@ -605,7 +723,9 @@ public class TableDistributedPlanGenerator
     for (DeviceEntry deviceEntry : node.getDeviceEntries()) {
       List<TRegionReplicaSet> regionReplicaSets =
           analysis.getDataRegionReplicaSetWithTimeFilter(
-              node.getQualifiedObjectName().getDatabaseName(),
+              node instanceof AggregationTreeDeviceViewScanNode
+                  ? ((AggregationTreeDeviceViewScanNode) node).getTreeDBName()
+                  : node.getQualifiedObjectName().getDatabaseName(),
               deviceEntry.getDeviceID(),
               node.getTimeFilter());
       if (regionReplicaSets.size() > 1) {
@@ -646,15 +766,12 @@ public class TableDistributedPlanGenerator
     TRegionReplicaSet mostUsedDataRegion = null;
     int maxDeviceEntrySizeOfTableScan = 0;
     for (Map.Entry<TRegionReplicaSet, AggregationTableScanNode> entry : regionNodeMap.entrySet()) {
-      TRegionReplicaSet regionReplicaSet = entry.getKey();
       DeviceTableScanNode subDeviceTableScanNode = entry.getValue();
-      subDeviceTableScanNode.setPlanNodeId(queryId.genPlanNodeId());
-      subDeviceTableScanNode.setRegionReplicaSet(regionReplicaSet);
       resultTableScanNodeList.add(subDeviceTableScanNode);
 
       if (mostUsedDataRegion == null
           || subDeviceTableScanNode.getDeviceEntries().size() > maxDeviceEntrySizeOfTableScan) {
-        mostUsedDataRegion = regionReplicaSet;
+        mostUsedDataRegion = entry.getKey();
         maxDeviceEntrySizeOfTableScan = subDeviceTableScanNode.getDeviceEntries().size();
       }
     }
@@ -698,6 +815,14 @@ public class TableDistributedPlanGenerator
       List<List<TRegionReplicaSet>> regionReplicaSetsList,
       Map<TRegionReplicaSet, AggregationTableScanNode> regionNodeMap,
       AggregationTableScanNode partialAggTableScanNode) {
+    AggregationTreeDeviceViewScanNode aggregationTreeDeviceViewScanNode;
+    if (originalAggTableScanNode instanceof AggregationTreeDeviceViewScanNode) {
+      aggregationTreeDeviceViewScanNode =
+          (AggregationTreeDeviceViewScanNode) originalAggTableScanNode;
+    } else {
+      aggregationTreeDeviceViewScanNode = null;
+    }
+
     for (int i = 0; i < regionReplicaSetsList.size(); i++) {
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSetsList.get(i)) {
         AggregationTableScanNode aggregationTableScanNode =
@@ -705,25 +830,49 @@ public class TableDistributedPlanGenerator
                 regionReplicaSet,
                 k -> {
                   AggregationTableScanNode scanNode =
-                      new AggregationTableScanNode(
-                          queryId.genPlanNodeId(),
-                          partialAggTableScanNode.getQualifiedObjectName(),
-                          partialAggTableScanNode.getOutputSymbols(),
-                          partialAggTableScanNode.getAssignments(),
-                          new ArrayList<>(),
-                          partialAggTableScanNode.getIdAndAttributeIndexMap(),
-                          partialAggTableScanNode.getScanOrder(),
-                          partialAggTableScanNode.getTimePredicate().orElse(null),
-                          partialAggTableScanNode.getPushDownPredicate(),
-                          partialAggTableScanNode.getPushDownLimit(),
-                          partialAggTableScanNode.getPushDownOffset(),
-                          partialAggTableScanNode.isPushLimitToEachDevice(),
-                          partialAggTableScanNode.getProjection(),
-                          partialAggTableScanNode.getAggregations(),
-                          partialAggTableScanNode.getGroupingSets(),
-                          partialAggTableScanNode.getPreGroupedSymbols(),
-                          partialAggTableScanNode.getStep(),
-                          partialAggTableScanNode.getGroupIdSymbol());
+                      (aggregationTreeDeviceViewScanNode == null)
+                          ? new AggregationTableScanNode(
+                              queryId.genPlanNodeId(),
+                              partialAggTableScanNode.getQualifiedObjectName(),
+                              partialAggTableScanNode.getOutputSymbols(),
+                              partialAggTableScanNode.getAssignments(),
+                              new ArrayList<>(),
+                              partialAggTableScanNode.getIdAndAttributeIndexMap(),
+                              partialAggTableScanNode.getScanOrder(),
+                              partialAggTableScanNode.getTimePredicate().orElse(null),
+                              partialAggTableScanNode.getPushDownPredicate(),
+                              partialAggTableScanNode.getPushDownLimit(),
+                              partialAggTableScanNode.getPushDownOffset(),
+                              partialAggTableScanNode.isPushLimitToEachDevice(),
+                              partialAggTableScanNode.containsNonAlignedDevice(),
+                              partialAggTableScanNode.getProjection(),
+                              partialAggTableScanNode.getAggregations(),
+                              partialAggTableScanNode.getGroupingSets(),
+                              partialAggTableScanNode.getPreGroupedSymbols(),
+                              partialAggTableScanNode.getStep(),
+                              partialAggTableScanNode.getGroupIdSymbol())
+                          : new AggregationTreeDeviceViewScanNode(
+                              queryId.genPlanNodeId(),
+                              partialAggTableScanNode.getQualifiedObjectName(),
+                              partialAggTableScanNode.getOutputSymbols(),
+                              partialAggTableScanNode.getAssignments(),
+                              new ArrayList<>(),
+                              partialAggTableScanNode.getIdAndAttributeIndexMap(),
+                              partialAggTableScanNode.getScanOrder(),
+                              partialAggTableScanNode.getTimePredicate().orElse(null),
+                              partialAggTableScanNode.getPushDownPredicate(),
+                              partialAggTableScanNode.getPushDownLimit(),
+                              partialAggTableScanNode.getPushDownOffset(),
+                              partialAggTableScanNode.isPushLimitToEachDevice(),
+                              partialAggTableScanNode.containsNonAlignedDevice(),
+                              partialAggTableScanNode.getProjection(),
+                              partialAggTableScanNode.getAggregations(),
+                              partialAggTableScanNode.getGroupingSets(),
+                              partialAggTableScanNode.getPreGroupedSymbols(),
+                              partialAggTableScanNode.getStep(),
+                              partialAggTableScanNode.getGroupIdSymbol(),
+                              aggregationTreeDeviceViewScanNode.getTreeDBName(),
+                              aggregationTreeDeviceViewScanNode.getMeasurementColumnNameMap());
                   scanNode.setRegionReplicaSet(regionReplicaSet);
                   return scanNode;
                 });
@@ -801,6 +950,8 @@ public class TableDistributedPlanGenerator
       return;
     }
 
+    Optional<IDeviceID.TreeDeviceIdColumnValueExtractor> extractor =
+        createTreeDeviceIdColumnValueExtractor(deviceTableScanNode);
     final List<Function<DeviceEntry, String>> orderingRules = new ArrayList<>();
     for (final Symbol symbol : newOrderingSymbols) {
       final Integer idx = deviceTableScanNode.getIdAndAttributeIndexMap().get(symbol);
@@ -810,8 +961,18 @@ public class TableDistributedPlanGenerator
       }
       if (deviceTableScanNode.getAssignments().get(symbol).getColumnCategory()
           == TsTableColumnCategory.TAG) {
-        // segments[0] is always tableName
-        orderingRules.add(deviceEntry -> (String) deviceEntry.getNthSegment(idx + 1));
+
+        // segments[0] is always tableName for table model
+        Function<DeviceEntry, String> iDColumnFunction =
+            extractor
+                .<Function<DeviceEntry, String>>map(
+                    treeDeviceIdColumnValueExtractor ->
+                        deviceEntry ->
+                            (String)
+                                treeDeviceIdColumnValueExtractor.extract(
+                                    deviceEntry.getDeviceID(), idx))
+                .orElseGet(() -> deviceEntry -> (String) deviceEntry.getNthSegment(idx + 1));
+        orderingRules.add(iDColumnFunction);
       } else {
         orderingRules.add(
             deviceEntry ->
@@ -880,6 +1041,21 @@ public class TableDistributedPlanGenerator
       if (comparator != null) {
         scanNode.getDeviceEntries().sort(comparator);
       }
+    }
+  }
+
+  private Optional<IDeviceID.TreeDeviceIdColumnValueExtractor>
+      createTreeDeviceIdColumnValueExtractor(DeviceTableScanNode node) {
+    if (node instanceof TreeDeviceViewScanNode) {
+      return Optional.of(
+          TableOperatorGenerator.createTreeDeviceIdColumnValueExtractor(
+              ((TreeDeviceViewScanNode) node).getTreeDBName()));
+    } else if (node instanceof AggregationTreeDeviceViewScanNode) {
+      return Optional.of(
+          TableOperatorGenerator.createTreeDeviceIdColumnValueExtractor(
+              ((AggregationTreeDeviceViewScanNode) node).getTreeDBName()));
+    } else {
+      return Optional.empty();
     }
   }
 

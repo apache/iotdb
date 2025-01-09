@@ -45,6 +45,7 @@ public class LoadTsFile extends Statement {
   private boolean convertOnTypeMismatch = true;
   private boolean autoCreateDatabase = true;
   private boolean loadWithMods;
+  private boolean isGeneratedByPipe = false;
   private String model = LoadTsFileConfigurator.MODEL_TABLE_VALUE;
 
   private final Map<String, String> loadAttributes;
@@ -68,7 +69,7 @@ public class LoadTsFile extends Statement {
     this.loadWithMods = true;
     this.resources = new ArrayList<>();
     this.writePointCountList = new ArrayList<>();
-    this.loadAttributes = loadAttributes;
+    this.loadAttributes = loadAttributes == null ? Collections.emptyMap() : loadAttributes;
     initAttributes();
 
     try {
@@ -116,8 +117,17 @@ public class LoadTsFile extends Statement {
     return database;
   }
 
-  public void setDatabase(final String database) {
+  public LoadTsFile setDatabase(final String database) {
     this.database = database;
+    return this;
+  }
+
+  public void markIsGeneratedByPipe() {
+    isGeneratedByPipe = true;
+  }
+
+  public boolean isGeneratedByPipe() {
+    return isGeneratedByPipe;
   }
 
   public String getModel() {

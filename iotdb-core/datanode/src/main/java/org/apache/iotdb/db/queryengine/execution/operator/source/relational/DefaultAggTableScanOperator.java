@@ -19,63 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
-import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
-import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
-import org.apache.tsfile.write.schema.IMeasurementSchema;
+public class DefaultAggTableScanOperator extends AbstractDefaultAggTableScanOperator {
 
-import java.util.List;
-import java.util.Set;
-
-public class DefaultAggTableScanOperator extends AbstractAggTableScanOperator {
-
-  public DefaultAggTableScanOperator(
-      PlanNodeId sourceId,
-      OperatorContext context,
-      List<ColumnSchema> aggColumnSchemas,
-      int[] aggColumnsIndexArray,
-      List<DeviceEntry> deviceEntries,
-      int deviceCount,
-      SeriesScanOptions seriesScanOptions,
-      List<String> measurementColumnNames,
-      Set<String> allSensors,
-      List<IMeasurementSchema> measurementSchemas,
-      List<TableAggregator> tableAggregators,
-      List<ColumnSchema> groupingKeySchemas,
-      int[] groupingKeyIndex,
-      ITableTimeRangeIterator tableTimeRangeIterator,
-      boolean ascending,
-      boolean canUseStatistics,
-      List<Integer> aggregatorInputChannels) {
-    super(
-        sourceId,
-        context,
-        aggColumnSchemas,
-        aggColumnsIndexArray,
-        deviceEntries,
-        deviceCount,
-        seriesScanOptions,
-        measurementColumnNames,
-        allSensors,
-        measurementSchemas,
-        tableAggregators,
-        groupingKeySchemas,
-        groupingKeyIndex,
-        tableTimeRangeIterator,
-        ascending,
-        canUseStatistics,
-        aggregatorInputChannels);
+  public DefaultAggTableScanOperator(AbstractAggTableScanOperatorParameter parameter) {
+    super(parameter);
   }
 
   @Override
-  protected void updateResultTsBlock() {
-    appendAggregationResult();
-    // after appendAggregationResult invoked, aggregators must be cleared
-    resetTableAggregators();
+  String getNthIdColumnValue(DeviceEntry deviceEntry, int idColumnIndex) {
+    // +1 for skipping the table name segment
+    return ((String) deviceEntry.getNthSegment(idColumnIndex + 1));
   }
 }
