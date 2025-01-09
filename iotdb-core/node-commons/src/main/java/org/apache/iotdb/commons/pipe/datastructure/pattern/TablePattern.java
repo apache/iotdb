@@ -102,14 +102,8 @@ public class TablePattern {
    */
   public static TablePattern parsePipePatternFromSourceParameters(
       final PipeParameters sourceParameters) {
-    final boolean isDoubleLiving =
-        sourceParameters.getBooleanOrDefault(
-            Arrays.asList(
-                PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
-                PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-            PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
     final boolean isTableModelDataAllowedToBeCaptured =
-        isDoubleLiving || isTableModelDataAllowToBeCaptured(sourceParameters);
+        isTableModelDataAllowToBeCaptured(sourceParameters);
     final String databaseNamePattern =
         sourceParameters.getStringOrDefault(
             Arrays.asList(
@@ -136,6 +130,10 @@ public class TablePattern {
 
   public static boolean isTableModelDataAllowToBeCaptured(final PipeParameters sourceParameters) {
     return sourceParameters.getBooleanOrDefault(
+            Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+                    PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
+            PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE) || sourceParameters.getBooleanOrDefault(
         Arrays.asList(
             PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
             PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY),
