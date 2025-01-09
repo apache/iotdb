@@ -509,7 +509,7 @@ public class WritingMetrics implements IMetricSet {
     MetricService.getInstance()
         .createAutoGauge(
             Metric.DATA_REGION_MEM_COST.toString(),
-            MetricLevel.NORMAL,
+            MetricLevel.IMPORTANT,
             dataRegion,
             DataRegion::getMemCost,
             Tag.REGION.toString(),
