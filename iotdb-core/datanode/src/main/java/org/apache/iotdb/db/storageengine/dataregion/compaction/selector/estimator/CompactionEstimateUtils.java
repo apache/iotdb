@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionSourceFileDeletedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -101,11 +102,10 @@ public class CompactionEstimateUtils {
         averageChunkMetadataSize);
   }
 
-  public static long roughEstimateMetadataCostInCompaction(
-      List<TsFileResource> resources, CompactionType taskType) throws IOException {
-    if (!CompactionEstimateUtils.addReadLock(resources)) {
-      return -1L;
-    }
+  static MetadataInfo collectMetadataInfo(List<TsFileResource> resources, CompactionType taskType)
+      throws IOException {
+    CompactionEstimateUtils.addReadLock(resources);
+    MetadataInfo metadataInfo = new MetadataInfo();
     long cost = 0L;
     Map<IDeviceID, Long> deviceMetadataSizeMap = new HashMap<>();
     try {
@@ -115,23 +115,29 @@ public class CompactionEstimateUtils {
         }
         try (CompactionTsFileReader reader =
             new CompactionTsFileReader(resource.getTsFilePath(), taskType)) {
-          for (Map.Entry<IDeviceID, Long> entry : getDeviceMetadataSizeMap(reader).entrySet()) {
+          for (Map.Entry<IDeviceID, Long> entry :
+              getDeviceMetadataSizeMapAndCollectMetadataInfo(reader, metadataInfo).entrySet()) {
             deviceMetadataSizeMap.merge(entry.getKey(), entry.getValue(), Long::sum);
           }
         }
       }
-      return cost + deviceMetadataSizeMap.values().stream().max(Long::compareTo).orElse(0L);
+      metadataInfo.metadataMemCost =
+          cost + deviceMetadataSizeMap.values().stream().max(Long::compareTo).orElse(0L);
+      return metadataInfo;
     } finally {
       CompactionEstimateUtils.releaseReadLock(resources);
     }
   }
 
-  public static Map<IDeviceID, Long> getDeviceMetadataSizeMap(CompactionTsFileReader reader)
-      throws IOException {
+  static Map<IDeviceID, Long> getDeviceMetadataSizeMapAndCollectMetadataInfo(
+      CompactionTsFileReader reader, MetadataInfo metadataInfo) throws IOException {
     Map<IDeviceID, Long> deviceMetadataSizeMap = new HashMap<>();
     TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
     while (deviceIterator.hasNext()) {
-      IDeviceID deviceID = deviceIterator.next().getLeft();
+      Pair<IDeviceID, Boolean> deviceAlignedPair = deviceIterator.next();
+      IDeviceID deviceID = deviceAlignedPair.getLeft();
+      boolean isAligned = deviceAlignedPair.getRight();
+      metadataInfo.hasAlignedSeries |= isAligned;
       MetadataIndexNode firstMeasurementNodeOfCurrentDevice =
           deviceIterator.getFirstMeasurementNodeOfCurrentDevice();
       long totalTimeseriesMetadataSizeOfCurrentDevice = 0;
@@ -145,14 +151,15 @@ public class CompactionEstimateUtils {
     return deviceMetadataSizeMap;
   }
 
-  public static boolean shouldAccurateEstimate(long roughEstimatedMemCost) {
+  public static boolean shouldUseRoughEstimatedResult(long roughEstimatedMemCost) {
     return roughEstimatedMemCost > 0
         && IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                 * roughEstimatedMemCost
             < SystemInfo.getInstance().getMemorySizeForCompaction();
   }
 
-  public static boolean addReadLock(List<TsFileResource> resources) {
+  public static void addReadLock(List<TsFileResource> resources)
+      throws CompactionSourceFileDeletedException {
     for (int i = 0; i < resources.size(); i++) {
       TsFileResource resource = resources.get(i);
       resource.readLock();
@@ -161,10 +168,10 @@ public class CompactionEstimateUtils {
         for (int j = 0; j <= i; j++) {
           resources.get(j).readUnlock();
         }
-        return false;
+        throw new CompactionSourceFileDeletedException(
+            "source file " + resource.getTsFilePath() + " is deleted");
       }
     }
-    return true;
   }
 
   public static void releaseReadLock(List<TsFileResource> resources) {
