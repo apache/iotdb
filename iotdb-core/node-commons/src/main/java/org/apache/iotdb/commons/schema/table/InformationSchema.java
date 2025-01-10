@@ -161,7 +161,7 @@ public class InformationSchema {
 
     final TsTable pipeTable = new TsTable(PIPES);
     pipeTable.addColumnSchema(
-        new TagColumnSchema(ColumnHeaderConstant.ID.toLowerCase(Locale.ENGLISH), TSDataType.INT32));
+        new TagColumnSchema(ColumnHeaderConstant.ID.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     pipeTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.CREATION_TIME_TABLE_MODEL, TSDataType.TIMESTAMP));
