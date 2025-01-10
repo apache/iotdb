@@ -34,6 +34,8 @@ import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 public class PipeConvertedInsertRowStatement extends InsertRowStatement {
 
@@ -63,22 +65,31 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
 
     // To ensure that the measurement remains unchanged during the WAL writing process, the array
     // needs to be copied before the failed Measurement mark can be deleted.
-    final MeasurementSchema[] measurementSchemas = insertRowStatement.getMeasurementSchemas();
+    MeasurementSchema[] measurementSchemas = insertRowStatement.getMeasurementSchemas();
     if (measurementSchemas != null) {
-      this.measurementSchemas = Arrays.copyOf(measurementSchemas, measurementSchemas.length);
+      measurementSchemas = Arrays.copyOf(measurementSchemas, measurementSchemas.length);
     }
+    this.measurementSchemas = measurementSchemas;
 
-    final String[] measurements = insertRowStatement.getMeasurements();
+    String[] measurements = insertRowStatement.getMeasurements();
     if (measurements != null) {
-      this.measurements = Arrays.copyOf(measurements, measurements.length);
+      measurements = Arrays.copyOf(measurements, measurements.length);
     }
+    this.measurements = measurements;
 
-    final TSDataType[] dataTypes = insertRowStatement.getDataTypes();
+    TSDataType[] dataTypes = insertRowStatement.getDataTypes();
     if (dataTypes != null) {
-      this.dataTypes = Arrays.copyOf(dataTypes, dataTypes.length);
+      dataTypes = Arrays.copyOf(dataTypes, dataTypes.length);
     }
+    this.dataTypes = dataTypes;
 
-    this.failedMeasurementIndex2Info = insertRowStatement.getFailedMeasurementInfoMap();
+    Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info =
+        insertRowStatement.getFailedMeasurementInfoMap();
+    if (failedMeasurementIndex2Info != null) {
+      failedMeasurementIndex2Info = new HashMap<>(failedMeasurementIndex2Info);
+    }
+    this.failedMeasurementIndex2Info = failedMeasurementIndex2Info;
+
     removeAllFailedMeasurementMarks();
   }
 
