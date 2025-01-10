@@ -43,7 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
-import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -64,6 +64,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
@@ -453,10 +454,9 @@ public class InformationSchemaContentSupplierFactory {
     protected void constructLine() {
       final TShowPipeInfo tPipeInfo = iterator.next();
       columnBuilders[0].writeBinary(new Binary(tPipeInfo.getId(), TSFileConfig.STRING_CHARSET));
-      columnBuilders[1].writeBinary(
-          new Binary(
-              DateTimeUtils.convertLongToDate(tPipeInfo.getCreationTime(), "ms"),
-              TSFileConfig.STRING_CHARSET));
+      columnBuilders[1].writeLong(
+          TimestampPrecisionUtils.convertToCurrPrecision(
+              tPipeInfo.getCreationTime(), TimeUnit.MILLISECONDS));
       columnBuilders[2].writeBinary(new Binary(tPipeInfo.getState(), TSFileConfig.STRING_CHARSET));
       columnBuilders[3].writeBinary(
           new Binary(tPipeInfo.getPipeExtractor(), TSFileConfig.STRING_CHARSET));
