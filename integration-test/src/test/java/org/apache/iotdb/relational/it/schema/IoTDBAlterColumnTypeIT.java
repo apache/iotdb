@@ -30,14 +30,22 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
 import static org.apache.iotdb.relational.it.session.IoTDBSessionRelationalIT.genValue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
@@ -58,8 +66,13 @@ public class IoTDBAlterColumnTypeIT {
 
   @Test
   public void testWriteAndAlter() throws IoTDBConnectionException, StatementExecutionException {
-    for (TSDataType from : TSDataType.values()) {
-      for (TSDataType to : TSDataType.values()) {
+    Set<TSDataType> typesToTest = new HashSet<>();
+    Collections.addAll(typesToTest, TSDataType.values());
+    typesToTest.remove(TSDataType.VECTOR);
+    typesToTest.remove(TSDataType.UNKNOWN);
+
+    for (TSDataType from : typesToTest) {
+      for (TSDataType to : typesToTest) {
         System.out.printf("testing %s to %s%n", from, to);
         doWriteAndAlter(from, to, false);
         doWriteAndAlter(from, to, true);
@@ -75,10 +88,16 @@ public class IoTDBAlterColumnTypeIT {
           "CREATE TABLE IF NOT EXISTS write_and_alter_column_type (s1 " + from + ")");
 
       // write a point of "from"
-      session.executeNonQueryStatement(
-          "INSERT INTO write_and_alter_column_type (time, s1) VALUES (1, "
-              + genValue(from, 1)
-              + ")");
+      Tablet tablet =
+          new Tablet(
+              "write_and_alter_column_type",
+              Collections.singletonList("s1"),
+              Collections.singletonList(from),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 1);
+      tablet.addValue("s1", 0, genValue(from, 1));
+      session.insert(tablet);
+      tablet.reset();
 
       if (flush) {
         session.executeNonQueryStatement("FLUSH");
@@ -94,33 +113,45 @@ public class IoTDBAlterColumnTypeIT {
           session.executeNonQueryStatement(
               "ALTER TABLE write_and_alter_column_type ALTER COLUMN s1 SET DATA TYPE " + to);
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "701: New type " + to + " is not compatible with the existing one " + from,
+              e.getMessage());
         }
       }
 
       SessionDataSet dataSet =
           session.executeQueryStatement("select * from write_and_alter_column_type order by time");
       RowRecord rec = dataSet.next();
+      TSDataType newType = isCompatible ? to : from;
       assertEquals(1, rec.getFields().get(0).getLongV());
-      if (to == TSDataType.BLOB) {
-        assertEquals(genValue(to, 1), rec.getFields().get(1).getBinaryV());
-      } else if (to == TSDataType.DATE) {
-        assertEquals(genValue(to, 1), rec.getFields().get(1).getDateV());
+      if (newType == TSDataType.BLOB) {
+        assertEquals(genValue(newType, 1), rec.getFields().get(1).getBinaryV());
+      } else if (newType == TSDataType.DATE) {
+        assertEquals(genValue(newType, 1), rec.getFields().get(1).getDateV());
       } else {
-        assertEquals(genValue(to, 1).toString(), rec.getFields().get(1).toString());
+        assertEquals(genValue(newType, 1).toString(), rec.getFields().get(1).toString());
       }
 
       // write a point
-      session.executeNonQueryStatement(
-          "INSERT INTO write_and_alter_column_type (time, s1) VALUES (2, "
-              + genValue(isCompatible ? to : from, 2)
-              + ")");
+      tablet =
+          new Tablet(
+              "write_and_alter_column_type",
+              Collections.singletonList("s1"),
+              Collections.singletonList(newType),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 2);
+      tablet.addValue("s1", 0, genValue(newType, 2));
+      session.insert(tablet);
+      tablet.reset();
+
+      if (flush) {
+        session.executeNonQueryStatement("FLUSH");
+      }
 
       dataSet =
           session.executeQueryStatement("select * from write_and_alter_column_type order by time");
       rec = dataSet.next();
       assertEquals(1, rec.getFields().get(0).getLongV());
-      TSDataType newType = isCompatible ? to : from;
       if (newType == TSDataType.BLOB) {
         assertEquals(genValue(newType, 1), rec.getFields().get(1).getBinaryV());
       } else if (newType == TSDataType.DATE) {
@@ -140,6 +171,123 @@ public class IoTDBAlterColumnTypeIT {
       }
 
       session.executeNonQueryStatement("DROP TABLE write_and_alter_column_type");
+    }
+  }
+
+  @Test
+  public void testAlterWithoutWrite() throws IoTDBConnectionException, StatementExecutionException {
+    Set<TSDataType> typesToTest = new HashSet<>();
+    Collections.addAll(typesToTest, TSDataType.values());
+    typesToTest.remove(TSDataType.VECTOR);
+    typesToTest.remove(TSDataType.UNKNOWN);
+
+    for (TSDataType from : typesToTest) {
+      for (TSDataType to : typesToTest) {
+        System.out.printf("testing %s to %s%n", from, to);
+        doAlterWithoutWrite(from, to, false);
+        doAlterWithoutWrite(from, to, true);
+      }
+    }
+  }
+
+  private void doAlterWithoutWrite(TSDataType from, TSDataType to, boolean flush)
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
+      // create a table with type of "from"
+      session.executeNonQueryStatement(
+          "CREATE TABLE IF NOT EXISTS just_alter_column_type (s1 " + from + ")");
+
+      // alter the type to "to"
+      boolean isCompatible = to.isCompatible(from);
+      if (isCompatible) {
+        session.executeNonQueryStatement(
+            "ALTER TABLE just_alter_column_type ALTER COLUMN s1 SET DATA TYPE " + to);
+      } else {
+        try {
+          session.executeNonQueryStatement(
+              "ALTER TABLE just_alter_column_type ALTER COLUMN s1 SET DATA TYPE " + to);
+        } catch (StatementExecutionException e) {
+          assertEquals(
+              "701: New type " + to + " is not compatible with the existing one " + from,
+              e.getMessage());
+        }
+      }
+
+      TSDataType newType = isCompatible ? to : from;
+
+      // write a point
+      Tablet tablet =
+          new Tablet(
+              "just_alter_column_type",
+              Collections.singletonList("s1"),
+              Collections.singletonList(newType),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 1);
+      tablet.addValue("s1", 0, genValue(newType, 1));
+      session.insert(tablet);
+      tablet.reset();
+
+      if (flush) {
+        session.executeNonQueryStatement("FLUSH");
+      }
+
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from just_alter_column_type order by time");
+      RowRecord rec = dataSet.next();
+      assertEquals(1, rec.getFields().get(0).getLongV());
+      if (newType == TSDataType.BLOB) {
+        assertEquals(genValue(newType, 1), rec.getFields().get(1).getBinaryV());
+      } else if (newType == TSDataType.DATE) {
+        assertEquals(genValue(newType, 1), rec.getFields().get(1).getDateV());
+      } else {
+        assertEquals(genValue(newType, 1).toString(), rec.getFields().get(1).toString());
+      }
+
+      assertFalse(dataSet.hasNext());
+
+      session.executeNonQueryStatement("DROP TABLE just_alter_column_type");
+    }
+  }
+
+  @Test
+  public void testAlterNonExist() throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
+      try {
+        session.executeNonQueryStatement(
+            "ALTER TABLE non_exist ALTER COLUMN s1 SET DATA TYPE INT64");
+        fail("Should throw exception");
+      } catch (StatementExecutionException e) {
+        assertEquals("550: Table 'test.non_exist' does not exist", e.getMessage());
+      }
+      session.executeNonQueryStatement(
+          "ALTER TABLE IF EXISTS non_exist ALTER COLUMN s1 SET DATA TYPE INT64");
+
+      session.executeNonQueryStatement("CREATE TABLE IF NOT EXISTS non_exist (s1 int32)");
+
+      try {
+        session.executeNonQueryStatement(
+            "ALTER TABLE non_exist ALTER COLUMN s2 SET DATA TYPE INT64");
+        fail("Should throw exception");
+      } catch (StatementExecutionException e) {
+        assertEquals("616: Column s2 in table 'test.non_exist' does not exist.", e.getMessage());
+      }
+      session.executeNonQueryStatement(
+          "ALTER TABLE non_exist ALTER COLUMN IF EXISTS s2 SET DATA TYPE INT64");
+    }
+  }
+
+  @Test
+  public void testAlterWrongType() throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
+      session.executeNonQueryStatement("CREATE TABLE IF NOT EXISTS wrong_type (s1 int32)");
+
+      try {
+        session.executeNonQueryStatement(
+            "ALTER TABLE non_exist ALTER COLUMN s1 SET DATA TYPE VECTOR");
+        fail("Should throw exception");
+      } catch (StatementExecutionException e) {
+        assertEquals("701: Unknown type: VECTOR", e.getMessage());
+      }
     }
   }
 }

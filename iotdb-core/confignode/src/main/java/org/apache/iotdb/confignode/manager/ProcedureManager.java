@@ -91,6 +91,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.AlterTableColumnD
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DeleteDevicesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
@@ -1561,9 +1562,8 @@ public class ProcedureManager {
         null,
         req.tableName,
         req.queryId,
-        ProcedureType.DROP_TABLE_COLUMN_PROCEDURE,
-        new DropTableColumnProcedure(
-            req.database, req.tableName, req.queryId, ReadWriteIOUtils.readString(req.updateInfo)));
+        ProcedureType.DROP_TABLE_PROCEDURE,
+        new DropTableProcedure(req.database, req.tableName, req.queryId));
   }
 
   public TDeleteTableDeviceResp deleteDevices(final TDeleteTableDeviceReq req) {
