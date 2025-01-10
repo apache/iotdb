@@ -84,6 +84,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.Info
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.LastQueryAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortFullOuterJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortInnerJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortLeftJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortSemiJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TreeAlignedDeviceViewAggregationScanOperator;
@@ -1467,6 +1468,24 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           JoinKeyComparatorFactory.getComparators(joinKeyTypes, true),
           dataTypes,
           joinKeyTypes.stream().map(this::buildUpdateLastRowFunction).collect(Collectors.toList()));
+    } else if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.LEFT) {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  MergeSortLeftJoinOperator.class.getSimpleName());
+      return new MergeSortLeftJoinOperator(
+          operatorContext,
+          leftChild,
+          leftJoinKeyPositions,
+          leftOutputSymbolIdx,
+          rightChild,
+          rightJoinKeyPositions,
+          rightOutputSymbolIdx,
+          JoinKeyComparatorFactory.getComparators(joinKeyTypes, true),
+          dataTypes);
     }
 
     throw new IllegalStateException("Unsupported join type: " + node.getJoinType());
