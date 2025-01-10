@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
@@ -509,6 +510,10 @@ public class InformationSchemaContentSupplierFactory {
         iterator =
             client.getPipePluginTable().getAllPipePluginMeta().stream()
                 .map(PipePluginMeta::deserialize)
+                .filter(
+                    pipePluginMeta ->
+                        !BuiltinPipePlugin.SHOW_PIPE_PLUGINS_BLACKLIST.contains(
+                            pipePluginMeta.getPluginName()))
                 .iterator();
       } catch (final Exception e) {
         lastException = e;
