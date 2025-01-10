@@ -272,18 +272,15 @@ public final class Patterns {
             node.getChildren().stream().map(lookup::resolve).collect(toImmutableList()));
   }
 
-  /*public static final class Aggregation
-  {
-      public static Property<AggregationNode, Lookup, List<Symbol>> groupingColumns()
-      {
-          return property("groupingKeys", AggregationNode::getGroupingKeys);
-      }
+  public static final class Aggregation {
+    public static Property<AggregationNode, Lookup, List<Symbol>> groupingColumns() {
+      return property("groupingKeys", AggregationNode::getGroupingKeys);
+    }
 
-      public static Property<AggregationNode, Lookup, AggregationNode.Step> step()
-      {
-          return property("step", AggregationNode::getStep);
-      }
-  }*/
+    public static Property<AggregationNode, Lookup, AggregationNode.Step> step() {
+      return property("step", AggregationNode::getStep);
+    }
+  }
 
   public static final class Apply {
     public static Property<ApplyNode, Lookup, List<Symbol>> correlation() {

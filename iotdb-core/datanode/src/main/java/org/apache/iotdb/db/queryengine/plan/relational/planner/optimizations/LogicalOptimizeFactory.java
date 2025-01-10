@@ -58,8 +58,16 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Re
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantEnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantIdentityProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveTrivialFilters;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveUnreferencedScalarApplyNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveUnreferencedScalarSubqueries;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.SimplifyExpressions;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformCorrelatedDistinctAggregationWithProjection;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformCorrelatedDistinctAggregationWithoutProjection;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformCorrelatedGlobalAggregationWithProjection;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformCorrelatedGlobalAggregationWithoutProjection;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformCorrelatedGroupedAggregationWithProjection;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformCorrelatedGroupedAggregationWithoutProjection;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformCorrelatedJoinToJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformUncorrelatedInPredicateSubqueryToSemiJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformUncorrelatedSubqueryToJoin;
 
@@ -215,9 +223,27 @@ public class LogicalOptimizeFactory {
             plannerContext,
             ruleStats,
             ImmutableSet.of(
-                new RemoveRedundantEnforceSingleRowNode(), new RemoveUnreferencedScalarSubqueries(),
+                new RemoveRedundantEnforceSingleRowNode(),
+                new RemoveUnreferencedScalarSubqueries(),
                 new TransformUncorrelatedSubqueryToJoin(),
-                    new TransformUncorrelatedInPredicateSubqueryToSemiJoin())),
+                new TransformUncorrelatedInPredicateSubqueryToSemiJoin(),
+                new TransformCorrelatedJoinToJoin(plannerContext),
+                new TransformCorrelatedGlobalAggregationWithProjection(plannerContext),
+                new TransformCorrelatedGlobalAggregationWithoutProjection(plannerContext),
+                new TransformCorrelatedDistinctAggregationWithProjection(plannerContext),
+                new TransformCorrelatedDistinctAggregationWithoutProjection(plannerContext),
+                new TransformCorrelatedGroupedAggregationWithProjection(plannerContext),
+                new TransformCorrelatedGroupedAggregationWithoutProjection(plannerContext))),
+        new IterativeOptimizer(
+            plannerContext,
+            ruleStats,
+            ImmutableSet.of(
+                new RemoveUnreferencedScalarApplyNodes(),
+                //                            new TransformCorrelatedInPredicateToJoin(metadata), //
+                // must be run after columnPruningOptimizer
+                //                            new TransformCorrelatedScalarSubquery(metadata), //
+                // must be run after TransformCorrelatedAggregation rules
+                new TransformCorrelatedJoinToJoin(plannerContext))),
         new IterativeOptimizer(
             plannerContext,
             ruleStats,
