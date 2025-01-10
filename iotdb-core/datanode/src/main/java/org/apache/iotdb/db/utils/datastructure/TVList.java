@@ -159,17 +159,13 @@ public abstract class TVList implements WALEntryValue {
     return seqRowCount;
   }
 
-  public long chunkSize() {
-    return 0;
-  }
-
   public int count() {
     if (bitMap == null) {
       return rowCount;
     }
     int count = 0;
-    for (int row = 0; row < rowCount; row++) {
-      if (!isNullValue(row)) {
+    for (int rowIdx = 0; rowIdx < rowCount; rowIdx++) {
+      if (!isNullValue(rowIdx)) {
         count++;
       }
     }
@@ -239,18 +235,18 @@ public abstract class TVList implements WALEntryValue {
   /**
    * Get whether value is null at the given position in TvList.
    *
-   * @param rowIndex value index
+   * @param unsortedRowIndex value index
    * @return boolean
    */
-  public boolean isNullValue(int rowIndex) {
-    if (rowIndex >= rowCount) {
+  public boolean isNullValue(int unsortedRowIndex) {
+    if (unsortedRowIndex >= rowCount) {
       throw new IndexOutOfBoundsException("Index out of bound error!");
     }
-    if (bitMap == null || bitMap.get(rowIndex / ARRAY_SIZE) == null) {
+    if (bitMap == null || bitMap.get(unsortedRowIndex / ARRAY_SIZE) == null) {
       return false;
     }
-    int arrayIndex = rowIndex / ARRAY_SIZE;
-    int elementIndex = rowIndex % ARRAY_SIZE;
+    int arrayIndex = unsortedRowIndex / ARRAY_SIZE;
+    int elementIndex = unsortedRowIndex % ARRAY_SIZE;
     return bitMap.get(arrayIndex).isMarked(elementIndex);
   }
 
@@ -413,10 +409,12 @@ public abstract class TVList implements WALEntryValue {
       long time = getTime(i);
       if (time >= lowerBound && time <= upperBound) {
         int originRowIndex = getValueIndex(i);
-        int arrayIndex = originRowIndex / ARRAY_SIZE;
-        int elementIndex = originRowIndex % ARRAY_SIZE;
-        markNullValue(arrayIndex, elementIndex);
-        deletedNumber++;
+        if (!isNullValue(originRowIndex)) {
+          int arrayIndex = originRowIndex / ARRAY_SIZE;
+          int elementIndex = originRowIndex % ARRAY_SIZE;
+          markNullValue(arrayIndex, elementIndex);
+          deletedNumber++;
+        }
       } else {
         maxTime = Math.max(time, maxTime);
         minTime = Math.min(time, minTime);

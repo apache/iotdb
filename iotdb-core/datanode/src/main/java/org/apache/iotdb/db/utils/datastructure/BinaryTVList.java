@@ -148,7 +148,7 @@ public abstract class BinaryTVList extends TVList {
       List<TimeRange> deletionList) {
     int[] deleteCursor = {0};
     for (int i = 0; i < rowCount; i++) {
-      if (!isNullValue(i)
+      if (!isNullValue(getValueIndex(i))
           && !isPointDeleted(getTime(i), deletionList, deleteCursor)
           && (i == rowCount - 1 || getTime(i) != getTime(i + 1))) {
         builder.getTimeColumnBuilder().writeLong(getTime(i));
@@ -282,7 +282,7 @@ public abstract class BinaryTVList extends TVList {
       } else {
         WALWriteUtils.write(new Binary(new byte[0]), buffer);
       }
-      WALWriteUtils.write(isNullValue(rowIdx), buffer);
+      WALWriteUtils.write(isNullValue(getValueIndex(rowIdx)), buffer);
     }
   }
 

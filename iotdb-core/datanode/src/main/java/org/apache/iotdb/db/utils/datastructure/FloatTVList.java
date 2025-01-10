@@ -152,7 +152,7 @@ public abstract class FloatTVList extends TVList {
       List<TimeRange> deletionList) {
     int[] deleteCursor = {0};
     for (int i = 0; i < rowCount; i++) {
-      if (!isNullValue(i)
+      if (!isNullValue(getValueIndex(i))
           && !isPointDeleted(getTime(i), deletionList, deleteCursor)
           && (i == rowCount - 1 || getTime(i) != getTime(i + 1))) {
         builder.getTimeColumnBuilder().writeLong(getTime(i));
@@ -279,7 +279,7 @@ public abstract class FloatTVList extends TVList {
     for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
       buffer.putLong(getTime(rowIdx));
       buffer.putFloat(getFloat(rowIdx));
-      WALWriteUtils.write(isNullValue(rowIdx), buffer);
+      WALWriteUtils.write(isNullValue(getValueIndex(rowIdx)), buffer);
     }
   }
 

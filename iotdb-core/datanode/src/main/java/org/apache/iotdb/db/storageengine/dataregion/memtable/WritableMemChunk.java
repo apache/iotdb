@@ -350,7 +350,7 @@ public class WritableMemChunk implements IWritableMemChunk {
     int[] deletionCursor = {0};
     int rowCount = tvlist.rowCount();
     for (int i = 0; i < rowCount; i++) {
-      if (tvlist.getBitMap() != null && tvlist.isNullValue(i)) {
+      if (tvlist.getBitMap() != null && tvlist.isNullValue(tvlist.getValueIndex(i))) {
         continue;
       }
       long curTime = tvlist.getTime(i);
@@ -478,7 +478,7 @@ public class WritableMemChunk implements IWritableMemChunk {
     tvLists.add(list);
     for (TVList tvList : tvLists) {
       for (int i = 0; i < tvList.rowCount(); i++) {
-        if (tvList.isNullValue(i)) {
+        if (tvList.isNullValue(tvList.getValueIndex(i))) {
           continue;
         }
         size++;
