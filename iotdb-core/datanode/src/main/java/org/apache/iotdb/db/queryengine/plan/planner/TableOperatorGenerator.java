@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITableTimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.TableDateBinTimeRangeIterator;
@@ -631,7 +632,14 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return new InformationSchemaTableScanOperator(
         operatorContext,
         node.getPlanNodeId(),
-        getSupplier(node.getQualifiedObjectName().getObjectName(), dataTypes));
+        getSupplier(
+            node.getQualifiedObjectName().getObjectName(),
+            dataTypes,
+            context
+                .getDriverContext()
+                .getFragmentInstanceContext()
+                .getSessionInfo()
+                .getUserName()));
   }
 
   @Override
@@ -1415,10 +1423,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
       Type leftJoinKeyType =
           context.getTypeProvider().getTableModelType(node.getCriteria().get(i).getLeft());
-      checkArgument(
-          leftJoinKeyType
-              == context.getTypeProvider().getTableModelType(node.getCriteria().get(i).getRight()),
-          "Join key type mismatch.");
+      checkIfJoinKeyTypeMatches(
+          leftJoinKeyType,
+          context.getTypeProvider().getTableModelType(node.getCriteria().get(i).getRight()));
       joinKeyTypes.add(leftJoinKeyType);
     }
 
@@ -1526,10 +1533,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     Type sourceJoinKeyType =
         context.getTypeProvider().getTableModelType(node.getSourceJoinSymbol());
 
-    checkArgument(
-        sourceJoinKeyType
-            == context.getTypeProvider().getTableModelType(node.getFilteringSourceJoinSymbol()),
-        "Join key type mismatch.");
+    checkIfJoinKeyTypeMatches(
+        sourceJoinKeyType,
+        context.getTypeProvider().getTableModelType(node.getFilteringSourceJoinSymbol()));
+
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -1546,6 +1553,16 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         filteringSourceJoinKeyPosition,
         JoinKeyComparatorFactory.getComparator(sourceJoinKeyType, true),
         dataTypes);
+  }
+
+  private void checkIfJoinKeyTypeMatches(Type leftJoinKeyType, Type rightJoinKeyType) {
+    if (leftJoinKeyType != rightJoinKeyType) {
+      throw new SemanticException(
+          "Join key type mismatch. Left join key type: "
+              + leftJoinKeyType
+              + ", right join key type: "
+              + rightJoinKeyType);
+    }
   }
 
   @Override

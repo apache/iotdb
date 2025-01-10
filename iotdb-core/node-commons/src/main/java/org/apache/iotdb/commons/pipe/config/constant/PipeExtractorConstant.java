@@ -119,6 +119,9 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_MODE_SNAPSHOT_KEY = "extractor.mode.snapshot";
   public static final String SOURCE_MODE_SNAPSHOT_KEY = "source.mode.snapshot";
   public static final boolean EXTRACTOR_MODE_SNAPSHOT_DEFAULT_VALUE = false;
+  public static final String EXTRACTOR_MODE_DOUBLE_LIVING_KEY = "extractor.mode.double-living";
+  public static final String SOURCE_MODE_DOUBLE_LIVING_KEY = "source.mode.double-living";
+  public static final boolean EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE = false;
 
   public static final String EXTRACTOR_START_TIME_KEY = "extractor.start-time";
   public static final String SOURCE_START_TIME_KEY = "source.start-time";

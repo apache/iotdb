@@ -291,7 +291,7 @@ public class IoTDBUncorrelatedInPredicateSubqueryIT {
     // Legality check: Join key type mismatch.(left key is int and right key is double)
     tableAssertTestFail(
         "select s1 from table1 where device_id = 'd01' and s1 in (select s1 + 30.0 from table3 where device_id = 'd01')",
-        "301: Join key type mismatch.",
+        "701: Join key type mismatch",
         DATABASE_NAME);
 
     // Legality check: Row Type is not supported for now.

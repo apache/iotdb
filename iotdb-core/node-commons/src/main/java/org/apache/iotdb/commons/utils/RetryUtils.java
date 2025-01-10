@@ -17,13 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.commons.utils;
 
-import org.apache.iotdb.rpc.TSStatusCode;
+public class RetryUtils {
 
-public class VerifyMetadataTypeMismatchException extends VerifyMetadataException {
+  public interface CallableWithException<T, E extends Exception> {
+    T call() throws E;
+  }
 
-  public VerifyMetadataTypeMismatchException(String message) {
-    super(message, TSStatusCode.VERIFY_METADATA_ERROR.getStatusCode());
+  public static final int MAX_RETRIES = 3;
+
+  public static <T, E extends Exception> T retryOnException(
+      final CallableWithException<T, E> callable) throws E {
+    int attempt = 0;
+    while (true) {
+      try {
+        return callable.call();
+      } catch (Exception e) {
+        attempt++;
+        if (attempt >= MAX_RETRIES) {
+          throw e;
+        }
+      }
+    }
+  }
+
+  private RetryUtils() {
+    // utility class
   }
 }

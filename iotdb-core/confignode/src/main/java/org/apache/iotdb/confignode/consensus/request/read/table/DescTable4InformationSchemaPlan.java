@@ -17,18 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.confignode.consensus.request.read.table;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
-public class VerifyMetadataException extends IoTDBException {
-
-  public VerifyMetadataException(String message) {
-    super(message, TSStatusCode.VERIFY_METADATA_ERROR.getStatusCode());
-  }
-
-  public VerifyMetadataException(String message, int errorCode) {
-    super(message, errorCode);
+public class DescTable4InformationSchemaPlan extends ConfigPhysicalReadPlan {
+  public DescTable4InformationSchemaPlan() {
+    super(ConfigPhysicalPlanType.DescTable4InformationSchema);
   }
 }
