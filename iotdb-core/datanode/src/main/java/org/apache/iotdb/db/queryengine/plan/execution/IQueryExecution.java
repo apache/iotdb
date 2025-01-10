@@ -72,4 +72,6 @@ public interface IQueryExecution {
   String getStatementType();
 
   IClientSession.SqlDialect getSQLDialect();
+
+  String getUser();
 }

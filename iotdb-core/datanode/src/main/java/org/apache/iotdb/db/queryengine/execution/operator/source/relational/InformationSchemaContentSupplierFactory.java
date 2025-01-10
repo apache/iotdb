@@ -28,7 +28,9 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -91,12 +93,19 @@ public class InformationSchemaContentSupplierFactory {
     // We initialize it later for the convenience of data preparation
     protected int totalSize;
     protected int nextConsumedIndex;
-    private final List<IQueryExecution> queryExecutions =
-        Coordinator.getInstance().getAllQueryExecutions();
+    private List<IQueryExecution> queryExecutions;
 
     private QueriesSupplier(final List<TSDataType> dataTypes, final String userName) {
       super(dataTypes);
-      Coordinator.getInstance().getAccessControl().checkUserHasMaintainPrivilege(userName);
+      queryExecutions = Coordinator.getInstance().getAllQueryExecutions();
+      try {
+        Coordinator.getInstance().getAccessControl().checkUserHasMaintainPrivilege(userName);
+      } catch (final AccessControlException e) {
+        queryExecutions =
+            queryExecutions.stream()
+                .filter(iQueryExecution -> userName.equals(iQueryExecution.getUser()))
+                .collect(Collectors.toList());
+      }
       this.totalSize = queryExecutions.size();
     }
 
@@ -356,22 +365,18 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class RegionSupplier extends TsBlockSupplier {
-    private Iterator<Map.Entry<String, TDatabaseInfo>> iterator;
+    private Iterator<TRegionInfo> iterator;
     private TDatabaseInfo currentDatabase;
-    private final String userName;
-    private boolean hasShownInformationSchema;
 
     private RegionSupplier(final List<TSDataType> dataTypes, final String userName) {
       super(dataTypes);
-      this.userName = userName;
       Coordinator.getInstance().getAccessControl().checkUserHasMaintainPrivilege(userName);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        final TShowDatabaseResp resp =
-            client.showDatabase(
-                new TGetDatabaseReq(Arrays.asList(ALL_RESULT_NODES), ALL_MATCH_SCOPE.serialize())
-                    .setIsTableModel(true));
-        iterator = resp.getDatabaseInfoMap().entrySet().iterator();
+        iterator =
+            client
+                .showRegion(new TShowRegionReq().setIsTableModel(true).setDatabases(null))
+                .getRegionInfoListIterator();
       } catch (final Exception e) {
         lastException = e;
       }
@@ -379,11 +384,7 @@ public class InformationSchemaContentSupplierFactory {
 
     @Override
     protected void constructLine() {
-      if (!hasShownInformationSchema) {
-        InformationSchemaUtils.buildDatabaseTsBlock(s -> true, resultBuilder, true, false);
-        hasShownInformationSchema = true;
-        return;
-      }
+      final TRegionInfo info = iterator.next();
       columnBuilders[0].writeBinary(
           new Binary(currentDatabase.getName(), TSFileConfig.STRING_CHARSET));
 
@@ -405,22 +406,7 @@ public class InformationSchemaContentSupplierFactory {
 
     @Override
     public boolean hasNext() {
-      if (!hasShownInformationSchema) {
-        if (!canShowDB(userName, InformationSchema.INFORMATION_DATABASE)) {
-          hasShownInformationSchema = true;
-        } else {
-          return true;
-        }
-      }
-      while (iterator.hasNext()) {
-        final Map.Entry<String, TDatabaseInfo> result = iterator.next();
-        if (!canShowDB(userName, result.getKey())) {
-          continue;
-        }
-        currentDatabase = result.getValue();
-        break;
-      }
-      return Objects.nonNull(currentDatabase);
+      return iterator.hasNext();
     }
   }
 

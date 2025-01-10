@@ -55,6 +55,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
+import org.apache.iotdb.isession.SessionConfig;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -1842,6 +1843,11 @@ public class MergeTreeSortOperatorTest {
     @Override
     public IClientSession.SqlDialect getSQLDialect() {
       return IClientSession.SqlDialect.TREE;
+    }
+
+    @Override
+    public String getUser() {
+      return SessionConfig.DEFAULT_USER;
     }
 
     @Override
