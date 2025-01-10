@@ -255,7 +255,7 @@ public class SPRINTZSubcolumn5Test {
         // int block_size = 1024;
         int block_size = 512;
 
-        int repeatTime = 100;
+        int repeatTime = 500;
         // TODO 真正计算时，记得注释掉将下面的内容
         // repeatTime = 1;
 

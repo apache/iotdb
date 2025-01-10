@@ -312,9 +312,9 @@ public class Subcolumn5Test {
             return encode_pos;
         }
 
-        int[] bitWidthList = new int[m];
+        // int[] bitWidthList = new int[m];
 
-        int[][] subcolumnList = new int[m][list_length];
+        // int[][] subcolumnList = new int[m][list_length];
 
         int l;
 
@@ -322,6 +322,10 @@ public class Subcolumn5Test {
         // byte betaBest = (byte) beta[0];
 
         l = (m + beta[0] - 1) / beta[0];
+
+        int[] bitWidthList = new int[l];
+
+        int[][] subcolumnList = new int[l][list_length];
 
         encoded_result[encode_pos] = (byte) beta[0];
         encode_pos += 1;
@@ -354,26 +358,21 @@ public class Subcolumn5Test {
             int bpCost = bitWidthList[i] * list_length;
             int rleCost = 0;
 
-            // int count = 1;
-            int currentNumber = subcolumnList[i][0];
-
+            int previous = subcolumnList[i][0];
             int index = 0;
 
-            // run_length 改为存累计长度
-            int[] run_length = new int[list_length];
-            int[] rle_values = new int[list_length];
-
             for (int j = 1; j < list_length; j++) {
-                if (subcolumnList[i][j] != currentNumber) {
-                    run_length[index] = j;
-                    rle_values[index] = currentNumber;
+                int currentNumber = subcolumnList[i][j];
+                if (currentNumber != previous) {
                     index++;
-                    currentNumber = subcolumnList[i][j];
+                    previous = currentNumber;
+                }
+
+                if (bw * index + bitWidthList[i] * index >= bpCost) {
+                    break;
                 }
             }
 
-            run_length[index] = list_length;
-            rle_values[index] = currentNumber;
             index++;
 
             rleCost = bw * index + bitWidthList[i] * index;
@@ -390,6 +389,25 @@ public class Subcolumn5Test {
                 encode_pos += 1;
                 encoded_result[encode_pos] = (byte) (index & 0xFF);
                 encode_pos += 1;
+
+                index = 0;
+                int[] run_length = new int[list_length];
+                int[] rle_values = new int[list_length];
+                previous = subcolumnList[i][0];
+
+                for (int j = 1; j < list_length; j++) {
+                    int currentNumber = subcolumnList[i][j];
+                    if (currentNumber != previous) {
+                        run_length[index] = j;
+                        rle_values[index] = previous;
+                        index++;
+                        previous = currentNumber;
+                    }
+                }
+
+                run_length[index] = list_length;
+                rle_values[index] = previous;
+                index++;
 
                 encode_pos = bitPacking(run_length, bw, encode_pos, encoded_result, index);
 
