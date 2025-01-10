@@ -57,6 +57,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNod
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
@@ -464,6 +465,20 @@ public class TableDistributedPlanGenerator
   }
 
   @Override
+  public List<PlanNode> visitSemiJoin(SemiJoinNode node, PlanContext context) {
+    List<PlanNode> leftChildrenNodes = node.getLeftChild().accept(this, context);
+    List<PlanNode> rightChildrenNodes = node.getRightChild().accept(this, context);
+    checkArgument(
+        leftChildrenNodes.size() == 1,
+        "The size of left children node of SemiJoinNode should be 1");
+    checkArgument(
+        rightChildrenNodes.size() == 1,
+        "The size of right children node of SemiJoinNode should be 1");
+    node.setLeftChild(leftChildrenNodes.get(0));
+    node.setRightChild(rightChildrenNodes.get(0));
+    return Collections.singletonList(node);
+  }
+
   public List<PlanNode> visitDeviceTableScan(
       final DeviceTableScanNode node, final PlanContext context) {
     final Map<TRegionReplicaSet, DeviceTableScanNode> tableScanNodeMap = new HashMap<>();

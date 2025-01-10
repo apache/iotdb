@@ -147,6 +147,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
@@ -694,34 +696,39 @@ public interface IManager {
    * Alter Pipe.
    *
    * @param req Info about Pipe
-   * @return TSStatus
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if altered the pipe successfully, {@link
+   *     TSStatusCode#PIPE_ERROR} if encountered failure, {@link TSStatusCode#PIPE_NOT_EXIST_ERROR}
+   *     if the pipe does not exist.
    */
   TSStatus alterPipe(TAlterPipeReq req);
 
   /**
    * Start Pipe.
    *
-   * @param pipeName name of Pipe
+   * @param req Info about Pipe
    * @return {@link TSStatusCode#SUCCESS_STATUS} if started the pipe successfully, {@link
-   *     TSStatusCode#PIPE_ERROR} if encountered failure.
+   *     TSStatusCode#PIPE_ERROR} if encountered failure, {@link TSStatusCode#PIPE_NOT_EXIST_ERROR}
+   *     if the pipe does not exist.
    */
-  TSStatus startPipe(String pipeName);
+  TSStatus startPipe(TStartPipeReq req);
 
   /**
    * Stop Pipe.
    *
-   * @param pipeName name of Pipe
+   * @param req Info about Pipe
    * @return {@link TSStatusCode#SUCCESS_STATUS} if stopped the pipe successfully, {@link
-   *     TSStatusCode#PIPE_ERROR} if encountered failure.
+   *     TSStatusCode#PIPE_ERROR} if encountered failure, {@link TSStatusCode#PIPE_NOT_EXIST_ERROR}
+   *     if the pipe does not exist.
    */
-  TSStatus stopPipe(String pipeName);
+  TSStatus stopPipe(TStopPipeReq req);
 
   /**
    * Drop Pipe.
    *
    * @param req Info about Pipe
    * @return {@link TSStatusCode#SUCCESS_STATUS} if dropped the pipe successfully, {@link
-   *     TSStatusCode#PIPE_ERROR} if encountered failure.
+   *     TSStatusCode#PIPE_ERROR} if encountered failure, {@link TSStatusCode#PIPE_NOT_EXIST_ERROR}
+   *     if the pipe does not exist.
    */
   TSStatus dropPipe(TDropPipeReq req);
 

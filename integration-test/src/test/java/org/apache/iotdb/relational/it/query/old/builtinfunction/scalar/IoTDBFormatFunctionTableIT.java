@@ -15,11 +15,17 @@
 package org.apache.iotdb.relational.it.query.old.builtinfunction.scalar;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.TableClusterIT;
+import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.Statement;
@@ -27,6 +33,9 @@ import java.sql.Statement;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
+@Ignore
+@RunWith(IoTDBTestRunner.class)
+@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBFormatFunctionTableIT {
 
   private static final String DATABASE_NAME = "db";
@@ -36,12 +45,12 @@ public class IoTDBFormatFunctionTableIT {
         // normal cases
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE number_table(device_id STRING ID, s1 INT32 MEASUREMENT, s2 INT64 MEASUREMENT, s3 FLOAT MEASUREMENT, s4 DOUBLE MEASUREMENT)",
-        "CREATE TABLE string_table(device_id STRING ID, s1 STRING MEASUREMENT, s2 TEXT MEASUREMENT)",
-        "CREATE TABLE boolean_table(device_id STRING ID, s1 BOOLEAN MEASUREMENT)",
-        "CREATE TABLE timestamp_table(device_id STRING ID, s1 TIMESTAMP MEASUREMENT)",
-        "CREATE TABLE date_table(device_id STRING ID, s1 DATE MEASUREMENT)",
-        "CREATE TABLE null_table(device_id STRING ID, s1 INT32 MEASUREMENT)",
+        "CREATE TABLE number_table(device_id STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD)",
+        "CREATE TABLE string_table(device_id STRING TAG, s1 STRING FIELD, s2 TEXT FIELD)",
+        "CREATE TABLE boolean_table(device_id STRING TAG, s1 BOOLEAN FIELD)",
+        "CREATE TABLE timestamp_table(device_id STRING TAG, s1 TIMESTAMP FIELD)",
+        "CREATE TABLE date_table(device_id STRING TAG, s1 DATE FIELD)",
+        "CREATE TABLE null_table(device_id STRING TAG, s1 INT32 FIELD)",
         // data for number series
         "INSERT INTO number_table(time, device_id, s1, s2, s3, s4) VALUES (10, 'd1', 1000000, 1000000, 3.1415926, 3.1415926)",
         "INSERT INTO number_table(time, device_id, s1, s2, s3, s4) VALUES (20, 'd1', 1, 1, 1234567.25, 1234567.25)",

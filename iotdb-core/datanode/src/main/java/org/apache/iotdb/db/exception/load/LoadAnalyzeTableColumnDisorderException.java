@@ -17,16 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.metadata.table;
+package org.apache.iotdb.db.exception.load;
 
-import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class TableNotExistsException extends MetadataException {
+public class LoadAnalyzeTableColumnDisorderException extends SemanticException {
 
-  public TableNotExistsException(final String database, final String tableName) {
-    super(
-        String.format("Table '%s.%s' does not exist.", database, tableName),
-        TSStatusCode.TABLE_NOT_EXISTS.getStatusCode());
+  public LoadAnalyzeTableColumnDisorderException(String message) {
+    super(message, TSStatusCode.VERIFY_METADATA_ERROR.getStatusCode());
   }
 }
