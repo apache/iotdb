@@ -115,32 +115,39 @@ class SubqueryPlanner {
 
   public PlanBuilder handleSubqueries(
       PlanBuilder builder, Expression expression, Analysis.SubqueryAnalysis subqueries) {
-    for (Cluster<InPredicate> cluster :
-        cluster(
-            builder.getScope(),
-            selectSubqueries(builder, expression, subqueries.getInPredicatesSubqueries()))) {
-      builder = planInPredicate(builder, cluster, subqueries);
-    }
-    for (Cluster<SubqueryExpression> cluster :
-        cluster(
-            builder.getScope(),
-            selectSubqueries(builder, expression, subqueries.getSubqueries()))) {
-      builder = planScalarSubquery(builder, cluster);
-    }
-    for (Cluster<ExistsPredicate> cluster :
-        cluster(
-            builder.getScope(),
-            selectSubqueries(builder, expression, subqueries.getExistsSubqueries()))) {
-      builder = planExists(builder, cluster);
-    }
-    for (Cluster<QuantifiedComparisonExpression> cluster :
-        cluster(
-            builder.getScope(),
-            selectSubqueries(
-                builder, expression, subqueries.getQuantifiedComparisonSubqueries()))) {
-      builder = planQuantifiedComparison(builder, cluster, subqueries);
+    List<InPredicate> inPredicates = subqueries.getInPredicatesSubqueries();
+    if (!inPredicates.isEmpty()) {
+      for (Cluster<InPredicate> cluster :
+          cluster(builder.getScope(), selectSubqueries(builder, expression, inPredicates))) {
+        builder = planInPredicate(builder, cluster, subqueries);
+      }
     }
 
+    List<SubqueryExpression> scalarSubqueries = subqueries.getSubqueries();
+    if (!scalarSubqueries.isEmpty()) {
+      for (Cluster<SubqueryExpression> cluster :
+          cluster(builder.getScope(), selectSubqueries(builder, expression, scalarSubqueries))) {
+        builder = planScalarSubquery(builder, cluster);
+      }
+    }
+
+    List<ExistsPredicate> existsPredicates = subqueries.getExistsSubqueries();
+    if (!existsPredicates.isEmpty()) {
+      for (Cluster<ExistsPredicate> cluster :
+          cluster(builder.getScope(), selectSubqueries(builder, expression, existsPredicates))) {
+        builder = planExists(builder, cluster);
+      }
+    }
+
+    List<QuantifiedComparisonExpression> quantifiedComparisons =
+        subqueries.getQuantifiedComparisonSubqueries();
+    if (!quantifiedComparisons.isEmpty()) {
+      for (Cluster<QuantifiedComparisonExpression> cluster :
+          cluster(
+              builder.getScope(), selectSubqueries(builder, expression, quantifiedComparisons))) {
+        builder = planQuantifiedComparison(builder, cluster, subqueries);
+      }
+    }
     return builder;
   }
 
