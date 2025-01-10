@@ -61,6 +61,8 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
     final boolean needFetch =
         super.parseRawExpression(entries, tableInstance, attributeColumns, context);
     if (!needFetch) {
+      context.reserveMemoryForFrontEnd(
+          entries.stream().map(DeviceEntry::ramBytesUsed).reduce(0L, Long::sum));
       results =
           entries.stream()
               .map(
@@ -77,7 +79,7 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
     return DataNodeTableCache.getInstance().getTable(database, tableName).getColumnList().stream()
         .filter(
             columnSchema ->
-                columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)
+                columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)
                     || columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
         .map(
             columnSchema ->

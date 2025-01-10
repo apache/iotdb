@@ -52,7 +52,7 @@ public class IoTDBCastFunctionTableIT {
         // normal cases
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "create table normal(device_id STRING ID, s1 INT32 MEASUREMENT, s2 INT64 MEASUREMENT, s3 FLOAT MEASUREMENT, s4 DOUBLE MEASUREMENT, s5 BOOLEAN MEASUREMENT, s6 STRING MEASUREMENT)",
+        "create table normal(device_id STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 BOOLEAN FIELD, s6 STRING FIELD)",
         // data for int series
         "INSERT INTO normal(time, device_id ,s1) values(0, 'd1', 0)",
         "INSERT INTO normal(time, device_id ,s1) values(1, 'd1', 1)",
@@ -86,7 +86,7 @@ public class IoTDBCastFunctionTableIT {
         "flush",
 
         // special cases
-        "create table special(device_id STRING ID, s1 INT32 MEASUREMENT, s2 INT64 MEASUREMENT, s3 FLOAT MEASUREMENT, s4 DOUBLE MEASUREMENT, s5 BOOLEAN MEASUREMENT, s6 STRING MEASUREMENT)",
+        "create table special(device_id STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 BOOLEAN FIELD, s6 STRING FIELD)",
         "INSERT INTO special(Time, device_id ,s2) values(1, 'd1', 2147483648)",
         "INSERT INTO special(Time, device_id ,s3) values(1, 'd1', 2147483648.0)",
         "INSERT INTO special(Time, device_id ,s3) values(2, 'd1', 2e38)",
@@ -98,7 +98,7 @@ public class IoTDBCastFunctionTableIT {
         "flush",
 
         // special cases for date and timestamp
-        "create table dateType(device_id STRING ID, s1 DATE MEASUREMENT, s2 TIMESTAMP MEASUREMENT)",
+        "create table dateType(device_id STRING TAG, s1 DATE FIELD, s2 TIMESTAMP FIELD)",
         "INSERT INTO dateType(Time,device_id, s1, s2) values(1,'d1', '9999-12-31', 253402271999999)",
         "INSERT INTO dateType(Time,device_id, s1, s2) values(2,'d1', '1000-01-01', -30610224000000)",
       };

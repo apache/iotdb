@@ -63,9 +63,9 @@ public class IoTDBDeviceIT {
       statement.execute("create database test");
       statement.execute("use test");
       statement.execute(
-          "create table table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT)");
+          "create table table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD)");
       statement.execute(
-          "create table table0(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT)");
+          "create table table0(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD)");
       statement.execute(
           "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('1', '木兰', '3', 'A', 37.6, 111.1)");
 
@@ -153,14 +153,14 @@ public class IoTDBDeviceIT {
         statement.executeQuery("show devices from table2");
         fail("Show devices shall fail for non-exist table");
       } catch (final Exception e) {
-        assertEquals("701: Table 'test.table2' does not exist.", e.getMessage());
+        assertEquals("550: Table 'test.table2' does not exist.", e.getMessage());
       }
 
       try {
         statement.executeQuery("count devices from table2");
         fail("Count devices shall fail for non-exist table");
       } catch (final Exception e) {
-        assertEquals("701: Table 'test.table2' does not exist.", e.getMessage());
+        assertEquals("550: Table 'test.table2' does not exist.", e.getMessage());
       }
 
       try {
@@ -168,7 +168,7 @@ public class IoTDBDeviceIT {
         fail("Show devices shall fail for measurement predicate");
       } catch (final Exception e) {
         assertEquals(
-            "701: The TIME/MEASUREMENT columns are currently not allowed in devices related operations",
+            "701: The TIME/FIELD columns are currently not allowed in devices related operations",
             e.getMessage());
       }
 
@@ -176,7 +176,7 @@ public class IoTDBDeviceIT {
         statement.executeQuery("count devices from table0 where a = 1");
         fail("Count devices shall fail for non-exist column");
       } catch (final Exception e) {
-        assertEquals("701: Column 'a' cannot be resolved", e.getMessage());
+        assertEquals("616: Column 'a' cannot be resolved", e.getMessage());
       }
 
       // Test fully qualified name
@@ -193,12 +193,12 @@ public class IoTDBDeviceIT {
         statement.execute("update table2 set model = '1'");
         fail("Update shall fail for non-exist table");
       } catch (final Exception e) {
-        assertEquals("701: Table 'test.table2' does not exist.", e.getMessage());
+        assertEquals("550: Table 'test.table2' does not exist.", e.getMessage());
       }
 
       try {
         statement.execute("update table0 set device_id = '1'");
-        fail("Update shall fail for id");
+        fail("Update shall fail for tag");
       } catch (final Exception e) {
         assertEquals("701: Update can only specify attribute columns.", e.getMessage());
       }
@@ -214,7 +214,7 @@ public class IoTDBDeviceIT {
         statement.execute("update table0 set col = '1'");
         fail("Update shall fail for non-exist column");
       } catch (final Exception e) {
-        assertEquals("701: Column 'col' cannot be resolved", e.getMessage());
+        assertEquals("616: Column 'col' cannot be resolved", e.getMessage());
       }
 
       try {
@@ -249,29 +249,26 @@ public class IoTDBDeviceIT {
       TestUtils.assertResultSetSize(
           statement.executeQuery("show devices from table0 offset 1 limit 1"), 1);
 
-      // TODO: Reopen
-      if (false) {
-        // Test delete devices
-        statement.execute("delete devices from table0 where region_id = '1' and plant_id = '木兰'");
-        TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 1);
+      // Test delete devices
+      statement.execute("delete devices from table0 where region_id = '1' and plant_id = '木兰'");
+      TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 1);
 
-        // Test successfully invalidate cache
-        statement.execute(
-            "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('1', '木兰', '3', 'A', 37.6, 111.1)");
-        TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 2);
+      // Test successfully Invalidate cache
+      statement.execute(
+          "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('1', '木兰', '3', 'A', 37.6, 111.1)");
+      TestUtils.assertResultSetSize(statement.executeQuery("show devices from table0"), 2);
 
-        // Test successfully delete data
-        TestUtils.assertResultSetSize(
-            statement.executeQuery("select * from table0 where region_id = '1'"), 1);
+      // Test successfully delete data
+      TestUtils.assertResultSetSize(
+          statement.executeQuery("select * from table0 where region_id = '1'"), 1);
 
-        try {
-          statement.executeQuery("delete devices from table0 where time = 1");
-          fail("Delete devices shall fail when specifies non id column");
-        } catch (final Exception e) {
-          assertEquals(
-              "701: The TIME/MEASUREMENT columns are currently not allowed in devices related operations",
-              e.getMessage());
-        }
+      try {
+        statement.executeQuery("delete devices from table0 where time = 1");
+        fail("Delete devices shall fail when specifies non tag column");
+      } catch (final Exception e) {
+        assertEquals(
+            "701: The TIME/FIELD columns are currently not allowed in devices related operations",
+            e.getMessage());
       }
     }
   }

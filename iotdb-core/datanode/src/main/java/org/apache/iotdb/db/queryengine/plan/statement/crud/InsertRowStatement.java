@@ -190,9 +190,9 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
-    if (CommonUtils.checkCanCastType(dataTypes[columnIndex], dataType)) {
+    if (dataType.isCompatible(dataTypes[columnIndex])) {
       values[columnIndex] =
-          CommonUtils.castValue(dataTypes[columnIndex], dataType, values[columnIndex]);
+          dataType.castFromSingleValue(dataTypes[columnIndex], values[columnIndex]);
       dataTypes[columnIndex] = dataType;
       return true;
     }
@@ -276,11 +276,23 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     }
     failedMeasurementIndex2Info.forEach(
         (index, info) -> {
-          measurements[index] = info.getMeasurement();
-          dataTypes[index] = info.getDataType();
-          values[index] = info.getValue();
+          if (measurements != null) {
+            measurements[index] = info.getMeasurement();
+          }
+
+          if (dataTypes != null) {
+            dataTypes[index] = info.getDataType();
+          }
+
+          if (values != null) {
+            values[index] = info.getValue();
+          }
         });
     failedMeasurementIndex2Info.clear();
+  }
+
+  public Map<Integer, FailedMeasurementInfo> getFailedMeasurementInfoMap() {
+    return failedMeasurementIndex2Info;
   }
 
   @Override

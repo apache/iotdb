@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
@@ -60,6 +61,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.HeadInfe
 import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.InferenceWindow;
 import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.TailInferenceWindow;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.AdditionExpression;
@@ -1336,7 +1338,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     String modelName = ctx.modelName.getText();
     validateModelName(modelName);
     createModelStatement.setModelName(parseIdentifier(modelName));
-    createModelStatement.setUri(ctx.uriClause().uri().getText());
+    createModelStatement.setUri(parseAndValidateURI(ctx.uriClause()));
     return createModelStatement;
   }
 
@@ -1912,7 +1914,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitInsertStatement(IoTDBSqlParser.InsertStatementContext ctx) {
     InsertStatement insertStatement = new InsertStatement();
-    insertStatement.setDevice(parsePrefixPath(ctx.prefixPath()));
+    try {
+      insertStatement.setDevice(
+          DataNodeDevicePathCache.getInstance().getPartialPath(ctx.prefixPath().getText()));
+    } catch (IllegalPathException e) {
+      throw new SemanticException(e);
+    }
     int timeIndex = parseInsertColumnSpec(ctx.insertColumnsSpec(), insertStatement);
     parseInsertValuesSpec(ctx.insertValuesSpec(), insertStatement, timeIndex);
     insertStatement.setAligned(ctx.ALIGNED() != null);
@@ -2592,10 +2599,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   // Create database
   @Override
-  public Statement visitCreateDatabase(IoTDBSqlParser.CreateDatabaseContext ctx) {
-    DatabaseSchemaStatement databaseSchemaStatement =
+  public Statement visitCreateDatabase(final IoTDBSqlParser.CreateDatabaseContext ctx) {
+    final DatabaseSchemaStatement databaseSchemaStatement =
         new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
-    PartialPath path = parsePrefixPath(ctx.prefixPath());
+    final PartialPath path = parsePrefixPath(ctx.prefixPath());
     databaseSchemaStatement.setDatabasePath(path);
     if (ctx.databaseAttributesClause() != null) {
       parseDatabaseAttributesClause(databaseSchemaStatement, ctx.databaseAttributesClause());
@@ -3329,20 +3336,20 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Flush
 
   @Override
-  public Statement visitFlush(IoTDBSqlParser.FlushContext ctx) {
-    FlushStatement flushStatement = new FlushStatement(StatementType.FLUSH);
-    List<PartialPath> storageGroups = null;
+  public Statement visitFlush(final IoTDBSqlParser.FlushContext ctx) {
+    final FlushStatement flushStatement = new FlushStatement(StatementType.FLUSH);
+    List<String> storageGroups = null;
     if (ctx.boolean_literal() != null) {
       flushStatement.setSeq(Boolean.parseBoolean(ctx.boolean_literal().getText()));
     }
     flushStatement.setOnCluster(ctx.LOCAL() == null);
     if (ctx.prefixPath(0) != null) {
       storageGroups = new ArrayList<>();
-      for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
-        storageGroups.add(parsePrefixPath(prefixPathContext));
+      for (final IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
+        storageGroups.add(parsePrefixPath(prefixPathContext).getFullPath());
       }
     }
-    flushStatement.setStorageGroups(storageGroups);
+    flushStatement.setDatabases(storageGroups);
     return flushStatement;
   }
 

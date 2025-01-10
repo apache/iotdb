@@ -43,6 +43,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     implements Iterator<List<Tablet>> {
@@ -61,6 +62,10 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   private final Meter rawTabletInsertionEventSizeEstimator;
 
   private final List<EnrichedEvent> iteratedEnrichedEvents = new ArrayList<>();
+
+  private static final long ITERATED_COUNT_REPORT_FREQ =
+      30000; // based on the full parse of a 128MB tsfile estimate
+  private final AtomicLong iteratedCount = new AtomicLong();
 
   public SubscriptionPipeTabletEventBatch(
       final int regionId,
@@ -230,6 +235,23 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
   @Override
   public List<Tablet> next() {
+    final List<Tablet> tablets = nextInternal();
+    if (Objects.isNull(tablets)) {
+      return null;
+    }
+    if (iteratedCount.incrementAndGet() % ITERATED_COUNT_REPORT_FREQ == 0) {
+      LOGGER.info(
+          "{} has been iterated {} times, current TsFileInsertionEvent {}",
+          this,
+          iteratedCount,
+          Objects.isNull(currentTsFileInsertionEvent)
+              ? "<unknown>"
+              : ((EnrichedEvent) currentTsFileInsertionEvent).coreReportMessage());
+    }
+    return tablets;
+  }
+
+  private List<Tablet> nextInternal() {
     if (Objects.nonNull(currentTabletInsertionEventsIterator)) {
       if (currentTabletInsertionEventsIterator.hasNext()) {
         final TabletInsertionEvent tabletInsertionEvent =

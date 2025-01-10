@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -127,8 +128,6 @@ import java.util.stream.Stream;
 
 import static org.apache.iotdb.db.exception.metadata.DatabaseNotSetException.DATABASE_NOT_SET;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR_CHAR;
 
 public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
@@ -561,7 +560,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final File sourceFile = new File(absolutePath);
       if (!Objects.equals(
           loadActiveListeningPipeDir, sourceFile.getParentFile().getAbsolutePath())) {
-        FileUtils.moveFileWithMD5Check(sourceFile, new File(loadActiveListeningPipeDir));
+        RetryUtils.retryOnException(
+            () -> {
+              FileUtils.moveFileWithMD5Check(sourceFile, new File(loadActiveListeningPipeDir));
+              return null;
+            });
       }
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -571,6 +574,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       throws FileNotFoundException {
     final LoadTsFileStatement statement = new LoadTsFileStatement(fileAbsolutePath);
     statement.setDeleteAfterLoad(true);
+    statement.setConvertOnTypeMismatch(true);
     statement.setVerifySchema(true);
     statement.setAutoCreateDatabase(false);
 
@@ -885,8 +889,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       return;
     }
 
-    final TDatabaseSchema schema =
-        new TDatabaseSchema(new TDatabaseSchema(ROOT + PATH_SEPARATOR_CHAR + database));
+    final TDatabaseSchema schema = new TDatabaseSchema(new TDatabaseSchema(database));
     schema.setIsTableModel(true);
 
     final CreateDBTask task = new CreateDBTask(schema, true);
@@ -901,6 +904,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 database, result.getStatusCode()));
       }
     } catch (final ExecutionException | InterruptedException e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
       throw new PipeException("Auto create database failed because: " + e.getMessage());
     }
 

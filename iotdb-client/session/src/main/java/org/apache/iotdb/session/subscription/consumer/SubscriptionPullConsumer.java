@@ -160,7 +160,9 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       throws SubscriptionException {
     // parse topic names from external source
     Set<String> parsedTopicNames =
-        topicNames.stream().map(IdentifierUtils::parseIdentifier).collect(Collectors.toSet());
+        topicNames.stream()
+            .map(IdentifierUtils::checkAndParseIdentifier)
+            .collect(Collectors.toSet());
 
     if (!parsedTopicNames.isEmpty()) {
       // filter unsubscribed topics

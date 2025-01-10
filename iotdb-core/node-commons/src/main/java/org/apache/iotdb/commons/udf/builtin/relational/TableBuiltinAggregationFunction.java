@@ -31,12 +31,14 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 
 public enum TableBuiltinAggregationFunction {
   SUM("sum"),
   COUNT("count"),
+  COUNT_IF("count_if"),
   AVG("avg"),
   EXTREME("extreme"),
   MAX("max"),
@@ -80,6 +82,7 @@ public enum TableBuiltinAggregationFunction {
     final String functionName = name.toLowerCase();
     switch (functionName) {
       case "count":
+      case "count_if":
         return INT64;
       case "sum":
         return DOUBLE;
@@ -103,7 +106,8 @@ public enum TableBuiltinAggregationFunction {
       case "min":
         return originalArgumentTypes.get(0);
       default:
-        throw new IllegalArgumentException("Invalid Aggregation function: " + name);
+        // default is UDAF
+        return BLOB;
     }
   }
 

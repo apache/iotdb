@@ -55,7 +55,7 @@
         <boost.include.dir/>
         <!-- This was the last version to support Java 8 -->
         <caffeine.version>2.9.3</caffeine.version>
-        <bytebuddy.version>1.14.19</bytebuddy.version>
+        <cglib.version>3.3.0</cglib.version>
         <checker-qual.version>3.38.0</checker-qual.version>
         <cmake.build.type>Release</cmake.build.type>
         <commons-cli.version>1.5.0</commons-cli.version>
@@ -109,7 +109,7 @@
         <jtransforms.version>3.1</jtransforms.version>
         <junit.version>4.13.2</junit.version>
         <!-- This was the last version to support Java 8 -->
-        <logback.version>1.3.14</logback.version>
+        <logback.version>1.3.15</logback.version>
         <lz4-java.version>1.8.0</lz4-java.version>
         <maven.assembly.version>3.6.0</maven.assembly.version>
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -167,7 +167,7 @@
         <thrift.version>0.14.1</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>1.2.0-241211-SNAPSHOT</tsfile.version>
+        <tsfile.version>2.0.0-250109-SNAPSHOT</tsfile.version>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim
@@ -481,9 +481,9 @@
                 <version>${nimbus-jose-jwt.version}</version>
             </dependency>
             <dependency>
-                <groupId>net.bytebuddy</groupId>
-                <artifactId>byte-buddy</artifactId>
-                <version>${bytebuddy.version}</version>
+                <groupId>cglib</groupId>
+                <artifactId>cglib</artifactId>
+                <version>${cglib.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.commons</groupId>

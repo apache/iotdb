@@ -36,12 +36,12 @@ void insertRelationalTablet() {
     };
 
     vector<ColumnCategory> columnTypes = {
-        ColumnCategory::ID,
-        ColumnCategory::ID,
-        ColumnCategory::ID,
+        ColumnCategory::TAG,
+        ColumnCategory::TAG,
+        ColumnCategory::TAG,
         ColumnCategory::ATTRIBUTE,
-        ColumnCategory::MEASUREMENT,
-        ColumnCategory::MEASUREMENT
+        ColumnCategory::FIELD,
+        ColumnCategory::FIELD
     };
 
     Tablet tablet("table1", schemaList, columnTypes, 100);
@@ -67,24 +67,43 @@ void insertRelationalTablet() {
     }
 }
 
-template<typename T>
-inline void Output(vector<T> &columnNames) {
-    for (auto &name: columnNames) {
-        cout << name << "\t";
+void Output(unique_ptr<SessionDataSet> &dataSet) {
+    for (const string &name: dataSet->getColumnNames()) {
+        cout << name << "  ";
+    }
+    cout << endl;
+    while (dataSet->hasNext()) {
+        cout << dataSet->next()->toString();
+    }
+    cout << endl;
+}
+
+void OutputWithType(unique_ptr<SessionDataSet> &dataSet) {
+    for (const string &name: dataSet->getColumnNames()) {
+        cout << name << "  ";
+    }
+    cout << endl;
+    for (const string &type: dataSet->getColumnTypeList()) {
+        cout << type << "  ";
+    }
+    cout << endl;
+    while (dataSet->hasNext()) {
+        cout << dataSet->next()->toString();
     }
     cout << endl;
 }
 
 int main() {
     try {
-        session = new TableSessionBuilder()
-            .host("127.0.0.1")
-            .rpcPort(6667)
-            .username("root")
-            .password("root")
-            .build();
+        session = (new TableSessionBuilder())
+            ->host("127.0.0.1")
+            ->rpcPort(6667)
+            ->username("root")
+            ->password("root")
+            ->build();
 
-        cout << "Create Database db1,db2" << endl;
+        
+        cout << "[Create Database db1,db2]\n" << endl;
         try {
             session->executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db1");
             session->executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db2");
@@ -92,59 +111,49 @@ int main() {
             cout << e.what() << endl;
         }
 
-        cout << "Use db1 as database" << endl;
+        cout << "[Use db1 as database]\n" << endl;
         try {
             session->executeNonQueryStatement("USE db1");
         } catch (IoTDBException &e) {
             cout << e.what() << endl;
         }
 
-        cout << "Create Table table1,table2" << endl;
+        cout << "[Create Table table1,table2]\n" << endl;
         try {
-            session->executeNonQueryStatement("create table db1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
-            session->executeNonQueryStatement("create table db2.table2(region_id STRING ID, plant_id STRING ID, color STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, speed DOUBLE MEASUREMENT) with (TTL=6600000)");
+            session->executeNonQueryStatement("create table db1.table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (TTL=3600000)");
+            session->executeNonQueryStatement("create table db2.table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD, speed DOUBLE FIELD) with (TTL=6600000)");
         } catch (IoTDBException &e) {
             cout << e.what() << endl;
         }
 
-        cout << "Show Tables" << endl;
+        cout << "[Show Tables]\n" << endl;
         try {
-            SessionDataSet dataSet = session->executeQueryStatement("SHOW TABLES");
-            Output(dataSet.getColumnNames());
-            while(dataSet.hasNext()) {
-                Output(dataSet.next());
-            }
+            unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("SHOW TABLES");
+            Output(dataSet);
         } catch (IoTDBException &e) {
             cout << e.what() << endl;
         }
 
-        cout << "Show tables from specific database" << endl;
+        cout << "[Show tables from specific database]\n" << endl;
         try {
-            SessionDataSet dataSet = session->executeQueryStatement("SHOW TABLES FROM db1");
-            Output(dataSet.getColumnNames());
-            while(dataSet.hasNext()) {
-                Output(dataSet.next());
-            }
+            unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("SHOW TABLES FROM db1");
+            Output(dataSet);
         } catch (IoTDBException &e) {
             cout << e.what() << endl;
         }
 
-        cout << "InsertTablet" << endl;
+        cout << "[InsertTablet]\n" << endl;
         try {
             insertRelationalTablet();
         } catch (IoTDBException &e) {
             cout << e.what() << endl;
         }
 
-        cout << "Query Table Data" << endl;
+        cout << "[Query Table Data]\n" << endl;
         try {
-            SessionDataSet dataSet = session->executeQueryStatement("SELECT * FROM table1"
+            unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("SELECT * FROM table1"
                 " where region_id = '1' and plant_id in ('3', '5') and device_id = '3'");
-            Output(dataSet.getColumnNames());
-            Output(dataSet.getColumnTypeList());
-            while(dataSet.hasNext()) {
-                Output(dataSet.next());
-            }
+            OutputWithType(dataSet);
         } catch (IoTDBException &e) {
             cout << e.what() << endl;
         }
@@ -152,44 +161,38 @@ int main() {
         session->close();
 
         // specify database in constructor
-        session = new TableSessionBuilder()
-            .host("127.0.0.1")
-            .rpcPort(6667)
-            .username("root")
-            .password("root")
-            .database("db1")
-            .build();
+        session = (new TableSessionBuilder())
+            ->host("127.0.0.1")
+            ->rpcPort(6667)
+            ->username("root")
+            ->password("root")
+            ->database("db1")
+            ->build();
 
-        cout << "Show tables from current database(db1)" << endl;
+        cout << "[Show tables from current database(db1)]\n" << endl;
         try {
-            SessionDataSet dataSet = session->executeQueryStatement("SHOW TABLES");
-            Output(dataSet.getColumnNames());
-            while(dataSet.hasNext()) {
-                Output(dataSet.next());
-            }
+            unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("SHOW TABLES");
+            Output(dataSet);
         } catch (IoTDBException &e) {
             cout << e.what() << endl;
         }
 
-        cout << "Change database to db2" << endl;
+        cout << "[Change database to db2]\n" << endl;
         try {
             session->executeNonQueryStatement("USE db2");
         } catch (IoTDBException &e) {
             cout << e.what() << endl;
         }
 
-        cout << "Show tables from current database(db2)" << endl;
+        cout << "[Show tables from current database(db2)]\n" << endl;
         try {
-            SessionDataSet dataSet = session->executeQueryStatement("SHOW TABLES");
-            Output(dataSet.getColumnNames());
-            while(dataSet.hasNext()) {
-                Output(dataSet.next());
-            }
+            unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("SHOW TABLES");
+            Output(dataSet);
         } catch (IoTDBException &e) {
             cout << e.what() << endl;
         }
 
-        cout << "Drop Database db1,db2" << endl;
+        cout << "[Drop Database db1,db2]\n" << endl;
         try {
             session->executeNonQueryStatement("DROP DATABASE db1");
             session->executeNonQueryStatement("DROP DATABASE db2");

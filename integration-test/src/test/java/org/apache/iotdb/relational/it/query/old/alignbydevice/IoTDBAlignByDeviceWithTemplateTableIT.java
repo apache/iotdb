@@ -49,7 +49,7 @@ public class IoTDBAlignByDeviceWithTemplateTableIT {
       new String[] {
         "CREATE database " + DATABASE_NAME,
         "use " + DATABASE_NAME,
-        "create table table1(device_id STRING ID, s1 FLOAT MEASUREMENT, s2 BOOLEAN MEASUREMENT, s3 INT32 MEASUREMENT)",
+        "create table table1(device_id STRING TAG, s1 FLOAT FIELD, s2 BOOLEAN FIELD, s3 INT32 FIELD)",
         "INSERT INTO table1(Time, device_id, s1, s2, s3) VALUES (1,'d1', 1.1, false, 1), (2, 'd1', 2.2, false, 2), (1,'d2', 11.1, false, 11), (2,'d2', 22.2, false, 22), (1,'d3', 111.1, true, null), (4,'d3', 444.4, true, 44), (1,'d4', 1111.1, true, 1111), (5,'d4', 5555.5, false, 5555)",
       };
 
@@ -187,7 +187,7 @@ public class IoTDBAlignByDeviceWithTemplateTableIT {
             statement.executeQuery("SELECT s3,s1,s_null FROM table1 order by device_id")) {
           fail("should throw exception to indicate that s_null doesn't exist");
         } catch (SQLException e) {
-          assertEquals("701: Column 's_null' cannot be resolved", e.getMessage());
+          assertEquals("616: Column 's_null' cannot be resolved", e.getMessage());
         }
       }
     } catch (SQLException e) {
@@ -277,7 +277,7 @@ public class IoTDBAlignByDeviceWithTemplateTableIT {
             statement.executeQuery("SELECT * FROM table1 WHERE s_null > 1 order by device_id")) {
           fail("should throw exception to indicate that s_null doesn't exist");
         } catch (SQLException e) {
-          assertEquals("701: Column 's_null' cannot be resolved", e.getMessage());
+          assertEquals("616: Column 's_null' cannot be resolved", e.getMessage());
         }
       }
     } catch (SQLException e) {

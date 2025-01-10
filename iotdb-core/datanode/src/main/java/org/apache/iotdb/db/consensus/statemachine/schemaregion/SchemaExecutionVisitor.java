@@ -444,6 +444,8 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   @Override
   public TSStatus visitBatchActivateTemplate(
       final BatchActivateTemplateNode node, final ISchemaRegion schemaRegion) {
+    final List<TSStatus> statusList = new ArrayList<>();
+    final List<PartialPath> alreadyActivatedDeviceList = new ArrayList<>();
     for (final Map.Entry<PartialPath, Pair<Integer, Integer>> entry :
         node.getTemplateActivationMap().entrySet()) {
       final Template template =
@@ -454,11 +456,21 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
                 entry.getKey(), entry.getValue().right, entry.getValue().left),
             template);
       } catch (final MetadataException e) {
-        logger.error(e.getMessage(), e);
-        return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+        if (e.getErrorCode() == TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
+          alreadyActivatedDeviceList.add(entry.getKey());
+        } else {
+          logger.error(e.getMessage(), e);
+          statusList.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        }
       }
     }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    if (!alreadyActivatedDeviceList.isEmpty()) {
+      final TemplateIsInUseException e =
+          new TemplateIsInUseException(alreadyActivatedDeviceList.toString());
+      logger.error(e.getMessage(), e);
+      statusList.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+    }
+    return statusList.isEmpty() ? RpcUtils.SUCCESS_STATUS : RpcUtils.getStatus(statusList);
   }
 
   @Override

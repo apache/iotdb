@@ -234,6 +234,7 @@ public class StreamingAggregationOperator extends AbstractOperator {
   @Override
   public void close() throws Exception {
     child.close();
+    aggregators.forEach(TableAggregator::close);
   }
 
   @Override

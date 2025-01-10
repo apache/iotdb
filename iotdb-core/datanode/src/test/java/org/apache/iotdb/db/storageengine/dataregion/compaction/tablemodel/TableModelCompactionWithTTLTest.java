@@ -21,8 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.tablemodel;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
@@ -179,10 +179,9 @@ public class TableModelCompactionWithTTLTest extends AbstractCompactionTest {
 
   public void createTable(String tableName, long ttl) {
     TsTable tsTable = new TsTable(tableName);
-    tsTable.addColumnSchema(new IdColumnSchema("id_column", TSDataType.STRING));
+    tsTable.addColumnSchema(new TagColumnSchema("id_column", TSDataType.STRING));
     tsTable.addColumnSchema(
-        new MeasurementColumnSchema(
-            "s1", TSDataType.STRING, TSEncoding.PLAIN, CompressionType.LZ4));
+        new FieldColumnSchema("s1", TSDataType.STRING, TSEncoding.PLAIN, CompressionType.LZ4));
     tsTable.addProp(TsTable.TTL_PROPERTY, ttl + "");
     DataNodeTableCache.getInstance().preUpdateTable(this.COMPACTION_TEST_SG, tsTable);
     DataNodeTableCache.getInstance().commitUpdateTable(this.COMPACTION_TEST_SG, tableName);

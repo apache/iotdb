@@ -27,11 +27,15 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import java.util.Arrays;
 import java.util.regex.Pattern;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_DATABASE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_TABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_TABLE_NAME_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_TABLE_NAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_DATABASE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_DATABASE_NAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_TABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_TABLE_NAME_KEY;
 
 public class TablePattern {
@@ -98,22 +102,37 @@ public class TablePattern {
    */
   public static TablePattern parsePipePatternFromSourceParameters(
       final PipeParameters sourceParameters) {
-    final boolean isTableModelDataAllowedToBeCaptured =
+    final boolean isDoubleLiving =
         sourceParameters.getBooleanOrDefault(
             Arrays.asList(
-                PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
-                PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY),
-            !sourceParameters
-                .getStringOrDefault(
-                    SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
-                .equals(SystemConstant.SQL_DIALECT_TREE_VALUE));
+                PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+                PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
+            PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+    final boolean isTableModelDataAllowedToBeCaptured =
+        isDoubleLiving
+            || sourceParameters.getBooleanOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
+                    PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY),
+                !sourceParameters
+                    .getStringOrDefault(
+                        SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
+                    .equals(SystemConstant.SQL_DIALECT_TREE_VALUE));
     final String databaseNamePattern =
         sourceParameters.getStringOrDefault(
-            Arrays.asList(EXTRACTOR_DATABASE_NAME_KEY, SOURCE_DATABASE_NAME_KEY),
+            Arrays.asList(
+                EXTRACTOR_DATABASE_NAME_KEY,
+                SOURCE_DATABASE_NAME_KEY,
+                EXTRACTOR_DATABASE_KEY,
+                SOURCE_DATABASE_KEY),
             EXTRACTOR_DATABASE_NAME_DEFAULT_VALUE);
     final String tableNamePattern =
         sourceParameters.getStringOrDefault(
-            Arrays.asList(EXTRACTOR_TABLE_NAME_KEY, SOURCE_TABLE_NAME_KEY),
+            Arrays.asList(
+                EXTRACTOR_TABLE_NAME_KEY,
+                SOURCE_TABLE_NAME_KEY,
+                EXTRACTOR_TABLE_KEY,
+                SOURCE_TABLE_KEY),
             EXTRACTOR_TABLE_NAME_DEFAULT_VALUE);
     try {
       return new TablePattern(
