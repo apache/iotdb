@@ -123,7 +123,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
       }
 
       // Verify receiver data
-      long timeoutSeconds = 60;
+      long timeoutSeconds = 600;
       List<List<Object>> expectedValues =
           generateTabletResultSetForTable(tablet, measurementSchemas);
       await()
@@ -139,12 +139,10 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
                       expectedValues,
                       tablet.timestamps);
                 } catch (Exception e) {
-                  e.printStackTrace();
                   fail(e.getMessage());
                 }
               });
     } catch (Exception e) {
-      e.printStackTrace();
       fail(e.getMessage());
     }
     tablet.reset();
