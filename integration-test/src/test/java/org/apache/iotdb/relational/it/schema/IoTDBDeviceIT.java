@@ -222,7 +222,7 @@ public class IoTDBDeviceIT {
         fail("Update shall fail when result type mismatch");
       } catch (final Exception e) {
         assertEquals(
-            "701: Result type mismatch for attribute 'model', expected class org.apache.tsfile.utils.Binary, actual class java.lang.Integer",
+            "507: Result type mismatch for attribute 'model', expected class org.apache.tsfile.utils.Binary, actual class java.lang.Integer",
             e.getMessage());
       }
 
