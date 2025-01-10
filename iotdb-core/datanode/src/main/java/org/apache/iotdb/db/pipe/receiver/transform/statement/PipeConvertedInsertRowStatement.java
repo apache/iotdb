@@ -45,7 +45,6 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
     // Statement
     isDebug = insertRowStatement.isDebug();
     // InsertBaseStatement
-    insertRowStatement.removeAllFailedMeasurementMarks();
     devicePath = insertRowStatement.getDevicePath();
     isAligned = insertRowStatement.isAligned();
     measurementSchemas = insertRowStatement.getMeasurementSchemas();
@@ -62,6 +61,8 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
     isNeedInferType = insertRowStatement.isNeedInferType();
     deviceID = insertRowStatement.getRawTableDeviceID();
 
+    // To ensure that the measurement remains unchanged during the WAL writing process, the array
+    // needs to be copied before the failed Measurement mark can be deleted.
     final MeasurementSchema[] measurementSchemas = insertRowStatement.getMeasurementSchemas();
     if (measurementSchemas != null) {
       this.measurementSchemas = Arrays.copyOf(measurementSchemas, measurementSchemas.length);
@@ -76,6 +77,8 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
     if (dataTypes != null) {
       this.dataTypes = Arrays.copyOf(dataTypes, dataTypes.length);
     }
+
+    insertRowStatement.removeAllFailedMeasurementMarks();
   }
 
   @Override

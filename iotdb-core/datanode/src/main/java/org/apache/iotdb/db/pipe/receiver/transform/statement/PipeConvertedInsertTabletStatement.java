@@ -35,12 +35,12 @@ public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeConvertedInsertTabletStatement.class);
 
-  public PipeConvertedInsertTabletStatement(final InsertTabletStatement insertTabletStatement) {
+  public PipeConvertedInsertTabletStatement(
+      final InsertTabletStatement insertTabletStatement, boolean isCopyMeasurement) {
     super();
     // Statement
     isDebug = insertTabletStatement.isDebug();
     // InsertBaseStatement
-    insertTabletStatement.removeAllFailedMeasurementMarks();
     devicePath = insertTabletStatement.getDevicePath();
     isAligned = insertTabletStatement.isAligned();
     columnCategories = insertTabletStatement.getColumnCategories();
@@ -56,20 +56,34 @@ public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
     singleDevice = insertTabletStatement.isSingleDevice();
     rowCount = insertTabletStatement.getRowCount();
 
-    final MeasurementSchema[] measurementSchemas = insertTabletStatement.getMeasurementSchemas();
-    if (measurementSchemas != null) {
-      this.measurementSchemas = Arrays.copyOf(measurementSchemas, measurementSchemas.length);
+    // To ensure that the measurement remains unchanged during the WAL writing process, the array
+    // needs to be copied before the failed Measurement mark can be deleted.
+    if (isCopyMeasurement) {
+      final MeasurementSchema[] measurementSchemas = insertTabletStatement.getMeasurementSchemas();
+      if (measurementSchemas != null) {
+        this.measurementSchemas = Arrays.copyOf(measurementSchemas, measurementSchemas.length);
+      }
+
+      final String[] measurements = insertTabletStatement.getMeasurements();
+      if (measurements != null) {
+        this.measurements = Arrays.copyOf(measurements, measurements.length);
+      }
+
+      final TSDataType[] dataTypes = insertTabletStatement.getDataTypes();
+      if (dataTypes != null) {
+        this.dataTypes = Arrays.copyOf(dataTypes, dataTypes.length);
+      }
+    } else {
+      this.measurementSchemas = insertTabletStatement.getMeasurementSchemas();
+      this.measurements = insertTabletStatement.getMeasurements();
+      this.dataTypes = insertTabletStatement.getDataTypes();
     }
 
-    final String[] measurements = insertTabletStatement.getMeasurements();
-    if (measurements != null) {
-      this.measurements = Arrays.copyOf(measurements, measurements.length);
-    }
+    insertTabletStatement.removeAllFailedMeasurementMarks();
+  }
 
-    final TSDataType[] dataTypes = insertTabletStatement.getDataTypes();
-    if (dataTypes != null) {
-      this.dataTypes = Arrays.copyOf(dataTypes, dataTypes.length);
-    }
+  public PipeConvertedInsertTabletStatement(final InsertTabletStatement insertTabletStatement) {
+    this(insertTabletStatement, true);
   }
 
   @Override
