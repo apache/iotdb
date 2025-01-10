@@ -418,7 +418,6 @@ public class ProcedureExecutor<Env> {
           "The executing procedure should in RUNNABLE state, but it's not. Procedure is {}", proc);
       return;
     }
-    boolean suspended = false;
     boolean reExecute;
 
     Procedure<Env>[] subprocs = null;
@@ -430,10 +429,7 @@ public class ProcedureExecutor<Env> {
         if (subprocs != null && subprocs.length == 0) {
           subprocs = null;
         }
-      } catch (ProcedureSuspendedException e) {
-        LOG.debug("Suspend {}", proc);
-        suspended = true;
-      } catch (ProcedureYieldException e) {
+      }catch (ProcedureYieldException e) {
         LOG.debug("Yield {}", proc);
         yieldProcedure(proc);
       } catch (InterruptedException e) {
@@ -455,7 +451,7 @@ public class ProcedureExecutor<Env> {
           }
         } else if (proc.getState() == ProcedureState.WAITING_TIMEOUT) {
           LOG.info("Added into timeoutExecutor {}", proc);
-        } else if (!suspended) {
+        } else {
           proc.setState(ProcedureState.SUCCESS);
         }
       }
@@ -470,7 +466,7 @@ public class ProcedureExecutor<Env> {
         return;
       }
 
-      if (proc.isRunnable() && !suspended && proc.isYieldAfterExecution(this.environment)) {
+      if (proc.isRunnable() && proc.isYieldAfterExecution(this.environment)) {
         yieldProcedure(proc);
         return;
       }
