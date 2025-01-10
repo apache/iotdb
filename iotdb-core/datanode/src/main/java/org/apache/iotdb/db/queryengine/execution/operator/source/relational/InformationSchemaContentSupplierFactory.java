@@ -72,7 +72,7 @@ public class InformationSchemaContentSupplierFactory {
       final String tableName, final List<TSDataType> dataTypes, final String userName) {
     switch (tableName) {
       case InformationSchema.QUERIES:
-        return new QueriesSupplier(dataTypes);
+        return new QueriesSupplier(dataTypes, userName);
       case InformationSchema.DATABASES:
         return new DatabaseSupplier(dataTypes, userName);
       case InformationSchema.TABLES:
@@ -94,8 +94,9 @@ public class InformationSchemaContentSupplierFactory {
     private final List<IQueryExecution> queryExecutions =
         Coordinator.getInstance().getAllQueryExecutions();
 
-    private QueriesSupplier(final List<TSDataType> dataTypes) {
+    private QueriesSupplier(final List<TSDataType> dataTypes, final String userName) {
       super(dataTypes);
+      Coordinator.getInstance().getAccessControl().checkUserHasMaintainPrivilege(userName);
       this.totalSize = queryExecutions.size();
     }
 
@@ -363,6 +364,7 @@ public class InformationSchemaContentSupplierFactory {
     private RegionSupplier(final List<TSDataType> dataTypes, final String userName) {
       super(dataTypes);
       this.userName = userName;
+      Coordinator.getInstance().getAccessControl().checkUserHasMaintainPrivilege(userName);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         final TShowDatabaseResp resp =
