@@ -73,6 +73,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -136,8 +137,13 @@ public class PipeConsensus implements IConsensus {
 
     try {
       recoverFuture.get();
-    } catch (InterruptedException | ExecutionException e) {
-      LOGGER.error("Exception while waiting for recover future completion", e);
+    } catch (CancellationException ce) {
+      LOGGER.info("IoTV2 Recover Task is cancelled", ce);
+    } catch (ExecutionException ee) {
+      LOGGER.error("Exception while waiting for recover future completion", ee);
+    } catch (InterruptedException ie) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn("IoTV2 Recover Task is interrupted", ie);
     }
     // only when we recover all consensus group can we launch async backend checker thread
     consensusPipeGuardian.start(
