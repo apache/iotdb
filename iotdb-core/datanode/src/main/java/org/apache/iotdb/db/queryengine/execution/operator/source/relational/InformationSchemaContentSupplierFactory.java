@@ -125,7 +125,9 @@ public class InformationSchemaContentSupplierFactory {
         final int dataNodeId = Integer.parseInt(splits[splits.length - 1]);
 
         columnBuilders[0].writeBinary(BytesUtils.valueOf(queryExecution.getQueryId()));
-        columnBuilders[1].writeLong(queryExecution.getStartExecutionTime());
+        columnBuilders[1].writeLong(
+            TimestampPrecisionUtils.convertToCurrPrecision(
+                queryExecution.getStartExecutionTime(), TimeUnit.MILLISECONDS));
         columnBuilders[2].writeInt(dataNodeId);
         columnBuilders[3].writeFloat(
             (float) (currTime - queryExecution.getStartExecutionTime()) / 1000);
