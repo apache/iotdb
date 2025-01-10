@@ -65,7 +65,7 @@ public class SubscriptionEvent {
   // record file name for file payload
   private String fileName;
 
-  private static final long NACK_COUNT_THRESHOLD = 3;
+  private static final long NACK_COUNT_REPORT_THRESHOLD = 3;
   private final AtomicLong nackCount = new AtomicLong();
 
   /**
@@ -218,7 +218,7 @@ public class SubscriptionEvent {
     lastPolledTimestamp.set(INVALID_TIMESTAMP);
 
     // record nack count
-    if (nackCount.getAndIncrement() > NACK_COUNT_THRESHOLD) {
+    if (nackCount.getAndIncrement() > NACK_COUNT_REPORT_THRESHOLD) {
       LOGGER.warn("{} has been nacked {} times", this, nackCount);
     }
   }
