@@ -1039,7 +1039,6 @@ public class TsFileResource implements PersistentResource {
     return timeIndex.isSpanMultiTimePartitions();
   }
 
-  @TestOnly
   public void setExclusiveModFile(ModificationFile exclusiveModFile) {
     synchronized (this) {
       this.exclusiveModFile = exclusiveModFile;

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.it;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
@@ -161,6 +162,10 @@ public class IoTDBLoadTsFileWithModIT {
           statement.executeQuery("select count(s1) as c from root.test.d1")) {
         Assert.assertTrue(resultSet.next());
         Assert.assertEquals(3, resultSet.getLong("c"));
+        Assert.assertTrue(
+            new File(tmpDir, "1-1-0-0.tsfile" + ModificationFileV1.FILE_SUFFIX).exists());
+        Assert.assertFalse(
+            new File(tmpDir, "1-1-0-0.tsfile" + ModificationFile.FILE_SUFFIX).exists());
       }
     }
   }

@@ -3122,6 +3122,9 @@ public class DataRegion implements IDataRegionForQuery {
     // the mod file refer to the source file of LOAD
     try {
       if (oldModFile.exists()) {
+        if (deleteOriginFile) {
+          org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(oldModFile);
+        }
         // remove the temporary v2 mod file in load dir
         tsFileResource.removeModFile();
       } else {
