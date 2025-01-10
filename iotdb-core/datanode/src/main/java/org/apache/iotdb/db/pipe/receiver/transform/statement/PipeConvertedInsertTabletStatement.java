@@ -78,8 +78,8 @@ public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
       this.measurements = insertTabletStatement.getMeasurements();
       this.dataTypes = insertTabletStatement.getDataTypes();
     }
-
-    insertTabletStatement.removeAllFailedMeasurementMarks();
+    this.failedMeasurementIndex2Info = insertTabletStatement.getFailedMeasurementInfoMap();
+    removeAllFailedMeasurementMarks();
   }
 
   public PipeConvertedInsertTabletStatement(final InsertTabletStatement insertTabletStatement) {

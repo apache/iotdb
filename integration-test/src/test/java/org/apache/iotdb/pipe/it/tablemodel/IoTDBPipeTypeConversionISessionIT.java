@@ -56,12 +56,13 @@ import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2TableModel.class})
 public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTestIT {
-  private static final int generateDataSize = 100;
+  private static final int generateDataSize = 1000;
 
   @Test
   public void insertTablet() {
@@ -195,15 +196,13 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
       List<Field> fields = record.getFields();
-
       List<Object> rowValues = values.get(index++);
-      System.out.println(rowValues.toString() + " " + rowValues.get(7));
       for (int i = 0; i < fields.size(); i++) {
         Field field = fields.get(i);
         if (field.getDataType() == null) {
+          assertNull(rowValues.get(i));
           continue;
         }
-        System.out.println(field.getDataType());
         switch (field.getDataType()) {
           case INT64:
           case TIMESTAMP:
@@ -287,13 +286,11 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
     }
   }
 
-  private long[] createTestDataForTimestamp() {
+  private void createTestDataForTimeColumn(Tablet tablet) {
     long time = new Date().getTime();
-    long[] data = new long[generateDataSize];
-    for (int i = 0; i < data.length; i++) {
-      data[i] = time++;
+    for (int i = 0; i < generateDataSize; i++) {
+      tablet.addTimestamp(i, time++);
     }
-    return data;
   }
 
   private void createTestDataForDate(Tablet tablet, int j) {
@@ -455,7 +452,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
             columnTypes,
             generateDataSize);
     tablet.initBitMaps();
-    tablet.timestamps = createTestDataForTimestamp();
+    createTestDataForTimeColumn(tablet);
     for (int i = 0; i < pairs.size(); i++) {
       MeasurementSchema schema = pairs.get(i).left;
       switch (schema.getType()) {
@@ -487,7 +484,6 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
           break;
       }
     }
-    tablet.setRowSize(generateDataSize);
 
     return tablet;
   }

@@ -283,6 +283,10 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     failedMeasurementIndex2Info.clear();
   }
 
+  public Map<Integer, FailedMeasurementInfo> getFailedMeasurementInfoMap() {
+    return failedMeasurementIndex2Info;
+  }
+
   @Override
   public void semanticCheck() {
     super.semanticCheck();

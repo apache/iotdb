@@ -78,7 +78,8 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
       this.dataTypes = Arrays.copyOf(dataTypes, dataTypes.length);
     }
 
-    insertRowStatement.removeAllFailedMeasurementMarks();
+    this.failedMeasurementIndex2Info = insertRowStatement.getFailedMeasurementInfoMap();
+    removeAllFailedMeasurementMarks();
   }
 
   @Override
