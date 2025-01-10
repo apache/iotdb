@@ -61,8 +61,8 @@ public class VisibilityUtils {
     return false;
   }
 
-  public static boolean isCompatible(final Visibility base, final Visibility... incoming) {
-    return Arrays.stream(incoming).allMatch(visibility -> isCompatible(base, visibility));
+  public static boolean isCompatible(final Visibility pipeVisibility, final Visibility... pluginVisibilities) {
+    return Arrays.stream(pluginVisibilities).allMatch(pluginVisibility -> isCompatible(pluginVisibility, pipeVisibility));
   }
 
   public static Visibility calculateFromPluginClass(final Class<?> pipePluginClass) {
