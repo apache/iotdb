@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.meta;
 
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
-import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
-
 import org.apache.tsfile.utils.PublicBAOS;
 
 import java.io.DataOutputStream;
@@ -30,7 +26,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Objects;
 
 public class PipeMeta {

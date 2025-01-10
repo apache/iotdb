@@ -440,8 +440,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public TSStatus createPipe(final CreatePipePlanV2 plan) {
     acquireWriteLock();
     try {
-      pipeMetaKeeper.addPipeMeta(
-          new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta()));
+      pipeMetaKeeper.addPipeMeta(new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta()));
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       releaseWriteLock();
