@@ -76,6 +76,8 @@ public class ShowPipePluginsTask implements IConfigTask {
         continue;
       }
 
+      // show
+
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(BytesUtils.valueOf(pipePluginMeta.getPluginName()));
       builder

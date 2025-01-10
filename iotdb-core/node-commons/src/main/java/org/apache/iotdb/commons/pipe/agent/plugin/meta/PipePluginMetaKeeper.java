@@ -20,6 +20,8 @@
 package org.apache.iotdb.commons.pipe.agent.plugin.meta;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -33,21 +35,24 @@ import java.util.concurrent.ConcurrentHashMap;
 public abstract class PipePluginMetaKeeper {
 
   protected final Map<String, PipePluginMeta> pipePluginNameToMetaMap = new ConcurrentHashMap<>();
-  protected final Map<String, Class<?>> builtinPipePluginNameToClassMap;
+  protected final Map<String, Class<?>> builtinPipePluginNameToClassMap = new ConcurrentHashMap<>();
+  protected final Map<String, Visibility> pipePluginNameToVisibilityMap =
+      new ConcurrentHashMap<>(); // TODO: TBD
 
   public PipePluginMetaKeeper() {
-    builtinPipePluginNameToClassMap = new ConcurrentHashMap<>();
     loadBuiltinPlugins();
   }
 
-  protected void loadBuiltinPlugins() {
+  private void loadBuiltinPlugins() {
     for (final BuiltinPipePlugin builtinPipePlugin : BuiltinPipePlugin.values()) {
-      addPipePluginMeta(
-          builtinPipePlugin.getPipePluginName(),
-          new PipePluginMeta(
-              builtinPipePlugin.getPipePluginName(), builtinPipePlugin.getClassName()));
-      addBuiltinPluginClass(
-          builtinPipePlugin.getPipePluginName(), builtinPipePlugin.getPipePluginClass());
+      final String pipePluginName = builtinPipePlugin.getPipePluginName();
+      final Class<?> pipePluginClass = builtinPipePlugin.getPipePluginClass();
+      final String className = builtinPipePlugin.getClassName();
+
+      addPipePluginMeta(pipePluginName, new PipePluginMeta(pipePluginName, className));
+      addBuiltinPluginClass(pipePluginName, pipePluginClass);
+      addPipePluginVisibility(
+          pipePluginName, VisibilityUtils.calculateFromPluginClass(pipePluginClass));
     }
   }
 
@@ -86,6 +91,14 @@ public abstract class PipePluginMetaKeeper {
       }
     }
     return null;
+  }
+
+  public void addPipePluginVisibility(String pluginName, Visibility visibility) {
+    pipePluginNameToVisibilityMap.put(pluginName.toUpperCase(), visibility);
+  }
+
+  public void removePipePluginVisibility(String pluginName) {
+    pipePluginNameToVisibilityMap.remove(pluginName.toUpperCase());
   }
 
   protected void processTakeSnapshot(OutputStream outputStream) throws IOException {
