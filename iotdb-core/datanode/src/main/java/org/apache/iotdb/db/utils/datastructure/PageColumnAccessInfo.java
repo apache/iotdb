@@ -19,16 +19,14 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import static org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk.MAX_NUMBER_OF_POINTS_IN_PAGE;
-
 public class PageColumnAccessInfo {
   // time -> (selectedTVList, selectedIndex)
   private final int[][] indices;
   private int count;
 
-  public PageColumnAccessInfo() {
-    this.indices = new int[MAX_NUMBER_OF_POINTS_IN_PAGE][];
-    for (int i = 0; i < MAX_NUMBER_OF_POINTS_IN_PAGE; i++) {
+  public PageColumnAccessInfo(int maxNumberOfPointsInPage) {
+    this.indices = new int[maxNumberOfPointsInPage][];
+    for (int i = 0; i < maxNumberOfPointsInPage; i++) {
       indices[i] = new int[2];
     }
     this.count = 0;

@@ -1144,7 +1144,7 @@ tvlist_sort_algorithm=TIM
 
 # When point number in the working TVList exceeds this, it is sorted and handover in writable memtable
 # default 0 means it does not handover working tvlist
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: int
 tvlist_sort_threshold=0
 

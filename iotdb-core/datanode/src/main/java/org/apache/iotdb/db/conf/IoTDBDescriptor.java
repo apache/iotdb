@@ -2065,6 +2065,15 @@ public class IoTDBDescriptor {
       loadQuerySampleThroughput(properties);
       // update trusted_uri_pattern
       loadTrustedUriPattern(properties);
+
+      // tvlist_sort_threshold
+      conf.setTVListSortThreshold(
+          Integer.parseInt(
+              Optional.ofNullable(
+                      properties.getProperty(
+                          "tvlist_sort_threshold", String.valueOf(conf.getTvListSortThreshold())))
+                  .map(String::trim)
+                  .orElse(String.valueOf(conf.getTvListSortThreshold()))));
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();

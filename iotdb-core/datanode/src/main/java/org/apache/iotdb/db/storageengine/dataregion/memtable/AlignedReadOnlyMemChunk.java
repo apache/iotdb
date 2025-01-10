@@ -51,7 +51,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk.MAX_NUMBER_OF_POINTS_IN_PAGE;
 import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 
 public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
@@ -151,7 +150,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     long[] time = new long[MAX_NUMBER_OF_POINTS_IN_PAGE];
     PageColumnAccessInfo[] pageColumnAccessInfo = new PageColumnAccessInfo[dataTypes.size()];
     for (int i = 0; i < pageColumnAccessInfo.length; i++) {
-      pageColumnAccessInfo[i] = new PageColumnAccessInfo();
+      pageColumnAccessInfo[i] = new PageColumnAccessInfo(MAX_NUMBER_OF_POINTS_IN_PAGE);
     }
 
     int[] timeDeleteCursor = new int[] {0};

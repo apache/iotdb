@@ -32,6 +32,7 @@ import org.apache.iotdb.db.utils.datastructure.MergeSortAlignedTVListIterator;
 import org.apache.iotdb.db.utils.datastructure.PageColumnAccessInfo;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Binary;
@@ -72,6 +73,9 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private final long TARGET_CHUNK_SIZE = CONFIG.getTargetChunkSize();
   private long maxNumberOfPointsInChunk = CONFIG.getTargetChunkPointNum();
+  private final int TVLIST_SORT_THRESHOLD = CONFIG.getTvListSortThreshold();
+  private final int MAX_NUMBER_OF_POINTS_IN_PAGE =
+      TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
 
@@ -816,7 +820,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
     PageColumnAccessInfo[] pageColumnAccessInfo = new PageColumnAccessInfo[dataTypes.size()];
     for (int i = 0; i < pageColumnAccessInfo.length; i++) {
-      pageColumnAccessInfo[i] = new PageColumnAccessInfo();
+      pageColumnAccessInfo[i] = new PageColumnAccessInfo(MAX_NUMBER_OF_POINTS_IN_PAGE);
     }
 
     while (timeValuePairIterator.hasNextTimeValuePair()) {

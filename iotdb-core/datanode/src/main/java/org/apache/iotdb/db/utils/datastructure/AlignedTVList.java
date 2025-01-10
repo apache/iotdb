@@ -1581,7 +1581,7 @@ public abstract class AlignedTVList extends TVList {
       // handle duplicated timestamp
       while (index + 1 < rows && getTime(index + 1) == currentTime) {
         index++;
-        // skip all-Null rows if allValueColDeletedMap exits
+        // skip all-Null rows if allValueColDeletedMap exists
         int rowIndex = getValueIndex(index);
         if (allValueColDeletedMap == null || !allValueColDeletedMap.isMarked(rowIndex)) {
           for (int columnIndex = 0; columnIndex < dataTypeArray.length; columnIndex++) {

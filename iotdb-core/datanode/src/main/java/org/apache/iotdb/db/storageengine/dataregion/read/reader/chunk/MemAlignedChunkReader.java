@@ -42,7 +42,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
-import static org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk.MAX_NUMBER_OF_POINTS_IN_PAGE;
 import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 
 /** To read aligned chunk data in memory. */
@@ -247,10 +246,11 @@ public class MemAlignedChunkReader implements IChunkReader {
       List<List<TimeRange>> valueColumnsDeletionList = readableChunk.getValueColumnsDeletionList();
 
       int pointsInPage = 0;
-      long[] time = new long[MAX_NUMBER_OF_POINTS_IN_PAGE];
+      long[] time = new long[readableChunk.getMaxNumberOfPointsInPage()];
       PageColumnAccessInfo[] pageColumnAccessInfo = new PageColumnAccessInfo[tsDataTypes.size()];
       for (int i = 0; i < pageColumnAccessInfo.length; i++) {
-        pageColumnAccessInfo[i] = new PageColumnAccessInfo();
+        pageColumnAccessInfo[i] =
+            new PageColumnAccessInfo(readableChunk.getMaxNumberOfPointsInPage());
       }
 
       int[] timeDeleteCursor = new int[] {0};
