@@ -56,6 +56,8 @@ public class TSDIFFSubcolumn5Test {
                     encoded_result, beta);
         }
 
+        // System.out.println("beta: " + beta[0]);
+
         return encode_pos;
     }
 
