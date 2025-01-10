@@ -47,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ReplaceSymbolInExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
@@ -81,6 +82,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
@@ -982,6 +984,19 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
             new FilterNode(queryId.genPlanNodeId(), output, combineConjuncts(postJoinConjuncts));
       }
       return output;
+    }
+
+    @Override
+    public PlanNode visitAssignUniqueId(AssignUniqueId node, RewriteContext context) {
+      Expression inheritedPredicate =
+          context.inheritedPredicate != null ? context.inheritedPredicate : TRUE_LITERAL;
+      Set<Symbol> predicateSymbols = extractUnique(inheritedPredicate);
+      checkState(
+          !predicateSymbols.contains(node.getIdColumn()),
+          "UniqueId in predicate is not yet supported");
+      PlanNode rewrittenChild = node.getChild().accept(this, context);
+      node.replaceChildren(ImmutableList.of(rewrittenChild));
+      return node;
     }
 
     @Override

@@ -42,10 +42,10 @@ public final class Patterns {
     return typeOf(AggregationNode.class);
   }
 
-  //  public static Pattern<AssignUniqueId> assignUniqueId()
-  //  {
-  //      return typeOf(AssignUniqueId.class);
-  //  }
+  public static Pattern<AssignUniqueId> assignUniqueId() {
+    return typeOf(AssignUniqueId.class);
+  }
+
   //
   //  public static Pattern<GroupIdNode> groupId()
   //  {
