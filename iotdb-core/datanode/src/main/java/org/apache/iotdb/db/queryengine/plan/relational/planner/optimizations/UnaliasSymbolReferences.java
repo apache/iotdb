@@ -45,6 +45,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
@@ -729,6 +730,34 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               newRightOutputSymbols,
               newFilter,
               node.isSpillable()),
+          outputMapping);
+    }
+
+    @Override
+    public PlanAndMappings visitSemiJoin(SemiJoinNode node, UnaliasContext context) {
+      // it is assumed that symbols are distinct between SemiJoin source and filtering source. Only
+      // symbols from outer correlation might be the exception
+      PlanAndMappings rewrittenSource = node.getSource().accept(this, context);
+      PlanAndMappings rewrittenFilteringSource = node.getFilteringSource().accept(this, context);
+
+      Map<Symbol, Symbol> outputMapping = new HashMap<>();
+      outputMapping.putAll(rewrittenSource.getMappings());
+      outputMapping.putAll(rewrittenFilteringSource.getMappings());
+
+      SymbolMapper mapper = symbolMapper(outputMapping);
+
+      Symbol newSourceJoinSymbol = mapper.map(node.getSourceJoinSymbol());
+      Symbol newFilteringSourceJoinSymbol = mapper.map(node.getFilteringSourceJoinSymbol());
+      Symbol newSemiJoinOutput = mapper.map(node.getSemiJoinOutput());
+
+      return new PlanAndMappings(
+          new SemiJoinNode(
+              node.getPlanNodeId(),
+              rewrittenSource.getRoot(),
+              rewrittenFilteringSource.getRoot(),
+              newSourceJoinSymbol,
+              newFilteringSourceJoinSymbol,
+              newSemiJoinOutput),
           outputMapping);
     }
   }

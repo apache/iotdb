@@ -402,12 +402,32 @@ public class ImportData extends AbstractDataTool {
     if (key.equals(DATATYPE_NAN)
         && !(value.equals(DATATYPE_FLOAT)
             || value.equals(DATATYPE_DOUBLE)
-            || value.equals(DATATYPE_TEXT))) {
+            || value.equals(DATATYPE_TEXT)
+            || value.equals(DATATYPE_STRING))) {
       throw new ArgsErrorException("NaN can not convert to " + value);
     }
     if (key.equals(DATATYPE_BOOLEAN)
-        && !(value.equals(DATATYPE_BOOLEAN) || value.equals(DATATYPE_TEXT))) {
+        && !(value.equals(DATATYPE_BOOLEAN)
+            || value.equals(DATATYPE_TEXT)
+            || value.equals(DATATYPE_STRING))) {
       throw new ArgsErrorException("Boolean can not convert to " + value);
+    }
+    if (key.equals(DATATYPE_DATE)
+        && !(value.equals(DATATYPE_DATE)
+            || value.equals(DATATYPE_TEXT)
+            || value.equals(DATATYPE_STRING))) {
+      throw new ArgsErrorException("Date can not convert to " + value);
+    }
+    if (key.equals(DATATYPE_TIMESTAMP)
+        && !(value.equals(DATATYPE_TIMESTAMP)
+            || value.equals(DATATYPE_TEXT)
+            || value.equals(DATATYPE_STRING)
+            || value.equals(DATATYPE_DOUBLE)
+            || value.equals(DATATYPE_LONG))) {
+      throw new ArgsErrorException("Timestamp can not convert to " + value);
+    }
+    if (key.equals(DATATYPE_BLOB) && !(value.equals(DATATYPE_BLOB))) {
+      throw new ArgsErrorException("Blob can not convert to " + value);
     }
     final TSDataType srcType = TYPE_INFER_VALUE_DICT.get(key);
     final TSDataType dstType = TYPE_INFER_VALUE_DICT.get(value);

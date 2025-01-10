@@ -32,17 +32,18 @@ public class StartPipeTask implements IConfigTask {
 
   private final StartPipeStatement startPipeStatement;
 
-  public StartPipeTask(StartPipeStatement startPipeStatement) {
+  public StartPipeTask(final StartPipeStatement startPipeStatement) {
     this.startPipeStatement = startPipeStatement;
   }
 
-  public StartPipeTask(StartPipe node) {
+  public StartPipeTask(final StartPipe node) {
     startPipeStatement = new StartPipeStatement(StatementType.START_PIPE);
     startPipeStatement.setPipeName(node.getPipeName());
+    startPipeStatement.setTableModel(true);
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.startPipe(startPipeStatement);
   }

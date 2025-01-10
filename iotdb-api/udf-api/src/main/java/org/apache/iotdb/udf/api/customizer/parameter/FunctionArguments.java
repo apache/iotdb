@@ -25,35 +25,35 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * FunctionParameters is used to provide the information of the function parameters to the UDF
+ * FunctionArguments is used to provide the information of the function parameters to the UDF
  * implementation. It contains the data types of the child expressions, system attributes, etc.
  */
-public class FunctionParameters {
-  private final List<Type> childExpressionDataTypes;
+public class FunctionArguments {
+  private final List<Type> argumentTypes;
   private final Map<String, String> systemAttributes;
 
-  public FunctionParameters(
+  public FunctionArguments(
       List<Type> childExpressionDataTypes, Map<String, String> systemAttributes) {
-    this.childExpressionDataTypes = childExpressionDataTypes;
+    this.argumentTypes = childExpressionDataTypes;
     this.systemAttributes = systemAttributes;
   }
 
   /**
-   * Get the data types of the input children expressions.
+   * Get the data types of the arguments.
    *
-   * @return a list of data types of the input children expressions
+   * @return a list of data types of the arguments
    */
-  public List<Type> getChildExpressionDataTypes() {
-    return childExpressionDataTypes;
+  public List<Type> getArgumentTypes() {
+    return argumentTypes;
   }
 
   /**
-   * Get the number of the input children expressions.
+   * Get the number of the arguments.
    *
-   * @return the number of the input children expressions
+   * @return the number of the arguments
    */
-  public int getChildExpressionsSize() {
-    return childExpressionDataTypes.size();
+  public int getArgumentsSize() {
+    return argumentTypes.size();
   }
 
   /**
@@ -63,7 +63,7 @@ public class FunctionParameters {
    * @return the data type of the input child expression at the specified index
    */
   public Type getDataType(int index) {
-    return childExpressionDataTypes.get(index);
+    return argumentTypes.get(index);
   }
 
   /**

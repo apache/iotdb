@@ -17,13 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.commons.exception.table;
 
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class VerifyMetadataTypeMismatchException extends VerifyMetadataException {
-
-  public VerifyMetadataTypeMismatchException(String message) {
-    super(message, TSStatusCode.VERIFY_METADATA_ERROR.getStatusCode());
+public class ColumnNotExistsException extends MetadataException {
+  public ColumnNotExistsException(
+      final String database, final String tableName, final String columnName) {
+    super(
+        String.format(
+            "Column %s in table '%s.%s' does not exist.", columnName, database, tableName),
+        TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
   }
 }

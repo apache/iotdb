@@ -23,8 +23,6 @@ import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -228,7 +226,6 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertRelationalSqlTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
@@ -340,7 +337,6 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void partialInsertSQLTest() throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       // disable auto-creation only for this test
@@ -371,7 +367,6 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void partialInsertRelationalTabletTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
@@ -516,7 +511,6 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertRelationalTabletTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
@@ -593,7 +587,6 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertRelationalTabletWithCacheLeaderTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
@@ -675,7 +668,6 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void autoCreateNontagColumnTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
@@ -750,7 +742,6 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void autoCreateTableTest() throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
@@ -809,7 +800,6 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void autoCreateTagColumnTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
@@ -888,7 +878,6 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void autoAdjustTagTest() throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
@@ -956,7 +945,6 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertRelationalSqlWithoutDBTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
@@ -1014,7 +1002,6 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertRelationalSqlAnotherDBTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
@@ -1063,7 +1050,6 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertNonExistTableTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
@@ -1076,7 +1062,7 @@ public class IoTDBSessionRelationalIT {
                 0, "tag:" + 0, "attr:" + 0, 0 * 1.0));
         fail("Exception expected");
       } catch (StatementExecutionException e) {
-        assertEquals("507: Table table13 does not exist", e.getMessage());
+        assertEquals("550: Table 'db1.table13' does not exist.", e.getMessage());
       }
 
       try {
@@ -1086,13 +1072,12 @@ public class IoTDBSessionRelationalIT {
                 0, "tag:" + 0, "attr:" + 0, 0 * 1.0));
         fail("Exception expected");
       } catch (StatementExecutionException e) {
-        assertEquals("507: Table table13 does not exist", e.getMessage());
+        assertEquals("550: Table 'db2.table13' does not exist.", e.getMessage());
       }
     }
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertNonExistDBTest() throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
@@ -1104,13 +1089,12 @@ public class IoTDBSessionRelationalIT {
                 0, "tag:" + 0, "attr:" + 0, 0 * 1.0));
         fail("Exception expected");
       } catch (StatementExecutionException e) {
-        assertEquals("507: Table table13 does not exist", e.getMessage());
+        assertEquals("550: Table 'db3.table13' does not exist.", e.getMessage());
       }
     }
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertWithoutMeasurementTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
@@ -1362,7 +1346,6 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertRelationalTabletWithAutoCastTest()
       throws IoTDBConnectionException, StatementExecutionException {
     int testNum = 14;
@@ -1386,7 +1369,6 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void deleteTableAndWriteDifferentTypeTest()
       throws IoTDBConnectionException, StatementExecutionException {
     int testNum = 15;
@@ -1416,7 +1398,6 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void dropTableOfTheSameNameTest()
       throws IoTDBConnectionException, StatementExecutionException {
     int testNum = 16;
@@ -1447,13 +1428,12 @@ public class IoTDBSessionRelationalIT {
         session.executeQueryStatement("select * from db2.table" + testNum + " order by time");
         fail("expected exception");
       } catch (StatementExecutionException e) {
-        assertEquals("701: Table 'db2.table16' does not exist", e.getMessage());
+        assertEquals("550: Table 'db2.table16' does not exist.", e.getMessage());
       }
     }
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertRelationalRowWithAutoCastTest()
       throws IoTDBConnectionException, StatementExecutionException {
     int testNum = 17;
@@ -1477,7 +1457,6 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertMinMaxTimeTest() throws IoTDBConnectionException, StatementExecutionException {
     try {
       try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
@@ -1533,7 +1512,6 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void loadMinMaxTimeAlignedTest()
       throws IoTDBConnectionException,
           StatementExecutionException,

@@ -2987,6 +2987,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitPipeEnrichedStatement(
       PipeEnrichedStatement pipeEnrichedStatement, MPPQueryContext context) {
+    // The LoadTsFileStatement is a special case, it needs isGeneratedByPipe information
+    // in the analyzer to execute the tsfile-tablet conversion in some cases.
+    if (pipeEnrichedStatement.getInnerStatement() instanceof LoadTsFileStatement) {
+      ((LoadTsFileStatement) pipeEnrichedStatement.getInnerStatement()).markIsGeneratedByPipe();
+    }
+
     Analysis analysis = pipeEnrichedStatement.getInnerStatement().accept(this, context);
     analysis.setDatabaseName(context.getDatabaseName().orElse(null));
 
@@ -3024,12 +3030,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
     if (Objects.equals(loadTsFileStatement.getModel(), LoadTsFileConfigurator.MODEL_TREE_VALUE)) {
       // Load to tree-model
-      return new LoadTsFileToTreeModelAnalyzer(loadTsFileStatement, context);
+      return new LoadTsFileToTreeModelAnalyzer(
+          loadTsFileStatement, loadTsFileStatement.isGeneratedByPipe(), context);
     } else {
       // Load to table-model
       if (Objects.nonNull(loadTsFileStatement.getDatabase())) {
         return new LoadTsFileToTableModelAnalyzer(
-            loadTsFileStatement, LocalExecutionPlanner.getInstance().metadata, context);
+            loadTsFileStatement,
+            loadTsFileStatement.isGeneratedByPipe(),
+            LocalExecutionPlanner.getInstance().metadata,
+            context);
       } else {
         throw new SemanticException(
             "Database name must be specified when loading data into the table model.");
@@ -3515,6 +3525,18 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           logicalViewSchema = (LogicalViewSchema) measurementSchema;
           if (logicalViewSchema.isWritable()) {
             sourcePathOfAliasSeries = logicalViewSchema.getSourcePathIfWritable();
+            // if the source path can be matched by any of the deletion pattern, do not add it
+            boolean pathMatched = false;
+            for (MeasurementPath deletionPattern : deleteDataStatement.getPathList()) {
+              if (deletionPattern.matchFullPath(sourcePathOfAliasSeries)) {
+                pathMatched = true;
+                break;
+              }
+            }
+            if (pathMatched) {
+              continue;
+            }
+
             deletePatternSet.add(new MeasurementPath(sourcePathOfAliasSeries.getNodes()));
             deduplicatedDeviceIDs.add(sourcePathOfAliasSeries.getIDeviceID());
           }

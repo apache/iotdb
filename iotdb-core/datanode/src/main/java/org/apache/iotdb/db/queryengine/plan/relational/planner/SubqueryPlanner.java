@@ -45,7 +45,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 
 import com.google.common.collect.ImmutableList;
@@ -72,7 +71,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilde
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware.scopeAwareKey;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression.Quantifier.ALL;
-import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toSqlType;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 
 class SubqueryPlanner {
@@ -117,32 +115,39 @@ class SubqueryPlanner {
 
   public PlanBuilder handleSubqueries(
       PlanBuilder builder, Expression expression, Analysis.SubqueryAnalysis subqueries) {
-    for (Cluster<InPredicate> cluster :
-        cluster(
-            builder.getScope(),
-            selectSubqueries(builder, expression, subqueries.getInPredicatesSubqueries()))) {
-      builder = planInPredicate(builder, cluster, subqueries);
-    }
-    for (Cluster<SubqueryExpression> cluster :
-        cluster(
-            builder.getScope(),
-            selectSubqueries(builder, expression, subqueries.getSubqueries()))) {
-      builder = planScalarSubquery(builder, cluster);
-    }
-    for (Cluster<ExistsPredicate> cluster :
-        cluster(
-            builder.getScope(),
-            selectSubqueries(builder, expression, subqueries.getExistsSubqueries()))) {
-      builder = planExists(builder, cluster);
-    }
-    for (Cluster<QuantifiedComparisonExpression> cluster :
-        cluster(
-            builder.getScope(),
-            selectSubqueries(
-                builder, expression, subqueries.getQuantifiedComparisonSubqueries()))) {
-      builder = planQuantifiedComparison(builder, cluster, subqueries);
+    List<InPredicate> inPredicates = subqueries.getInPredicatesSubqueries();
+    if (!inPredicates.isEmpty()) {
+      for (Cluster<InPredicate> cluster :
+          cluster(builder.getScope(), selectSubqueries(builder, expression, inPredicates))) {
+        builder = planInPredicate(builder, cluster, subqueries);
+      }
     }
 
+    List<SubqueryExpression> scalarSubqueries = subqueries.getSubqueries();
+    if (!scalarSubqueries.isEmpty()) {
+      for (Cluster<SubqueryExpression> cluster :
+          cluster(builder.getScope(), selectSubqueries(builder, expression, scalarSubqueries))) {
+        builder = planScalarSubquery(builder, cluster);
+      }
+    }
+
+    List<ExistsPredicate> existsPredicates = subqueries.getExistsSubqueries();
+    if (!existsPredicates.isEmpty()) {
+      for (Cluster<ExistsPredicate> cluster :
+          cluster(builder.getScope(), selectSubqueries(builder, expression, existsPredicates))) {
+        builder = planExists(builder, cluster);
+      }
+    }
+
+    List<QuantifiedComparisonExpression> quantifiedComparisons =
+        subqueries.getQuantifiedComparisonSubqueries();
+    if (!quantifiedComparisons.isEmpty()) {
+      for (Cluster<QuantifiedComparisonExpression> cluster :
+          cluster(
+              builder.getScope(), selectSubqueries(builder, expression, quantifiedComparisons))) {
+        builder = planQuantifiedComparison(builder, cluster, subqueries);
+      }
+    }
     return builder;
   }
 
@@ -259,6 +264,11 @@ class SubqueryPlanner {
     RelationType descriptor = relationPlan.getDescriptor();
     List<Symbol> fieldMappings = relationPlan.getFieldMappings();
     Symbol column;
+    // Attention: remove this check after supporting RowType
+    checkArgument(
+        descriptor.getVisibleFieldCount() <= 1,
+        "For now, only single column subqueries are supported");
+    /*
     if (descriptor.getVisibleFieldCount() > 1) {
       column = symbolAllocator.newSymbol("row", type);
 
@@ -274,8 +284,9 @@ class SubqueryPlanner {
 
       root = new ProjectNode(idAllocator.genPlanNodeId(), root, Assignments.of(column, expression));
     } else {
-      column = getOnlyElement(fieldMappings);
-    }
+    */
+    column = getOnlyElement(fieldMappings);
+    // }
 
     return appendCorrelatedJoin(
         subPlan,
@@ -537,7 +548,9 @@ class SubqueryPlanner {
       Assignments assignments =
           Assignments.builder()
               .putIdentities(subPlan.getRoot().getOutputSymbols())
-              .put(wrapped, new Row(ImmutableList.of(column.toSymbolReference())))
+              //              .put(wrapped, new Row(ImmutableList.of(column.toSymbolReference())))
+              // Row Type is not supported for now. So we replace with the following code
+              .put(wrapped, column.toSymbolReference())
               .build();
 
       subPlan =
@@ -572,17 +585,22 @@ class SubqueryPlanner {
       }
     }
 
+    List<Expression> fieldsList = fields.build();
+    // Attention: remove this check after supporting RowType
+    checkArgument(fieldsList.size() == 1, "For now, only single column subqueries are supported.");
+    /*subqueryPlan =
+    subqueryPlan.withNewRoot(
+        new ProjectNode(
+            idAllocator.genPlanNodeId(),
+            relationPlan.getRoot(),
+            Assignments.of(column, new Cast(new Row(fields.build()), toSqlType(type)))));*/
+
     subqueryPlan =
         subqueryPlan.withNewRoot(
             new ProjectNode(
                 idAllocator.genPlanNodeId(),
                 relationPlan.getRoot(),
-                Assignments.of(
-                    column,
-                    new Cast(
-                        new Row(fields.build()),
-                        new GenericDataType(
-                            new Identifier(type.toString()), ImmutableList.of())))));
+                Assignments.of(column, fieldsList.get(0))));
 
     return coerceIfNecessary(subqueryPlan, column, subquery, coercion);
   }

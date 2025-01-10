@@ -46,6 +46,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.utils.BytesUtils;
 import org.jline.reader.LineReader;
 
 import java.io.BufferedReader;
@@ -54,6 +55,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -651,7 +653,7 @@ public class ExportData extends AbstractDataTool {
       while (i++ < linesPerFile) {
         if (sessionDataSet.hasNext()) {
           RowRecord rowRecord = sessionDataSet.next();
-          if (rowRecord.getTimestamp() != 0) {
+          if ("Time".equals(headers.get(0))) {
             csvPrinterWrapper.print(timeTrans(rowRecord.getTimestamp()));
           }
           rowRecord
@@ -660,10 +662,24 @@ public class ExportData extends AbstractDataTool {
                   field -> {
                     String fieldStringValue = field.getStringValue();
                     if (!"null".equals(field.getStringValue())) {
-                      if ((field.getDataType() == TSDataType.TEXT
-                              || field.getDataType() == TSDataType.STRING)
+                      final TSDataType dataType = field.getDataType();
+                      if ((dataType == TSDataType.TEXT || dataType == TSDataType.STRING)
                           && !fieldStringValue.startsWith("root.")) {
                         fieldStringValue = "\"" + fieldStringValue + "\"";
+                      } else if (dataType == TSDataType.BLOB) {
+                        final byte[] v = field.getBinaryV().getValues();
+                        if (v == null) {
+                          fieldStringValue = null;
+                        } else {
+                          fieldStringValue = BytesUtils.parseBlobByteArrayToString(v);
+                        }
+                      } else if (dataType == TSDataType.DATE) {
+                        final LocalDate dateV = field.getDateV();
+                        if (dateV == null) {
+                          fieldStringValue = null;
+                        } else {
+                          fieldStringValue = dateV.toString();
+                        }
                       }
                       csvPrinterWrapper.print(fieldStringValue);
                     } else {
@@ -757,8 +773,25 @@ public class ExportData extends AbstractDataTool {
                   headersTemp.remove(seriesList.get(index));
                   continue;
                 }
-                if ("TEXT".equalsIgnoreCase(timeseriesList.get(3).getStringValue())) {
-                  values.add("\"" + value + "\"");
+                final String dataType = timeseriesList.get(3).getStringValue();
+                if (TSDataType.TEXT.name().equalsIgnoreCase(dataType)
+                    || TSDataType.STRING.name().equalsIgnoreCase(dataType)) {
+                  values.add("\'" + value + "\'");
+                } else if (TSDataType.BLOB.name().equalsIgnoreCase(dataType)) {
+                  final byte[] v = fields.get(index).getBinaryV().getValues();
+                  if (v == null) {
+                    values.add(null);
+                  } else {
+                    values.add(
+                        BytesUtils.parseBlobByteArrayToString(v).replaceFirst("0x", "X'") + "'");
+                  }
+                } else if (TSDataType.DATE.name().equalsIgnoreCase(dataType)) {
+                  final LocalDate dateV = fields.get(index).getDateV();
+                  if (dateV == null) {
+                    values.add(null);
+                  } else {
+                    values.add("'" + dateV.toString() + "'");
+                  }
                 } else {
                   values.add(value);
                 }
