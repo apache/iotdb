@@ -418,8 +418,7 @@ public class InformationSchemaContentSupplierFactory {
       columnBuilders[8].writeInt(regionInfo.getClientRpcPort());
       columnBuilders[9].writeBinary(BytesUtils.valueOf(regionInfo.getInternalAddress()));
       columnBuilders[10].writeBinary(BytesUtils.valueOf(regionInfo.getRoleType()));
-      columnBuilders[11].writeBinary(
-          BytesUtils.valueOf(DateTimeUtils.convertLongToDate(regionInfo.getCreateTime())));
+      columnBuilders[11].writeLong(regionInfo.getCreateTime());
       if (regionInfo.getConsensusGroupId().getType().ordinal()
           == TConsensusGroupType.DataRegion.ordinal()) {
         columnBuilders[12].writeLong(regionInfo.getTsFileSize());
@@ -443,7 +442,8 @@ public class InformationSchemaContentSupplierFactory {
       Coordinator.getInstance().getAccessControl().checkUserHasMaintainPrivilege(userName);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        iterator = client.showPipe(new TShowPipeReq()).getPipeInfoListIterator();
+        iterator =
+            client.showPipe(new TShowPipeReq().setIsTableModel(true)).getPipeInfoListIterator();
       } catch (final Exception e) {
         lastException = e;
       }
