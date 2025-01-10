@@ -23,6 +23,7 @@ import org.apache.iotdb.db.pipe.receiver.transform.converter.ArrayConverter;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,11 +44,6 @@ public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
     // InsertBaseStatement
     devicePath = insertTabletStatement.getDevicePath();
     isAligned = insertTabletStatement.isAligned();
-    columnCategories = insertTabletStatement.getColumnCategories();
-    idColumnIndices = insertTabletStatement.getIdColumnIndices();
-    attrColumnIndices = insertTabletStatement.getAttrColumnIndices();
-    writeToTable = insertTabletStatement.isWriteToTable();
-    databaseName = insertTabletStatement.getDatabaseName().orElse(null);
     // InsertTabletStatement
     times = insertTabletStatement.getTimes();
     bitMaps = insertTabletStatement.getBitMaps();
