@@ -119,17 +119,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   protected abstract void rollback(Env env)
       throws IOException, InterruptedException, ProcedureException;
 
-  /**
-   * The abort() call is asynchronous and each procedure must decide how to deal with it, if they
-   * want to be abortable. The simplest implementation is to have an AtomicBoolean set in the
-   * abort() method and then the execute() will check if the abort flag is set or not. abort() may
-   * be called multiple times from the client, so the implementation must be idempotent.
-   *
-   * <p>NOTE: abort() is not like Thread.interrupt(). It is just a notification that allows the
-   * procedure implementor abort.
-   */
-  protected abstract boolean abort(Env env);
-
   public void serialize(DataOutputStream stream) throws IOException {
     // procid
     stream.writeLong(this.procId);

@@ -477,7 +477,7 @@ public class ProcedureExecutor<Env> {
     }
 
     releaseLock(proc, false);
-    if (!suspended && proc.isFinished() && proc.hasParent()) {
+    if (proc.isFinished() && proc.hasParent()) {
       countDownChildren(rootProcStack, proc);
     }
   }
@@ -902,28 +902,6 @@ public class ProcedureExecutor<Env> {
     LOG.debug("{} is stored.", procedure);
     // Add the procedure to the executor
     return pushProcedure(procedure);
-  }
-
-  /**
-   * Abort a specified procedure.
-   *
-   * @param procId procedure id
-   * @param force whether abort the running procdure.
-   * @return true if the procedure exists and has received the abort.
-   */
-  public boolean abort(long procId, boolean force) {
-    Procedure<Env> procedure = procedures.get(procId);
-    if (procedure != null) {
-      if (!force && procedure.wasExecuted()) {
-        return false;
-      }
-      return procedure.abort(this.environment);
-    }
-    return false;
-  }
-
-  public boolean abort(long procId) {
-    return abort(procId, true);
   }
 
   public ProcedureScheduler getScheduler() {
