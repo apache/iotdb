@@ -520,9 +520,16 @@ public class ClusterSchemaManager {
         // Adjust maxDataRegionGroupNum for each Database.
         // All Databases share the DataNodes equally.
         // The allocated DataRegionGroups will not be shrunk.
-        final int allocatedDataRegionGroupCount =
-            getPartitionManager()
-                .getRegionGroupCount(databaseSchema.getName(), TConsensusGroupType.DataRegion);
+        final int allocatedDataRegionGroupCount;
+        try {
+          allocatedDataRegionGroupCount =
+              getPartitionManager()
+                  .getRegionGroupCount(databaseSchema.getName(), TConsensusGroupType.DataRegion);
+        } catch (final DatabaseNotExistsException e) {
+          // ignore the pre deleted database
+          continue;
+        }
+
         final int maxDataRegionGroupNum =
             calcMaxRegionGroupNum(
                 databaseSchema.getMinDataRegionGroupNum(),
