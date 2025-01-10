@@ -392,9 +392,11 @@ public class TsFileResource implements PersistentResource {
 
   public void linkModFile(TsFileResource target) throws IOException {
     if (exclusiveModFileExists()) {
+      File modsFileForTargetResource = ModificationFile.getExclusiveMods(target.getTsFile());
       Files.createLink(
-          ModificationFile.getExclusiveMods(target.getTsFile()).toPath(),
+          modsFileForTargetResource.toPath(),
           ModificationFile.getExclusiveMods(getTsFile()).toPath());
+      target.setExclusiveModFile(new ModificationFile(modsFileForTargetResource, true));
     }
     if (sharedModFileExists()) {
       modFileManagement.addReference(target, sharedModFile);
@@ -1448,28 +1450,20 @@ public class TsFileResource implements PersistentResource {
   }
 
   public void upgradeModFile(ExecutorService upgradeModFileThreadPool) throws IOException {
-    upgradeModFile(upgradeModFileThreadPool, true);
-  }
-
-  public void upgradeModFile(ExecutorService upgradeModFileThreadPool, boolean removeOldModFile)
-      throws IOException {
     ModificationFileV1 oldModFile = ModificationFileV1.getNormalMods(this);
     if (!oldModFile.exists()) {
       return;
     }
 
     if (upgradeModFileThreadPool != null) {
-      exclusiveModFileFuture =
-          upgradeModFileThreadPool.submit(() -> doUpgradeModFile(oldModFile, removeOldModFile));
+      exclusiveModFileFuture = upgradeModFileThreadPool.submit(() -> doUpgradeModFile(oldModFile));
     } else {
-      exclusiveModFileFuture =
-          CompletableFuture.completedFuture(doUpgradeModFile(oldModFile, removeOldModFile));
+      exclusiveModFileFuture = CompletableFuture.completedFuture(doUpgradeModFile(oldModFile));
     }
   }
 
   @SuppressWarnings({"java:S4042", "java:S899", "ResultOfMethodCallIgnored"})
-  private ModificationFile doUpgradeModFile(ModificationFileV1 oldModFile, boolean removeOldModFile)
-      throws IOException {
+  private ModificationFile doUpgradeModFile(ModificationFileV1 oldModFile) throws IOException {
     ModificationFile newMFile = ModificationFile.getExclusiveMods(this);
     newMFile.getFile().delete();
     try {
@@ -1479,9 +1473,7 @@ public class TsFileResource implements PersistentResource {
     } finally {
       newMFile.close();
     }
-    if (removeOldModFile) {
-      oldModFile.remove();
-    }
+    oldModFile.remove();
     return newMFile;
   }
 
