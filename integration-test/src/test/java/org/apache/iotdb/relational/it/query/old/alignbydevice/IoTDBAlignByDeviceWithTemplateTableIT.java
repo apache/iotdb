@@ -187,7 +187,7 @@ public class IoTDBAlignByDeviceWithTemplateTableIT {
             statement.executeQuery("SELECT s3,s1,s_null FROM table1 order by device_id")) {
           fail("should throw exception to indicate that s_null doesn't exist");
         } catch (SQLException e) {
-          assertEquals("701: Column 's_null' cannot be resolved", e.getMessage());
+          assertEquals("616: Column 's_null' cannot be resolved", e.getMessage());
         }
       }
     } catch (SQLException e) {
@@ -277,7 +277,7 @@ public class IoTDBAlignByDeviceWithTemplateTableIT {
             statement.executeQuery("SELECT * FROM table1 WHERE s_null > 1 order by device_id")) {
           fail("should throw exception to indicate that s_null doesn't exist");
         } catch (SQLException e) {
-          assertEquals("701: Column 's_null' cannot be resolved", e.getMessage());
+          assertEquals("616: Column 's_null' cannot be resolved", e.getMessage());
         }
       }
     } catch (SQLException e) {
