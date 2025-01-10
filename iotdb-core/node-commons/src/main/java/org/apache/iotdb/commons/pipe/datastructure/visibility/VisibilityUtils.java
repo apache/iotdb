@@ -39,6 +39,15 @@ public class VisibilityUtils {
     // forbidding instantiation
   }
 
+  public static boolean isCompatible(final Visibility visibility, final boolean isTableModel) {
+    if (Objects.equals(Visibility.BOTH, visibility)) {
+      return true;
+    }
+    return isTableModel
+        ? Objects.equals(Visibility.TABLE_ONLY, visibility)
+        : Objects.equals(Visibility.TREE_ONLY, visibility);
+  }
+
   public static boolean isCompatible(final Visibility base, final Visibility incoming) {
     if (Objects.equals(base, Visibility.BOTH)) {
       return true;

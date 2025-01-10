@@ -235,11 +235,6 @@ public class PipeStaticMeta {
   public boolean visibleUnder(final boolean isTableModel) {
     final Visibility visibility =
         VisibilityUtils.calculateFromExtractorParameters(extractorParameters);
-    if (Objects.equals(Visibility.BOTH, visibility)) {
-      return true;
-    }
-    return isTableModel
-        ? Objects.equals(Visibility.TABLE_ONLY, visibility)
-        : Objects.equals(Visibility.TREE_ONLY, visibility);
+    return VisibilityUtils.isCompatible(visibility, isTableModel);
   }
 }

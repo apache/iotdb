@@ -28,6 +28,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,8 +37,7 @@ public abstract class PipePluginMetaKeeper {
 
   protected final Map<String, PipePluginMeta> pipePluginNameToMetaMap = new ConcurrentHashMap<>();
   protected final Map<String, Class<?>> builtinPipePluginNameToClassMap = new ConcurrentHashMap<>();
-  protected final Map<String, Visibility> pipePluginNameToVisibilityMap =
-      new ConcurrentHashMap<>(); // TODO: TBD
+  protected final Map<String, Visibility> pipePluginNameToVisibilityMap = new ConcurrentHashMap<>();
 
   public PipePluginMetaKeeper() {
     loadBuiltinPlugins();
@@ -99,6 +99,18 @@ public abstract class PipePluginMetaKeeper {
 
   public void removePipePluginVisibility(String pluginName) {
     pipePluginNameToVisibilityMap.remove(pluginName.toUpperCase());
+  }
+
+  public boolean visibleUnder(String pluginName, boolean isTableModel) {
+    final Visibility visibility = pipePluginNameToVisibilityMap.get(pluginName);
+    if (Objects.isNull(visibility)) {
+      return false;
+    }
+    return VisibilityUtils.isCompatible(visibility, isTableModel);
+  }
+
+  public Map<String, Visibility> getPipePluginNameToVisibilityMap() {
+    return Collections.unmodifiableMap(pipePluginNameToVisibilityMap);
   }
 
   protected void processTakeSnapshot(OutputStream outputStream) throws IOException {
