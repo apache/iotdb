@@ -224,8 +224,8 @@ public class ColumnHeaderConstant {
 
   public static final String CREATION_TIME_TABLE_MODEL = "creation_time";
   public static final String PIPE_SOURCE_TABLE_MODEL = "pipe_source";
-  public static final String PIPE_PROCESSOR_TABLE_MODEL = "pipe_source";
-  public static final String PIPE_SINK_TABLE_MODEL = "pipe_source";
+  public static final String PIPE_PROCESSOR_TABLE_MODEL = "pipe_processor";
+  public static final String PIPE_SINK_TABLE_MODEL = "pipe_sink";
   public static final String EXCEPTION_MESSAGE_TABLE_MODEL = "exception_message";
   public static final String REMAINING_EVENT_COUNT_TABLE_MODEL = "remaining_event_count";
   public static final String ESTIMATED_REMAINING_SECONDS_TABLE_MODEL =
