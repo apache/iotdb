@@ -424,14 +424,14 @@ public class IoTDBTableIT {
           statement.executeQuery("select color from table2");
           fail();
         } catch (final SQLException e) {
-          assertEquals("701: Column 'color' cannot be resolved", e.getMessage());
+          assertEquals("616: Column 'color' cannot be resolved", e.getMessage());
         }
 
         try {
           statement.executeQuery("select speed from table2");
           fail();
         } catch (final SQLException e) {
-          assertEquals("701: Column 'speed' cannot be resolved", e.getMessage());
+          assertEquals("616: Column 'speed' cannot be resolved", e.getMessage());
         }
 
         try {

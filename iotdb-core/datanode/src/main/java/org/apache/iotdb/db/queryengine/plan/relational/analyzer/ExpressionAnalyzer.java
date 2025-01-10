@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
@@ -419,8 +420,7 @@ public class ExpressionAnalyzer {
           return handleResolvedField(node, resolvedField.get(), context);
         }
         if (!scope.isColumnReference(qualifiedName)) {
-          throw new SemanticException(
-              String.format("Column '%s' cannot be resolved", qualifiedName));
+          TableMetadataImpl.throwColumnNotExistsException(qualifiedName);
         }
       }
 
@@ -450,7 +450,7 @@ public class ExpressionAnalyzer {
       }
 
       if (rowFieldType == null) {
-        throw new SemanticException(String.format("Column '%s' cannot be resolved", qualifiedName));
+        TableMetadataImpl.throwColumnNotExistsException(qualifiedName);
       }
 
       return setExpressionType(node, rowFieldType);
