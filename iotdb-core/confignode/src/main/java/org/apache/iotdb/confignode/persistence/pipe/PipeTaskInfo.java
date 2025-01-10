@@ -441,7 +441,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
     acquireWriteLock();
     try {
       pipeMetaKeeper.addPipeMeta(
-          plan.getPipeStaticMeta().getPipeName(),
           new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta()));
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
@@ -502,7 +501,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
           pipeMetaKeeper.getPipeMeta(plan.getPipeStaticMeta().getPipeName()).getTemporaryMeta();
       pipeMetaKeeper.removePipeMeta(plan.getPipeStaticMeta().getPipeName());
       pipeMetaKeeper.addPipeMeta(
-          plan.getPipeStaticMeta().getPipeName(),
           new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta(), temporaryMeta));
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
@@ -663,7 +661,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     plan.getPipeMetaList()
         .forEach(
             pipeMeta -> {
-              pipeMetaKeeper.addPipeMeta(pipeMeta.getStaticMeta().getPipeName(), pipeMeta);
+              pipeMetaKeeper.addPipeMeta(pipeMeta);
               logger.ifPresent(l -> l.info("Recording pipe meta: {}", pipeMeta));
             });
 

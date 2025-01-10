@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.meta;
 
+import java.util.Arrays;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -32,8 +35,12 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PipeStaticMeta {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeStaticMeta.class);
 
   private String pipeName;
   private long creationTime;
@@ -222,5 +229,95 @@ public class PipeStaticMeta {
   public static String generateSubscriptionPipeName(
       final String topicName, final String consumerGroupId) {
     return SUBSCRIPTION_PIPE_PREFIX + topicName + "_" + consumerGroupId;
+  }
+
+  /////////////////////////////////  Tree & Table Isolation  /////////////////////////////////
+
+  public static final String TREE_PIPE_PREFIX = SYSTEM_PIPE_PREFIX + "tree.";
+  public static final String TABLE_PIPE_PREFIX = SYSTEM_PIPE_PREFIX + "table.";
+
+  public String encodeIsolation(final String pipeName) {
+    final PipeVisibility visibility = calculateVisibility();
+    switch (visibility) {
+      case BOTH:
+        return pipeName;
+      case TREE_ONLY:
+        return SYSTEM_PIPE_PREFIX + TREE_PIPE_PREFIX + pipeName;
+      case TABLE_ONLY:
+        return SYSTEM_PIPE_PREFIX + TABLE_PIPE_PREFIX + pipeName;
+      default:
+        return pipeName;
+    }
+  }
+
+  public String decodeIsolation(final String pipeName) {
+    final PipeVisibility visibility = calculateVisibility();
+    switch (visibility) {
+      case BOTH:
+        return pipeName;
+      case TREE_ONLY:
+        // "__.tree.xxx"
+        return pipeName.substring(8);
+      case TABLE_ONLY:
+        // "__.table.xxx"
+        return pipeName.substring(9);
+      default:
+        return pipeName;
+    }
+  }
+
+  public boolean visibleUnder(final boolean isTableModel) {
+    final PipeVisibility visibility = calculateVisibility();
+    if (Objects.equals(PipeVisibility.BOTH, visibility)) {
+      return true;
+    }
+    return isTableModel ?
+        Objects.equals(PipeVisibility.TABLE_ONLY, visibility) :
+        Objects.equals(PipeVisibility.TREE_ONLY, visibility);
+  }
+
+  private PipeVisibility calculateVisibility() {
+    // visible under all model when 'mode.double-living' is set to true
+    final boolean isDoubleLiving =
+        extractorParameters.getBooleanOrDefault(
+            Arrays.asList(
+                PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+                PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
+            PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+    if (isDoubleLiving) {
+      return PipeVisibility.BOTH;
+    }
+
+    final boolean isTreeDialect =
+        extractorParameters
+            .getStringOrDefault(
+                SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
+            .equals(SystemConstant.SQL_DIALECT_TREE_VALUE);
+    final Boolean _isCaptureTree =
+        extractorParameters.getBooleanByKeys(
+            PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
+            PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY);
+    final boolean isCaptureTree = Objects.nonNull(_isCaptureTree) ? _isCaptureTree : isTreeDialect;
+    final Boolean _isCaptureTable =
+        extractorParameters.getBooleanByKeys(
+            PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
+            PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY);
+    final boolean isCaptureTable =
+        Objects.nonNull(_isCaptureTable) ? _isCaptureTable : !isTreeDialect;
+
+    // visible under specific tree or table model <-> actually capture tree or table data
+    if (isCaptureTree && isCaptureTable) {
+      return PipeVisibility.BOTH;
+    }
+    if (isCaptureTree) {
+      return PipeVisibility.TREE_ONLY;
+    }
+    if (isCaptureTable) {
+      return PipeVisibility.TABLE_ONLY;
+    }
+
+    // UNREACHABLE CODE
+    LOGGER.error("BROKEN INVARIANT: DETECT INVISIBLE PIPE {}", this);
+    return PipeVisibility.NONE;
   }
 }
