@@ -212,6 +212,16 @@ public class ColumnHeaderConstant {
   public static final String SCHEMA_REGION_GROUP_NUM_TABLE_MODEL = "schema_region_group_num";
   public static final String DATA_REGION_GROUP_NUM_TABLE_MODEL = "data_region_group_num";
 
+  public static final String REGION_ID_TABLE_MODEL = "region_id";
+  public static final String DATANODE_ID_TABLE_MODEL = "datanode_id";
+  public static final String SERIES_SLOT_NUM_TABLE_MODEL = "series_slot_num";
+  public static final String TIME_SLOT_NUM_TABLE_MODEL = "time_slot_num";
+  public static final String RPC_ADDRESS_TABLE_MODEL = "rpc_address";
+  public static final String RPC_PORT_TABLE_MODEL = "rpc_port";
+  public static final String INTERNAL_ADDRESS_TABLE_MODEL = "internal_address";
+  public static final String CREATE_TIME_TABLE_MODEL = "create_time";
+  public static final String TS_FILE_SIZE_BYTES_TABLE_MODEL = "tsfile_size_bytes";
+
   // column names for show space quota
   public static final String QUOTA_TYPE = "QuotaType";
   public static final String LIMIT = "Limit";
