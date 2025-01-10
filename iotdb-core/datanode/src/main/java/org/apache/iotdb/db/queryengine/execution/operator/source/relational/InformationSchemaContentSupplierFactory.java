@@ -183,6 +183,7 @@ public class InformationSchemaContentSupplierFactory {
       columnBuilders[4].writeLong(currentDatabase.getTimePartitionInterval());
       columnBuilders[5].writeInt(currentDatabase.getSchemaRegionNum());
       columnBuilders[6].writeInt(currentDatabase.getDataRegionNum());
+      resultBuilder.declarePosition();
       currentDatabase = null;
     }
 
@@ -250,6 +251,7 @@ public class InformationSchemaContentSupplierFactory {
           new Binary(
               TableNodeStatus.values()[currentTable.getState()].toString(),
               TSFileConfig.STRING_CHARSET));
+      resultBuilder.declarePosition();
       currentTable = null;
     }
 
@@ -336,6 +338,7 @@ public class InformationSchemaContentSupplierFactory {
           new Binary(
               preDeletedColumns.contains(schema.getColumnName()) ? "PRE_DELETE" : "USING",
               TSFileConfig.STRING_CHARSET));
+      resultBuilder.declarePosition();
     }
 
     @Override
@@ -417,6 +420,7 @@ public class InformationSchemaContentSupplierFactory {
       } else {
         columnBuilders[12].appendNull();
       }
+      resultBuilder.declarePosition();
     }
 
     @Override
@@ -467,7 +471,6 @@ public class InformationSchemaContentSupplierFactory {
       }
       while (hasNext() && !resultBuilder.isFull()) {
         constructLine();
-        resultBuilder.declarePosition();
       }
       final TsBlock result =
           resultBuilder.build(
