@@ -153,14 +153,14 @@ public class IoTDBDeviceIT {
         statement.executeQuery("show devices from table2");
         fail("Show devices shall fail for non-exist table");
       } catch (final Exception e) {
-        assertEquals("701: Table 'test.table2' does not exist.", e.getMessage());
+        assertEquals("550: Table 'test.table2' does not exist.", e.getMessage());
       }
 
       try {
         statement.executeQuery("count devices from table2");
         fail("Count devices shall fail for non-exist table");
       } catch (final Exception e) {
-        assertEquals("701: Table 'test.table2' does not exist.", e.getMessage());
+        assertEquals("550: Table 'test.table2' does not exist.", e.getMessage());
       }
 
       try {
@@ -176,7 +176,7 @@ public class IoTDBDeviceIT {
         statement.executeQuery("count devices from table0 where a = 1");
         fail("Count devices shall fail for non-exist column");
       } catch (final Exception e) {
-        assertEquals("701: Column 'a' cannot be resolved", e.getMessage());
+        assertEquals("616: Column 'a' cannot be resolved", e.getMessage());
       }
 
       // Test fully qualified name
@@ -193,7 +193,7 @@ public class IoTDBDeviceIT {
         statement.execute("update table2 set model = '1'");
         fail("Update shall fail for non-exist table");
       } catch (final Exception e) {
-        assertEquals("701: Table 'test.table2' does not exist.", e.getMessage());
+        assertEquals("550: Table 'test.table2' does not exist.", e.getMessage());
       }
 
       try {
@@ -214,7 +214,7 @@ public class IoTDBDeviceIT {
         statement.execute("update table0 set col = '1'");
         fail("Update shall fail for non-exist column");
       } catch (final Exception e) {
-        assertEquals("701: Column 'col' cannot be resolved", e.getMessage());
+        assertEquals("616: Column 'col' cannot be resolved", e.getMessage());
       }
 
       try {

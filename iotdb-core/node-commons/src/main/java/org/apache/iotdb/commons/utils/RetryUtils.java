@@ -17,16 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.metadata.table;
+package org.apache.iotdb.commons.utils;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.rpc.TSStatusCode;
+public class RetryUtils {
 
-public class TableNotExistsException extends MetadataException {
+  public interface CallableWithException<T, E extends Exception> {
+    T call() throws E;
+  }
 
-  public TableNotExistsException(final String database, final String tableName) {
-    super(
-        String.format("Table '%s.%s' does not exist.", database, tableName),
-        TSStatusCode.TABLE_NOT_EXISTS.getStatusCode());
+  public static final int MAX_RETRIES = 3;
+
+  public static <T, E extends Exception> T retryOnException(
+      final CallableWithException<T, E> callable) throws E {
+    int attempt = 0;
+    while (true) {
+      try {
+        return callable.call();
+      } catch (Exception e) {
+        attempt++;
+        if (attempt >= MAX_RETRIES) {
+          throw e;
+        }
+      }
+    }
+  }
+
+  private RetryUtils() {
+    // utility class
   }
 }

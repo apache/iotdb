@@ -72,6 +72,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
@@ -932,6 +933,17 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
       boxValue.add(
           String.format("Filter: %s", node.getFilter().map(v -> v.toString()).orElse(null)));
     }
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitSemiJoin(SemiJoinNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("SemiJoin-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    boxValue.add(String.format("SourceJoinSymbol: %s", node.getSourceJoinSymbol()));
+    boxValue.add(
+        String.format("FilteringSourceJoinSymbol: %s", node.getFilteringSourceJoinSymbol()));
     return render(node, boxValue, context);
   }
 

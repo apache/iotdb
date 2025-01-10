@@ -31,7 +31,9 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class CompactionScheduleContext {
   private int submitSeqInnerSpaceCompactionTaskNum = 0;
@@ -49,8 +51,19 @@ public class CompactionScheduleContext {
   private final Map<TsFileResource, ArrayDeviceTimeIndex> partitionFileDeviceInfoCache;
   private long cachedDeviceInfoSize = 0;
 
+  private final Set<Long> timePartitionsDelayInsertionSelection;
+
   public CompactionScheduleContext() {
     this.partitionFileDeviceInfoCache = new HashMap<>();
+    this.timePartitionsDelayInsertionSelection = new HashSet<>();
+  }
+
+  public void delayInsertionSelection(long timePartitionId) {
+    timePartitionsDelayInsertionSelection.add(timePartitionId);
+  }
+
+  public boolean isInsertionSelectionDelayed(long timePartitionId) {
+    return timePartitionsDelayInsertionSelection.remove(timePartitionId);
   }
 
   public void addResourceDeviceTimeIndex(
@@ -133,6 +146,14 @@ public class CompactionScheduleContext {
 
   public int getSubmitSettleCompactionTaskNum() {
     return submitSettleCompactionTaskNum;
+  }
+
+  public int getSubmitCompactionTaskNum() {
+    return submitSeqInnerSpaceCompactionTaskNum
+        + submitUnseqInnerSpaceCompactionTaskNum
+        + submitCrossSpaceCompactionTaskNum
+        + submitInsertionCrossSpaceCompactionTaskNum
+        + submitSettleCompactionTaskNum;
   }
 
   public boolean hasSubmitTask() {

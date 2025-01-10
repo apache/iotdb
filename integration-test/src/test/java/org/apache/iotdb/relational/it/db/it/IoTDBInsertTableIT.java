@@ -464,7 +464,7 @@ public class IoTDBInsertTableIT {
       st1.execute("insert into wt14(time, s1, s2) values(100, null, 1), (101, null, 2)");
       fail();
     } catch (SQLException e) {
-      assertEquals("507: Table wt14 does not exist", e.getMessage());
+      assertEquals("550: Table 'test.wt14' does not exist.", e.getMessage());
     }
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT)) {
       try (Statement st2 = connection.createStatement()) {

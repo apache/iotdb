@@ -22,8 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.analyze.load;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.exception.VerifyMetadataException;
-import org.apache.iotdb.db.exception.VerifyMetadataTypeMismatchException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -63,6 +63,8 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
 
   private final boolean isTableModelStatement;
 
+  private final boolean isGeneratedByPipe;
+
   protected final List<File> tsFiles;
   protected final String statementString;
   protected final boolean isVerifySchema;
@@ -82,7 +84,8 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
   final ISchemaFetcher schemaFetcher = ClusterSchemaFetcher.getInstance();
 
-  LoadTsFileAnalyzer(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
+  LoadTsFileAnalyzer(
+      LoadTsFileStatement loadTsFileStatement, boolean isGeneratedByPipe, MPPQueryContext context) {
     this.loadTsFileTreeStatement = loadTsFileStatement;
     this.tsFiles = loadTsFileStatement.getTsFiles();
     this.statementString = loadTsFileStatement.toString();
@@ -95,10 +98,12 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
 
     this.loadTsFileTableStatement = null;
     this.isTableModelStatement = false;
+    this.isGeneratedByPipe = isGeneratedByPipe;
     this.context = context;
   }
 
-  LoadTsFileAnalyzer(LoadTsFile loadTsFileTableStatement, MPPQueryContext context) {
+  LoadTsFileAnalyzer(
+      LoadTsFile loadTsFileTableStatement, boolean isGeneratedByPipe, MPPQueryContext context) {
     this.loadTsFileTableStatement = loadTsFileTableStatement;
     this.tsFiles = loadTsFileTableStatement.getTsFiles();
     this.statementString = loadTsFileTableStatement.toString();
@@ -111,6 +116,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
 
     this.loadTsFileTreeStatement = null;
     this.isTableModelStatement = true;
+    this.isGeneratedByPipe = isGeneratedByPipe;
     this.context = context;
   }
 
@@ -143,8 +149,8 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
       } catch (AuthException e) {
         setFailAnalysisForAuthException(analysis, e);
         return false;
-      } catch (VerifyMetadataTypeMismatchException e) {
-        executeDataTypeConversionOnTypeMismatch(analysis, e);
+      } catch (LoadAnalyzeException e) {
+        executeTabletConversion(analysis, e);
         // just return false to STOP the analysis process,
         // the real result on the conversion will be set in the analysis.
         return false;
@@ -170,15 +176,14 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   protected abstract void analyzeSingleTsFile(final File tsFile)
-      throws IOException, AuthException, VerifyMetadataException;
+      throws IOException, AuthException, LoadAnalyzeException;
 
-  protected void executeDataTypeConversionOnTypeMismatch(
-      final IAnalysis analysis, final VerifyMetadataTypeMismatchException e) {
+  protected void executeTabletConversion(final IAnalysis analysis, final LoadAnalyzeException e) {
     final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-        new LoadTsFileDataTypeConverter();
+        new LoadTsFileDataTypeConverter(isGeneratedByPipe);
 
     final TSStatus status =
-        isConvertOnTypeMismatch
+        (!(e instanceof LoadAnalyzeTypeMismatchException) || isConvertOnTypeMismatch)
             ? (isTableModelStatement
                 ? loadTsFileDataTypeConverter
                     .convertForTableModel(loadTsFileTableStatement)

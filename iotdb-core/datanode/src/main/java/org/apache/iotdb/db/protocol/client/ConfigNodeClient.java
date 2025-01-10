@@ -91,6 +91,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
@@ -155,12 +156,15 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
@@ -1053,9 +1057,21 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSStatus startPipeExtended(TStartPipeReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.startPipeExtended(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
   public TSStatus stopPipe(String pipeName) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.stopPipe(pipeName), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus stopPipeExtended(TStopPipeReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.stopPipeExtended(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
@@ -1289,11 +1305,23 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TShowTable4InformationSchemaResp showTables4InformationSchema() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showTables4InformationSchema(), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
   public TDescTableResp describeTable(
       final String database, final String tableName, final boolean isDetails) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.describeTable(database, tableName, isDetails),
         resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TDescTable4InformationSchemaResp descTables4InformationSchema() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.descTables4InformationSchema(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override

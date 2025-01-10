@@ -24,18 +24,25 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 
+import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.rpc.TSStatusCode.QUERY_PROCESS_ERROR;
 
 public class DataNodeLocationSupplierFactory {
+
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   private DataNodeLocationSupplierFactory() {}
 
   public static DataNodeLocationSupplier getSupplier() {
@@ -82,6 +89,10 @@ public class DataNodeLocationSupplierFactory {
     public List<TDataNodeLocation> getDataNodeLocations(final String tableName) {
       if (tableName.equals(InformationSchema.QUERIES)) {
         return getReadableDataNodeLocations();
+      } else if (tableName.equals(InformationSchema.DATABASES)
+          || tableName.equals(InformationSchema.TABLES)
+          || tableName.equals(InformationSchema.COLUMNS)) {
+        return Collections.singletonList(DataNodeEndPoints.getLocalDataNodeLocation());
       } else {
         throw new UnsupportedOperationException("Unknown table: " + tableName);
       }
