@@ -796,21 +796,6 @@ public class ProcedureExecutor<Env> {
     }
   }
 
-  // A worker thread which can be added when core workers are stuck. Will timeout after
-  // keepAliveTime if there is no procedure to run.
-  private final class KeepAliveWorkerThread extends WorkerThread {
-
-    public KeepAliveWorkerThread(ThreadGroup group) {
-      super(group, "KAProcExecWorker-");
-      this.keepAliveTime = TimeUnit.SECONDS.toMillis(10);
-    }
-
-    @Override
-    protected boolean keepAlive(long lastUpdate) {
-      return System.currentTimeMillis() - lastUpdate < keepAliveTime;
-    }
-  }
-
   private final class WorkerMonitor extends InternalProcedure<Env> {
     private static final int DEFAULT_WORKER_MONITOR_INTERVAL = 30000; // 30sec
 
@@ -823,7 +808,7 @@ public class ProcedureExecutor<Env> {
       updateTimestamp();
     }
 
-    private int checkForStuckWorkers() {
+    private void checkForStuckWorkers() {
       // Check if any of the worker is stuck
       int stuckCount = 0;
       for (WorkerThread worker : workerThreads) {
@@ -840,31 +825,12 @@ public class ProcedureExecutor<Env> {
             worker.activeProcedure.get().getProcType(),
             worker.getCurrentRunTime());
       }
-      return stuckCount;
-    }
-
-    private void checkThreadCount(final int stuckCount) {
-      // Nothing to do if there are no runnable tasks
-      if (stuckCount < 1 || !scheduler.hasRunnables()) {
-        return;
-      }
-      // Add a new thread if the worker stuck percentage exceed the threshold limit
-      // and every handler is active.
-      final float stuckPerc = ((float) stuckCount) / workerThreads.size();
-      // Let's add new worker thread more aggressively, as they will timeout finally if there is no
-      // work to do.
-      if (stuckPerc >= DEFAULT_WORKER_ADD_STUCK_PERCENTAGE && workerThreads.size() < maxPoolSize) {
-        final KeepAliveWorkerThread worker = new KeepAliveWorkerThread(threadGroup);
-        workerThreads.add(worker);
-        worker.start();
-        LOG.debug("Added new worker thread {}", worker);
-      }
+      LOG.warn("There are {} workers stuck", stuckCount);
     }
 
     @Override
     protected void periodicExecute(Env env) {
-      final int stuckCount = checkForStuckWorkers();
-      checkThreadCount(stuckCount);
+      checkForStuckWorkers();
       updateTimestamp();
     }
   }
