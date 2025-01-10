@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
@@ -50,6 +52,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundExceptio
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.customizer.analysis.AggregateFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
@@ -899,5 +902,16 @@ public class TableMetadataImpl implements Metadata {
       return true;
     }
     return isArithmeticType(left) && isArithmeticType(right);
+  }
+
+  public static void throwTableNotExistsException(final String database, final String tableName) {
+    throw new SemanticException(new TableNotExistsException(database, tableName));
+  }
+
+  public static void throwColumnNotExistsException(final Object columnName) {
+    throw new SemanticException(
+        new IoTDBException(
+            String.format("Column '%s' cannot be resolved.", columnName),
+            TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode()));
   }
 }

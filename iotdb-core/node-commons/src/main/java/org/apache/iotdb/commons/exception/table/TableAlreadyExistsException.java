@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.metadata.table;
+package org.apache.iotdb.commons.exception.table;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.rpc.TSStatusCode;
