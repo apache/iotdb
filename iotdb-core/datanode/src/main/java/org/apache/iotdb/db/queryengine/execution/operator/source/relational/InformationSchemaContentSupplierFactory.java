@@ -242,19 +242,28 @@ public class InformationSchemaContentSupplierFactory {
 
     @Override
     protected void constructLine() {
-      final TTableInfo info = tableInfoIterator.next();
       columnBuilders[0].writeBinary(new Binary(dbName, TSFileConfig.STRING_CHARSET));
-      columnBuilders[1].writeBinary(new Binary(info.getTableName(), TSFileConfig.STRING_CHARSET));
-      columnBuilders[2].writeBinary(new Binary(info.getTTL(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[1].writeBinary(
+          new Binary(currentTable.getTableName(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[2].writeBinary(new Binary(currentTable.getTTL(), TSFileConfig.STRING_CHARSET));
       columnBuilders[3].writeBinary(
           new Binary(
-              TableNodeStatus.values()[info.getState()].toString(), TSFileConfig.STRING_CHARSET));
+              TableNodeStatus.values()[currentTable.getState()].toString(),
+              TSFileConfig.STRING_CHARSET));
+      currentTable = null;
     }
 
     @Override
     public boolean hasNext() {
       // Get next table info iterator
-      while (Objects.isNull(tableInfoIterator) || !tableInfoIterator.hasNext()) {
+      while (Objects.isNull(currentTable)) {
+        while (tableInfoIterator.hasNext()) {
+          final TTableInfo info = tableInfoIterator.next();
+          if (canShowTable(userName, dbName, info.getTableName())) {
+            currentTable = info;
+            break;
+          }
+        }
         if (!dbIterator.hasNext()) {
           return false;
         }
@@ -264,12 +273,6 @@ public class InformationSchemaContentSupplierFactory {
           continue;
         }
         tableInfoIterator = entry.getValue().iterator();
-        while (tableInfoIterator.hasNext()) {
-          currentTable = tableInfoIterator.next();
-          if (canShowTable(userName, dbName, currentTable.getTableName())) {
-            break;
-          }
-        }
       }
       return true;
     }
