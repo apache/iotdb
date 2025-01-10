@@ -48,8 +48,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinN
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 
 public class JoinUtils {
-  public static final String FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN =
-      "Full outer join only support equiJoinClauses";
+  public static final String ONLY_SUPPORT_EQUI_JOIN =
+      "For now, FullOuterJoin and LeftJoin only support EquiJoinClauses";
 
   private JoinUtils() {}
 
