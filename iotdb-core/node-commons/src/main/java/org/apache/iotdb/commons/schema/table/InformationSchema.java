@@ -39,6 +39,7 @@ public class InformationSchema {
   public static final String COLUMNS = "columns";
   public static final String REGIONS = "regions";
   public static final String PIPES = "pipes";
+  public static final String PIPE_PLUGINS = "pipe_plugins";
 
   static {
     final TsTable queriesTable = new TsTable(QUERIES);
@@ -187,6 +188,18 @@ public class InformationSchema {
             ColumnHeaderConstant.ESTIMATED_REMAINING_SECONDS_TABLE_MODEL, TSDataType.DOUBLE));
     pipeTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(PIPES, pipeTable);
+
+    final TsTable pipePluginTable = new TsTable(PIPE_PLUGINS);
+    pipePluginTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.PLUGIN_NAME_TABLE_MODEL, TSDataType.STRING));
+    pipePluginTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.PLUGIN_TYPE_TABLE_MODEL, TSDataType.STRING));
+    pipePluginTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.CLASS_NAME_TABLE_MODEL, TSDataType.STRING));
+    pipePluginTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.PLUGIN_JAR_TABLE_MODEL, TSDataType.STRING));
+    pipePluginTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(PIPE_PLUGINS, pipePluginTable);
   }
 
   public static Map<String, TsTable> getSchemaTables() {

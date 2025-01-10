@@ -231,6 +231,11 @@ public class ColumnHeaderConstant {
   public static final String ESTIMATED_REMAINING_SECONDS_TABLE_MODEL =
       "estimated_remaining_seconds";
 
+  public static final String PLUGIN_NAME_TABLE_MODEL = "plugin_name";
+  public static final String PLUGIN_TYPE_TABLE_MODEL = "plugin_type";
+  public static final String CLASS_NAME_TABLE_MODEL = "class_name";
+  public static final String PLUGIN_JAR_TABLE_MODEL = "plugin_jar";
+
   // column names for show space quota
   public static final String QUOTA_TYPE = "QuotaType";
   public static final String LIMIT = "Limit";

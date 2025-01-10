@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -71,6 +72,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask.PIPE_PLUGIN_TYPE_BUILTIN;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask.PIPE_PLUGIN_TYPE_EXTERNAL;
 
 public class InformationSchemaContentSupplierFactory {
   private InformationSchemaContentSupplierFactory() {}
@@ -90,6 +93,8 @@ public class InformationSchemaContentSupplierFactory {
         return new RegionSupplier(dataTypes, userName);
       case InformationSchema.PIPES:
         return new PipeSupplier(dataTypes, userName);
+      case InformationSchema.PIPE_PLUGINS:
+        return new PipePluginSupplier(dataTypes, userName);
       default:
         throw new UnsupportedOperationException("Unknown table: " + tableName);
     }
@@ -484,6 +489,44 @@ public class InformationSchemaContentSupplierFactory {
       columnBuilders[7].writeLong(tPipeInfo.isSetRemainingEventCount() ? remainingEventCount : -1);
       columnBuilders[8].writeDouble(tPipeInfo.isSetEstimatedRemainingTime() ? remainingTime : -1);
 
+      resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return iterator.hasNext();
+    }
+  }
+
+  private static class PipePluginSupplier extends TsBlockSupplier {
+    private Iterator<PipePluginMeta> iterator;
+
+    private PipePluginSupplier(final List<TSDataType> dataTypes, final String userName) {
+      super(dataTypes);
+      Coordinator.getInstance().getAccessControl().checkUserHasMaintainPrivilege(userName);
+      try (final ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        iterator =
+            client.getPipePluginTable().getAllPipePluginMeta().stream()
+                .map(PipePluginMeta::deserialize)
+                .iterator();
+      } catch (final Exception e) {
+        lastException = e;
+      }
+    }
+
+    @Override
+    protected void constructLine() {
+      final PipePluginMeta pipePluginMeta = iterator.next();
+      columnBuilders[0].writeBinary(BytesUtils.valueOf(pipePluginMeta.getPluginName()));
+      columnBuilders[1].writeBinary(
+          pipePluginMeta.isBuiltin() ? PIPE_PLUGIN_TYPE_BUILTIN : PIPE_PLUGIN_TYPE_EXTERNAL);
+      columnBuilders[2].writeBinary(BytesUtils.valueOf(pipePluginMeta.getClassName()));
+      if (Objects.nonNull(pipePluginMeta.getJarName())) {
+        columnBuilders[3].writeBinary(BytesUtils.valueOf(pipePluginMeta.getJarName()));
+      } else {
+        columnBuilders[3].appendNull();
+      }
       resultBuilder.declarePosition();
     }
 
