@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
@@ -29,7 +30,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -111,11 +112,11 @@ public class InformationSchemaContentSupplierFactory {
 
     @Override
     protected void constructLine() {
-      IQueryExecution queryExecution = queryExecutions.get(nextConsumedIndex);
+      final IQueryExecution queryExecution = queryExecutions.get(nextConsumedIndex);
 
       if (queryExecution.getSQLDialect().equals(IClientSession.SqlDialect.TABLE)) {
-        String[] splits = queryExecution.getQueryId().split("_");
-        int dataNodeId = Integer.parseInt(splits[splits.length - 1]);
+        final String[] splits = queryExecution.getQueryId().split("_");
+        final int dataNodeId = Integer.parseInt(splits[splits.length - 1]);
 
         columnBuilders[0].writeBinary(BytesUtils.valueOf(queryExecution.getQueryId()));
         columnBuilders[1].writeLong(queryExecution.getStartExecutionTime());
@@ -146,11 +147,15 @@ public class InformationSchemaContentSupplierFactory {
       this.userName = userName;
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        final TShowDatabaseResp resp =
-            client.showDatabase(
-                new TGetDatabaseReq(Arrays.asList(ALL_RESULT_NODES), ALL_MATCH_SCOPE.serialize())
-                    .setIsTableModel(true));
-        iterator = resp.getDatabaseInfoMap().entrySet().iterator();
+        iterator =
+            client
+                .showDatabase(
+                    new TGetDatabaseReq(
+                            Arrays.asList(ALL_RESULT_NODES), ALL_MATCH_SCOPE.serialize())
+                        .setIsTableModel(true))
+                .getDatabaseInfoMap()
+                .entrySet()
+                .iterator();
       } catch (final Exception e) {
         lastException = e;
       }
@@ -178,7 +183,6 @@ public class InformationSchemaContentSupplierFactory {
       columnBuilders[4].writeLong(currentDatabase.getTimePartitionInterval());
       columnBuilders[5].writeInt(currentDatabase.getSchemaRegionNum());
       columnBuilders[6].writeInt(currentDatabase.getDataRegionNum());
-      resultBuilder.declarePosition();
       currentDatabase = null;
     }
 
@@ -245,7 +249,6 @@ public class InformationSchemaContentSupplierFactory {
       columnBuilders[3].writeBinary(
           new Binary(
               TableNodeStatus.values()[info.getState()].toString(), TSFileConfig.STRING_CHARSET));
-      resultBuilder.declarePosition();
     }
 
     @Override
@@ -330,7 +333,6 @@ public class InformationSchemaContentSupplierFactory {
           new Binary(
               preDeletedColumns.contains(schema.getColumnName()) ? "PRE_DELETE" : "USING",
               TSFileConfig.STRING_CHARSET));
-      resultBuilder.declarePosition();
     }
 
     @Override
@@ -366,7 +368,6 @@ public class InformationSchemaContentSupplierFactory {
 
   private static class RegionSupplier extends TsBlockSupplier {
     private Iterator<TRegionInfo> iterator;
-    private TDatabaseInfo currentDatabase;
 
     private RegionSupplier(final List<TSDataType> dataTypes, final String userName) {
       super(dataTypes);
@@ -384,24 +385,35 @@ public class InformationSchemaContentSupplierFactory {
 
     @Override
     protected void constructLine() {
-      final TRegionInfo info = iterator.next();
-      columnBuilders[0].writeBinary(
-          new Binary(currentDatabase.getName(), TSFileConfig.STRING_CHARSET));
-
-      if (Long.MAX_VALUE == currentDatabase.getTTL()) {
-        columnBuilders[1].writeBinary(
-            new Binary(IoTDBConstant.TTL_INFINITE, TSFileConfig.STRING_CHARSET));
-      } else {
-        columnBuilders[1].writeBinary(
-            new Binary(String.valueOf(currentDatabase.getTTL()), TSFileConfig.STRING_CHARSET));
+      final TRegionInfo regionInfo = iterator.next();
+      columnBuilders[0].writeInt(regionInfo.getConsensusGroupId().getId());
+      columnBuilders[1].writeInt(regionInfo.getDataNodeId());
+      if (regionInfo.getConsensusGroupId().getType().ordinal()
+          == TConsensusGroupType.SchemaRegion.ordinal()) {
+        columnBuilders[2].writeBinary(
+            BytesUtils.valueOf(String.valueOf(TConsensusGroupType.SchemaRegion)));
+      } else if (regionInfo.getConsensusGroupId().getType().ordinal()
+          == TConsensusGroupType.DataRegion.ordinal()) {
+        columnBuilders[2].writeBinary(
+            BytesUtils.valueOf(String.valueOf(TConsensusGroupType.DataRegion)));
       }
-      columnBuilders[2].writeInt(currentDatabase.getSchemaReplicationFactor());
-      columnBuilders[3].writeInt(currentDatabase.getDataReplicationFactor());
-      columnBuilders[4].writeLong(currentDatabase.getTimePartitionInterval());
-      columnBuilders[5].writeInt(currentDatabase.getSchemaRegionNum());
-      columnBuilders[6].writeInt(currentDatabase.getDataRegionNum());
-      resultBuilder.declarePosition();
-      currentDatabase = null;
+      columnBuilders[3].writeBinary(
+          BytesUtils.valueOf(regionInfo.getStatus() == null ? "" : regionInfo.getStatus()));
+      columnBuilders[4].writeBinary(BytesUtils.valueOf(regionInfo.getDatabase()));
+      columnBuilders[5].writeInt(regionInfo.getSeriesSlots());
+      columnBuilders[6].writeLong(regionInfo.getTimeSlots());
+      columnBuilders[7].writeBinary(BytesUtils.valueOf(regionInfo.getClientRpcIp()));
+      columnBuilders[8].writeInt(regionInfo.getClientRpcPort());
+      columnBuilders[9].writeBinary(BytesUtils.valueOf(regionInfo.getInternalAddress()));
+      columnBuilders[10].writeBinary(BytesUtils.valueOf(regionInfo.getRoleType()));
+      columnBuilders[11].writeBinary(
+          BytesUtils.valueOf(DateTimeUtils.convertLongToDate(regionInfo.getCreateTime())));
+      if (regionInfo.getConsensusGroupId().getType().ordinal()
+          == TConsensusGroupType.DataRegion.ordinal()) {
+        columnBuilders[12].writeLong(regionInfo.getTsFileSize());
+      } else {
+        columnBuilders[12].appendNull();
+      }
     }
 
     @Override
@@ -452,6 +464,7 @@ public class InformationSchemaContentSupplierFactory {
       }
       while (hasNext() && !resultBuilder.isFull()) {
         constructLine();
+        resultBuilder.declarePosition();
       }
       final TsBlock result =
           resultBuilder.build(
