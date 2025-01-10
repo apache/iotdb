@@ -667,6 +667,9 @@ public class PipeConsensusReceiver {
           consensusPipeName,
           filePath);
     }
+    // record replicated progressIndex
+    Optional.ofNullable(pipeConsensus.getImpl(consensusGroupId))
+        .ifPresent(impl -> impl.recordTsFileProgressOnFollowerReplica(progressIndex));
     return RpcUtils.SUCCESS_STATUS;
   }
 

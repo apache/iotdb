@@ -34,6 +34,9 @@ import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -41,11 +44,16 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class ProgressIndexDataNodeManager implements ProgressIndexManager {
+  private static final Logger LOGGER = LoggerFactory.getLogger(ProgressIndexDataNodeManager.class);
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
   private final Map<ConsensusGroupId, ProgressIndex> groupId2MaxProgressIndex;
+  // 1 dataRegion -> 1 recoverProgressIndex with n peers(denoted by datanodeId) -> n
+  // simpleProgressIndex.
+  private final Map<ConsensusGroupId, ProgressIndex> groupId2PeersMaxProgressIndexMap;
 
   public ProgressIndexDataNodeManager() {
     this.groupId2MaxProgressIndex = new ConcurrentHashMap<>();
+    this.groupId2PeersMaxProgressIndexMap = new ConcurrentHashMap<>();
 
     recoverMaxProgressIndexFromDataRegion();
   }
@@ -74,6 +82,20 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
     return MinimumProgressIndex.INSTANCE;
   }
 
+  public static ProgressIndex extractRecoverProgressIndex(ProgressIndex progressIndex) {
+    if (progressIndex instanceof RecoverProgressIndex) {
+      return progressIndex;
+    } else if (progressIndex instanceof HybridProgressIndex) {
+      final Map<Short, ProgressIndex> type2Index =
+          ((HybridProgressIndex) progressIndex).getType2Index();
+      if (!type2Index.containsKey(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType())) {
+        return MinimumProgressIndex.INSTANCE;
+      }
+      type2Index.get(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType());
+    }
+    return MinimumProgressIndex.INSTANCE;
+  }
+
   private void recoverMaxProgressIndexFromDataRegion() {
     StorageEngine.getInstance()
         .getAllDataRegionIds()
@@ -93,11 +115,23 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
                       .collect(Collectors.toList()));
 
               ProgressIndex maxProgressIndex = MinimumProgressIndex.INSTANCE;
+              ProgressIndex maxPeersProgressIndex = MinimumProgressIndex.INSTANCE;
               for (ProgressIndex progressIndex : allProgressIndex) {
+                ProgressIndex extractedProgressIndex =
+                    extractLocalSimpleProgressIndex(progressIndex);
                 maxProgressIndex =
-                    maxProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
-                        extractLocalSimpleProgressIndex(progressIndex));
+                    extractedProgressIndex instanceof SimpleProgressIndex
+                        ? maxProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
+                            new RecoverProgressIndex(
+                                DATA_NODE_ID, (SimpleProgressIndex) extractedProgressIndex))
+                        : maxProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
+                            extractedProgressIndex);
+
+                maxPeersProgressIndex =
+                    maxPeersProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
+                        extractRecoverProgressIndex(progressIndex));
               }
+
               // Renew a variable to pass the examination of compiler
               final ProgressIndex finalMaxProgressIndex = maxProgressIndex;
               groupId2MaxProgressIndex.compute(
@@ -105,6 +139,12 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
                   (key, value) ->
                       (value == null ? MinimumProgressIndex.INSTANCE : value)
                           .updateToMinimumEqualOrIsAfterProgressIndex(finalMaxProgressIndex));
+              final ProgressIndex finalMaxPeersProgressIndex = maxPeersProgressIndex;
+              groupId2PeersMaxProgressIndexMap.compute(
+                  dataRegionId,
+                  (key, value) ->
+                      (value == null ? MinimumProgressIndex.INSTANCE : value)
+                          .updateToMinimumEqualOrIsAfterProgressIndex(finalMaxPeersProgressIndex));
             });
   }
 
@@ -128,5 +168,45 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
   @Override
   public ProgressIndex getMaxAssignedProgressIndex(ConsensusGroupId consensusGroupId) {
     return groupId2MaxProgressIndex.getOrDefault(consensusGroupId, MinimumProgressIndex.INSTANCE);
+  }
+
+  @Override
+  public void recordPeerMaxProgressIndex(
+      ConsensusGroupId consensusGroupId, ProgressIndex progressIndex) {
+    RecoverProgressIndex recoverProgressIndex = getRecoverProgressIndex(progressIndex);
+    if (recoverProgressIndex == null) {
+      // IoTV2 uses recoverProgressIndex
+      LOGGER.warn(
+          "[THIS SHOULD NOT HAPPEN] The progress index is null. ConsensusGroupId: {}.",
+          consensusGroupId);
+      return;
+    }
+
+    groupId2PeersMaxProgressIndexMap.compute(
+        consensusGroupId,
+        (key, value) ->
+            ((value == null ? MinimumProgressIndex.INSTANCE : value)
+                .updateToMinimumEqualOrIsAfterProgressIndex(recoverProgressIndex)));
+  }
+
+  private static RecoverProgressIndex getRecoverProgressIndex(ProgressIndex progressIndex) {
+    RecoverProgressIndex recoverProgressIndex = null;
+
+    if (progressIndex instanceof RecoverProgressIndex) {
+      recoverProgressIndex = (RecoverProgressIndex) progressIndex;
+    } else if (progressIndex instanceof HybridProgressIndex) {
+      final Map<Short, ProgressIndex> type2Index =
+          ((HybridProgressIndex) progressIndex).getType2Index();
+      recoverProgressIndex =
+          ((RecoverProgressIndex)
+              type2Index.getOrDefault(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType(), null));
+    }
+    return recoverProgressIndex;
+  }
+
+  @Override
+  public ProgressIndex getMaxReplicatedProgressIndex(ConsensusGroupId consensusGroupId) {
+    return this.groupId2PeersMaxProgressIndexMap.getOrDefault(
+        consensusGroupId, MinimumProgressIndex.INSTANCE);
   }
 }

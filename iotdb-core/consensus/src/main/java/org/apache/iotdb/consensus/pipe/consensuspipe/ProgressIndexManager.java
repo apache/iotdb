@@ -28,4 +28,8 @@ public interface ProgressIndexManager {
   ProgressIndex assignProgressIndex(ConsensusGroupId consensusGroupId);
 
   ProgressIndex getMaxAssignedProgressIndex(ConsensusGroupId consensusGroupId);
+
+  void recordPeerMaxProgressIndex(ConsensusGroupId consensusGroupId, ProgressIndex progressIndex);
+
+  ProgressIndex getMaxReplicatedProgressIndex(ConsensusGroupId consensusGroupId);
 }

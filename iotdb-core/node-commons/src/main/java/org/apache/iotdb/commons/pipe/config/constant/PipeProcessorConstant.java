@@ -82,6 +82,8 @@ public class PipeProcessorConstant {
 
   public static final String PROCESSOR_RENAME_DATABASE_NEW_DB_NAME = "processor.new-db-name";
 
+  public static final String PROCESSOR_CONSENSUS_PIPE_NAME_KEY = "processor.consensus.pipe.name-id";
+
   private PipeProcessorConstant() {
     throw new IllegalStateException("Utility class");
   }
