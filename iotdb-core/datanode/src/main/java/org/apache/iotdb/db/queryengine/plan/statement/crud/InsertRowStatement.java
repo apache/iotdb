@@ -276,9 +276,17 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     }
     failedMeasurementIndex2Info.forEach(
         (index, info) -> {
-          measurements[index] = info.getMeasurement();
-          dataTypes[index] = info.getDataType();
-          values[index] = info.getValue();
+          if (measurements != null) {
+            measurements[index] = info.getMeasurement();
+          }
+
+          if (dataTypes != null) {
+            dataTypes[index] = info.getDataType();
+          }
+
+          if (values != null) {
+            values[index] = info.getValue();
+          }
         });
     failedMeasurementIndex2Info.clear();
   }

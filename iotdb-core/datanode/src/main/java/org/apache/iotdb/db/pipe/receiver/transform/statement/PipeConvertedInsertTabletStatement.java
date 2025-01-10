@@ -61,30 +61,26 @@ public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
     // To ensure that the measurement remains unchanged during the WAL writing process, the array
     // needs to be copied before the failed Measurement mark can be deleted.
     if (isCopyMeasurement) {
-      MeasurementSchema[] measurementSchemas = insertTabletStatement.getMeasurementSchemas();
+      final MeasurementSchema[] measurementSchemas = insertTabletStatement.getMeasurementSchemas();
       if (measurementSchemas != null) {
-        measurementSchemas = Arrays.copyOf(measurementSchemas, measurementSchemas.length);
+        this.measurementSchemas = Arrays.copyOf(measurementSchemas, measurementSchemas.length);
       }
-      this.measurementSchemas = measurementSchemas;
 
-      String[] measurements = insertTabletStatement.getMeasurements();
+      final String[] measurements = insertTabletStatement.getMeasurements();
       if (measurements != null) {
-        measurements = Arrays.copyOf(measurements, measurements.length);
+        this.measurements = Arrays.copyOf(measurements, measurements.length);
       }
-      this.measurements = measurements;
 
-      TSDataType[] dataTypes = insertTabletStatement.getDataTypes();
+      final TSDataType[] dataTypes = insertTabletStatement.getDataTypes();
       if (dataTypes != null) {
-        dataTypes = Arrays.copyOf(dataTypes, dataTypes.length);
+        this.dataTypes = Arrays.copyOf(dataTypes, dataTypes.length);
       }
-      this.dataTypes = dataTypes;
 
-      Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info =
+      final Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info =
           insertTabletStatement.getFailedMeasurementInfoMap();
       if (failedMeasurementIndex2Info != null) {
-        failedMeasurementIndex2Info = new HashMap<>(failedMeasurementIndex2Info);
+        this.failedMeasurementIndex2Info = new HashMap<>(failedMeasurementIndex2Info);
       }
-      this.failedMeasurementIndex2Info = failedMeasurementIndex2Info;
     } else {
       this.measurementSchemas = insertTabletStatement.getMeasurementSchemas();
       this.measurements = insertTabletStatement.getMeasurements();
