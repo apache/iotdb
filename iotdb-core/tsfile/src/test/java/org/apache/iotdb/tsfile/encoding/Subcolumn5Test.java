@@ -451,9 +451,9 @@ public class Subcolumn5Test {
 
         for (int i = l - 1; i >= 0; i--) {
             int type = encodingType[i];
+            int bitWidth = bitWidthList[i];
             if (type == 0) {
-                // if (!type) {
-                encode_pos = decodeBitPacking(encoded_result, encode_pos, bitWidthList[i], list_length,
+                encode_pos = decodeBitPacking(encoded_result, encode_pos, bitWidth, list_length,
                         subcolumnList[i]);
             } else {
                 int index = ((encoded_result[encode_pos] & 0xFF) << 8) | (encoded_result[encode_pos + 1] & 0xFF);
@@ -464,32 +464,33 @@ public class Subcolumn5Test {
                 int[] rle_values = new int[index];
 
                 encode_pos = decodeBitPacking(encoded_result, encode_pos, bw, index, run_length);
-                encode_pos = decodeBitPacking(encoded_result, encode_pos, bitWidthList[i], index, rle_values);
+                encode_pos = decodeBitPacking(encoded_result, encode_pos, bitWidth, index, rle_values);
 
                 int currentIndex = 0;
                 for (int j = 0; j < index; j++) {
                     int endPos = run_length[j];
+                    int value = rle_values[j];
                     while (currentIndex < endPos) {
-                        subcolumnList[i][currentIndex] = rle_values[j];
+                        subcolumnList[i][currentIndex] = value;
                         currentIndex++;
                     }
                 }
-
-            }
-
-            // System.out.println("encode_pos: " + encode_pos);
-        }
-
-        for (int i = 0; i < list_length; i++) {
-            // list[i] = 0;
-            for (int j = 0; j < l; j++) {
-                list[i] |= subcolumnList[j][i] << (j * beta);
             }
         }
 
-        // System.out.println("encode_pos: " + encode_pos);
+        // for (int i = 0; i < list_length; i++) {
+        //     for (int j = 0; j < l; j++) {
+        //         list[i] |= subcolumnList[j][i] << (j * beta);
+        //     }
+        // }
 
-        // return startBitPosition;
+        for (int i = 0; i < l; i++) {
+            int shiftAmount = i * beta;
+            for (int j = 0; j < list_length; j++) {
+                list[j] |= subcolumnList[i][j] << shiftAmount;
+            }
+        }
+
         return encode_pos;
     }
 
@@ -697,7 +698,7 @@ public class Subcolumn5Test {
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        String outputPath = output_parent_dir + "subcolumn50.csv";
+        String outputPath = output_parent_dir + "subcolumn51.csv";
 
         // int block_size = 1024;
         int block_size = 512;
@@ -707,6 +708,7 @@ public class Subcolumn5Test {
         // repeatTime = 1;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
+        writer.setRecordDelimiter('\n');
 
         String[] head = {
                 "Dataset",

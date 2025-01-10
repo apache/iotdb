@@ -52,17 +52,18 @@ public class Subcolumn5BlockSizeTest {
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        // int[] block_size_list = { 1024, 512, 256, 128, 64, 32 };
         int[] block_size_list = { 32, 64, 128, 256, 512, 1024 };
 
-        int repeatTime = 500;
+        int repeatTime = 200;
         // TODO 真正计算时，记得注释掉将下面的内容
         // repeatTime = 1;
 
         for (int block_size : block_size_list) {
 
             String outputPath = output_parent_dir + "subcolumn5_block_" + block_size + ".csv";
+
             CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
+            writer.setRecordDelimiter('\n');
 
             String[] head = {
                     "Dataset",

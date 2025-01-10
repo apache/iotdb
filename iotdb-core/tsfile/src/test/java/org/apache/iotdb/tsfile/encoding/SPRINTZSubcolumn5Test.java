@@ -260,6 +260,7 @@ public class SPRINTZSubcolumn5Test {
         // repeatTime = 1;
 
         CsvWriter writer = new CsvWriter(outputPath, ',', StandardCharsets.UTF_8);
+        writer.setRecordDelimiter('\n');
 
         String[] head = {
                 "Dataset",
