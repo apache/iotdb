@@ -32,7 +32,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -51,8 +51,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   private static final int EOF_STATE = Integer.MIN_VALUE;
 
   private Flow stateFlow = Flow.HAS_MORE_STATE;
-  protected int stateCount = 0;
-  private int[] states = null;
+  private final LinkedList<Integer> states = new LinkedList<>();
 
   private List<Procedure<?>> subProcList = new ArrayList<>();
 
@@ -167,7 +166,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
       }
 
       TState state = getCurrentState();
-      if (stateCount == 0) {
+      if (states.isEmpty()) {
         setNextState(getStateId(state));
       }
 
@@ -202,20 +201,20 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   protected void rollback(final Env env)
       throws IOException, InterruptedException, ProcedureException {
     if (isEofState()) {
-      stateCount--;
+      states.removeLast();
     }
 
     try {
       updateTimestamp();
       rollbackState(env, getCurrentState());
     } finally {
-      stateCount--;
+      states.removeLast();
       updateTimestamp();
     }
   }
 
   protected boolean isEofState() {
-    return stateCount > 0 && states[stateCount - 1] == EOF_STATE;
+    return !states.isEmpty() && states.getLast() == EOF_STATE;
   }
 
   /**
@@ -237,11 +236,11 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
 
   @Nullable
   protected TState getCurrentState() {
-    if (stateCount > 0) {
-      if (states[stateCount - 1] == EOF_STATE) {
+    if (!states.isEmpty()) {
+      if (states.getLast() == EOF_STATE) {
         return null;
       }
-      return getState(states[stateCount - 1]);
+      return getState(states.getLast());
     }
     return getInitialState();
   }
@@ -261,15 +260,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
    * @param stateId the ordinal() of the state enum (or state id)
    */
   private void setNextState(final int stateId) {
-    if (states == null || states.length == stateCount) {
-      int newCapacity = stateCount + 8;
-      if (states != null) {
-        states = Arrays.copyOf(states, newCapacity);
-      } else {
-        states = new int[newCapacity];
-      }
-    }
-    states[stateCount++] = stateId;
+    states.add(stateId);
   }
 
   @Override
@@ -283,26 +274,24 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     super.serialize(stream);
-    stream.writeInt(stateCount);
-    for (int i = 0; i < stateCount; ++i) {
-      stream.writeInt(states[i]);
+    stream.writeInt(states.size());
+    for (int state : states) {
+      stream.writeInt(state);
     }
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
-    stateCount = byteBuffer.getInt();
+    int stateCount = byteBuffer.getInt();
+    states.clear();
     if (stateCount > 0) {
-      states = new int[stateCount];
       for (int i = 0; i < stateCount; ++i) {
-        states[i] = byteBuffer.getInt();
+        states.add(byteBuffer.getInt());
       }
       if (isEofState()) {
         stateFlow = Flow.NO_MORE_STATE;
       }
-    } else {
-      states = null;
     }
     this.setStateDeserialized(true);
   }
