@@ -273,10 +273,17 @@ public class ModificationFile implements AutoCloseable {
 
   public void remove() throws IOException {
     close();
+    removeFromFileMetrics();
     FileUtils.deleteFileOrDirectory(file);
-    FileMetrics.getInstance().decreaseModFileNum(1);
-    FileMetrics.getInstance().decreaseModFileSize(getFileLength());
     fileExists = false;
+  }
+
+  // the modification may be source file of LOAD
+  public void removeFromFileMetrics() {
+    if (fileExists) {
+      FileMetrics.getInstance().decreaseModFileNum(1);
+      FileMetrics.getInstance().decreaseModFileSize(getFileLength());
+    }
   }
 
   public static ModificationFile getExclusiveMods(TsFileResource tsFileResource) {

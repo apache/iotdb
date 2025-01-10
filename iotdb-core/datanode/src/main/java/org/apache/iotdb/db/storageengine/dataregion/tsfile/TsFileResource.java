@@ -1461,7 +1461,7 @@ public class TsFileResource implements PersistentResource {
 
     if (upgradeModFileThreadPool != null) {
       exclusiveModFileFuture =
-          upgradeModFileThreadPool.submit(() -> doUpgradeModFile(oldModFile, remove()));
+          upgradeModFileThreadPool.submit(() -> doUpgradeModFile(oldModFile, removeOldModFile));
     } else {
       exclusiveModFileFuture =
           CompletableFuture.completedFuture(doUpgradeModFile(oldModFile, removeOldModFile));
