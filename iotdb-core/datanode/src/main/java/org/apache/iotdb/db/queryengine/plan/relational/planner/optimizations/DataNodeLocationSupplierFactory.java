@@ -96,6 +96,8 @@ public class DataNodeLocationSupplierFactory {
         case InformationSchema.REGIONS:
         case InformationSchema.PIPES:
         case InformationSchema.PIPE_PLUGINS:
+        case InformationSchema.TOPICS:
+        case InformationSchema.SUBSCRIPTIONS:
           return Collections.singletonList(DataNodeEndPoints.getLocalDataNodeLocation());
         default:
           throw new UnsupportedOperationException("Unknown table: " + tableName);

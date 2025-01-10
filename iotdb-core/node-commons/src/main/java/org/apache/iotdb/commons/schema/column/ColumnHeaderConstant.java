@@ -236,6 +236,12 @@ public class ColumnHeaderConstant {
   public static final String CLASS_NAME_TABLE_MODEL = "class_name";
   public static final String PLUGIN_JAR_TABLE_MODEL = "plugin_jar";
 
+  public static final String TOPIC_NAME_TABLE_MODEL = "topic_name";
+  public static final String TOPIC_CONFIGS_TABLE_MODEL = "topic_configs";
+
+  public static final String CONSUMER_GROUP_NAME_TABLE_MODEL = "consumer_group_name";
+  public static final String SUBSCRIBED_CONSUMERS_TABLE_MODEL = "subscribed_consumers";
+
   // column names for show space quota
   public static final String QUOTA_TYPE = "QuotaType";
   public static final String LIMIT = "Limit";

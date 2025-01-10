@@ -40,6 +40,8 @@ public class InformationSchema {
   public static final String REGIONS = "regions";
   public static final String PIPES = "pipes";
   public static final String PIPE_PLUGINS = "pipe_plugins";
+  public static final String TOPICS = "topics";
+  public static final String SUBSCRIPTIONS = "subscriptions";
 
   static {
     final TsTable queriesTable = new TsTable(QUERIES);
@@ -200,6 +202,27 @@ public class InformationSchema {
         new AttributeColumnSchema(ColumnHeaderConstant.PLUGIN_JAR_TABLE_MODEL, TSDataType.STRING));
     pipePluginTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(PIPE_PLUGINS, pipePluginTable);
+
+    final TsTable topicTable = new TsTable(TOPICS);
+    topicTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.TOPIC_NAME_TABLE_MODEL, TSDataType.STRING));
+    topicTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.TOPIC_CONFIGS_TABLE_MODEL, TSDataType.STRING));
+    topicTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(TOPICS, topicTable);
+
+    final TsTable subscriptionTable = new TsTable(SUBSCRIPTIONS);
+    subscriptionTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.TOPIC_NAME_TABLE_MODEL, TSDataType.STRING));
+    subscriptionTable.addColumnSchema(
+        new TagColumnSchema(
+            ColumnHeaderConstant.CONSUMER_GROUP_NAME_TABLE_MODEL, TSDataType.STRING));
+    subscriptionTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.SUBSCRIBED_CONSUMERS_TABLE_MODEL, TSDataType.STRING));
+    subscriptionTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(SUBSCRIPTIONS, subscriptionTable);
   }
 
   public static Map<String, TsTable> getSchemaTables() {
