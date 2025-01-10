@@ -318,10 +318,9 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       long timestamp = alignedTVList.getTime(row);
 
       BitMap bitMap = new BitMap(schemaList.size());
-      bitMap.markAll();
       for (int column = 0; column < schemaList.size(); column++) {
-        if (!alignedTVList.isNullValue(alignedTVList.getValueIndex(row), column)) {
-          bitMap.unmark(column);
+        if (alignedTVList.isNullValue(alignedTVList.getValueIndex(row), column)) {
+          bitMap.mark(column);
         }
 
         // skip deleted row

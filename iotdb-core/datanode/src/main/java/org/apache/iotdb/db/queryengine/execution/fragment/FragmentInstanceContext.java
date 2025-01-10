@@ -668,8 +668,8 @@ public class FragmentInstanceContext extends QueryContext {
                 "TVList {} is released by the query, FragmentInstance Id is {}",
                 tvList,
                 this.getId());
-            tvList.clear();
             memoryReservationManager.releaseMemoryCumulatively(tvList.calculateRamSize());
+            tvList.clear();
           } else {
             LOGGER.debug(
                 "TVList {} is now owned by another query, FragmentInstance Id is {}",

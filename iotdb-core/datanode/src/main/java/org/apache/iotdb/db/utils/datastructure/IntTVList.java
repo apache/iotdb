@@ -247,7 +247,7 @@ public abstract class IntTVList extends TVList {
 
     if (sorted
         && (rowCount == 0
-            || (end - start > nullCnt) && time[start - tIdxOffset] > getTime(rowCount - 1))) {
+            || (end - start > nullCnt) && time[start - tIdxOffset] >= getTime(rowCount - 1))) {
       seqRowCount += inputSeqRowCount;
     }
     sorted = sorted && inputSorted && (rowCount == 0 || inPutMinTime >= getTime(rowCount - 1));

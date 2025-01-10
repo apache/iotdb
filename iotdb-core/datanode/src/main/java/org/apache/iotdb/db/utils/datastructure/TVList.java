@@ -493,7 +493,7 @@ public abstract class TVList implements WALEntryValue {
         }
       }
     }
-    if (sorted && (rowCount == 0 || time[start] > getTime(rowCount - 1))) {
+    if (sorted && (rowCount == 0 || time[start] >= getTime(rowCount - 1))) {
       seqRowCount += inputSeqRowCount;
     }
     sorted = sorted && inputSorted && (rowCount == 0 || inPutMinTime >= getTime(rowCount - 1));
