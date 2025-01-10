@@ -222,6 +222,15 @@ public class ColumnHeaderConstant {
   public static final String CREATE_TIME_TABLE_MODEL = "create_time";
   public static final String TS_FILE_SIZE_BYTES_TABLE_MODEL = "tsfile_size_bytes";
 
+  public static final String CREATION_TIME_TABLE_MODEL = "creation_time";
+  public static final String PIPE_SOURCE_TABLE_MODEL = "pipe_source";
+  public static final String PIPE_PROCESSOR_TABLE_MODEL = "pipe_source";
+  public static final String PIPE_SINK_TABLE_MODEL = "pipe_source";
+  public static final String EXCEPTION_MESSAGE_TABLE_MODEL = "exception_message";
+  public static final String REMAINING_EVENT_COUNT_TABLE_MODEL = "remaining_event_count";
+  public static final String ESTIMATED_REMAINING_SECONDS_TABLE_MODEL =
+      "estimated_remaining_seconds";
+
   // column names for show space quota
   public static final String QUOTA_TYPE = "QuotaType";
   public static final String LIMIT = "Limit";

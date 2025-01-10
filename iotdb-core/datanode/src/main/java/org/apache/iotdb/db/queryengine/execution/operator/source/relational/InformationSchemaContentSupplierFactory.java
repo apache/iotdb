@@ -30,8 +30,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
+import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -84,6 +87,8 @@ public class InformationSchemaContentSupplierFactory {
         return new ColumnSupplier(dataTypes, userName);
       case InformationSchema.REGIONS:
         return new RegionSupplier(dataTypes, userName);
+      case InformationSchema.PIPES:
+        return new PipeSupplier(dataTypes, userName);
       default:
         throw new UnsupportedOperationException("Unknown table: " + tableName);
     }
@@ -125,6 +130,7 @@ public class InformationSchemaContentSupplierFactory {
             (float) (currTime - queryExecution.getStartExecutionTime()) / 1000);
         columnBuilders[4].writeBinary(
             BytesUtils.valueOf(queryExecution.getExecuteSQL().orElse("UNKNOWN")));
+        columnBuilders[5].writeBinary(BytesUtils.valueOf(queryExecution.getUser()));
         resultBuilder.declarePosition();
       }
       nextConsumedIndex++;
@@ -420,6 +426,63 @@ public class InformationSchemaContentSupplierFactory {
       } else {
         columnBuilders[12].appendNull();
       }
+      resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return iterator.hasNext();
+    }
+  }
+
+  private static class PipeSupplier extends TsBlockSupplier {
+    private Iterator<TShowPipeInfo> iterator;
+
+    private PipeSupplier(final List<TSDataType> dataTypes, final String userName) {
+      super(dataTypes);
+      Coordinator.getInstance().getAccessControl().checkUserHasMaintainPrivilege(userName);
+      try (final ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        iterator = client.showPipe(new TShowPipeReq()).getPipeInfoListIterator();
+      } catch (final Exception e) {
+        lastException = e;
+      }
+    }
+
+    @Override
+    protected void constructLine() {
+      final TShowPipeInfo tPipeInfo = iterator.next();
+      columnBuilders[0].writeBinary(new Binary(tPipeInfo.getId(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[1].writeBinary(
+          new Binary(
+              DateTimeUtils.convertLongToDate(tPipeInfo.getCreationTime(), "ms"),
+              TSFileConfig.STRING_CHARSET));
+      columnBuilders[2].writeBinary(new Binary(tPipeInfo.getState(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[3].writeBinary(
+          new Binary(tPipeInfo.getPipeExtractor(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[4].writeBinary(
+          new Binary(tPipeInfo.getPipeProcessor(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[5].writeBinary(
+          new Binary(tPipeInfo.getPipeConnector(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[6].writeBinary(
+          new Binary(tPipeInfo.getExceptionMessage(), TSFileConfig.STRING_CHARSET));
+
+      // Optional, default 0/0.0
+      long remainingEventCount = tPipeInfo.getRemainingEventCount();
+      double remainingTime = tPipeInfo.getEstimatedRemainingTime();
+
+      if (remainingEventCount == -1 && remainingTime == -1) {
+        final Pair<Long, Double> remainingEventAndTime =
+            PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+                .getRemainingEventAndTime(tPipeInfo.getId(), tPipeInfo.getCreationTime());
+        remainingEventCount = remainingEventAndTime.getLeft();
+        remainingTime = remainingEventAndTime.getRight();
+      }
+
+      columnBuilders[7].writeLong(tPipeInfo.isSetRemainingEventCount() ? remainingEventCount : -1);
+
+      columnBuilders[8].writeDouble(tPipeInfo.isSetEstimatedRemainingTime() ? remainingTime : -1);
+
       resultBuilder.declarePosition();
     }
 

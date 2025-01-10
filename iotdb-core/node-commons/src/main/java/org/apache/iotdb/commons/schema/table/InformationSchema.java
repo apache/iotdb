@@ -38,6 +38,7 @@ public class InformationSchema {
   public static final String TABLES = "tables";
   public static final String COLUMNS = "columns";
   public static final String REGIONS = "regions";
+  public static final String PIPES = "pipes";
 
   static {
     final TsTable queriesTable = new TsTable(QUERIES);
@@ -53,6 +54,9 @@ public class InformationSchema {
     queriesTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.STATEMENT.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    queriesTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.USER.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     queriesTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(QUERIES, queriesTable);
 
@@ -153,7 +157,35 @@ public class InformationSchema {
         new AttributeColumnSchema(
             ColumnHeaderConstant.TS_FILE_SIZE_BYTES_TABLE_MODEL, TSDataType.INT64));
     regionTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
-    schemaTables.put(COLUMNS, regionTable);
+    schemaTables.put(REGIONS, regionTable);
+
+    final TsTable pipeTable = new TsTable(PIPES);
+    pipeTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.ID.toLowerCase(Locale.ENGLISH), TSDataType.INT32));
+    pipeTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.CREATION_TIME_TABLE_MODEL, TSDataType.TIMESTAMP));
+    pipeTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.STATE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
+    pipeTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.PIPE_SOURCE_TABLE_MODEL, TSDataType.STRING));
+    pipeTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.PIPE_PROCESSOR_TABLE_MODEL, TSDataType.STRING));
+    pipeTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.PIPE_SINK_TABLE_MODEL, TSDataType.STRING));
+    pipeTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.EXCEPTION_MESSAGE_TABLE_MODEL, TSDataType.STRING));
+    pipeTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.REMAINING_EVENT_COUNT_TABLE_MODEL, TSDataType.INT64));
+    pipeTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.ESTIMATED_REMAINING_SECONDS_TABLE_MODEL, TSDataType.DOUBLE));
+    pipeTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(PIPES, pipeTable);
   }
 
   public static Map<String, TsTable> getSchemaTables() {
