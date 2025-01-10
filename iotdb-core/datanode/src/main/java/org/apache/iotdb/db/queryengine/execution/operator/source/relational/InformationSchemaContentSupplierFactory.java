@@ -36,6 +36,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -78,6 +79,8 @@ public class InformationSchemaContentSupplierFactory {
         return new TableSupplier(dataTypes, userName);
       case InformationSchema.COLUMNS:
         return new ColumnSupplier(dataTypes, userName);
+      case InformationSchema.REGIONS:
+        return new RegionSupplier(dataTypes, userName);
       default:
         throw new UnsupportedOperationException("Unknown table: " + tableName);
     }
@@ -193,6 +196,7 @@ public class InformationSchemaContentSupplierFactory {
   private static class TableSupplier extends TsBlockSupplier {
     private Iterator<Map.Entry<String, List<TTableInfo>>> dbIterator;
     private Iterator<TTableInfo> tableInfoIterator = null;
+    private TTableInfo currentTable;
     private String dbName;
     private final String userName;
 
@@ -247,6 +251,12 @@ public class InformationSchemaContentSupplierFactory {
           continue;
         }
         tableInfoIterator = entry.getValue().iterator();
+        while (tableInfoIterator.hasNext()) {
+          currentTable = tableInfoIterator.next();
+          if (canShowTable(userName, dbName, currentTable.getTableName())) {
+            break;
+          }
+        }
       }
       return true;
     }
@@ -329,18 +339,104 @@ public class InformationSchemaContentSupplierFactory {
           tableInfoIterator = entry.getValue().entrySet().iterator();
         }
 
-        final Map.Entry<String, Pair<TsTable, Set<String>>> tableEntry = tableInfoIterator.next();
-        tableName = tableEntry.getKey();
-        preDeletedColumns = tableEntry.getValue().getRight();
-        columnSchemaIterator = tableEntry.getValue().getLeft().getColumnList().iterator();
+        Map.Entry<String, Pair<TsTable, Set<String>>> tableEntry;
+        while (tableInfoIterator.hasNext()) {
+          tableEntry = tableInfoIterator.next();
+          if (canShowTable(userName, dbName, tableEntry.getKey())) {
+            tableName = tableEntry.getKey();
+            preDeletedColumns = tableEntry.getValue().getRight();
+            columnSchemaIterator = tableEntry.getValue().getLeft().getColumnList().iterator();
+            break;
+          }
+        }
       }
       return true;
+    }
+  }
+
+  private static class RegionSupplier extends TsBlockSupplier {
+    private Iterator<Map.Entry<String, TDatabaseInfo>> iterator;
+    private TDatabaseInfo currentDatabase;
+    private final String userName;
+    private boolean hasShownInformationSchema;
+
+    private RegionSupplier(final List<TSDataType> dataTypes, final String userName) {
+      super(dataTypes);
+      this.userName = userName;
+      try (final ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        final TShowDatabaseResp resp =
+            client.showDatabase(
+                new TGetDatabaseReq(Arrays.asList(ALL_RESULT_NODES), ALL_MATCH_SCOPE.serialize())
+                    .setIsTableModel(true));
+        iterator = resp.getDatabaseInfoMap().entrySet().iterator();
+      } catch (final Exception e) {
+        lastException = e;
+      }
+    }
+
+    @Override
+    protected void constructLine() {
+      if (!hasShownInformationSchema) {
+        InformationSchemaUtils.buildDatabaseTsBlock(s -> true, resultBuilder, true, false);
+        hasShownInformationSchema = true;
+        return;
+      }
+      columnBuilders[0].writeBinary(
+          new Binary(currentDatabase.getName(), TSFileConfig.STRING_CHARSET));
+
+      if (Long.MAX_VALUE == currentDatabase.getTTL()) {
+        columnBuilders[1].writeBinary(
+            new Binary(IoTDBConstant.TTL_INFINITE, TSFileConfig.STRING_CHARSET));
+      } else {
+        columnBuilders[1].writeBinary(
+            new Binary(String.valueOf(currentDatabase.getTTL()), TSFileConfig.STRING_CHARSET));
+      }
+      columnBuilders[2].writeInt(currentDatabase.getSchemaReplicationFactor());
+      columnBuilders[3].writeInt(currentDatabase.getDataReplicationFactor());
+      columnBuilders[4].writeLong(currentDatabase.getTimePartitionInterval());
+      columnBuilders[5].writeInt(currentDatabase.getSchemaRegionNum());
+      columnBuilders[6].writeInt(currentDatabase.getDataRegionNum());
+      resultBuilder.declarePosition();
+      currentDatabase = null;
+    }
+
+    @Override
+    public boolean hasNext() {
+      if (!hasShownInformationSchema) {
+        if (!canShowDB(userName, InformationSchema.INFORMATION_DATABASE)) {
+          hasShownInformationSchema = true;
+        } else {
+          return true;
+        }
+      }
+      while (iterator.hasNext()) {
+        final Map.Entry<String, TDatabaseInfo> result = iterator.next();
+        if (!canShowDB(userName, result.getKey())) {
+          continue;
+        }
+        currentDatabase = result.getValue();
+        break;
+      }
+      return Objects.nonNull(currentDatabase);
     }
   }
 
   private static boolean canShowDB(final String userName, final String dbName) {
     try {
       Coordinator.getInstance().getAccessControl().checkCanShowOrUseDatabase(userName, dbName);
+    } catch (final AccessControlException e) {
+      return false;
+    }
+    return true;
+  }
+
+  private static boolean canShowTable(
+      final String userName, final String dbName, final String tableName) {
+    try {
+      Coordinator.getInstance()
+          .getAccessControl()
+          .checkCanShowOrDescTable(userName, new QualifiedObjectName(dbName, tableName));
     } catch (final AccessControlException e) {
       return false;
     }
