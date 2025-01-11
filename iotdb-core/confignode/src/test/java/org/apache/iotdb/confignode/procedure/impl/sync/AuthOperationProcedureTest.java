@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.junit.Assert;
 import org.junit.Test;
@@ -75,11 +76,14 @@ public class AuthOperationProcedureTest {
                     "role1",
                     "123456",
                     "123456",
-                    Collections.singleton(1),
+                    Collections.singleton(i),
                     false,
                     Collections.singletonList(new PartialPath("root.t1"))),
                 datanodes,
                 false);
+        List<Pair<TDataNodeConfiguration, Long>> dataNodeToInvalid = new ArrayList<>();
+        dataNodeToInvalid.add(new Pair<>(dataNodeConfiguration, 1L));
+        proc.setDataNodeToInvalid(dataNodeToInvalid);
         proc.serialize(outputStream);
         final ByteBuffer buffer =
             ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
