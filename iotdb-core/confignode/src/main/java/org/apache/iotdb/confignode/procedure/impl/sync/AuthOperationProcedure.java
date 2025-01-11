@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.client.CnToDnRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
@@ -69,7 +70,7 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
   private static final int RETRY_THRESHOLD = 2;
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
-  private final List<Pair<TDataNodeConfiguration, Long>> dataNodesToInvalid = new ArrayList<>();
+  private List<Pair<TDataNodeConfiguration, Long>> dataNodesToInvalid = new ArrayList<>();
 
   private List<TDataNodeConfiguration> datanodes;
 
@@ -85,6 +86,11 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
     this.plan = plan;
     this.datanodes = alldns;
     this.timeoutMS = commonConfig.getDatanodeTokenTimeoutMS();
+  }
+
+  @TestOnly
+  public void setDataNodeToInvalid(List<Pair<TDataNodeConfiguration, Long>> nodeList) {
+    dataNodesToInvalid = nodeList;
   }
 
   @Override
@@ -221,19 +227,19 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
     }
     this.timeoutMS = ReadWriteIOUtils.readLong(byteBuffer);
     try {
-      ReadWriteIOUtils.readInt(byteBuffer);
+      int cap = ReadWriteIOUtils.readInt(byteBuffer);
+      int position = byteBuffer.position();
       this.plan = (AuthorPlan) ConfigPhysicalPlan.Factory.create(byteBuffer);
+      byteBuffer.position(cap + position);
     } catch (IOException e) {
       LOGGER.error("IO error when deserialize authplan.", e);
     }
-    if (byteBuffer.hasRemaining()) {
-      size = ReadWriteIOUtils.readInt(byteBuffer);
-      for (int i = 0; i < size; i++) {
-        TDataNodeConfiguration datanode =
-            ThriftCommonsSerDeUtils.deserializeTDataNodeConfiguration(byteBuffer);
-        Long timeStamp = ReadWriteIOUtils.readLong(byteBuffer);
-        this.dataNodesToInvalid.add(new Pair<>(datanode, timeStamp));
-      }
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    for (int i = 0; i < size; i++) {
+      TDataNodeConfiguration datanode =
+          ThriftCommonsSerDeUtils.deserializeTDataNodeConfiguration(byteBuffer);
+      Long timeStamp = ReadWriteIOUtils.readLong(byteBuffer);
+      this.dataNodesToInvalid.add(new Pair<>(datanode, timeStamp));
     }
   }
 
