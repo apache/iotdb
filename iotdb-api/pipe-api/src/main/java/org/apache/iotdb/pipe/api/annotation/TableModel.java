@@ -24,6 +24,16 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Indicates that a plugin can be used in table model environments.
+ *
+ * <p>When implementing a custom {@link org.apache.iotdb.pipe.api.PipePlugin} that needs to operate
+ * under table model settings, declare this annotation on the plugin class. Through the {@code
+ * CREATE PIPEPLUGIN} statement, a plugin annotated with {@link TableModel} is valid for both tree
+ * model connections and table model connections.
+ *
+ * @since 2.0.0
+ */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface TableModel {}

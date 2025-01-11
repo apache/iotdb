@@ -24,6 +24,16 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Indicates that a plugin can be used in tree model environments.
+ *
+ * <p>When implementing a custom {@link org.apache.iotdb.pipe.api.PipePlugin} that needs to operate
+ * under tree model settings, declare this annotation on the plugin class. Through the {@code CREATE
+ * PIPEPLUGIN} statement, a plugin annotated with {@link TreeModel} is valid for both tree model
+ * connections and tree model connections.
+ *
+ * @since 2.0.0
+ */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface TreeModel {}
