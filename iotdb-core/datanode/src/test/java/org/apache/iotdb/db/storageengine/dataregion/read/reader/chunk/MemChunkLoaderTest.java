@@ -64,6 +64,7 @@ public class MemChunkLoaderTest {
   public void testBooleanMemChunkLoader() throws IOException {
     ReadOnlyMemChunk chunk = Mockito.mock(ReadOnlyMemChunk.class);
     Mockito.when(chunk.getDataType()).thenReturn(TSDataType.BOOLEAN);
+    Mockito.when(chunk.getMaxNumberOfPointsInPage()).thenReturn(1000);
     Map<TVList, Integer> booleanTvListMap = buildBooleanTvListMap();
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(booleanTvListMap);
     List<TVList> booleanTvLists = new ArrayList<>(booleanTvListMap.keySet());
@@ -144,6 +145,7 @@ public class MemChunkLoaderTest {
   public void testInt32MemChunkLoader() throws IOException {
     ReadOnlyMemChunk chunk = Mockito.mock(ReadOnlyMemChunk.class);
     Mockito.when(chunk.getDataType()).thenReturn(TSDataType.INT32);
+    Mockito.when(chunk.getMaxNumberOfPointsInPage()).thenReturn(1000);
     Map<TVList, Integer> int32TvListMap = buildInt32TvListMap();
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(int32TvListMap);
     List<TVList> int32TvLists = new ArrayList<>(int32TvListMap.keySet());
@@ -224,6 +226,7 @@ public class MemChunkLoaderTest {
   public void testInt64MemChunkLoader() throws IOException {
     ReadOnlyMemChunk chunk = Mockito.mock(ReadOnlyMemChunk.class);
     Mockito.when(chunk.getDataType()).thenReturn(TSDataType.INT64);
+    Mockito.when(chunk.getMaxNumberOfPointsInPage()).thenReturn(1000);
     Map<TVList, Integer> int64TvListMap = buildInt64TvListMap();
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(int64TvListMap);
     List<TVList> int64TvLists = new ArrayList<>(int64TvListMap.keySet());
@@ -304,6 +307,7 @@ public class MemChunkLoaderTest {
   public void testFloatMemChunkLoader() throws IOException {
     ReadOnlyMemChunk chunk = Mockito.mock(ReadOnlyMemChunk.class);
     Mockito.when(chunk.getDataType()).thenReturn(TSDataType.FLOAT);
+    Mockito.when(chunk.getMaxNumberOfPointsInPage()).thenReturn(1000);
     Map<TVList, Integer> floatTvListMap = buildFloatTvListMap();
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(floatTvListMap);
     List<TVList> floatTvLists = new ArrayList<>(floatTvListMap.keySet());
@@ -384,6 +388,7 @@ public class MemChunkLoaderTest {
   public void testDoubleMemChunkLoader() throws IOException {
     ReadOnlyMemChunk chunk = Mockito.mock(ReadOnlyMemChunk.class);
     Mockito.when(chunk.getDataType()).thenReturn(TSDataType.DOUBLE);
+    Mockito.when(chunk.getMaxNumberOfPointsInPage()).thenReturn(1000);
     Map<TVList, Integer> doubleTvListMap = buildDoubleTvListMap();
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(doubleTvListMap);
     List<TVList> doubleTvLists = new ArrayList<>(doubleTvListMap.keySet());
@@ -464,6 +469,7 @@ public class MemChunkLoaderTest {
   public void testTextMemChunkLoader() throws IOException {
     ReadOnlyMemChunk chunk = Mockito.mock(ReadOnlyMemChunk.class);
     Mockito.when(chunk.getDataType()).thenReturn(TSDataType.TEXT);
+    Mockito.when(chunk.getMaxNumberOfPointsInPage()).thenReturn(1000);
     Map<TVList, Integer> textTvListMap = buildTextTvListMap();
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(textTvListMap);
     List<TVList> textTvLists = new ArrayList<>(textTvListMap.keySet());
