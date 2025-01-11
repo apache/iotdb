@@ -21,9 +21,9 @@ package org.apache.iotdb.db.exception;
 
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class VerifyMetadataTypeMismatchException extends VerifyMetadataException {
+public class LoadAnalyzeTypeMismatchException extends LoadAnalyzeException {
 
-  public VerifyMetadataTypeMismatchException(String message) {
+  public LoadAnalyzeTypeMismatchException(String message) {
     super(message, TSStatusCode.VERIFY_METADATA_ERROR.getStatusCode());
   }
 }

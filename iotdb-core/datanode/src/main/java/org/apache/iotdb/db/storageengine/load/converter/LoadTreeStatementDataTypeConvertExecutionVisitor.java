@@ -76,7 +76,8 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
               new LoadConvertedInsertTabletStatement(
                   PipeTransferTabletRawReq.toTPipeTransferRawReq(
                           tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight())
-                      .constructStatement());
+                      .constructStatement(),
+                  loadTsFileStatement.isConvertOnTypeMismatch());
 
           TSStatus result;
           try {
