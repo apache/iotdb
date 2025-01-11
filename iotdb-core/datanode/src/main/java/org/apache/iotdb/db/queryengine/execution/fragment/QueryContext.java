@@ -26,7 +26,6 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
-import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory.ModsSerializer;
 import org.apache.iotdb.db.utils.datastructure.TVList;
@@ -215,9 +214,5 @@ public class QueryContext {
 
   public void addTVListToSet(Map<TVList, Integer> tvListMap) {
     tvListSet.addAll(tvListMap.keySet());
-  }
-
-  public void addAlignedTVListToSet(Map<AlignedTVList, Integer> alignedTvListMap) {
-    tvListSet.addAll(alignedTvListMap.keySet());
   }
 }

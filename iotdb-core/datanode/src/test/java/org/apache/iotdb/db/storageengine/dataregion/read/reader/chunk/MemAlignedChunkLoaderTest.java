@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedReadOnlyMemChunk;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.MergeSortAlignedTVListIterator;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -44,6 +45,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.apache.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 import static org.junit.Assert.assertEquals;
@@ -109,9 +111,10 @@ public class MemAlignedChunkLoaderTest {
     Mockito.when(chunk.getValueColumnsDeletionList()).thenReturn(null);
     Mockito.when(chunk.getContext()).thenReturn(ctx);
 
-    Map<AlignedTVList, Integer> alignedTvListMap = buildAlignedTvListMap();
+    Map<TVList, Integer> alignedTvListMap = buildAlignedTvListMap();
     Mockito.when(chunk.getAligendTvListQueryMap()).thenReturn(alignedTvListMap);
-    List<AlignedTVList> alignedTvLists = new ArrayList<>(alignedTvListMap.keySet());
+    List<AlignedTVList> alignedTvLists =
+        alignedTvListMap.keySet().stream().map(x -> (AlignedTVList) x).collect(Collectors.toList());
     MergeSortAlignedTVListIterator timeValuePairIterator =
         new MergeSortAlignedTVListIterator(alignedTvLists, dataTypes, null, null, null, false);
     Mockito.when(chunk.getMergeSortAlignedTVListIterator()).thenReturn(timeValuePairIterator);
@@ -179,7 +182,7 @@ public class MemAlignedChunkLoaderTest {
         TSDataType.TEXT);
   }
 
-  private Map<AlignedTVList, Integer> buildAlignedTvListMap() {
+  private Map<TVList, Integer> buildAlignedTvListMap() {
     List<TSDataType> dataTypes = buildTsDataTypes();
     AlignedTVList tvList1 = AlignedTVList.newAlignedList(dataTypes);
     tvList1.putAlignedValue(
@@ -195,7 +198,7 @@ public class MemAlignedChunkLoaderTest {
           true, 1, 1L, 1.1f, null, new Binary(BINARY_STR, TSFileConfig.STRING_CHARSET)
         });
 
-    Map<AlignedTVList, Integer> tvListMap = new LinkedHashMap<>();
+    Map<TVList, Integer> tvListMap = new LinkedHashMap<>();
     tvListMap.put(tvList1, 2);
     tvListMap.put(tvList2, 1);
     return tvListMap;

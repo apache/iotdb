@@ -368,8 +368,9 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     return list;
   }
 
-  public void setWorkingTVList(AlignedTVList list) {
-    this.list = list;
+  @Override
+  public void setWorkingTVList(TVList list) {
+    this.list = (AlignedTVList) list;
   }
 
   @Override
@@ -984,6 +985,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     return true;
   }
 
+  @Override
   public List<AlignedTVList> getSortedList() {
     return sortedList;
   }

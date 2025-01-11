@@ -127,10 +127,6 @@ public interface IWritableMemChunk extends WALEntryValue {
    */
   void sortTvListForFlush();
 
-  default TVList getWorkingTVList() {
-    return null;
-  }
-
   default long getMaxTime() {
     return Long.MAX_VALUE;
   }
@@ -155,4 +151,10 @@ public interface IWritableMemChunk extends WALEntryValue {
   long getLastPoint();
 
   boolean isEmpty();
+
+  List<? extends TVList> getSortedList();
+
+  TVList getWorkingTVList();
+
+  void setWorkingTVList(TVList list);
 }

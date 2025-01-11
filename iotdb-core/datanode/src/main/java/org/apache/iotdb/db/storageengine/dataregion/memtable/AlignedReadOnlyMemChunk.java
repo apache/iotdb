@@ -50,6 +50,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 
@@ -71,7 +72,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   private final List<Statistics<? extends Serializable>[]> valueStatisticsList;
 
   // AlignedTVList rowCount during query
-  protected Map<AlignedTVList, Integer> alignedTvListQueryMap;
+  protected Map<TVList, Integer> alignedTvListQueryMap;
 
   // For example, it stores time series [s1, s2, s3] in AlignedWritableMemChunk.
   // When we select two of time series [s1, s3], the column index list should be [0, 2]
@@ -93,7 +94,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       QueryContext context,
       List<Integer> columnIndexList,
       IMeasurementSchema schema,
-      Map<AlignedTVList, Integer> alignedTvListQueryMap,
+      Map<TVList, Integer> alignedTvListQueryMap,
       List<TimeRange> timeColumnDeletion,
       List<List<TimeRange>> valueColumnsDeletionList) {
     super(context);
@@ -109,13 +110,13 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     this.valueStatisticsList = new ArrayList<>();
     this.alignedTvListQueryMap = alignedTvListQueryMap;
     this.columnIndexList = columnIndexList;
-    this.context.addAlignedTVListToSet(alignedTvListQueryMap);
+    this.context.addTVListToSet(alignedTvListQueryMap);
   }
 
   @Override
   public void sortTvLists() {
-    for (Map.Entry<AlignedTVList, Integer> entry : getAligendTvListQueryMap().entrySet()) {
-      AlignedTVList alignedTvList = entry.getKey();
+    for (Map.Entry<TVList, Integer> entry : getAligendTvListQueryMap().entrySet()) {
+      AlignedTVList alignedTvList = (AlignedTVList) entry.getKey();
       int queryRowCount = entry.getValue();
       if (!alignedTvList.isSorted() && queryRowCount > alignedTvList.seqRowCount()) {
         alignedTvList.sort();
@@ -134,7 +135,11 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
         new Statistics[valueChunkNames.size()];
 
     // create MergeSortAlignedTVListIterator
-    List<AlignedTVList> alignedTvLists = new ArrayList<>(alignedTvListQueryMap.keySet());
+    List<AlignedTVList> alignedTvLists =
+        alignedTvListQueryMap.keySet().stream()
+            .map(x -> (AlignedTVList) x)
+            .collect(Collectors.toList());
+
     timeValuePairIterator =
         new MergeSortAlignedTVListIterator(
             alignedTvLists,
@@ -287,8 +292,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
 
   @Override
   public IPointReader getPointReader() {
-    for (Map.Entry<AlignedTVList, Integer> entry : alignedTvListQueryMap.entrySet()) {
-      AlignedTVList tvList = entry.getKey();
+    for (Map.Entry<TVList, Integer> entry : alignedTvListQueryMap.entrySet()) {
+      AlignedTVList tvList = (AlignedTVList) entry.getKey();
       int queryLength = entry.getValue();
       if (!tvList.isSorted() && queryLength > tvList.seqRowCount()) {
         tvList.sort();
@@ -318,7 +323,10 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   }
 
   private void writeValidValuesIntoTsBlock(TsBlockBuilder builder) throws IOException {
-    List<AlignedTVList> alignedTvLists = new ArrayList<>(alignedTvListQueryMap.keySet());
+    List<AlignedTVList> alignedTvLists =
+        alignedTvListQueryMap.keySet().stream()
+            .map(x -> (AlignedTVList) x)
+            .collect(Collectors.toList());
     MergeSortAlignedTVListIterator timeValuePairIterator =
         new MergeSortAlignedTVListIterator(
             alignedTvLists,
@@ -399,7 +407,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     }
   }
 
-  public Map<AlignedTVList, Integer> getAligendTvListQueryMap() {
+  public Map<TVList, Integer> getAligendTvListQueryMap() {
     return alignedTvListQueryMap;
   }
 
