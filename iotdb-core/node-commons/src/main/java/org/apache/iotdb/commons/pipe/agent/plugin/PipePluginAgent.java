@@ -26,8 +26,6 @@ import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskTemporaryRuntimeEnvironment;
-import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
-import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
@@ -35,7 +33,6 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeCo
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,29 +87,13 @@ public abstract class PipePluginAgent {
       Map<String, String> processorAttributes,
       Map<String, String> connectorAttributes)
       throws Exception {
-    PipeExtractor temporaryExtractor = validateExtractor(extractorAttributes);
-    PipeProcessor temporaryProcessor = validateProcessor(processorAttributes);
-    PipeConnector temporaryConnector = validateConnector(pipeName, connectorAttributes);
-
-    // validate visibility
-    Visibility pipeVisibility =
-        VisibilityUtils.calculateFromExtractorParameters(new PipeParameters(extractorAttributes));
-    Visibility extractorVisibility =
-        VisibilityUtils.calculateFromPluginClass(temporaryExtractor.getClass());
-    Visibility processorVisibility =
-        VisibilityUtils.calculateFromPluginClass(temporaryProcessor.getClass());
-    Visibility connectorVisibility =
-        VisibilityUtils.calculateFromPluginClass(temporaryConnector.getClass());
-    if (!VisibilityUtils.isCompatible(
-        pipeVisibility, extractorVisibility, processorVisibility, connectorVisibility)) {
-      throw new PipeParameterNotValidException(
-          String.format(
-              "The visibility of the pipe (%s) is not compatible with the visibility of the extractor (%s), processor (%s), and connector (%s).",
-              pipeVisibility, extractorVisibility, processorVisibility, connectorVisibility));
-    }
+    validateExtractor(extractorAttributes);
+    validateProcessor(processorAttributes);
+    validateConnector(pipeName, connectorAttributes);
   }
 
-  public PipeExtractor validateExtractor(Map<String, String> extractorAttributes) throws Exception {
+  protected PipeExtractor validateExtractor(Map<String, String> extractorAttributes)
+      throws Exception {
     final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
     final PipeExtractor temporaryExtractor = reflectExtractor(extractorParameters);
     try {
@@ -127,7 +108,8 @@ public abstract class PipePluginAgent {
     return temporaryExtractor;
   }
 
-  public PipeProcessor validateProcessor(Map<String, String> processorAttributes) throws Exception {
+  protected PipeProcessor validateProcessor(Map<String, String> processorAttributes)
+      throws Exception {
     final PipeParameters processorParameters = new PipeParameters(processorAttributes);
     final PipeProcessor temporaryProcessor = reflectProcessor(processorParameters);
     try {
@@ -142,8 +124,8 @@ public abstract class PipePluginAgent {
     return temporaryProcessor;
   }
 
-  public PipeConnector validateConnector(String pipeName, Map<String, String> connectorAttributes)
-      throws Exception {
+  protected PipeConnector validateConnector(
+      String pipeName, Map<String, String> connectorAttributes) throws Exception {
     final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
     final PipeConnector temporaryConnector = reflectConnector(connectorParameters);
     try {
