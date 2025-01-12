@@ -22,17 +22,25 @@ package org.apache.iotdb.db.utils.datastructure;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.reader.IPointReader;
+import org.apache.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.PriorityQueue;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class MergeSortTvListIterator implements IPointReader {
   private final TVList.TVListIterator[] tvListIterators;
+  private final int[] tvListOffsets;
 
-  private int selectedTVListIndex = -1;
+  private boolean probeNext = false;
   private TimeValuePair currentTvPair;
 
-  private final int[] tvListOffsets;
+  private final List<Integer> probeIterators;
+  private final PriorityQueue<Pair<Long, Integer>> minHeap =
+      new PriorityQueue<>(
+          (a, b) -> a.left.equals(b.left) ? b.right.compareTo(a.right) : a.left.compareTo(b.left));
 
   public MergeSortTvListIterator(List<TVList> tvLists) {
     tvListIterators = new TVList.TVListIterator[tvLists.size()];
@@ -40,6 +48,8 @@ public class MergeSortTvListIterator implements IPointReader {
       tvListIterators[i] = tvLists.get(i).iterator(null, null);
     }
     this.tvListOffsets = new int[tvLists.size()];
+    this.probeIterators =
+        IntStream.range(0, tvListIterators.length).boxed().collect(Collectors.toList());
   }
 
   public MergeSortTvListIterator(
@@ -49,6 +59,8 @@ public class MergeSortTvListIterator implements IPointReader {
       tvListIterators[i] = tvLists.get(i).iterator(floatPrecision, encoding);
     }
     this.tvListOffsets = new int[tvLists.size()];
+    this.probeIterators =
+        IntStream.range(0, tvListIterators.length).boxed().collect(Collectors.toList());
   }
 
   public MergeSortTvListIterator(TVList.TVListIterator[] tvListIterators) {
@@ -57,28 +69,38 @@ public class MergeSortTvListIterator implements IPointReader {
       this.tvListIterators[i] = tvListIterators[i].clone();
     }
     this.tvListOffsets = new int[tvListIterators.length];
+    this.probeIterators =
+        IntStream.range(0, tvListIterators.length).boxed().collect(Collectors.toList());
   }
 
-  private void prepareNextRow() {
-    long time = Long.MAX_VALUE;
-    selectedTVListIndex = -1;
-    for (int i = 0; i < tvListIterators.length; i++) {
+  private void prepareNext() {
+    currentTvPair = null;
+    for (int i : probeIterators) {
       TVList.TVListIterator iterator = tvListIterators[i];
-      boolean hasNext = iterator.hasNext();
-      // update minimum time and remember selected TVList
-      if (hasNext && iterator.currentTime() <= time) {
-        time = iterator.currentTime();
-        selectedTVListIndex = i;
+      if (iterator.hasNext()) {
+        minHeap.add(new Pair<>(iterator.currentTime(), i));
       }
     }
+    probeIterators.clear();
+
+    if (!minHeap.isEmpty()) {
+      Pair<Long, Integer> top = minHeap.poll();
+      probeIterators.add(top.right);
+      currentTvPair = tvListIterators[top.right].current();
+      while (!minHeap.isEmpty() && minHeap.peek().left.longValue() == top.left.longValue()) {
+        Pair<Long, Integer> element = minHeap.poll();
+        probeIterators.add(element.right);
+      }
+    }
+    probeNext = true;
   }
 
   @Override
   public boolean hasNextTimeValuePair() {
-    if (selectedTVListIndex == -1) {
-      prepareNextRow();
+    if (!probeNext) {
+      prepareNext();
     }
-    return selectedTVListIndex >= 0 && selectedTVListIndex < tvListIterators.length;
+    return currentTvPair != null;
   }
 
   @Override
@@ -86,22 +108,7 @@ public class MergeSortTvListIterator implements IPointReader {
     if (!hasNextTimeValuePair()) {
       return null;
     }
-    currentTvPair = tvListIterators[selectedTVListIndex].next();
-    tvListOffsets[selectedTVListIndex] = tvListIterators[selectedTVListIndex].getIndex();
-
-    // call next to skip identical timestamp in other iterators
-    for (int i = 0; i < tvListIterators.length; i++) {
-      if (selectedTVListIndex == i) {
-        continue;
-      }
-      TVList.TVListIterator iterator = tvListIterators[i];
-      if (iterator.hasCurrent() && iterator.currentTime() == currentTvPair.getTimestamp()) {
-        tvListIterators[i].step();
-        tvListOffsets[i] = tvListIterators[i].getIndex();
-      }
-    }
-
-    selectedTVListIndex = -1;
+    step();
     return currentTvPair;
   }
 
@@ -111,6 +118,15 @@ public class MergeSortTvListIterator implements IPointReader {
       return null;
     }
     return currentTvPair;
+  }
+
+  public void step() {
+    for (int index : probeIterators) {
+      TVList.TVListIterator iterator = tvListIterators[index];
+      iterator.step();
+      tvListOffsets[index] = iterator.getIndex();
+    }
+    probeNext = false;
   }
 
   @Override
@@ -131,7 +147,12 @@ public class MergeSortTvListIterator implements IPointReader {
       tvListIterators[i].setIndex(tvListOffsets[i]);
       this.tvListOffsets[i] = tvListOffsets[i];
     }
-    selectedTVListIndex = -1;
+    minHeap.clear();
+    probeIterators.clear();
+    for (int i = 0; i < tvListIterators.length; i++) {
+      probeIterators.add(i);
+    }
+    probeNext = false;
   }
 
   @Override
