@@ -64,10 +64,10 @@ public abstract class BinaryTVList extends TVList {
   }
 
   @Override
-  public TimBinaryTVList clone() {
-    TimBinaryTVList cloneList = new TimBinaryTVList();
+  public BinaryTVList clone() {
+    BinaryTVList cloneList = BinaryTVList.newList();
     cloneAs(cloneList);
-    cloneSlicesAndBitMap(cloneList);
+    cloneBitMap(cloneList);
     for (Binary[] valueArray : values) {
       cloneList.values.add(cloneValue(valueArray));
     }
@@ -112,20 +112,22 @@ public abstract class BinaryTVList extends TVList {
   }
 
   @Override
-  void clearValue() {
+  protected void clearValue() {
     if (values != null) {
       for (Binary[] dataArray : values) {
         PrimitiveArrayManager.release(dataArray);
       }
       values.clear();
     }
-    clearSlicesAndBitMap();
   }
 
   @Override
   protected void expandValues() {
+    indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
     values.add((Binary[]) getPrimitiveArraysByType(TSDataType.TEXT));
-    expandSlicesAndBitMap();
+    if (bitMap != null) {
+      bitMap.add(null);
+    }
   }
 
   @Override

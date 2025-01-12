@@ -66,7 +66,7 @@ public abstract class BooleanTVList extends TVList {
   public BooleanTVList clone() {
     BooleanTVList cloneList = BooleanTVList.newList();
     cloneAs(cloneList);
-    cloneSlicesAndBitMap(cloneList);
+    cloneBitMap(cloneList);
     for (boolean[] valueArray : values) {
       cloneList.values.add(cloneValue(valueArray));
     }
@@ -111,20 +111,22 @@ public abstract class BooleanTVList extends TVList {
   }
 
   @Override
-  void clearValue() {
+  protected void clearValue() {
     if (values != null) {
       for (boolean[] dataArray : values) {
         PrimitiveArrayManager.release(dataArray);
       }
       values.clear();
     }
-    clearSlicesAndBitMap();
   }
 
   @Override
   protected void expandValues() {
+    indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
     values.add((boolean[]) getPrimitiveArraysByType(TSDataType.BOOLEAN));
-    expandSlicesAndBitMap();
+    if (bitMap != null) {
+      bitMap.add(null);
+    }
   }
 
   @Override

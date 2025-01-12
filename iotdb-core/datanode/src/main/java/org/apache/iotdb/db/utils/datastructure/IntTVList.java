@@ -66,7 +66,7 @@ public abstract class IntTVList extends TVList {
   public IntTVList clone() {
     IntTVList cloneList = IntTVList.newList();
     cloneAs(cloneList);
-    cloneSlicesAndBitMap(cloneList);
+    cloneBitMap(cloneList);
     for (int[] valueArray : values) {
       cloneList.values.add(cloneValue(valueArray));
     }
@@ -111,20 +111,22 @@ public abstract class IntTVList extends TVList {
   }
 
   @Override
-  void clearValue() {
+  protected void clearValue() {
     if (values != null) {
       for (int[] dataArray : values) {
         PrimitiveArrayManager.release(dataArray);
       }
       values.clear();
     }
-    clearSlicesAndBitMap();
   }
 
   @Override
   protected void expandValues() {
+    indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
     values.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
-    expandSlicesAndBitMap();
+    if (bitMap != null) {
+      bitMap.add(null);
+    }
   }
 
   @Override

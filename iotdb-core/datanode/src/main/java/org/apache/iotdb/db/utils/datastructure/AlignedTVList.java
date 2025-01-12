@@ -148,10 +148,8 @@ public abstract class AlignedTVList extends TVList {
     cloneList.timeDeletedCnt = this.timeDeletedCnt;
     System.arraycopy(
         memoryBinaryChunkSize, 0, cloneList.memoryBinaryChunkSize, 0, dataTypes.size());
-    for (int[] indicesArray : indices) {
-      cloneList.indices.add(cloneIndex(indicesArray));
-    }
     for (int i = 0; i < values.size(); i++) {
+      // Clone value
       List<Object> columnValues = values.get(i);
       for (Object valueArray : columnValues) {
         cloneList.values.get(i).add(cloneValue(dataTypes.get(i), valueArray));
@@ -666,13 +664,7 @@ public abstract class AlignedTVList extends TVList {
   }
 
   @Override
-  public void clearValue() {
-    if (indices != null) {
-      for (int[] dataArray : indices) {
-        PrimitiveArrayManager.release(dataArray);
-      }
-      indices.clear();
-    }
+  protected void clearValue() {
     for (int i = 0; i < dataTypes.size(); i++) {
       List<Object> columnValues = values.get(i);
       if (columnValues != null) {
@@ -681,13 +673,19 @@ public abstract class AlignedTVList extends TVList {
         }
         columnValues.clear();
       }
+      memoryBinaryChunkSize[i] = 0;
+    }
+  }
+
+  @Override
+  protected void clearBitMap() {
+    for (int i = 0; i < dataTypes.size(); i++) {
       if (bitMaps != null) {
         List<BitMap> columnBitMaps = bitMaps.get(i);
         if (columnBitMaps != null) {
           columnBitMaps.clear();
         }
       }
-      memoryBinaryChunkSize[i] = 0;
     }
   }
 

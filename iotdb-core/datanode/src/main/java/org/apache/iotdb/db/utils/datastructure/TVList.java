@@ -250,36 +250,12 @@ public abstract class TVList implements WALEntryValue {
     return bitMap.get(arrayIndex).isMarked(elementIndex);
   }
 
-  protected void cloneSlicesAndBitMap(TVList cloneList) {
-    if (indices != null) {
-      for (int[] indicesArray : indices) {
-        cloneList.indices.add(cloneIndex(indicesArray));
-      }
-    }
+  protected void cloneBitMap(TVList cloneList) {
     if (bitMap != null) {
       cloneList.bitMap = new ArrayList<>();
       for (BitMap bm : bitMap) {
         cloneList.bitMap.add(bm == null ? null : bm.clone());
       }
-    }
-  }
-
-  protected void clearSlicesAndBitMap() {
-    if (indices != null) {
-      for (int[] dataArray : indices) {
-        PrimitiveArrayManager.release(dataArray);
-      }
-      indices.clear();
-    }
-    if (bitMap != null) {
-      bitMap.clear();
-    }
-  }
-
-  protected void expandSlicesAndBitMap() {
-    indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
-    if (bitMap != null) {
-      bitMap.add(null);
     }
   }
 
@@ -423,9 +399,15 @@ public abstract class TVList implements WALEntryValue {
     return deletedNumber;
   }
 
+  // common clone for both TVList and AlignedTVList
   protected void cloneAs(TVList cloneList) {
+    // clone timestamps
     for (long[] timestampArray : timestamps) {
       cloneList.timestamps.add(cloneTime(timestampArray));
+    }
+    // clone indices
+    for (int[] indicesArray : indices) {
+      cloneList.indices.add(cloneIndex(indicesArray));
     }
     cloneList.rowCount = rowCount;
     cloneList.seqRowCount = seqRowCount;
@@ -444,6 +426,8 @@ public abstract class TVList implements WALEntryValue {
     ownerQuery = null;
     clearTime();
     clearValue();
+    clearIndices();
+    clearBitMap();
   }
 
   protected void clearTime() {
@@ -455,7 +439,22 @@ public abstract class TVList implements WALEntryValue {
     }
   }
 
-  abstract void clearValue();
+  protected abstract void clearValue();
+
+  protected void clearIndices() {
+    if (indices != null) {
+      for (int[] dataArray : indices) {
+        PrimitiveArrayManager.release(dataArray);
+      }
+      indices.clear();
+    }
+  }
+
+  protected void clearBitMap() {
+    if (bitMap != null) {
+      bitMap.clear();
+    }
+  }
 
   protected void checkExpansion() {
     if ((rowCount % ARRAY_SIZE) == 0) {
