@@ -72,6 +72,6 @@ public class FlushTaskPoolManager extends AbstractPoolManager {
       // allowed to do nothing
     }
 
-    private static FlushTaskPoolManager instance = new FlushTaskPoolManager();
+    private static final FlushTaskPoolManager instance = new FlushTaskPoolManager();
   }
 }

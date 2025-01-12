@@ -29,18 +29,13 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.pool.FlushSubTaskPoolM
 import org.apache.iotdb.db.storageengine.dataregion.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 
 @SuppressWarnings("squid:S6548")
 public class FlushManager implements FlushManagerMBean, IService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FlushManager.class);
-
-  private FlushTaskPoolManager flushPool = FlushTaskPoolManager.getInstance();
+  private final FlushTaskPoolManager flushPool = FlushTaskPoolManager.getInstance();
 
   @Override
   public void start() throws StartupException {
@@ -91,8 +86,7 @@ public class FlushManager implements FlushManagerMBean, IService {
     return FlushSubTaskPoolManager.getInstance().getWaitingTasksNumber();
   }
 
-  /** a flush thread handles flush task */
-  class FlushThread extends WrappedRunnable {
+  static class FlushThread extends WrappedRunnable {
 
     TsFileProcessor tsFileProcessor;
 
@@ -109,6 +103,7 @@ public class FlushManager implements FlushManagerMBean, IService {
         tsFileProcessor.flushOneMemTable();
       }
       tsFileProcessor.setManagedByFlushManager(false);
+      tsFileProcessor = null;
     }
   }
 
@@ -143,7 +138,7 @@ public class FlushManager implements FlushManagerMBean, IService {
 
     private InstanceHolder() {}
 
-    private static FlushManager instance = new FlushManager();
+    private static final FlushManager instance = new FlushManager();
   }
 
   @Override
