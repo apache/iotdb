@@ -86,6 +86,7 @@ public class FlushManager implements FlushManagerMBean, IService {
     return FlushSubTaskPoolManager.getInstance().getWaitingTasksNumber();
   }
 
+  /** a flush thread handles flush task */
   static class FlushThread extends WrappedRunnable {
 
     TsFileProcessor tsFileProcessor;
