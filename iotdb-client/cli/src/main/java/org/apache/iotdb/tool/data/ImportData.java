@@ -21,18 +21,18 @@ package org.apache.iotdb.tool.data;
 
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.tool.common.OptionsUtil;
 import org.apache.iotdb.tool.tsfile.ImportTsFile;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.csv.CSVParser;
@@ -46,305 +46,155 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.UnknownHostException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Stream;
+
+import static org.apache.iotdb.tool.common.Constants.*;
 
 public class ImportData extends AbstractDataTool {
 
-  private static final String FILE_ARGS = "s";
-  private static final String FILE_NAME = "source";
-
-  private static final String ON_SUCCESS_ARGS = "os";
-  private static final String ON_SUCCESS_NAME = "on_success";
-
-  private static final String SUCCESS_DIR_ARGS = "sd";
-  private static final String SUCCESS_DIR_NAME = "success_dir";
-
-  private static final String FAIL_DIR_ARGS = "fd";
-  private static final String FAIL_DIR_NAME = "fail_dir";
-
-  private static final String ON_FAIL_ARGS = "of";
-  private static final String ON_FAIL_NAME = "on_fail";
-
-  private static final String THREAD_NUM_ARGS = "tn";
-  private static final String THREAD_NUM_NAME = "thread_num";
-
-  private static final String BATCH_POINT_SIZE_ARGS = "batch";
-  private static final String BATCH_POINT_SIZE_NAME = "batch_size";
-  private static final String BATCH_POINT_SIZE_ARGS_NAME = "batch_size";
-
-  private static final String ALIGNED_ARGS = "aligned";
-  private static final String ALIGNED_NAME = "use_aligned";
-  private static final String ALIGNED_ARGS_NAME = "use the aligned interface";
-
-  private static final String TIMESTAMP_PRECISION_ARGS = "tp";
-  private static final String TIMESTAMP_PRECISION_NAME = "timestamp_precision";
-  private static final String TIMESTAMP_PRECISION_ARGS_NAME = "timestamp precision (ms/us/ns)";
-
-  private static final String TYPE_INFER_ARGS = "ti";
-  private static final String TYPE_INFER_NAME = "type_infer";
-
-  private static final String LINES_PER_FAILED_FILE_ARGS = "lpf";
-  private static final String LINES_PER_FAILED_FILE_ARGS_NAME = "lines_per_failed_file";
-
-  private static final String TSFILEDB_CLI_PREFIX = "Import Data";
-  private static final String TSFILEDB_CLI_HEAD =
-      "Please obtain help information for the corresponding data type based on different parameters, for example:\n"
-          + "./import_data.sh -help tsfile\n"
-          + "./import_data.sh -help sql\n"
-          + "./import_data.sh -help csv";
-
-  private static String targetPath;
-  private static String fileType = null;
-  private static Boolean aligned = false;
-  private static int threadNum = 8;
-  private static SessionPool sessionPool;
-
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
+  private static Session session;
 
-  private static Options createTsFileOptions() {
-    Options options = createImportOptions();
+  public static void main(String[] args) throws IoTDBConnectionException {
+    Options helpOptions = OptionsUtil.createHelpOptions();
+    Options tsFileOptions = OptionsUtil.createImportTsFileOptions();
+    Options csvOptions = OptionsUtil.createImportCsvOptions();
+    Options sqlOptions = OptionsUtil.createImportSqlOptions();
+    HelpFormatter hf = new HelpFormatter();
+    hf.setOptionComparator(null);
+    hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
+    CommandLine commandLine = null;
+    CommandLineParser parser = new DefaultParser();
 
-    Option opFile =
-        Option.builder(FILE_ARGS)
-            .required()
-            .longOpt(FILE_NAME)
-            .argName(FILE_NAME)
-            .hasArg()
-            .desc("The local directory path of the script file (folder) to be loaded. (required)")
-            .build();
-    options.addOption(opFile);
+    if (args == null || args.length == 0) {
+      printHelpOptions(
+          IMPORT_CLI_HEAD, IMPORT_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
+      System.exit(CODE_ERROR);
+    }
+    try {
+      commandLine = parser.parse(helpOptions, args, true);
+    } catch (org.apache.commons.cli.ParseException e) {
+      printHelpOptions(
+          IMPORT_CLI_HEAD, IMPORT_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
+      System.exit(CODE_ERROR);
+    }
+    final List<String> argList = Arrays.asList(args);
+    int helpIndex = argList.indexOf(MINUS + HELP_ARGS);
+    int sql_dialect = argList.indexOf(MINUS + SQL_DIALECT_ARGS); // -sql_dialect
+    if (sql_dialect >= 0
+        && !SQL_DIALECT_VALUE_TREE.equalsIgnoreCase(argList.get(sql_dialect + 1))) {
+      final String sqlDialectValue = argList.get(sql_dialect + 1);
+      if (SQL_DIALECT_VALUE_TABLE.equalsIgnoreCase(sqlDialectValue)) {
+        sqlDialectTree = false;
+        tsFileOptions = OptionsUtil.createTableImportTsFileOptions();
+        csvOptions = OptionsUtil.createTableImportCsvOptions();
+        sqlOptions = OptionsUtil.createTableImportSqlOptions();
+      } else {
+        ioTPrinter.println(String.format("sql_dialect %s is not support", sqlDialectValue));
+        printHelpOptions(
+            IMPORT_CLI_HEAD, IMPORT_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
+        System.exit(CODE_ERROR);
+      }
+    }
+    int ftIndex = argList.indexOf(MINUS + FILE_TYPE_ARGS); // -ft
+    if (ftIndex < 0) {
+      ftIndex = argList.indexOf(MINUS + FILE_TYPE_NAME); // -file_type
+    }
+    if (helpIndex >= 0) {
+      fileType = argList.get(helpIndex + 1);
+      if (StringUtils.isNotBlank(fileType)) {
+        if (TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
+          printHelpOptions(null, IMPORT_CLI_PREFIX, hf, tsFileOptions, null, null, false);
+        } else if (CSV_SUFFIXS.equalsIgnoreCase(fileType)) {
+          printHelpOptions(null, IMPORT_CLI_PREFIX, hf, null, csvOptions, null, false);
+        } else if (SQL_SUFFIXS.equalsIgnoreCase(fileType)) {
+          printHelpOptions(null, IMPORT_CLI_PREFIX, hf, null, null, sqlOptions, false);
+        } else {
+          ioTPrinter.println(String.format("File type %s is not support", fileType));
+          printHelpOptions(
+              IMPORT_CLI_HEAD, IMPORT_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
+        }
+      } else {
+        printHelpOptions(
+            IMPORT_CLI_HEAD, IMPORT_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
+      }
+      System.exit(CODE_ERROR);
+    } else if (ftIndex >= 0) {
+      fileType = argList.get(ftIndex + 1);
+      if (StringUtils.isNotBlank(fileType)) {
+        if (TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
+          try {
+            commandLine = parser.parse(tsFileOptions, args);
+            //            ImportTsFile.importData(commandLine);
+          } catch (ParseException e) {
+            ioTPrinter.println("Parse error: " + e.getMessage());
+            printHelpOptions(null, IMPORT_CLI_PREFIX, hf, tsFileOptions, null, null, false);
+            System.exit(CODE_ERROR);
+          }
+        } else if (CSV_SUFFIXS.equalsIgnoreCase(fileType)) {
+          try {
+            commandLine = parser.parse(csvOptions, args);
+          } catch (ParseException e) {
+            ioTPrinter.println("Parse error: " + e.getMessage());
+            printHelpOptions(null, IMPORT_CLI_PREFIX, hf, null, csvOptions, null, false);
+            System.exit(CODE_ERROR);
+          }
+        } else if (SQL_SUFFIXS.equalsIgnoreCase(fileType)) {
+          try {
+            commandLine = parser.parse(sqlOptions, args);
+          } catch (ParseException e) {
+            ioTPrinter.println("Parse error: " + e.getMessage());
+            printHelpOptions(null, IMPORT_CLI_PREFIX, hf, null, null, sqlOptions, false);
+            System.exit(CODE_ERROR);
+          }
+        } else {
+          ioTPrinter.println(String.format("File type %s is not support", fileType));
+          printHelpOptions(
+              IMPORT_CLI_HEAD, IMPORT_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
+          System.exit(CODE_ERROR);
+        }
+      } else {
+        ioTPrinter.println(
+            String.format(
+                "Invalid args: Required values for option '%s' not provided", FILE_TYPE_NAME));
+        System.exit(CODE_ERROR);
+      }
+    } else {
+      ioTPrinter.println(
+          String.format(
+              "Invalid args: Required values for option '%s' not provided", FILE_TYPE_NAME));
+      System.exit(CODE_ERROR);
+    }
 
-    Option opOnSuccess =
-        Option.builder(ON_SUCCESS_ARGS)
-            .longOpt(ON_SUCCESS_NAME)
-            .argName(ON_SUCCESS_NAME)
-            .required()
-            .hasArg()
-            .desc(
-                "When loading tsfile successfully, do operation on tsfile (and its .resource and .mods files), "
-                    + "optional parameters are none, mv, cp, delete. (required)")
-            .build();
-    options.addOption(opOnSuccess);
-
-    Option opSuccessDir =
-        Option.builder(SUCCESS_DIR_ARGS)
-            .longOpt(SUCCESS_DIR_NAME)
-            .argName(SUCCESS_DIR_NAME)
-            .hasArg()
-            .desc("The target folder when 'os' is 'mv' or 'cp'.(optional)")
-            .build();
-    options.addOption(opSuccessDir);
-
-    Option opOnFail =
-        Option.builder(ON_FAIL_ARGS)
-            .longOpt(ON_FAIL_NAME)
-            .argName(ON_FAIL_NAME)
-            .required()
-            .hasArg()
-            .desc(
-                "When loading tsfile fail, do operation on tsfile (and its .resource and .mods files), "
-                    + "optional parameters are none, mv, cp, delete. (required)")
-            .build();
-    options.addOption(opOnFail);
-
-    Option opFailDir =
-        Option.builder(FAIL_DIR_ARGS)
-            .longOpt(FAIL_DIR_NAME)
-            .argName(FAIL_DIR_NAME)
-            .hasArg()
-            .desc("The target folder when 'of' is 'mv' or 'cp'.(optional)")
-            .build();
-    options.addOption(opFailDir);
-
-    Option opThreadNum =
-        Option.builder(THREAD_NUM_ARGS)
-            .longOpt(THREAD_NUM_NAME)
-            .argName(THREAD_NUM_NAME)
-            .hasArg()
-            .desc("The number of threads used to import tsfile, default is 8.(optional)")
-            .build();
-    options.addOption(opThreadNum);
-
-    Option opTimeZone =
-        Option.builder(TIME_ZONE_ARGS)
-            .longOpt(TIME_ZONE_NAME)
-            .argName(TIME_ZONE_NAME)
-            .hasArg()
-            .desc("Time Zone eg. +08:00 or -01:00 (optional)")
-            .build();
-    options.addOption(opTimeZone);
-
-    Option opTimestampPrecision =
-        Option.builder(TIMESTAMP_PRECISION_ARGS)
-            .longOpt(TIMESTAMP_PRECISION_NAME)
-            .argName(TIMESTAMP_PRECISION_ARGS_NAME)
-            .hasArg()
-            .desc("Timestamp precision (ms/us/ns) (optional)")
-            .build();
-
-    options.addOption(opTimestampPrecision);
-    return options;
+    try {
+      parseBasicParams(commandLine);
+      String filename = commandLine.getOptionValue(FILE_ARGS);
+      if (filename == null) {
+        ioTPrinter.println(IMPORT_CLI_HEAD);
+        printHelpOptions(null, IMPORT_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
+        System.exit(CODE_ERROR);
+      }
+      parseSpecialParams(commandLine);
+    } catch (ArgsErrorException e) {
+      ioTPrinter.println("Args error: " + e.getMessage());
+      System.exit(CODE_ERROR);
+    } catch (Exception e) {
+      ioTPrinter.println("Encounter an error, because: " + e.getMessage());
+      System.exit(CODE_ERROR);
+    }
+    int resultCode = importFromTargetPathAsync();
+    System.exit(resultCode);
   }
 
-  private static Options createCsvOptions() {
-    Options options = createImportOptions();
-
-    Option opFile =
-        Option.builder(FILE_ARGS)
-            .longOpt(FILE_NAME)
-            .argName(FILE_NAME)
-            .required()
-            .hasArg()
-            .desc("The local directory path of the script file (folder) to be loaded. (required)")
-            .build();
-    options.addOption(opFile);
-
-    Option opFailDir =
-        Option.builder(FAIL_DIR_ARGS)
-            .longOpt(FAIL_DIR_NAME)
-            .argName(FAIL_DIR_NAME)
-            .hasArg()
-            .desc(
-                "Specifying a directory to save failed file, default YOUR_CSV_FILE_PATH (optional)")
-            .build();
-    options.addOption(opFailDir);
-
-    Option opFailedLinesPerFile =
-        Option.builder(LINES_PER_FAILED_FILE_ARGS)
-            .longOpt(LINES_PER_FAILED_FILE_ARGS_NAME)
-            .argName(LINES_PER_FAILED_FILE_ARGS_NAME)
-            .hasArgs()
-            .desc("Lines per failed file (optional)")
-            .build();
-    options.addOption(opFailedLinesPerFile);
-
-    Option opAligned =
-        Option.builder(ALIGNED_ARGS)
-            .longOpt(ALIGNED_NAME)
-            .argName(ALIGNED_ARGS_NAME)
-            .hasArg()
-            .desc("Whether to use the interface of aligned (optional)")
-            .build();
-    options.addOption(opAligned);
-
-    Option opTypeInfer =
-        Option.builder(TYPE_INFER_ARGS)
-            .longOpt(TYPE_INFER_NAME)
-            .argName(TYPE_INFER_NAME)
-            .numberOfArgs(5)
-            .hasArgs()
-            .valueSeparator(',')
-            .desc("Define type info by option:\"boolean=text,int=long, ... (optional)")
-            .build();
-    options.addOption(opTypeInfer);
-
-    Option opTimestampPrecision =
-        Option.builder(TIMESTAMP_PRECISION_ARGS)
-            .longOpt(TIMESTAMP_PRECISION_NAME)
-            .argName(TIMESTAMP_PRECISION_ARGS_NAME)
-            .hasArg()
-            .desc("Timestamp precision (ms/us/ns) (optional)")
-            .build();
-
-    options.addOption(opTimestampPrecision);
-
-    Option opTimeZone =
-        Option.builder(TIME_ZONE_ARGS)
-            .longOpt(TIME_ZONE_NAME)
-            .argName(TIME_ZONE_NAME)
-            .hasArg()
-            .desc("Time Zone eg. +08:00 or -01:00 (optional)")
-            .build();
-    options.addOption(opTimeZone);
-
-    Option opBatchPointSize =
-        Option.builder(BATCH_POINT_SIZE_ARGS)
-            .longOpt(BATCH_POINT_SIZE_NAME)
-            .argName(BATCH_POINT_SIZE_ARGS_NAME)
-            .hasArg()
-            .desc("100000 (optional)")
-            .build();
-    options.addOption(opBatchPointSize);
-
-    Option opThreadNum =
-        Option.builder(THREAD_NUM_ARGS)
-            .longOpt(THREAD_NUM_NAME)
-            .argName(THREAD_NUM_NAME)
-            .hasArg()
-            .desc("The number of threads used to import tsfile, default is 8. (optional)")
-            .build();
-    options.addOption(opThreadNum);
-    return options;
-  }
-
-  private static Options createSqlOptions() {
-    Options options = createImportOptions();
-
-    Option opFile =
-        Option.builder(FILE_ARGS)
-            .required()
-            .longOpt(FILE_NAME)
-            .argName(FILE_NAME)
-            .hasArg()
-            .desc("The local directory path of the script file (folder) to be loaded. (required)")
-            .build();
-    options.addOption(opFile);
-
-    Option opFailDir =
-        Option.builder(FAIL_DIR_ARGS)
-            .longOpt(FAIL_DIR_NAME)
-            .argName(FAIL_DIR_NAME)
-            .hasArg()
-            .desc(
-                "Specifying a directory to save failed file, default YOUR_CSV_FILE_PATH (optional)")
-            .build();
-    options.addOption(opFailDir);
-
-    Option opFailedLinesPerFile =
-        Option.builder(LINES_PER_FAILED_FILE_ARGS)
-            .argName(LINES_PER_FAILED_FILE_ARGS_NAME)
-            .hasArgs()
-            .desc("Lines per failed file (optional)")
-            .build();
-    options.addOption(opFailedLinesPerFile);
-
-    Option opTimeZone =
-        Option.builder(TIME_ZONE_ARGS)
-            .longOpt(TIME_ZONE_NAME)
-            .argName(TIME_ZONE_NAME)
-            .hasArg()
-            .desc("Time Zone eg. +08:00 or -01:00 (optional)")
-            .build();
-    options.addOption(opTimeZone);
-
-    Option opBatchPointSize =
-        Option.builder(BATCH_POINT_SIZE_ARGS)
-            .longOpt(BATCH_POINT_SIZE_NAME)
-            .argName(BATCH_POINT_SIZE_NAME)
-            .hasArg()
-            .desc("100000 (optional)")
-            .build();
-    options.addOption(opBatchPointSize);
-
-    Option opThreadNum =
-        Option.builder(THREAD_NUM_ARGS)
-            .longOpt(THREAD_NUM_NAME)
-            .argName(THREAD_NUM_NAME)
-            .hasArgs()
-            .desc("The number of threads used to import tsfile, default is 8. (optional)")
-            .build();
-    options.addOption(opThreadNum);
-    return options;
-  }
-
-  /**
-   * parse optional params
-   *
-   * @param commandLine
-   */
   private static void parseSpecialParams(CommandLine commandLine) throws ArgsErrorException {
     timeZoneID = commandLine.getOptionValue(TIME_ZONE_ARGS);
     targetPath = commandLine.getOptionValue(FILE_ARGS);
@@ -390,6 +240,93 @@ public class ImportData extends AbstractDataTool {
     if (commandLine.getOptionValue(LINES_PER_FAILED_FILE_ARGS) != null) {
       linesPerFailedFile = Integer.parseInt(commandLine.getOptionValue(LINES_PER_FAILED_FILE_ARGS));
     }
+    if (commandLine.getOptionValue(DB_ARGS) != null) {
+      database = commandLine.getOptionValue(DB_ARGS);
+    }
+    if (commandLine.getOptionValue(TABLE_ARGS) != null) {
+      table = commandLine.getOptionValue(TABLE_ARGS);
+    }
+    if (commandLine.getOptionValue(START_TIME_ARGS) != null) {
+      startTime = commandLine.getOptionValue(START_TIME_ARGS);
+    }
+    if (commandLine.getOptionValue(END_TIME_ARGS) != null) {
+      endTime = commandLine.getOptionValue(END_TIME_ARGS);
+    }
+    try {
+      isRemoteLoad = !NodeUrlUtils.containsLocalAddress(Collections.singletonList(host));
+      if (!sqlDialectTree && isRemoteLoad) {
+        ioTPrinter.println(
+            "host: " + host + " is remote load,only local load is supported in table model");
+      }
+    } catch (UnknownHostException e) {
+      ioTPrinter.println(
+          "Unknown host: " + host + ". Exception: " + e.getMessage() + ". Will use local load.");
+    }
+    final String os = commandLine.getOptionValue(ON_SUCCESS_ARGS);
+    final String onSuccess = StringUtils.isNotBlank(os) ? os.trim().toLowerCase() : null;
+    final String of = commandLine.getOptionValue(ON_FAIL_ARGS);
+    final String onFail = StringUtils.isNotBlank(of) ? of.trim().toLowerCase() : null;
+    if (TSFILE_SUFFIXS.equalsIgnoreCase(fileType)
+        && (!ImportTsFile.Operation.isValidOperation(onSuccess)
+            || !ImportTsFile.Operation.isValidOperation(onFail))) {
+      ioTPrinter.println("Args error: os/of must be one of none, mv, cp, delete");
+      System.exit(CODE_ERROR);
+      boolean isSuccessDirEqualsSourceDir = false;
+      if (ImportTsFile.Operation.MV.name().equalsIgnoreCase(onSuccess)
+          || ImportTsFile.Operation.CP.name().equalsIgnoreCase(onSuccess)) {
+        File dir = createSuccessDir(commandLine);
+        isSuccessDirEqualsSourceDir = isFileStoreEquals(targetPath, dir);
+      }
+
+      boolean isFailDirEqualsSourceDir = false;
+      if (ImportTsFile.Operation.MV.name().equalsIgnoreCase(onFail)
+          || ImportTsFile.Operation.CP.name().equalsIgnoreCase(onFail)) {
+        File dir = createFailDir(commandLine);
+        isFailDirEqualsSourceDir = isFileStoreEquals(targetPath, dir);
+      }
+
+      successOperation =
+          ImportTsFile.Operation.getOperation(onSuccess, isSuccessDirEqualsSourceDir);
+      failOperation = ImportTsFile.Operation.getOperation(onFail, isFailDirEqualsSourceDir);
+    }
+  }
+
+  public static boolean isFileStoreEquals(String pathString, File dir) {
+    try {
+      return Objects.equals(
+          Files.getFileStore(Paths.get(pathString)), Files.getFileStore(dir.toPath()));
+    } catch (IOException e) {
+      ioTPrinter.println("IOException when checking file store: " + e.getMessage());
+      return false;
+    }
+  }
+
+  public static File createSuccessDir(CommandLine commandLine) {
+    if (commandLine.getOptionValue(SUCCESS_DIR_ARGS) != null) {
+      successDir = commandLine.getOptionValue(SUCCESS_DIR_ARGS);
+    }
+    File file = new File(successDir);
+    if (!file.isDirectory()) {
+      if (!file.mkdirs()) {
+        ioTPrinter.println(String.format("Failed to create %s %s", SUCCESS_DIR_NAME, successDir));
+        System.exit(CODE_ERROR);
+      }
+    }
+    return file;
+  }
+
+  public static File createFailDir(CommandLine commandLine) {
+    if (commandLine.getOptionValue(FAIL_DIR_ARGS) != null) {
+      failDir = commandLine.getOptionValue(FAIL_DIR_ARGS);
+    }
+    File file = new File(failDir);
+    if (!file.isDirectory()) {
+      if (!file.mkdirs()) {
+        ioTPrinter.println(String.format("Failed to create %s %s", FAIL_DIR_NAME, failDir));
+        System.exit(CODE_ERROR);
+      }
+    }
+    return file;
   }
 
   private static void applyTypeInferArgs(String key, String value) throws ArgsErrorException {
@@ -437,188 +374,22 @@ public class ImportData extends AbstractDataTool {
     TYPE_INFER_KEY_DICT.put(key, TYPE_INFER_VALUE_DICT.get(value));
   }
 
-  public static void main(String[] args) throws IoTDBConnectionException {
-    Options helpOptions = createHelpOptions();
-    Options tsFileOptions = createTsFileOptions();
-    Options csvOptions = createCsvOptions();
-    Options sqlOptions = createSqlOptions();
-    HelpFormatter hf = new HelpFormatter();
-    hf.setOptionComparator(null);
-    hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
-    CommandLine commandLine = null;
-    CommandLineParser parser = new DefaultParser();
-
-    if (args == null || args.length == 0) {
-      printHelpOptions(
-          TSFILEDB_CLI_HEAD, TSFILEDB_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
-      System.exit(CODE_ERROR);
-    }
-    try {
-      commandLine = parser.parse(helpOptions, args, true);
-    } catch (org.apache.commons.cli.ParseException e) {
-      printHelpOptions(
-          TSFILEDB_CLI_HEAD, TSFILEDB_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
-      System.exit(CODE_ERROR);
-    }
-    final List<String> argList = Arrays.asList(args);
-    int helpIndex = argList.indexOf(MINUS + HELP_ARGS);
-    int ftIndex = argList.indexOf(MINUS + FILE_TYPE_ARGS);
-    if (ftIndex < 0) {
-      ftIndex = argList.indexOf(MINUS + FILE_TYPE_NAME);
-    }
-    if (helpIndex >= 0) {
-      fileType = argList.get(helpIndex + 1);
-      if (StringUtils.isNotBlank(fileType)) {
-        if (TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
-          printHelpOptions(null, TSFILEDB_CLI_PREFIX, hf, tsFileOptions, null, null, false);
-        } else if (CSV_SUFFIXS.equalsIgnoreCase(fileType)) {
-          printHelpOptions(null, TSFILEDB_CLI_PREFIX, hf, null, csvOptions, null, false);
-        } else if (SQL_SUFFIXS.equalsIgnoreCase(fileType)) {
-          printHelpOptions(null, TSFILEDB_CLI_PREFIX, hf, null, null, sqlOptions, false);
-        } else {
-          ioTPrinter.println(String.format("File type %s is not support", fileType));
-          printHelpOptions(
-              TSFILEDB_CLI_HEAD,
-              TSFILEDB_CLI_PREFIX,
-              hf,
-              tsFileOptions,
-              csvOptions,
-              sqlOptions,
-              true);
-        }
-      } else {
-        printHelpOptions(
-            TSFILEDB_CLI_HEAD,
-            TSFILEDB_CLI_PREFIX,
-            hf,
-            tsFileOptions,
-            csvOptions,
-            sqlOptions,
-            true);
-      }
-      System.exit(CODE_ERROR);
-    } else if (ftIndex >= 0) {
-      fileType = argList.get(ftIndex + 1);
-      if (StringUtils.isNotBlank(fileType)) {
-        if (TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
-          try {
-            commandLine = parser.parse(tsFileOptions, args);
-            ImportTsFile.importData(commandLine);
-          } catch (ParseException e) {
-            ioTPrinter.println("Parse error: " + e.getMessage());
-            printHelpOptions(null, TSFILEDB_CLI_PREFIX, hf, tsFileOptions, null, null, false);
-            System.exit(CODE_ERROR);
-          }
-        } else if (CSV_SUFFIXS.equalsIgnoreCase(fileType)) {
-          try {
-            commandLine = parser.parse(csvOptions, args);
-          } catch (ParseException e) {
-            ioTPrinter.println("Parse error: " + e.getMessage());
-            printHelpOptions(null, TSFILEDB_CLI_PREFIX, hf, null, csvOptions, null, false);
-            System.exit(CODE_ERROR);
-          }
-        } else if (SQL_SUFFIXS.equalsIgnoreCase(fileType)) {
-          try {
-            commandLine = parser.parse(sqlOptions, args);
-          } catch (ParseException e) {
-            ioTPrinter.println("Parse error: " + e.getMessage());
-            printHelpOptions(null, TSFILEDB_CLI_PREFIX, hf, null, null, sqlOptions, false);
-            System.exit(CODE_ERROR);
-          }
-        } else {
-          ioTPrinter.println(String.format("File type %s is not support", fileType));
-          printHelpOptions(
-              TSFILEDB_CLI_HEAD,
-              TSFILEDB_CLI_PREFIX,
-              hf,
-              tsFileOptions,
-              csvOptions,
-              sqlOptions,
-              true);
-          System.exit(CODE_ERROR);
-        }
-      } else {
-        ioTPrinter.println(
-            String.format(
-                "Invalid args: Required values for option '%s' not provided", FILE_TYPE_NAME));
-        System.exit(CODE_ERROR);
-      }
-    } else {
-      ioTPrinter.println(
-          String.format(
-              "Invalid args: Required values for option '%s' not provided", FILE_TYPE_NAME));
-      System.exit(CODE_ERROR);
-    }
-
-    try {
-      parseBasicParams(commandLine);
-      String filename = commandLine.getOptionValue(FILE_ARGS);
-      if (filename == null) {
-        ioTPrinter.println(TSFILEDB_CLI_HEAD);
-        printHelpOptions(
-            null, TSFILEDB_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
-        System.exit(CODE_ERROR);
-      }
-      parseSpecialParams(commandLine);
-    } catch (ArgsErrorException e) {
-      ioTPrinter.println("Args error: " + e.getMessage());
-      System.exit(CODE_ERROR);
-    } catch (Exception e) {
-      ioTPrinter.println("Encounter an error, because: " + e.getMessage());
-      System.exit(CODE_ERROR);
-    }
-    final int resultCode = importFromTargetPathAsync();
-    if (ImportDataScanTool.getTsFileQueueSize() <= 0) {
-      System.exit(CODE_OK);
-    }
-    asyncImportDataFiles();
-    System.exit(resultCode);
-  }
-
-  private static void asyncImportDataFiles() {
-    List<Thread> list = new ArrayList<>(threadNum);
-    for (int i = 0; i < threadNum; i++) {
-      final Thread thread = new Thread(new AsyncImportData());
-      thread.start();
-      list.add(thread);
-    }
-    list.forEach(
-        thread -> {
-          try {
-            thread.join();
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            ioTPrinter.println("ImportData thread join interrupted: " + e.getMessage());
-          }
-        });
-    ioTPrinter.println("Import completely!");
-  }
-
   private static int importFromTargetPathAsync() {
     try {
-      sessionPool =
-          new SessionPool.Builder()
-              .host(host)
-              .port(Integer.parseInt(port))
-              .user(username)
-              .password(password)
-              .maxSize(threadNum + 1)
-              .enableCompression(false)
-              .enableRedirection(false)
-              .enableAutoFetch(false)
-              .build();
-      sessionPool.setEnableQueryRedirection(false);
-      AsyncImportData.setAligned(aligned);
-      AsyncImportData.setSessionPool(sessionPool);
-      AsyncImportData.setTimeZone();
+      AbstractImportData importData;
+      if (sqlDialectTree) {
+        importData = new ImportDataTree();
+      } else {
+        importData = new ImportDataTable();
+      }
+      importData.init();
       ImportDataScanTool.setSourceFullPath(targetPath);
       final File file = new File(targetPath);
       if (!file.isFile() && !file.isDirectory()) {
         ioTPrinter.println(String.format("Source file or directory %s does not exist", targetPath));
         System.exit(CODE_ERROR);
       }
-      ImportDataScanTool.traverseAndCollectFiles();
-      asyncImportDataFiles();
+      AbstractImportData.init(importData);
       return CODE_OK;
     } catch (InterruptedException e) {
       ioTPrinter.println(String.format("Import tsfile fail: %s", e.getMessage()));
@@ -632,7 +403,8 @@ public class ImportData extends AbstractDataTool {
 
   /**
    * Specifying a CSV file or a directory including CSV files that you want to import. This method
-   * can be offered to console cli to implement importing CSV file by command.
+   * can be offered to console cli to implement importing CSV file by command. Available for Cli
+   * import
    *
    * @param host
    * @param port
@@ -690,8 +462,15 @@ public class ImportData extends AbstractDataTool {
     return CODE_OK;
   }
 
+  private static void setTimeZone() throws IoTDBConnectionException, StatementExecutionException {
+    if (timeZoneID != null) {
+      session.setTimeZone(timeZoneID);
+    }
+    zoneId = ZoneId.of(session.getTimeZone());
+  }
+
   /**
-   * import the CSV file and load headers and records.
+   * import the CSV file and load headers and records. Available for Cli import
    *
    * @param file the File object of the CSV file that you want to import.
    */
@@ -728,6 +507,12 @@ public class ImportData extends AbstractDataTool {
     }
   }
 
+  /**
+   * import the SQL file and load headers and records. Available for Cli import
+   *
+   * @param session
+   * @param file
+   */
   @SuppressWarnings("java:S2259")
   private static void importFromSqlFile(Session session, File file) {
     ArrayList<List<Object>> failedRecords = new ArrayList<>();
