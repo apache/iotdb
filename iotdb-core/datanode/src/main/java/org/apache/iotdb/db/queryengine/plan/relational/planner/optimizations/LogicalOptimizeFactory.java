@@ -56,6 +56,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Pu
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushLimitThroughProject;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveDuplicateConditions;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantEnforceSingleRowNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantExists;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantIdentityProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveTrivialFilters;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveUnreferencedScalarApplyNodes;
@@ -183,8 +184,8 @@ public class LogicalOptimizeFactory {
                         //                        new ReplaceRedundantJoinWithSource(),
                         //                        new RemoveRedundantJoin(),
                         //                        new ReplaceRedundantJoinWithProject(),
-                        new RemoveRedundantEnforceSingleRowNode()
-                        //                        new RemoveRedundantExists(),
+                        new RemoveRedundantEnforceSingleRowNode(),
+                        new RemoveRedundantExists()
                         //                        new RemoveRedundantWindow(),
                         //                        new SingleDistinctAggregationToGroupBy(),
                         //                        new MergeLimitWithDistinct(),

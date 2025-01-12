@@ -239,6 +239,7 @@ import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.AVG;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT;
@@ -1404,6 +1405,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           dataTypes);
     }
 
+    semanticCheckForJoin(node);
+
     int size = node.getCriteria().size();
     int[] leftJoinKeyPositions = new int[size];
     for (int i = 0; i < size; i++) {
@@ -1489,6 +1492,21 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     }
 
     throw new IllegalStateException("Unsupported join type: " + node.getJoinType());
+  }
+
+  private void semanticCheckForJoin(JoinNode node) {
+    try {
+      checkArgument(
+          !node.getFilter().isPresent() || node.getFilter().get().equals(TRUE_LITERAL),
+          String.format(
+              "Filter is not supported in %s. Filter is %s.",
+              node.getJoinType(), node.getFilter().get()));
+      checkArgument(
+          !node.getCriteria().isEmpty(),
+          String.format("%s must have join keys.", node.getJoinType()));
+    } catch (IllegalArgumentException e) {
+      throw new SemanticException(e.getMessage());
+    }
   }
 
   private BiFunction<Column, Integer, Column> buildUpdateLastRowFunction(Type joinKeyType) {

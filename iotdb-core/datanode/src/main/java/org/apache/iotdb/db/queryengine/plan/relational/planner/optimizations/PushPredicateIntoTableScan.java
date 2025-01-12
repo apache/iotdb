@@ -105,6 +105,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizati
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.extractJoinPredicate;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.joinEqualityExpression;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.processInnerJoin;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.processLimitedOuterJoin;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.QueryCardinalityUtil.extractCardinality;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
@@ -578,6 +579,21 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           postJoinPredicate = innerJoinPushDownResult.getPostJoinPredicate();
           newJoinPredicate = innerJoinPushDownResult.getJoinPredicate();
           break;
+        case LEFT:
+          JoinUtils.OuterJoinPushDownResult leftOuterJoinPushDownResult =
+              processLimitedOuterJoin(
+                  metadata,
+                  inheritedPredicate,
+                  leftEffectivePredicate,
+                  rightEffectivePredicate,
+                  joinPredicate,
+                  node.getLeftChild().getOutputSymbols(),
+                  node.getRightChild().getOutputSymbols());
+          leftPredicate = leftOuterJoinPushDownResult.getOuterJoinPredicate();
+          rightPredicate = leftOuterJoinPushDownResult.getInnerJoinPredicate();
+          postJoinPredicate = leftOuterJoinPushDownResult.getPostJoinPredicate();
+          newJoinPredicate = leftOuterJoinPushDownResult.getJoinPredicate();
+          break;
         case FULL:
           leftPredicate = TRUE_LITERAL;
           rightPredicate = TRUE_LITERAL;
@@ -585,8 +601,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           newJoinPredicate = joinPredicate;
           break;
         default:
-          throw new IllegalStateException(
-              "Only support INNER JOIN and FULL OUTER JOIN in current version");
+          throw new IllegalArgumentException(
+              "Unsupported join type in predicate push down: " + node.getJoinType().name());
       }
 
       // newJoinPredicate = simplifyExpression(newJoinPredicate);

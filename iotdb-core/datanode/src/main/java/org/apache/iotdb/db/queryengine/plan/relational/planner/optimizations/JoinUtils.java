@@ -335,4 +335,163 @@ public class JoinUtils {
       return postJoinPredicate;
     }
   }
+
+  static OuterJoinPushDownResult processLimitedOuterJoin(
+      Metadata metadata,
+      Expression inheritedPredicate,
+      Expression outerEffectivePredicate,
+      Expression innerEffectivePredicate,
+      Expression joinPredicate,
+      Collection<Symbol> outerSymbols,
+      Collection<Symbol> innerSymbols) {
+    checkArgument(
+        outerSymbols.containsAll(extractUnique(outerEffectivePredicate)),
+        "outerEffectivePredicate must only contain symbols from outerSymbols");
+    checkArgument(
+        innerSymbols.containsAll(extractUnique(innerEffectivePredicate)),
+        "innerEffectivePredicate must only contain symbols from innerSymbols");
+
+    ImmutableList.Builder<Expression> outerPushdownConjuncts = ImmutableList.builder();
+    ImmutableList.Builder<Expression> innerPushdownConjuncts = ImmutableList.builder();
+    ImmutableList.Builder<Expression> postJoinConjuncts = ImmutableList.builder();
+    ImmutableList.Builder<Expression> joinConjuncts = ImmutableList.builder();
+
+    // Strip out non-deterministic conjuncts
+    extractConjuncts(inheritedPredicate).stream()
+        .filter(expression -> !isDeterministic(expression))
+        .forEach(postJoinConjuncts::add);
+    inheritedPredicate = filterDeterministicConjuncts(inheritedPredicate);
+
+    outerEffectivePredicate = filterDeterministicConjuncts(outerEffectivePredicate);
+    innerEffectivePredicate = filterDeterministicConjuncts(innerEffectivePredicate);
+    extractConjuncts(joinPredicate).stream()
+        .filter(expression -> !isDeterministic(expression))
+        .forEach(joinConjuncts::add);
+    joinPredicate = filterDeterministicConjuncts(joinPredicate);
+
+    // Generate equality inferences
+    EqualityInference inheritedInference = new EqualityInference(metadata, inheritedPredicate);
+    EqualityInference outerInference =
+        new EqualityInference(metadata, inheritedPredicate, outerEffectivePredicate);
+
+    Set<Symbol> innerScope = ImmutableSet.copyOf(innerSymbols);
+    Set<Symbol> outerScope = ImmutableSet.copyOf(outerSymbols);
+
+    EqualityInference.EqualityPartition equalityPartition =
+        inheritedInference.generateEqualitiesPartitionedBy(outerScope);
+    Expression outerOnlyInheritedEqualities =
+        combineConjuncts(equalityPartition.getScopeEqualities());
+    EqualityInference potentialNullSymbolInference =
+        new EqualityInference(
+            metadata,
+            outerOnlyInheritedEqualities,
+            outerEffectivePredicate,
+            innerEffectivePredicate,
+            joinPredicate);
+
+    // Push outer and join equalities into the inner side. For example:
+    // SELECT * FROM nation LEFT OUTER JOIN region ON nation.regionkey = region.regionkey and
+    // nation.name = region.name WHERE nation.name = 'blah'
+
+    EqualityInference potentialNullSymbolInferenceWithoutInnerInferred =
+        new EqualityInference(
+            metadata, outerOnlyInheritedEqualities, outerEffectivePredicate, joinPredicate);
+    innerPushdownConjuncts.addAll(
+        potentialNullSymbolInferenceWithoutInnerInferred
+            .generateEqualitiesPartitionedBy(innerScope)
+            .getScopeEqualities());
+
+    // TODO: we can further improve simplifying the equalities by considering other relationships
+    // from the outer side
+    EqualityInference.EqualityPartition joinEqualityPartition =
+        new EqualityInference(metadata, joinPredicate).generateEqualitiesPartitionedBy(innerScope);
+    innerPushdownConjuncts.addAll(joinEqualityPartition.getScopeEqualities());
+    joinConjuncts
+        .addAll(joinEqualityPartition.getScopeComplementEqualities())
+        .addAll(joinEqualityPartition.getScopeStraddlingEqualities());
+
+    // Add the equalities from the inferences back in
+    outerPushdownConjuncts.addAll(equalityPartition.getScopeEqualities());
+    postJoinConjuncts.addAll(equalityPartition.getScopeComplementEqualities());
+    postJoinConjuncts.addAll(equalityPartition.getScopeStraddlingEqualities());
+
+    // See if we can push inherited predicates down
+    EqualityInference.nonInferrableConjuncts(metadata, inheritedPredicate)
+        .forEach(
+            conjunct -> {
+              Expression outerRewritten = outerInference.rewrite(conjunct, outerScope);
+              if (outerRewritten != null) {
+                outerPushdownConjuncts.add(outerRewritten);
+
+                // A conjunct can only be pushed down into an inner side if it can be rewritten in
+                // terms of the outer side
+                Expression innerRewritten =
+                    potentialNullSymbolInference.rewrite(outerRewritten, innerScope);
+                if (innerRewritten != null) {
+                  innerPushdownConjuncts.add(innerRewritten);
+                }
+              } else {
+                postJoinConjuncts.add(conjunct);
+              }
+            });
+
+    // See if we can push down any outer effective predicates to the inner side
+    EqualityInference.nonInferrableConjuncts(metadata, outerEffectivePredicate)
+        .map(conjunct -> potentialNullSymbolInference.rewrite(conjunct, innerScope))
+        .filter(Objects::nonNull)
+        .forEach(innerPushdownConjuncts::add);
+
+    // See if we can push down join predicates to the inner side
+    EqualityInference.nonInferrableConjuncts(metadata, joinPredicate)
+        .forEach(
+            conjunct -> {
+              Expression innerRewritten =
+                  potentialNullSymbolInference.rewrite(conjunct, innerScope);
+              if (innerRewritten != null) {
+                innerPushdownConjuncts.add(innerRewritten);
+              } else {
+                joinConjuncts.add(conjunct);
+              }
+            });
+
+    return new OuterJoinPushDownResult(
+        combineConjuncts(outerPushdownConjuncts.build()),
+        combineConjuncts(innerPushdownConjuncts.build()),
+        combineConjuncts(joinConjuncts.build()),
+        combineConjuncts(postJoinConjuncts.build()));
+  }
+
+  static class OuterJoinPushDownResult {
+    private final Expression outerJoinPredicate;
+    private final Expression innerJoinPredicate;
+    private final Expression joinPredicate;
+    private final Expression postJoinPredicate;
+
+    private OuterJoinPushDownResult(
+        Expression outerJoinPredicate,
+        Expression innerJoinPredicate,
+        Expression joinPredicate,
+        Expression postJoinPredicate) {
+      this.outerJoinPredicate = outerJoinPredicate;
+      this.innerJoinPredicate = innerJoinPredicate;
+      this.joinPredicate = joinPredicate;
+      this.postJoinPredicate = postJoinPredicate;
+    }
+
+    public Expression getOuterJoinPredicate() {
+      return outerJoinPredicate;
+    }
+
+    public Expression getInnerJoinPredicate() {
+      return innerJoinPredicate;
+    }
+
+    public Expression getJoinPredicate() {
+      return joinPredicate;
+    }
+
+    public Expression getPostJoinPredicate() {
+      return postJoinPredicate;
+    }
+  }
 }
