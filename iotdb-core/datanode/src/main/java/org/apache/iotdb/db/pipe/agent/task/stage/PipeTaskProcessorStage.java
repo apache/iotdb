@@ -32,6 +32,7 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.agent.task.subtask.processor.PipeProcessorSubtask;
+import org.apache.iotdb.db.pipe.agent.task.subtask.processor.UserDefinedProcessorSubTask;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -73,24 +74,21 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
         new PipeTaskRuntimeConfiguration(
             new PipeTaskProcessorRuntimeEnvironment(
                 pipeName, creationTime, regionId, pipeTaskMeta));
+    final String processorName =
+        pipeProcessorParameters.getStringOrDefault(
+            PipeProcessorConstant.PROCESSOR_KEY,
+            BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName());
+    final boolean isBuiltinPipePlugin = BuiltinPipePlugin.isBuiltinPipePlugin(processorName);
     final PipeProcessor pipeProcessor =
         StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))
             ? PipeDataNodeAgent.plugin()
                 .dataRegion()
                 .getConfiguredProcessor(
-                    pipeProcessorParameters.getStringOrDefault(
-                        PipeProcessorConstant.PROCESSOR_KEY,
-                        BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName()),
-                    pipeProcessorParameters,
-                    runtimeConfiguration)
+                    processorName, pipeProcessorParameters, runtimeConfiguration)
             : PipeDataNodeAgent.plugin()
                 .schemaRegion()
                 .getConfiguredProcessor(
-                    pipeProcessorParameters.getStringOrDefault(
-                        PipeProcessorConstant.PROCESSOR_KEY,
-                        BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName()),
-                    pipeProcessorParameters,
-                    runtimeConfiguration);
+                    processorName, pipeProcessorParameters, runtimeConfiguration);
 
     // Should add creation time in taskID, because subtasks are stored in the hashmap
     // PipeProcessorSubtaskWorker.subtasks, and deleted subtasks will be removed by
@@ -102,14 +100,23 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
         new PipeEventCollector(
             pipeConnectorOutputPendingQueue, creationTime, regionId, forceTabletFormat);
     this.pipeProcessorSubtask =
-        new PipeProcessorSubtask(
-            taskId,
-            pipeName,
-            creationTime,
-            regionId,
-            pipeExtractorInputEventSupplier,
-            pipeProcessor,
-            pipeConnectorOutputEventCollector);
+        isBuiltinPipePlugin
+            ? new PipeProcessorSubtask(
+                taskId,
+                pipeName,
+                creationTime,
+                regionId,
+                pipeExtractorInputEventSupplier,
+                pipeProcessor,
+                pipeConnectorOutputEventCollector)
+            : new UserDefinedProcessorSubTask(
+                taskId,
+                pipeName,
+                creationTime,
+                regionId,
+                pipeExtractorInputEventSupplier,
+                pipeProcessor,
+                pipeConnectorOutputEventCollector);
 
     this.executor = executor;
   }

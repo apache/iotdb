@@ -69,6 +69,7 @@ public class PipeConnectorSubtaskManager {
             // Convert the value of `CONNECTOR_KEY` or `SINK_KEY` to lowercase
             // for matching in `CONNECTOR_CONSTRUCTORS`
             .toLowerCase();
+    final boolean isBuiltinPipePlugin = BuiltinPipePlugin.isBuiltinPipePlugin(connectorKey);
     PipeEventCommitManager.getInstance()
         .register(
             environment.getPipeName(),
@@ -143,16 +144,25 @@ public class PipeConnectorSubtaskManager {
         }
 
         // 2. Construct PipeConnectorSubtaskLifeCycle to manage PipeConnectorSubtask's life cycle
+        final String taskId =
+            String.format(
+                "%s_%s_%s", attributeSortedString, environment.getCreationTime(), connectorIndex);
         final PipeConnectorSubtask pipeConnectorSubtask =
-            new PipeConnectorSubtask(
-                String.format(
-                    "%s_%s_%s",
-                    attributeSortedString, environment.getCreationTime(), connectorIndex),
-                environment.getCreationTime(),
-                attributeSortedString,
-                connectorIndex,
-                pendingQueue,
-                pipeConnector);
+            isBuiltinPipePlugin
+                ? new PipeConnectorSubtask(
+                    taskId,
+                    environment.getCreationTime(),
+                    attributeSortedString,
+                    connectorIndex,
+                    pendingQueue,
+                    pipeConnector)
+                : new UserDefinedConnectorSubtask(
+                    taskId,
+                    environment.getCreationTime(),
+                    attributeSortedString,
+                    connectorIndex,
+                    pendingQueue,
+                    pipeConnector);
         final PipeConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =
             new PipeConnectorSubtaskLifeCycle(executor, pipeConnectorSubtask, pendingQueue);
         pipeConnectorSubtaskLifeCycleList.add(pipeConnectorSubtaskLifeCycle);
