@@ -89,7 +89,7 @@ public class PipeMemoryManager {
     return forceAllocate(sizeInBytes, PipeMemoryBlockType.NORMAL);
   }
 
-  public PipeTabletMemoryBlock forceAllocateForTabletWithRetry(long tabletSizeInBytes)
+  public PipeTabletMemoryBlock forceAllocateForTabletWithRetry(final long tabletSizeInBytes)
       throws PipeRuntimeOutOfMemoryCriticalException {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
       // No need to calculate the tablet size, skip it to save time
@@ -104,7 +104,7 @@ public class PipeMemoryManager {
 
       try {
         Thread.sleep(MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS);
-      } catch (InterruptedException ex) {
+      } catch (final InterruptedException ex) {
         Thread.currentThread().interrupt();
         LOGGER.warn("forceAllocateWithRetry: interrupted while waiting for available memory", ex);
       }
@@ -127,7 +127,7 @@ public class PipeMemoryManager {
     }
   }
 
-  public PipeTsFileMemoryBlock forceAllocateForTsFileWithRetry(long tsFileSizeInBytes)
+  public PipeTsFileMemoryBlock forceAllocateForTsFileWithRetry(final long tsFileSizeInBytes)
       throws PipeRuntimeOutOfMemoryCriticalException {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
       return new PipeTsFileMemoryBlock(0);

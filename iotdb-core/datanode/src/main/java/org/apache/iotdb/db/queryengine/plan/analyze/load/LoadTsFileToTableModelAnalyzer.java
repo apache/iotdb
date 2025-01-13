@@ -36,12 +36,12 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
+import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -90,7 +90,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
   }
 
   @Override
-  public IAnalysis analyzeFileByFile(IAnalysis analysis) {
+  public IAnalysis analyzeFileByFile(final IAnalysis analysis) {
     checkBeforeAnalyzeFileByFile(analysis);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
@@ -136,7 +136,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
       }
 
       // check whether the encrypt type of the tsfile is supported
-      EncryptParameter param = reader.getEncryptParam();
+      final EncryptParameter param = reader.getEncryptParam();
       if (!Objects.equals(param.getType(), EncryptUtils.encryptParam.getType())
           || !Arrays.equals(param.getKey(), EncryptUtils.encryptParam.getKey())) {
         throw new SemanticException("The encryption way of the TsFile is not supported.");
@@ -148,7 +148,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
       schemaCache.setDatabase(database);
       schemaCache.setCurrentModificationsAndTimeIndex(tsFileResource, reader);
 
-      for (Map.Entry<String, org.apache.tsfile.file.metadata.TableSchema> name2Schema :
+      for (final Map.Entry<String, org.apache.tsfile.file.metadata.TableSchema> name2Schema :
           reader.readFileMetadata().getTableSchemaMap().entrySet()) {
         final TableSchema fileSchema =
             TableSchema.fromTsFileTableSchema(name2Schema.getKey(), name2Schema.getValue());
@@ -161,7 +161,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
         final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
             timeseriesMetadataIterator.next();
 
-        for (IDeviceID deviceId : device2TimeseriesMetadata.keySet()) {
+        for (final IDeviceID deviceId : device2TimeseriesMetadata.keySet()) {
           schemaCache.autoCreateAndVerify(deviceId);
         }
 
@@ -183,7 +183,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
     } catch (final LoadEmptyFileException loadEmptyFileException) {
       LOGGER.warn("Failed to load empty file: {}", tsFile.getAbsolutePath());
       if (isDeleteAfterLoad) {
-        FileUtils.deleteQuietly(tsFile);
+        LoadTsFileManager.cleanTsFile(tsFile);
       }
     }
   }
