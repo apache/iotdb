@@ -155,7 +155,7 @@ public class TsFileProcessorTest {
             IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
             new MeasurementSchema(
                 measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props));
-    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery, null);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
@@ -166,7 +166,7 @@ public class TsFileProcessorTest {
 
     // query data in memory
     tsfileResourcesForQuery.clear();
-    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery, null);
 
     TsFileResource tsFileResource = tsfileResourcesForQuery.get(0);
     assertFalse(tsFileResource.getReadOnlyMemChunk(fullPath).isEmpty());
@@ -185,7 +185,7 @@ public class TsFileProcessorTest {
     processor.syncFlush();
 
     tsfileResourcesForQuery.clear();
-    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery, null);
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath).isEmpty());
     assertEquals(1, tsfileResourcesForQuery.get(0).getChunkMetadataList(fullPath).size());
     processor.syncClose();
@@ -230,7 +230,7 @@ public class TsFileProcessorTest {
             IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
             new MeasurementSchema(
                 measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props));
-    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery, null);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
@@ -241,7 +241,7 @@ public class TsFileProcessorTest {
 
     // query data in memory
     tsfileResourcesForQuery.clear();
-    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery, null);
 
     TsFileResource tsFileResource = tsfileResourcesForQuery.get(0);
     assertFalse(tsFileResource.getReadOnlyMemChunk(fullPath).isEmpty());
@@ -260,7 +260,7 @@ public class TsFileProcessorTest {
     processor.syncFlush();
 
     tsfileResourcesForQuery.clear();
-    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery, null);
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath).isEmpty());
     assertEquals(3, tsfileResourcesForQuery.get(0).getChunkMetadataList(fullPath).size());
     processor.syncClose();
@@ -309,7 +309,7 @@ public class TsFileProcessorTest {
                 TSEncoding.PLAIN,
                 CompressionType.UNCOMPRESSED,
                 props));
-    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery, null);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
@@ -320,7 +320,7 @@ public class TsFileProcessorTest {
 
     // query data in memory
     tsfileResourcesForQuery.clear();
-    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery, null);
 
     TsFileResource tsFileResource = tsfileResourcesForQuery.get(0);
     assertFalse(tsFileResource.getReadOnlyMemChunk(fullPath).isEmpty());
@@ -339,7 +339,7 @@ public class TsFileProcessorTest {
     processor.syncFlush();
 
     tsfileResourcesForQuery.clear();
-    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery, null);
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath).isEmpty());
     assertEquals(3, tsfileResourcesForQuery.get(0).getChunkMetadataList(fullPath).size());
     processor.syncClose();
@@ -386,7 +386,7 @@ public class TsFileProcessorTest {
             Collections.singletonList(
                 new MeasurementSchema(
                     measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props)));
-    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery, null);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
@@ -406,7 +406,7 @@ public class TsFileProcessorTest {
 
     // query data in memory
     tsfileResourcesForQuery.clear();
-    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery, null);
 
     TsFileResource tsFileResource = tsfileResourcesForQuery.get(0);
     assertFalse(tsFileResource.getReadOnlyMemChunk(fullPath).isEmpty());
@@ -425,7 +425,7 @@ public class TsFileProcessorTest {
     processor.syncFlush();
 
     tsfileResourcesForQuery.clear();
-    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery, null);
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath).isEmpty());
     assertEquals(3, tsfileResourcesForQuery.get(0).getChunkMetadataList(fullPath).size());
     processor.syncClose();
@@ -476,7 +476,7 @@ public class TsFileProcessorTest {
                     encoding,
                     CompressionType.UNCOMPRESSED,
                     props)));
-    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery, null);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
@@ -495,7 +495,7 @@ public class TsFileProcessorTest {
 
     // query data in memory
     tsfileResourcesForQuery.clear();
-    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery, null);
 
     TsFileResource tsFileResource = tsfileResourcesForQuery.get(0);
     assertFalse(tsFileResource.getReadOnlyMemChunk(fullPath).isEmpty());
@@ -514,7 +514,7 @@ public class TsFileProcessorTest {
     processor.syncFlush();
 
     tsfileResourcesForQuery.clear();
-    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery, null);
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath).isEmpty());
     assertEquals(3, tsfileResourcesForQuery.get(0).getChunkMetadataList(fullPath).size());
     processor.syncClose();
@@ -559,7 +559,7 @@ public class TsFileProcessorTest {
             IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
             new MeasurementSchema(
                 measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props));
-    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery, null);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
@@ -570,7 +570,7 @@ public class TsFileProcessorTest {
 
     // query data in memory
     tsfileResourcesForQuery.clear();
-    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery, null);
     assertFalse(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath).isEmpty());
     int num = 1;
     List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath);
@@ -588,7 +588,7 @@ public class TsFileProcessorTest {
     processor.syncFlush();
 
     tsfileResourcesForQuery.clear();
-    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery, null);
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath).isEmpty());
 
     RestorableTsFileIOWriter tsFileIOWriter = processor.getWriter();
@@ -642,7 +642,7 @@ public class TsFileProcessorTest {
             IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
             new MeasurementSchema(
                 measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props));
-    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery, null);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int flushId = 0; flushId < 10; flushId++) {
@@ -656,7 +656,7 @@ public class TsFileProcessorTest {
     processor.syncFlush();
 
     tsfileResourcesForQuery.clear();
-    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery, null);
     assertFalse(tsfileResourcesForQuery.isEmpty());
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath).isEmpty());
     processor.syncClose();
@@ -1200,7 +1200,7 @@ public class TsFileProcessorTest {
             IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
             new MeasurementSchema(
                 measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props));
-    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery, null);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
@@ -1211,7 +1211,7 @@ public class TsFileProcessorTest {
 
     // query data in memory
     tsfileResourcesForQuery.clear();
-    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
+    processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery, null);
     assertFalse(tsfileResourcesForQuery.isEmpty());
     assertFalse(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath).isEmpty());
     List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath);

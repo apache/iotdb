@@ -85,6 +85,7 @@ import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -655,7 +656,7 @@ public class TsFileProcessor {
         memTableIncrement += TVList.tvListArrayMemCost(dataTypes[i]);
       } else {
         // here currentChunkPointNum >= 1
-        long currentChunkPointNum = workMemTable.getCurrentTVListSize(deviceId, measurements[i]);
+        long currentChunkPointNum = workMemTable.getMeasurementSize(deviceId, measurements[i]);
         memTableIncrement +=
             (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
                 ? TVList.tvListArrayMemCost(dataTypes[i])
@@ -700,7 +701,7 @@ public class TsFileProcessor {
               .putIfAbsent(measurements[i], 1);
         } else {
           // here currentChunkPointNum >= 1
-          long currentChunkPointNum = workMemTable.getCurrentTVListSize(deviceId, measurements[i]);
+          long currentChunkPointNum = workMemTable.getMeasurementSize(deviceId, measurements[i]);
           int addingPointNum =
               increasingMemTableInfo
                   .computeIfAbsent(deviceId, k -> new HashMap<>())
@@ -768,7 +769,8 @@ public class TsFileProcessor {
       }
       // this insertion will result in a new array
       if ((alignedMemChunk.alignedListSize() % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
-        dataTypesInTVList.addAll(((AlignedTVList) alignedMemChunk.getTVList()).getTsDataTypes());
+        dataTypesInTVList.addAll(
+            ((AlignedTVList) alignedMemChunk.getWorkingTVList()).getTsDataTypes());
         memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypesInTVList);
       }
     }
@@ -860,7 +862,7 @@ public class TsFileProcessor {
         if (((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
           if (alignedMemChunk != null) {
             dataTypesInTVList.addAll(
-                ((AlignedTVList) alignedMemChunk.getTVList()).getTsDataTypes());
+                ((AlignedTVList) alignedMemChunk.getWorkingTVList()).getTsDataTypes());
           }
           dataTypesInTVList.addAll(addingPointNumInfo.left.values());
           memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypesInTVList);
@@ -964,7 +966,7 @@ public class TsFileProcessor {
           ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
               * TVList.tvListArrayMemCost(dataType);
     } else {
-      long currentChunkPointNum = workMemTable.getCurrentTVListSize(deviceId, measurement);
+      long currentChunkPointNum = workMemTable.getMeasurementSize(deviceId, measurement);
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
         memIncrements[0] +=
             ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
@@ -1071,7 +1073,8 @@ public class TsFileProcessor {
 
       if (acquireArray != 0) {
         // memory of extending the TVList
-        dataTypesInTVList.addAll(((AlignedTVList) alignedMemChunk.getTVList()).getTsDataTypes());
+        dataTypesInTVList.addAll(
+            ((AlignedTVList) alignedMemChunk.getWorkingTVList()).getTsDataTypes());
         memIncrements[0] +=
             acquireArray * AlignedTVList.alignedTvListArrayMemCost(dataTypesInTVList);
       }
@@ -2091,7 +2094,8 @@ public class TsFileProcessor {
   public void query(
       List<IFullPath> seriesPaths,
       QueryContext context,
-      List<TsFileResource> tsfileResourcesForQuery)
+      List<TsFileResource> tsfileResourcesForQuery,
+      Filter globalTimeFilter)
       throws IOException {
     long startTime = System.nanoTime();
     try {
@@ -2108,14 +2112,15 @@ public class TsFileProcessor {
               continue;
             }
             ReadOnlyMemChunk memChunk =
-                flushingMemTable.query(context, seriesPath, timeLowerBound, modsToMemtable);
+                flushingMemTable.query(
+                    context, seriesPath, timeLowerBound, modsToMemtable, globalTimeFilter);
             if (memChunk != null) {
               readOnlyMemChunks.add(memChunk);
             }
           }
           if (workMemTable != null) {
             ReadOnlyMemChunk memChunk =
-                workMemTable.query(context, seriesPath, timeLowerBound, null);
+                workMemTable.query(context, seriesPath, timeLowerBound, null, globalTimeFilter);
             if (memChunk != null) {
               readOnlyMemChunks.add(memChunk);
             }
