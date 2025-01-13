@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.visibility;
 
-import org.apache.iotdb.commons.pipe.datastructure.Result;
+import org.apache.iotdb.commons.pipe.datastructure.result.Result;
 import org.apache.iotdb.pipe.api.PipePlugin;
 
 import org.reflections.Reflections;

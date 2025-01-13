@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.pipe.annotation;
 
-import org.apache.iotdb.commons.pipe.datastructure.Result;
+import org.apache.iotdb.commons.pipe.datastructure.result.Result;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityTestUtils;
 
 import org.junit.Test;

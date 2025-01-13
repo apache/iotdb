@@ -17,16 +17,39 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.datastructure;
+package org.apache.iotdb.commons.pipe.datastructure.result;
 
-import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+public class Result<T, E> {
 
-public interface PersistentResource {
-  ProgressIndex getProgressIndex();
+  private final T ok;
+  private final E err;
 
-  /** Used in PipeHistoricalDataRegionTsFileAndDeletionExtractor to sort PersistentResource */
-  long getFileStartTime();
+  private Result(final T ok, final E err) {
+    this.ok = ok;
+    this.err = err;
+  }
 
-  /** Used in PipeHistoricalDataRegionTsFileAndDeletionExtractor to sort PersistentResource */
-  long getFileEndTime();
+  public static <T, E> Result<T, E> ok(final T value) {
+    return new Result<>(value, null);
+  }
+
+  public static <T, E> Result<T, E> err(final E error) {
+    return new Result<>(null, error);
+  }
+
+  public boolean isOk() {
+    return ok != null;
+  }
+
+  public boolean isErr() {
+    return err != null;
+  }
+
+  public T getOk() {
+    return ok;
+  }
+
+  public E getErr() {
+    return err;
+  }
 }
