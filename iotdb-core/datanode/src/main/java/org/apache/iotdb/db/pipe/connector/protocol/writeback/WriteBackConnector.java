@@ -89,7 +89,7 @@ public class WriteBackConnector implements PipeConnector {
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
-    final PipeParameters parameters = validator.getParameters();
+    // Do nothing
   }
 
   @Override
@@ -105,12 +105,11 @@ public class WriteBackConnector implements PipeConnector {
                 environment.getPipeName(),
                 environment.getCreationTime(),
                 environment.getRegionId()));
-    SESSION_MANAGER.supplySession(
-        session,
-        AuthorityChecker.SUPER_USER,
-        ZoneId.systemDefault(),
-        IoTDBConstant.ClientVersion.V_1_0);
-    SESSION_MANAGER.registerSession(session);
+
+    // Fill in the necessary information. Incomplete information will result in NPE.
+    session.setUsername(AuthorityChecker.SUPER_USER);
+    session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
+    session.setZoneId(ZoneId.systemDefault());
   }
 
   @Override
@@ -170,7 +169,7 @@ public class WriteBackConnector implements PipeConnector {
             : TREE_MODEL_DATABASE_NAME_IDENTIFIER;
 
     final InsertBaseStatement insertBaseStatement;
-    if (Objects.nonNull(insertNode)) {
+    if (Objects.isNull(insertNode)) {
       insertBaseStatement =
           PipeTransferTabletBinaryReqV2.toTPipeTransferReq(
                   pipeInsertNodeTabletInsertionEvent.getByteBuffer(), dataBaseName)
@@ -185,7 +184,9 @@ public class WriteBackConnector implements PipeConnector {
         insertBaseStatement.isWriteToTable()
             ? executeStatementForTableModel(insertBaseStatement, dataBaseName)
             : executeStatementForTreeModel(insertBaseStatement);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+
+    if (status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+        && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
               "Write back PipeInsertNodeTabletInsertionEvent %s error, result status %s",
@@ -224,7 +225,9 @@ public class WriteBackConnector implements PipeConnector {
         insertTabletStatement.isWriteToTable()
             ? executeStatementForTableModel(insertTabletStatement, dataBaseName)
             : executeStatementForTreeModel(insertTabletStatement);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+
+    if (status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+        && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
               "Write back PipeRawTabletInsertionEvent %s error, result status %s",
@@ -242,21 +245,21 @@ public class WriteBackConnector implements PipeConnector {
     if (session != null) {
       SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
     }
-    SESSION_MANAGER.removeCurrSession();
   }
 
   private TSStatus executeStatementForTableModel(Statement statement, String dataBaseName) {
+    session.setDatabaseName(dataBaseName);
+    session.setSqlDialect(IClientSession.SqlDialect.TABLE);
+    SESSION_MANAGER.registerSession(session);
     try {
       autoCreateDatabaseIfNecessary(dataBaseName);
-
       return Coordinator.getInstance()
           .executeForTableModel(
               new PipeEnrichedStatement(statement),
               RELATIONAL_SQL_PARSER,
-              SESSION_MANAGER.getCurrSession(),
+              session,
               SESSION_MANAGER.requestQueryId(),
-              SESSION_MANAGER.getSessionInfoOfPipeReceiver(
-                  SESSION_MANAGER.getCurrSession(), dataBaseName),
+              SESSION_MANAGER.getSessionInfoOfPipeReceiver(session, dataBaseName),
               "",
               LocalExecutionPlanner.getInstance().metadata,
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
@@ -273,14 +276,14 @@ public class WriteBackConnector implements PipeConnector {
         autoCreateDatabaseIfNecessary(dataBaseName);
 
         // Retry after creating the database
+        session.setDatabaseName(dataBaseName);
         return Coordinator.getInstance()
             .executeForTableModel(
                 new PipeEnrichedStatement(statement),
                 RELATIONAL_SQL_PARSER,
-                SESSION_MANAGER.getCurrSession(),
+                session,
                 SESSION_MANAGER.requestQueryId(),
-                SESSION_MANAGER.getSessionInfoOfPipeReceiver(
-                    SESSION_MANAGER.getCurrSession(), dataBaseName),
+                SESSION_MANAGER.getSessionInfo(session),
                 "",
                 LocalExecutionPlanner.getInstance().metadata,
                 IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
@@ -289,6 +292,8 @@ public class WriteBackConnector implements PipeConnector {
 
       // If the exception is not caused by database not set, throw it directly
       throw e;
+    } finally {
+      SESSION_MANAGER.removeCurrSession();
     }
   }
 
@@ -322,16 +327,23 @@ public class WriteBackConnector implements PipeConnector {
   }
 
   private TSStatus executeStatementForTreeModel(final Statement statement) {
-    return Coordinator.getInstance()
-        .executeForTreeModel(
-            new PipeEnrichedStatement(statement),
-            SESSION_MANAGER.requestQueryId(),
-            SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
-            "",
-            ClusterPartitionFetcher.getInstance(),
-            ClusterSchemaFetcher.getInstance(),
-            IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-            false)
-        .status;
+    session.setDatabaseName(null);
+    session.setSqlDialect(IClientSession.SqlDialect.TREE);
+    SESSION_MANAGER.registerSession(session);
+    try {
+      return Coordinator.getInstance()
+          .executeForTreeModel(
+              new PipeEnrichedStatement(statement),
+              SESSION_MANAGER.requestQueryId(),
+              SESSION_MANAGER.getSessionInfo(session),
+              "",
+              ClusterPartitionFetcher.getInstance(),
+              ClusterSchemaFetcher.getInstance(),
+              IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+              false)
+          .status;
+    } finally {
+      SESSION_MANAGER.removeCurrSession();
+    }
   }
 }
