@@ -37,6 +37,7 @@
         <integrationTest.nodeNewHeapSize>200m</integrationTest.nodeNewHeapSize>
         <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
         <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
+        <integrationTest.dataRegionPerDataNode>0</integrationTest.dataRegionPerDataNode>
         <integrationTest.testEnv/>
         <lightWeightStandaloneMode.configNodeConsensus>Simple</lightWeightStandaloneMode.configNodeConsensus>
         <!-- -DClusterConfigurations values configured here -->
@@ -300,6 +301,7 @@
                                 <TestEnv>${integrationTest.testEnv}</TestEnv>
                                 <RandomSelectWriteNode>${integrationTest.randomSelectWriteNode}</RandomSelectWriteNode>
                                 <ReadAndVerifyWithMultiNode>${integrationTest.readAndVerifyWithMultiNode}</ReadAndVerifyWithMultiNode>
+                                <DataRegionPerDataNode>${integrationTest.dataRegionPerDataNode}</DataRegionPerDataNode>
                                 <lightWeightStandaloneMode.configNodeNumber>${lightWeightStandaloneMode.configNodeNumber}</lightWeightStandaloneMode.configNodeNumber>
                                 <lightWeightStandaloneMode.dataNodeNumber>${lightWeightStandaloneMode.dataNodeNumber}</lightWeightStandaloneMode.dataNodeNumber>
                                 <lightWeightStandaloneMode.configNodeConsensus>${lightWeightStandaloneMode.configNodeConsensus}</lightWeightStandaloneMode.configNodeConsensus>
