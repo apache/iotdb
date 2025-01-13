@@ -423,7 +423,7 @@ public class IoTDBDatabaseIT {
               Arrays.asList(
                   "id,STRING,TAG,",
                   "creation_time,TIMESTAMP,ATTRIBUTE,",
-                  "state,INT32,ATTRIBUTE,",
+                  "state,STRING,ATTRIBUTE,",
                   "pipe_source,STRING,ATTRIBUTE,",
                   "pipe_processor,STRING,ATTRIBUTE,",
                   "pipe_sink,STRING,ATTRIBUTE,",
