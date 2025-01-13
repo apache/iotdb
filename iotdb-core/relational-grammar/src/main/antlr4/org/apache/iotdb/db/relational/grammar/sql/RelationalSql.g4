@@ -126,6 +126,19 @@ statement
     | showCurrentTimestampStatement
 
     // auth Statement
+    | grantStatement
+    | revokeStatement
+    | createUserStatement
+    | createRoleStatement
+    | dropUserStatement
+    | dropRoleStatement
+    | grantUserRoleStatement
+    | revokeUserRoleStatement
+    | alterUserStatement
+    | listUserPrivilegeStatement
+    | listRolePrivilegeStatement
+    | listUserStatement
+    | listRoleStatement
 
     // View, Trigger, pipe, CQ, Quota are not supported yet
     ;
@@ -539,8 +552,113 @@ showCurrentTimestampStatement
     ;
 
 
+// ------------------------------------------- Authority Statement -----------------------------------------------------
+
+createUserStatement
+    : CREATE USER userName=identifier password=string
+    ;
+
+createRoleStatement
+    : CREATE ROLE roleName=identifier
+    ;
+
+dropUserStatement
+    : DROP USER userName=identifier
+    ;
+
+dropRoleStatement
+    : DROP ROLE roleName=identifier
+    ;
+
+alterUserStatement
+    : ALTER USER userName=identifier SET PASSWORD password=identifier
+    ;
+
+grantUserRoleStatement
+    : GRANT ROLE roleName=identifier TO USER userName=identifier
+    ;
+
+revokeUserRoleStatement
+    : REVOKE ROLE roleName=identifier FROM USER userName=identifier
+    ;
 
 
+grantStatement
+    : GRANT privilegeObjectScope TO holderType holderName=identifier (grantOpt)?
+    ;
+
+listUserPrivilegeStatement
+    : LIST PRIVILEGES OF USER userName=identifier
+    ;
+
+listRolePrivilegeStatement
+    : LIST PRIVILEGES OF ROLE roleName=identifier
+    ;
+
+listUserStatement
+    : LIST USER
+    ;
+
+listRoleStatement
+    : LIST ROLE
+    ;
+
+
+revokeStatement
+    : REVOKE (revokeGrantOpt)? privilegeObjectScope FROM holderType holderName=identifier
+    ;
+
+privilegeObjectScope
+    : systemPrivileges
+    | objectPrivileges ON objectType objectName=identifier
+    | objectPrivileges ON objectScope
+    | objectPrivileges ON ANY
+    | ALL
+    ;
+
+systemPrivileges
+    : systemPrivilege (',' systemPrivilege)*
+    ;
+
+objectPrivileges
+    : objectPrivilege (',' objectPrivilege)*
+    ;
+
+objectScope
+    : dbname=identifier '.' tbname=identifier;
+
+systemPrivilege
+    : MANAGE_USER
+    | MANAGE_ROLE
+    | MAINTAIN
+    ;
+
+objectPrivilege
+    : CREATE
+    | DROP
+    | ALTER
+    | SELECT
+    | INSERT
+    | DELETE
+    ;
+
+objectType
+    : TABLE
+    | DATABASE
+    ;
+
+holderType
+    : USER
+    | ROLE
+    ;
+
+grantOpt
+    : WITH GRANT OPTION
+    ;
+
+revokeGrantOpt
+    : GRANT OPTION FOR
+    ;
 
 // ------------------------------------------- Query Statement ---------------------------------------------------------
 queryStatement
@@ -1130,6 +1248,7 @@ LEVEL: 'LEVEL';
 LIKE: 'LIKE';
 LIMIT: 'LIMIT';
 LINEAR: 'LINEAR';
+LIST: 'LIST';
 LISTAGG: 'LISTAGG';
 LOAD: 'LOAD';
 LOCAL: 'LOCAL';
@@ -1190,6 +1309,7 @@ PASSING: 'PASSING';
 PAST: 'PAST';
 PATH: 'PATH';
 PATTERN: 'PATTERN';
+PASSWORD: 'PASSWORD';
 PER: 'PER';
 PERIOD: 'PERIOD';
 PERMUTE: 'PERMUTE';
@@ -1344,6 +1464,12 @@ PERCENT: '%';
 CONCAT: '||';
 QUESTION_MARK: '?';
 SEMICOLON: ';';
+
+MANAGE_USER: 'MANAGE_USER';
+MANAGE_ROLE: 'MANAGE_ROLE';
+MAINTAIN: 'MAINTAIN';
+
+
 
 STRING
     : '\'' ( ~'\'' | '\'\'' )* '\''

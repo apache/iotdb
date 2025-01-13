@@ -223,6 +223,8 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
     try {
       ReadWriteIOUtils.readInt(byteBuffer);
       this.plan = (AuthorPlan) ConfigPhysicalPlan.Factory.create(byteBuffer);
+      this.user = plan.getUserName();
+      this.role = plan.getRoleName();
     } catch (IOException e) {
       LOGGER.error("IO error when deserialize authplan.", e);
     }
