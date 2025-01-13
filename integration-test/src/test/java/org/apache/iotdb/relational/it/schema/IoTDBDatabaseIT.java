@@ -424,7 +424,7 @@ public class IoTDBDatabaseIT {
                   "id,STRING,TAG,",
                   "creation_time,TIMESTAMP,ATTRIBUTE,",
                   "state,INT32,ATTRIBUTE,",
-                  "pipe_source,FLOAT,ATTRIBUTE,",
+                  "pipe_source,STRING,ATTRIBUTE,",
                   "pipe_processor,STRING,ATTRIBUTE,",
                   "pipe_sink,STRING,ATTRIBUTE,",
                   "exception_message,STRING,ATTRIBUTE,",
@@ -436,9 +436,9 @@ public class IoTDBDatabaseIT {
           new HashSet<>(
               Arrays.asList(
                   "plugin_name,STRING,TAG,",
-                  "plugin_type,TIMESTAMP,ATTRIBUTE,",
-                  "class_name,INT32,ATTRIBUTE,",
-                  "plugin_jar,FLOAT,ATTRIBUTE,")));
+                  "plugin_type,STRING,ATTRIBUTE,",
+                  "class_name,STRING,ATTRIBUTE,",
+                  "plugin_jar,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc topics"),
           "ColumnName,DataType,Category,",
@@ -450,8 +450,8 @@ public class IoTDBDatabaseIT {
           new HashSet<>(
               Arrays.asList(
                   "topic_name,STRING,TAG,",
-                  "consumer_group_name,TIMESTAMP,ATTRIBUTE,",
-                  "subscribed_consumers,INT32,ATTRIBUTE,")));
+                  "consumer_group_name,STRING,ATTRIBUTE,",
+                  "subscribed_consumers,STRING,ATTRIBUTE,")));
 
       // Test table query
       statement.execute("create database test");
