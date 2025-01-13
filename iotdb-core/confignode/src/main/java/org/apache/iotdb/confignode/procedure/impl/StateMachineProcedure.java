@@ -60,6 +60,8 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
 
   /** Ordinal of the previous state. So we can tell if we are progressing or not. */
   private int previousState;
+  private static int NO_NEXT_STATE = -1;
+  private int nextState = NO_NEXT_STATE;
 
   /** Mark whether this procedure is called by a pipe forwarded request. */
   protected boolean isGeneratedByPipe;
@@ -181,10 +183,8 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
 
       LOG.trace("{}", this);
       stateFlow = executeFromState(env, state);
+      checkFlowAndSetNextState();
       setStateDeserialized(false);
-      if (!hasMoreState()) {
-        setNextState(EOF_STATE);
-      }
 
       if (subProcList != null && !subProcList.isEmpty()) {
         Procedure[] subProcedures = subProcList.toArray(new Procedure[subProcList.size()]);
@@ -195,6 +195,22 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
     } finally {
       updateTimestamp();
     }
+  }
+
+  private void checkFlowAndSetNextState() {
+    if (Flow.HAS_MORE_STATE == stateFlow) {
+      if (nextState == NO_NEXT_STATE) {
+        LOG.error("StateMachineProcedure pid={} not set next state, but return HAS_MORE_STATE", getProcId());
+      } else {
+        states.add(nextState);
+      }
+    } else {
+      if (nextState != NO_NEXT_STATE) {
+        LOG.warn("StateMachineProcedure pid={} set next state to {}, but return NO_MORE_STATE", getProcId(), nextState);
+      }
+      states.add(EOF_STATE);
+    }
+    nextState = NO_NEXT_STATE;
   }
 
   @Override
@@ -260,7 +276,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
    * @param stateId the ordinal() of the state enum (or state id)
    */
   private void setNextState(final int stateId) {
-    states.add(stateId);
+    nextState = stateId;
   }
 
   @Override
