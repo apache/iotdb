@@ -537,13 +537,14 @@ public class Role {
         && Objects.equals(sysPrivilegeSet, role.sysPrivilegeSet)
         && Objects.equals(sysPriGrantOpt, role.sysPriGrantOpt)
         && Objects.equals(objectPrivilegeMap, role.objectPrivilegeMap)
-            && Objects.equals(anyScopePrivilegeSet, role.anyScopePrivilegeSet)
-            && Objects.equals(anyScopePrivilegeGrantOptSet, role.anyScopePrivilegeGrantOptSet);
+        && Objects.equals(anyScopePrivilegeSet, role.anyScopePrivilegeSet)
+        && Objects.equals(anyScopePrivilegeGrantOptSet, role.anyScopePrivilegeGrantOptSet);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, pathPrivilegeList, sysPrivilegeSet, sysPriGrantOpt, objectPrivilegeMap);
+    return Objects.hash(
+        name, pathPrivilegeList, sysPrivilegeSet, sysPriGrantOpt, objectPrivilegeMap);
   }
 
   private void serializePrivilegeSet(DataOutputStream outputStream, Set<PrivilegeType> set)
