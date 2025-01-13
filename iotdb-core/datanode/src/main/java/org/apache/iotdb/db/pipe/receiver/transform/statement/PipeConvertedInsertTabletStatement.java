@@ -62,4 +62,8 @@ public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
     dataTypes[columnIndex] = dataType;
     return true;
   }
+
+  protected boolean originalCheckAndCastDataType(int columnIndex, TSDataType dataType) {
+    return super.checkAndCastDataType(columnIndex, dataType);
+  }
 }
