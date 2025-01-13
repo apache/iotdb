@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.isession.subscription.ISubscriptionSession;
+import org.apache.iotdb.isession.subscription.ISubscriptionTableSession;
 import org.apache.iotdb.isession.subscription.model.Subscription;
 import org.apache.iotdb.isession.subscription.model.Topic;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -30,33 +30,11 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 
-public class SubscriptionSession extends AbstractSubscriptionSession
-    implements ISubscriptionSession {
+public class SubscriptionTableSession extends AbstractSubscriptionSession
+    implements ISubscriptionTableSession {
 
-  public SubscriptionSession(final AbstractSessionBuilder builder) {
+  public SubscriptionTableSession(final AbstractSessionBuilder builder) {
     super(new SubscriptionSessionWrapper(builder));
-  }
-
-  // keep for forward compatibility
-  public SubscriptionSession(final String host, final int port) {
-    super(new SubscriptionSessionWrapper(new SubscriptionSessionBuilder().host(host).port(port)));
-  }
-
-  // keep for forward compatibility
-  public SubscriptionSession(
-      final String host,
-      final int port,
-      final String username,
-      final String password,
-      final int thriftMaxFrameSize) {
-    super(
-        new SubscriptionSessionWrapper(
-            new SubscriptionSessionBuilder()
-                .host(host)
-                .port(port)
-                .username(username)
-                .password(password)
-                .thriftMaxFrameSize(thriftMaxFrameSize)));
   }
 
   /////////////////////////////// open & close ///////////////////////////////
@@ -132,49 +110,5 @@ public class SubscriptionSession extends AbstractSubscriptionSession
   public Set<Subscription> getSubscriptions(final String topicName)
       throws IoTDBConnectionException, StatementExecutionException {
     return super.getSubscriptions(topicName);
-  }
-
-  /////////////////////////////// builder ///////////////////////////////
-
-  // keep for forward compatibility
-  public static class Builder extends AbstractSessionBuilder {
-
-    public Builder() {
-      // use tree model
-      super.sqlDialect = "tree";
-      // disable auto fetch
-      super.enableAutoFetch = false;
-      // disable redirection
-      super.enableRedirection = false;
-    }
-
-    public Builder host(final String host) {
-      super.host = host;
-      return this;
-    }
-
-    public Builder port(final int port) {
-      super.rpcPort = port;
-      return this;
-    }
-
-    public Builder username(final String username) {
-      super.username = username;
-      return this;
-    }
-
-    public Builder password(final String password) {
-      super.pw = password;
-      return this;
-    }
-
-    public Builder thriftMaxFrameSize(final int thriftMaxFrameSize) {
-      super.thriftMaxFrameSize = thriftMaxFrameSize;
-      return this;
-    }
-
-    public ISubscriptionSession build() {
-      return new SubscriptionSession(this);
-    }
   }
 }
