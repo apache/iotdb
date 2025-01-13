@@ -414,7 +414,8 @@ public class IoTDBDatabaseIT {
                   "start_time,TIMESTAMP,ATTRIBUTE,",
                   "datanode_id,INT32,ATTRIBUTE,",
                   "elapsed_time,FLOAT,ATTRIBUTE,",
-                  "statement,STRING,ATTRIBUTE,")));
+                  "statement,STRING,ATTRIBUTE,",
+                  "user,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc pipes"),
           "ColumnName,DataType,Category,",
