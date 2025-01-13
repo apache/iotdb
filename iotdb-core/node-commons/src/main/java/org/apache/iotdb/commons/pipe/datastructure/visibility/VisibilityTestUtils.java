@@ -115,6 +115,13 @@ public class VisibilityTestUtils {
     return Result.ok(null);
   }
 
+  // Get the super interface of an interface
+  private static Class<?> getSuperInterface(final Class<?> interfaceClass) {
+    final Class<?>[] superInterfaces = interfaceClass.getInterfaces();
+    // TODO: We assume the first interface
+    return superInterfaces.length > 0 ? superInterfaces[0] : null;
+  }
+
   private static class TreeNode {
     Class<?> clazz;
     Visibility visibility;
@@ -124,11 +131,5 @@ public class VisibilityTestUtils {
       this.clazz = clazz;
       this.visibility = VisibilityUtils.calculateFromPluginClass(clazz);
     }
-  }
-
-  // Get the super interface of an interface
-  private static Class<?> getSuperInterface(final Class<?> interfaceClass) {
-    final Class<?>[] superInterfaces = interfaceClass.getInterfaces();
-    return superInterfaces.length > 0 ? superInterfaces[0] : null;
   }
 }

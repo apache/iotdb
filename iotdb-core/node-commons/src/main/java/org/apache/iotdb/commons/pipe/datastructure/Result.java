@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.datastructure;
 
 public class Result<T, E> {
+
   private final T ok;
   private final E err;
 
