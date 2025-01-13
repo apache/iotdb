@@ -40,6 +40,19 @@ public class PipeParameterValidator {
     return parameters;
   }
 
+  /**
+   * Validates whether the attributes entered by the user contain at least one attribute from
+   * lhsAttributes or rhsAttributes (if required), but not both.
+   *
+   * @param lhsAttributes list of left-hand side synonym attributes
+   * @param rhsAttributes list of right-hand side synonym attributes
+   * @param isRequired specifies whether at least one attribute from lhsAttributes or rhsAttributes
+   *     must be provided
+   * @throws PipeParameterNotValidException if both lhsAttributes and rhsAttributes are provided
+   * @throws PipeAttributeNotProvidedException if isRequired is true and neither lhsAttributes nor
+   *     rhsAttributes are provided
+   * @return the instance of PipeParameterValidator for method chaining
+   */
   public PipeParameterValidator validateSynonymAttributes(
       final List<String> lhsAttributes,
       final List<String> rhsAttributes,
