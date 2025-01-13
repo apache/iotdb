@@ -33,6 +33,7 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.slf4j.Logger;
 
 import java.nio.charset.Charset;
 import java.sql.BatchUpdateException;
@@ -47,6 +48,8 @@ import java.util.BitSet;
 import java.util.List;
 
 public class IoTDBStatement implements Statement {
+
+  public static final Logger logger = org.slf4j.LoggerFactory.getLogger(IoTDBStatement.class);
 
   private final IoTDBConnection connection;
 
