@@ -30,8 +30,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
 import java.util.Collection;
-import java.util.EnumSet;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -41,10 +39,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.Determi
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.combineConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.filterDeterministicConjuncts;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.FULL;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.LEFT;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.RIGHT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 
 public class JoinUtils {
@@ -93,88 +87,6 @@ public class JoinUtils {
         }
         return (leftSymbols.containsAll(symbols1) && rightSymbols.containsAll(symbols2))
             || (rightSymbols.containsAll(symbols1) && leftSymbols.containsAll(symbols2));
-      }
-    }
-    return false;
-  }
-
-  static JoinNode tryNormalizeToOuterToInnerJoin(JoinNode node, Expression inheritedPredicate) {
-    checkArgument(
-        EnumSet.of(INNER, RIGHT, LEFT, FULL).contains(node.getJoinType()),
-        "Unsupported join type: %s",
-        node.getJoinType());
-
-    if (node.getJoinType() == JoinNode.JoinType.INNER) {
-      return node;
-    }
-
-    if (node.getJoinType() == JoinNode.JoinType.FULL) {
-      boolean canConvertToLeftJoin =
-          canConvertOuterToInner(node.getLeftChild().getOutputSymbols(), inheritedPredicate);
-      boolean canConvertToRightJoin =
-          canConvertOuterToInner(node.getRightChild().getOutputSymbols(), inheritedPredicate);
-      if (!canConvertToLeftJoin && !canConvertToRightJoin) {
-        return node;
-      }
-      if (canConvertToLeftJoin && canConvertToRightJoin) {
-        return new JoinNode(
-            node.getPlanNodeId(),
-            INNER,
-            node.getLeftChild(),
-            node.getRightChild(),
-            node.getCriteria(),
-            node.getLeftOutputSymbols(),
-            node.getRightOutputSymbols(),
-            node.getFilter(),
-            node.isSpillable());
-      }
-      return new JoinNode(
-          node.getPlanNodeId(),
-          canConvertToLeftJoin ? LEFT : RIGHT,
-          node.getLeftChild(),
-          node.getRightChild(),
-          node.getCriteria(),
-          node.getLeftOutputSymbols(),
-          node.getRightOutputSymbols(),
-          node.getFilter(),
-          node.isSpillable());
-    }
-
-    if (node.getJoinType() == JoinNode.JoinType.LEFT
-            && !canConvertOuterToInner(node.getRightChild().getOutputSymbols(), inheritedPredicate)
-        || node.getJoinType() == JoinNode.JoinType.RIGHT
-            && !canConvertOuterToInner(
-                node.getLeftChild().getOutputSymbols(), inheritedPredicate)) {
-      return node;
-    }
-    return new JoinNode(
-        node.getPlanNodeId(),
-        JoinNode.JoinType.INNER,
-        node.getLeftChild(),
-        node.getRightChild(),
-        node.getCriteria(),
-        node.getLeftOutputSymbols(),
-        node.getRightOutputSymbols(),
-        node.getFilter(),
-        node.isSpillable());
-  }
-
-  static boolean canConvertOuterToInner(
-      List<Symbol> innerSymbolsForOuterJoin, Expression inheritedPredicate) {
-    Set<Symbol> innerSymbols = ImmutableSet.copyOf(innerSymbolsForOuterJoin);
-    for (Expression conjunct : extractConjuncts(inheritedPredicate)) {
-      if (isDeterministic(conjunct)) {
-        return true;
-        // Ignore a conjunct for this test if we cannot deterministically get responses from it
-        // Object response = nullInputEvaluator(innerSymbols, conjunct);
-        // if (response == null || response instanceof NullLiteral ||
-        // Boolean.FALSE.equals(response)) {
-        // If there is a single conjunct that returns FALSE or NULL given all NULL inputs for the
-        // inner side symbols of an outer join
-        // then this conjunct removes all effects of the outer join, and effectively turns this
-        // into an equivalent of an inner join.
-        // So, let's just rewrite this join as an INNER join
-        // }
       }
     }
     return false;

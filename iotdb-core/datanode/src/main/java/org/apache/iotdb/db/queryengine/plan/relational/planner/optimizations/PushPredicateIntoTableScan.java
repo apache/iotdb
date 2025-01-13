@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateCombineIntoTableScanChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker;
@@ -41,7 +42,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedAlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.EqualityInference;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.IrTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
@@ -60,18 +64,22 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
 
 import javax.annotation.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -100,7 +108,10 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalT
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.combineConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.filterDeterministicConjuncts;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.FULL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.LEFT;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.RIGHT;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.ONLY_SUPPORT_EQUI_JOIN;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.extractJoinPredicate;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.joinEqualityExpression;
@@ -138,6 +149,15 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
+  private final PlannerContext plannerContext;
+
+  private final IrTypeAnalyzer typeAnalyzer;
+
+  public PushPredicateIntoTableScan(PlannerContext plannerContext, IrTypeAnalyzer typeAnalyzer) {
+    this.plannerContext = plannerContext;
+    this.typeAnalyzer = typeAnalyzer;
+  }
+
   @Override
   public PlanNode optimize(PlanNode plan, Context context) {
     return plan.accept(
@@ -145,7 +165,9 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
             context.getQueryContext(),
             context.getAnalysis(),
             context.getMetadata(),
-            context.getSymbolAllocator()),
+            context.getSymbolAllocator(),
+            plannerContext,
+            typeAnalyzer),
         new RewriteContext(TRUE_LITERAL));
   }
 
@@ -155,17 +177,24 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     private final Metadata metadata;
     private final SymbolAllocator symbolAllocator;
     private final QueryId queryId;
+    private final PlannerContext plannerContext;
+
+    private final IrTypeAnalyzer typeAnalyzer;
 
     Rewriter(
         MPPQueryContext queryContext,
         Analysis analysis,
         Metadata metadata,
-        SymbolAllocator symbolAllocator) {
+        SymbolAllocator symbolAllocator,
+        PlannerContext plannerContext,
+        IrTypeAnalyzer typeAnalyzer) {
       this.queryContext = queryContext;
       this.analysis = analysis;
       this.metadata = metadata;
       this.symbolAllocator = symbolAllocator;
       this.queryId = queryContext.getQueryId();
+      this.plannerContext = plannerContext;
+      this.typeAnalyzer = typeAnalyzer;
     }
 
     @Override
@@ -550,7 +579,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           context.inheritedPredicate != null ? context.inheritedPredicate : TRUE_LITERAL;
 
       // See if we can rewrite outer joins in terms of a plain inner join
-      // node = tryNormalizeToOuterToInnerJoin(node, inheritedPredicate);
+      node = tryNormalizeToOuterToInnerJoin(node, inheritedPredicate);
 
       Expression leftEffectivePredicate = TRUE_LITERAL;
       // effectivePredicateExtractor.extract(session, node.getLeftChild(), types, typeAnalyzer);
@@ -1054,6 +1083,99 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       } else {
         return metadata.getDataPartition(database, dataPartitionQueryParams);
       }
+    }
+
+    private JoinNode tryNormalizeToOuterToInnerJoin(JoinNode node, Expression inheritedPredicate) {
+      checkArgument(
+          EnumSet.of(INNER, RIGHT, LEFT, FULL).contains(node.getJoinType()),
+          "Unsupported join type: %s",
+          node.getJoinType());
+
+      if (node.getJoinType() == JoinNode.JoinType.INNER) {
+        return node;
+      }
+
+      if (node.getJoinType() == JoinNode.JoinType.FULL) {
+        boolean canConvertToLeftJoin =
+            canConvertOuterToInner(node.getLeftChild().getOutputSymbols(), inheritedPredicate);
+        boolean canConvertToRightJoin =
+            canConvertOuterToInner(node.getRightChild().getOutputSymbols(), inheritedPredicate);
+        if (!canConvertToLeftJoin && !canConvertToRightJoin) {
+          return node;
+        }
+        if (canConvertToLeftJoin && canConvertToRightJoin) {
+          return new JoinNode(
+              node.getPlanNodeId(),
+              INNER,
+              node.getLeftChild(),
+              node.getRightChild(),
+              node.getCriteria(),
+              node.getLeftOutputSymbols(),
+              node.getRightOutputSymbols(),
+              node.getFilter(),
+              node.isSpillable());
+        }
+        return new JoinNode(
+            node.getPlanNodeId(),
+            canConvertToLeftJoin ? LEFT : RIGHT,
+            node.getLeftChild(),
+            node.getRightChild(),
+            node.getCriteria(),
+            node.getLeftOutputSymbols(),
+            node.getRightOutputSymbols(),
+            node.getFilter(),
+            node.isSpillable());
+      }
+
+      if (node.getJoinType() == JoinNode.JoinType.LEFT
+              && !canConvertOuterToInner(
+                  node.getRightChild().getOutputSymbols(), inheritedPredicate)
+          || node.getJoinType() == JoinNode.JoinType.RIGHT
+              && !canConvertOuterToInner(
+                  node.getLeftChild().getOutputSymbols(), inheritedPredicate)) {
+        return node;
+      }
+      return new JoinNode(
+          node.getPlanNodeId(),
+          JoinNode.JoinType.INNER,
+          node.getLeftChild(),
+          node.getRightChild(),
+          node.getCriteria(),
+          node.getLeftOutputSymbols(),
+          node.getRightOutputSymbols(),
+          node.getFilter(),
+          node.isSpillable());
+    }
+
+    private boolean canConvertOuterToInner(
+        List<Symbol> innerSymbolsForOuterJoin, Expression inheritedPredicate) {
+      Set<Symbol> innerSymbols = ImmutableSet.copyOf(innerSymbolsForOuterJoin);
+      for (Expression conjunct : extractConjuncts(inheritedPredicate)) {
+        if (isDeterministic(conjunct)) {
+          // Ignore a conjunct for this test if we cannot deterministically get responses from it
+          Object response = nullInputEvaluator(innerSymbols, conjunct);
+          if (response == null
+              || response instanceof NullLiteral
+              || Boolean.FALSE.equals(response)) {
+            // If there is a single conjunct that returns FALSE or NULL given all NULL inputs for
+            // the inner side symbols of an outer join
+            // then this conjunct removes all effects of the outer join, and effectively turns this
+            // into an equivalent of an inner join.
+            // So, let's just rewrite this join as an INNER join
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    /** Evaluates an expression's response to binding the specified input symbols to NULL */
+    private Object nullInputEvaluator(Collection<Symbol> nullSymbols, Expression expression) {
+      Map<NodeRef<Expression>, Type> expressionTypes =
+          typeAnalyzer.getTypes(queryContext.getSession(), symbolAllocator.getTypes(), expression);
+      return new IrExpressionInterpreter(
+              expression, plannerContext, queryContext.getSession(), expressionTypes)
+          .optimize(symbol -> nullSymbols.contains(symbol) ? null : symbol.toSymbolReference());
     }
   }
 
