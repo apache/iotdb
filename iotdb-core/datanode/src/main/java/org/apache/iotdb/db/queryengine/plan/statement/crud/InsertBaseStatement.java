@@ -341,6 +341,10 @@ public abstract class InsertBaseStatement extends Statement {
             .collect(Collectors.toList());
   }
 
+  public Map<Integer, FailedMeasurementInfo> getFailedMeasurementInfoMap() {
+    return failedMeasurementIndex2Info;
+  }
+
   public List<Exception> getFailedExceptions() {
     return failedMeasurementIndex2Info == null
         ? Collections.emptyList()
@@ -364,7 +368,7 @@ public abstract class InsertBaseStatement extends Statement {
             .collect(Collectors.toList());
   }
 
-  protected static class FailedMeasurementInfo {
+  public static class FailedMeasurementInfo {
     protected String measurement;
     protected TSDataType dataType;
     protected Object value;

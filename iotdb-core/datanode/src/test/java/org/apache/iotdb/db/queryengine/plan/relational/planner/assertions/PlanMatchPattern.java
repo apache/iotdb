@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNod
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
@@ -459,6 +460,16 @@ public final class PlanMatchPattern {
     JoinMatcher.Builder builder = new JoinMatcher.Builder(type);
     handler.accept(builder);
     return builder.build();
+  }
+
+  public static PlanMatchPattern semiJoin(
+      String sourceSymbolAlias,
+      String filteringSymbolAlias,
+      String outputAlias,
+      PlanMatchPattern source,
+      PlanMatchPattern filtering) {
+    return node(SemiJoinNode.class, source, filtering)
+        .with(new SemiJoinMatcher(sourceSymbolAlias, filteringSymbolAlias, outputAlias));
   }
 
   public static PlanMatchPattern streamSort(PlanMatchPattern source) {
