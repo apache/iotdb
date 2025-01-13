@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.it.regionmigration;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
@@ -31,15 +32,19 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
-import org.apache.iotdb.itbase.exception.InconsistentDataException;
 import org.apache.iotdb.metrics.utils.SystemType;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.Session;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.read.common.Field;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.After;
@@ -52,9 +57,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -69,22 +71,26 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentHashMap.KeySetView;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-public class IoTDBRegionMigrateReliabilityITFramework {
+import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
+
+public class IoTDBRegionOperationReliabilityITFramework {
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(IoTDBRegionMigrateReliabilityITFramework.class);
-  private static final String INSERTION1 =
+      LoggerFactory.getLogger(IoTDBRegionOperationReliabilityITFramework.class);
+  public static final String INSERTION1 =
       "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(100, 1, 2)";
   private static final String INSERTION2 =
       "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(101, 3, 4)";
-  private static final String FLUSH_COMMAND = "flush";
+  public static final String FLUSH_COMMAND = "flush on cluster";
   private static final String SHOW_REGIONS = "show regions";
   private static final String SHOW_DATANODES = "show datanodes";
   private static final String COUNT_TIMESERIES = "select count(*) from root.sg.**";
@@ -208,34 +214,25 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     EnvFactory.getEnv().registerDataNodeKillPoints(new ArrayList<>(dataNodeKeywords));
     EnvFactory.getEnv().initClusterEnvironment(configNodeNum, dataNodeNum);
 
-    try (final Connection connection = closeQuietly(EnvFactory.getEnv().getConnection());
-        final Statement statement = closeQuietly(connection.createStatement());
+    try (final Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+        final Statement statement = makeItCloseQuietly(connection.createStatement());
         SyncConfigNodeIServiceClient client =
             (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      // prepare data
       statement.execute(INSERTION1);
+      statement.execute(FLUSH_COMMAND);
 
-      ResultSet result = statement.executeQuery(SHOW_REGIONS);
-      Map<Integer, Set<Integer>> regionMap = getRegionMap(result);
+      // collect necessary information
+      Map<Integer, Set<Integer>> regionMap = getDataRegionMap(statement);
+      Set<Integer> allDataNodeId = getAllDataNodes(statement);
 
-      result = statement.executeQuery(SHOW_DATANODES);
-      Set<Integer> allDataNodeId = new HashSet<>();
-      while (result.next()) {
-        allDataNodeId.add(result.getInt(ColumnHeaderConstant.NODE_ID));
-      }
-
+      // select region migration related DataNodes
       final int selectedRegion = selectRegion(regionMap);
       final int originalDataNode = selectOriginalDataNode(regionMap, selectedRegion);
-      final int destDataNode = selectDestDataNode(allDataNodeId, regionMap, selectedRegion);
-
+      final int destDataNode =
+          selectDataNodeNotContainsRegion(allDataNodeId, regionMap, selectedRegion);
       checkRegionFileExist(originalDataNode);
       checkPeersExist(regionMap.get(selectedRegion), originalDataNode, selectedRegion);
-
-      try {
-        awaitUntilFlush(statement, originalDataNode);
-      } catch (ConditionTimeoutException e) {
-        LOGGER.error("Flush timeout:", e);
-        Assert.fail();
-      }
 
       // set kill points
       if (killNode == KillNode.ORIGINAL_DATANODE) {
@@ -270,8 +267,19 @@ public class IoTDBRegionMigrateReliabilityITFramework {
       statement.execute(buildRegionMigrateCommand(selectedRegion, originalDataNode, destDataNode));
 
       boolean success = false;
+      Predicate<TShowRegionResp> migrateRegionPredicate =
+          tShowRegionResp -> {
+            Map<Integer, Set<Integer>> newRegionMap =
+                getRegionMap(tShowRegionResp.getRegionInfoList());
+            Set<Integer> dataNodes = newRegionMap.get(selectedRegion);
+            return !dataNodes.contains(originalDataNode) && dataNodes.contains(destDataNode);
+          };
       try {
-        awaitUntilSuccess(client, selectedRegion, originalDataNode, destDataNode);
+        awaitUntilSuccess(
+            client,
+            migrateRegionPredicate,
+            Optional.of(destDataNode),
+            Optional.of(originalDataNode));
         success = true;
       } catch (ConditionTimeoutException e) {
         if (expectMigrateSuccess) {
@@ -301,9 +309,16 @@ public class IoTDBRegionMigrateReliabilityITFramework {
       }
 
       LOGGER.info("test pass");
-    } catch (InconsistentDataException ignore) {
-
     }
+  }
+
+  protected Set<Integer> getAllDataNodes(Statement statement) throws Exception {
+    ResultSet result = statement.executeQuery(SHOW_DATANODES);
+    Set<Integer> allDataNodeId = new HashSet<>();
+    while (result.next()) {
+      allDataNodeId.add(result.getInt(ColumnHeaderConstant.NODE_ID));
+    }
+    return allDataNodeId;
   }
 
   private void setConfigNodeKillPoints(
@@ -420,8 +435,8 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     return result;
   }
 
-  public static Map<Integer, Set<Integer>> getRegionMap(ResultSet showRegionsResult)
-      throws SQLException {
+  public static Map<Integer, Set<Integer>> getDataRegionMap(Statement statement) throws Exception {
+    ResultSet showRegionsResult = statement.executeQuery(SHOW_REGIONS);
     Map<Integer, Set<Integer>> regionMap = new HashMap<>();
     while (showRegionsResult.next()) {
       if (String.valueOf(TConsensusGroupType.DataRegion)
@@ -434,7 +449,18 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     return regionMap;
   }
 
-  private static Map<Integer, Set<Integer>> getRegionMap(List<TRegionInfo> regionInfoList) {
+  public static Map<Integer, Set<Integer>> getAllRegionMap(Statement statement) throws Exception {
+    ResultSet showRegionsResult = statement.executeQuery(SHOW_REGIONS);
+    Map<Integer, Set<Integer>> regionMap = new HashMap<>();
+    while (showRegionsResult.next()) {
+      int regionId = showRegionsResult.getInt(ColumnHeaderConstant.REGION_ID);
+      int dataNodeId = showRegionsResult.getInt(ColumnHeaderConstant.DATA_NODE_ID);
+      regionMap.computeIfAbsent(regionId, id -> new HashSet<>()).add(dataNodeId);
+    }
+    return regionMap;
+  }
+
+  protected static Map<Integer, Set<Integer>> getRegionMap(List<TRegionInfo> regionInfoList) {
     Map<Integer, Set<Integer>> regionMap = new HashMap<>();
     regionInfoList.forEach(
         regionInfo -> {
@@ -446,7 +472,22 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     return regionMap;
   }
 
-  private static int selectRegion(Map<Integer, Set<Integer>> regionMap) {
+  protected static Map<Integer, Set<Integer>> getRunningRegionMap(
+      List<TRegionInfo> regionInfoList) {
+    Map<Integer, Set<Integer>> regionMap = new HashMap<>();
+    regionInfoList.stream()
+        .filter(regionInfo -> RegionStatus.Running.getStatus().equals(regionInfo.getStatus()))
+        .forEach(
+            regionInfo -> {
+              int regionId = regionInfo.getConsensusGroupId().getId();
+              regionMap
+                  .computeIfAbsent(regionId, regionId1 -> new HashSet<>())
+                  .add(regionInfo.getDataNodeId());
+            });
+    return regionMap;
+  }
+
+  protected static int selectRegion(Map<Integer, Set<Integer>> regionMap) {
     return regionMap.keySet().stream().findAny().orElseThrow(() -> new RuntimeException("gg"));
   }
 
@@ -457,7 +498,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
         .orElseThrow(() -> new RuntimeException("cannot find original DataNode"));
   }
 
-  private static int selectDestDataNode(
+  protected static int selectDataNodeNotContainsRegion(
       Set<Integer> dataNodeSet, Map<Integer, Set<Integer>> regionMap, int selectedRegion) {
     return dataNodeSet.stream()
         .filter(dataNodeId -> !regionMap.get(selectedRegion).contains(dataNodeId))
@@ -465,7 +506,16 @@ public class IoTDBRegionMigrateReliabilityITFramework {
         .orElseThrow(() -> new RuntimeException("cannot find dest DataNode"));
   }
 
-  private static void awaitUntilFlush(Statement statement, int originalDataNode) {
+  protected static int selectDataNodeContainsRegion(
+      Set<Integer> dataNodeSet, Map<Integer, Set<Integer>> regionMap, int selectedRegion) {
+    return dataNodeSet.stream()
+        .filter(dataNodeId -> regionMap.get(selectedRegion).contains(dataNodeId))
+        .findAny()
+        .orElseThrow(() -> new RuntimeException("cannot find dest DataNode"));
+  }
+
+  // I believe this function is not necessary, just keep it here in case it's necessary
+  private static void awaitUntilFlush(Statement statement, int originalDataNode) throws Exception {
     long startTime = System.currentTimeMillis();
     File sequence = new File(buildDataPath(originalDataNode, true));
     File unsequence = new File(buildDataPath(originalDataNode, false));
@@ -488,11 +538,11 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     LOGGER.info("Flush cost time: {}ms", System.currentTimeMillis() - startTime);
   }
 
-  private static void awaitUntilSuccess(
+  protected static void awaitUntilSuccess(
       SyncConfigNodeIServiceClient client,
-      int selectedRegion,
-      int originalDataNode,
-      int destDataNode) {
+      Predicate<TShowRegionResp> predicate,
+      Optional<Integer> dataNodeExpectInRegionGroup,
+      Optional<Integer> dataNodeExpectNotInRegionGroup) {
     AtomicReference<Set<Integer>> lastTimeDataNodes = new AtomicReference<>();
     AtomicReference<Exception> lastException = new AtomicReference<>();
     AtomicReference<SyncConfigNodeIServiceClient> clientRef = new AtomicReference<>(client);
@@ -504,10 +554,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
               () -> {
                 try {
                   TShowRegionResp resp = clientRef.get().showRegion(new TShowRegionReq());
-                  Map<Integer, Set<Integer>> newRegionMap = getRegionMap(resp.getRegionInfoList());
-                  Set<Integer> dataNodes = newRegionMap.get(selectedRegion);
-                  lastTimeDataNodes.set(dataNodes);
-                  return !dataNodes.contains(originalDataNode) && dataNodes.contains(destDataNode);
+                  return predicate.test(resp);
                 } catch (TException e) {
                   clientRef.set(
                       (SyncConfigNodeIServiceClient)
@@ -528,8 +575,8 @@ public class IoTDBRegionMigrateReliabilityITFramework {
         throw e;
       }
       String actualSetStr = lastTimeDataNodes.get().toString();
-      lastTimeDataNodes.get().remove(originalDataNode);
-      lastTimeDataNodes.get().add(destDataNode);
+      dataNodeExpectNotInRegionGroup.ifPresent(x -> lastTimeDataNodes.get().remove(x));
+      dataNodeExpectInRegionGroup.ifPresent(x -> lastTimeDataNodes.get().add(x));
       String expectSetStr = lastTimeDataNodes.toString();
       LOGGER.error("DataNode Set {} is unexpected, expect {}", actualSetStr, expectSetStr);
       if (lastException.get() == null) {
@@ -703,26 +750,21 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     return result;
   }
 
-  public static <T> T closeQuietly(T t) {
-    InvocationHandler handler =
-        (proxy, method, args) -> {
-          try {
-            if (method.getName().equals("close")) {
-              try {
-                method.invoke(t, args);
-              } catch (Throwable e) {
-                LOGGER.warn("Exception happens during close(): ", e);
-              }
-              return null;
-            } else {
-              return method.invoke(t, args);
-            }
-          } catch (InvocationTargetException e) {
-            throw e.getTargetException();
-          }
-        };
-    return (T)
-        Proxy.newProxyInstance(
-            t.getClass().getClassLoader(), t.getClass().getInterfaces(), handler);
+  protected static Map<Integer, String> getRegionStatusWithoutRunning(Session session)
+      throws IoTDBConnectionException, StatementExecutionException {
+    SessionDataSet dataSet = session.executeQueryStatement("show regions");
+    final int regionIdIndex = dataSet.getColumnNames().indexOf("RegionId");
+    final int regionStatusIndex = dataSet.getColumnNames().indexOf("Status");
+    dataSet.setFetchSize(1024);
+    Map<Integer, String> result = new TreeMap<>();
+    while (dataSet.hasNext()) {
+      List<Field> fields = dataSet.next().getFields();
+      final int regionId = fields.get(regionIdIndex).getIntV();
+      final String regionStatus = fields.get(regionStatusIndex).toString();
+      if (!"Running".equals(regionStatus)) {
+        result.putIfAbsent(regionId, regionStatus);
+      }
+    }
+    return result;
   }
 }

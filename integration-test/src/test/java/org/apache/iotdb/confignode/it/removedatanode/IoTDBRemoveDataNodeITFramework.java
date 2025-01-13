@@ -51,8 +51,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework.closeQuietly;
-import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework.getRegionMap;
+import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework.getDataRegionMap;
+import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
 
 public class IoTDBRemoveDataNodeITFramework {
   private static final Logger LOGGER =
@@ -143,16 +143,15 @@ public class IoTDBRemoveDataNodeITFramework {
             dataRegionPerDataNode * dataNodeNum / dataReplicateFactor);
     EnvFactory.getEnv().initClusterEnvironment(configNodeNum, dataNodeNum);
 
-    try (final Connection connection = closeQuietly(EnvFactory.getEnv().getConnection());
-        final Statement statement = closeQuietly(connection.createStatement());
+    try (final Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+        final Statement statement = makeItCloseQuietly(connection.createStatement());
         SyncConfigNodeIServiceClient client =
             (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
       // Insert data
       statement.execute(INSERTION1);
 
-      ResultSet result = statement.executeQuery(SHOW_REGIONS);
-      Map<Integer, Set<Integer>> regionMap = getRegionMap(result);
+      Map<Integer, Set<Integer>> regionMap = getDataRegionMap(statement);
       regionMap.forEach(
           (key, valueSet) -> {
             LOGGER.info("Key: {}, Value: {}", key, valueSet);
@@ -162,7 +161,7 @@ public class IoTDBRemoveDataNodeITFramework {
           });
 
       // Get all data nodes
-      result = statement.executeQuery(SHOW_DATANODES);
+      ResultSet result = statement.executeQuery(SHOW_DATANODES);
       Set<Integer> allDataNodeId = new HashSet<>();
       while (result.next()) {
         allDataNodeId.add(result.getInt(ColumnHeaderConstant.NODE_ID));
@@ -238,12 +237,11 @@ public class IoTDBRemoveDataNodeITFramework {
       LOGGER.error("Unexpected error:", e);
     }
 
-    try (final Connection connection = closeQuietly(EnvFactory.getEnv().getConnection());
-        final Statement statement = closeQuietly(connection.createStatement())) {
+    try (final Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+        final Statement statement = makeItCloseQuietly(connection.createStatement())) {
 
       // Check the data region distribution after removing data nodes
-      ResultSet result = statement.executeQuery(SHOW_REGIONS);
-      Map<Integer, Set<Integer>> afterRegionMap = getRegionMap(result);
+      Map<Integer, Set<Integer>> afterRegionMap = getDataRegionMap(statement);
       afterRegionMap.forEach(
           (key, valueSet) -> {
             LOGGER.info("Key: {}, Value: {}", key, valueSet);
@@ -253,7 +251,7 @@ public class IoTDBRemoveDataNodeITFramework {
           });
 
       if (rejoinRemovedDataNode) {
-        result = statement.executeQuery(SHOW_DATANODES);
+        ResultSet result = statement.executeQuery(SHOW_DATANODES);
         Set<Integer> allDataNodeId = new HashSet<>();
         while (result.next()) {
           allDataNodeId.add(result.getInt(ColumnHeaderConstant.NODE_ID));

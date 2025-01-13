@@ -97,7 +97,7 @@ public class RegionMaintainHandler {
         location.getDataNodeId(), location.getClientRpcEndPoint());
   }
 
-  public String simplifiedLocation(TDataNodeLocation dataNodeLocation) {
+  public static String simplifiedLocation(TDataNodeLocation dataNodeLocation) {
     return dataNodeLocation.getDataNodeId() + "@" + dataNodeLocation.getInternalEndPoint().getIp();
   }
 

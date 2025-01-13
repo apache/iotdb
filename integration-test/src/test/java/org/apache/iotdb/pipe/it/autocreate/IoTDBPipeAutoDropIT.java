@@ -43,7 +43,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework.closeQuietly;
+import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
 import static org.awaitility.Awaitility.await;
 
 @RunWith(IoTDBTestRunner.class)
@@ -93,8 +93,8 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualAutoIT {
           "count(root.db.d1.s1),",
           Collections.singleton("1,"));
 
-      try (final Connection connection = closeQuietly(senderEnv.getConnection());
-          final Statement statement = closeQuietly(connection.createStatement()); ) {
+      try (final Connection connection = makeItCloseQuietly(senderEnv.getConnection());
+          final Statement statement = makeItCloseQuietly(connection.createStatement()); ) {
         ResultSet result = statement.executeQuery("show pipes");
         await()
             .pollInSameThread()
@@ -168,8 +168,8 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualAutoIT {
           "count(root.db.d1.s1),",
           Collections.singleton("3,"));
 
-      try (final Connection connection = closeQuietly(senderEnv.getConnection());
-          final Statement statement = closeQuietly(connection.createStatement()); ) {
+      try (final Connection connection = makeItCloseQuietly(senderEnv.getConnection());
+          final Statement statement = makeItCloseQuietly(connection.createStatement()); ) {
         ResultSet result = statement.executeQuery("show pipes");
         await()
             .pollInSameThread()

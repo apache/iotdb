@@ -17,27 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
+package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region;
 
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.MigrateRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ExtendRegionStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class MigrateRegionTask implements IConfigTask {
+public class ExtendRegionTask implements IConfigTask {
 
-  protected final MigrateRegionStatement statement;
+  protected final ExtendRegionStatement statement;
 
-  public MigrateRegionTask(MigrateRegionStatement migrateRegionStatement) {
-    this.statement = migrateRegionStatement;
+  public ExtendRegionTask(ExtendRegionStatement statement) {
+    this.statement = statement;
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor) {
-    // If the action is executed successfully, return the Future.
-    // If your operation is async, you can return the corresponding future directly.
-    return configTaskExecutor.migrateRegion(statement);
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+      throws InterruptedException {
+    return configTaskExecutor.extendRegion(statement);
   }
 }

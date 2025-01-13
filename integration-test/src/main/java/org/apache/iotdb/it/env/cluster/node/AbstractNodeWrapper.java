@@ -630,6 +630,18 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     return System.getProperty(USER_DIR) + File.separator + TARGET + File.separator + getId();
   }
 
+  public String getDataPath() {
+    return getNodePath()
+        + File.separator
+        + IoTDBConstant.DATA_FOLDER_NAME
+        + File.separator
+        + getNodeType()
+        + File.separator
+        + IoTDBConstant.DATA_FOLDER_NAME;
+  }
+
+  abstract String getNodeType();
+
   public void dumpJVMSnapshot(String testCaseName) {
     JMXServiceURL url;
     try {
