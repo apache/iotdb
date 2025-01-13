@@ -37,7 +37,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -53,14 +52,6 @@ public class RepairDataFileScanUtilTest extends AbstractCompactionTest {
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
-  }
-
-  @Test
-  public void test1() {
-    File file = new File("/Users/shuww/Downloads/0110/1736421231920-1974-0-0.tsfile");
-    TsFileResource resource = new TsFileResource(file);
-    RepairDataFileScanUtil scanUtil = new RepairDataFileScanUtil(resource, true);
-    scanUtil.scanTsFile(false);
   }
 
   @Test
