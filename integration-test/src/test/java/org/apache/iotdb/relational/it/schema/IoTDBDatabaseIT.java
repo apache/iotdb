@@ -370,7 +370,7 @@ public class IoTDBDatabaseIT {
                   "regions,INF,",
                   "topics,INF,",
                   "pipe_plugins,INF,",
-                  "topics,INF,",
+                  "pipes,INF,",
                   "subscriptions,INF,")));
 
       TestUtils.assertResultSetEqual(
