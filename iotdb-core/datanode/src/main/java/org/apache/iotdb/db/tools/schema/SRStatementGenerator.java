@@ -34,6 +34,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTime
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
+import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.snapshot.MemMTreeSnapshotUtil;
 
@@ -81,6 +83,10 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
 
   private final FileChannel tagFileChannel;
 
+  // Mem-control
+  private final MemSchemaRegionStatistics schemaRegionStatistics =
+      new MemSchemaRegionStatistics(-1, SchemaEngine.getInstance().getSchemaEngineStatistics());
+
   // Help to record the state of traversing
   private final Deque<IMemMNode> ancestors = new ArrayDeque<>();
   private final Deque<Integer> restChildrenNum = new ArrayDeque<>();
@@ -115,7 +121,9 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
     this.databaseFullPath = databaseFullPath;
 
     Byte version = ReadWriteIOUtils.readByte(inputStream);
-    curNode = deserializeMNode(ancestors, restChildrenNum, deserializer, inputStream);
+    curNode =
+        deserializeMNode(
+            ancestors, restChildrenNum, deserializer, inputStream, schemaRegionStatistics);
     nodeCount++;
   }
 
@@ -149,7 +157,9 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
       } else {
         restChildrenNum.push(childNum - 1);
         try {
-          curNode = deserializeMNode(ancestors, restChildrenNum, deserializer, inputStream);
+          curNode =
+              deserializeMNode(
+                  ancestors, restChildrenNum, deserializer, inputStream, schemaRegionStatistics);
           nodeCount++;
         } catch (IOException ioe) {
           lastExcept = ioe;
@@ -161,6 +171,8 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
 
           } catch (IOException e) {
             lastExcept = e;
+          } finally {
+            schemaRegionStatistics.clear();
           }
           return false;
         }
@@ -182,6 +194,8 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
       }
     } catch (IOException e) {
       lastExcept = e;
+    } finally {
+      schemaRegionStatistics.clear();
     }
     return false;
   }
@@ -203,6 +217,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
   private void cleanMtreeNode(IMNode node) {
     final IMNodeContainer<IMemMNode> children = node.getAsInternalMNode().getChildren();
     nodeCount = nodeCount - children.size();
+    children.values().forEach(child -> schemaRegionStatistics.releaseMemory(child.estimateSize()));
     node.getChildren().clear();
   }
 
@@ -210,7 +225,8 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
       Deque<IMemMNode> ancestors,
       Deque<Integer> restChildrenNum,
       MemMTreeSnapshotUtil.MNodeDeserializer deserializer,
-      InputStream inputStream)
+      InputStream inputStream,
+      MemSchemaRegionStatistics regionStatistics)
       throws IOException {
     final byte type = ReadWriteIOUtils.readByte(inputStream);
     final int childrenNum;
@@ -243,6 +259,8 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
       default:
         throw new IOException("Unrecognized MNode type" + type);
     }
+
+    regionStatistics.requestMemory(node.estimateSize());
 
     if (!ancestors.isEmpty()) {
       final IMemMNode parent = ancestors.peek();
