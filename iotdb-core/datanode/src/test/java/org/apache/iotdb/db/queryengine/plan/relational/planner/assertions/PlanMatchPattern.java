@@ -311,6 +311,12 @@ public final class PlanMatchPattern {
     return result;
   }
 
+  public static ExpectedValueProvider<AggregationFunction> distinctAggregationFunction(
+      String name, List<String> args) {
+    return new AggregationFunctionProvider(
+        name, true, toSymbolAliases(args), ImmutableList.of(), Optional.empty());
+  }
+
   public static ExpectedValueProvider<AggregationFunction> aggregationFunction(
       String name, List<String> args) {
     return new AggregationFunctionProvider(

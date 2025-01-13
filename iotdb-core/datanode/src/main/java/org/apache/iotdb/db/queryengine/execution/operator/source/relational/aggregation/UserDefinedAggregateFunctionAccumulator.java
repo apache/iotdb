@@ -70,10 +70,12 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
   }
 
   @Override
-  public void addInput(Column[] arguments) {
+  public void addInput(Column[] arguments, AggregationMask mask) {
     RecordIterator iterator =
-        new RecordIterator(
-            Arrays.asList(arguments), inputDataTypes, arguments[0].getPositionCount());
+        mask.isSelectAll()
+            ? new RecordIterator(
+                Arrays.asList(arguments), inputDataTypes, arguments[0].getPositionCount())
+            : new MaskedRecordIterator(Arrays.asList(arguments), inputDataTypes, mask);
     while (iterator.hasNext()) {
       aggregateFunction.addInput(state, iterator.next());
     }

@@ -100,32 +100,32 @@ public class LastByAccumulator implements TableAccumulator {
   }
 
   @Override
-  public void addInput(Column[] arguments) {
+  public void addInput(Column[] arguments, AggregationMask mask) {
     checkArgument(arguments.length == 3, "Length of input Column[] for LastBy should be 3");
 
     // arguments[0] is x column, arguments[1] is y column, arguments[2] is time column
     switch (xDataType) {
       case INT32:
       case DATE:
-        addIntInput(arguments[0], arguments[1], arguments[2]);
+        addIntInput(arguments[0], arguments[1], arguments[2], mask);
         return;
       case INT64:
       case TIMESTAMP:
-        addLongInput(arguments[0], arguments[1], arguments[2]);
+        addLongInput(arguments[0], arguments[1], arguments[2], mask);
         return;
       case FLOAT:
-        addFloatInput(arguments[0], arguments[1], arguments[2]);
+        addFloatInput(arguments[0], arguments[1], arguments[2], mask);
         return;
       case DOUBLE:
-        addDoubleInput(arguments[0], arguments[1], arguments[2]);
+        addDoubleInput(arguments[0], arguments[1], arguments[2], mask);
         return;
       case TEXT:
       case STRING:
       case BLOB:
-        addBinaryInput(arguments[0], arguments[1], arguments[2]);
+        addBinaryInput(arguments[0], arguments[1], arguments[2], mask);
         return;
       case BOOLEAN:
-        addBooleanInput(arguments[0], arguments[1], arguments[2]);
+        addBooleanInput(arguments[0], arguments[1], arguments[2], mask);
         return;
       default:
         throw new UnSupportedDataTypeException(
@@ -335,10 +335,24 @@ public class LastByAccumulator implements TableAccumulator {
   }
 
   // TODO can add last position optimization if last position is null ?
-  protected void addIntInput(Column xColumn, Column yColumn, Column timeColumn) {
-    for (int i = 0; i < yColumn.getPositionCount(); i++) {
-      if (!yColumn.isNull(i)) {
-        updateIntLastValue(xColumn, i, timeColumn.getLong(i));
+  protected void addIntInput(
+      Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!yColumn.isNull(i)) {
+          updateIntLastValue(xColumn, i, timeColumn.getLong(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!yColumn.isNull(position)) {
+          updateIntLastValue(xColumn, position, timeColumn.getLong(position));
+        }
       }
     }
   }
@@ -365,10 +379,24 @@ public class LastByAccumulator implements TableAccumulator {
     }
   }
 
-  protected void addLongInput(Column xColumn, Column yColumn, Column timeColumn) {
-    for (int i = 0; i < yColumn.getPositionCount(); i++) {
-      if (!yColumn.isNull(i)) {
-        updateLongLastValue(xColumn, i, timeColumn.getLong(i));
+  protected void addLongInput(
+      Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!yColumn.isNull(i)) {
+          updateLongLastValue(xColumn, i, timeColumn.getLong(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!yColumn.isNull(position)) {
+          updateLongLastValue(xColumn, position, timeColumn.getLong(position));
+        }
       }
     }
   }
@@ -395,10 +423,24 @@ public class LastByAccumulator implements TableAccumulator {
     }
   }
 
-  protected void addFloatInput(Column xColumn, Column yColumn, Column timeColumn) {
-    for (int i = 0; i < yColumn.getPositionCount(); i++) {
-      if (!yColumn.isNull(i)) {
-        updateFloatLastValue(xColumn, i, timeColumn.getLong(i));
+  protected void addFloatInput(
+      Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!yColumn.isNull(i)) {
+          updateFloatLastValue(xColumn, i, timeColumn.getLong(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!yColumn.isNull(position)) {
+          updateFloatLastValue(xColumn, position, timeColumn.getLong(position));
+        }
       }
     }
   }
@@ -425,10 +467,24 @@ public class LastByAccumulator implements TableAccumulator {
     }
   }
 
-  protected void addDoubleInput(Column xColumn, Column yColumn, Column timeColumn) {
-    for (int i = 0; i < yColumn.getPositionCount(); i++) {
-      if (!yColumn.isNull(i)) {
-        updateDoubleLastValue(xColumn, i, timeColumn.getLong(i));
+  protected void addDoubleInput(
+      Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!yColumn.isNull(i)) {
+          updateDoubleLastValue(xColumn, i, timeColumn.getLong(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!yColumn.isNull(position)) {
+          updateDoubleLastValue(xColumn, position, timeColumn.getLong(position));
+        }
       }
     }
   }
@@ -455,10 +511,24 @@ public class LastByAccumulator implements TableAccumulator {
     }
   }
 
-  protected void addBinaryInput(Column xColumn, Column yColumn, Column timeColumn) {
-    for (int i = 0; i < yColumn.getPositionCount(); i++) {
-      if (!yColumn.isNull(i)) {
-        updateBinaryLastValue(xColumn, i, timeColumn.getLong(i));
+  protected void addBinaryInput(
+      Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!yColumn.isNull(i)) {
+          updateBinaryLastValue(xColumn, i, timeColumn.getLong(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!yColumn.isNull(position)) {
+          updateBinaryLastValue(xColumn, position, timeColumn.getLong(position));
+        }
       }
     }
   }
@@ -485,10 +555,24 @@ public class LastByAccumulator implements TableAccumulator {
     }
   }
 
-  protected void addBooleanInput(Column xColumn, Column yColumn, Column timeColumn) {
-    for (int i = 0; i < yColumn.getPositionCount(); i++) {
-      if (!yColumn.isNull(i)) {
-        updateBooleanLastValue(xColumn, i, timeColumn.getLong(i));
+  protected void addBooleanInput(
+      Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!yColumn.isNull(i)) {
+          updateBooleanLastValue(xColumn, i, timeColumn.getLong(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!yColumn.isNull(position)) {
+          updateBooleanLastValue(xColumn, position, timeColumn.getLong(position));
+        }
       }
     }
   }

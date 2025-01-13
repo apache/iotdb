@@ -35,55 +35,139 @@ public class FirstByDescAccumulator extends FirstByAccumulator {
   }
 
   @Override
-  protected void addIntInput(Column xColumn, Column yColumn, Column timeColumn) {
-    for (int i = 0; i < yColumn.getPositionCount(); i++) {
-      if (!yColumn.isNull(i)) {
-        updateIntFirstValue(xColumn, i, timeColumn.getLong(i));
+  protected void addIntInput(
+      Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!yColumn.isNull(i)) {
+          updateIntFirstValue(xColumn, i, timeColumn.getLong(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!yColumn.isNull(position)) {
+          updateIntFirstValue(xColumn, position, timeColumn.getLong(position));
+        }
       }
     }
   }
 
   @Override
-  protected void addLongInput(Column xColumn, Column yColumn, Column timeColumn) {
-    for (int i = 0; i < yColumn.getPositionCount(); i++) {
-      if (!yColumn.isNull(i)) {
-        updateLongFirstValue(xColumn, i, timeColumn.getLong(i));
+  protected void addLongInput(
+      Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!yColumn.isNull(i)) {
+          updateLongFirstValue(xColumn, i, timeColumn.getLong(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!yColumn.isNull(position)) {
+          updateLongFirstValue(xColumn, position, timeColumn.getLong(position));
+        }
       }
     }
   }
 
   @Override
-  protected void addFloatInput(Column xColumn, Column yColumn, Column timeColumn) {
-    for (int i = 0; i < yColumn.getPositionCount(); i++) {
-      if (!yColumn.isNull(i)) {
-        updateFloatFirstValue(xColumn, i, timeColumn.getLong(i));
+  protected void addFloatInput(
+      Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!yColumn.isNull(i)) {
+          updateFloatFirstValue(xColumn, i, timeColumn.getLong(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!yColumn.isNull(position)) {
+          updateFloatFirstValue(xColumn, position, timeColumn.getLong(position));
+        }
       }
     }
   }
 
   @Override
-  protected void addDoubleInput(Column xColumn, Column yColumn, Column timeColumn) {
-    for (int i = 0; i < yColumn.getPositionCount(); i++) {
-      if (!yColumn.isNull(i)) {
-        updateDoubleFirstValue(xColumn, i, timeColumn.getLong(i));
+  protected void addDoubleInput(
+      Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!yColumn.isNull(i)) {
+          updateDoubleFirstValue(xColumn, i, timeColumn.getLong(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!yColumn.isNull(position)) {
+          updateDoubleFirstValue(xColumn, position, timeColumn.getLong(position));
+        }
       }
     }
   }
 
   @Override
-  protected void addBinaryInput(Column xColumn, Column yColumn, Column timeColumn) {
-    for (int i = 0; i < yColumn.getPositionCount(); i++) {
-      if (!yColumn.isNull(i)) {
-        updateBinaryFirstValue(xColumn, i, timeColumn.getLong(i));
+  protected void addBinaryInput(
+      Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!yColumn.isNull(i)) {
+          updateBinaryFirstValue(xColumn, i, timeColumn.getLong(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!yColumn.isNull(position)) {
+          updateBinaryFirstValue(xColumn, position, timeColumn.getLong(position));
+        }
       }
     }
   }
 
   @Override
-  protected void addBooleanInput(Column xColumn, Column yColumn, Column timeColumn) {
-    for (int i = 0; i < yColumn.getPositionCount(); i++) {
-      if (!yColumn.isNull(i)) {
-        updateBooleanFirstValue(xColumn, i, timeColumn.getLong(i));
+  protected void addBooleanInput(
+      Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!yColumn.isNull(i)) {
+          updateBooleanFirstValue(xColumn, i, timeColumn.getLong(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!yColumn.isNull(position)) {
+          updateBooleanFirstValue(xColumn, position, timeColumn.getLong(position));
+        }
       }
     }
   }

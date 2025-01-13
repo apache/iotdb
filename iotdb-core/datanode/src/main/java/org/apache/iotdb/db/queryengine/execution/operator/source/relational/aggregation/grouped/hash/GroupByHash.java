@@ -29,6 +29,8 @@ import org.apache.tsfile.read.common.type.Type;
 import java.util.List;
 
 public interface GroupByHash {
+  public static int DEFAULT_GROUP_NUMBER = 64;
+
   static GroupByHash createGroupByHash(
       List<Type> types, boolean hasPrecomputedHash, int expectedSize, UpdateMemory updateMemory) {
     /*if (types.size() == 1 && types.get(0).equals(BIGINT)) {

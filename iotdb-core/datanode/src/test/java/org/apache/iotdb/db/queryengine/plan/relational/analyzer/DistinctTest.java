@@ -33,6 +33,10 @@ import java.util.Optional;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationTableScan;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.collect;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.distinctAggregationFunction;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.singleGroupingSet;
@@ -115,5 +119,92 @@ public class DistinctTest {
 
     distinctQueryPlan = planTester.createPlan("select distinct avg(s1) from table1 group by s1,s2");
     assertPlan(distinctQueryPlan, expectedPlanPattern);
+  }
+
+  // ==================================================================
+  // ================== Agg-Function Distinct Test ====================
+  // ==================================================================
+  @Test
+  public void simpleAggFunctionDistinctTest() {
+    PlanTester planTester = new PlanTester();
+    // Doesn't hit optimizer PushAggregationIntoTableScan
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(
+            "select count(distinct s1), count(distinct s2) from table1 group by tag1");
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            project(
+                aggregation(
+                    // The distinct flag in Aggregation is true
+                    ImmutableMap.of(
+                        "count",
+                        distinctAggregationFunction("count", ImmutableList.of("s1")),
+                        "count_0",
+                        distinctAggregationFunction("count", ImmutableList.of("s2"))),
+                    SINGLE,
+                    tableScan(
+                        "testdb.table1",
+                        ImmutableList.of("tag1", "s1", "s2"),
+                        ImmutableSet.of("s1", "s2", "tag1"))))));
+
+    // Test distribution plan, doesn't split AggNode into multi-stages
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            project(
+                aggregation(
+                    ImmutableMap.of(
+                        "count",
+                        distinctAggregationFunction("count", ImmutableList.of("s1")),
+                        "count_0",
+                        distinctAggregationFunction("count", ImmutableList.of("s2"))),
+                    SINGLE,
+                    mergeSort(
+                        exchange(),
+                        tableScan(
+                            "testdb.table1",
+                            ImmutableList.of("tag1", "s1", "s2"),
+                            ImmutableSet.of("s1", "s2", "tag1")),
+                        exchange())))));
+
+    logicalQueryPlan =
+        planTester.createPlan(
+            "select count(distinct s1), count(distinct s2) from table1 group by s3");
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            project(
+                aggregation(
+                    ImmutableMap.of(
+                        "count",
+                        distinctAggregationFunction("count", ImmutableList.of("s1")),
+                        "count_0",
+                        distinctAggregationFunction("count", ImmutableList.of("s2"))),
+                    SINGLE,
+                    tableScan(
+                        "testdb.table1",
+                        ImmutableList.of("s1", "s2", "s3"),
+                        ImmutableSet.of("s1", "s2", "s3"))))));
+
+    // Test distribution plan, doesn't split AggNode into multi-stages too
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            project(
+                aggregation(
+                    ImmutableMap.of(
+                        "count",
+                        distinctAggregationFunction("count", ImmutableList.of("s1")),
+                        "count_0",
+                        distinctAggregationFunction("count", ImmutableList.of("s2"))),
+                    SINGLE,
+                    collect(
+                        exchange(),
+                        tableScan(
+                            "testdb.table1",
+                            ImmutableList.of("s1", "s2", "s3"),
+                            ImmutableSet.of("s1", "s2", "s3")),
+                        exchange())))));
   }
 }
