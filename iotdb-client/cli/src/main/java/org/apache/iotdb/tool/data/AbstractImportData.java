@@ -22,6 +22,7 @@ package org.apache.iotdb.tool.data;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.tool.common.Constants;
 import org.apache.iotdb.tool.tsfile.ImportTsFileScanTool;
 
 import java.io.File;
@@ -34,8 +35,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static org.apache.iotdb.tool.common.Constants.*;
-
 public abstract class AbstractImportData extends AbstractDataTool implements Runnable {
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
@@ -47,17 +46,17 @@ public abstract class AbstractImportData extends AbstractDataTool implements Run
   public void run() {
     String filePath;
     try {
-      if (TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
+      if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
         while ((filePath = ImportTsFileScanTool.pollFromQueue()) != null) {
           File file = new File(filePath);
-          if (file.getName().endsWith(TSFILE_SUFFIXS)) {
+          if (file.getName().endsWith(Constants.TSFILE_SUFFIXS)) {
             importFromTsFile(file);
           }
         }
       } else {
         while ((filePath = ImportDataScanTool.pollFromQueue()) != null) {
           File file = new File(filePath);
-          if (file.getName().endsWith(SQL_SUFFIXS)) {
+          if (file.getName().endsWith(Constants.SQL_SUFFIXS)) {
             importFromSqlFile(file);
           } else {
             importFromCsvFile(file);
@@ -104,7 +103,7 @@ public abstract class AbstractImportData extends AbstractDataTool implements Run
 
   protected void processSuccessFile(String file) {
     loadFileSuccessfulNum.increment();
-    if (fileType.equalsIgnoreCase(TSFILE_SUFFIXS)) {
+    if (fileType.equalsIgnoreCase(Constants.TSFILE_SUFFIXS)) {
       try {
         processingFile(file, true);
         processingLoadSuccessfulFileSuccessfulNum.increment();

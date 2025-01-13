@@ -26,6 +26,7 @@ import org.apache.iotdb.cli.utils.JlineUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.tool.common.Constants;
 import org.apache.iotdb.tool.common.OptionsUtil;
 
 import org.apache.commons.cli.CommandLine;
@@ -42,8 +43,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-
-import static org.apache.iotdb.tool.common.Constants.*;
 
 /**
  * Export CSV file.
@@ -69,27 +68,39 @@ public class ExportData extends AbstractDataTool {
     CommandLine commandLine = null;
     CommandLineParser parser = new DefaultParser();
     hf.setOptionComparator(null); // avoid reordering
-    hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
+    hf.setWidth(Constants.MAX_HELP_CONSOLE_WIDTH);
 
     if (args == null || args.length == 0) {
       printHelpOptions(
-          EXPORT_CLI_HEAD, EXPORT_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
-      System.exit(CODE_ERROR);
+          Constants.EXPORT_CLI_HEAD,
+          Constants.EXPORT_CLI_PREFIX,
+          hf,
+          tsFileOptions,
+          csvOptions,
+          sqlOptions,
+          true);
+      System.exit(Constants.CODE_ERROR);
     }
     try {
       commandLine = parser.parse(helpOptions, args, true);
     } catch (ParseException e) {
       printHelpOptions(
-          EXPORT_CLI_HEAD, EXPORT_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
-      System.exit(CODE_ERROR);
+          Constants.EXPORT_CLI_HEAD,
+          Constants.EXPORT_CLI_PREFIX,
+          hf,
+          tsFileOptions,
+          csvOptions,
+          sqlOptions,
+          true);
+      System.exit(Constants.CODE_ERROR);
     }
     final List<String> argList = Arrays.asList(args);
-    int helpIndex = argList.indexOf(MINUS + HELP_ARGS);
-    int sql_dialect = argList.indexOf(MINUS + SQL_DIALECT_ARGS); // -sql_dialect
+    int helpIndex = argList.indexOf(Constants.MINUS + Constants.HELP_ARGS);
+    int sql_dialect = argList.indexOf(Constants.MINUS + Constants.SQL_DIALECT_ARGS); // -sql_dialect
     if (sql_dialect >= 0
-        && !SQL_DIALECT_VALUE_TREE.equalsIgnoreCase(argList.get(sql_dialect + 1))) {
+        && !Constants.SQL_DIALECT_VALUE_TREE.equalsIgnoreCase(argList.get(sql_dialect + 1))) {
       final String sqlDialectValue = argList.get(sql_dialect + 1);
-      if (SQL_DIALECT_VALUE_TABLE.equalsIgnoreCase(sqlDialectValue)) {
+      if (Constants.SQL_DIALECT_VALUE_TABLE.equalsIgnoreCase(sqlDialectValue)) {
         sqlDialectTree = false;
         csvOptions = OptionsUtil.createTableExportCsvOptions();
         tsFileOptions = OptionsUtil.createTableExportTsFileSqlOptions();
@@ -97,85 +108,117 @@ public class ExportData extends AbstractDataTool {
       } else {
         ioTPrinter.println(String.format("sql_dialect %s is not support", sqlDialectValue));
         printHelpOptions(
-            IMPORT_CLI_HEAD, IMPORT_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
-        System.exit(CODE_ERROR);
+            Constants.IMPORT_CLI_HEAD,
+            Constants.IMPORT_CLI_PREFIX,
+            hf,
+            tsFileOptions,
+            csvOptions,
+            sqlOptions,
+            true);
+        System.exit(Constants.CODE_ERROR);
       }
     }
-    int ftIndex = argList.indexOf(MINUS + FILE_TYPE_ARGS);
+    int ftIndex = argList.indexOf(Constants.MINUS + Constants.FILE_TYPE_ARGS);
     if (ftIndex < 0) {
-      ftIndex = argList.indexOf(MINUS + FILE_TYPE_NAME);
+      ftIndex = argList.indexOf(Constants.MINUS + Constants.FILE_TYPE_NAME);
     }
     if (helpIndex >= 0) {
       fileType = argList.get(helpIndex + 1);
       if (StringUtils.isNotBlank(fileType)) {
-        if (TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
-          printHelpOptions(null, EXPORT_CLI_PREFIX, hf, tsFileOptions, null, null, false);
-        } else if (CSV_SUFFIXS.equalsIgnoreCase(fileType)) {
-          printHelpOptions(null, EXPORT_CLI_PREFIX, hf, null, csvOptions, null, false);
-        } else if (SQL_SUFFIXS.equalsIgnoreCase(fileType)) {
-          printHelpOptions(null, EXPORT_CLI_PREFIX, hf, null, null, sqlOptions, false);
+        if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
+          printHelpOptions(null, Constants.EXPORT_CLI_PREFIX, hf, tsFileOptions, null, null, false);
+        } else if (Constants.CSV_SUFFIXS.equalsIgnoreCase(fileType)) {
+          printHelpOptions(null, Constants.EXPORT_CLI_PREFIX, hf, null, csvOptions, null, false);
+        } else if (Constants.SQL_SUFFIXS.equalsIgnoreCase(fileType)) {
+          printHelpOptions(null, Constants.EXPORT_CLI_PREFIX, hf, null, null, sqlOptions, false);
         } else {
           ioTPrinter.println(String.format("File type %s is not support", fileType));
           printHelpOptions(
-              EXPORT_CLI_HEAD, EXPORT_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
+              Constants.EXPORT_CLI_HEAD,
+              Constants.EXPORT_CLI_PREFIX,
+              hf,
+              tsFileOptions,
+              csvOptions,
+              sqlOptions,
+              true);
         }
       } else {
         printHelpOptions(
-            EXPORT_CLI_HEAD, EXPORT_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
+            Constants.EXPORT_CLI_HEAD,
+            Constants.EXPORT_CLI_PREFIX,
+            hf,
+            tsFileOptions,
+            csvOptions,
+            sqlOptions,
+            true);
       }
-      System.exit(CODE_ERROR);
+      System.exit(Constants.CODE_ERROR);
     } else if (ftIndex >= 0) {
       fileType = argList.get(ftIndex + 1);
       if (StringUtils.isNotBlank(fileType)) {
-        if (TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
+        if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
           try {
             commandLine = parser.parse(tsFileOptions, args, true);
             //            ExportTsFile exportTsFile = new ExportTsFile(commandLine);
             //            exportTsFile.exportTsfile(CODE_OK);
           } catch (ParseException e) {
             ioTPrinter.println("Parse error: " + e.getMessage());
-            printHelpOptions(null, EXPORT_CLI_PREFIX, hf, tsFileOptions, null, null, false);
-            System.exit(CODE_ERROR);
+            printHelpOptions(
+                null, Constants.EXPORT_CLI_PREFIX, hf, tsFileOptions, null, null, false);
+            System.exit(Constants.CODE_ERROR);
           }
-        } else if (CSV_SUFFIXS.equalsIgnoreCase(fileType)) {
+        } else if (Constants.CSV_SUFFIXS.equalsIgnoreCase(fileType)) {
           try {
             commandLine = parser.parse(csvOptions, args, true);
           } catch (ParseException e) {
             ioTPrinter.println("Parse error: " + e.getMessage());
-            printHelpOptions(null, EXPORT_CLI_PREFIX, hf, null, csvOptions, null, false);
-            System.exit(CODE_ERROR);
+            printHelpOptions(null, Constants.EXPORT_CLI_PREFIX, hf, null, csvOptions, null, false);
+            System.exit(Constants.CODE_ERROR);
           }
-        } else if (SQL_SUFFIXS.equalsIgnoreCase(fileType)) {
+        } else if (Constants.SQL_SUFFIXS.equalsIgnoreCase(fileType)) {
           try {
             commandLine = parser.parse(sqlOptions, args, true);
           } catch (ParseException e) {
             ioTPrinter.println("Parse error: " + e.getMessage());
-            printHelpOptions(null, EXPORT_CLI_PREFIX, hf, null, null, sqlOptions, false);
-            System.exit(CODE_ERROR);
+            printHelpOptions(null, Constants.EXPORT_CLI_PREFIX, hf, null, null, sqlOptions, false);
+            System.exit(Constants.CODE_ERROR);
           }
         } else {
           ioTPrinter.println(String.format("File type %s is not support", fileType));
           printHelpOptions(
-              EXPORT_CLI_HEAD, EXPORT_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
-          System.exit(CODE_ERROR);
+              Constants.EXPORT_CLI_HEAD,
+              Constants.EXPORT_CLI_PREFIX,
+              hf,
+              tsFileOptions,
+              csvOptions,
+              sqlOptions,
+              true);
+          System.exit(Constants.CODE_ERROR);
         }
       } else {
         printHelpOptions(
-            EXPORT_CLI_HEAD, EXPORT_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
-        System.exit(CODE_ERROR);
+            Constants.EXPORT_CLI_HEAD,
+            Constants.EXPORT_CLI_PREFIX,
+            hf,
+            tsFileOptions,
+            csvOptions,
+            sqlOptions,
+            true);
+        System.exit(Constants.CODE_ERROR);
       }
     } else {
       ioTPrinter.println(
           String.format(
-              "Invalid args: Required values for option '%s' not provided", FILE_TYPE_NAME));
-      System.exit(CODE_ERROR);
+              "Invalid args: Required values for option '%s' not provided",
+              Constants.FILE_TYPE_NAME));
+      System.exit(Constants.CODE_ERROR);
     }
-    int exitCode = CODE_OK;
+    int exitCode = Constants.CODE_OK;
     try {
       parseBasicParams(commandLine);
       parseSpecialParams(commandLine);
       if (!checkTimeFormat()) {
-        System.exit(CODE_ERROR);
+        System.exit(Constants.CODE_ERROR);
       }
       AbstractExportData exportData;
       // check timePrecision by session
@@ -192,7 +235,7 @@ public class ExportData extends AbstractDataTool {
                 username,
                 host,
                 port);
-        String sql = lineReader.readLine(EXPORT_CLI_PREFIX + "> please input query: ");
+        String sql = lineReader.readLine(Constants.EXPORT_CLI_PREFIX + "> please input query: ");
         ioTPrinter.println(sql);
         String[] values = sql.trim().split(";");
         for (int i = 0; i < values.length; i++) {
@@ -203,28 +246,29 @@ public class ExportData extends AbstractDataTool {
       }
     } catch (IOException e) {
       ioTPrinter.println("Failed to operate on file, because " + e.getMessage());
-      exitCode = CODE_ERROR;
+      exitCode = Constants.CODE_ERROR;
     } catch (ArgsErrorException e) {
       ioTPrinter.println("Invalid args: " + e.getMessage());
-      exitCode = CODE_ERROR;
+      exitCode = Constants.CODE_ERROR;
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       ioTPrinter.println("Connect failed because " + e.getMessage());
-      exitCode = CODE_ERROR;
+      exitCode = Constants.CODE_ERROR;
     } catch (TException e) {
       ioTPrinter.println(
           "Can not get the timestamp precision from server because " + e.getMessage());
-      exitCode = CODE_ERROR;
+      exitCode = Constants.CODE_ERROR;
     }
     System.exit(exitCode);
   }
 
   private static void parseSpecialParams(CommandLine commandLine) throws ArgsErrorException {
-    targetDirectory = checkRequiredArg(TARGET_DIR_ARGS, TARGET_DIR_NAME, commandLine, null);
-    targetFile = commandLine.getOptionValue(TARGET_FILE_ARGS);
-    needDataTypePrinted = Boolean.valueOf(commandLine.getOptionValue(DATA_TYPE_ARGS));
-    queryCommand = commandLine.getOptionValue(QUERY_COMMAND_ARGS);
-    exportType = commandLine.getOptionValue(FILE_TYPE_ARGS);
-    String timeoutString = commandLine.getOptionValue(TIMEOUT_ARGS);
+    targetDirectory =
+        checkRequiredArg(Constants.TARGET_DIR_ARGS, Constants.TARGET_DIR_NAME, commandLine, null);
+    targetFile = commandLine.getOptionValue(Constants.TARGET_FILE_ARGS);
+    needDataTypePrinted = Boolean.valueOf(commandLine.getOptionValue(Constants.DATA_TYPE_ARGS));
+    queryCommand = commandLine.getOptionValue(Constants.QUERY_COMMAND_ARGS);
+    exportType = commandLine.getOptionValue(Constants.FILE_TYPE_ARGS);
+    String timeoutString = commandLine.getOptionValue(Constants.TIMEOUT_ARGS);
     if (timeoutString != null) {
       timeout = Long.parseLong(timeoutString);
     }
@@ -232,43 +276,43 @@ public class ExportData extends AbstractDataTool {
       needDataTypePrinted = true;
     }
     if (targetFile == null) {
-      targetFile = DUMP_FILE_NAME_DEFAULT;
+      targetFile = Constants.DUMP_FILE_NAME_DEFAULT;
     }
-    timeFormat = commandLine.getOptionValue(TIME_FORMAT_ARGS);
+    timeFormat = commandLine.getOptionValue(Constants.TIME_FORMAT_ARGS);
     if (timeFormat == null) {
       timeFormat = "default";
     }
-    timeZoneID = commandLine.getOptionValue(TIME_ZONE_ARGS);
+    timeZoneID = commandLine.getOptionValue(Constants.TIME_ZONE_ARGS);
     if (!targetDirectory.endsWith("/") && !targetDirectory.endsWith("\\")) {
       targetDirectory += File.separator;
     }
     final File file = new File(targetDirectory);
     if (!file.isDirectory() && !file.mkdirs()) {
       ioTPrinter.println(String.format("Failed to create directories %s", targetDirectory));
-      System.exit(CODE_ERROR);
+      System.exit(Constants.CODE_ERROR);
     }
-    if (commandLine.getOptionValue(LINES_PER_FILE_ARGS) != null) {
-      linesPerFile = Integer.parseInt(commandLine.getOptionValue(LINES_PER_FILE_ARGS));
+    if (commandLine.getOptionValue(Constants.LINES_PER_FILE_ARGS) != null) {
+      linesPerFile = Integer.parseInt(commandLine.getOptionValue(Constants.LINES_PER_FILE_ARGS));
     }
-    if (commandLine.getOptionValue(ALIGNED_ARGS) != null) {
-      aligned = Boolean.valueOf(commandLine.getOptionValue(ALIGNED_ARGS));
+    if (commandLine.getOptionValue(Constants.ALIGNED_ARGS) != null) {
+      aligned = Boolean.valueOf(commandLine.getOptionValue(Constants.ALIGNED_ARGS));
     }
-    if (commandLine.getOptionValue(DB_ARGS) != null) {
-      database = commandLine.getOptionValue(DB_ARGS).toLowerCase();
+    if (commandLine.getOptionValue(Constants.DB_ARGS) != null) {
+      database = commandLine.getOptionValue(Constants.DB_ARGS).toLowerCase();
     }
-    if (commandLine.getOptionValue(TABLE_ARGS) != null) {
-      table = commandLine.getOptionValue(TABLE_ARGS).toLowerCase();
+    if (commandLine.getOptionValue(Constants.TABLE_ARGS) != null) {
+      table = commandLine.getOptionValue(Constants.TABLE_ARGS).toLowerCase();
     } else {
       if (!sqlDialectTree && StringUtils.isBlank(queryCommand)) {
-        ioTPrinter.println(queryTableParamRequired);
-        System.exit(CODE_ERROR);
+        ioTPrinter.println(Constants.queryTableParamRequired);
+        System.exit(Constants.CODE_ERROR);
       }
     }
-    if (commandLine.getOptionValue(START_TIME_ARGS) != null) {
-      startTime = commandLine.getOptionValue(START_TIME_ARGS);
+    if (commandLine.getOptionValue(Constants.START_TIME_ARGS) != null) {
+      startTime = commandLine.getOptionValue(Constants.START_TIME_ARGS);
     }
-    if (commandLine.getOptionValue(END_TIME_ARGS) != null) {
-      endTime = commandLine.getOptionValue(END_TIME_ARGS);
+    if (commandLine.getOptionValue(Constants.END_TIME_ARGS) != null) {
+      endTime = commandLine.getOptionValue(Constants.END_TIME_ARGS);
     }
   }
 }

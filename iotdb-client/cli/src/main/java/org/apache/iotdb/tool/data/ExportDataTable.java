@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.tool.data;
 
 import org.apache.iotdb.cli.utils.IoTPrinter;
@@ -6,6 +25,7 @@ import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.TableSessionBuilder;
+import org.apache.iotdb.tool.common.Constants;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.ObjectUtils;
@@ -33,8 +53,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.tool.common.Constants.*;
-
 public class ExportDataTable extends AbstractExportData {
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
@@ -55,7 +73,7 @@ public class ExportDataTable extends AbstractExportData {
       databases.add(sessionDataSet.next().getField(0).getStringValue());
     }
     if (CollectionUtils.isEmpty(databases) || !databases.contains(database)) {
-      ioTPrinter.println(String.format(TARGET_DATABASE_NOT_EXIST_MSG, database));
+      ioTPrinter.println(String.format(Constants.TARGET_DATABASE_NOT_EXIST_MSG, database));
       System.exit(1);
     }
     if (StringUtils.isNotBlank(table)) {
@@ -65,7 +83,7 @@ public class ExportDataTable extends AbstractExportData {
         tables.add(sessionDataSet.next().getField(0).getStringValue());
       }
       if (CollectionUtils.isEmpty(tables) || !tables.contains(table)) {
-        ioTPrinter.println(String.format(TARGET_TABLE_NOT_EXIST_MSG, table));
+        ioTPrinter.println(String.format(Constants.TARGET_TABLE_NOT_EXIST_MSG, table));
         System.exit(1);
       }
     }
@@ -77,7 +95,8 @@ public class ExportDataTable extends AbstractExportData {
   @Override
   public void exportBySql(String sql, int index) {
     if (StringUtils.isNotBlank(sql)) {
-      if (SQL_SUFFIXS.equalsIgnoreCase(exportType) || TSFILE_SUFFIXS.equalsIgnoreCase(exportType)) {
+      if (Constants.SQL_SUFFIXS.equalsIgnoreCase(exportType)
+          || Constants.TSFILE_SUFFIXS.equalsIgnoreCase(exportType)) {
         legalCheck(sql);
       }
     } else {
@@ -99,9 +118,9 @@ public class ExportDataTable extends AbstractExportData {
     String path = targetDirectory + targetFile + index;
     System.out.println("导出条件sql:" + sql);
     try (SessionDataSet sessionDataSet = tableSession.executeQueryStatement(sql, timeout)) {
-      if (SQL_SUFFIXS.equalsIgnoreCase(exportType)) {
+      if (Constants.SQL_SUFFIXS.equalsIgnoreCase(exportType)) {
         exportToSqlFile(sessionDataSet, path);
-      } else if (TSFILE_SUFFIXS.equalsIgnoreCase(exportType)) {
+      } else if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(exportType)) {
         long start = System.currentTimeMillis();
         boolean isComplete = exportToTsFile(sessionDataSet, path + ".tsfile");
         if (isComplete) {
@@ -185,7 +204,7 @@ public class ExportDataTable extends AbstractExportData {
         new TsFileWriterBuilder()
             .file(f)
             .tableSchema(new org.apache.tsfile.file.metadata.TableSchema(table, columnSchemas))
-            .memoryThreshold(memoryThreshold)
+            .memoryThreshold(Constants.memoryThreshold)
             .build()) {
       List<String> columnNames = new ArrayList<>(columnNamesRaw);
       List<TSDataType> columnTypes = new ArrayList<>(columnTypesRaw);

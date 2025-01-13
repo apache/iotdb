@@ -26,6 +26,7 @@ import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.tool.common.Constants;
 import org.apache.iotdb.tool.common.OptionsUtil;
 import org.apache.iotdb.tool.tsfile.ImportTsFile;
 
@@ -57,8 +58,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
 
-import static org.apache.iotdb.tool.common.Constants.*;
-
 public class ImportData extends AbstractDataTool {
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
@@ -71,29 +70,41 @@ public class ImportData extends AbstractDataTool {
     Options sqlOptions = OptionsUtil.createImportSqlOptions();
     HelpFormatter hf = new HelpFormatter();
     hf.setOptionComparator(null);
-    hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
+    hf.setWidth(Constants.MAX_HELP_CONSOLE_WIDTH);
     CommandLine commandLine = null;
     CommandLineParser parser = new DefaultParser();
 
     if (args == null || args.length == 0) {
       printHelpOptions(
-          IMPORT_CLI_HEAD, IMPORT_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
-      System.exit(CODE_ERROR);
+          Constants.IMPORT_CLI_HEAD,
+          Constants.IMPORT_CLI_PREFIX,
+          hf,
+          tsFileOptions,
+          csvOptions,
+          sqlOptions,
+          true);
+      System.exit(Constants.CODE_ERROR);
     }
     try {
       commandLine = parser.parse(helpOptions, args, true);
     } catch (org.apache.commons.cli.ParseException e) {
       printHelpOptions(
-          IMPORT_CLI_HEAD, IMPORT_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
-      System.exit(CODE_ERROR);
+          Constants.IMPORT_CLI_HEAD,
+          Constants.IMPORT_CLI_PREFIX,
+          hf,
+          tsFileOptions,
+          csvOptions,
+          sqlOptions,
+          true);
+      System.exit(Constants.CODE_ERROR);
     }
     final List<String> argList = Arrays.asList(args);
-    int helpIndex = argList.indexOf(MINUS + HELP_ARGS);
-    int sql_dialect = argList.indexOf(MINUS + SQL_DIALECT_ARGS); // -sql_dialect
+    int helpIndex = argList.indexOf(Constants.MINUS + Constants.HELP_ARGS);
+    int sql_dialect = argList.indexOf(Constants.MINUS + Constants.SQL_DIALECT_ARGS); // -sql_dialect
     if (sql_dialect >= 0
-        && !SQL_DIALECT_VALUE_TREE.equalsIgnoreCase(argList.get(sql_dialect + 1))) {
+        && !Constants.SQL_DIALECT_VALUE_TREE.equalsIgnoreCase(argList.get(sql_dialect + 1))) {
       final String sqlDialectValue = argList.get(sql_dialect + 1);
-      if (SQL_DIALECT_VALUE_TABLE.equalsIgnoreCase(sqlDialectValue)) {
+      if (Constants.SQL_DIALECT_VALUE_TABLE.equalsIgnoreCase(sqlDialectValue)) {
         sqlDialectTree = false;
         tsFileOptions = OptionsUtil.createTableImportTsFileOptions();
         csvOptions = OptionsUtil.createTableImportCsvOptions();
@@ -101,108 +112,137 @@ public class ImportData extends AbstractDataTool {
       } else {
         ioTPrinter.println(String.format("sql_dialect %s is not support", sqlDialectValue));
         printHelpOptions(
-            IMPORT_CLI_HEAD, IMPORT_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
-        System.exit(CODE_ERROR);
+            Constants.IMPORT_CLI_HEAD,
+            Constants.IMPORT_CLI_PREFIX,
+            hf,
+            tsFileOptions,
+            csvOptions,
+            sqlOptions,
+            true);
+        System.exit(Constants.CODE_ERROR);
       }
     }
-    int ftIndex = argList.indexOf(MINUS + FILE_TYPE_ARGS); // -ft
+    int ftIndex = argList.indexOf(Constants.MINUS + Constants.FILE_TYPE_ARGS); // -ft
     if (ftIndex < 0) {
-      ftIndex = argList.indexOf(MINUS + FILE_TYPE_NAME); // -file_type
+      ftIndex = argList.indexOf(Constants.MINUS + Constants.FILE_TYPE_NAME); // -file_type
     }
     if (helpIndex >= 0) {
       fileType = argList.get(helpIndex + 1);
       if (StringUtils.isNotBlank(fileType)) {
-        if (TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
-          printHelpOptions(null, IMPORT_CLI_PREFIX, hf, tsFileOptions, null, null, false);
-        } else if (CSV_SUFFIXS.equalsIgnoreCase(fileType)) {
-          printHelpOptions(null, IMPORT_CLI_PREFIX, hf, null, csvOptions, null, false);
-        } else if (SQL_SUFFIXS.equalsIgnoreCase(fileType)) {
-          printHelpOptions(null, IMPORT_CLI_PREFIX, hf, null, null, sqlOptions, false);
+        if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
+          printHelpOptions(null, Constants.IMPORT_CLI_PREFIX, hf, tsFileOptions, null, null, false);
+        } else if (Constants.CSV_SUFFIXS.equalsIgnoreCase(fileType)) {
+          printHelpOptions(null, Constants.IMPORT_CLI_PREFIX, hf, null, csvOptions, null, false);
+        } else if (Constants.SQL_SUFFIXS.equalsIgnoreCase(fileType)) {
+          printHelpOptions(null, Constants.IMPORT_CLI_PREFIX, hf, null, null, sqlOptions, false);
         } else {
           ioTPrinter.println(String.format("File type %s is not support", fileType));
           printHelpOptions(
-              IMPORT_CLI_HEAD, IMPORT_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
+              Constants.IMPORT_CLI_HEAD,
+              Constants.IMPORT_CLI_PREFIX,
+              hf,
+              tsFileOptions,
+              csvOptions,
+              sqlOptions,
+              true);
         }
       } else {
         printHelpOptions(
-            IMPORT_CLI_HEAD, IMPORT_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
+            Constants.IMPORT_CLI_HEAD,
+            Constants.IMPORT_CLI_PREFIX,
+            hf,
+            tsFileOptions,
+            csvOptions,
+            sqlOptions,
+            true);
       }
-      System.exit(CODE_ERROR);
+      System.exit(Constants.CODE_ERROR);
     } else if (ftIndex >= 0) {
       fileType = argList.get(ftIndex + 1);
       if (StringUtils.isNotBlank(fileType)) {
-        if (TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
+        if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
           try {
             commandLine = parser.parse(tsFileOptions, args);
             //            ImportTsFile.importData(commandLine);
           } catch (ParseException e) {
             ioTPrinter.println("Parse error: " + e.getMessage());
-            printHelpOptions(null, IMPORT_CLI_PREFIX, hf, tsFileOptions, null, null, false);
-            System.exit(CODE_ERROR);
+            printHelpOptions(
+                null, Constants.IMPORT_CLI_PREFIX, hf, tsFileOptions, null, null, false);
+            System.exit(Constants.CODE_ERROR);
           }
-        } else if (CSV_SUFFIXS.equalsIgnoreCase(fileType)) {
+        } else if (Constants.CSV_SUFFIXS.equalsIgnoreCase(fileType)) {
           try {
             commandLine = parser.parse(csvOptions, args);
           } catch (ParseException e) {
             ioTPrinter.println("Parse error: " + e.getMessage());
-            printHelpOptions(null, IMPORT_CLI_PREFIX, hf, null, csvOptions, null, false);
-            System.exit(CODE_ERROR);
+            printHelpOptions(null, Constants.IMPORT_CLI_PREFIX, hf, null, csvOptions, null, false);
+            System.exit(Constants.CODE_ERROR);
           }
-        } else if (SQL_SUFFIXS.equalsIgnoreCase(fileType)) {
+        } else if (Constants.SQL_SUFFIXS.equalsIgnoreCase(fileType)) {
           try {
             commandLine = parser.parse(sqlOptions, args);
           } catch (ParseException e) {
             ioTPrinter.println("Parse error: " + e.getMessage());
-            printHelpOptions(null, IMPORT_CLI_PREFIX, hf, null, null, sqlOptions, false);
-            System.exit(CODE_ERROR);
+            printHelpOptions(null, Constants.IMPORT_CLI_PREFIX, hf, null, null, sqlOptions, false);
+            System.exit(Constants.CODE_ERROR);
           }
         } else {
           ioTPrinter.println(String.format("File type %s is not support", fileType));
           printHelpOptions(
-              IMPORT_CLI_HEAD, IMPORT_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
-          System.exit(CODE_ERROR);
+              Constants.IMPORT_CLI_HEAD,
+              Constants.IMPORT_CLI_PREFIX,
+              hf,
+              tsFileOptions,
+              csvOptions,
+              sqlOptions,
+              true);
+          System.exit(Constants.CODE_ERROR);
         }
       } else {
         ioTPrinter.println(
             String.format(
-                "Invalid args: Required values for option '%s' not provided", FILE_TYPE_NAME));
-        System.exit(CODE_ERROR);
+                "Invalid args: Required values for option '%s' not provided",
+                Constants.FILE_TYPE_NAME));
+        System.exit(Constants.CODE_ERROR);
       }
     } else {
       ioTPrinter.println(
           String.format(
-              "Invalid args: Required values for option '%s' not provided", FILE_TYPE_NAME));
-      System.exit(CODE_ERROR);
+              "Invalid args: Required values for option '%s' not provided",
+              Constants.FILE_TYPE_NAME));
+      System.exit(Constants.CODE_ERROR);
     }
 
     try {
       parseBasicParams(commandLine);
-      String filename = commandLine.getOptionValue(FILE_ARGS);
+      String filename = commandLine.getOptionValue(Constants.FILE_ARGS);
       if (filename == null) {
-        ioTPrinter.println(IMPORT_CLI_HEAD);
-        printHelpOptions(null, IMPORT_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
-        System.exit(CODE_ERROR);
+        ioTPrinter.println(Constants.IMPORT_CLI_HEAD);
+        printHelpOptions(
+            null, Constants.IMPORT_CLI_PREFIX, hf, tsFileOptions, csvOptions, sqlOptions, true);
+        System.exit(Constants.CODE_ERROR);
       }
       parseSpecialParams(commandLine);
     } catch (ArgsErrorException e) {
       ioTPrinter.println("Args error: " + e.getMessage());
-      System.exit(CODE_ERROR);
+      System.exit(Constants.CODE_ERROR);
     } catch (Exception e) {
       ioTPrinter.println("Encounter an error, because: " + e.getMessage());
-      System.exit(CODE_ERROR);
+      System.exit(Constants.CODE_ERROR);
     }
     int resultCode = importFromTargetPathAsync();
     System.exit(resultCode);
   }
 
   private static void parseSpecialParams(CommandLine commandLine) throws ArgsErrorException {
-    timeZoneID = commandLine.getOptionValue(TIME_ZONE_ARGS);
-    targetPath = commandLine.getOptionValue(FILE_ARGS);
-    if (commandLine.getOptionValue(BATCH_POINT_SIZE_ARGS) != null) {
-      batchPointSize = Integer.parseInt(commandLine.getOptionValue(BATCH_POINT_SIZE_ARGS));
+    timeZoneID = commandLine.getOptionValue(Constants.TIME_ZONE_ARGS);
+    targetPath = commandLine.getOptionValue(Constants.FILE_ARGS);
+    if (commandLine.getOptionValue(Constants.BATCH_POINT_SIZE_ARGS) != null) {
+      batchPointSize =
+          Integer.parseInt(commandLine.getOptionValue(Constants.BATCH_POINT_SIZE_ARGS));
     }
-    if (commandLine.getOptionValue(FAIL_DIR_ARGS) != null) {
-      failedFileDirectory = commandLine.getOptionValue(FAIL_DIR_ARGS);
+    if (commandLine.getOptionValue(Constants.FAIL_DIR_ARGS) != null) {
+      failedFileDirectory = commandLine.getOptionValue(Constants.FAIL_DIR_ARGS);
       File file = new File(failedFileDirectory);
       if (!file.isDirectory()) {
         file.mkdir();
@@ -211,22 +251,22 @@ public class ImportData extends AbstractDataTool {
         failedFileDirectory += File.separator;
       }
     }
-    if (commandLine.getOptionValue(ALIGNED_ARGS) != null) {
-      aligned = Boolean.valueOf(commandLine.getOptionValue(ALIGNED_ARGS));
+    if (commandLine.getOptionValue(Constants.ALIGNED_ARGS) != null) {
+      aligned = Boolean.valueOf(commandLine.getOptionValue(Constants.ALIGNED_ARGS));
     }
-    if (commandLine.getOptionValue(THREAD_NUM_ARGS) != null) {
-      threadNum = Integer.parseInt(commandLine.getOptionValue(THREAD_NUM_ARGS));
+    if (commandLine.getOptionValue(Constants.THREAD_NUM_ARGS) != null) {
+      threadNum = Integer.parseInt(commandLine.getOptionValue(Constants.THREAD_NUM_ARGS));
       if (threadNum <= 0) {
         ioTPrinter.println(
             String.format(
                 "error: Invalid thread number '%s'. Please set a positive integer.", threadNum));
-        System.exit(CODE_ERROR);
+        System.exit(Constants.CODE_ERROR);
       }
     }
-    if (commandLine.getOptionValue(TIMESTAMP_PRECISION_ARGS) != null) {
-      timestampPrecision = commandLine.getOptionValue(TIMESTAMP_PRECISION_ARGS);
+    if (commandLine.getOptionValue(Constants.TIMESTAMP_PRECISION_ARGS) != null) {
+      timestampPrecision = commandLine.getOptionValue(Constants.TIMESTAMP_PRECISION_ARGS);
     }
-    final String[] opTypeInferValues = commandLine.getOptionValues(TYPE_INFER_ARGS);
+    final String[] opTypeInferValues = commandLine.getOptionValues(Constants.TYPE_INFER_ARGS);
     if (opTypeInferValues != null && opTypeInferValues.length > 0) {
       for (String opTypeInferValue : opTypeInferValues) {
         if (opTypeInferValue.contains("=")) {
@@ -237,20 +277,21 @@ public class ImportData extends AbstractDataTool {
         }
       }
     }
-    if (commandLine.getOptionValue(LINES_PER_FAILED_FILE_ARGS) != null) {
-      linesPerFailedFile = Integer.parseInt(commandLine.getOptionValue(LINES_PER_FAILED_FILE_ARGS));
+    if (commandLine.getOptionValue(Constants.LINES_PER_FAILED_FILE_ARGS) != null) {
+      linesPerFailedFile =
+          Integer.parseInt(commandLine.getOptionValue(Constants.LINES_PER_FAILED_FILE_ARGS));
     }
-    if (commandLine.getOptionValue(DB_ARGS) != null) {
-      database = commandLine.getOptionValue(DB_ARGS);
+    if (commandLine.getOptionValue(Constants.DB_ARGS) != null) {
+      database = commandLine.getOptionValue(Constants.DB_ARGS);
     }
-    if (commandLine.getOptionValue(TABLE_ARGS) != null) {
-      table = commandLine.getOptionValue(TABLE_ARGS);
+    if (commandLine.getOptionValue(Constants.TABLE_ARGS) != null) {
+      table = commandLine.getOptionValue(Constants.TABLE_ARGS);
     }
-    if (commandLine.getOptionValue(START_TIME_ARGS) != null) {
-      startTime = commandLine.getOptionValue(START_TIME_ARGS);
+    if (commandLine.getOptionValue(Constants.START_TIME_ARGS) != null) {
+      startTime = commandLine.getOptionValue(Constants.START_TIME_ARGS);
     }
-    if (commandLine.getOptionValue(END_TIME_ARGS) != null) {
-      endTime = commandLine.getOptionValue(END_TIME_ARGS);
+    if (commandLine.getOptionValue(Constants.END_TIME_ARGS) != null) {
+      endTime = commandLine.getOptionValue(Constants.END_TIME_ARGS);
     }
     try {
       isRemoteLoad = !NodeUrlUtils.containsLocalAddress(Collections.singletonList(host));
@@ -262,15 +303,15 @@ public class ImportData extends AbstractDataTool {
       ioTPrinter.println(
           "Unknown host: " + host + ". Exception: " + e.getMessage() + ". Will use local load.");
     }
-    final String os = commandLine.getOptionValue(ON_SUCCESS_ARGS);
+    final String os = commandLine.getOptionValue(Constants.ON_SUCCESS_ARGS);
     final String onSuccess = StringUtils.isNotBlank(os) ? os.trim().toLowerCase() : null;
-    final String of = commandLine.getOptionValue(ON_FAIL_ARGS);
+    final String of = commandLine.getOptionValue(Constants.ON_FAIL_ARGS);
     final String onFail = StringUtils.isNotBlank(of) ? of.trim().toLowerCase() : null;
-    if (TSFILE_SUFFIXS.equalsIgnoreCase(fileType)
+    if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)
         && (!ImportTsFile.Operation.isValidOperation(onSuccess)
             || !ImportTsFile.Operation.isValidOperation(onFail))) {
       ioTPrinter.println("Args error: os/of must be one of none, mv, cp, delete");
-      System.exit(CODE_ERROR);
+      System.exit(Constants.CODE_ERROR);
       boolean isSuccessDirEqualsSourceDir = false;
       if (ImportTsFile.Operation.MV.name().equalsIgnoreCase(onSuccess)
           || ImportTsFile.Operation.CP.name().equalsIgnoreCase(onSuccess)) {
@@ -302,76 +343,78 @@ public class ImportData extends AbstractDataTool {
   }
 
   public static File createSuccessDir(CommandLine commandLine) {
-    if (commandLine.getOptionValue(SUCCESS_DIR_ARGS) != null) {
-      successDir = commandLine.getOptionValue(SUCCESS_DIR_ARGS);
+    if (commandLine.getOptionValue(Constants.SUCCESS_DIR_ARGS) != null) {
+      successDir = commandLine.getOptionValue(Constants.SUCCESS_DIR_ARGS);
     }
     File file = new File(successDir);
     if (!file.isDirectory()) {
       if (!file.mkdirs()) {
-        ioTPrinter.println(String.format("Failed to create %s %s", SUCCESS_DIR_NAME, successDir));
-        System.exit(CODE_ERROR);
+        ioTPrinter.println(
+            String.format("Failed to create %s %s", Constants.SUCCESS_DIR_NAME, successDir));
+        System.exit(Constants.CODE_ERROR);
       }
     }
     return file;
   }
 
   public static File createFailDir(CommandLine commandLine) {
-    if (commandLine.getOptionValue(FAIL_DIR_ARGS) != null) {
-      failDir = commandLine.getOptionValue(FAIL_DIR_ARGS);
+    if (commandLine.getOptionValue(Constants.FAIL_DIR_ARGS) != null) {
+      failDir = commandLine.getOptionValue(Constants.FAIL_DIR_ARGS);
     }
     File file = new File(failDir);
     if (!file.isDirectory()) {
       if (!file.mkdirs()) {
-        ioTPrinter.println(String.format("Failed to create %s %s", FAIL_DIR_NAME, failDir));
-        System.exit(CODE_ERROR);
+        ioTPrinter.println(
+            String.format("Failed to create %s %s", Constants.FAIL_DIR_NAME, failDir));
+        System.exit(Constants.CODE_ERROR);
       }
     }
     return file;
   }
 
   private static void applyTypeInferArgs(String key, String value) throws ArgsErrorException {
-    if (!TYPE_INFER_KEY_DICT.containsKey(key)) {
+    if (!Constants.TYPE_INFER_KEY_DICT.containsKey(key)) {
       throw new ArgsErrorException("Unknown type infer key: " + key);
     }
-    if (!TYPE_INFER_VALUE_DICT.containsKey(value)) {
+    if (!Constants.TYPE_INFER_VALUE_DICT.containsKey(value)) {
       throw new ArgsErrorException("Unknown type infer value: " + value);
     }
-    if (key.equals(DATATYPE_NAN)
-        && !(value.equals(DATATYPE_FLOAT)
-            || value.equals(DATATYPE_DOUBLE)
-            || value.equals(DATATYPE_TEXT)
-            || value.equals(DATATYPE_STRING))) {
+    if (key.equals(Constants.DATATYPE_NAN)
+        && !(value.equals(Constants.DATATYPE_FLOAT)
+            || value.equals(Constants.DATATYPE_DOUBLE)
+            || value.equals(Constants.DATATYPE_TEXT)
+            || value.equals(Constants.DATATYPE_STRING))) {
       throw new ArgsErrorException("NaN can not convert to " + value);
     }
-    if (key.equals(DATATYPE_BOOLEAN)
-        && !(value.equals(DATATYPE_BOOLEAN)
-            || value.equals(DATATYPE_TEXT)
-            || value.equals(DATATYPE_STRING))) {
+    if (key.equals(Constants.DATATYPE_BOOLEAN)
+        && !(value.equals(Constants.DATATYPE_BOOLEAN)
+            || value.equals(Constants.DATATYPE_TEXT)
+            || value.equals(Constants.DATATYPE_STRING))) {
       throw new ArgsErrorException("Boolean can not convert to " + value);
     }
-    if (key.equals(DATATYPE_DATE)
-        && !(value.equals(DATATYPE_DATE)
-            || value.equals(DATATYPE_TEXT)
-            || value.equals(DATATYPE_STRING))) {
+    if (key.equals(Constants.DATATYPE_DATE)
+        && !(value.equals(Constants.DATATYPE_DATE)
+            || value.equals(Constants.DATATYPE_TEXT)
+            || value.equals(Constants.DATATYPE_STRING))) {
       throw new ArgsErrorException("Date can not convert to " + value);
     }
-    if (key.equals(DATATYPE_TIMESTAMP)
-        && !(value.equals(DATATYPE_TIMESTAMP)
-            || value.equals(DATATYPE_TEXT)
-            || value.equals(DATATYPE_STRING)
-            || value.equals(DATATYPE_DOUBLE)
-            || value.equals(DATATYPE_LONG))) {
+    if (key.equals(Constants.DATATYPE_TIMESTAMP)
+        && !(value.equals(Constants.DATATYPE_TIMESTAMP)
+            || value.equals(Constants.DATATYPE_TEXT)
+            || value.equals(Constants.DATATYPE_STRING)
+            || value.equals(Constants.DATATYPE_DOUBLE)
+            || value.equals(Constants.DATATYPE_LONG))) {
       throw new ArgsErrorException("Timestamp can not convert to " + value);
     }
-    if (key.equals(DATATYPE_BLOB) && !(value.equals(DATATYPE_BLOB))) {
+    if (key.equals(Constants.DATATYPE_BLOB) && !(value.equals(Constants.DATATYPE_BLOB))) {
       throw new ArgsErrorException("Blob can not convert to " + value);
     }
-    final TSDataType srcType = TYPE_INFER_VALUE_DICT.get(key);
-    final TSDataType dstType = TYPE_INFER_VALUE_DICT.get(value);
+    final TSDataType srcType = Constants.TYPE_INFER_VALUE_DICT.get(key);
+    final TSDataType dstType = Constants.TYPE_INFER_VALUE_DICT.get(value);
     if (dstType.getType() < srcType.getType()) {
       throw new ArgsErrorException(key + " can not convert to " + value);
     }
-    TYPE_INFER_KEY_DICT.put(key, TYPE_INFER_VALUE_DICT.get(value));
+    Constants.TYPE_INFER_KEY_DICT.put(key, Constants.TYPE_INFER_VALUE_DICT.get(value));
   }
 
   private static int importFromTargetPathAsync() {
@@ -383,21 +426,20 @@ public class ImportData extends AbstractDataTool {
         importData = new ImportDataTable();
       }
       importData.init();
-      ImportDataScanTool.setSourceFullPath(targetPath);
       final File file = new File(targetPath);
       if (!file.isFile() && !file.isDirectory()) {
         ioTPrinter.println(String.format("Source file or directory %s does not exist", targetPath));
-        System.exit(CODE_ERROR);
+        System.exit(Constants.CODE_ERROR);
       }
       AbstractImportData.init(importData);
-      return CODE_OK;
+      return Constants.CODE_OK;
     } catch (InterruptedException e) {
       ioTPrinter.println(String.format("Import tsfile fail: %s", e.getMessage()));
       Thread.currentThread().interrupt();
-      return CODE_ERROR;
+      return Constants.CODE_ERROR;
     } catch (Exception e) {
       ioTPrinter.println(String.format("Import tsfile fail: %s", e.getMessage()));
-      return CODE_ERROR;
+      return Constants.CODE_ERROR;
     }
   }
 
@@ -427,7 +469,7 @@ public class ImportData extends AbstractDataTool {
 
       File file = new File(targetPath);
       if (file.isFile()) {
-        if (file.getName().endsWith(SQL_SUFFIXS)) {
+        if (file.getName().endsWith(Constants.SQL_SUFFIXS)) {
           importFromSqlFile(session, file);
         } else {
           importFromSingleFile(session, file);
@@ -435,12 +477,12 @@ public class ImportData extends AbstractDataTool {
       } else if (file.isDirectory()) {
         File[] files = file.listFiles();
         if (files == null) {
-          return CODE_OK;
+          return Constants.CODE_OK;
         }
 
         for (File subFile : files) {
           if (subFile.isFile()) {
-            if (subFile.getName().endsWith(SQL_SUFFIXS)) {
+            if (subFile.getName().endsWith(Constants.SQL_SUFFIXS)) {
               importFromSqlFile(session, subFile);
             } else {
               importFromSingleFile(session, subFile);
@@ -449,17 +491,17 @@ public class ImportData extends AbstractDataTool {
         }
       } else {
         ioTPrinter.println("File not found!");
-        return CODE_ERROR;
+        return Constants.CODE_ERROR;
       }
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       ioTPrinter.println("Encounter an error when connecting to server, because " + e.getMessage());
-      return CODE_ERROR;
+      return Constants.CODE_ERROR;
     } finally {
       if (session != null) {
         session.close();
       }
     }
-    return CODE_OK;
+    return Constants.CODE_OK;
   }
 
   private static void setTimeZone() throws IoTDBConnectionException, StatementExecutionException {
@@ -475,7 +517,8 @@ public class ImportData extends AbstractDataTool {
    * @param file the File object of the CSV file that you want to import.
    */
   private static void importFromSingleFile(Session session, File file) {
-    if (file.getName().endsWith(CSV_SUFFIXS) || file.getName().endsWith(TXT_SUFFIXS)) {
+    if (file.getName().endsWith(Constants.CSV_SUFFIXS)
+        || file.getName().endsWith(Constants.TXT_SUFFIXS)) {
       try {
         CSVParser csvRecords = readCsvFile(file.getAbsolutePath());
         List<String> headerNames = csvRecords.getHeaderNames();

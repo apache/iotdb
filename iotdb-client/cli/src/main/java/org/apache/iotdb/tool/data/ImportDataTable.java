@@ -26,6 +26,7 @@ import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
+import org.apache.iotdb.tool.common.Constants;
 import org.apache.iotdb.tool.tsfile.ImportTsFileScanTool;
 
 import org.apache.commons.collections4.CollectionUtils;
@@ -57,8 +58,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.apache.iotdb.tool.common.Constants.*;
-
 public class ImportDataTable extends AbstractImportData {
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
@@ -81,7 +80,7 @@ public class ImportDataTable extends AbstractImportData {
     final File file = new File(targetPath);
     if (!file.isFile() && !file.isDirectory()) {
       ioTPrinter.println(String.format("Source file or directory %s does not exist", targetPath));
-      System.exit(CODE_ERROR);
+      System.exit(Constants.CODE_ERROR);
     }
     // checkDataBase
     SessionDataSet sessionDataSet = null;
@@ -95,10 +94,10 @@ public class ImportDataTable extends AbstractImportData {
         databases.add(rowRecord.getField(0).getStringValue());
       }
       if (!databases.contains(database)) {
-        ioTPrinter.println(String.format(TARGET_DATABASE_NOT_EXIST_MSG, database));
+        ioTPrinter.println(String.format(Constants.TARGET_DATABASE_NOT_EXIST_MSG, database));
         System.exit(1);
       }
-      if (CSV_SUFFIXS.equals(fileType)) {
+      if (Constants.CSV_SUFFIXS.equals(fileType)) {
         if (StringUtils.isNotBlank(table)) {
           sessionDataSet = session.executeQueryStatement("show tables");
           List<String> tables = new ArrayList<>();
@@ -107,7 +106,7 @@ public class ImportDataTable extends AbstractImportData {
             tables.add(rowRecord.getField(0).getStringValue());
           }
           if (!tables.contains(table)) {
-            ioTPrinter.println(String.format(TARGET_TABLE_NOT_EXIST_MSG, table));
+            ioTPrinter.println(String.format(Constants.TARGET_TABLE_NOT_EXIST_MSG, table));
             System.exit(1);
           }
           sessionDataSet = session.executeQueryStatement("describe " + table);
@@ -121,12 +120,12 @@ public class ImportDataTable extends AbstractImportData {
             }
           }
         } else {
-          ioTPrinter.println(String.format(TARGET_TABLE_NOT_EXIST_MSG, null));
+          ioTPrinter.println(String.format(Constants.TARGET_TABLE_NOT_EXIST_MSG, null));
           System.exit(1);
         }
       }
     } catch (StatementExecutionException e) {
-      ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
+      ioTPrinter.println(Constants.INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
       System.exit(1);
     } catch (IoTDBConnectionException e) {
       throw new RuntimeException(e);
@@ -146,11 +145,12 @@ public class ImportDataTable extends AbstractImportData {
         }
       }
     }
-    if (TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
+    if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
+      ImportTsFileScanTool.setSourceFullPath(targetPath);
       ImportTsFileScanTool.traverseAndCollectFiles();
       ImportTsFileScanTool.addNoResourceOrModsToQueue();
     } else {
-
+      ImportDataScanTool.setSourceFullPath(targetPath);
       ImportDataScanTool.traverseAndCollectFiles();
     }
   }
@@ -220,7 +220,7 @@ public class ImportDataTable extends AbstractImportData {
   }
 
   protected void importFromTsFile(File file) {
-    final String sql = "load '" + file + "' onSuccess=none ";
+    final String sql = "load '" + file + "'";
     try {
       sessionPool.getSession().executeNonQueryStatement(sql);
       processSuccessFile(file.getPath());
@@ -230,7 +230,8 @@ public class ImportDataTable extends AbstractImportData {
   }
 
   protected void importFromCsvFile(File file) {
-    if (file.getName().endsWith(CSV_SUFFIXS) || file.getName().endsWith(TXT_SUFFIXS)) {
+    if (file.getName().endsWith(Constants.CSV_SUFFIXS)
+        || file.getName().endsWith(Constants.TXT_SUFFIXS)) {
       try {
         CSVParser csvRecords = readCsvFile(file.getAbsolutePath());
         List<String> headerNames = csvRecords.getHeaderNames();
@@ -354,7 +355,7 @@ public class ImportDataTable extends AbstractImportData {
         writeAndEmptyDataSet(tablet, --retryTime);
       }
     } catch (StatementExecutionException e) {
-      ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
+      ioTPrinter.println(Constants.INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
       System.exit(1);
     }
   }

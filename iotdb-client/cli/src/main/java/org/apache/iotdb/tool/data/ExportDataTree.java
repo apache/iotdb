@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.tool.data;
 
 import org.apache.iotdb.cli.utils.IoTPrinter;
@@ -5,6 +24,7 @@ import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.tool.common.Constants;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.ObjectUtils;
@@ -36,7 +56,6 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE;
-import static org.apache.iotdb.tool.common.Constants.*;
 
 public class ExportDataTree extends AbstractExportData {
 
@@ -56,14 +75,15 @@ public class ExportDataTree extends AbstractExportData {
 
   @Override
   public void exportBySql(String sql, int index) {
-    if (SQL_SUFFIXS.equalsIgnoreCase(exportType) || TSFILE_SUFFIXS.equalsIgnoreCase(exportType)) {
+    if (Constants.SQL_SUFFIXS.equalsIgnoreCase(exportType)
+        || Constants.TSFILE_SUFFIXS.equalsIgnoreCase(exportType)) {
       legalCheck(sql);
     }
     final String path = targetDirectory + targetFile + index;
     try (SessionDataSet sessionDataSet = session.executeQueryStatement(sql, timeout)) {
-      if (SQL_SUFFIXS.equalsIgnoreCase(exportType)) {
+      if (Constants.SQL_SUFFIXS.equalsIgnoreCase(exportType)) {
         exportToSqlFile(sessionDataSet, path);
-      } else if (TSFILE_SUFFIXS.equalsIgnoreCase(exportType)) {
+      } else if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(exportType)) {
         long start = System.currentTimeMillis();
         boolean isComplete = exportToTsFile(sessionDataSet, path + ".tsfile");
         if (isComplete) {

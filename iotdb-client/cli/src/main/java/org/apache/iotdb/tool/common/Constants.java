@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.tool.common;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -138,9 +157,6 @@ public class Constants {
   public static final String TSFILEDB_CLI_DIVIDE = "-------------------";
   public static final String COLON = ": ";
   public static final String MINUS = "-";
-  public static String timestampPrecision = "ms";
-  public static Boolean aligned = false;
-  public static String fileType = null;
 
   // export constants
   public static final String EXPORT_CLI_PREFIX = "Export Data";
@@ -184,7 +200,6 @@ public class Constants {
   public static final String LINES_PER_FILE_DESC = "Lines per dump file.(optional)";
 
   public static final String DUMP_FILE_NAME_DEFAULT = "dump";
-  public static String targetFile = DUMP_FILE_NAME_DEFAULT;
 
   public static final String queryTableParamRequired =
       "Either '-q' or '-table' is required when 'sql-dialect' is' table '";
@@ -301,10 +316,4 @@ public class Constants {
   public static final String LINES_PER_FAILED_FILE_ARGS = "lpf";
   public static final String LINES_PER_FAILED_FILE_ARGS_NAME = "lines_per_failed_file";
   public static final String LINES_PER_FAILED_FILE_DESC = "Lines per failed file.(optional)";
-
-  public static String successDir = "success/";
-  public static String failDir = "fail/";
-
-  public static String timeColumn = "Time";
-  public static String deviceColumn = "Device";
 }

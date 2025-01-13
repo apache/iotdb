@@ -27,6 +27,7 @@ import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.tool.common.Constants;
 import org.apache.iotdb.tool.tsfile.ImportTsFileScanTool;
 
 import org.apache.commons.csv.CSVParser;
@@ -54,8 +55,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.apache.iotdb.tool.common.Constants.*;
-
 public class ImportDataTree extends AbstractImportData {
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
@@ -82,9 +81,9 @@ public class ImportDataTree extends AbstractImportData {
     final File file = new File(targetPath);
     if (!file.isFile() && !file.isDirectory()) {
       ioTPrinter.println(String.format("Source file or directory %s does not exist", targetPath));
-      System.exit(CODE_ERROR);
+      System.exit(Constants.CODE_ERROR);
     }
-    if (TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
+    if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
       ImportTsFileScanTool.setSourceFullPath(targetPath);
       ImportTsFileScanTool.traverseAndCollectFiles();
       ImportTsFileScanTool.addNoResourceOrModsToQueue();
@@ -154,7 +153,8 @@ public class ImportDataTree extends AbstractImportData {
   }
 
   protected void importFromCsvFile(File file) {
-    if (file.getName().endsWith(CSV_SUFFIXS) || file.getName().endsWith(TXT_SUFFIXS)) {
+    if (file.getName().endsWith(Constants.CSV_SUFFIXS)
+        || file.getName().endsWith(Constants.TXT_SUFFIXS)) {
       try {
         CSVParser csvRecords = readCsvFile(file.getAbsolutePath());
         List<String> headerNames = csvRecords.getHeaderNames();
@@ -421,7 +421,7 @@ public class ImportDataTree extends AbstractImportData {
         writeAndEmptyDataSet(device, times, typesList, valuesList, measurementsList, --retryTime);
       }
     } catch (StatementExecutionException e) {
-      ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
+      ioTPrinter.println(Constants.INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
     } finally {
       times.clear();
       typesList.clear();
@@ -449,7 +449,7 @@ public class ImportDataTree extends AbstractImportData {
             deviceIds, times, typesList, valuesList, measurementsList, --retryTime);
       }
     } catch (StatementExecutionException e) {
-      ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
+      ioTPrinter.println(Constants.INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
       System.exit(1);
     } finally {
       deviceIds.clear();

@@ -30,6 +30,7 @@ import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.tool.common.Constants;
 import org.apache.iotdb.tool.tsfile.ImportTsFile;
 
 import org.apache.commons.cli.CommandLine;
@@ -74,7 +75,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.apache.iotdb.tool.common.Constants.*;
 import static org.apache.tsfile.enums.TSDataType.STRING;
 import static org.apache.tsfile.enums.TSDataType.TEXT;
 
@@ -82,32 +82,38 @@ public abstract class AbstractDataTool {
 
   protected static String host;
   protected static String port;
+  protected static String table;
+  protected static String endTime;
   protected static String username;
   protected static String password;
-  protected static ZoneId zoneId = ZoneId.systemDefault();
-  protected static String timeZoneID;
-  protected static String timeFormat;
-  protected static String exportType;
   protected static Boolean aligned;
-  protected static String table;
   protected static String database;
   protected static String startTime;
-  protected static String endTime;
   protected static int threadNum = 8;
   protected static String targetPath;
   protected static long timeout = -1;
+  protected static String timeZoneID;
+  protected static String timeFormat;
+  protected static String exportType;
   protected static String queryCommand;
+  public static String fileType = null;
+  public static String failDir = "fail/";
   protected static String targetDirectory;
-  protected static Boolean needDataTypePrinted;
+  public static String timeColumn = "Time";
   protected static int linesPerFile = 10000;
+  public static String deviceColumn = "Device";
   protected static boolean isRemoteLoad = true;
-  protected static boolean sqlDialectTree = true;
+  protected static Boolean needDataTypePrinted;
   protected static int batchPointSize = 100_000;
+  protected static boolean sqlDialectTree = true;
   protected static int linesPerFailedFile = 10000;
+  protected static String successDir = "success/";
   protected static String timestampPrecision = "ms";
   protected static String failedFileDirectory = null;
-  protected static ImportTsFile.Operation successOperation;
   protected static ImportTsFile.Operation failOperation;
+  protected static ZoneId zoneId = ZoneId.systemDefault();
+  protected static ImportTsFile.Operation successOperation;
+  protected static String targetFile = Constants.DUMP_FILE_NAME_DEFAULT;
   protected static final LongAdder loadFileFailedNum = new LongAdder();
   protected static final LongAdder loadFileSuccessfulNum = new LongAdder();
   protected static final LongAdder processingLoadFailedFileSuccessfulNum = new LongAdder();
@@ -135,10 +141,19 @@ public abstract class AbstractDataTool {
   }
 
   protected static void parseBasicParams(CommandLine commandLine) throws ArgsErrorException {
-    host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine, HOST_DEFAULT_VALUE);
-    port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, PORT_DEFAULT_VALUE);
-    username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, USERNAME_DEFAULT_VALUE);
-    password = commandLine.getOptionValue(PW_ARGS, PW_DEFAULT_VALUE);
+    host =
+        checkRequiredArg(
+            Constants.HOST_ARGS, Constants.HOST_NAME, commandLine, Constants.HOST_DEFAULT_VALUE);
+    port =
+        checkRequiredArg(
+            Constants.PORT_ARGS, Constants.PORT_NAME, commandLine, Constants.PORT_DEFAULT_VALUE);
+    username =
+        checkRequiredArg(
+            Constants.USERNAME_ARGS,
+            Constants.USERNAME_NAME,
+            commandLine,
+            Constants.USERNAME_DEFAULT_VALUE);
+    password = commandLine.getOptionValue(Constants.PW_ARGS, Constants.PW_DEFAULT_VALUE);
   }
 
   protected static void printHelpOptions(
@@ -149,7 +164,12 @@ public abstract class AbstractDataTool {
       Options csvOptions,
       Options sqlOptions,
       boolean printFileType) {
-    ioTPrinter.println(TSFILEDB_CLI_DIVIDE + "\n" + cmdLineSyntax + "\n" + TSFILEDB_CLI_DIVIDE);
+    ioTPrinter.println(
+        Constants.TSFILEDB_CLI_DIVIDE
+            + "\n"
+            + cmdLineSyntax
+            + "\n"
+            + Constants.TSFILEDB_CLI_DIVIDE);
     if (StringUtils.isNotBlank(cmdLineHead)) {
       ioTPrinter.println(cmdLineHead);
     }
@@ -157,33 +177,48 @@ public abstract class AbstractDataTool {
     if (ObjectUtils.isNotEmpty(tsFileOptions)) {
       if (printFileType) {
         ioTPrinter.println(
-            '\n' + FILE_TYPE_NAME + COLON + TSFILE_SUFFIXS + '\n' + TSFILEDB_CLI_DIVIDE);
+            '\n'
+                + Constants.FILE_TYPE_NAME
+                + Constants.COLON
+                + Constants.TSFILE_SUFFIXS
+                + '\n'
+                + Constants.TSFILEDB_CLI_DIVIDE);
       }
       hf.printHelp(usageName, tsFileOptions, true);
     }
     if (ObjectUtils.isNotEmpty(csvOptions)) {
       if (printFileType) {
         ioTPrinter.println(
-            '\n' + FILE_TYPE_NAME + COLON + CSV_SUFFIXS + '\n' + TSFILEDB_CLI_DIVIDE);
+            '\n'
+                + Constants.FILE_TYPE_NAME
+                + Constants.COLON
+                + Constants.CSV_SUFFIXS
+                + '\n'
+                + Constants.TSFILEDB_CLI_DIVIDE);
       }
       hf.printHelp(usageName, csvOptions, true);
     }
     if (ObjectUtils.isNotEmpty(sqlOptions)) {
       if (printFileType) {
         ioTPrinter.println(
-            '\n' + FILE_TYPE_NAME + COLON + SQL_SUFFIXS + '\n' + TSFILEDB_CLI_DIVIDE);
+            '\n'
+                + Constants.FILE_TYPE_NAME
+                + Constants.COLON
+                + Constants.SQL_SUFFIXS
+                + '\n'
+                + Constants.TSFILEDB_CLI_DIVIDE);
       }
       hf.printHelp(usageName, sqlOptions, true);
     }
   }
 
   protected static boolean checkTimeFormat() {
-    for (String format : TIME_FORMAT) {
+    for (String format : Constants.TIME_FORMAT) {
       if (timeFormat.equals(format)) {
         return true;
       }
     }
-    for (String format : STRING_TIME_FORMAT) {
+    for (String format : Constants.STRING_TIME_FORMAT) {
       if (timeFormat.equals(format)) {
         return true;
       }
@@ -214,13 +249,13 @@ public abstract class AbstractDataTool {
         try {
           session.open();
         } catch (IoTDBConnectionException ex) {
-          ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
+          ioTPrinter.println(Constants.INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
         }
         writeAndEmptyDataSet(
             session, deviceIds, times, typesList, valuesList, measurementsList, --retryTime);
       }
     } catch (StatementExecutionException e) {
-      ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
+      ioTPrinter.println(Constants.INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
       try {
         session.close();
       } catch (IoTDBConnectionException ex) {
@@ -265,23 +300,24 @@ public abstract class AbstractDataTool {
       return strValue.length() <= 512 + 2 ? STRING : TEXT;
     }
     if (isBoolean(strValue)) {
-      return TYPE_INFER_KEY_DICT.get(DATATYPE_BOOLEAN);
+      return Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_BOOLEAN);
     } else if (isNumber(strValue)) {
       if (!strValue.contains(TsFileConstant.PATH_SEPARATOR)) {
         if (isConvertFloatPrecisionLack(StringUtils.trim(strValue))) {
-          return TYPE_INFER_KEY_DICT.get(DATATYPE_LONG);
+          return Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_LONG);
         }
-        return TYPE_INFER_KEY_DICT.get(DATATYPE_INT);
+        return Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_INT);
       } else {
-        return TYPE_INFER_KEY_DICT.get(DATATYPE_FLOAT);
+        return Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_FLOAT);
       }
-    } else if (DATATYPE_NULL.equals(strValue) || DATATYPE_NULL.toUpperCase().equals(strValue)) {
+    } else if (Constants.DATATYPE_NULL.equals(strValue)
+        || Constants.DATATYPE_NULL.toUpperCase().equals(strValue)) {
       return null;
       // "NaN" is returned if the NaN Literal is given in Parser
-    } else if (DATATYPE_NAN.equals(strValue)) {
-      return TYPE_INFER_KEY_DICT.get(DATATYPE_NAN);
+    } else if (Constants.DATATYPE_NAN.equals(strValue)) {
+      return Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_NAN);
     } else if (isBlob(strValue)) {
-      return TYPE_INFER_KEY_DICT.get(DATATYPE_BLOB);
+      return Constants.TYPE_INFER_KEY_DICT.get(Constants.DATATYPE_BLOB);
     } else if (strValue.length() <= 512) {
       return STRING;
     } else {
@@ -290,7 +326,7 @@ public abstract class AbstractDataTool {
   }
 
   static boolean isNumber(String s) {
-    if (s == null || s.equals(DATATYPE_NAN)) {
+    if (s == null || s.equals(Constants.DATATYPE_NAN)) {
       return false;
     }
     try {
@@ -657,13 +693,13 @@ public abstract class AbstractDataTool {
         try {
           session.open();
         } catch (IoTDBConnectionException ex) {
-          ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
+          ioTPrinter.println(Constants.INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
         }
         writeAndEmptyDataSet(
             session, device, times, typesList, valuesList, measurementsList, --retryTime);
       }
     } catch (StatementExecutionException e) {
-      ioTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
+      ioTPrinter.println(Constants.INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
       try {
         session.close();
       } catch (IoTDBConnectionException ex) {

@@ -23,6 +23,7 @@ import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.tool.common.Constants;
 
 import org.apache.thrift.TException;
 
@@ -31,8 +32,6 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static org.apache.iotdb.tool.common.Constants.*;
 
 public abstract class AbstractExportData extends AbstractDataTool {
 
@@ -50,7 +49,7 @@ public abstract class AbstractExportData extends AbstractDataTool {
     Matcher matcher = pattern.matcher(sql);
     if (matcher.find()) {
       ioTPrinter.println("The sql you entered is invalid, please don't use aggregate query.");
-      System.exit(CODE_ERROR);
+      System.exit(Constants.CODE_ERROR);
     }
   }
 
