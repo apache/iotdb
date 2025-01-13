@@ -20,10 +20,15 @@
 package org.apache.iotdb.commons.binaryallocator.arena;
 
 import org.apache.iotdb.commons.binaryallocator.BinaryAllocator;
+import org.apache.iotdb.commons.binaryallocator.PooledBinaryPhantomReference;
 import org.apache.iotdb.commons.binaryallocator.config.AllocatorConfig;
 import org.apache.iotdb.commons.binaryallocator.ema.AdaptiveWeightedAverage;
 import org.apache.iotdb.commons.binaryallocator.utils.SizeClasses;
 
+import org.apache.tsfile.utils.PooledBinary;
+
+import java.lang.ref.ReferenceQueue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -39,6 +44,9 @@ public class Arena {
 
   private int sampleCount;
 
+  private final ReferenceQueue<PooledBinary> referenceQueue;
+  private final Set<PooledBinaryPhantomReference> phantomRefs;
+
   public Arena(
       BinaryAllocator allocator, SizeClasses sizeClasses, int id, AllocatorConfig allocatorConfig) {
     this.binaryAllocator = allocator;
@@ -52,20 +60,31 @@ public class Arena {
     }
 
     sampleCount = 0;
+    referenceQueue = binaryAllocator.referenceQueue;
+    phantomRefs = binaryAllocator.phantomRefs;
   }
 
   public int getArenaID() {
     return arenaID;
   }
 
-  public byte[] allocate(int reqCapacity) {
+  public PooledBinary allocate(int reqCapacity, boolean autoRelease) {
     final int sizeIdx = sizeClasses.size2SizeIdx(reqCapacity);
-    return regions[sizeIdx].allocate();
+    byte[] data = regions[sizeIdx].allocate();
+    if (autoRelease) {
+      PooledBinary binary = new PooledBinary(data, reqCapacity, -1);
+      PooledBinaryPhantomReference ref =
+          new PooledBinaryPhantomReference(binary, referenceQueue, data, regions[sizeIdx]);
+      phantomRefs.add(ref);
+      return binary;
+    } else {
+      return new PooledBinary(data, reqCapacity, arenaID);
+    }
   }
 
-  public void deallocate(byte[] bytes) {
-    final int sizeIdx = sizeClasses.size2SizeIdx(bytes.length);
-    regions[sizeIdx].deallocate(bytes);
+  public void deallocate(PooledBinary binary) {
+    final int sizeIdx = sizeClasses.size2SizeIdx(binary.getLength());
+    regions[sizeIdx].deallocate(binary.getValues());
   }
 
   public long evict(double ratio) {
@@ -146,8 +165,13 @@ public class Arena {
     return evictedSize;
   }
 
-  private static class SlabRegion {
+  public static class SlabRegion {
     private final int byteArraySize;
+
+    // Current implementation uses ConcurrentLinkedQueue for simplicity
+    // TODO: Can be optimized with more efficient lock-free approaches:
+    // 1. No need for strict FIFO, it's just an object pool
+    // 2. Use segmented arrays/queues with per-segment counters to reduce contention
     private final ConcurrentLinkedQueue<byte[]> queue;
 
     private final AtomicInteger allocationsFromAllocator;
