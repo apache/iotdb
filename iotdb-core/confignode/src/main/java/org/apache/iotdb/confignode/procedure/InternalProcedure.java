@@ -49,10 +49,5 @@ public abstract class InternalProcedure<Env> extends Procedure<Env> {
   }
 
   @Override
-  protected boolean abort(Env env) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public void deserialize(ByteBuffer byteBuffer) {}
 }
