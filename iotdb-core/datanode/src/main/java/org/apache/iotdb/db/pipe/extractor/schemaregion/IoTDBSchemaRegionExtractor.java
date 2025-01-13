@@ -51,8 +51,10 @@ import java.util.Set;
 
 @TreeModel
 public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
-  public static final PipePlanPatternParseVisitor PATTERN_PARSE_VISITOR =
-      new PipePlanPatternParseVisitor();
+  public static final PipePlanTreePatternParseVisitor TREE_PATTERN_PARSE_VISITOR =
+      new PipePlanTreePatternParseVisitor();
+  public static final PipePlanTablePatternParseVisitor TABLE_PATTERN_PARSE_VISITOR =
+      new PipePlanTablePatternParseVisitor();
 
   private SchemaRegionId schemaRegionId;
 
@@ -101,6 +103,11 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
 
   @Override
   protected boolean needTransferSnapshot() {
+    // Note: the schema region will transfer snapshot if there are table or tree planNode captured.
+    // However, the schema region can be only tree model or table model, thus the snapshot can be
+    // omitted if the schema region and transferred type's model are mismatched. Actually, the
+    // mismatched subtask is supposed to be trimmed on configNode and will not be created here,
+    // hence there's no need to optimize it here.
     return PipeSchemaRegionSnapshotEvent.needTransferSnapshot(listenedTypeSet);
   }
 
@@ -129,9 +136,16 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   @Override
   protected Optional<PipeWritePlanEvent> trimRealtimeEventByPipePattern(
       final PipeWritePlanEvent event) {
-    return PATTERN_PARSE_VISITOR
-        .process(((PipeSchemaRegionWritePlanEvent) event).getPlanNode(), pipePattern)
-        .map(planNode -> new PipeSchemaRegionWritePlanEvent(planNode, event.isGeneratedByPipe()));
+    return TREE_PATTERN_PARSE_VISITOR
+        .process(((PipeSchemaRegionWritePlanEvent) event).getPlanNode(), treePattern)
+        .flatMap(
+            planNode ->
+                TABLE_PATTERN_PARSE_VISITOR
+                    .process(((PipeSchemaRegionWritePlanEvent) event).getPlanNode(), tablePattern)
+                    .map(
+                        planNode1 ->
+                            new PipeSchemaRegionWritePlanEvent(
+                                planNode1, event.isGeneratedByPipe())));
   }
 
   @Override

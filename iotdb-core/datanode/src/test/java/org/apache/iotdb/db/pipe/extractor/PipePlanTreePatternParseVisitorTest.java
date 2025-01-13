@@ -55,7 +55,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-public class PipePlanPatternParseVisitorTest {
+public class PipePlanTreePatternParseVisitorTest {
   private final IoTDBTreePattern prefixPathPattern = new IoTDBTreePattern("root.db.device.**");
   private final IoTDBTreePattern fullPathPattern = new IoTDBTreePattern("root.db.device.s1");
 
@@ -86,11 +86,11 @@ public class PipePlanPatternParseVisitorTest {
 
     Assert.assertEquals(
         createTimeSeriesNode,
-        IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBSchemaRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitCreateTimeSeries(createTimeSeriesNode, prefixPathPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertFalse(
-        IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBSchemaRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitCreateTimeSeries(createTimeSeriesNodeToFilter, prefixPathPattern)
             .isPresent());
   }
@@ -108,7 +108,7 @@ public class PipePlanPatternParseVisitorTest {
             Collections.singletonList("a1"),
             Collections.singletonList(Collections.emptyMap()),
             Collections.singletonList(Collections.emptyMap())),
-        IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBSchemaRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitCreateAlignedTimeSeries(
                 new CreateAlignedTimeSeriesNode(
                     new PlanNodeId("2024-04-30-1"),
@@ -137,7 +137,7 @@ public class PipePlanPatternParseVisitorTest {
             Collections.singletonList("a1"),
             Collections.singletonList(Collections.emptyMap()),
             Collections.singletonList(Collections.emptyMap())),
-        IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBSchemaRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitCreateMultiTimeSeries(
                 new CreateMultiTimeSeriesNode(
                     new PlanNodeId("2024-04-30-1"),
@@ -181,11 +181,11 @@ public class PipePlanPatternParseVisitorTest {
 
     Assert.assertEquals(
         alterTimeSeriesNode,
-        IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBSchemaRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitAlterTimeSeries(alterTimeSeriesNode, prefixPathPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertFalse(
-        IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBSchemaRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitAlterTimeSeries(alterTimeSeriesNodeToFilter, prefixPathPattern)
             .isPresent());
   }
@@ -219,7 +219,7 @@ public class PipePlanPatternParseVisitorTest {
             new PartialPath("root.db.device"),
             expectedMeasurementGroup,
             true),
-        IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBSchemaRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitInternalCreateTimeSeries(
                 new InternalCreateTimeSeriesNode(
                     new PlanNodeId("2024-04-30-1"),
@@ -240,11 +240,11 @@ public class PipePlanPatternParseVisitorTest {
 
     Assert.assertEquals(
         activateTemplateNode,
-        IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBSchemaRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitActivateTemplate(activateTemplateNode, prefixPathPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertFalse(
-        IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBSchemaRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitActivateTemplate(activateTemplateNodeToFilter, prefixPathPattern)
             .isPresent());
   }
@@ -255,7 +255,7 @@ public class PipePlanPatternParseVisitorTest {
         new InternalBatchActivateTemplateNode(
             new PlanNodeId("2024-04-30-1"),
             Collections.singletonMap(new PartialPath("root.db.device"), new Pair<>(1, 1))),
-        IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBSchemaRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitInternalBatchActivateTemplate(
                 new InternalBatchActivateTemplateNode(
                     new PlanNodeId("2024-04-30-1"),
@@ -297,7 +297,7 @@ public class PipePlanPatternParseVisitorTest {
             new PlanNodeId("2024-04-30-1"),
             Collections.singletonMap(
                 new PartialPath("root.db.device"), new Pair<>(false, expectedMeasurementGroup))),
-        IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBSchemaRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitInternalCreateMultiTimeSeries(
                 new InternalCreateMultiTimeSeriesNode(
                     new PlanNodeId("2024-04-30-1"),
@@ -321,7 +321,7 @@ public class PipePlanPatternParseVisitorTest {
         new BatchActivateTemplateNode(
             new PlanNodeId("2024-04-30-1"),
             Collections.singletonMap(new PartialPath("root.db.device"), new Pair<>(1, 1))),
-        IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBSchemaRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitBatchActivateTemplate(
                 new BatchActivateTemplateNode(
                     new PlanNodeId("2024-04-30-1"),
@@ -342,7 +342,7 @@ public class PipePlanPatternParseVisitorTest {
             new PlanNodeId("2024-04-30-1"),
             Collections.singletonMap(
                 new PartialPath("root.db.device.a1"), new TimeSeriesViewOperand("root.sg1.d1"))),
-        IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBSchemaRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitCreateLogicalView(
                 new CreateLogicalViewNode(
                     new PlanNodeId("2024-04-30-1"),
@@ -367,7 +367,7 @@ public class PipePlanPatternParseVisitorTest {
             new PlanNodeId("2024-04-30-1"),
             Collections.singletonMap(
                 new PartialPath("root.db.device.a1"), new TimeSeriesViewOperand("root.sg1.d1"))),
-        IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBSchemaRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitAlterLogicalView(
                 new AlterLogicalViewNode(
                     new PlanNodeId("2024-04-30-1"),
@@ -393,7 +393,7 @@ public class PipePlanPatternParseVisitorTest {
             Collections.singletonList(new MeasurementPath("root.db.device.s1")),
             Long.MIN_VALUE,
             Long.MAX_VALUE),
-        IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBSchemaRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitDeleteData(
                 new DeleteDataNode(
                     new PlanNodeId("2024-04-30-1"),

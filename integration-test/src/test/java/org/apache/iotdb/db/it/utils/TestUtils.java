@@ -48,6 +48,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
@@ -495,12 +496,13 @@ public class TestUtils {
     }
   }
 
-  public static void assertResultSetSize(final ResultSet actualResultSet, int size) {
+  public static void assertResultSetSize(final ResultSet actualResultSet, final int size) {
     try {
+      int count = 0;
       while (actualResultSet.next()) {
-        --size;
+        ++count;
       }
-      Assert.assertEquals(0, size);
+      Assert.assertEquals(size, count);
     } catch (final Exception e) {
       e.printStackTrace();
       Assert.fail(String.valueOf(e));
@@ -1042,6 +1044,43 @@ public class TestUtils {
     }
   }
 
+  public static void assertDataSizeEventuallyOnEnv(
+      final BaseEnv env, final String sql, final int size, final String databaseName) {
+    assertDataSizeEventuallyOnEnv(env, sql, size, 600, databaseName);
+  }
+
+  public static void assertDataSizeEventuallyOnEnv(
+      final BaseEnv env,
+      final String sql,
+      final int size,
+      final long timeoutSeconds,
+      final String dataBaseName) {
+    try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failures
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(timeoutSeconds, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                try {
+                  if (dataBaseName != null) {
+                    statement.execute("use " + dataBaseName);
+                  }
+                  if (sql != null && !sql.isEmpty()) {
+                    TestUtils.assertResultSetSize(executeQueryWithRetry(statement, sql), size);
+                  }
+                } catch (final Exception e) {
+                  Assert.fail(e.getMessage());
+                }
+              });
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
   public static void assertDataEventuallyOnEnv(
       final BaseEnv env,
       final String sql,
@@ -1106,7 +1145,7 @@ public class TestUtils {
       final String expectedHeader,
       final Set<String> expectedResSet,
       final long timeoutSeconds,
-      final String dataBaseName,
+      final String databaseName,
       final Consumer<String> handleFailure) {
     try (Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
@@ -1119,8 +1158,8 @@ public class TestUtils {
           .untilAsserted(
               () -> {
                 try {
-                  if (dataBaseName != null) {
-                    statement.execute("use " + dataBaseName);
+                  if (databaseName != null) {
+                    statement.execute("use " + databaseName);
                   }
                   if (sql != null && !sql.isEmpty()) {
                     TestUtils.assertResultSetEqual(
@@ -1174,8 +1213,20 @@ public class TestUtils {
   }
 
   public static void assertDataAlwaysOnEnv(
-      BaseEnv env, String sql, String expectedHeader, Set<String> expectedResSet) {
-    assertDataAlwaysOnEnv(env, sql, expectedHeader, expectedResSet, 10);
+      final BaseEnv env,
+      final String sql,
+      final String expectedHeader,
+      final Set<String> expectedResSet) {
+    assertDataAlwaysOnEnv(env, sql, expectedHeader, expectedResSet, 10, (String) null);
+  }
+
+  public static void assertDataAlwaysOnEnv(
+      final BaseEnv env,
+      final String sql,
+      final String expectedHeader,
+      final Set<String> expectedResSet,
+      final String database) {
+    assertDataAlwaysOnEnv(env, sql, expectedHeader, expectedResSet, 10, database);
   }
 
   public static void assertDataAlwaysOnEnv(
@@ -1192,8 +1243,11 @@ public class TestUtils {
       String sql,
       String expectedHeader,
       Set<String> expectedResSet,
-      long consistentSeconds) {
-    try (Connection connection = env.getConnection();
+      long consistentSeconds,
+      final String database) {
+    try (Connection connection =
+            env.getConnection(
+                Objects.isNull(database) ? BaseEnv.TREE_SQL_DIALECT : BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       // Keep retrying if there are execution failures
       await()
@@ -1204,6 +1258,9 @@ public class TestUtils {
           .failFast(
               () -> {
                 try {
+                  if (Objects.nonNull(database)) {
+                    statement.execute("use " + database);
+                  }
                   TestUtils.assertResultSetEqual(
                       executeQueryWithRetry(statement, sql), expectedHeader, expectedResSet);
                 } catch (Exception e) {
