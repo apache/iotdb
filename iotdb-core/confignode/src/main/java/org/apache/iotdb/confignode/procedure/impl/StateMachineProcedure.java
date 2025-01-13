@@ -190,13 +190,18 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
     int stateToBeAdded = EOF_STATE;
     if (Flow.HAS_MORE_STATE == stateFlow) {
       if (nextState == NO_NEXT_STATE) {
-        LOG.error("StateMachineProcedure pid={} not set next state, but return HAS_MORE_STATE", getProcId());
+        LOG.error(
+            "StateMachineProcedure pid={} not set next state, but return HAS_MORE_STATE",
+            getProcId());
       } else {
         stateToBeAdded = nextState;
       }
     } else {
       if (nextState != NO_NEXT_STATE) {
-        LOG.warn("StateMachineProcedure pid={} set next state to {}, but return NO_MORE_STATE", getProcId(), nextState);
+        LOG.warn(
+            "StateMachineProcedure pid={} set next state to {}, but return NO_MORE_STATE",
+            getProcId(),
+            nextState);
       }
     }
     if (getStateId(getCurrentState()) == stateToBeAdded) {

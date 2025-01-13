@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
@@ -429,7 +428,7 @@ public class ProcedureExecutor<Env> {
         if (subprocs != null && subprocs.length == 0) {
           subprocs = null;
         }
-      }catch (ProcedureYieldException e) {
+      } catch (ProcedureYieldException e) {
         LOG.debug("Yield {}", proc);
         yieldProcedure(proc);
       } catch (InterruptedException e) {
