@@ -36,14 +36,13 @@ import static java.lang.String.format;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 
-// @Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBFormatFunctionTableIT {
 
   private static final String DATABASE_NAME = "db";
 
-  private final ZoneId zoneId = ZoneId.of("Z");
+  private static final ZoneId zoneId = ZoneId.of("Z");
 
   private static final String[] SQLs =
       new String[] {
