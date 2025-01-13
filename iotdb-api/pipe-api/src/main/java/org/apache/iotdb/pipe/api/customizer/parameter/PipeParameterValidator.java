@@ -23,6 +23,10 @@ import org.apache.iotdb.pipe.api.exception.PipeAttributeNotProvidedException;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class PipeParameterValidator {
 
@@ -34,6 +38,27 @@ public class PipeParameterValidator {
 
   public PipeParameters getParameters() {
     return parameters;
+  }
+
+  public PipeParameterValidator validateSynonymAttributes(
+      final List<String> lhsAttributes,
+      final List<String> rhsAttributes,
+      final boolean isRequired) {
+    final boolean lhsExistence = lhsAttributes.stream().anyMatch(parameters::hasAttribute);
+    final boolean rhsExistence = rhsAttributes.stream().anyMatch(parameters::hasAttribute);
+    if (lhsExistence && rhsExistence) {
+      throw new PipeParameterNotValidException(
+          String.format(
+              "Cannot specify both %s and %s at the same time", lhsAttributes, rhsAttributes));
+    }
+    if (isRequired && !lhsExistence && !rhsExistence) {
+      throw new PipeAttributeNotProvidedException(
+          Stream.concat(lhsAttributes.stream(), rhsAttributes.stream())
+              .collect(
+                  Collectors.collectingAndThen(Collectors.toList(), Collections::unmodifiableList))
+              .toString());
+    }
+    return this;
   }
 
   /**
@@ -83,7 +108,7 @@ public class PipeParameterValidator {
    * @throws PipeParameterNotValidException if the given argument is not valid
    */
   public PipeParameterValidator validate(
-      final PipeParameterValidator.SingleObjectValidationRule validationRule,
+      final SingleObjectValidationRule validationRule,
       final String messageToThrow,
       final Object argument)
       throws PipeParameterNotValidException {
@@ -107,7 +132,7 @@ public class PipeParameterValidator {
    * @throws PipeParameterNotValidException if the given arguments are not valid
    */
   public PipeParameterValidator validate(
-      final PipeParameterValidator.MultipleObjectsValidationRule validationRule,
+      final MultipleObjectsValidationRule validationRule,
       final String messageToThrow,
       final Object... arguments)
       throws PipeParameterNotValidException {
