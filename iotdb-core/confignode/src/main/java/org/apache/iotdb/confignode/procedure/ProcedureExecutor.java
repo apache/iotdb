@@ -185,22 +185,18 @@ public class ProcedureExecutor<Env> {
             // executing, we need to set its state to RUNNABLE.
             procedure.setState(ProcedureState.RUNNABLE);
             runnableList.add(procedure);
-          } else {
-            procedure.afterRecover(environment);
           }
         });
     restoreLocks();
 
     waitingTimeoutList.forEach(
         procedure -> {
-          procedure.afterRecover(environment);
           timeoutExecutor.add(procedure);
         });
 
     failedList.forEach(scheduler::addBack);
     runnableList.forEach(
         procedure -> {
-          procedure.afterRecover(environment);
           scheduler.addBack(procedure);
         });
     scheduler.signalAll();
@@ -422,7 +418,6 @@ public class ProcedureExecutor<Env> {
     Procedure<Env>[] subprocs = null;
     do {
       reExecute = false;
-      proc.resetPersistance();
       try {
         subprocs = proc.doExecute(this.environment);
         if (subprocs != null && subprocs.length == 0) {
@@ -457,9 +452,7 @@ public class ProcedureExecutor<Env> {
       // add procedure into rollback stack.
       rootProcStack.addRollbackStep(proc);
 
-      if (proc.needPersistance()) {
-        updateStoreOnExecution(rootProcStack, proc, subprocs);
-      }
+      updateStoreOnExecution(rootProcStack, proc, subprocs);
 
       if (!store.isRunning()) {
         return;
@@ -687,11 +680,6 @@ public class ProcedureExecutor<Env> {
   private void executeCompletionCleanup(Procedure<Env> proc) {
     if (proc.hasLock()) {
       releaseLock(proc, true);
-    }
-    try {
-      proc.completionCleanup(this.environment);
-    } catch (Throwable e) {
-      LOG.error("CODE-BUG:Uncaught runtime exception for procedure {}", proc, e);
     }
   }
 

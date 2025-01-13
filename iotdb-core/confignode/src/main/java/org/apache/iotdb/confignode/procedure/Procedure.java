@@ -70,20 +70,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
 
   private int[] stackIndexes = null;
 
-  private boolean persist = true;
-
-  public boolean needPersistance() {
-    return this.persist;
-  }
-
-  public void resetPersistance() {
-    this.persist = true;
-  }
-
-  public final void skipPersistance() {
-    this.persist = false;
-  }
-
   public final boolean hasLock() {
     return locked;
   }
@@ -301,34 +287,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    */
   protected boolean holdLock(Env env) {
     return false;
-  }
-
-  /**
-   * Called before the procedure is recovered and added into the queue.
-   *
-   * @param env environment
-   */
-  protected final void beforeRecover(Env env) {
-    // no op
-  }
-
-  /**
-   * Called when the procedure is recovered and added into the queue.
-   *
-   * @param env environment
-   */
-  protected final void afterRecover(Env env) {
-    // no op
-  }
-
-  /**
-   * Called when the procedure is completed (success or rollback). The procedure may use this method
-   * to clean up in-memory states. This operation will not be retried on failure.
-   *
-   * @param env environment
-   */
-  protected void completionCleanup(Env env) {
-    // no op
   }
 
   /**
