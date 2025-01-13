@@ -34,6 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.DescPrior
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.MergeReaderPriority;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityMergeReader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.CommonUtils;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
@@ -1317,7 +1318,9 @@ public class SeriesScanUtil implements Accountable {
           }
           tsBlockBuilder.append("] ");
         }
-        LOGGER.warn("[getAllSatisfiedPageData] TsBlock:{}", tsBlockBuilder);
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug("[getAllSatisfiedPageData] TsBlock:{}", CommonUtils.toString(tsBlock));
+        }
         return tsBlock;
       } finally {
         long time = System.nanoTime() - startTime;

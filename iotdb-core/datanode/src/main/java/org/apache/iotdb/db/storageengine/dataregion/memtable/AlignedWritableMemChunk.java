@@ -513,7 +513,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public boolean isEmpty() {
-    return list.rowCount() == 0 || measurementIndexMap.isEmpty();
+    return list.rowCount() == 0 || measurementIndexMap.isEmpty() && ignoreAllNullRows;
   }
 
   @Override

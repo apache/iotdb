@@ -23,15 +23,14 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.queryengine.execution.exchange.SharedTsBlockQueue;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang3.Validate;
-import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
@@ -143,19 +142,10 @@ public class LocalSourceHandle implements ISourceHandle {
   @Override
   public ByteBuffer getSerializedTsBlock() throws IoTDBException {
     TsBlock tsBlock = receive();
-    StringBuilder tsBlockBuilder = new StringBuilder();
-    for (Column column : tsBlock.getAllColumns()) {
-      tsBlockBuilder.append("[");
-      for (int i = 0; i < column.getPositionCount(); i++) {
-        if (column instanceof TimeColumn) {
-          tsBlockBuilder.append(column.getLong(i)).append(",");
-        } else {
-          tsBlockBuilder.append(column.getTsPrimitiveType(i)).append(",");
-        }
-      }
-      tsBlockBuilder.append("] ");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("[GetSerializedTsBlock] TsBlock:{}", CommonUtils.toString(tsBlock));
     }
-    LOGGER.warn("[GetSerializedTsBlock] TsBlock:{}", tsBlockBuilder);
+
     if (tsBlock != null) {
       long startTime = System.nanoTime();
       try {

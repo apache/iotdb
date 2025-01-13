@@ -46,6 +46,7 @@ import java.util.Set;
 import static org.apache.iotdb.relational.it.session.IoTDBSessionRelationalIT.genValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -336,6 +337,19 @@ public class IoTDBAlterColumnTypeIT {
       session.insert(tablet);
       tablet.reset();
 
+      session.executeNonQueryStatement("FLUSH");
+
+      tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.INT32),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 2);
+      tablet.addValue("s1", 0, genValue(TSDataType.INT32, 2));
+      session.insert(tablet);
+      tablet.reset();
+
       session.executeNonQueryStatement("ALTER TABLE drop_and_alter DROP COLUMN s1");
 
       tablet =
@@ -344,8 +358,21 @@ public class IoTDBAlterColumnTypeIT {
               Collections.singletonList("s1"),
               Collections.singletonList(TSDataType.STRING),
               Collections.singletonList(ColumnCategory.FIELD));
-      tablet.addTimestamp(0, 2);
-      tablet.addValue("s1", 0, genValue(TSDataType.STRING, 2));
+      tablet.addTimestamp(0, 3);
+      tablet.addValue("s1", 0, genValue(TSDataType.STRING, 3));
+      session.insert(tablet);
+      tablet.reset();
+
+      session.executeNonQueryStatement("FLUSH");
+
+      tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.STRING),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 4);
+      tablet.addValue("s1", 0, genValue(TSDataType.STRING, 4));
       session.insert(tablet);
       tablet.reset();
 
@@ -358,19 +385,37 @@ public class IoTDBAlterColumnTypeIT {
               Collections.singletonList("s1"),
               Collections.singletonList(TSDataType.TEXT),
               Collections.singletonList(ColumnCategory.FIELD));
-      tablet.addTimestamp(0, 3);
-      tablet.addValue("s1", 0, genValue(TSDataType.STRING, 3));
+      tablet.addTimestamp(0, 5);
+      tablet.addValue("s1", 0, genValue(TSDataType.STRING, 5));
+      session.insert(tablet);
+      tablet.reset();
+
+      session.executeNonQueryStatement("FLUSH");
+
+      tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.TEXT),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 6);
+      tablet.addValue("s1", 0, genValue(TSDataType.STRING, 6));
       session.insert(tablet);
       tablet.reset();
 
       SessionDataSet dataSet =
           session.executeQueryStatement("select * from drop_and_alter order by time");
-      RowRecord rec = dataSet.next();
-      assertEquals(2, rec.getFields().get(0).getLongV());
-      assertEquals(genValue(TSDataType.STRING, 2).toString(), rec.getFields().get(1).toString());
-      rec = dataSet.next();
-      assertEquals(3, rec.getFields().get(0).getLongV());
-      assertEquals(genValue(TSDataType.STRING, 3).toString(), rec.getFields().get(1).toString());
+      RowRecord rec;
+      for (int i = 1; i < 3; i++) {
+        rec = dataSet.next();
+        assertEquals(i, rec.getFields().get(0).getLongV());
+        assertNull(rec.getFields().get(1).getDataType());
+      }
+      for (int i = 3; i < 7; i++) {
+        rec = dataSet.next();
+        assertEquals(i, rec.getFields().get(0).getLongV());
+        assertEquals(genValue(TSDataType.STRING, i).toString(), rec.getFields().get(1).toString());
+      }
       assertFalse(dataSet.hasNext());
     }
   }

@@ -24,14 +24,13 @@ import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.LocalSourceHandle;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.lang3.Validate;
-import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -216,19 +215,9 @@ public class SharedTsBlockQueue {
    * the returned future of last invocation completes.
    */
   public ListenableFuture<Void> add(TsBlock tsBlock) {
-    StringBuilder tsBlockBuilder = new StringBuilder();
-    for (Column column : tsBlock.getAllColumns()) {
-      tsBlockBuilder.append("[");
-      for (int i = 0; i < column.getPositionCount(); i++) {
-        if (column instanceof TimeColumn) {
-          tsBlockBuilder.append(column.getLong(i)).append(",");
-        } else {
-          tsBlockBuilder.append(column.getTsPrimitiveType(i)).append(",");
-        }
-      }
-      tsBlockBuilder.append("] ");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("[addTsBlock] TsBlock:{}", CommonUtils.toString(tsBlock));
     }
-    LOGGER.warn("[addTsBlock] TsBlock:{}", tsBlockBuilder);
     if (closed) {
       // queue may have been closed
       return immediateVoidFuture();

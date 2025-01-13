@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
+import org.apache.iotdb.db.utils.CommonUtils;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -28,7 +30,6 @@ import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.BatchDataFactory;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
 import org.apache.tsfile.read.reader.IPageReader;
@@ -99,19 +100,9 @@ public class MemAlignedPageReader implements IPageReader {
 
     // build value column
     buildValueColumns(satisfyInfo, readEndIndex);
-    StringBuilder tsBlockBuilder = new StringBuilder();
-    for (Column column : tsBlock.getAllColumns()) {
-      tsBlockBuilder.append("[");
-      for (int i = 0; i < column.getPositionCount(); i++) {
-        if (column instanceof TimeColumn) {
-          tsBlockBuilder.append(column.getLong(i)).append(",");
-        } else {
-          tsBlockBuilder.append(column.getTsPrimitiveType(i)).append(",");
-        }
-      }
-      tsBlockBuilder.append("] ");
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("[memAlignedPageReader] TsBlock:{}", CommonUtils.toString(tsBlock));
     }
-    LOGGER.warn("[memAlignedPageReader] TsBlock:{}", tsBlockBuilder);
     return builder.build();
   }
 
