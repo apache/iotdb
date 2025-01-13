@@ -34,7 +34,9 @@ public enum TSEncoding {
   FREQ((byte) 10),
   CHIMP((byte) 11),
   SPRINTZ((byte) 12),
-  RLBE((byte) 13);
+  RLBE((byte) 13),
+  ORDER_SENSITIVE_TIME((byte) 14),
+  ORDER_SENSITIVE_VALUE((byte) 15);
   private final byte type;
 
   TSEncoding(byte type) {
@@ -79,6 +81,10 @@ public enum TSEncoding {
         return TSEncoding.SPRINTZ;
       case 13:
         return TSEncoding.RLBE;
+      case 14:
+        return TSEncoding.ORDER_SENSITIVE_TIME;
+      case 15:
+        return TSEncoding.ORDER_SENSITIVE_VALUE;
       default:
         throw new IllegalArgumentException("Invalid input: " + encoding);
     }
