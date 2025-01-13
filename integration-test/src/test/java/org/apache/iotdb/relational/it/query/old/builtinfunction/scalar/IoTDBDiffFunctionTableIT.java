@@ -47,7 +47,7 @@ public class IoTDBDiffFunctionTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "use " + DATABASE_NAME,
-        "create table table1(device_id STRING ID, s1 INT32 MEASUREMENT, s2 FLOAT MEASUREMENT)",
+        "create table table1(device_id STRING TAG, s1 INT32 FIELD, s2 FLOAT FIELD)",
         "INSERT INTO table1(time,device_id,s1,s2) values(1, 'd1', 1, 1)",
         "INSERT INTO table1(time,device_id,s1) values(2, 'd1', 2)",
         "INSERT INTO table1(time,device_id,s2) values(3, 'd1', 3)",

@@ -66,7 +66,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   public PartialPath() {}
 
-  public PartialPath(IDeviceID device) throws IllegalPathException {
+  public PartialPath(final IDeviceID device) throws IllegalPathException {
     // the first segment is the table name, which may contain multiple levels
     String[] tableNameSegments = PathUtils.splitPathToDetachedNodes(device.getTableName());
     nodes = new String[device.segmentNum() - 1 + tableNameSegments.length];
@@ -120,8 +120,13 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   /**
    * @param partialNodes nodes of a time series path
    */
-  public PartialPath(String[] partialNodes) {
+  public PartialPath(final String[] partialNodes) {
     nodes = partialNodes;
+  }
+
+  public static PartialPath getQualifiedDatabasePartialPath(final String database)
+      throws IllegalPathException {
+    return PartialPath.getDatabasePath(PathUtils.qualifyDatabaseName(database));
   }
 
   /**
@@ -149,7 +154,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * @param path path
    * @param needSplit whether to split path to nodes, needSplit can only be false.
    */
-  public PartialPath(String path, boolean needSplit) {
+  public PartialPath(final String path, final boolean needSplit) {
     Validate.isTrue(!needSplit);
     fullPath = path;
     if ("".equals(path)) {

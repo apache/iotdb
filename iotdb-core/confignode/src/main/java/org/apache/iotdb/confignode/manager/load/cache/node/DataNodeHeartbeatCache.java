@@ -81,7 +81,8 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
     currentStatistics.set(new NodeStatistics(currentNanoTime, status, statusReason, loadScore));
 
     if (forceUpdate) {
-      LOGGER.info("Force update NodeCache: status={}, currentNanoTime={}", status, currentNanoTime);
+      LOGGER.debug(
+          "Force update NodeCache: status={}, currentNanoTime={}", status, currentNanoTime);
     }
   }
 

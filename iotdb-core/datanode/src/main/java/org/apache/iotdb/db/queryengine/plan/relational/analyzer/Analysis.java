@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -103,7 +104,6 @@ import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
-import static org.apache.iotdb.commons.schema.table.InformationSchemaTable.QUERIES;
 
 public class Analysis implements IAnalysis {
 
@@ -642,37 +642,37 @@ public class Analysis implements IAnalysis {
     return getOutputDescriptor(root);
   }
 
-  public RelationType getOutputDescriptor(Node node) {
+  public RelationType getOutputDescriptor(final Node node) {
     return getScope(node).getRelationType();
   }
 
-  public void addSourceColumns(Field field, Set<SourceColumn> sourceColumn) {
+  public void addSourceColumns(final Field field, final Set<SourceColumn> sourceColumn) {
     originColumnDetails.putAll(field, sourceColumn);
   }
 
-  public Set<SourceColumn> getSourceColumns(Field field) {
+  public Set<SourceColumn> getSourceColumns(final Field field) {
     return ImmutableSet.copyOf(originColumnDetails.get(field));
   }
 
-  public void addExpressionFields(Expression expression, Collection<Field> fields) {
+  public void addExpressionFields(final Expression expression, final Collection<Field> fields) {
     fieldLineage.putAll(NodeRef.of(expression), fields);
   }
 
-  public Set<SourceColumn> getExpressionSourceColumns(Expression expression) {
+  public Set<SourceColumn> getExpressionSourceColumns(final Expression expression) {
     return fieldLineage.get(NodeRef.of(expression)).stream()
         .flatMap(field -> getSourceColumns(field).stream())
         .collect(toImmutableSet());
   }
 
-  public void setRelationName(Relation relation, QualifiedName name) {
+  public void setRelationName(final Relation relation, final QualifiedName name) {
     relationNames.put(NodeRef.of(relation), name);
   }
 
-  public QualifiedName getRelationName(Relation relation) {
+  public QualifiedName getRelationName(final Relation relation) {
     return relationNames.get(NodeRef.of(relation));
   }
 
-  public void addAliased(Relation relation) {
+  public void addAliased(final Relation relation) {
     aliasedRelations.add(NodeRef.of(relation));
   }
 
@@ -681,19 +681,21 @@ public class Analysis implements IAnalysis {
   }
 
   public void addTableSchema(
-      QualifiedObjectName qualifiedObjectName, Map<Symbol, ColumnSchema> tableColumnSchema) {
+      final QualifiedObjectName qualifiedObjectName,
+      final Map<Symbol, ColumnSchema> tableColumnSchema) {
     tableColumnSchemas.put(qualifiedObjectName, tableColumnSchema);
   }
 
-  public Map<Symbol, ColumnSchema> getTableColumnSchema(QualifiedObjectName qualifiedObjectName) {
+  public Map<Symbol, ColumnSchema> getTableColumnSchema(
+      final QualifiedObjectName qualifiedObjectName) {
     return tableColumnSchemas.get(qualifiedObjectName);
   }
 
-  public void addPredicateCoercions(Map<NodeRef<Expression>, PredicateCoercions> coercions) {
+  public void addPredicateCoercions(final Map<NodeRef<Expression>, PredicateCoercions> coercions) {
     predicateCoercions.putAll(coercions);
   }
 
-  public PredicateCoercions getPredicateCoercions(Expression expression) {
+  public PredicateCoercions getPredicateCoercions(final Expression expression) {
     return predicateCoercions.get(NodeRef.of(expression));
   }
 
@@ -709,7 +711,7 @@ public class Analysis implements IAnalysis {
     return hasSortNode;
   }
 
-  public void setSortNode(boolean hasSortNode) {
+  public void setSortNode(final boolean hasSortNode) {
     this.hasSortNode = hasSortNode;
   }
 
@@ -717,7 +719,7 @@ public class Analysis implements IAnalysis {
     return emptyDataSource;
   }
 
-  public void setEmptyDataSource(boolean emptyDataSource) {
+  public void setEmptyDataSource(final boolean emptyDataSource) {
     this.emptyDataSource = emptyDataSource;
   }
 
@@ -732,12 +734,12 @@ public class Analysis implements IAnalysis {
   }
 
   @Override
-  public void setFailStatus(TSStatus failStatus) {
+  public void setFailStatus(final TSStatus failStatus) {
     this.failStatus = failStatus;
   }
 
   @Override
-  public boolean canSkipExecute(MPPQueryContext context) {
+  public boolean canSkipExecute(final MPPQueryContext context) {
     return isFinishQueryAfterAnalyze();
   }
 
@@ -746,7 +748,7 @@ public class Analysis implements IAnalysis {
   }
 
   @Override
-  public void setFinishQueryAfterAnalyze(boolean finishQueryAfterAnalyze) {
+  public void setFinishQueryAfterAnalyze(final boolean finishQueryAfterAnalyze) {
     this.finishQueryAfterAnalyze = finishQueryAfterAnalyze;
   }
 
@@ -755,14 +757,14 @@ public class Analysis implements IAnalysis {
   }
 
   @Override
-  public void setDataPartitionInfo(DataPartition dataPartition) {
+  public void setDataPartitionInfo(final DataPartition dataPartition) {
     this.dataPartition = dataPartition;
   }
 
   @Override
-  public TsBlock constructResultForMemorySource(MPPQueryContext context) {
+  public TsBlock constructResultForMemorySource(final MPPQueryContext context) {
     requireNonNull(getStatement(), "root statement is analysis is null");
-    StatementMemorySource memorySource =
+    final StatementMemorySource memorySource =
         new TableModelStatementMemorySourceVisitor()
             .process(getStatement(), new TableModelStatementMemorySourceContext(context, this));
     setRespDatasetHeader(memorySource.getDatasetHeader());
@@ -781,7 +783,7 @@ public class Analysis implements IAnalysis {
   @Override
   public boolean needSetHighestPriority() {
     return root instanceof ShowStatement
-        && ((ShowStatement) root).getTableName().equals(QUERIES.getSchemaTableName());
+        && ((ShowStatement) root).getTableName().equals(InformationSchema.QUERIES);
   }
 
   @Override
@@ -813,11 +815,11 @@ public class Analysis implements IAnalysis {
     return dataPartition;
   }
 
-  public void setDataPartition(DataPartition dataPartition) {
+  public void setDataPartition(final DataPartition dataPartition) {
     this.dataPartition = dataPartition;
   }
 
-  public void upsertDataPartition(DataPartition targetDataPartition) {
+  public void upsertDataPartition(final DataPartition targetDataPartition) {
     if (this.dataPartition == null) {
       this.dataPartition = targetDataPartition;
     } else {
@@ -831,12 +833,12 @@ public class Analysis implements IAnalysis {
   }
 
   @Override
-  public void setRedirectNodeList(List<TEndPoint> redirectNodeList) {
+  public void setRedirectNodeList(final List<TEndPoint> redirectNodeList) {
     this.redirectNodeList = redirectNodeList;
   }
 
   @Override
-  public void addEndPointToRedirectNodeList(TEndPoint endPoint) {
+  public void addEndPointToRedirectNodeList(final TEndPoint endPoint) {
     if (redirectNodeList == null) {
       redirectNodeList = new ArrayList<>();
     }
@@ -844,7 +846,7 @@ public class Analysis implements IAnalysis {
   }
 
   public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
-      String database, IDeviceID deviceId, Filter timeFilter) {
+      final String database, final IDeviceID deviceId, final Filter timeFilter) {
     if (dataPartition == null) {
       return Collections.singletonList(NOT_ASSIGNED);
     } else {
@@ -853,7 +855,7 @@ public class Analysis implements IAnalysis {
   }
 
   @Override
-  public TimePredicate getCovertedTimePredicate() {
+  public TimePredicate getConvertedTimePredicate() {
     return null;
   }
 

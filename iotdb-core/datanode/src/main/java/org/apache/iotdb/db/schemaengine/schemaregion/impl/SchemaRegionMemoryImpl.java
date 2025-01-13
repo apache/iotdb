@@ -192,6 +192,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private final String storageGroupDirPath;
   private final String schemaRegionDirPath;
+
+  // For table model db: without "root."
+  // For tree model db: with "root."
   private final String storageGroupFullPath;
   private final SchemaRegionId schemaRegionId;
 
@@ -204,7 +207,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private final DataNodeSchemaQuotaManager schemaQuotaManager =
       DataNodeSchemaQuotaManager.getInstance();
 
-  private MTreeBelowSGMemoryImpl mtree;
+  private MTreeBelowSGMemoryImpl mTree;
   private TagManager tagManager;
   private IDeviceAttributeStore deviceAttributeStore;
   private DeviceAttributeCacheUpdater deviceAttributeCacheUpdater;
@@ -213,7 +216,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public SchemaRegionMemoryImpl(final ISchemaRegionParams schemaRegionParams)
       throws MetadataException {
 
-    storageGroupFullPath = schemaRegionParams.getDatabase().getFullPath();
+    storageGroupFullPath = schemaRegionParams.getDatabase();
     this.schemaRegionId = schemaRegionParams.getSchemaRegionId();
 
     storageGroupDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
@@ -263,9 +266,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           new DeviceAttributeCacheUpdater(
               regionStatistics, PathUtils.unQualifyDatabaseName(storageGroupFullPath));
       tagManager = new TagManager(schemaRegionDirPath, regionStatistics);
-      mtree =
+      mTree =
           new MTreeBelowSGMemoryImpl(
-              PartialPath.getDatabasePath(storageGroupFullPath),
+              PartialPath.getQualifiedDatabasePartialPath(storageGroupFullPath),
               tagManager::readTags,
               tagManager::readAttributes,
               regionStatistics,
@@ -379,7 +382,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     // init the metadata from the operation log
     if (logFile.exists()) {
       final int idx;
-      try (SchemaLogReader<ISchemaRegionPlan> mLogReader =
+      try (final SchemaLogReader<ISchemaRegionPlan> mLogReader =
           new SchemaLogReader<>(
               schemaRegionDirPath,
               SchemaConstant.METADATA_LOG,
@@ -399,10 +402,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
   }
 
-  private int applyMLog(SchemaLogReader<ISchemaRegionPlan> mLogReader) {
+  private int applyMLog(final SchemaLogReader<ISchemaRegionPlan> mLogReader) {
     int idx = 0;
     ISchemaRegionPlan plan;
-    RecoverPlanOperator recoverPlanOperator = new RecoverPlanOperator();
+    final RecoverPlanOperator recoverPlanOperator = new RecoverPlanOperator();
     RecoverOperationResult operationResult;
     while (mLogReader.hasNext()) {
       try {
@@ -436,8 +439,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public synchronized void clear() {
     try {
-      if (this.mtree != null) {
-        this.mtree.clear();
+      if (this.mTree != null) {
+        this.mTree.clear();
       }
       this.regionStatistics.clear();
       if (logWriter != null) {
@@ -448,7 +451,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
       isRecovering = true;
       initialized = false;
-    } catch (IOException e) {
+    } catch (final IOException e) {
       logger.error("Cannot close metadata log writer, because:", e);
     }
   }
@@ -495,7 +498,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     final long startTime = System.currentTimeMillis();
 
     long snapshotStartTime = System.currentTimeMillis();
-    isSuccess = mtree.createSnapshot(snapshotDir);
+    isSuccess = mTree.createSnapshot(snapshotDir);
     logger.info(
         "MTree snapshot creation of schemaRegion {} costs {}ms. Status: {}",
         schemaRegionId,
@@ -556,7 +559,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
       long snapshotStartTime = System.currentTimeMillis();
       deviceAttributeStore = new DeviceAttributeStore(regionStatistics);
-      deviceAttributeStore.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath);
+      deviceAttributeStore.loadFromSnapshot(latestSnapshotRootDir);
       logger.info(
           "Device attribute snapshot loading of schemaRegion {} costs {}ms.",
           schemaRegionId,
@@ -564,7 +567,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
       snapshotStartTime = System.currentTimeMillis();
       deviceAttributeCacheUpdater =
-          new DeviceAttributeCacheUpdater(regionStatistics, storageGroupFullPath.substring(5));
+          new DeviceAttributeCacheUpdater(regionStatistics, storageGroupFullPath);
       deviceAttributeCacheUpdater.loadFromSnapshot(latestSnapshotRootDir);
       logger.info(
           "Device attribute remote updater snapshot loading of schemaRegion {} costs {}ms.",
@@ -580,7 +583,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           System.currentTimeMillis() - snapshotStartTime);
 
       snapshotStartTime = System.currentTimeMillis();
-      mtree =
+      mTree =
           MTreeBelowSGMemoryImpl.loadFromSnapshot(
               latestSnapshotRootDir,
               storageGroupFullPath,
@@ -597,7 +600,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                 }
                 try {
                   tagManager.recoverIndex(measurementMNode.getOffset(), measurementMNode);
-                } catch (IOException e) {
+                } catch (final IOException e) {
                   logger.error(
                       "Failed to recover tagIndex for {} in schemaRegion {}.",
                       storageGroupFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
@@ -670,7 +673,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       final TSDataType type = plan.getDataType();
       // Create time series in MTree
       leafMNode =
-          mtree.createTimeSeries(
+          mTree.createTimeSeries(
               path,
               type,
               plan.getEncoding(),
@@ -755,7 +758,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
       // create time series in MTree
       measurementMNodeList =
-          mtree.createAlignedTimeSeries(
+          mTree.createAlignedTimeSeries(
               prefixPath,
               measurements,
               dataTypes,
@@ -852,13 +855,13 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
-    return mtree.checkMeasurementExistence(devicePath, measurementList, aliasList);
+    return mTree.checkMeasurementExistence(devicePath, measurementList, aliasList);
   }
 
   @Override
   public void checkSchemaQuota(final PartialPath devicePath, final int timeSeriesNum)
       throws SchemaQuotaExceededException {
-    if (!mtree.checkDeviceNodeExists(devicePath)) {
+    if (!mTree.checkDeviceNodeExists(devicePath)) {
       schemaQuotaManager.check(timeSeriesNum, 1);
     } else {
       schemaQuotaManager.check(timeSeriesNum, 0);
@@ -868,11 +871,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void checkSchemaQuota(final String tableName, final List<Object[]> deviceIdList)
       throws SchemaQuotaExceededException {
-    final int notExistNum = mtree.getTableDeviceNotExistNum(tableName, deviceIdList);
+    final int notExistNum = mTree.getTableDeviceNotExistNum(tableName, deviceIdList);
     schemaQuotaManager.check(
         (long)
                 DataNodeTableCache.getInstance()
-                    .getTable(storageGroupFullPath.substring(5), tableName)
+                    .getTable(storageGroupFullPath, tableName)
                     .getMeasurementNum()
             * notExistNum,
         notExistNum);
@@ -887,7 +890,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       // Given pathPatterns may match one time series multi times, which may results in the
       // preDeletedNum larger than the actual num of time series. It doesn't matter since the main
       // purpose is to check whether there's time series to be deleted.
-      final List<PartialPath> paths = mtree.constructSchemaBlackList(pathPattern, isAllLogicalView);
+      final List<PartialPath> paths = mTree.constructSchemaBlackList(pathPattern, isAllLogicalView);
       preDeletedNum += paths.size();
       for (final PartialPath path : paths) {
         writeToMLog(SchemaRegionWritePlanFactory.getPreDeleteTimeSeriesPlan(path));
@@ -897,14 +900,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   private void recoverPreDeleteTimeseries(PartialPath path) throws MetadataException {
-    IMeasurementMNode<IMemMNode> measurementMNode = mtree.getMeasurementMNode(path);
+    IMeasurementMNode<IMemMNode> measurementMNode = mTree.getMeasurementMNode(path);
     measurementMNode.setPreDeleted(true);
   }
 
   @Override
   public void rollbackSchemaBlackList(final PathPatternTree patternTree) throws MetadataException {
     for (final PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      final List<PartialPath> paths = mtree.rollbackSchemaBlackList(pathPattern);
+      final List<PartialPath> paths = mTree.rollbackSchemaBlackList(pathPattern);
       for (final PartialPath path : paths) {
         writeToMLog(SchemaRegionWritePlanFactory.getRollbackPreDeleteTimeSeriesPlan(path));
       }
@@ -916,7 +919,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws MetadataException {
     Set<PartialPath> deviceBasedPathPatternSet = new HashSet<>();
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      for (PartialPath devicePath : mtree.getDevicesOfPreDeletedTimeSeries(pathPattern)) {
+      for (PartialPath devicePath : mTree.getDevicesOfPreDeletedTimeSeries(pathPattern)) {
         deviceBasedPathPatternSet.addAll(pathPattern.alterPrefixPath(devicePath));
       }
     }
@@ -926,7 +929,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException {
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      for (PartialPath path : mtree.getPreDeletedTimeSeries(pathPattern)) {
+      for (PartialPath path : mTree.getPreDeletedTimeSeries(pathPattern)) {
         try {
           deleteSingleTimeseriesInBlackList(path);
           writeToMLog(
@@ -951,7 +954,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         plan.getViewPathToSourceExpressionMap();
     for (final PartialPath path : pathList) {
       // create one logical view
-      mtree.createLogicalView(path, viewPathToSourceMap.get(path));
+      mTree.createLogicalView(path, viewPathToSourceMap.get(path));
     }
     // write log
     if (!isRecovering) {
@@ -968,7 +971,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       // Given pathPatterns may match one logical view multi times, which may results in the
       // preDeletedNum larger than the actual num of logical view. It doesn't matter since the main
       // purpose is to check whether there's logical view to be deleted.
-      final List<PartialPath> paths = mtree.constructLogicalViewBlackList(pathPattern);
+      final List<PartialPath> paths = mTree.constructLogicalViewBlackList(pathPattern);
       preDeletedNum += paths.size();
       for (final PartialPath path : paths) {
         writeToMLog(SchemaRegionWritePlanFactory.getPreDeleteLogicalViewPlan(path));
@@ -981,7 +984,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public void rollbackLogicalViewBlackList(final PathPatternTree patternTree)
       throws MetadataException {
     for (final PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      final List<PartialPath> paths = mtree.rollbackLogicalViewBlackList(pathPattern);
+      final List<PartialPath> paths = mTree.rollbackLogicalViewBlackList(pathPattern);
       for (final PartialPath path : paths) {
         writeToMLog(SchemaRegionWritePlanFactory.getRollbackPreDeleteLogicalViewPlan(path));
       }
@@ -991,7 +994,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void deleteLogicalView(final PathPatternTree patternTree) throws MetadataException {
     for (final PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      for (final PartialPath path : mtree.getPreDeletedLogicalView(pathPattern)) {
+      for (final PartialPath path : mTree.getPreDeletedLogicalView(pathPattern)) {
         try {
           deleteSingleTimeseriesInBlackList(path);
           writeToMLog(SchemaRegionWritePlanFactory.getDeleteLogicalViewPlan(path));
@@ -1006,7 +1009,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public void alterLogicalView(final IAlterLogicalViewPlan alterLogicalViewPlan)
       throws MetadataException {
     final IMeasurementMNode<IMemMNode> leafMNode =
-        mtree.getMeasurementMNode(alterLogicalViewPlan.getViewPath());
+        mTree.getMeasurementMNode(alterLogicalViewPlan.getViewPath());
     if (!leafMNode.isLogicalView()) {
       throw new MetadataException(
           String.format("[%s] is no view.", alterLogicalViewPlan.getViewPath()));
@@ -1021,7 +1024,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private void deleteSingleTimeseriesInBlackList(final PartialPath path)
       throws MetadataException, IOException {
-    final IMeasurementMNode<IMemMNode> measurementMNode = mtree.deleteTimeSeries(path);
+    final IMeasurementMNode<IMemMNode> measurementMNode = mTree.deleteTimeSeries(path);
     removeFromTagInvertedIndex(measurementMNode);
     if (measurementMNode.isLogicalView()) {
       regionStatistics.deleteView(1L);
@@ -1031,7 +1034,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   private void recoverRollbackPreDeleteTimeseries(final PartialPath path) throws MetadataException {
-    final IMeasurementMNode<IMemMNode> measurementMNode = mtree.getMeasurementMNode(path);
+    final IMeasurementMNode<IMemMNode> measurementMNode = mTree.getMeasurementMNode(path);
     measurementMNode.setPreDeleted(false);
   }
 
@@ -1040,7 +1043,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    */
   private void deleteOneTimeseriesUpdateStatistics(final PartialPath path)
       throws MetadataException, IOException {
-    final IMeasurementMNode<IMemMNode> measurementMNode = mtree.deleteTimeSeries(path);
+    final IMeasurementMNode<IMemMNode> measurementMNode = mTree.deleteTimeSeries(path);
     removeFromTagInvertedIndex(measurementMNode);
     if (measurementMNode.isLogicalView()) {
       regionStatistics.deleteView(1L);
@@ -1060,14 +1063,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param path path
    */
   private IMemMNode getDeviceNodeWithAutoCreate(final PartialPath path) throws MetadataException {
-    final IMemMNode node = mtree.getDeviceNodeWithAutoCreating(path);
+    final IMemMNode node = mTree.getDeviceNodeWithAutoCreating(path);
     writeToMLog(SchemaRegionWritePlanFactory.getAutoCreateDeviceMNodePlan(node.getPartialPath()));
     return node;
   }
 
   private void autoCreateDeviceMNode(final IAutoCreateDeviceMNodePlan plan)
       throws MetadataException {
-    mtree.getDeviceNodeWithAutoCreating(plan.getPath());
+    mTree.getDeviceNodeWithAutoCreating(plan.getPath());
     writeToMLog(plan);
   }
 
@@ -1081,7 +1084,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   @Override
   public MeasurementPath fetchMeasurementPath(final PartialPath fullPath) throws MetadataException {
-    final IMeasurementMNode<IMemMNode> node = mtree.getMeasurementMNode(fullPath);
+    final IMeasurementMNode<IMemMNode> node = mTree.getMeasurementMNode(fullPath);
     final MeasurementPath res = new MeasurementPath(node.getPartialPath(), node.getSchema());
     res.setUnderAlignedEntity(node.getParent().getAsDeviceMNode().isAligned());
     return res;
@@ -1100,12 +1103,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       final ClusterSchemaTree schemaTree = new ClusterSchemaTree();
       for (final PartialPath path : patternTree.getAllPathPatterns()) {
         schemaTree.mergeSchemaTree(
-            mtree.fetchSchema(
+            mTree.fetchSchema(
                 path, templateMap, withTags, withAttributes, withTemplate, withAliasForce));
       }
       return schemaTree;
     } else {
-      return mtree.fetchSchemaWithoutWildcard(
+      return mTree.fetchSchemaWithoutWildcard(
           patternTree, templateMap, withTags, withAttributes, withTemplate);
     }
   }
@@ -1114,7 +1117,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public ClusterSchemaTree fetchDeviceSchema(
       final PathPatternTree patternTree, final PathPatternTree authorityScope)
       throws MetadataException {
-    return mtree.fetchDeviceSchema(patternTree, authorityScope);
+    return mTree.fetchDeviceSchema(patternTree, authorityScope);
   }
 
   // endregion
@@ -1130,7 +1133,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param offset offset in the tag file
    */
   private void changeOffset(final PartialPath path, final long offset) throws MetadataException {
-    final IMeasurementMNode<IMemMNode> measurementMNode = mtree.getMeasurementMNode(path);
+    final IMeasurementMNode<IMemMNode> measurementMNode = mTree.getMeasurementMNode(path);
     measurementMNode.setOffset(offset);
 
     if (isRecovering) {
@@ -1165,7 +1168,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throw new SeriesOverflowException(
           regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
-    final IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
+    final IMeasurementMNode<IMemMNode> leafMNode = mTree.getMeasurementMNode(fullPath);
     if (tagsMap == null && attributesMap == null) {
       return;
     }
@@ -1192,7 +1195,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         throw new SeriesOverflowException(
             regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
       }
-      if (mtree.changeAlias(alias, fullPath)) {
+      if (mTree.changeAlias(alias, fullPath)) {
         // persist to WAL
         writeToMLog(SchemaRegionWritePlanFactory.getChangeAliasPlan(fullPath, alias));
       }
@@ -1209,7 +1212,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void addAttributes(final Map<String, String> attributesMap, final PartialPath fullPath)
       throws MetadataException, IOException {
-    final IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
+    final IMeasurementMNode<IMemMNode> leafMNode = mTree.getMeasurementMNode(fullPath);
 
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
@@ -1236,7 +1239,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throw new SeriesOverflowException(
           regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
-    final IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
+    final IMeasurementMNode<IMemMNode> leafMNode = mTree.getMeasurementMNode(fullPath);
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
       final long offset = tagManager.writeTagFile(tagsMap, Collections.emptyMap());
@@ -1261,7 +1264,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void dropTagsOrAttributes(final Set<String> keySet, final PartialPath fullPath)
       throws MetadataException, IOException {
-    final IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
+    final IMeasurementMNode<IMemMNode> leafMNode = mTree.getMeasurementMNode(fullPath);
     // no tag or attribute, just do nothing.
     if (leafMNode.getOffset() != -1) {
       tagManager.dropTagsOrAttributes(keySet, fullPath, leafMNode);
@@ -1284,7 +1287,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throw new SeriesOverflowException(
           regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
-    final IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
+    final IMeasurementMNode<IMemMNode> leafMNode = mTree.getMeasurementMNode(fullPath);
     if (leafMNode.getOffset() < 0) {
       throw new MetadataException(
           String.format("TimeSeries [%s] does not have any tag/attribute.", fullPath));
@@ -1312,7 +1315,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throw new SeriesOverflowException(
           regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
-    final IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
+    final IMeasurementMNode<IMemMNode> leafMNode = mTree.getMeasurementMNode(fullPath);
     if (leafMNode.getOffset() < 0) {
       throw new MetadataException(
           String.format("TimeSeries [%s] does not have [%s] tag/attribute.", fullPath, oldKey),
@@ -1343,12 +1346,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     plan.setAligned(template.isDirectAligned());
     getDeviceNodeWithAutoCreate(plan.getActivatePath());
 
-    mtree.activateTemplate(plan.getActivatePath(), template);
+    mTree.activateTemplate(plan.getActivatePath(), template);
     writeToMLog(plan);
   }
 
   private void recoverActivatingSchemaTemplate(final IActivateTemplateInClusterPlan plan) {
-    mtree.activateTemplateWithoutCheck(
+    mTree.activateTemplateWithoutCheck(
         plan.getActivatePath(), plan.getTemplateId(), plan.isAligned());
   }
 
@@ -1356,7 +1359,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public long constructSchemaBlackListWithTemplate(final IPreDeactivateTemplatePlan plan)
       throws MetadataException {
     final Map<PartialPath, List<Integer>> resultTemplateSetInfo =
-        mtree.constructSchemaBlackListWithTemplate(plan.getTemplateSetInfo());
+        mTree.constructSchemaBlackListWithTemplate(plan.getTemplateSetInfo());
     writeToMLog(SchemaRegionWritePlanFactory.getPreDeactivateTemplatePlan(resultTemplateSetInfo));
     return resultTemplateSetInfo.size();
   }
@@ -1365,7 +1368,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public void rollbackSchemaBlackListWithTemplate(final IRollbackPreDeactivateTemplatePlan plan)
       throws MetadataException {
     final Map<PartialPath, List<Integer>> resultTemplateSetInfo =
-        mtree.rollbackSchemaBlackListWithTemplate(plan.getTemplateSetInfo());
+        mTree.rollbackSchemaBlackListWithTemplate(plan.getTemplateSetInfo());
     writeToMLog(
         SchemaRegionWritePlanFactory.getRollbackPreDeactivateTemplatePlan(resultTemplateSetInfo));
   }
@@ -1376,7 +1379,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     // TODO: We can consider implement this as a consumer passed to MTree which takes responsibility
     // of operating tree structure and concurrency control in future work.
     final Map<PartialPath, List<Integer>> resultTemplateSetInfo =
-        mtree.deactivateTemplateInBlackList(plan.getTemplateSetInfo());
+        mTree.deactivateTemplateInBlackList(plan.getTemplateSetInfo());
     writeToMLog(SchemaRegionWritePlanFactory.getDeactivateTemplatePlan(resultTemplateSetInfo));
   }
 
@@ -1385,7 +1388,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws MetadataException {
     long result = 0;
     for (final PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      result += mtree.countPathsUsingTemplate(pathPattern, templateId);
+      result += mTree.countPathsUsingTemplate(pathPattern, templateId);
     }
     return result;
   }
@@ -1394,7 +1397,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public void createOrUpdateTableDevice(final CreateOrUpdateTableDeviceNode node)
       throws MetadataException {
     for (int i = 0; i < node.getDeviceIdList().size(); i++) {
-      final String databaseName = storageGroupFullPath.substring(5);
+      final String databaseName = storageGroupFullPath;
       final String tableName = node.getTableName();
       final String[] deviceId =
           Arrays.stream(node.getDeviceIdList().get(i))
@@ -1403,7 +1406,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       final List<String> attributeNameList = node.getAttributeNameList();
       final Object[] attributeValueList = node.getAttributeValueList().get(i);
 
-      mtree.createOrUpdateTableDevice(
+      mTree.createOrUpdateTableDevice(
           tableName,
           deviceId,
           () -> deviceAttributeStore.createAttribute(attributeNameList, attributeValueList),
@@ -1442,7 +1445,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               updateNode.getDatabase(),
               updateNode.getTableName(),
               updateNode.getIdDeterminedFilterList())) {
-        mtree.updateTableDevice(pattern, batchUpdater);
+        mTree.updateTableDevice(pattern, batchUpdater);
       }
     }
     deviceAttributeCacheUpdater.afterUpdate();
@@ -1536,7 +1539,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                 assignment ->
                     visitor.process(assignment.getValue(), projectColumnTransformerContext))
             .collect(Collectors.toList()),
-        (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name),
+        (pointer, name) -> deviceAttributeStore.getAttributes(pointer, name),
         (deviceId, pointer, values) ->
             updateAttribute(database, tableName, deviceId, pointer, attributeNames, values),
         attributeNames);
@@ -1545,7 +1548,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void deleteTableDevice(final DeleteTableDeviceNode deleteTableDeviceNode)
       throws MetadataException {
-    if (mtree.deleteTableDevice(
+    if (mTree.deleteTableDevice(
         deleteTableDeviceNode.getTableName(), deviceAttributeStore::removeAttribute)) {
       deviceAttributeCacheUpdater.invalidate(deleteTableDeviceNode.getTableName());
       writeToMLog(deleteTableDeviceNode);
@@ -1555,7 +1558,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void dropTableAttribute(final TableAttributeColumnDropNode dropTableAttributeNode)
       throws MetadataException {
-    if (mtree.dropTableAttribute(
+    if (mTree.dropTableAttribute(
         dropTableAttributeNode.getTableName(),
         pointer ->
             deviceAttributeStore.removeAttribute(
@@ -1580,11 +1583,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             PathUtils.unQualifyDatabaseName(storageGroupFullPath),
             constructTableDevicesBlackListNode.getTableName(),
             constructTableDevicesBlackListNode.getFilterInfo(),
-            (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name),
+            (pointer, name) -> deviceAttributeStore.getAttributes(pointer, name),
             regionStatistics);
     try {
       for (final PartialPath pattern : paths) {
-        mtree.constructTableDeviceBlackList(pattern, constructor);
+        mTree.constructTableDeviceBlackList(pattern, constructor);
       }
     } finally {
       constructor.close();
@@ -1603,7 +1606,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             rollbackTableDevicesBlackListNode.getTableName(),
             rollbackTableDevicesBlackListNode.getPatternInfo());
     for (final PartialPath pattern : paths) {
-      mtree.rollbackTableDeviceBlackList(pattern);
+      mTree.rollbackTableDeviceBlackList(pattern);
     }
     writeToMLog(rollbackTableDevicesBlackListNode);
   }
@@ -1618,7 +1621,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             rollbackTableDevicesBlackListNode.getTableName(),
             rollbackTableDevicesBlackListNode.getPatternInfo());
     for (final PartialPath pattern : paths) {
-      mtree.deleteTableDevicesInBlackList(
+      mTree.deleteTableDevicesInBlackList(
           pattern, deviceAttributeStore::removeAttribute, deviceAttributeCacheUpdater::invalidate);
     }
     writeToMLog(rollbackTableDevicesBlackListNode);
@@ -1627,8 +1630,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(final IShowDevicesPlan showDevicesPlan)
       throws MetadataException {
-    return mtree.getDeviceReader(
-        showDevicesPlan, (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
+    return mTree.getDeviceReader(
+        showDevicesPlan, (pointer, name) -> deviceAttributeStore.getAttributes(pointer, name));
   }
 
   @Override
@@ -1639,7 +1642,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             .process(showTimeSeriesPlan.getSchemaFilter(), SchemaFilterType.TAGS_FILTER)) {
       return tagManager.getTimeSeriesReaderWithIndex(showTimeSeriesPlan);
     } else {
-      return mtree.getTimeSeriesReader(
+      return mTree.getTimeSeriesReader(
           showTimeSeriesPlan,
           offset -> {
             try {
@@ -1655,21 +1658,23 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public ISchemaReader<INodeSchemaInfo> getNodeReader(final IShowNodesPlan showNodesPlan)
       throws MetadataException {
-    return mtree.getNodeReader(showNodesPlan);
+    return mTree.getNodeReader(showNodesPlan);
   }
 
   @Override
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(final PartialPath pathPattern)
       throws MetadataException {
-    return mtree.getTableDeviceReader(
-        pathPattern, (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
+    return mTree.getTableDeviceReader(
+        pathPattern, (pointer, name) -> deviceAttributeStore.getAttributes(pointer, name));
   }
 
   @Override
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
       final String table, final List<Object[]> devicePathList) {
-    return mtree.getTableDeviceReader(
-        table, devicePathList, (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
+    return mTree.getTableDeviceReader(
+        table,
+        devicePathList,
+        (pointer, name) -> deviceAttributeStore.getAttributes(pointer, name));
   }
 
   @Override

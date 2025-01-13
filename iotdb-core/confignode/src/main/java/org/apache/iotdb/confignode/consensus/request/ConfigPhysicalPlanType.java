@@ -171,6 +171,8 @@ public enum ConfigPhysicalPlanType {
   PreDeleteColumn((short) 860),
   CommitDeleteColumn((short) 861),
   DescTable((short) 862),
+  ShowTable4InformationSchema((short) 863),
+  DescTable4InformationSchema((short) 864),
 
   /** Deprecated types for sync, restored them for upgrade. */
   @Deprecated
@@ -246,6 +248,8 @@ public enum ConfigPhysicalPlanType {
   PipeDeleteLogicalView((short) 1703),
   PipeDeactivateTemplate((short) 1704),
   PipeSetTTL((short) 1705),
+  PipeCreateTable((short) 1706),
+  PipeDeleteDevices((short) 1707),
 
   /** Subscription */
   CreateTopic((short) 1800),

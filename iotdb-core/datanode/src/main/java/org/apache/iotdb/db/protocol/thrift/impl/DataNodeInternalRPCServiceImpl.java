@@ -568,10 +568,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
     TreeDeviceSchemaCacheManager.getInstance().takeWriteLock();
     try {
+      final String database = req.getFullPath();
       // req.getFullPath() is a database path
-      ClusterTemplateManager.getInstance().invalid(req.getFullPath());
+      ClusterTemplateManager.getInstance().invalid(database);
       // clear table related cache
-      final String database = req.getFullPath().substring(5);
       DataNodeTableCache.getInstance().invalid(database);
       tableDeviceSchemaCache.invalidate(database);
       LOGGER.info("Schema cache of {} has been invalidated", req.getFullPath());
@@ -704,6 +704,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             new RegionWriteExecutor()
                 .execute(
                     new DataRegionId(consensusGroupId.getId()),
+                    // Now the deletion plan may be re-collected here by pipe, resulting multiple
+                    // transfer to delete time series plan. Now just ignore.
                     req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
                         ? new PipeEnrichedDeleteDataNode(
                             new DeleteDataNode(
@@ -1592,7 +1594,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                         new PlanNodeId(""),
                         new TableDeletionEntry(
                             new DeletionPredicate(req.getTableName()),
-                            new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE))))
+                            new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
+                        // the request is only sent to associated region
+                        null))
                 .getStatus());
   }
 
@@ -1678,7 +1682,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                     new DataRegionId(consensusGroupId.getId()),
                     new RelationalDeleteDataNode(
                         new PlanNodeId(""),
-                        DeleteDevice.constructModEntries(req.getPatternOrModInfo())))
+                        DeleteDevice.constructModEntries(req.getPatternOrModInfo()),
+                        // the request is only sent to associated region
+                        null))
                 .getStatus());
   }
 
@@ -1733,7 +1739,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                                     req.getTableName(),
                                     new IDPredicate.NOP(),
                                     Collections.singletonList(req.getColumnName())),
-                                new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE))))
+                                new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
+                            // the request is only sent to associated region
+                            null))
                     .getStatus());
   }
 

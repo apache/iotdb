@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.query.udf.example.relational;
 
 import org.apache.iotdb.udf.api.State;
-import org.apache.iotdb.udf.api.customizer.config.AggregateFunctionConfig;
-import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
-import org.apache.iotdb.udf.api.exception.UDFException;
+import org.apache.iotdb.udf.api.customizer.analysis.AggregateFunctionAnalysis;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
+import org.apache.iotdb.udf.api.exception.UDFArgumentNotValidException;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.type.Type;
@@ -56,15 +56,12 @@ public class MyCount implements AggregateFunction {
   }
 
   @Override
-  public void validate(FunctionParameters parameters) throws UDFException {
-    if (parameters.getChildExpressionsSize() == 0) {
-      throw new UDFException("MyCount accepts at least one parameter");
+  public AggregateFunctionAnalysis analyze(FunctionArguments arguments)
+      throws UDFArgumentNotValidException {
+    if (arguments.getArgumentsSize() == 0) {
+      throw new UDFArgumentNotValidException("MyCount accepts at least one parameter");
     }
-  }
-
-  @Override
-  public void beforeStart(FunctionParameters parameters, AggregateFunctionConfig configurations) {
-    configurations.setOutputDataType(Type.INT64);
+    return new AggregateFunctionAnalysis.Builder().outputDataType(Type.INT64).build();
   }
 
   @Override

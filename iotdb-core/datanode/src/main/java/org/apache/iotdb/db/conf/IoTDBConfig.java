@@ -225,8 +225,8 @@ public class IoTDBConfig {
   /** max total direct buffer off heap memory size proportion */
   private double maxDirectBufferOffHeapMemorySizeProportion = 0.8;
 
-  /** Blocking queue capacity of each page cache deletion buffer */
-  private int pageCacheDeletionBufferQueueCapacity = 500;
+  /** Blocking queue capacity of each delete ahead log buffer */
+  private int deletionAheadLogBufferQueueCapacity = 500;
 
   /** Size threshold of each wal file. Unit: byte */
   private volatile long walFileSizeThresholdInByte = 30 * 1024 * 1024L;
@@ -1064,7 +1064,7 @@ public class IoTDBConfig {
   private int driverTaskExecutionTimeSliceInMs = 200;
 
   /** Maximum size of wal buffer used in IoTConsensus. Unit: byte */
-  private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
+  private long throttleThreshold = 200 * 1024 * 1024 * 1024L;
 
   /** Maximum wait time of write cache in IoTConsensus. Unit: ms */
   private long cacheWindowTimeInMs = 10 * 1000L;
@@ -1144,7 +1144,7 @@ public class IoTDBConfig {
   private int maxSizePerBatch = 16 * 1024 * 1024;
   private int maxPendingBatchesNum = 5;
   private double maxMemoryRatioForQueue = 0.6;
-  private long regionMigrationSpeedLimitBytesPerSecond = 32 * 1024 * 1024L;
+  private long regionMigrationSpeedLimitBytesPerSecond = 48 * 1024 * 1024L;
 
   // IoTConsensusV2 Config
   private int iotConsensusV2PipelineSize = 5;
@@ -1175,6 +1175,8 @@ public class IoTDBConfig {
   private int loadMemoryAllocateMaxRetries = 5;
 
   private long loadCleanupTaskExecutionDelayTimeSeconds = 1800L; // 30 min
+
+  private int loadTsFileRetryCountOnRegionChange = 10;
 
   private double loadWriteThroughputBytesPerSecond = -1; // Bytes/s
 
@@ -1989,12 +1991,12 @@ public class IoTDBConfig {
     this.maxDirectBufferOffHeapMemorySizeProportion = maxDirectBufferOffHeapMemorySizeProportion;
   }
 
-  public int getPageCacheDeletionBufferQueueCapacity() {
-    return pageCacheDeletionBufferQueueCapacity;
+  public int getDeletionAheadLogBufferQueueCapacity() {
+    return deletionAheadLogBufferQueueCapacity;
   }
 
-  void setPageCacheDeletionBufferQueueCapacity(int pageCacheDeletionBufferQueueCapacity) {
-    this.pageCacheDeletionBufferQueueCapacity = pageCacheDeletionBufferQueueCapacity;
+  void setDeletionAheadLogBufferQueueCapacity(int deletionAheadLogBufferQueueCapacity) {
+    this.deletionAheadLogBufferQueueCapacity = deletionAheadLogBufferQueueCapacity;
   }
 
   public long getWalFileSizeThresholdInByte() {
@@ -2152,13 +2154,6 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForPipe(long allocateMemoryForPipe) {
     this.allocateMemoryForPipe = allocateMemoryForPipe;
-  }
-
-  public long getAllocateMemoryForFree() {
-    return Runtime.getRuntime().maxMemory()
-        - allocateMemoryForStorageEngine
-        - allocateMemoryForRead
-        - allocateMemoryForSchema;
   }
 
   public boolean isEnablePartialInsert() {
@@ -4136,6 +4131,14 @@ public class IoTDBConfig {
   public void setLoadCleanupTaskExecutionDelayTimeSeconds(
       long loadCleanupTaskExecutionDelayTimeSeconds) {
     this.loadCleanupTaskExecutionDelayTimeSeconds = loadCleanupTaskExecutionDelayTimeSeconds;
+  }
+
+  public int getLoadTsFileRetryCountOnRegionChange() {
+    return loadTsFileRetryCountOnRegionChange;
+  }
+
+  public void setLoadTsFileRetryCountOnRegionChange(int loadTsFileRetryCountOnRegionChange) {
+    this.loadTsFileRetryCountOnRegionChange = loadTsFileRetryCountOnRegionChange;
   }
 
   public double getLoadWriteThroughputBytesPerSecond() {

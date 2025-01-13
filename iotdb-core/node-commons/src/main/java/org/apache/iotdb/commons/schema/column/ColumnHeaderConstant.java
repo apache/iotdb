@@ -64,7 +64,6 @@ public class ColumnHeaderConstant {
   public static final String DATA_REGION_GROUP_NUM = "DataRegionGroupNum";
   public static final String MIN_DATA_REGION_GROUP_NUM = "MinDataRegionGroupNum";
   public static final String MAX_DATA_REGION_GROUP_NUM = "MaxDataRegionGroupNum";
-  public static final String MODEL = "Model";
   public static final String CHILD_PATHS = "ChildPaths";
   public static final String NODE_TYPES = "NodeTypes";
   public static final String CHILD_NODES = "ChildNodes";
@@ -199,9 +198,19 @@ public class ColumnHeaderConstant {
   public static final String STATEMENT = "Statement";
 
   public static final String QUERY_ID_TABLE_MODEL = "query_id";
+  public static final String QUERY_ID_START_TIME_TABLE_MODEL = "start_time";
   public static final String DATA_NODE_ID_TABLE_MODEL = "datanode_id";
+  public static final String START_TIME_TABLE_MODEL = "start_time";
   public static final String ELAPSED_TIME_TABLE_MODEL = "elapsed_time";
-  public static final String SQL_DIALECT = "sql_dialect";
+
+  public static final String TABLE_NAME_TABLE_MODEL = "table_name";
+  public static final String COLUMN_NAME_TABLE_MODEL = "column_name";
+
+  public static final String SCHEMA_REPLICATION_FACTOR_TABLE_MODEL = "schema_replication_factor";
+  public static final String DATA_REPLICATION_FACTOR_TABLE_MODEL = "data_replication_factor";
+  public static final String TIME_PARTITION_INTERVAL_TABLE_MODEL = "time_partition_interval";
+  public static final String SCHEMA_REGION_GROUP_NUM_TABLE_MODEL = "schema_region_group_num";
+  public static final String DATA_REGION_GROUP_NUM_TABLE_MODEL = "data_region_group_num";
 
   // column names for show space quota
   public static final String QUOTA_TYPE = "QuotaType";
@@ -295,8 +304,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(MAX_SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(DATA_REGION_GROUP_NUM, TSDataType.INT32),
           new ColumnHeader(MIN_DATA_REGION_GROUP_NUM, TSDataType.INT32),
-          new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32),
-          new ColumnHeader(MODEL, TSDataType.TEXT));
+          new ColumnHeader(MAX_DATA_REGION_GROUP_NUM, TSDataType.INT32));
 
   public static final List<ColumnHeader> showChildPathsColumnHeaders =
       ImmutableList.of(
@@ -566,7 +574,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
           new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64),
-          new ColumnHeader(MODEL, TSDataType.TEXT));
+          new ColumnHeader(SCHEMA_REGION_GROUP_NUM, TSDataType.INT32),
+          new ColumnHeader(DATA_REGION_GROUP_NUM, TSDataType.INT32));
 
   public static final List<ColumnHeader> describeTableColumnHeaders =
       ImmutableList.of(

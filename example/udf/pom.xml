@@ -30,8 +30,12 @@
     <name>IoTDB: Example: UDF</name>
     <dependencies>
         <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-server</artifactId>
+            <artifactId>udf-api</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>
         </dependency>

@@ -121,6 +121,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.En
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.EndsWithColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ExpColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.FloorColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.FormatColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LTrim2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LTrimColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LengthColumnTransformer;
@@ -156,8 +157,8 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Tr
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TrimColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TryCastFunctionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.UpperColumnTransformer;
-import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
-import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
+import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -1004,22 +1005,30 @@ public class ColumnTransformerBuilder
           source,
           ((LongLiteral) children.get(3)).getParsedValue(),
           context.sessionInfo.getZoneId());
+    } else if (TableBuiltinScalarFunction.FORMAT.getFunctionName().equalsIgnoreCase(functionName)) {
+      List<ColumnTransformer> columnTransformers = new ArrayList<>();
+      //      String pattern = this.process(children.get(0), context).;
+      for (int i = 0; i < children.size(); i++) {
+        columnTransformers.add(this.process(children.get(i), context));
+      }
+      return new FormatColumnTransformer(
+          STRING, columnTransformers, context.sessionInfo.getZoneId());
     } else {
       // user defined function
       if (TableUDFUtils.isScalarFunction(functionName)) {
         ScalarFunction scalarFunction = TableUDFUtils.getScalarFunction(functionName);
         List<ColumnTransformer> childrenColumnTransformer =
             children.stream().map(child -> process(child, context)).collect(Collectors.toList());
-        FunctionParameters parameters =
-            new FunctionParameters(
+        FunctionArguments parameters =
+            new FunctionArguments(
                 childrenColumnTransformer.stream()
                     .map(i -> UDFDataTypeTransformer.transformReadTypeToUDFDataType(i.getType()))
                     .collect(Collectors.toList()),
                 Collections.emptyMap());
-        ScalarFunctionConfig config = new ScalarFunctionConfig();
-        scalarFunction.beforeStart(parameters, config);
+        ScalarFunctionAnalysis analysis = scalarFunction.analyze(parameters);
+        scalarFunction.beforeStart(parameters);
         Type returnType =
-            UDFDataTypeTransformer.transformUDFDataTypeToReadType(config.getOutputDataType());
+            UDFDataTypeTransformer.transformUDFDataTypeToReadType(analysis.getOutputDataType());
         return new UserDefineScalarFunctionTransformer(
             returnType, scalarFunction, childrenColumnTransformer);
       }
