@@ -27,7 +27,8 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
-import org.apache.iotdb.consensus.pipe.consensuspipe.ProgressIndexManager;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ReplicateProgressManager;
+import org.apache.iotdb.consensus.pipe.metric.PipeConsensusSyncLagManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -40,11 +41,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-public class ProgressIndexDataNodeManager implements ProgressIndexManager {
+public class ReplicateProgressDataNodeManager implements ReplicateProgressManager {
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
   private final Map<ConsensusGroupId, ProgressIndex> groupId2MaxProgressIndex;
+  private long pinnedCommitIndexForMigration;
+  private int pinnedPipeRestartTimesForMigration;
 
-  public ProgressIndexDataNodeManager() {
+  public ReplicateProgressDataNodeManager() {
     this.groupId2MaxProgressIndex = new ConcurrentHashMap<>();
 
     recoverMaxProgressIndexFromDataRegion();
@@ -128,5 +131,31 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
   @Override
   public ProgressIndex getMaxAssignedProgressIndex(ConsensusGroupId consensusGroupId) {
     return groupId2MaxProgressIndex.getOrDefault(consensusGroupId, MinimumProgressIndex.INSTANCE);
+  }
+
+  @Override
+  public long getSyncLagForSpecificConsensusPipe(
+      ConsensusGroupId consensusGroupId, ConsensusPipeName consensusPipeName) {
+    return PipeConsensusSyncLagManager.getInstance(consensusGroupId.toString())
+        .getSyncLagForRegionMigration(
+            consensusPipeName,
+            this.pinnedCommitIndexForMigration,
+            this.pinnedPipeRestartTimesForMigration);
+  }
+
+  @Override
+  public void pinCommitIndexForMigration(
+      ConsensusGroupId consensusGroupId, ConsensusPipeName consensusPipeName) {
+    this.pinnedCommitIndexForMigration =
+        PipeConsensusSyncLagManager.getInstance(consensusGroupId.toString())
+            .getCurrentCommitIndex(consensusPipeName);
+  }
+
+  @Override
+  public void pinRestartTimeForMigration(
+      ConsensusGroupId consensusGroupId, ConsensusPipeName consensusPipeName) {
+    this.pinnedCommitIndexForMigration =
+        PipeConsensusSyncLagManager.getInstance(consensusGroupId.toString())
+            .getCurrentRestartTimes(consensusPipeName);
   }
 }
