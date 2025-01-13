@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.db.exception.VerifyMetadataException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -98,7 +98,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
 
     try {
       autoCreateDatabaseIfAbsent(database);
-    } catch (VerifyMetadataException e) {
+    } catch (LoadAnalyzeException e) {
       LOGGER.warn("Auto create database failed: {}", database, e);
       analysis.setFinishQueryAfterAnalyze(true);
       analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, e.getMessage()));
@@ -118,8 +118,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
   }
 
   @Override
-  protected void analyzeSingleTsFile(final File tsFile)
-      throws IOException, VerifyMetadataException {
+  protected void analyzeSingleTsFile(final File tsFile) throws IOException, LoadAnalyzeException {
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       // can be reused when constructing tsfile resource
       final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =
@@ -189,7 +188,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
     }
   }
 
-  private void autoCreateDatabaseIfAbsent(final String database) throws VerifyMetadataException {
+  private void autoCreateDatabaseIfAbsent(final String database) throws LoadAnalyzeException {
     validateDatabaseName(database);
     if (DataNodeTableCache.getInstance().isDatabaseExist(database)) {
       return;
@@ -202,13 +201,13 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
           task.execute(ClusterConfigTaskExecutor.getInstance());
       final ConfigTaskResult result = future.get();
       if (result.getStatusCode().getStatusCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new VerifyMetadataException(
+        throw new LoadAnalyzeException(
             String.format(
                 "Auto create database failed: %s, status code: %s",
                 database, result.getStatusCode()));
       }
     } catch (final ExecutionException | InterruptedException e) {
-      throw new VerifyMetadataException("Auto create database failed because: " + e.getMessage());
+      throw new LoadAnalyzeException("Auto create database failed because: " + e.getMessage());
     }
   }
 

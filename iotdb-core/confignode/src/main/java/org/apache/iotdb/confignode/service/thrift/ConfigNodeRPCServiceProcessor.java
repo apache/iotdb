@@ -128,6 +128,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
@@ -192,12 +193,15 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
@@ -1111,12 +1115,22 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus startPipe(String pipeName) {
-    return configManager.startPipe(pipeName);
+    return configManager.startPipe(new TStartPipeReq().setPipeName(pipeName));
+  }
+
+  @Override
+  public TSStatus startPipeExtended(TStartPipeReq req) {
+    return configManager.startPipe(req);
   }
 
   @Override
   public TSStatus stopPipe(String pipeName) {
-    return configManager.stopPipe(pipeName);
+    return configManager.stopPipe(new TStopPipeReq().setPipeName(pipeName));
+  }
+
+  @Override
+  public TSStatus stopPipeExtended(TStopPipeReq req) {
+    return configManager.stopPipe(req);
   }
 
   @Override
@@ -1312,9 +1326,19 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TShowTable4InformationSchemaResp showTables4InformationSchema() {
+    return configManager.showTables4InformationSchema();
+  }
+
+  @Override
   public TDescTableResp describeTable(
       final String database, final String tableName, final boolean isDetails) {
     return configManager.describeTable(database, tableName, isDetails);
+  }
+
+  @Override
+  public TDescTable4InformationSchemaResp descTables4InformationSchema() {
+    return configManager.describeTable4InformationSchema();
   }
 
   @Override

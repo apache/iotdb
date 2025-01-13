@@ -26,8 +26,10 @@ import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
@@ -85,6 +87,51 @@ public abstract class IoTDBExtractor implements PipeExtractor {
                 .getStringOrDefault(
                     Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
                     EXTRACTOR_EXCLUSION_DEFAULT_VALUE));
+
+    // Validate double living
+    validateDoubleLiving(validator.getParameters());
+  }
+
+  private void validateDoubleLiving(final PipeParameters parameters) {
+    final boolean isDoubleLiving =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(
+                PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+                PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
+            PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+    if (!isDoubleLiving) {
+      return;
+    }
+
+    // check 'capture.tree'
+    final Boolean isCaptureTree =
+        parameters.getBooleanByKeys(
+            PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
+            PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY);
+    if (Objects.nonNull(isCaptureTree) && !isCaptureTree) {
+      throw new PipeParameterNotValidException(
+          "capture.tree can not be specified to false when double living is enabled");
+    }
+
+    // check 'capture.table'
+    final Boolean isCaptureTable =
+        parameters.getBooleanByKeys(
+            PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
+            PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY);
+    if (Objects.nonNull(isCaptureTable) && !isCaptureTable) {
+      throw new PipeParameterNotValidException(
+          "capture.table can not be specified to false when double living is enabled");
+    }
+
+    // check 'forwarding-pipe-requests'
+    final Boolean isForwardingPipeRequests =
+        parameters.getBooleanByKeys(
+            PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
+            PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY);
+    if (Objects.nonNull(isForwardingPipeRequests) && isForwardingPipeRequests) {
+      throw new PipeParameterNotValidException(
+          "forwarding-pipe-requests can not be specified to true when double living is enabled");
+    }
   }
 
   @Override
@@ -99,12 +146,22 @@ public abstract class IoTDBExtractor implements PipeExtractor {
     taskID = pipeName + "_" + regionId + "_" + creationTime;
     pipeTaskMeta = environment.getPipeTaskMeta();
 
-    isForwardingPipeRequests =
+    final boolean isDoubleLiving =
         parameters.getBooleanOrDefault(
             Arrays.asList(
-                PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
-                PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
-            PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
+                PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+                PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
+            PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+    if (isDoubleLiving) {
+      isForwardingPipeRequests = false;
+    } else {
+      isForwardingPipeRequests =
+          parameters.getBooleanOrDefault(
+              Arrays.asList(
+                  PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
+                  PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
+              PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
+    }
   }
 
   @Override

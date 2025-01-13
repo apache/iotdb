@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
@@ -462,9 +463,7 @@ public class StatementAnalyzer {
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       if (Objects.isNull(table)) {
-        throw new SemanticException(
-            String.format(
-                "Table '%s.%s' does not exist.", node.getDatabase(), node.getTableName()));
+        TableMetadataImpl.throwTableNotExistsException(node.getDatabase(), node.getTableName());
       }
       node.parseModEntries(table);
       analyzeTraverseDevice(node, context, node.getWhere().isPresent());
@@ -1765,7 +1764,8 @@ public class StatementAnalyzer {
       Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, name);
       // This can only be a table
       if (!tableSchema.isPresent()) {
-        throw new SemanticException(String.format("Table '%s' does not exist", name));
+        TableMetadataImpl.throwTableNotExistsException(
+            name.getDatabaseName(), name.getObjectName());
       }
       analysis.addEmptyColumnReferencesForTable(accessControl, sessionContext.getIdentity(), name);
 
@@ -2961,8 +2961,7 @@ public class StatementAnalyzer {
       }
 
       if (!metadata.tableExists(new QualifiedObjectName(database, tableName))) {
-        throw new SemanticException(
-            String.format("Table '%s.%s' does not exist.", database, tableName));
+        TableMetadataImpl.throwTableNotExistsException(database, tableName);
       }
       node.setColumnHeaderList();
 
@@ -2972,7 +2971,7 @@ public class StatementAnalyzer {
         final Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, name);
         // This can only be a table
         if (!tableSchema.isPresent()) {
-          throw new SemanticException(String.format("Table '%s' does not exist", name));
+          TableMetadataImpl.throwTableNotExistsException(database, tableName);
         }
 
         final TableSchema originalSchema = tableSchema.get();

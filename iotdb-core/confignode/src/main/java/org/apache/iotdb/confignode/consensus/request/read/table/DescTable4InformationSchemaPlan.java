@@ -17,16 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.metadata.table;
+package org.apache.iotdb.confignode.consensus.request.read.table;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
-public class TableNotExistsException extends MetadataException {
-
-  public TableNotExistsException(final String database, final String tableName) {
-    super(
-        String.format("Table '%s.%s' does not exist.", database, tableName),
-        TSStatusCode.TABLE_NOT_EXISTS.getStatusCode());
+public class DescTable4InformationSchemaPlan extends ConfigPhysicalReadPlan {
+  public DescTable4InformationSchemaPlan() {
+    super(ConfigPhysicalPlanType.DescTable4InformationSchema);
   }
 }

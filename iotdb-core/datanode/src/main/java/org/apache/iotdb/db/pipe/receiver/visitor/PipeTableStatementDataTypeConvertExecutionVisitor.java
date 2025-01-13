@@ -141,7 +141,8 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
                           rawTabletInsertionEvent.convertToTablet(),
                           rawTabletInsertionEvent.isAligned(),
                           databaseName)
-                      .constructStatement());
+                      .constructStatement(),
+                  false);
 
           TSStatus result;
           try {
