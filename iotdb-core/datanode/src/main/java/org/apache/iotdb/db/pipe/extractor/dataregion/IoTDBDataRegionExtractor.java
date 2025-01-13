@@ -82,6 +82,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_FORMAT_IOTDB_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_FORMAT_PREFIX_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_KEY;
@@ -113,6 +114,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_FORMAT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_PATTERN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_MODE_KEY;
@@ -186,8 +188,8 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
                 SOURCE_PATH_KEY,
                 EXTRACTOR_CAPTURE_TREE_PATH_KEY,
                 SOURCE_CAPTURE_TREE_PATH_KEY,
-                PipeExtractorConstant.EXTRACTOR_PATTERN_KEY,
-                PipeExtractorConstant.SOURCE_PATTERN_KEY)) {
+                EXTRACTOR_PATTERN_KEY,
+                SOURCE_PATTERN_KEY)) {
       throw new PipeException(
           "The pipe cannot extract tree model data when sql dialect is set to table.");
     }
@@ -196,11 +198,11 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
             .getParameters()
             .hasAnyAttributes(
                 EXTRACTOR_DATABASE_NAME_KEY,
-                PipeExtractorConstant.SOURCE_DATABASE_NAME_KEY,
+                SOURCE_DATABASE_NAME_KEY,
                 EXTRACTOR_TABLE_NAME_KEY,
                 SOURCE_TABLE_NAME_KEY,
                 EXTRACTOR_DATABASE_KEY,
-                PipeExtractorConstant.SOURCE_DATABASE_KEY,
+                SOURCE_DATABASE_KEY,
                 EXTRACTOR_TABLE_KEY,
                 SOURCE_TABLE_KEY)) {
       throw new PipeException(
