@@ -31,7 +31,6 @@ import org.apache.iotdb.confignode.procedure.state.ProcedureState;
 import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 
 import com.google.common.base.Preconditions;
-import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -755,7 +754,8 @@ public class ProcedureExecutor<Env> {
           startTime.set(System.currentTimeMillis());
           executeProcedure(procedure);
           activeExecutorCount.decrementAndGet();
-          LOG.trace("Halt pid={}, activeCount={}", procedure.getProcId(), activeExecutorCount.get());
+          LOG.trace(
+              "Halt pid={}, activeCount={}", procedure.getProcId(), activeExecutorCount.get());
           this.activeProcedure.set(null);
           lastUpdated = System.currentTimeMillis();
           startTime.set(lastUpdated);
@@ -832,12 +832,13 @@ public class ProcedureExecutor<Env> {
         if (worker.getCurrentRunTime() < DEFAULT_WORKER_STUCK_THRESHOLD) {
           stuckCount++;
           LOG.warn(
-                  "Worker stuck {}({}), run time {} ms",
-                  worker,
-                  worker.activeProcedure.get().getProcType(),
-                  worker.getCurrentRunTime());
+              "Worker stuck {}({}), run time {} ms",
+              worker,
+              worker.activeProcedure.get().getProcType(),
+              worker.getCurrentRunTime());
         }
-        LOG.info("Procedure workers: {} is running, {} is running and stuck", runningCount, stuckCount);
+        LOG.info(
+            "Procedure workers: {} is running, {} is running and stuck", runningCount, stuckCount);
       }
       return stuckCount;
     }
