@@ -68,8 +68,8 @@ public abstract class PipePluginMetaKeeper {
     return pipePluginNameToMetaMap.get(pluginName.toUpperCase());
   }
 
-  public PipePluginMeta[] getAllPipePluginMeta() {
-    return pipePluginNameToMetaMap.values().toArray(new PipePluginMeta[0]);
+  public Iterable<PipePluginMeta> getAllPipePluginMeta() {
+    return pipePluginNameToMetaMap.values();
   }
 
   public boolean containsPipePlugin(String pluginName) {

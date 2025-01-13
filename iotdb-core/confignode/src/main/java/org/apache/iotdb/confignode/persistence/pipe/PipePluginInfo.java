@@ -60,6 +60,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin.DO_NOTHING_PROCESSOR;
 import static org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin.IOTDB_EXTRACTOR;
@@ -274,7 +276,8 @@ public class PipePluginInfo implements SnapshotProcessor {
   public DataSet showPipePlugins() {
     return new PipePluginTableResp(
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-        Arrays.asList(pipePluginMetaKeeper.getAllPipePluginMeta()),
+        StreamSupport.stream(pipePluginMetaKeeper.getAllPipePluginMeta().spliterator(), false)
+            .collect(Collectors.toList()),
         pipePluginMetaKeeper.getPipePluginNameToVisibilityMap());
   }
 

@@ -37,12 +37,12 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public abstract class PipePluginAgent {
 
@@ -155,7 +155,7 @@ public abstract class PipePluginAgent {
    */
   public final List<String> getSubProcessorNamesWithSpecifiedParent(
       Class<? extends PipeProcessor> parentClass) throws PipeException {
-    return Arrays.stream(pipePluginMetaKeeper.getAllPipePluginMeta())
+    return StreamSupport.stream(pipePluginMetaKeeper.getAllPipePluginMeta().spliterator(), false)
         .map(pipePluginMeta -> pipePluginMeta.getPluginName().toLowerCase())
         .filter(
             pluginName -> {

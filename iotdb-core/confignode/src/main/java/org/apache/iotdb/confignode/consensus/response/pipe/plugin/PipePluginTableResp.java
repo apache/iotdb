@@ -31,6 +31,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class PipePluginTableResp implements DataSet {
 
@@ -56,13 +57,18 @@ public class PipePluginTableResp implements DataSet {
   }
 
   public PipePluginTableResp filter(final boolean isTableModel) {
-    allPipePluginMeta.removeIf(
-        meta -> {
-          final String pipePluginName = meta.getPluginName();
-          final Visibility visibility =
-              pipePluginNameToVisibilityMap.getOrDefault(pipePluginName, Visibility.TREE_ONLY);
-          return !VisibilityUtils.isCompatible(visibility, isTableModel);
-        });
-    return this;
+    return new PipePluginTableResp(
+        status,
+        allPipePluginMeta.stream()
+            .filter(
+                meta -> {
+                  final String pipePluginName = meta.getPluginName();
+                  final Visibility visibility =
+                      pipePluginNameToVisibilityMap.getOrDefault(
+                          pipePluginName, Visibility.TREE_ONLY);
+                  return VisibilityUtils.isCompatible(visibility, isTableModel);
+                })
+            .collect(Collectors.toList()),
+        pipePluginNameToVisibilityMap);
   }
 }
