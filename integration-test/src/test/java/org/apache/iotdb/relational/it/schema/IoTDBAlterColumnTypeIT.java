@@ -189,6 +189,16 @@ public class IoTDBAlterColumnTypeIT {
       }
       assertFalse(dataSet.hasNext());
 
+      if (newType.isNumeric()) {
+        dataSet =
+            session.executeQueryStatement(
+                "select avg(s1),sum(s1) from write_and_alter_column_type");
+        rec = dataSet.next();
+        assertEquals(1.5, rec.getFields().get(0).getDoubleV(), 0.001);
+        assertEquals(3.0, rec.getFields().get(1).getDoubleV(), 0.001);
+        assertFalse(dataSet.hasNext());
+      }
+
       session.executeNonQueryStatement("DROP TABLE write_and_alter_column_type");
     }
   }
