@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
@@ -45,7 +46,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
-  protected IoTDBTreePattern pipePattern;
+  protected IoTDBTreePattern treePattern;
+  protected TablePattern tablePattern;
 
   private List<PipeSnapshotEvent> historicalEvents = new LinkedList<>();
   // A fixed size initialized only when the historicalEvents are first
@@ -68,6 +70,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     super.customize(parameters, configuration);
 
     final TreePattern pattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
+
     if (!(pattern instanceof IoTDBTreePattern
         && (((IoTDBTreePattern) pattern).isPrefix()
             || ((IoTDBTreePattern) pattern).isFullPath()))) {
@@ -76,7 +79,8 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
               "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",
               pattern.getPattern()));
     }
-    pipePattern = (IoTDBTreePattern) pattern;
+    treePattern = (IoTDBTreePattern) pattern;
+    tablePattern = TablePattern.parsePipePatternFromSourceParameters(parameters);
   }
 
   @Override
@@ -162,8 +166,8 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
                       pipeName,
                       creationTime,
                       pipeTaskMeta,
-                      pipePattern,
-                      null,
+                      treePattern,
+                      tablePattern,
                       Long.MIN_VALUE,
                       Long.MAX_VALUE);
 
@@ -194,8 +198,8 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
               pipeName,
               creationTime,
               pipeTaskMeta,
-              pipePattern,
-              null,
+              treePattern,
+              tablePattern,
               Long.MIN_VALUE,
               Long.MAX_VALUE);
       event.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
@@ -209,8 +213,8 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
                 pipeName,
                 creationTime,
                 pipeTaskMeta,
-                pipePattern,
-                null,
+                treePattern,
+                tablePattern,
                 Long.MIN_VALUE,
                 Long.MAX_VALUE);
     realtimeEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
