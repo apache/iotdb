@@ -715,7 +715,7 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
      * @param filePath the path of the storage file.
      */
     public MockModiFicationFile(String filePath) {
-      super(new File(filePath));
+      super(new File(filePath), false);
     }
 
     @Override

@@ -3135,6 +3135,8 @@ public class DataRegion implements IDataRegionForQuery {
       final File newTargetModFile = ModificationFile.getExclusiveMods(targetTsFile);
       moveModFile(newModFileToLoad, newTargetModFile, deleteOriginFile);
     }
+    // force update mod file metrics
+    tsFileResource.getExclusiveModFile();
   }
 
   @SuppressWarnings("java:S2139")

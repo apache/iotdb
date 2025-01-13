@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSche
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
@@ -320,7 +321,7 @@ public class LoadTsFileTableSchemaCache {
       TsFileResource resource, TsFileSequenceReader reader) throws IOException {
     clearModificationsAndTimeIndex();
 
-    currentModifications = resource.getAllModEntries();
+    currentModifications = ModificationFile.readAllModifications(resource.getTsFile(), false);
     for (final ModEntry modification : currentModifications) {
       currentModificationsMemoryUsageSizeInBytes += modification.serializedSize();
     }

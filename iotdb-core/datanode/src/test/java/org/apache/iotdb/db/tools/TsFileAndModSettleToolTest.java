@@ -166,7 +166,7 @@ public class TsFileAndModSettleToolTest {
   }
 
   public void createlModificationFile(String timeseriesPath) {
-    ModificationFile modificationFile = new ModificationFile(new File(path));
+    ModificationFile modificationFile = new ModificationFile(new File(path), false);
     List<ModEntry> mods = new ArrayList<>();
     try {
       MeasurementPath partialPath = new MeasurementPath(timeseriesPath);

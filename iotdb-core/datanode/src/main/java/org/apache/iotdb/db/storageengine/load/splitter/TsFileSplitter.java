@@ -368,10 +368,7 @@ public class TsFileSplitter {
   }
 
   private void getAllModification(List<ModEntry> deletions) throws IOException {
-    try (ModificationFile modificationFile =
-        new ModificationFile(ModificationFile.getExclusiveMods(tsFile))) {
-      deletions.addAll(modificationFile.getAllMods());
-    }
+    deletions.addAll(ModificationFile.readAllModifications(tsFile, true));
   }
 
   private boolean checkMagic(TsFileSequenceReader reader) throws IOException {
