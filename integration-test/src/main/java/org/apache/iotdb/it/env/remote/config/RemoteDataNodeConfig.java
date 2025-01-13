@@ -43,4 +43,9 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
       long loadTsFileAnalyzeSchemaMemorySizeInBytes) {
     return this;
   }
+
+  @Override
+  public DataNodeConfig setCompactionScheduleIntervalInMs(int compactionScheduleIntervalInMs) {
+    return this;
+  }
 }
