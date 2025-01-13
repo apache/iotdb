@@ -247,7 +247,7 @@ public class Subcolumn5QueryGreaterTest {
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        int[] block_size_list = { 32, 64, 128, 256, 512, 1024 };
+        int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 
         HashMap<String, Integer> queryRange = new HashMap<>();
         queryRange.put("Air-pressure", 8720000);

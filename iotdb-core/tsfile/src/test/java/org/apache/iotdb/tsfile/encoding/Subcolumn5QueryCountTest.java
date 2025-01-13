@@ -253,7 +253,7 @@ public class Subcolumn5QueryCountTest {
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        int[] block_size_list = { 32, 64, 128, 256, 512, 1024 };
+        int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 
         HashMap<String, Integer> queryRange = new HashMap<>();
         queryRange.put("Air-pressure", 8820000);
@@ -269,7 +269,7 @@ public class Subcolumn5QueryCountTest {
         queryRange.put("Stocks-USA", 6000);
         queryRange.put("Wind-Speed", 60);
 
-        int repeatTime = 100;
+        int repeatTime = 200;
         // TODO 真正计算时，记得注释掉将下面的内容
         // repeatTime = 1;
 

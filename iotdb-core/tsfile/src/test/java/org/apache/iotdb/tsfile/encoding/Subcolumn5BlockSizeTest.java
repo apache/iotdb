@@ -52,7 +52,7 @@ public class Subcolumn5BlockSizeTest {
 
         String output_parent_dir = "D:/compress-subcolumn/";
 
-        int[] block_size_list = { 32, 64, 128, 256, 512, 1024 };
+        int[] block_size_list = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 
         int repeatTime = 200;
         // TODO 真正计算时，记得注释掉将下面的内容
