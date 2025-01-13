@@ -49,6 +49,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.stream.Collectors;
 
@@ -350,14 +351,19 @@ public abstract class SeriesCompactionExecutor {
    * list is ordered according to the startTime of the current device in the file from small to
    * large, so that each file can be compacted in order.
    */
-  protected List<FileElement> findOverlapFiles(FileElement file) {
+  protected List<FileElement> findOverlapFiles(FileElement fileToCheck) {
     List<FileElement> overlappedFiles = new ArrayList<>();
-    long endTime = file.resource.getEndTime(deviceId);
-    for (FileElement fileElement : fileList) {
-      if (fileElement.resource.getStartTime(deviceId) <= endTime) {
-        if (!fileElement.isSelected) {
-          overlappedFiles.add(fileElement);
-          fileElement.isSelected = true;
+    Optional<Long> endTimeInCheckingFile = fileToCheck.resource.getEndTime(deviceId);
+    for (FileElement otherFile : fileList) {
+      if (!endTimeInCheckingFile.isPresent()) {
+        continue;
+      }
+      Optional<Long> startTimeInOtherFile = otherFile.resource.getStartTime(deviceId);
+      if (startTimeInOtherFile.isPresent()
+          && startTimeInOtherFile.get() <= endTimeInCheckingFile.get()) {
+        if (!otherFile.isSelected) {
+          overlappedFiles.add(otherFile);
+          otherFile.isSelected = true;
         }
       } else {
         break;
