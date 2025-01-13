@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
@@ -882,7 +883,7 @@ public class ConfigMTree {
     if (columnSchema.getColumnCategory() != TsTableColumnCategory.FIELD) {
       throw new SemanticException("Can only alter datatype of FIELD columns");
     }
-    if (!dataType.isCompatible(columnSchema.getDataType())) {
+    if (!MetadataUtils.canAlter(columnSchema.getDataType(), dataType)) {
       throw new SemanticException(
           String.format(
               "New type %s is not compatible with the existing one %s",

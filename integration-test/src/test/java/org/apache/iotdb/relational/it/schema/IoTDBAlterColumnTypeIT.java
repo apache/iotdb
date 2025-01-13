@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.relational.it.schema;
 
+import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -71,6 +72,9 @@ public class IoTDBAlterColumnTypeIT {
     typesToTest.remove(TSDataType.VECTOR);
     typesToTest.remove(TSDataType.UNKNOWN);
 
+    //    doWriteAndAlter(TSDataType.INT32, TSDataType.FLOAT, false);
+    //    doWriteAndAlter(TSDataType.INT32, TSDataType.FLOAT, true);
+
     for (TSDataType from : typesToTest) {
       for (TSDataType to : typesToTest) {
         System.out.printf("testing %s to %s%n", from, to);
@@ -104,7 +108,7 @@ public class IoTDBAlterColumnTypeIT {
       }
 
       // alter the type to "to"
-      boolean isCompatible = to.isCompatible(from);
+      boolean isCompatible = MetadataUtils.canAlter(from, to);
       if (isCompatible) {
         session.executeNonQueryStatement(
             "ALTER TABLE write_and_alter_column_type ALTER COLUMN s1 SET DATA TYPE " + to);
@@ -170,6 +174,21 @@ public class IoTDBAlterColumnTypeIT {
         assertEquals(genValue(newType, 2).toString(), rec.getFields().get(1).toString());
       }
 
+      dataSet =
+          session.executeQueryStatement(
+              "select min(s1),max(s1),first(s1),last(s1) from write_and_alter_column_type");
+      rec = dataSet.next();
+      for (int i = 0; i < 4; i++) {
+        if (newType == TSDataType.BLOB) {
+          assertEquals(genValue(newType, i % 2 + 1), rec.getFields().get(i).getBinaryV());
+        } else if (newType == TSDataType.DATE) {
+          assertEquals(genValue(newType, i % 2 + 1), rec.getFields().get(i).getDateV());
+        } else {
+          assertEquals(genValue(newType, i % 2 + 1).toString(), rec.getFields().get(i).toString());
+        }
+      }
+      assertFalse(dataSet.hasNext());
+
       session.executeNonQueryStatement("DROP TABLE write_and_alter_column_type");
     }
   }
@@ -198,7 +217,7 @@ public class IoTDBAlterColumnTypeIT {
           "CREATE TABLE IF NOT EXISTS just_alter_column_type (s1 " + from + ")");
 
       // alter the type to "to"
-      boolean isCompatible = to.isCompatible(from);
+      boolean isCompatible = MetadataUtils.canAlter(from, to);
       if (isCompatible) {
         session.executeNonQueryStatement(
             "ALTER TABLE just_alter_column_type ALTER COLUMN s1 SET DATA TYPE " + to);

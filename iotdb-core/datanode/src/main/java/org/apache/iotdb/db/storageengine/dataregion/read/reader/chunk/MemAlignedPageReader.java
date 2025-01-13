@@ -28,11 +28,14 @@ import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.BatchDataFactory;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
 import org.apache.tsfile.read.reader.IPageReader;
 import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.TsPrimitiveType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -96,9 +99,23 @@ public class MemAlignedPageReader implements IPageReader {
 
     // build value column
     buildValueColumns(satisfyInfo, readEndIndex);
-
+    StringBuilder tsBlockBuilder = new StringBuilder();
+    for (Column column : tsBlock.getAllColumns()) {
+      tsBlockBuilder.append("[");
+      for (int i = 0; i < column.getPositionCount(); i++) {
+        if (column instanceof TimeColumn) {
+          tsBlockBuilder.append(column.getLong(i)).append(",");
+        } else {
+          tsBlockBuilder.append(column.getTsPrimitiveType(i)).append(",");
+        }
+      }
+      tsBlockBuilder.append("] ");
+    }
+    LOGGER.warn("[memAlignedPageReader] TsBlock:{}", tsBlockBuilder);
     return builder.build();
   }
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(MemAlignedPageReader.class);
 
   private boolean[] buildSatisfyInfoArray() {
     if (recordFilter == null || recordFilter.allSatisfy(this)) {

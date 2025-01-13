@@ -263,17 +263,17 @@ public class FirstByAccumulator implements TableAccumulator {
           switch (xDataType) {
             case INT32:
             case DATE:
-              xResult.setInt((int) xStatistics.getFirstValue());
+              xResult.setInt(((Number) xStatistics.getFirstValue()).intValue());
               break;
             case INT64:
             case TIMESTAMP:
-              xResult.setLong((long) xStatistics.getFirstValue());
+              xResult.setLong(((Number) xStatistics.getFirstValue()).longValue());
               break;
             case FLOAT:
-              xResult.setFloat((float) statistics[0].getFirstValue());
+              xResult.setFloat(((Number) statistics[0].getFirstValue()).floatValue());
               break;
             case DOUBLE:
-              xResult.setDouble((double) statistics[0].getFirstValue());
+              xResult.setDouble(((Number) statistics[0].getFirstValue()).doubleValue());
               break;
             case TEXT:
             case BLOB:

@@ -29,7 +29,9 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
@@ -141,6 +143,19 @@ public class LocalSourceHandle implements ISourceHandle {
   @Override
   public ByteBuffer getSerializedTsBlock() throws IoTDBException {
     TsBlock tsBlock = receive();
+    StringBuilder tsBlockBuilder = new StringBuilder();
+    for (Column column : tsBlock.getAllColumns()) {
+      tsBlockBuilder.append("[");
+      for (int i = 0; i < column.getPositionCount(); i++) {
+        if (column instanceof TimeColumn) {
+          tsBlockBuilder.append(column.getLong(i)).append(",");
+        } else {
+          tsBlockBuilder.append(column.getTsPrimitiveType(i)).append(",");
+        }
+      }
+      tsBlockBuilder.append("] ");
+    }
+    LOGGER.warn("[GetSerializedTsBlock] TsBlock:{}", tsBlockBuilder);
     if (tsBlock != null) {
       long startTime = System.nanoTime();
       try {

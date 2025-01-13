@@ -35,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.MergeRead
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityMergeReader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -47,6 +48,7 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.TsBlockUtil;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IPageReader;
 import org.apache.tsfile.read.reader.IPointReader;
@@ -57,6 +59,8 @@ import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -75,6 +79,7 @@ import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUI
 
 public class SeriesScanUtil implements Accountable {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(SeriesScanUtil.class);
   protected final FragmentInstanceContext context;
 
   // The path of the target series which will be scanned.
@@ -1300,6 +1305,19 @@ public class SeriesScanUtil implements Accountable {
         if (!ascending) {
           tsBlock.reverse();
         }
+        StringBuilder tsBlockBuilder = new StringBuilder();
+        for (Column column : tsBlock.getAllColumns()) {
+          tsBlockBuilder.append("[");
+          for (int i = 0; i < column.getPositionCount(); i++) {
+            if (column instanceof TimeColumn) {
+              tsBlockBuilder.append(column.getLong(i)).append(",");
+            } else {
+              tsBlockBuilder.append(column.getTsPrimitiveType(i)).append(",");
+            }
+          }
+          tsBlockBuilder.append("] ");
+        }
+        LOGGER.warn("[getAllSatisfiedPageData] TsBlock:{}", tsBlockBuilder);
         return tsBlock;
       } finally {
         long time = System.nanoTime() - startTime;
