@@ -40,7 +40,8 @@ public class DeleteDevicesProcedureTest {
             "0",
             new byte[] {0, 1, 2},
             new byte[] {0, 1, 2},
-            new byte[] {0, 1, 2});
+            new byte[] {0, 1, 2},
+            false);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -51,7 +52,7 @@ public class DeleteDevicesProcedureTest {
     Assert.assertEquals(
         ProcedureType.DELETE_DEVICES_PROCEDURE.getTypeCode(), byteBuffer.getShort());
 
-    final DeleteDevicesProcedure deserializedProcedure = new DeleteDevicesProcedure();
+    final DeleteDevicesProcedure deserializedProcedure = new DeleteDevicesProcedure(false);
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(deleteDevicesProcedure, deserializedProcedure);
