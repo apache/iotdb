@@ -1096,7 +1096,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public boolean supportsSchemasInPrivilegeDefinitions() throws SQLException {
-    return false;
+    return true;
   }
 
   @Override

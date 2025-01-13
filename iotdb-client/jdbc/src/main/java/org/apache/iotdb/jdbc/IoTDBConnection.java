@@ -20,6 +20,7 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.jdbc.relational.IoTDBRelationalDatabaseMetadata;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -300,9 +301,9 @@ public class IoTDBConnection implements Connection {
       throw new SQLException("Cannot create statement because connection is closed");
     }
     if (getSqlDialect().equals("table")) {
-      return new IoTDBTableDatabaseMetadata(this, getClient(), sessionId, zoneId);
+      return new IoTDBRelationalDatabaseMetadata(this, getClient(), sessionId, zoneId);
     }
-    return new IoTDBTreeDatabaseMetadata(this, getClient(), sessionId, zoneId);
+    return new IoTDBDatabaseMetadata(this, getClient(), sessionId, zoneId);
   }
 
   @Override
@@ -317,7 +318,17 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public void setSchema(String arg0) throws SQLException {
-    changeDefaultDatabase(arg0);
+    // changeDefaultDatabase(arg0);
+    Statement stmt = this.createStatement();
+    String sql = "USE " + arg0;
+    boolean rs;
+    try {
+      rs = stmt.execute(sql);
+    } catch (SQLException e) {
+      stmt.close();
+      logger.error("Use database error: {}", e.getMessage());
+      throw e;
+    }
   }
 
   @Override

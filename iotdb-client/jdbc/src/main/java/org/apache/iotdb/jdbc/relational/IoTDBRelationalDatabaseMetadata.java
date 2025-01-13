@@ -17,8 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.jdbc;
+package org.apache.iotdb.jdbc.relational;
 
+import org.apache.iotdb.jdbc.Field;
+import org.apache.iotdb.jdbc.IoTDBAbstractDatabaseMetadata;
+import org.apache.iotdb.jdbc.IoTDBConnection;
+import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -39,21 +43,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class IoTDBTableDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
+public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBTableDatabaseMetadata.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBRelationalDatabaseMetadata.class);
 
   private static final String DATABASE_VERSION =
-      IoTDBTableDatabaseMetadata.class.getPackage().getImplementationVersion() != null
-          ? IoTDBTableDatabaseMetadata.class.getPackage().getImplementationVersion()
+      IoTDBRelationalDatabaseMetadata.class.getPackage().getImplementationVersion() != null
+          ? IoTDBRelationalDatabaseMetadata.class.getPackage().getImplementationVersion()
           : "UNKNOWN";
 
   public static final String SHOW_TABLES_ERROR_MSG = "Show tables error: {}";
 
-  public IoTDBTableDatabaseMetadata(
+  public IoTDBRelationalDatabaseMetadata(
       IoTDBConnection connection, IClientRPCService.Iface client, long sessionId, ZoneId zoneId) {
     super(connection, client, sessionId, zoneId);
-    LOGGER.info("database version: {}", DATABASE_VERSION);
   }
 
   @Override
@@ -102,7 +106,9 @@ public class IoTDBTableDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
     }
 
     // Extract Values
+    boolean hasResultSet = false;
     while (rs.next()) {
+      hasResultSet = true;
       List<Object> valueInRow = new ArrayList<>();
       for (int i = 0; i < fields.length; i++) {
         if (i == 0) {
@@ -126,21 +132,23 @@ public class IoTDBTableDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
       close(rs, stmt);
     }
 
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        -1,
-        sessionId,
-        Collections.singletonList(tsBlock),
-        null,
-        (long) 60 * 1000,
-        false,
-        zoneId);
+    return hasResultSet
+        ? new IoTDBJDBCResultSet(
+            stmt,
+            columnNameList,
+            columnTypeList,
+            columnNameIndex,
+            true,
+            client,
+            null,
+            -1,
+            sessionId,
+            Collections.singletonList(tsBlock),
+            null,
+            (long) 60 * 1000,
+            false,
+            zoneId)
+        : null;
   }
 
   @Override
@@ -212,7 +220,13 @@ public class IoTDBTableDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
         } else if (i == 2) {
           valueInRow.add(getSQLType(type));
         } else if (i == 3) {
-          valueInRow.add(rs.getString(3));
+          String columnCategory = rs.getString(3);
+          if (columnCategory.equals("ID")) {
+            columnCategory = "TAG";
+          } else if (columnCategory.equals("MEASUREMENT")) {
+            columnCategory = "FIELD";
+          }
+          valueInRow.add("ColumnCategory: " + columnCategory);
         } else if (i == 4) {
           valueInRow.add(type);
         } else if (i == 5) {
