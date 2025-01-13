@@ -653,7 +653,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             .process(originalStatement, tablePattern)
             .ifPresent(
                 statement ->
-                    results.add(executeTableStatement(statement, databasePath.getNodes()[1])));
+                    results.add(
+                        executeStatementForTableModelWithPermissionCheck(
+                            statement, databasePath.getNodes()[1])));
       }
     }
     batchVisitor.getRemainBatches().stream()
@@ -685,7 +687,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return statement instanceof Statement
         ? new TPipeTransferResp(executeStatementAndClassifyExceptions((Statement) statement))
         : new TPipeTransferResp(
-            executeTableStatement(
+            executeStatementForTableModelWithPermissionCheck(
                 (org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement) statement,
                 null));
   }
@@ -793,57 +795,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           statement,
           e);
       return statement.accept(STATEMENT_EXCEPTION_VISITOR, e);
-    }
-  }
-
-  private TSStatus executeTableStatement(
-      final org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
-      final String databaseName) {
-    try {
-      TSStatus result;
-      // Permission check
-      final IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
-      if (clientSession == null || !clientSession.isLogin()) {
-        result = login();
-        if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          return result;
-        }
-      }
-
-      result =
-          Coordinator.getInstance()
-              .executeForTableModel(
-                  new PipeEnriched(statement),
-                  relationalSqlParser,
-                  SESSION_MANAGER.getCurrSession(),
-                  SESSION_MANAGER.requestQueryId(),
-                  SESSION_MANAGER.getSessionInfoOfPipeReceiver(
-                      SESSION_MANAGER.getCurrSession(), databaseName),
-                  "",
-                  LocalExecutionPlanner.getInstance().metadata,
-                  IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-                  false)
-              .status;
-
-      // Delete data & Update device attribute is itself idempotent
-      // No strong need to handle the failure result
-      if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())) {
-        LOGGER.warn(
-            "Receiver id = {}: Failure status encountered while executing statement {}: {}",
-            receiverId.get(),
-            statement,
-            result);
-      }
-      return result;
-    } catch (final Exception e) {
-      LOGGER.warn(
-          "Receiver id = {}: Exception encountered while executing statement {}: ",
-          receiverId.get(),
-          statement,
-          e);
-      return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
-          .setMessage(e.getMessage());
     }
   }
 
@@ -1027,6 +978,56 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
             false)
         .status;
+  }
+
+  private TSStatus executeStatementForTableModelWithPermissionCheck(
+      final org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      final String databaseName) {
+    try {
+      // Permission check
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+      if (clientSession == null || !clientSession.isLogin()) {
+        final TSStatus result = login();
+        if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return result;
+        }
+      }
+
+      final TSStatus result =
+          Coordinator.getInstance()
+              .executeForTableModel(
+                  new PipeEnriched(statement),
+                  relationalSqlParser,
+                  SESSION_MANAGER.getCurrSession(),
+                  SESSION_MANAGER.requestQueryId(),
+                  SESSION_MANAGER.getSessionInfoOfPipeReceiver(
+                      SESSION_MANAGER.getCurrSession(), databaseName),
+                  "",
+                  LocalExecutionPlanner.getInstance().metadata,
+                  IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+                  false)
+              .status;
+
+      // Delete data & Update device attribute is itself idempotent
+      // No strong need to handle the failure result
+      if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())) {
+        LOGGER.warn(
+            "Receiver id = {}: Failure status encountered while executing statement {}: {}",
+            receiverId.get(),
+            statement,
+            result);
+      }
+      return result;
+    } catch (final Exception e) {
+      LOGGER.warn(
+          "Receiver id = {}: Exception encountered while executing statement {}: ",
+          receiverId.get(),
+          statement,
+          e);
+      return new TSStatus(TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage(e.getMessage());
+    }
   }
 
   @Override
