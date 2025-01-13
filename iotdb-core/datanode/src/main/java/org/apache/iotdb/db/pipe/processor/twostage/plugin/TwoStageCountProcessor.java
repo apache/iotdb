@@ -41,6 +41,7 @@ import org.apache.iotdb.db.pipe.processor.twostage.exchange.sender.TwoStageAggre
 import org.apache.iotdb.db.pipe.processor.twostage.operator.CountOperator;
 import org.apache.iotdb.db.pipe.processor.twostage.state.CountState;
 import org.apache.iotdb.pipe.api.PipeProcessor;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -73,6 +74,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_OUTPUT_SERIES_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant._PROCESSOR_OUTPUT_SERIES_KEY;
 
+@TreeModel
 public class TwoStageCountProcessor implements PipeProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TwoStageCountProcessor.class);

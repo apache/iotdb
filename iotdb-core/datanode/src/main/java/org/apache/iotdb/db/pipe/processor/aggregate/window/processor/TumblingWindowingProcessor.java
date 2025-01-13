@@ -24,6 +24,7 @@ import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowO
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowState;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -40,6 +41,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_SLIDING_SECONDS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_SLIDING_SECONDS_KEY;
 
+@TreeModel
 public class TumblingWindowingProcessor extends AbstractSimpleTimeWindowingProcessor {
   private long slidingBoundaryTime;
   private long slidingInterval;

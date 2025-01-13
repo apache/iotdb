@@ -121,6 +121,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
@@ -229,6 +230,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePl
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePluginsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
@@ -995,7 +997,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           client.dropPipePlugin(
               new TDropPipePluginReq()
                   .setPluginName(dropPipePluginStatement.getPluginName())
-                  .setIfExistsCondition(dropPipePluginStatement.hasIfExistsCondition()));
+                  .setIfExistsCondition(dropPipePluginStatement.hasIfExistsCondition())
+                  .setIsTableModel(dropPipePluginStatement.isTableModel()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         LOGGER.warn(
             "[{}] Failed to drop pipe plugin {}.",
@@ -1012,11 +1015,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showPipePlugins() {
+  public SettableFuture<ConfigTaskResult> showPipePlugins(
+      ShowPipePluginsStatement showPipePluginsStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TGetPipePluginTableResp getPipePluginTableResp = client.getPipePluginTable();
+      TGetPipePluginTableResp getPipePluginTableResp =
+          client.getPipePluginTableExtended(
+              new TShowPipePluginReq().setIsTableModel(showPipePluginsStatement.isTableModel()));
       if (getPipePluginTableResp.getStatus().getCode()
           != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         future.setException(
@@ -1981,53 +1987,63 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     // Construct temporary pipe static meta for validation
     final String pipeName = alterPipeStatement.getPipeName();
+    final Map<String, String> extractorAttributes;
+    final Map<String, String> processorAttributes;
+    final Map<String, String> connectorAttributes;
     try {
       if (!alterPipeStatement.getExtractorAttributes().isEmpty()) {
         if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
-          PipeDataNodeAgent.plugin().validateExtractor(alterPipeStatement.getExtractorAttributes());
+          extractorAttributes = alterPipeStatement.getExtractorAttributes();
         } else {
           pipeMetaFromCoordinator
               .getStaticMeta()
               .getExtractorParameters()
               .addOrReplaceEquivalentAttributes(
                   new PipeParameters(alterPipeStatement.getExtractorAttributes()));
-          PipeDataNodeAgent.plugin()
-              .validateExtractor(
-                  pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters().getAttribute());
+          extractorAttributes =
+              pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters().getAttribute();
         }
+      } else {
+        extractorAttributes =
+            pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters().getAttribute();
       }
 
       if (!alterPipeStatement.getProcessorAttributes().isEmpty()) {
         if (alterPipeStatement.isReplaceAllProcessorAttributes()) {
-          PipeDataNodeAgent.plugin().validateProcessor(alterPipeStatement.getProcessorAttributes());
+          processorAttributes = alterPipeStatement.getProcessorAttributes();
         } else {
           pipeMetaFromCoordinator
               .getStaticMeta()
               .getProcessorParameters()
               .addOrReplaceEquivalentAttributes(
                   new PipeParameters(alterPipeStatement.getProcessorAttributes()));
-          PipeDataNodeAgent.plugin()
-              .validateProcessor(
-                  pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters().getAttribute());
+          processorAttributes =
+              pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters().getAttribute();
         }
+      } else {
+        processorAttributes =
+            pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters().getAttribute();
       }
 
       if (!alterPipeStatement.getConnectorAttributes().isEmpty()) {
         if (alterPipeStatement.isReplaceAllConnectorAttributes()) {
-          PipeDataNodeAgent.plugin()
-              .validateConnector(pipeName, alterPipeStatement.getConnectorAttributes());
+          connectorAttributes = alterPipeStatement.getConnectorAttributes();
         } else {
           pipeMetaFromCoordinator
               .getStaticMeta()
               .getConnectorParameters()
               .addOrReplaceEquivalentAttributes(
                   new PipeParameters(alterPipeStatement.getConnectorAttributes()));
-          PipeDataNodeAgent.plugin()
-              .validateConnector(
-                  pipeName,
-                  pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters().getAttribute());
+          connectorAttributes =
+              pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters().getAttribute();
         }
+      } else {
+        connectorAttributes =
+            pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters().getAttribute();
       }
+
+      PipeDataNodeAgent.plugin()
+          .validate(pipeName, extractorAttributes, processorAttributes, connectorAttributes);
     } catch (final Exception e) {
       future.setException(
           new IoTDBException(e.getMessage(), TSStatusCode.PIPE_ERROR.getStatusCode()));
@@ -2251,9 +2267,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         new TopicMeta(topicName, System.currentTimeMillis(), topicAttributes);
     try {
       PipeDataNodeAgent.plugin()
-          .validateExtractor(temporaryTopicMeta.generateExtractorAttributes());
-      PipeDataNodeAgent.plugin()
-          .validateProcessor(temporaryTopicMeta.generateProcessorAttributes());
+          .validate(
+              "fakePipeName",
+              temporaryTopicMeta.generateExtractorAttributes(),
+              temporaryTopicMeta.generateProcessorAttributes(),
+              temporaryTopicMeta.generateConnectorAttributes("fakeConsumerGroupId"));
     } catch (final Exception e) {
       future.setException(
           new IoTDBException(e.getMessage(), TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode()));

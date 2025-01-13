@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
+import org.apache.iotdb.pipe.api.annotation.TableModel;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 
 import org.slf4j.Logger;
@@ -39,6 +41,8 @@ import java.util.HashMap;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@TreeModel
+@TableModel
 public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataNodeAirGapConnector.class);

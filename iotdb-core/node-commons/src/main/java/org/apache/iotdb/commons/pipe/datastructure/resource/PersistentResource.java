@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.datastructure;
+package org.apache.iotdb.commons.pipe.datastructure.resource;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 

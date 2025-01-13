@@ -69,8 +69,8 @@ public class PipeMetaKeeper {
 
   /////////////////////////////////  PipeMeta  /////////////////////////////////
 
-  public void addPipeMeta(String pipeName, PipeMeta pipeMeta) {
-    pipeNameToPipeMetaMap.put(pipeName, pipeMeta);
+  public void addPipeMeta(PipeMeta pipeMeta) {
+    pipeNameToPipeMetaMap.put(pipeMeta.getStaticMeta().getPipeName(), pipeMeta);
   }
 
   public PipeMeta getPipeMeta(String pipeName) {
@@ -90,7 +90,7 @@ public class PipeMetaKeeper {
     if (Objects.isNull(pipeMeta)) {
       return false;
     }
-    return pipeMeta.visibleUnder(isTableModel);
+    return pipeMeta.getStaticMeta().visibleUnder(isTableModel);
   }
 
   public Iterable<PipeMeta> getPipeMetaList() {

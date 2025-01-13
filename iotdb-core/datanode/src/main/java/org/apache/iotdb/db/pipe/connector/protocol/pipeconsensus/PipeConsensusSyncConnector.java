@@ -46,6 +46,8 @@ import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.pipe.api.annotation.TableModel;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -66,6 +68,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /** This connector is used for PipeConsensus to transfer queued event. */
+@TreeModel
+@TableModel
 public class PipeConsensusSyncConnector extends IoTDBConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusSyncConnector.class);
   private static final String PIPE_CONSENSUS_SYNC_CONNECTION_FAILED_FORMAT =

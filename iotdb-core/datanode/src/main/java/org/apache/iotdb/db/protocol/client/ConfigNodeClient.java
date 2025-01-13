@@ -149,6 +149,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -957,6 +958,13 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TGetPipePluginTableResp getPipePluginTable() throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getPipePluginTable(), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TGetPipePluginTableResp getPipePluginTableExtended(TShowPipePluginReq req)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.getPipePluginTableExtended(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override

@@ -20,6 +20,8 @@
 package org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.iotdb;
 
 import org.apache.iotdb.pipe.api.PipeExtractor;
+import org.apache.iotdb.pipe.api.annotation.TableModel;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -31,6 +33,8 @@ import org.apache.iotdb.pipe.api.event.Event;
  * imported here. The pipe agent in the server module will replace this class with the real
  * implementation when initializing the extractor.
  */
+@TreeModel
+@TableModel
 public class IoTDBExtractor implements PipeExtractor {
 
   private static final String PLACEHOLDER_ERROR_MSG =

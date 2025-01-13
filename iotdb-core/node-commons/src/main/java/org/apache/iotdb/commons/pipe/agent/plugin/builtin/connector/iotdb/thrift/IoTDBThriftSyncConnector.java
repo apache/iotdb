@@ -19,10 +19,15 @@
 
 package org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift;
 
+import org.apache.iotdb.pipe.api.annotation.TableModel;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
+
 /**
  * This class is a placeholder and should not be initialized. It represents the IoTDB Thrift sync
  * connector. There is a real implementation in the server module but cannot be imported here. The
  * pipe agent in the server module will replace this class with the real implementation when
  * initializing the IoTDB Thrift sync connector.
  */
+@TreeModel
+@TableModel
 public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {}

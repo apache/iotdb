@@ -32,6 +32,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class PipePluginTableRespTest {
@@ -43,7 +44,8 @@ public class PipePluginTableRespTest {
     pipePluginMetaList.add(new PipePluginMeta("iotdb-extractor", IoTDBExtractor.class.getName()));
     pipePluginMetaList.add(
         new PipePluginMeta("do-nothing-processor", DoNothingProcessor.class.getName()));
-    PipePluginTableResp pipePluginTableResp = new PipePluginTableResp(status, pipePluginMetaList);
+    PipePluginTableResp pipePluginTableResp =
+        new PipePluginTableResp(status, pipePluginMetaList, Collections.emptyMap());
 
     final List<ByteBuffer> pipePluginByteBuffers = new ArrayList<>();
     for (PipePluginMeta pipePluginMeta : pipePluginMetaList) {
