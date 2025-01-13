@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferCo
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -54,6 +55,7 @@ import java.util.List;
 import java.util.Objects;
 
 @TreeModel
+@TableModel
 public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfigRegionConnector.class);

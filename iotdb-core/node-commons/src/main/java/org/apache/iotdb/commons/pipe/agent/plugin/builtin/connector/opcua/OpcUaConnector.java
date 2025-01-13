@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.opcua;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.PlaceholderConnector;
+import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 
 /**
@@ -29,4 +30,5 @@ import org.apache.iotdb.pipe.api.annotation.TreeModel;
  * OPC UA connector.
  */
 @TreeModel
+@TableModel
 public class OpcUaConnector extends PlaceholderConnector {}
