@@ -51,7 +51,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class, RemoteIT.class})
-public class IoTDBRestServiceInsertAlignedValuesIT {
+public class IoTDBRestServiceInsertValuesIT {
 
   private int port = 18080;
   private CloseableHttpClient httpClient = null;
@@ -127,9 +127,9 @@ public class IoTDBRestServiceInsertAlignedValuesIT {
   public void test() {
     ping();
     prepareTableData();
-    testInsertAlignedValues();
-    testUpdatingAlignedValues();
-    testInsertAlignedValuesWithSameTimestamp();
+    testInsertValues();
+    testUpdatingValues();
+    testInsertValuesWithSameTimestamp();
     testInsertWithWrongMeasurementNum1();
     testInsertWithWrongMeasurementNum2();
     testInsertWithDuplicatedMeasurements();
@@ -145,7 +145,7 @@ public class IoTDBRestServiceInsertAlignedValuesIT {
     return json.toString();
   }
 
-  public void testInsertAlignedValues() {
+  public void testInsertValues() {
     List<String> sqls =
         Arrays.asList(
             "create table wf01 (tag1 string tag, status boolean field, temperature float field)",
@@ -182,7 +182,7 @@ public class IoTDBRestServiceInsertAlignedValuesIT {
     }
   }
 
-  public void testUpdatingAlignedValues() {
+  public void testUpdatingValues() {
     List<String> sqls =
         Arrays.asList(
             "create table wf03 (tag1 string tag, status boolean field, temperature float field)",
@@ -224,7 +224,7 @@ public class IoTDBRestServiceInsertAlignedValuesIT {
     }
   }
 
-  public void testInsertAlignedValuesWithSameTimestamp() {
+  public void testInsertValuesWithSameTimestamp() {
     List<String> sqls =
         Arrays.asList(
             "create table sg3 (tag1 string tag, s2 double field, s1 double field)",
