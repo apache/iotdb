@@ -17,23 +17,38 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.pipe.annotation;
+package org.apache.iotdb.commons.pipe.datastructure;
 
-import org.apache.iotdb.commons.pipe.datastructure.Result;
-import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityTestUtils;
+public class Result<T, E> {
+  private final T ok;
+  private final E err;
 
-import org.junit.Test;
+  private Result(final T ok, final E err) {
+    this.ok = ok;
+    this.err = err;
+  }
 
-import static org.junit.Assert.fail;
+  public static <T, E> Result<T, E> ok(final T value) {
+    return new Result<>(value, null);
+  }
 
-public class PipePluginAnnotationTest {
+  public static <T, E> Result<T, E> err(final E error) {
+    return new Result<>(null, error);
+  }
 
-  @Test
-  public void testPipePluginVisibility() {
-    final Result<Void, String> result =
-        VisibilityTestUtils.testVisibilityCompatibilityEntry("org.apache.iotdb.confignode");
-    if (result.isErr()) {
-      fail(result.getErr());
-    }
+  public boolean isOk() {
+    return ok != null;
+  }
+
+  public boolean isErr() {
+    return err != null;
+  }
+
+  public T getOk() {
+    return ok;
+  }
+
+  public E getErr() {
+    return err;
   }
 }
