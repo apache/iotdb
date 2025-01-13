@@ -362,7 +362,16 @@ public class IoTDBDatabaseIT {
           statement.executeQuery("show tables"),
           "TableName,TTL(ms),",
           new HashSet<>(
-              Arrays.asList("databases,INF,", "tables,INF,", "columns,INF,", "queries,INF,")));
+              Arrays.asList(
+                  "databases,INF,",
+                  "tables,INF,",
+                  "columns,INF,",
+                  "queries,INF,",
+                  "regions,INF,",
+                  "topics,INF,",
+                  "pipe_plugins,INF,",
+                  "topics,INF,",
+                  "subscriptions,INF,")));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc databases"),
@@ -406,6 +415,42 @@ public class IoTDBDatabaseIT {
                   "datanode_id,INT32,ATTRIBUTE,",
                   "elapsed_time,FLOAT,ATTRIBUTE,",
                   "statement,STRING,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc pipes"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "id,STRING,TAG,",
+                  "creation_time,TIMESTAMP,ATTRIBUTE,",
+                  "state,INT32,ATTRIBUTE,",
+                  "pipe_source,FLOAT,ATTRIBUTE,",
+                  "pipe_processor,STRING,ATTRIBUTE,",
+                  "pipe_sink,STRING,ATTRIBUTE,",
+                  "exception_message,STRING,ATTRIBUTE,",
+                  "remaining_event_count,INT64,ATTRIBUTE,",
+                  "estimated_remaining_seconds,DOUBLE,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc pipes"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "plugin_name,STRING,TAG,",
+                  "plugin_type,TIMESTAMP,ATTRIBUTE,",
+                  "class_name,INT32,ATTRIBUTE,",
+                  "plugin_jar,FLOAT,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc topics"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList("topic_name,STRING,TAG,", "topic_configs,STRING,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc subscriptions"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "topic_name,STRING,TAG,",
+                  "consumer_group_name,TIMESTAMP,ATTRIBUTE,",
+                  "subscribed_consumers,INT32,ATTRIBUTE,")));
 
       // Test table query
       statement.execute("create database test");
@@ -447,6 +492,31 @@ public class IoTDBDatabaseIT {
                   "test,test,a,STRING,TAG,USING,",
                   "test,test,b,STRING,ATTRIBUTE,USING,",
                   "test,test,c,INT32,FIELD,USING,")));
+
+      statement.execute(
+          "create pipe a2b with source('double-living'='true') with sink ('sink'='write-back-sink')");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select id, pipe_sink from pipes where creation_time > 0"),
+          "id,pipe_sink,",
+          Collections.singleton("a2b,{sink=write-back-sink},"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select * from pipe_plugins"),
+          "plugin_name,plugin_type,class_name,plugin_jar,",
+          new HashSet<>(
+              Arrays.asList(
+                  "IOTDB-THRIFT-SSL-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBThriftSslConnector,null,",
+                  "IOTDB-AIR-GAP-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.airgap.IoTDBAirGapConnector,null,",
+                  "DO-NOTHING-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.donothing.DoNothingConnector,null,",
+                  "DO-NOTHING-PROCESSOR,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.donothing.DoNothingProcessor,null,",
+                  "IOTDB-THRIFT-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBThriftConnector,null,",
+                  "IOTDB-SOURCE,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.iotdb.IoTDBExtractor,null,")));
+
+      statement.execute("create topic tp with ('start-time'='2025-01-13T10:03:19.229+08:00'");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select * from topics where topic_name = 'tp'"),
+          "topic_name,topic_configs,",
+          Collections.singleton(
+              "tp,{__system.sql-dialect=table, start-time=2025-01-13T10:03:19.229+08:00},"));
     }
   }
 
