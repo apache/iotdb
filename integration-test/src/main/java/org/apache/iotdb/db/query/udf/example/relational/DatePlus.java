@@ -19,33 +19,30 @@
 
 package org.apache.iotdb.db.query.udf.example.relational;
 
-import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
-import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
-import org.apache.iotdb.udf.api.exception.UDFException;
-import org.apache.iotdb.udf.api.exception.UDFParameterNotValidException;
+import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
+import org.apache.iotdb.udf.api.exception.UDFArgumentNotValidException;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.type.Type;
 
 import java.time.LocalDate;
 
-public class DatePlusOne implements ScalarFunction {
-  @Override
-  public void validate(FunctionParameters parameters) throws UDFException {
-    if (parameters.getChildExpressionsSize() != 2) {
-      throw new UDFParameterNotValidException("Only two parameter is required.");
-    }
-    if (parameters.getDataType(0) != Type.DATE) {
-      throw new UDFParameterNotValidException("The first parameter should be DATE type.");
-    }
-    if (parameters.getDataType(1) != Type.INT32 && parameters.getDataType(1) != Type.INT64) {
-      throw new UDFParameterNotValidException("The second parameter should be INT type.");
-    }
-  }
+public class DatePlus implements ScalarFunction {
 
   @Override
-  public void beforeStart(FunctionParameters parameters, ScalarFunctionConfig configurations) {
-    configurations.setOutputDataType(Type.DATE);
+  public ScalarFunctionAnalysis analyze(FunctionArguments arguments)
+      throws UDFArgumentNotValidException {
+    if (arguments.getArgumentsSize() != 2) {
+      throw new UDFArgumentNotValidException("Only two parameter is required.");
+    }
+    if (arguments.getDataType(0) != Type.DATE) {
+      throw new UDFArgumentNotValidException("The first parameter should be DATE type.");
+    }
+    if (arguments.getDataType(1) != Type.INT32 && arguments.getDataType(1) != Type.INT64) {
+      throw new UDFArgumentNotValidException("The second parameter should be INT type.");
+    }
+    return new ScalarFunctionAnalysis.Builder().outputDataType(Type.DATE).build();
   }
 
   @Override

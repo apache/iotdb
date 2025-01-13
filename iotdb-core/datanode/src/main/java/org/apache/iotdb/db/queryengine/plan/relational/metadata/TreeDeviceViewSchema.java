@@ -17,16 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.metadata.table;
+package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.rpc.TSStatusCode;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
-public class TableNotExistsException extends MetadataException {
+public class TreeDeviceViewSchema extends TableSchema {
 
-  public TableNotExistsException(final String database, final String tableName) {
-    super(
-        String.format("Table '%s.%s' does not exist.", database, tableName),
-        TSStatusCode.TABLE_NOT_EXISTS.getStatusCode());
+  public TreeDeviceViewSchema(String tableName, List<ColumnSchema> columns) {
+    super(tableName, columns);
+  }
+
+  public String getTreeDBName() {
+    return "root.tree";
+  }
+
+  public Map<String, String> getMeasurementColumnNameMap() {
+    return Collections.emptyMap();
   }
 }

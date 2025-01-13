@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -71,8 +72,10 @@ import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaT
 import org.apache.iotdb.confignode.consensus.response.database.CountDatabaseResp;
 import org.apache.iotdb.confignode.consensus.response.database.DatabaseSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.partition.PathInfoResp;
+import org.apache.iotdb.confignode.consensus.response.table.DescTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.table.DescTableResp;
 import org.apache.iotdb.confignode.consensus.response.table.FetchTableResp;
+import org.apache.iotdb.confignode.consensus.response.table.ShowTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.table.ShowTableResp;
 import org.apache.iotdb.confignode.consensus.response.template.AllTemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
@@ -80,6 +83,7 @@ import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoRe
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.persistence.schema.ConfigMTree.TableSchemaDetails;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TTableColumnInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -106,6 +110,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -1203,6 +1208,34 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
+  public ShowTable4InformationSchemaResp showTables4InformationSchema() {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return new ShowTable4InformationSchemaResp(
+          StatusUtils.OK,
+          tableModelMTree.getAllTables().entrySet().stream()
+              .collect(
+                  Collectors.toMap(
+                      Map.Entry::getKey,
+                      entry ->
+                          entry.getValue().stream()
+                              .map(
+                                  pair -> {
+                                    final TTableInfo info =
+                                        new TTableInfo(
+                                            pair.getLeft().getTableName(),
+                                            pair.getLeft()
+                                                .getPropValue(TTL_PROPERTY)
+                                                .orElse(TTL_INFINITE));
+                                    info.setState(pair.getRight().ordinal());
+                                    return info;
+                                  })
+                              .collect(Collectors.toList()))));
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
   public FetchTableResp fetchTables(final FetchTablePlan plan) {
     databaseReadWriteLock.readLock().lock();
     try {
@@ -1242,6 +1275,61 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     } catch (final MetadataException e) {
       return new DescTableResp(
           RpcUtils.getStatus(e.getErrorCode(), e.getMessage()), null, null, null);
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public DescTable4InformationSchemaResp descTable4InformationSchema() {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return new DescTable4InformationSchemaResp(
+          StatusUtils.OK,
+          tableModelMTree.getAllDatabasePaths(true).stream()
+              .collect(
+                  Collectors.toMap(
+                      databasePath -> PathUtils.unQualifyDatabaseName(databasePath.getFullPath()),
+                      databasePath -> {
+                        try {
+                          return tableModelMTree
+                              .getAllTablesUnderSpecificDatabase(databasePath)
+                              .stream()
+                              .map(
+                                  pair -> {
+                                    try {
+                                      return tableModelMTree.getTableSchemaDetails(
+                                          databasePath, pair.getLeft().getTableName());
+                                    } catch (final MetadataException ignore) {
+                                      // Table path must exist because the "getTableSchemaDetails()"
+                                      // is called in databaseReadWriteLock.readLock().
+                                    }
+                                    return new TableSchemaDetails();
+                                  })
+                              .collect(
+                                  Collectors.toMap(
+                                      tableSchemaDetails -> tableSchemaDetails.table.getTableName(),
+                                      tableSchemaDetails ->
+                                          new TTableColumnInfo()
+                                              .setTableInfo(
+                                                  TsTableInternalRPCUtil.serializeSingleTsTable(
+                                                      tableSchemaDetails.table))
+                                              .setPreDeletedColumns(
+                                                  tableSchemaDetails.preDeletedColumns)
+                                              .setPreAlteredColumns(
+                                                  tableSchemaDetails
+                                                      .preAlteredColumns
+                                                      .entrySet()
+                                                      .stream()
+                                                      .collect(
+                                                          Collectors.toMap(
+                                                              Entry::getKey,
+                                                              e -> e.getValue().serialize())))));
+                        } catch (final MetadataException ignore) {
+                          // Database path must exist because the "getAllDatabasePaths()" is called
+                          // in databaseReadWriteLock.readLock().
+                        }
+                        return Collections.emptyMap();
+                      })));
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }

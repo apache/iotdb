@@ -23,6 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.table.ColumnNotExistsException;
+import org.apache.iotdb.commons.exception.table.TableAlreadyExistsException;
+import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
@@ -43,9 +46,6 @@ import org.apache.iotdb.db.exception.metadata.DatabaseConflictException;
 import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.table.ColumnNotExistsException;
-import org.apache.iotdb.db.exception.metadata.table.TableAlreadyExistsException;
-import org.apache.iotdb.db.exception.metadata.table.TableNotExistsException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.DatabaseCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MNodeAboveDBCollector;
@@ -753,6 +753,22 @@ public class ConfigMTree {
           }
         });
     return result;
+  }
+
+  public Map<String, List<Pair<TsTable, TableNodeStatus>>> getAllTables() {
+    return getAllDatabasePaths(true).stream()
+        .collect(
+            Collectors.toMap(
+                databasePath -> PathUtils.unQualifyDatabaseName(databasePath.getFullPath()),
+                databasePath -> {
+                  try {
+                    return getAllTablesUnderSpecificDatabase(databasePath);
+                  } catch (final MetadataException ignore) {
+                    // Database path must exist because the "getAllDatabasePaths()" is called in
+                    // databaseReadWriteLock.readLock().
+                  }
+                  return Collections.emptyList();
+                }));
   }
 
   public Map<String, List<TsTable>> getAllUsingTables() {

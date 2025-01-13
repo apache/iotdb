@@ -319,4 +319,59 @@ public class IoTDBAlterColumnTypeIT {
       }
     }
   }
+
+  @Test
+  public void testDropAndAlter() throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
+      session.executeNonQueryStatement("CREATE TABLE IF NOT EXISTS drop_and_alter (s1 int32)");
+
+      Tablet tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.INT32),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 1);
+      tablet.addValue("s1", 0, genValue(TSDataType.INT32, 1));
+      session.insert(tablet);
+      tablet.reset();
+
+      session.executeNonQueryStatement("ALTER TABLE drop_and_alter DROP COLUMN s1");
+
+      tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.STRING),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 2);
+      tablet.addValue("s1", 0, genValue(TSDataType.STRING, 2));
+      session.insert(tablet);
+      tablet.reset();
+
+      session.executeNonQueryStatement(
+          "ALTER TABLE drop_and_alter ALTER COLUMN s1 SET DATA TYPE TEXT");
+
+      tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.TEXT),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 3);
+      tablet.addValue("s1", 0, genValue(TSDataType.STRING, 3));
+      session.insert(tablet);
+      tablet.reset();
+
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from drop_and_alter order by time");
+      RowRecord rec = dataSet.next();
+      assertEquals(2, rec.getFields().get(0).getLongV());
+      assertEquals(genValue(TSDataType.STRING, 2).toString(), rec.getFields().get(1).toString());
+      rec = dataSet.next();
+      assertEquals(3, rec.getFields().get(0).getLongV());
+      assertEquals(genValue(TSDataType.STRING, 3).toString(), rec.getFields().get(1).toString());
+      assertFalse(dataSet.hasNext());
+    }
+  }
 }

@@ -17,13 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 
-public class VerifyMetadataTypeMismatchException extends VerifyMetadataException {
+import org.apache.tsfile.file.metadata.IDeviceID;
 
-  public VerifyMetadataTypeMismatchException(String message) {
-    super(message, TSStatusCode.VERIFY_METADATA_ERROR.getStatusCode());
+public class TreeAlignedDeviceViewScanOperator extends AbstractTableScanOperator {
+
+  private final IDeviceID.TreeDeviceIdColumnValueExtractor extractor;
+
+  public TreeAlignedDeviceViewScanOperator(
+      AbstractTableScanOperatorParameter parameter,
+      IDeviceID.TreeDeviceIdColumnValueExtractor extractor) {
+    super(parameter);
+    this.extractor = extractor;
+  }
+
+  @Override
+  String getNthIdColumnValue(DeviceEntry deviceEntry, int idColumnIndex) {
+    return (String) extractor.extract(deviceEntry.getDeviceID(), idColumnIndex);
   }
 }

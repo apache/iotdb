@@ -169,11 +169,15 @@ public abstract class BooleanTVList extends TVList {
     // constraint: time.length + timeIdxOffset == value.length
     int timeIdxOffset = 0;
     if (bitMap != null && !bitMap.isAllUnmarked()) {
-      // time array is a reference, should clone necessary time values
+      // time array is a reference, should clone necessary time array
       long[] clonedTime = new long[end - start];
       System.arraycopy(time, start, clonedTime, 0, end - start);
       time = clonedTime;
       timeIdxOffset = start;
+      // value array is a reference, should clone necessary value array
+      boolean[] clonedValue = new boolean[value.length];
+      System.arraycopy(value, 0, clonedValue, 0, value.length);
+      value = clonedValue;
       // drop null at the end of value array
       int nullCnt =
           dropNullValThenUpdateMaxTimeAndSorted(time, value, bitMap, start, end, timeIdxOffset);

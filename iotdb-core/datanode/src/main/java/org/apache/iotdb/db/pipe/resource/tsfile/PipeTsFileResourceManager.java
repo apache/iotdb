@@ -98,7 +98,10 @@ public class PipeTsFileResourceManager {
         } else {
           logBuilder.append(
               String.format(
-                  "<%s , %d times> ", entry.getKey(), entry.getValue().getReferenceCount()));
+                  "<%s , %d times, %d bytes> ",
+                  entry.getKey(),
+                  entry.getValue().getReferenceCount(),
+                  entry.getValue().getFileSize()));
         }
       } catch (final IOException e) {
         LOGGER.warn("failed to close PipeTsFileResource when checking TTL: ", e);

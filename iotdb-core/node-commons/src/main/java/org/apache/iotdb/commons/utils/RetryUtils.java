@@ -17,17 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.metadata.table;
+package org.apache.iotdb.commons.utils;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.rpc.TSStatusCode;
+public class RetryUtils {
 
-public class ColumnNotExistsException extends MetadataException {
-  public ColumnNotExistsException(
-      final String database, final String tableName, final String columnName) {
-    super(
-        String.format(
-            "Column %s in table '%s.%s' does not exist.", columnName, database, tableName),
-        TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
+  public interface CallableWithException<T, E extends Exception> {
+    T call() throws E;
+  }
+
+  public static final int MAX_RETRIES = 3;
+
+  public static <T, E extends Exception> T retryOnException(
+      final CallableWithException<T, E> callable) throws E {
+    int attempt = 0;
+    while (true) {
+      try {
+        return callable.call();
+      } catch (Exception e) {
+        attempt++;
+        if (attempt >= MAX_RETRIES) {
+          throw e;
+        }
+      }
+    }
+  }
+
+  private RetryUtils() {
+    // utility class
   }
 }
