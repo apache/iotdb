@@ -175,9 +175,9 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
       addNextStateAndCalculateCycles();
       setStateDeserialized(false);
 
-      if (subProcList != null && !subProcList.isEmpty()) {
-        Procedure[] subProcedures = subProcList.toArray(new Procedure[subProcList.size()]);
-        subProcList = null;
+      if (!subProcList.isEmpty()) {
+        Procedure[] subProcedures = subProcList.toArray(new Procedure[0]);
+        subProcList.clear();
         return subProcedures;
       }
       return (isWaiting() || isFailed() || !hasMoreState()) ? null : new Procedure[] {this};
