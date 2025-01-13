@@ -859,7 +859,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return shouldConvertDataTypeOnTypeMismatch
             && ((statement instanceof InsertBaseStatement
                     && ((InsertBaseStatement) statement).hasFailedMeasurements())
-                || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+                || (status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+                    && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()))
         ? (isTableModelStatement
             ? statement
                 .accept(
