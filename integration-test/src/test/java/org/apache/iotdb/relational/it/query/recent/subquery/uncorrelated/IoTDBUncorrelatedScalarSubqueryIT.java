@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.relational.it.query.recent.subquery;
+package org.apache.iotdb.relational.it.query.recent.subquery.uncorrelated;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -262,7 +262,7 @@ public class IoTDBUncorrelatedScalarSubqueryIT {
     // Legality check: subquery returns multiple rows (should fail)
     tableAssertTestFail(
         "select s1 from table1 where s1 = (select s1 from table1)",
-        "301: Scalar sub-query has returned multiple rows.",
+        "701: Scalar sub-query has returned multiple rows.",
         DATABASE_NAME);
 
     // Legality check: subquery can not be parsed

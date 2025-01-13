@@ -17,16 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.metadata.table;
+package org.apache.iotdb.commons.exception.table;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class TableAlreadyExistsException extends MetadataException {
+public class TableNotExistsException extends MetadataException {
 
-  public TableAlreadyExistsException(final String database, final String tableName) {
+  public TableNotExistsException(final String database, final String tableName) {
     super(
-        String.format("Table '%s.%s' already exists.", database, tableName),
-        TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode());
+        String.format("Table '%s.%s' does not exist.", database, tableName),
+        TSStatusCode.TABLE_NOT_EXISTS.getStatusCode());
   }
 }

@@ -200,6 +200,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
@@ -1113,12 +1115,22 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus startPipe(String pipeName) {
-    return configManager.startPipe(pipeName);
+    return configManager.startPipe(new TStartPipeReq().setPipeName(pipeName));
+  }
+
+  @Override
+  public TSStatus startPipeExtended(TStartPipeReq req) {
+    return configManager.startPipe(req);
   }
 
   @Override
   public TSStatus stopPipe(String pipeName) {
-    return configManager.stopPipe(pipeName);
+    return configManager.stopPipe(new TStopPipeReq().setPipeName(pipeName));
+  }
+
+  @Override
+  public TSStatus stopPipeExtended(TStopPipeReq req) {
+    return configManager.stopPipe(req);
   }
 
   @Override

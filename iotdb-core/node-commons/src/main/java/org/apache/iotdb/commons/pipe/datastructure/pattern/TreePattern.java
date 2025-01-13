@@ -70,15 +70,23 @@ public abstract class TreePattern {
    */
   public static TreePattern parsePipePatternFromSourceParameters(
       final PipeParameters sourceParameters) {
-    final boolean isTreeModelDataAllowedToBeCaptured =
+    final boolean isDoubleLiving =
         sourceParameters.getBooleanOrDefault(
             Arrays.asList(
-                PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
-                PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY),
-            sourceParameters
-                .getStringOrDefault(
-                    SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
-                .equals(SystemConstant.SQL_DIALECT_TREE_VALUE));
+                PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+                PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
+            PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+
+    final boolean isTreeModelDataAllowedToBeCaptured =
+        isDoubleLiving
+            || sourceParameters.getBooleanOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
+                    PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY),
+                sourceParameters
+                    .getStringOrDefault(
+                        SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
+                    .equals(SystemConstant.SQL_DIALECT_TREE_VALUE));
 
     final String path = sourceParameters.getStringByKeys(EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY);
 
