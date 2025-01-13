@@ -62,7 +62,7 @@ ddlStatement
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
-    | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion | verifyConnection
+    | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion | verifyConnection | removeDataNode
     // AINode
     | showAINodes | createModel | dropModel | showModels | callInference
     // Quota
@@ -534,6 +534,11 @@ migrateRegion
 
 verifyConnection
     : VERIFY CONNECTION (DETAILS)?
+    ;
+
+// ---- Remove DataNode
+removeDataNode
+    : REMOVE DATANODE dataNodeId=INTEGER_LITERAL (COMMA dataNodeId=INTEGER_LITERAL)*
     ;
 
 // Pipe Task =========================================================================================
