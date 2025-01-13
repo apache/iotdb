@@ -35,6 +35,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTopicInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -96,6 +100,10 @@ public class InformationSchemaContentSupplierFactory {
         return new PipeSupplier(dataTypes, userName);
       case InformationSchema.PIPE_PLUGINS:
         return new PipePluginSupplier(dataTypes, userName);
+      case InformationSchema.TOPICS:
+        return new TopicSupplier(dataTypes, userName);
+      case InformationSchema.SUBSCRIPTIONS:
+        return new SubscriptionSupplier(dataTypes, userName);
       default:
         throw new UnsupportedOperationException("Unknown table: " + tableName);
     }
@@ -532,6 +540,72 @@ public class InformationSchemaContentSupplierFactory {
       } else {
         columnBuilders[3].appendNull();
       }
+      resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return iterator.hasNext();
+    }
+  }
+
+  private static class TopicSupplier extends TsBlockSupplier {
+    private Iterator<TShowTopicInfo> iterator;
+
+    private TopicSupplier(final List<TSDataType> dataTypes, final String userName) {
+      super(dataTypes);
+      Coordinator.getInstance().getAccessControl().checkUserHasMaintainPrivilege(userName);
+      try (final ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        iterator = client.showTopic(new TShowTopicReq()).getTopicInfoList().iterator();
+      } catch (final Exception e) {
+        lastException = e;
+      }
+    }
+
+    @Override
+    protected void constructLine() {
+      final TShowTopicInfo topicInfo = iterator.next();
+      columnBuilders[0].writeBinary(
+          new Binary(topicInfo.getTopicName(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[1].writeBinary(
+          new Binary(topicInfo.getTopicAttributes(), TSFileConfig.STRING_CHARSET));
+      resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return iterator.hasNext();
+    }
+  }
+
+  private static class SubscriptionSupplier extends TsBlockSupplier {
+    private Iterator<TShowSubscriptionInfo> iterator;
+
+    private SubscriptionSupplier(final List<TSDataType> dataTypes, final String userName) {
+      super(dataTypes);
+      Coordinator.getInstance().getAccessControl().checkUserHasMaintainPrivilege(userName);
+      try (final ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        iterator =
+            client
+                .showSubscription(new TShowSubscriptionReq())
+                .getSubscriptionInfoList()
+                .iterator();
+      } catch (final Exception e) {
+        lastException = e;
+      }
+    }
+
+    @Override
+    protected void constructLine() {
+      final TShowSubscriptionInfo tSubscriptionInfo = iterator.next();
+      columnBuilders[0].writeBinary(
+          new Binary(tSubscriptionInfo.getTopicName(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[1].writeBinary(
+          new Binary(tSubscriptionInfo.getConsumerGroupId(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[2].writeBinary(
+          new Binary(tSubscriptionInfo.getConsumerIds().toString(), TSFileConfig.STRING_CHARSET));
       resultBuilder.declarePosition();
     }
 
