@@ -81,11 +81,18 @@ public class TableModelUtils {
     }
   }
 
-  public static void createDataBase(final BaseEnv baseEnv, final String database) {
-    try (Connection connection = baseEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      statement.execute("create database if not exists " + database);
-    } catch (Exception e) {
+  public static void createDatabase(final BaseEnv baseEnv, final String database) {
+    createDatabase(baseEnv, database, Long.MAX_VALUE);
+  }
+
+  public static void createDatabase(final BaseEnv baseEnv, final String database, final long ttl) {
+    try (final Connection connection = baseEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create database if not exists "
+              + database
+              + (ttl < Long.MAX_VALUE ? " with (ttl=" + ttl + ")" : ""));
+    } catch (final Exception e) {
       fail(e.getMessage());
     }
   }

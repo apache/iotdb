@@ -357,6 +357,8 @@ public abstract class SubscriptionPrefetchingQueue {
           "Subscription: SubscriptionPrefetchingQueue {} ignore EnrichedEvent {} when prefetching.",
           this,
           event);
+      ((EnrichedEvent) event)
+          .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), false);
       if (onEvent()) {
         return;
       }

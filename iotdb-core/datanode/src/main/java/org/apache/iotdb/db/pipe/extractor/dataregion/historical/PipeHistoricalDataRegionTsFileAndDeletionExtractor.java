@@ -771,7 +771,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     return terminateEvent;
   }
 
-  private Event supplyTsFileEvent(TsFileResource resource) {
+  private Event supplyTsFileEvent(final TsFileResource resource) {
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
             isModelDetected ? isTableModel : null,
