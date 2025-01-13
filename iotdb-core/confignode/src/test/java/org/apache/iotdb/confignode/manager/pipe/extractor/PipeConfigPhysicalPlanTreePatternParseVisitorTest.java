@@ -52,7 +52,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
-public class PipeConfigPhysicalPlanPatternParseVisitorTest {
+public class PipeConfigPhysicalPlanTreePatternParseVisitorTest {
 
   private final IoTDBTreePattern prefixPathPattern = new IoTDBTreePattern("root.db.device.**");
   private final IoTDBTreePattern fullPathPattern = new IoTDBTreePattern("root.db.device.s1");
@@ -68,11 +68,11 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
 
     Assert.assertEquals(
         createDatabasePlan,
-        IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitCreateDatabase(createDatabasePlan, prefixPathPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertFalse(
-        IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitCreateDatabase(createDatabasePlanToFilter, prefixPathPattern)
             .isPresent());
   }
@@ -88,11 +88,11 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
 
     Assert.assertEquals(
         alterDatabasePlan,
-        IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitAlterDatabase(alterDatabasePlan, prefixPathPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertFalse(
-        IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitAlterDatabase(alterDatabasePlanToFilter, prefixPathPattern)
             .isPresent());
   }
@@ -104,11 +104,11 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
 
     Assert.assertEquals(
         deleteDatabasePlan,
-        IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitDeleteDatabase(deleteDatabasePlan, prefixPathPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertFalse(
-        IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitDeleteDatabase(deleteDatabasePlanToFilter, prefixPathPattern)
             .isPresent());
   }
@@ -128,13 +128,13 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
 
     Assert.assertEquals(
         createSchemaTemplatePlan,
-        IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitCreateSchemaTemplate(createSchemaTemplatePlan, prefixPathPattern)
             .orElseThrow(AssertionError::new));
 
     final CreateSchemaTemplatePlan parsedTemplatePlan =
         (CreateSchemaTemplatePlan)
-            IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+            IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
                 .visitCreateSchemaTemplate(createSchemaTemplatePlan, fullPathPattern)
                 .orElseThrow(AssertionError::new);
     Assert.assertEquals(
@@ -153,12 +153,12 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
 
     Assert.assertEquals(
         setSchemaTemplatePlanOnPrefix,
-        IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitCommitSetSchemaTemplate(setSchemaTemplatePlanOnPrefix, fullPathPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertEquals(
         setSchemaTemplatePlanOnFullPath,
-        IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitCommitSetSchemaTemplate(setSchemaTemplatePlanOnFullPath, fullPathPattern)
             .orElseThrow(AssertionError::new));
   }
@@ -172,12 +172,12 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
 
     Assert.assertEquals(
         pipeUnsetSchemaTemplatePlanOnPrefix,
-        IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitPipeUnsetSchemaTemplate(pipeUnsetSchemaTemplatePlanOnPrefix, fullPathPattern)
             .orElseThrow(AssertionError::new));
     Assert.assertEquals(
         pipeUnsetSchemaTemplatePlanOrFullPath,
-        IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+        IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
             .visitPipeUnsetSchemaTemplate(pipeUnsetSchemaTemplatePlanOrFullPath, fullPathPattern)
             .orElseThrow(AssertionError::new));
   }
@@ -195,7 +195,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
 
     final ExtendSchemaTemplatePlan parsedTemplatePlan =
         (ExtendSchemaTemplatePlan)
-            IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+            IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
                 .visitExtendSchemaTemplate(extendSchemaTemplatePlan, fullPathPattern)
                 .orElseThrow(AssertionError::new);
     Assert.assertEquals(
@@ -220,7 +220,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
     Assert.assertEquals(
         Collections.singletonList(new PartialPath("root.db.device.**")),
         ((AuthorPlan)
-                IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+                IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
                     .visitGrantUser(
                         new AuthorPlan(
                             ConfigPhysicalPlanType.GrantUser,
@@ -242,7 +242,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
     Assert.assertEquals(
         Collections.singletonList(new PartialPath("root.db.device.**")),
         ((AuthorPlan)
-                IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+                IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
                     .visitRevokeUser(
                         new AuthorPlan(
                             ConfigPhysicalPlanType.RevokeUser,
@@ -264,7 +264,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
     Assert.assertEquals(
         Collections.singletonList(new PartialPath("root.db.device.**")),
         ((AuthorPlan)
-                IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+                IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
                     .visitGrantRole(
                         new AuthorPlan(
                             ConfigPhysicalPlanType.GrantRole,
@@ -286,7 +286,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
     Assert.assertEquals(
         Collections.singletonList(new PartialPath("root.db.device.**")),
         ((AuthorPlan)
-                IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+                IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
                     .visitRevokeRole(
                         new AuthorPlan(
                             ConfigPhysicalPlanType.RevokeRole,
@@ -313,7 +313,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
         Collections.singletonList(new PartialPath("root.db.device.s1")),
         PathPatternTree.deserialize(
                 ((PipeDeleteTimeSeriesPlan)
-                        IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+                        IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
                             .visitPipeDeleteTimeSeries(
                                 new PipeDeleteTimeSeriesPlan(patternTree.serialize()),
                                 prefixPathPattern)
@@ -332,7 +332,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
         Collections.singletonList(new PartialPath("root.db.device.s1")),
         PathPatternTree.deserialize(
                 ((PipeDeleteTimeSeriesPlan)
-                        IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+                        IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
                             .visitPipeDeleteLogicalView(
                                 new PipeDeleteLogicalViewPlan(patternTree.serialize()),
                                 prefixPathPattern)
@@ -356,7 +356,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
           }
         },
         ((PipeDeactivateTemplatePlan)
-                IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+                IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
                     .visitPipeDeactivateTemplate(
                         new PipeDeactivateTemplatePlan(
                             new HashMap<PartialPath, List<Template>>() {
@@ -387,7 +387,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
   public void testSetTTL() throws IllegalPathException {
     final SetTTLPlan plan =
         ((SetTTLPlan)
-            IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+            IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
                 .visitTTL(
                     new SetTTLPlan(Arrays.asList("root", "db", "**"), Long.MAX_VALUE),
                     prefixPathPattern)
