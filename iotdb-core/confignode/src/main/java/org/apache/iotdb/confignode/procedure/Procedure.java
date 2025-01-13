@@ -238,28 +238,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     return clazz;
   }
 
-  public static Procedure<?> newInstance(ByteBuffer byteBuffer) {
-    Class<?> procedureClass = deserializeTypeInfo(byteBuffer);
-    Procedure<?> procedure;
-    try {
-      procedure = (Procedure<?>) procedureClass.newInstance();
-    } catch (InstantiationException | IllegalAccessException e) {
-      throw new RuntimeException("Instantiation failed", e);
-    }
-    return procedure;
-  }
-
-  /**
-   * The {@link #doAcquireLock(Object, IProcedureStore)} will be split into two steps, first, it
-   * will call us to determine whether we need to wait for initialization, second, it will call
-   * {@link #acquireLock(Object)} to actually handle the lock for this procedure.
-   *
-   * @return true means we need to wait until the environment has been initialized, otherwise true.
-   */
-  protected boolean waitInitialized(Env env) {
-    return false;
-  }
-
   /**
    * Acquire a lock, user should override it if necessary.
    *
@@ -340,9 +318,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    * @return ProcedureLockState
    */
   public final ProcedureLockState doAcquireLock(Env env, IProcedureStore store) {
-    if (waitInitialized(env)) {
-      return ProcedureLockState.LOCK_EVENT_WAIT;
-    }
     if (lockedWhenLoading) {
       lockedWhenLoading = false;
       locked = true;

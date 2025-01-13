@@ -53,12 +53,12 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   private Flow stateFlow = Flow.HAS_MORE_STATE;
   private final LinkedList<Integer> states = new LinkedList<>();
 
-  private List<Procedure<?>> subProcList = new ArrayList<>();
+  private final List<Procedure<?>> subProcList = new ArrayList<>();
 
-  /** Cycles on same state. Good for figuring if we are stuck. */
+  /** Cycles on the same state. Good for figuring if we are stuck. */
   private int cycles = 0;
 
-  private static int NO_NEXT_STATE = -1;
+  private static final int NO_NEXT_STATE = -1;
   private int nextState = NO_NEXT_STATE;
 
   /** Mark whether this procedure is called by a pipe forwarded request. */
@@ -135,19 +135,6 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   }
 
   /**
-   * By default, the executor will try ro run all the steps of the procedure start to finish. Return
-   * true to make the executor yield between execution steps to give other procedures time to run
-   * their steps.
-   *
-   * @param state the state we are going to execute next.
-   * @return Return true if the executor should yield before the execution of the specified step.
-   *     Defaults to return false.
-   */
-  protected boolean isYieldBeforeExecuteFromState(Env env, TState state) {
-    return false;
-  }
-
-  /**
    * Add a child procedure to execute.
    *
    * @param childProcedure the child procedure
@@ -157,11 +144,11 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   }
 
   @Override
-  protected Procedure[] execute(final Env env)
+  protected Procedure<Env>[] execute(final Env env)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
     updateTimestamp();
     try {
-      if (!hasMoreState() || isFailed()) {
+      if (noMoreState() || isFailed()) {
         return null;
       }
 
@@ -176,11 +163,11 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
       setStateDeserialized(false);
 
       if (!subProcList.isEmpty()) {
-        Procedure[] subProcedures = subProcList.toArray(new Procedure[0]);
+        Procedure<Env>[] subProcedures = subProcList.toArray(new Procedure[0]);
         subProcList.clear();
         return subProcedures;
       }
-      return (isWaiting() || isFailed() || !hasMoreState()) ? null : new Procedure[] {this};
+      return (isWaiting() || isFailed() || noMoreState()) ? null : new Procedure[] {this};
     } finally {
       updateTimestamp();
     }
@@ -241,13 +228,8 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
     return false;
   }
 
-  @Override
-  protected boolean isYieldAfterExecution(final Env env) {
-    return isYieldBeforeExecuteFromState(env, getCurrentState());
-  }
-
-  private boolean hasMoreState() {
-    return stateFlow != Flow.NO_MORE_STATE;
+  private boolean noMoreState() {
+    return stateFlow == Flow.NO_MORE_STATE;
   }
 
   @Nullable
@@ -259,15 +241,6 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
       return getState(states.getLast());
     }
     return getInitialState();
-  }
-
-  /**
-   * This method is used from test code as it cannot be assumed that state transition will happen
-   * sequentially. Some procedures may skip steps/ states, some may add intermediate steps in
-   * future.
-   */
-  public int getCurrentStateId() {
-    return getStateId(getCurrentState());
   }
 
   /**

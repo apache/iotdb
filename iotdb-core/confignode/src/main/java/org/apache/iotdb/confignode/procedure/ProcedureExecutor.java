@@ -189,16 +189,10 @@ public class ProcedureExecutor<Env> {
         });
     restoreLocks();
 
-    waitingTimeoutList.forEach(
-        procedure -> {
-          timeoutExecutor.add(procedure);
-        });
+    waitingTimeoutList.forEach(timeoutExecutor::add);
 
     failedList.forEach(scheduler::addBack);
-    runnableList.forEach(
-        procedure -> {
-          scheduler.addBack(procedure);
-        });
+    runnableList.forEach(scheduler::addBack);
     scheduler.signalAll();
   }
 
