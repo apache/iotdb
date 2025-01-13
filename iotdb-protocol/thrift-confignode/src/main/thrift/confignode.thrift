@@ -346,8 +346,8 @@ struct TAuthorizerRelationalReq {
    4: required string password
    5: required string database
    6: required string table
-   7: required i32 privilege
-   8: required bool grantopt
+   7: required set<i32> permissions
+   8: required bool grantOpt
 }
 
 struct TAuthorizerResp {

@@ -659,9 +659,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         authorStatement.getPassword() == null ? "" : authorStatement.getPassword(),
         authorStatement.getDatabase() == null ? "" : authorStatement.getDatabase(),
         authorStatement.getTableName() == null ? "" : authorStatement.getTableName(),
-        authorStatement.getPrivilegeType() == null
-            ? -1
-            : authorStatement.getPrivilegeType().ordinal(),
+        authorStatement.getPrivilegeType().isEmpty()
+            ? Collections.emptySet()
+            : authorStatement.getPrivilegeIds(),
         authorStatement.hasGrantOption());
   }
 }

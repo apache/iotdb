@@ -32,7 +32,7 @@ import java.util.Objects;
 import java.util.Set;
 
 public class AuthorRelationalPlan extends AuthorPlan {
-  protected int permission;
+  protected Set<Integer> permissions;
   protected String databaseName;
   protected String tableName;
 
@@ -46,13 +46,13 @@ public class AuthorRelationalPlan extends AuthorPlan {
       final String roleName,
       final String databaseName,
       final String tableName,
-      final int permission,
+      final Set<Integer> permissions,
       final boolean grantOpt,
       final String password) {
     super(authorType, userName, roleName, password, "", grantOpt);
     this.databaseName = databaseName;
     this.tableName = tableName;
-    this.permission = permission;
+    this.permissions = permissions;
   }
 
   public String getDatabaseName() {
@@ -64,15 +64,11 @@ public class AuthorRelationalPlan extends AuthorPlan {
   }
 
   public Set<Integer> getPermissions() {
-    return Collections.singleton(permission);
+    return permissions;
   }
 
-  public int getPermission() {
-    return permission;
-  }
-
-  public void setPermission(int permission) {
-    this.permission = permission;
+  public void setPermissions(Set<Integer> permissions) {
+    this.permissions = permissions;
   }
 
   @Override
@@ -85,7 +81,7 @@ public class AuthorRelationalPlan extends AuthorPlan {
       return super.equals(o)
           && Objects.equals(this.databaseName, that.databaseName)
           && Objects.equals(this.tableName, that.tableName)
-          && Objects.equals(this.permission, that.permission);
+          && Objects.equals(this.permissions, that.permissions);
     } else {
       return false;
     }
@@ -93,7 +89,7 @@ public class AuthorRelationalPlan extends AuthorPlan {
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), databaseName, tableName, permission);
+    return Objects.hash(super.hashCode(), databaseName, tableName, permissions);
   }
 
   @Override
@@ -104,8 +100,8 @@ public class AuthorRelationalPlan extends AuthorPlan {
         + userName
         + ", role:"
         + roleName
-        + ", permissions"
-        + (permission == -1 ? "-1" : PrivilegeType.values()[permission])
+        + ", permissions:"
+        + PrivilegeType.toPriType(permissions)
         + ", grant option:"
         + grantOpt
         + ", DB:"
@@ -123,7 +119,10 @@ public class AuthorRelationalPlan extends AuthorPlan {
     BasicStructureSerDeUtil.write(password, stream);
     BasicStructureSerDeUtil.write(databaseName, stream);
     BasicStructureSerDeUtil.write(tableName, stream);
-    BasicStructureSerDeUtil.write(this.permission, stream);
+    stream.writeInt(permissions.size());
+    for (Integer permission : permissions) {
+      stream.writeInt(permission);
+    }
     stream.write(grantOpt ? (byte) 1 : (byte) 0);
   }
 
@@ -134,7 +133,10 @@ public class AuthorRelationalPlan extends AuthorPlan {
     password = BasicStructureSerDeUtil.readString(buffer);
     databaseName = BasicStructureSerDeUtil.readString(buffer);
     tableName = BasicStructureSerDeUtil.readString(buffer);
-    this.permission = BasicStructureSerDeUtil.readInt(buffer);
+    int size = buffer.getInt();
+    for (int i = 0; i < size; i++) {
+      permissions.add(buffer.getInt());
+    }
     grantOpt = buffer.get() == (byte) 1;
   }
 }

@@ -1118,7 +1118,7 @@ public class IoTDBAuthIT {
     //    user2 has all privileges without grant option on root.**
     //    user2 has all privileges without grant option on root.t1.**
     for (PrivilegeType item : PrivilegeType.values()) {
-      if (item.isRelationalPrivilege()){
+      if (item.isRelationalPrivilege()) {
         continue;
       }
       String sql = "GRANT %s on root.** to USER user1 WITH GRANT OPTION";

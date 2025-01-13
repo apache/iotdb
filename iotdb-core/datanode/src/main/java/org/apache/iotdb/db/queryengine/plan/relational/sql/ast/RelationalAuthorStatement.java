@@ -24,8 +24,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 
 import com.google.common.collect.ImmutableList;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 public class RelationalAuthorStatement extends Statement {
 
@@ -38,7 +40,7 @@ public class RelationalAuthorStatement extends Statement {
 
   private String password;
 
-  private PrivilegeType privilegeType;
+  private Set<PrivilegeType> privilegeType;
 
   private boolean grantOption;
 
@@ -48,7 +50,7 @@ public class RelationalAuthorStatement extends Statement {
       String roleName,
       String database,
       String table,
-      PrivilegeType type,
+      Set<PrivilegeType> type,
       boolean grantOption,
       String password) {
     super(null);
@@ -69,7 +71,7 @@ public class RelationalAuthorStatement extends Statement {
 
   public RelationalAuthorStatement(
       AuthorRType statementType,
-      PrivilegeType type,
+      Set<PrivilegeType> type,
       String username,
       String roleName,
       boolean grantOption) {
@@ -112,8 +114,16 @@ public class RelationalAuthorStatement extends Statement {
     return grantOption;
   }
 
-  public PrivilegeType getPrivilegeType() {
+  public Set<PrivilegeType> getPrivilegeType() {
     return privilegeType;
+  }
+
+  public Set<Integer> getPrivilegeIds() {
+    Set<Integer> privilegeIds = new HashSet<>();
+    for (PrivilegeType privilegeType : privilegeType) {
+      privilegeIds.add(privilegeType.ordinal());
+    }
+    return privilegeIds;
   }
 
   public void setDatabase(String database) {

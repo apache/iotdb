@@ -617,10 +617,19 @@ revokeStatement
     ;
 
 privilegeObjectScope
-    : systemPrivilege
-    | objectPrivilege ON objectType objectName=identifier
-    | objectPrivilege ON objectScope
-    | objectPrivilege ON ANY
+    : systemPrivileges
+    | objectPrivileges ON objectType objectName=identifier
+    | objectPrivileges ON objectScope
+    | objectPrivileges ON ANY
+    | ALL
+    ;
+
+systemPrivileges
+    : systemPrivilege (',' systemPrivilege)*
+    ;
+
+objectPrivileges
+    : objectPrivilege (',' objectPrivilege)*
     ;
 
 objectScope
