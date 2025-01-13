@@ -208,6 +208,7 @@ public class LogicalOptimizeFactory {
         new UnaliasSymbolReferences(plannerContext.getMetadata()),
         columnPruningOptimizer,
         inlineProjectionLimitFiltersOptimizer,
+        new TransformQuantifiedComparisonApplyToCorrelatedJoin(metadata),
         new IterativeOptimizer(
             plannerContext,
             ruleStats,
@@ -215,6 +216,13 @@ public class LogicalOptimizeFactory {
                 new RemoveRedundantEnforceSingleRowNode(), new RemoveUnreferencedScalarSubqueries(),
                 new TransformUncorrelatedSubqueryToJoin(),
                     new TransformUncorrelatedInPredicateSubqueryToSemiJoin())),
+        new IterativeOptimizer(
+            plannerContext,
+            ruleStats,
+            ImmutableSet.of(
+                new InlineProjections(plannerContext), new RemoveRedundantIdentityProjections()
+                /*new TransformCorrelatedSingleRowSubqueryToProject(),
+                new RemoveAggregationInSemiJoin())*/ )),
         new CheckSubqueryNodesAreRewritten(),
         new IterativeOptimizer(
             plannerContext, ruleStats, ImmutableSet.of(new PruneDistinctAggregation())),

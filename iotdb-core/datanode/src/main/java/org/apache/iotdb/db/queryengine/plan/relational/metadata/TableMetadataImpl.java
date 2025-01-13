@@ -627,6 +627,7 @@ public class TableMetadataImpl implements Metadata {
     // get return type
     switch (functionName.toLowerCase(Locale.ENGLISH)) {
       case SqlConstant.COUNT:
+      case SqlConstant.COUNT_ALL:
       case SqlConstant.COUNT_IF:
         return INT64;
       case SqlConstant.FIRST_AGGREGATION:

@@ -52,6 +52,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.COUNT_ALL;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.FIRST_BY;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST_BY;
@@ -208,6 +209,8 @@ public class AccumulatorFactory {
     switch (aggregationType) {
       case COUNT:
         return new CountAccumulator();
+      case COUNT_ALL:
+        return new CountAllAccumulator();
       case COUNT_IF:
         return new CountIfAccumulator();
       case AVG:

@@ -212,7 +212,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       Expression predicate = combineConjuncts(node.getPredicate(), context.inheritedPredicate);
 
       // when exist diff function, predicate can not be pushed down into DeviceTableScanNode
-      if (containsDiffFunction(predicate)) {
+      if (containsDiffFunction(predicate) || canNotPushDownBelowProjectNode(node, predicate)) {
         node.setChild(node.getChild().accept(this, new RewriteContext()));
         node.setPredicate(predicate);
         context.inheritedPredicate = TRUE_LITERAL;
@@ -232,6 +232,35 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         return rewrittenPlan;
       }
       return node;
+    }
+
+    private boolean canNotPushDownBelowProjectNode(FilterNode node, Expression predicate) {
+      PlanNode child = node.getChild();
+      if (child instanceof ProjectNode) {
+        // if the inheritedPredicate is not in the output of the child of ProjectNode, we can not
+        // push it down for now.
+        // (predicate will be computed by the ProjectNode, Trino will rewrite the predicate in
+        // visitProject, but we have not implemented this for now.)
+        Set<Symbol> outputSymbolsOfProjectChild =
+            new HashSet<>(((ProjectNode) child).getChild().getOutputSymbols());
+        return missingTermsInOutputSymbols(predicate, outputSymbolsOfProjectChild);
+      }
+      return false;
+    }
+
+    private boolean missingTermsInOutputSymbols(Expression expression, Set<Symbol> outputSymbols) {
+      if (expression instanceof SymbolReference) {
+        return !outputSymbols.contains(Symbol.from(expression));
+      }
+      if (!expression.getChildren().isEmpty()) {
+        for (Node node : expression.getChildren()) {
+          if (missingTermsInOutputSymbols((Expression) node, outputSymbols)) {
+            return true;
+          }
+        }
+      }
+
+      return false;
     }
 
     //    private boolean areExpressionsEquivalent(
