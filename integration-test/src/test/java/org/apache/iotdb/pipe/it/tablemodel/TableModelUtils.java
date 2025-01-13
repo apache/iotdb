@@ -271,7 +271,7 @@ public class TableModelUtils {
     for (int i = 0; i < tablet.getRowSize(); i++) {
       StringBuilder stringBuffer = new StringBuilder();
       for (int j = 0; j < tablet.getSchemas().size(); j++) {
-        BitMap bitMap = tablet.bitMaps[j];
+        BitMap bitMap = tablet.getBitMaps()[j];
         if (bitMap.isMarked(i)) {
           stringBuffer.append("null,");
           continue;
@@ -280,45 +280,46 @@ public class TableModelUtils {
           case TIMESTAMP:
             final String time =
                 RpcUtils.formatDatetime(
-                    "default", "ms", ((long[]) tablet.values[j])[i], ZoneOffset.UTC);
+                    "default", "ms", (long) tablet.getValue(i, j), ZoneOffset.UTC);
             stringBuffer.append(time);
             stringBuffer.append(",");
             break;
           case DATE:
-            stringBuffer.append(((LocalDate[]) tablet.values[j])[i].toString());
+            stringBuffer.append(tablet.getValue(i, j).toString());
             stringBuffer.append(",");
             break;
           case BLOB:
             stringBuffer.append(
                 BytesUtils.parseBlobByteArrayToString(
-                    ((Binary[]) tablet.values[j])[i].getValues()));
+                    ((Binary) tablet.getValue(i, j)).getValues()));
             stringBuffer.append(",");
             break;
           case TEXT:
           case STRING:
             stringBuffer.append(
-                new String(((Binary[]) tablet.values[j])[i].getValues(), StandardCharsets.UTF_8));
+                new String(((Binary) tablet.getValue(i, j)).getValues(), StandardCharsets.UTF_8));
             stringBuffer.append(",");
             break;
           case DOUBLE:
-            stringBuffer.append(((double[]) tablet.values[j])[i]);
+            stringBuffer.append((double) tablet.getValue(i, j));
             stringBuffer.append(",");
             break;
           case FLOAT:
-            stringBuffer.append(((float[]) tablet.values[j])[i]);
+            stringBuffer.append((float) tablet.getValue(i, j));
             stringBuffer.append(",");
             break;
           case INT32:
-            stringBuffer.append(((int[]) tablet.values[j])[i]);
+            stringBuffer.append((int) tablet.getValue(i, j));
             stringBuffer.append(",");
             break;
           case INT64:
-            stringBuffer.append(((long[]) tablet.values[j])[i]);
+            stringBuffer.append((long) tablet.getValue(i, j));
             stringBuffer.append(",");
             break;
         }
       }
-      String time = RpcUtils.formatDatetime("default", "ms", tablet.timestamps[i], ZoneOffset.UTC);
+      String time =
+          RpcUtils.formatDatetime("default", "ms", tablet.getTimestamp(i), ZoneOffset.UTC);
       stringBuffer.append(time);
       stringBuffer.append(",");
       expectedResSet.add(stringBuffer.toString());

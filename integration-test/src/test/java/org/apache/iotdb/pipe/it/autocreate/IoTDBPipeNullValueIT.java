@@ -113,17 +113,23 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualAutoIT {
     valuesForAllNull[0] = new float[] {0F};
     valuesForAllNull[1] = new float[] {0F};
 
-    partialNullTablet = new Tablet(deviceId, Arrays.asList(schemas), 1);
-    partialNullTablet.values = valuesForPartialNull;
-    partialNullTablet.timestamps = new long[] {3};
-    partialNullTablet.setRowSize(1);
-    partialNullTablet.bitMaps = bitMapsForPartialNull;
+    partialNullTablet =
+        new Tablet(
+            deviceId,
+            Arrays.asList(schemas),
+            new long[] {3},
+            valuesForPartialNull,
+            bitMapsForPartialNull,
+            1);
 
-    allNullTablet = new Tablet(deviceId, Arrays.asList(schemas), 1);
-    allNullTablet.values = valuesForAllNull;
-    allNullTablet.timestamps = new long[] {4};
-    allNullTablet.setRowSize(1);
-    allNullTablet.bitMaps = bitMapsForAllNull;
+    allNullTablet =
+        new Tablet(
+            deviceId,
+            Arrays.asList(schemas),
+            new long[] {4},
+            valuesForAllNull,
+            bitMapsForAllNull,
+            1);
   }
 
   @Override

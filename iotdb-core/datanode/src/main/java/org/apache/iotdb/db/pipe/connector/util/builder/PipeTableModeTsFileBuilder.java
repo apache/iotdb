@@ -123,7 +123,7 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
             final IDeviceID deviceID = o1.right.get(0).left;
             final int result;
             if ((result = deviceID.compareTo(o2.right.get(0).left)) == 0) {
-              return Long.compare(o1.left.timestamps[0], o2.left.timestamps[0]);
+              return Long.compare(o1.left.getTimestamp(0), o2.left.getTimestamp(0));
             }
             return result;
           });
@@ -260,12 +260,12 @@ public class PipeTableModeTsFileBuilder extends PipeTsFileBuilder {
     for (Pair<IDeviceID, Integer> deviceTimestampIndexPair : tabletPair.right) {
       final Long lastDeviceTimestamp = deviceLastTimestampMap.get(deviceTimestampIndexPair.left);
       if (lastDeviceTimestamp != null
-          && lastDeviceTimestamp >= tabletPair.left.timestamps[currentTimestampIndex]) {
+          && lastDeviceTimestamp >= tabletPair.left.getTimestamp(currentTimestampIndex)) {
         return false;
       }
       currentTimestampIndex = deviceTimestampIndexPair.right;
       deviceLastTimestampMap.put(
-          deviceTimestampIndexPair.left, tabletPair.left.timestamps[currentTimestampIndex - 1]);
+          deviceTimestampIndexPair.left, tabletPair.left.getTimestamp(currentTimestampIndex - 1));
     }
 
     return true;

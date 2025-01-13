@@ -102,9 +102,6 @@ public class TsFileSelfCheckToolTest {
         // construct the tablet
         Tablet tablet = new Tablet(device, measurementSchemas);
 
-        long[] timestamps = tablet.timestamps;
-        Object[] values = tablet.values;
-
         long timestamp = 1;
         long value = 1000000L;
 
@@ -112,8 +109,7 @@ public class TsFileSelfCheckToolTest {
           int row = tablet.getRowSize();
           tablet.addTimestamp(row, timestamp++);
           for (int i = 0; i < sensorNum; i++) {
-            long[] sensor = (long[]) values[i];
-            sensor[row] = value;
+            tablet.addValue(row, i, value);
           }
           // write Tablet to TsFile
           if (tablet.getRowSize() == tablet.getMaxRowNumber()) {

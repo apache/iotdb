@@ -213,11 +213,14 @@ public class PipeTabletInsertionEventTest {
       ((Binary[]) values[9])[r] = BytesUtils.valueOf("string");
     }
 
-    tabletForInsertRowNode = new Tablet(deviceId, Arrays.asList(schemas), 1);
-    tabletForInsertRowNode.values = values;
-    tabletForInsertRowNode.timestamps = new long[] {times[0]};
-    tabletForInsertRowNode.setRowSize(1);
-    tabletForInsertRowNode.bitMaps = bitMapsForInsertRowNode;
+    tabletForInsertRowNode =
+        new Tablet(
+            deviceId,
+            Arrays.asList(schemas),
+            new long[] {times[0]},
+            values,
+            bitMapsForInsertRowNode,
+            1);
 
     // create tablet for insertTabletNode
     BitMap[] bitMapsForInsertTabletNode = new BitMap[schemas.length];
@@ -250,10 +253,14 @@ public class PipeTabletInsertionEventTest {
     }
 
     tabletForInsertTabletNode = new Tablet(deviceId, Arrays.asList(schemas), times.length);
-    tabletForInsertTabletNode.values = values;
-    tabletForInsertTabletNode.timestamps = times;
-    tabletForInsertTabletNode.setRowSize(times.length);
-    tabletForInsertTabletNode.bitMaps = bitMapsForInsertTabletNode;
+    tabletForInsertTabletNode =
+        new Tablet(
+            deviceId,
+            Arrays.asList(schemas),
+            times,
+            values,
+            bitMapsForInsertTabletNode,
+            times.length);
   }
 
   @Test

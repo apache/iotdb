@@ -29,7 +29,6 @@ import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManag
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.file.metadata.TsFileMetadata;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -159,14 +158,12 @@ public class TableModelReadPointCompactionPerformerTest extends AbstractCompacti
     TsFileResource targetResource0 = tsFileManager.getTsFileList(true).get(0);
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(targetResource0.getTsFile().getAbsolutePath())) {
-      TsFileMetadata tsFileMetadata = reader.readFileMetadata();
-      Assert.assertEquals(1, tsFileMetadata.getTableSchemaMap().size());
+      Assert.assertEquals(1, reader.getTableSchemaMap().size());
     }
     TsFileResource targetResource1 = tsFileManager.getTsFileList(true).get(1);
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(targetResource1.getTsFile().getAbsolutePath())) {
-      TsFileMetadata tsFileMetadata = reader.readFileMetadata();
-      Assert.assertEquals(1, tsFileMetadata.getTableSchemaMap().size());
+      Assert.assertEquals(1, reader.getTableSchemaMap().size());
     }
   }
 
@@ -222,8 +219,7 @@ public class TableModelReadPointCompactionPerformerTest extends AbstractCompacti
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(
             tsFileManager.getTsFileList(true).get(0).getTsFile().getAbsolutePath())) {
-      TsFileMetadata tsFileMetadata = reader.readFileMetadata();
-      Assert.assertEquals(1, tsFileMetadata.getTableSchemaMap().size());
+      Assert.assertEquals(1, reader.getTableSchemaMap().size());
     }
   }
 
@@ -261,8 +257,7 @@ public class TableModelReadPointCompactionPerformerTest extends AbstractCompacti
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(
             tsFileManager.getTsFileList(true).get(0).getTsFile().getAbsolutePath())) {
-      TsFileMetadata tsFileMetadata = reader.readFileMetadata();
-      Assert.assertEquals(1, tsFileMetadata.getTableSchemaMap().size());
+      Assert.assertEquals(1, reader.getTableSchemaMap().size());
     }
   }
 }

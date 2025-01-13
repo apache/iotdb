@@ -161,19 +161,14 @@ public class TabletInsertionEventTreePatternParser extends TabletInsertionEventP
     if (tablet != null) {
       return tablet;
     }
-
-    final Tablet newTablet =
+    tablet =
         new Tablet(
             Objects.nonNull(deviceIdString) ? deviceIdString : deviceId.toString(),
             Arrays.asList(measurementSchemaList),
+            timestampColumn,
+            valueColumns,
+            nullValueColumnBitmaps,
             rowCount);
-    newTablet.timestamps = timestampColumn;
-    newTablet.bitMaps = nullValueColumnBitmaps;
-    newTablet.values = valueColumns;
-    newTablet.setRowSize(rowCount);
-
-    tablet = newTablet;
-
     return tablet;
   }
 }

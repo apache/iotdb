@@ -437,9 +437,6 @@ public class ExportTsFile extends AbstractTsFileTool {
           IMeasurementSchema measurementSchema = schemas.get(i);
           // -1 for time not in fields
           Object value = fields.get(columnIndex - 1).getObjectValue(measurementSchema.getType());
-          if (value == null) {
-            tablet.bitMaps[i].mark(rowIndex);
-          }
           tablet.addValue(measurementSchema.getMeasurementName(), rowIndex, value);
         }
 

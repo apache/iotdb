@@ -190,14 +190,14 @@ public class SessionUtilsTest {
     schemas.add(schema);
 
     Tablet tablet = new Tablet("device1", schemas, 2);
-    tablet.timestamps = new long[] {1L};
-    tablet.values[0] = new int[] {1, 2};
-    tablet.values[1] = new long[] {1L, 2L};
-    tablet.values[2] = new float[] {1.1f, 1.2f};
-    tablet.values[3] = new double[] {0.707, 0.708};
-    tablet.values[4] = new Binary[] {null, new Binary(new byte[] {(byte) 16})};
-    tablet.values[5] = new boolean[] {true, false};
-    tablet.values[6] = new LocalDate[] {null, LocalDate.of(2024, 4, 1)};
+    tablet.setTimestamps(new long[] {1L});
+    tablet.getValues()[0] = new int[] {1, 2};
+    tablet.getValues()[1] = new long[] {1L, 2L};
+    tablet.getValues()[2] = new float[] {1.1f, 1.2f};
+    tablet.getValues()[3] = new double[] {0.707, 0.708};
+    tablet.getValues()[4] = new Binary[] {null, new Binary(new byte[] {(byte) 16})};
+    tablet.getValues()[5] = new boolean[] {true, false};
+    tablet.getValues()[6] = new LocalDate[] {null, LocalDate.of(2024, 4, 1)};
     tablet.setRowSize(tablet.getRowSize() + 2);
 
     ByteBuffer timeBuffer = SessionUtils.getValueBuffer(tablet);

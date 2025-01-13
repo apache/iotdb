@@ -352,22 +352,16 @@ public class IoTDBSubscriptionDataTypeIT extends AbstractSubscriptionLocalIT {
   private Object getValue(final TSDataType type, final Tablet tablet) {
     switch (type) {
       case BOOLEAN:
-        return ((boolean[]) tablet.values[0])[0];
       case INT32:
-        return ((int[]) tablet.values[0])[0];
       case INT64:
       case TIMESTAMP:
-        return ((long[]) tablet.values[0])[0];
       case FLOAT:
-        return ((float[]) tablet.values[0])[0];
       case DOUBLE:
-        return ((double[]) tablet.values[0])[0];
       case TEXT:
       case BLOB:
       case STRING:
-        return ((Binary[]) tablet.values[0])[0];
       case DATE:
-        return ((LocalDate[]) tablet.values[0])[0];
+        return tablet.getValue(0, 0);
       default:
         return null;
     }

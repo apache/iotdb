@@ -991,7 +991,7 @@ public class IoTDBLoadTsFileIT {
     try (final TsFileTableGenerator generator = new TsFileTableGenerator(file)) {
       generator.registerTable(SchemaConfig.TABLE_0, schemaList2, columnCategories);
 
-      generator.generateData(SchemaConfig.TABLE_0, lineCount, PARTITION_INTERVAL / 10_000, false);
+      generator.generateData(SchemaConfig.TABLE_0, lineCount, PARTITION_INTERVAL / 10_000);
     }
 
     try (final Connection connection =

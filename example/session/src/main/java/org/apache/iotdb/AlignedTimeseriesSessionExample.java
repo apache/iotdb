@@ -30,7 +30,6 @@ import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -341,18 +340,14 @@ public class AlignedTimeseriesSessionExample {
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
 
     Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR2, schemaList);
-    long[] timestamps = tablet.timestamps;
-    Object[] values = tablet.values;
 
     for (long time = 100; time < 200; time++) {
       int row = tablet.getRowSize();
       tablet.addTimestamp(row, time);
 
-      long[] sensor1 = (long[]) values[0];
-      sensor1[row] = new SecureRandom().nextLong();
+      tablet.addValue(row, 0, new SecureRandom().nextLong());
 
-      int[] sensor2 = (int[]) values[1];
-      sensor2[row] = new SecureRandom().nextInt();
+      tablet.addValue(row, 1, new SecureRandom().nextInt());
 
       if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
         session.insertAlignedTablet(tablet, true);
@@ -378,32 +373,19 @@ public class AlignedTimeseriesSessionExample {
 
     Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR3, schemaList);
 
-    long[] timestamps = tablet.timestamps;
-    Object[] values = tablet.values;
-    // Use the bitMap to mark the null value point
-    BitMap[] bitMaps = new BitMap[values.length];
-    tablet.bitMaps = bitMaps;
-
-    bitMaps[1] = new BitMap(tablet.getMaxRowNumber());
     for (long time = 200; time < 300; time++) {
       int row = tablet.getRowSize();
       tablet.addTimestamp(row, time);
 
-      long[] sensor1 = (long[]) values[0];
-      sensor1[row] = new SecureRandom().nextLong();
+      tablet.addValue(row, 0, new SecureRandom().nextLong());
 
-      int[] sensor2 = (int[]) values[1];
-      sensor2[row] = new SecureRandom().nextInt();
-
-      // mark this point as null value
-      if (time % 5 == 0) {
-        bitMaps[1].mark(row);
+      if (time % 5 != 0) {
+        tablet.addValue(row, 1, new SecureRandom().nextInt());
       }
 
       if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
         session.insertAlignedTablet(tablet, true);
         tablet.reset();
-        bitMaps[1].reset();
       }
     }
 
@@ -587,45 +569,6 @@ public class AlignedTimeseriesSessionExample {
         tablet3.reset();
       }
       timestamp++;
-    }
-
-    if (tablet1.getRowSize() != 0) {
-      session.insertAlignedTablets(tabletMap, true);
-      tablet1.reset();
-      tablet2.reset();
-      tablet3.reset();
-    }
-
-    // Method 2 to add tablet data
-    long[] timestamps1 = tablet1.timestamps;
-    Object[] values1 = tablet1.values;
-    long[] timestamps2 = tablet2.timestamps;
-    Object[] values2 = tablet2.values;
-    long[] timestamps3 = tablet3.timestamps;
-    Object[] values3 = tablet3.values;
-
-    for (long time = 0; time < 100; time++) {
-      int row1 = tablet1.getRowSize();
-      int row2 = tablet2.getRowSize();
-      int row3 = tablet3.getRowSize();
-      tablet1.addTimestamp(row1, time);
-      tablet2.addTimestamp(row2, time);
-      tablet3.addTimestamp(row3, time);
-      for (int i = 0; i < 2; i++) {
-        long[] sensor1 = (long[]) values1[i];
-        sensor1[row1] = i;
-        long[] sensor2 = (long[]) values2[i];
-        sensor2[row2] = i;
-        long[] sensor3 = (long[]) values3[i];
-        sensor3[row3] = i;
-      }
-      if (tablet1.getRowSize() == tablet1.getMaxRowNumber()) {
-        session.insertAlignedTablets(tabletMap, true);
-
-        tablet1.reset();
-        tablet2.reset();
-        tablet3.reset();
-      }
     }
 
     if (tablet1.getRowSize() != 0) {
