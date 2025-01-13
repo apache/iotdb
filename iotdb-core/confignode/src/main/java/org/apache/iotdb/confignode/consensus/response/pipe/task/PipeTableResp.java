@@ -97,7 +97,7 @@ public class PipeTableResp implements DataSet {
   public PipeTableResp filter(
       final Boolean whereClause, final String pipeName, final boolean isTableModel) {
     final PipeTableResp resp = filter(whereClause, pipeName);
-    resp.allPipeMeta.removeIf(meta -> !meta.visibleUnder(isTableModel));
+    resp.allPipeMeta.removeIf(meta -> !meta.getStaticMeta().visibleUnder(isTableModel));
     return resp;
   }
 

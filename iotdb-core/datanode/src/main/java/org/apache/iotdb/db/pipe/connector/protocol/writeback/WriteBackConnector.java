@@ -33,6 +33,8 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.annotation.TableModel;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -48,6 +50,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Objects;
 
+@TreeModel
+@TableModel
 public class WriteBackConnector implements PipeConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WriteBackConnector.class);

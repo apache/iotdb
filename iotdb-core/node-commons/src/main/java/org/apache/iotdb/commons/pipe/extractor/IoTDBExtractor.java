@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.PipeExtractor;
+import org.apache.iotdb.pipe.api.annotation.TableModel;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -37,6 +39,8 @@ import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionO
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.hasAtLeastOneOption;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.optionsAreAllLegal;
 
+@TreeModel
+@TableModel
 public abstract class IoTDBExtractor implements PipeExtractor {
 
   // Record these variables to provide corresponding value to tag key of monitoring metrics
