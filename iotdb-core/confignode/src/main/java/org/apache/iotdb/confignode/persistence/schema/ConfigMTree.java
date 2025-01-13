@@ -866,7 +866,7 @@ public class ConfigMTree {
     }
     if (columnSchema.getColumnCategory() == TsTableColumnCategory.TAG
         || columnSchema.getColumnCategory() == TsTableColumnCategory.TIME) {
-      throw new SemanticException("Dropping id or time column is not supported.");
+      throw new SemanticException("Dropping tag or time column is not supported.");
     }
 
     node.addPreDeletedColumn(columnName);
