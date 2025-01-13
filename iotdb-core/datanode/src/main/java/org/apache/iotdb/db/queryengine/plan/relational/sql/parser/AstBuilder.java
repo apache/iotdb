@@ -1871,8 +1871,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitInSubquery(RelationalSqlParser.InSubqueryContext ctx) {
-    throw new SemanticException("Only TableSubquery is supported now");
-    /*Expression result =
+    Expression result =
         new InPredicate(
             getLocation(ctx),
             (Expression) visit(ctx.value),
@@ -1882,7 +1881,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       result = new NotExpression(getLocation(ctx), result);
     }
 
-    return result;*/
+    return result;
   }
 
   @Override

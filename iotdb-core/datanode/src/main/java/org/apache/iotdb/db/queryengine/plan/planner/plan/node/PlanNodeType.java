@@ -122,6 +122,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
@@ -288,6 +289,7 @@ public enum PlanNodeType {
   AGGREGATION_TREE_DEVICE_VIEW_SCAN_NODE((short) 1022),
   TREE_ALIGNED_DEVICE_VIEW_SCAN_NODE((short) 1023),
   TREE_NONALIGNED_DEVICE_VIEW_SCAN_NODE((short) 1024),
+  TABLE_SEMI_JOIN_NODE((short) 1025),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -653,6 +655,8 @@ public enum PlanNodeType {
         return TreeAlignedDeviceViewScanNode.deserialize(buffer);
       case 1024:
         return TreeNonAlignedDeviceViewScanNode.deserialize(buffer);
+      case 1025:
+        return SemiJoinNode.deserialize(buffer);
 
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);

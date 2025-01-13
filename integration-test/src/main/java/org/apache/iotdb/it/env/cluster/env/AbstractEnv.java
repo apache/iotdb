@@ -1128,6 +1128,11 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
+  public void shutdownForciblyAllDataNodes() {
+    dataNodeWrapperList.forEach(AbstractNodeWrapper::stopForcibly);
+  }
+
+  @Override
   public void ensureNodeStatus(
       final List<BaseNodeWrapper> nodes, final List<NodeStatus> targetStatus)
       throws IllegalStateException {

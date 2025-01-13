@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterCon
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableAddColumnTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -123,7 +124,7 @@ public class TableHeaderSchemaValidator {
               "auto create table succeed, but cannot get table schema in current node's DataNodeTableCache, may be caused by concurrently auto creating table");
         }
       } else {
-        throw new SemanticException("Table " + tableSchema.getTableName() + " does not exist");
+        TableMetadataImpl.throwTableNotExistsException(database, tableSchema.getTableName());
       }
     } else {
       // If table with this name already exists and isStrictIdColumn is true, make sure the existing
