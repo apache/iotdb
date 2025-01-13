@@ -80,10 +80,6 @@ public class ModificationFile implements AutoCloseable {
     this(new File(filePath), updateModMetrics);
   }
 
-  public ModificationFile(File file) {
-    this(file, false);
-  }
-
   public ModificationFile(File file, boolean updateModMetrics) {
     this.file = file;
     fileExists = file.length() > 0;
