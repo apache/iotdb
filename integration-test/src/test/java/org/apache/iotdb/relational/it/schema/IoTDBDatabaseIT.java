@@ -431,7 +431,7 @@ public class IoTDBDatabaseIT {
                   "remaining_event_count,INT64,ATTRIBUTE,",
                   "estimated_remaining_seconds,DOUBLE,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("desc pipes"),
+          statement.executeQuery("desc pipe_plugins"),
           "ColumnName,DataType,Category,",
           new HashSet<>(
               Arrays.asList(
