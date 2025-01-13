@@ -87,14 +87,20 @@ public class DataNodeLocationSupplierFactory {
 
     @Override
     public List<TDataNodeLocation> getDataNodeLocations(final String tableName) {
-      if (tableName.equals(InformationSchema.QUERIES)) {
-        return getReadableDataNodeLocations();
-      } else if (tableName.equals(InformationSchema.DATABASES)
-          || tableName.equals(InformationSchema.TABLES)
-          || tableName.equals(InformationSchema.COLUMNS)) {
-        return Collections.singletonList(DataNodeEndPoints.getLocalDataNodeLocation());
-      } else {
-        throw new UnsupportedOperationException("Unknown table: " + tableName);
+      switch (tableName) {
+        case InformationSchema.QUERIES:
+          return getReadableDataNodeLocations();
+        case InformationSchema.DATABASES:
+        case InformationSchema.TABLES:
+        case InformationSchema.COLUMNS:
+        case InformationSchema.REGIONS:
+        case InformationSchema.PIPES:
+        case InformationSchema.PIPE_PLUGINS:
+        case InformationSchema.TOPICS:
+        case InformationSchema.SUBSCRIPTIONS:
+          return Collections.singletonList(DataNodeEndPoints.getLocalDataNodeLocation());
+        default:
+          throw new UnsupportedOperationException("Unknown table: " + tableName);
       }
     }
   }
