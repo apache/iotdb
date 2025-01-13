@@ -1485,7 +1485,7 @@ public class ProcedureManager {
         table.getTableName(),
         null,
         ProcedureType.CREATE_TABLE_PROCEDURE,
-        new CreateTableProcedure(database, table));
+        new CreateTableProcedure(database, table, false));
   }
 
   public TSStatus alterTableAddColumn(final TAlterOrDropTableReq req) {
@@ -1499,7 +1499,8 @@ public class ProcedureManager {
             req.database,
             req.tableName,
             req.queryId,
-            TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.updateInfo)));
+            TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.updateInfo),
+            false));
   }
 
   public TSStatus alterTableSetProperties(final TAlterOrDropTableReq req) {
@@ -1510,7 +1511,11 @@ public class ProcedureManager {
         req.queryId,
         ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE,
         new SetTablePropertiesProcedure(
-            req.database, req.tableName, req.queryId, ReadWriteIOUtils.readMap(req.updateInfo)));
+            req.database,
+            req.tableName,
+            req.queryId,
+            ReadWriteIOUtils.readMap(req.updateInfo),
+            false));
   }
 
   public TSStatus alterTableRenameColumn(final TAlterOrDropTableReq req) {
@@ -1525,7 +1530,8 @@ public class ProcedureManager {
             req.tableName,
             req.queryId,
             ReadWriteIOUtils.readString(req.updateInfo),
-            ReadWriteIOUtils.readString(req.updateInfo)));
+            ReadWriteIOUtils.readString(req.updateInfo),
+            false));
   }
 
   public TSStatus alterTableDropColumn(final TAlterOrDropTableReq req) {
@@ -1536,7 +1542,11 @@ public class ProcedureManager {
         req.queryId,
         ProcedureType.DROP_TABLE_COLUMN_PROCEDURE,
         new DropTableColumnProcedure(
-            req.database, req.tableName, req.queryId, ReadWriteIOUtils.readString(req.updateInfo)));
+            req.database,
+            req.tableName,
+            req.queryId,
+            ReadWriteIOUtils.readString(req.updateInfo),
+            false));
   }
 
   public TSStatus dropTable(final TAlterOrDropTableReq req) {
@@ -1546,10 +1556,11 @@ public class ProcedureManager {
         req.tableName,
         req.queryId,
         ProcedureType.DROP_TABLE_PROCEDURE,
-        new DropTableProcedure(req.database, req.tableName, req.queryId));
+        new DropTableProcedure(req.database, req.tableName, req.queryId, false));
   }
 
-  public TDeleteTableDeviceResp deleteDevices(final TDeleteTableDeviceReq req) {
+  public TDeleteTableDeviceResp deleteDevices(
+      final TDeleteTableDeviceReq req, final boolean isGeneratedByPipe) {
     long procedureId;
     DeleteDevicesProcedure procedure = null;
     synchronized (this) {
@@ -1576,7 +1587,8 @@ public class ProcedureManager {
                 req.queryId,
                 req.getPatternInfo(),
                 req.getFilterInfo(),
-                req.getModInfo());
+                req.getModInfo(),
+                isGeneratedByPipe);
         this.executor.submitProcedure(procedure);
       }
     }
@@ -1592,7 +1604,7 @@ public class ProcedureManager {
     }
   }
 
-  private TSStatus executeWithoutDuplicate(
+  public TSStatus executeWithoutDuplicate(
       final String database,
       final TsTable table,
       final String tableName,

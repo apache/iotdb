@@ -630,7 +630,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelTestIT {
                     + "'connector.batch.enable'='false')",
                 receiverIp, receiverPort));
         fail();
-      } catch (SQLException ignored) {
+      } catch (final SQLException ignored) {
       }
 
       // Invalid inclusion
