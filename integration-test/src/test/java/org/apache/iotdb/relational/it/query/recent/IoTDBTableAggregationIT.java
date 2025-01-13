@@ -4052,10 +4052,6 @@ public class IoTDBTableAggregationIT {
   @Test
   public void exceptionTest() {
     tableAssertTestFail(
-        "select s1 from table1 where s2 in (select s2 from table1)",
-        "Only TableSubquery is supported now",
-        DATABASE_NAME);
-    tableAssertTestFail(
         "select avg() from table1",
         "701: Aggregate functions [avg] should only have one argument",
         DATABASE_NAME);
@@ -4156,6 +4152,14 @@ public class IoTDBTableAggregationIT {
         };
     tableResultSetEqualTest(
         "select distinct province,city,region,device_id from table1 order by province,city,region,device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"_col0"};
+    retArray = new String[] {"false,"};
+    tableResultSetEqualTest(
+        "select distinct s1 < 0 from table1 where s1 is not null",
         expectedHeader,
         retArray,
         DATABASE_NAME);
