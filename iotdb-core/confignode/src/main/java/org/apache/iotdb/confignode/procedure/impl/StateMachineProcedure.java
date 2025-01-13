@@ -58,8 +58,6 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   /** Cycles on same state. Good for figuring if we are stuck. */
   private int cycles = 0;
 
-  /** Ordinal of the previous state. So we can tell if we are progressing or not. */
-  private int previousState;
   private static int NO_NEXT_STATE = -1;
   private int nextState = NO_NEXT_STATE;
 
@@ -172,18 +170,9 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
         setNextState(getStateId(state));
       }
 
-      LOG.debug("{} {}; cycles={}", state, this, cycles);
-      // Keep running count of cycles
-      if (getStateId(state) != this.previousState) {
-        this.previousState = getStateId(state);
-        this.cycles = 0;
-      } else {
-        this.cycles++;
-      }
-
       LOG.trace("{}", this);
       stateFlow = executeFromState(env, state);
-      checkFlowAndSetNextState();
+      addNextStateAndCalculateCycles();
       setStateDeserialized(false);
 
       if (subProcList != null && !subProcList.isEmpty()) {
@@ -197,19 +186,25 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
     }
   }
 
-  private void checkFlowAndSetNextState() {
+  private void addNextStateAndCalculateCycles() {
+    int stateToBeAdded = EOF_STATE;
     if (Flow.HAS_MORE_STATE == stateFlow) {
       if (nextState == NO_NEXT_STATE) {
         LOG.error("StateMachineProcedure pid={} not set next state, but return HAS_MORE_STATE", getProcId());
       } else {
-        states.add(nextState);
+        stateToBeAdded = nextState;
       }
     } else {
       if (nextState != NO_NEXT_STATE) {
         LOG.warn("StateMachineProcedure pid={} set next state to {}, but return NO_MORE_STATE", getProcId(), nextState);
       }
-      states.add(EOF_STATE);
     }
+    if (getStateId(getCurrentState()) == stateToBeAdded) {
+      cycles++;
+    } else {
+      cycles = 0;
+    }
+    states.add(stateToBeAdded);
     nextState = NO_NEXT_STATE;
   }
 
