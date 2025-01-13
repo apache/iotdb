@@ -35,8 +35,8 @@ import java.util.Optional;
 import java.util.stream.IntStream;
 
 /**
- * The {@link PipeStatementPatternParseVisitor} will transform the schema {@link Statement}s using
- * {@link IoTDBTreePattern}. Rule:
+ * The {@link PipeStatementTreePatternParseVisitor} will transform the schema {@link Statement}s
+ * using {@link IoTDBTreePattern}. Rule:
  *
  * <p>1. All patterns in the output {@link Statement} will be the intersection of the original
  * {@link Statement}'s patterns and the given {@link IoTDBTreePattern}.
@@ -48,7 +48,7 @@ import java.util.stream.IntStream;
  * <p>4. The output {@link Statement} can be the altered form of the original one because it's read
  * from the {@link SRStatementGenerator} and will no longer be used.
  */
-public class PipeStatementPatternParseVisitor
+public class PipeStatementTreePatternParseVisitor
     extends StatementVisitor<Optional<Statement>, IoTDBTreePattern> {
   @Override
   public Optional<Statement> visitNode(

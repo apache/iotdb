@@ -146,11 +146,15 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
     final long creationTime = pipeSchemaRegionSnapshotEvent.getCreationTime();
     final File mtreeSnapshotFile = pipeSchemaRegionSnapshotEvent.getMTreeSnapshotFile();
     final File tagLogSnapshotFile = pipeSchemaRegionSnapshotEvent.getTagLogSnapshotFile();
+    final File attributeSnapshotFile = pipeSchemaRegionSnapshotEvent.getAttributeSnapshotFile();
 
     // 1. Transfer mTreeSnapshotFile, and tLog file if exists
     transferFilePieces(pipeName, creationTime, mtreeSnapshotFile, socket, true);
     if (Objects.nonNull(tagLogSnapshotFile)) {
       transferFilePieces(pipeName, creationTime, tagLogSnapshotFile, socket, true);
+    }
+    if (Objects.nonNull(attributeSnapshotFile)) {
+      transferFilePieces(pipeName, creationTime, attributeSnapshotFile, socket, true);
     }
     // 2. Transfer file seal signal, which means the snapshots is transferred completely
     if (!send(
@@ -160,10 +164,16 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
         PipeTransferSchemaSnapshotSealReq.toTPipeTransferBytes(
             // The pattern is surely Non-null
             pipeSchemaRegionSnapshotEvent.getTreePatternString(),
+            pipeSchemaRegionSnapshotEvent.getTablePattern().getDatabasePattern(),
+            pipeSchemaRegionSnapshotEvent.getTablePattern().getTablePattern(),
+            pipeSchemaRegionSnapshotEvent.getTreePattern().isTreeModelDataAllowedToBeCaptured(),
+            pipeSchemaRegionSnapshotEvent.getTablePattern().isTableModelDataAllowedToBeCaptured(),
             mtreeSnapshotFile.getName(),
             mtreeSnapshotFile.length(),
             Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,
             Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
+            Objects.nonNull(attributeSnapshotFile) ? attributeSnapshotFile.getName() : null,
+            Objects.nonNull(attributeSnapshotFile) ? attributeSnapshotFile.length() : 0,
             pipeSchemaRegionSnapshotEvent.getDatabaseName(),
             pipeSchemaRegionSnapshotEvent.toSealTypeString()))) {
       final String errorMessage =
@@ -177,9 +187,10 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
           pipeSchemaRegionSnapshotEvent.toString());
     } else {
       LOGGER.info(
-          "Successfully transferred schema region snapshot {} and {}.",
+          "Successfully transferred schema region snapshot {}, {} and {}.",
           mtreeSnapshotFile,
-          tagLogSnapshotFile);
+          tagLogSnapshotFile,
+          attributeSnapshotFile);
     }
   }
 
