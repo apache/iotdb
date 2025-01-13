@@ -1297,6 +1297,10 @@ public abstract class AlignedTVList extends TVList {
   }
 
   public static AlignedTVList deserialize(DataInputStream stream) throws IOException {
+    TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
+    if (dataType != TSDataType.VECTOR) {
+      throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
+    }
     int dataTypeNum = stream.readInt();
     List<TSDataType> dataTypes = new ArrayList<>(dataTypeNum);
     for (int columnIndex = 0; columnIndex < dataTypeNum; ++columnIndex) {

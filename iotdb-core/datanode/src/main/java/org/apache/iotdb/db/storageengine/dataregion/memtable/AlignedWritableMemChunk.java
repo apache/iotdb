@@ -67,7 +67,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   private final List<TSDataType> dataTypes;
   private final List<IMeasurementSchema> schemaList;
   private AlignedTVList list;
-  private final List<AlignedTVList> sortedList;
+  private List<AlignedTVList> sortedList;
   private final boolean ignoreAllNullRows;
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
@@ -934,7 +934,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     for (IMeasurementSchema schema : schemaList) {
       size += schema.serializedSize();
     }
-
+    size += Integer.BYTES;
     for (AlignedTVList alignedTvList : sortedList) {
       size += alignedTvList.serializedSize();
     }
@@ -950,6 +950,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       schema.serializeTo(ByteBuffer.wrap(bytes));
       buffer.put(bytes);
     }
+    buffer.putInt(sortedList.size());
     for (AlignedTVList alignedTvList : sortedList) {
       alignedTvList.serializeToWAL(buffer);
     }
@@ -964,9 +965,16 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       IMeasurementSchema schema = MeasurementSchema.deserializeFrom(stream);
       schemaList.add(schema);
     }
-
-    AlignedTVList list = (AlignedTVList) TVList.deserialize(stream);
-    return new AlignedWritableMemChunk(schemaList, list, isTableModel);
+    int sortedListSize = stream.readInt();
+    List<AlignedTVList> sortedList = new ArrayList<>();
+    for (int i = 0; i < sortedListSize; i++) {
+      AlignedTVList tvList = AlignedTVList.deserialize(stream);
+      sortedList.add(tvList);
+    }
+    AlignedTVList list = AlignedTVList.deserialize(stream);
+    AlignedWritableMemChunk chunk = new AlignedWritableMemChunk(schemaList, list, isTableModel);
+    chunk.sortedList = sortedList;
+    return chunk;
   }
 
   public List<IMeasurementSchema> getSchemaList() {

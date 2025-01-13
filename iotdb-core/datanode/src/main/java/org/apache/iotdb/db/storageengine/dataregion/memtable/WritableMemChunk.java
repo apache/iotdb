@@ -728,6 +728,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   public int serializedSize() {
     int serializedSize = schema.serializedSize() + list.serializedSize();
+    serializedSize += Integer.BYTES;
     for (TVList tvList : sortedList) {
       serializedSize += tvList.serializedSize();
     }
@@ -739,6 +740,7 @@ public class WritableMemChunk implements IWritableMemChunk {
     byte[] bytes = new byte[schema.serializedSize()];
     schema.serializeTo(ByteBuffer.wrap(bytes));
     buffer.put(bytes);
+    buffer.putInt(sortedList.size());
     for (TVList tvList : sortedList) {
       tvList.serializeToWAL(buffer);
     }
@@ -748,6 +750,12 @@ public class WritableMemChunk implements IWritableMemChunk {
   public static WritableMemChunk deserialize(DataInputStream stream) throws IOException {
     WritableMemChunk memChunk = new WritableMemChunk();
     memChunk.schema = MeasurementSchema.deserializeFrom(stream);
+    int sortedListSize = stream.readInt();
+    memChunk.sortedList = new ArrayList<>();
+    for (int i = 0; i < sortedListSize; i++) {
+      TVList tvList = TVList.deserialize(stream);
+      memChunk.sortedList.add(tvList);
+    }
     memChunk.list = TVList.deserialize(stream);
     return memChunk;
   }
