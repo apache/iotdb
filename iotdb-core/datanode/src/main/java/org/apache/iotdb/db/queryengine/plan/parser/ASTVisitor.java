@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
@@ -60,6 +61,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.HeadInfe
 import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.InferenceWindow;
 import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.TailInferenceWindow;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.AdditionExpression;
@@ -1912,7 +1914,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitInsertStatement(IoTDBSqlParser.InsertStatementContext ctx) {
     InsertStatement insertStatement = new InsertStatement();
-    insertStatement.setDevice(parsePrefixPath(ctx.prefixPath()));
+    try {
+      insertStatement.setDevice(
+          DataNodeDevicePathCache.getInstance().getPartialPath(ctx.prefixPath().getText()));
+    } catch (IllegalPathException e) {
+      throw new SemanticException(e);
+    }
     int timeIndex = parseInsertColumnSpec(ctx.insertColumnsSpec(), insertStatement);
     parseInsertValuesSpec(ctx.insertValuesSpec(), insertStatement, timeIndex);
     insertStatement.setAligned(ctx.ALIGNED() != null);

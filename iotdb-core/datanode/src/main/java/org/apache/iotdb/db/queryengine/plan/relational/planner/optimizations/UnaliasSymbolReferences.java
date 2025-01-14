@@ -45,8 +45,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
@@ -152,6 +154,42 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
     }
 
     @Override
+    public PlanAndMappings visitTreeDeviceViewScan(
+        TreeDeviceViewScanNode node, UnaliasContext context) {
+      Map<Symbol, Symbol> mapping = new HashMap<>(context.getCorrelationMapping());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      List<Symbol> newOutputs = mapper.map(node.getOutputSymbols());
+
+      Map<Symbol, ColumnSchema> newAssignments = new HashMap<>();
+      node.getAssignments()
+          .forEach(
+              (symbol, handle) -> {
+                Symbol newSymbol = mapper.map(symbol);
+                newAssignments.put(newSymbol, handle);
+              });
+
+      return new PlanAndMappings(
+          new TreeDeviceViewScanNode(
+              node.getPlanNodeId(),
+              node.getQualifiedObjectName(),
+              newOutputs,
+              newAssignments,
+              node.getDeviceEntries(),
+              node.getIdAndAttributeIndexMap(),
+              node.getScanOrder(),
+              node.getTimePredicate().orElse(null),
+              node.getPushDownPredicate(),
+              node.getPushDownLimit(),
+              node.getPushDownOffset(),
+              node.isPushLimitToEachDevice(),
+              node.containsNonAlignedDevice(),
+              node.getTreeDBName(),
+              node.getMeasurementColumnNameMap()),
+          mapping);
+    }
+
+    @Override
     public PlanAndMappings visitDeviceTableScan(DeviceTableScanNode node, UnaliasContext context) {
       Map<Symbol, Symbol> mapping = new HashMap<>(context.getCorrelationMapping());
       SymbolMapper mapper = symbolMapper(mapping);
@@ -179,7 +217,8 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               node.getPushDownPredicate(),
               node.getPushDownLimit(),
               node.getPushDownOffset(),
-              node.isPushLimitToEachDevice()),
+              node.isPushLimitToEachDevice(),
+              node.containsNonAlignedDevice()),
           mapping);
     }
 
@@ -691,6 +730,34 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               newRightOutputSymbols,
               newFilter,
               node.isSpillable()),
+          outputMapping);
+    }
+
+    @Override
+    public PlanAndMappings visitSemiJoin(SemiJoinNode node, UnaliasContext context) {
+      // it is assumed that symbols are distinct between SemiJoin source and filtering source. Only
+      // symbols from outer correlation might be the exception
+      PlanAndMappings rewrittenSource = node.getSource().accept(this, context);
+      PlanAndMappings rewrittenFilteringSource = node.getFilteringSource().accept(this, context);
+
+      Map<Symbol, Symbol> outputMapping = new HashMap<>();
+      outputMapping.putAll(rewrittenSource.getMappings());
+      outputMapping.putAll(rewrittenFilteringSource.getMappings());
+
+      SymbolMapper mapper = symbolMapper(outputMapping);
+
+      Symbol newSourceJoinSymbol = mapper.map(node.getSourceJoinSymbol());
+      Symbol newFilteringSourceJoinSymbol = mapper.map(node.getFilteringSourceJoinSymbol());
+      Symbol newSemiJoinOutput = mapper.map(node.getSemiJoinOutput());
+
+      return new PlanAndMappings(
+          new SemiJoinNode(
+              node.getPlanNodeId(),
+              rewrittenSource.getRoot(),
+              rewrittenFilteringSource.getRoot(),
+              newSourceJoinSymbol,
+              newFilteringSourceJoinSymbol,
+              newSemiJoinOutput),
           outputMapping);
     }
   }

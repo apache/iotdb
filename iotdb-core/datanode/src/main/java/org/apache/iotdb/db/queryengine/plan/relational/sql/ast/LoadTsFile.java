@@ -44,6 +44,7 @@ public class LoadTsFile extends Statement {
   private boolean deleteAfterLoad = false;
   private boolean convertOnTypeMismatch = true;
   private boolean autoCreateDatabase = true;
+  private boolean isGeneratedByPipe = false;
   private String model = LoadTsFileConfigurator.MODEL_TABLE_VALUE;
 
   private final Map<String, String> loadAttributes;
@@ -63,7 +64,7 @@ public class LoadTsFile extends Statement {
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.resources = new ArrayList<>();
     this.writePointCountList = new ArrayList<>();
-    this.loadAttributes = loadAttributes;
+    this.loadAttributes = loadAttributes == null ? Collections.emptyMap() : loadAttributes;
     initAttributes();
 
     try {
@@ -107,8 +108,17 @@ public class LoadTsFile extends Statement {
     return database;
   }
 
-  public void setDatabase(String database) {
+  public LoadTsFile setDatabase(String database) {
     this.database = database;
+    return this;
+  }
+
+  public void markIsGeneratedByPipe() {
+    isGeneratedByPipe = true;
+  }
+
+  public boolean isGeneratedByPipe() {
+    return isGeneratedByPipe;
   }
 
   public String getModel() {

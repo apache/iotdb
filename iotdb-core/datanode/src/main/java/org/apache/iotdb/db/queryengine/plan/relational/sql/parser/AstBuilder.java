@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpressio
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
@@ -1022,21 +1023,36 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitShowDevicesStatement(final RelationalSqlParser.ShowDevicesStatementContext ctx) {
-    return new ShowDevice(
-        getLocation(ctx),
-        new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
-        visitIfPresent(ctx.where, Expression.class).orElse(null),
-        visitIfPresent(ctx.limitOffsetClause().offset, Offset.class).orElse(null),
-        visitIfPresent(ctx.limitOffsetClause().limit, Node.class).orElse(null));
+    final QualifiedName name = getQualifiedName(ctx.tableName);
+    return InformationSchema.INFORMATION_DATABASE.equals(
+            name.getPrefix().map(QualifiedName::toString).orElse(clientSession.getDatabaseName()))
+        ? new ShowStatement(
+            getLocation(ctx),
+            name.getSuffix(),
+            visitIfPresent(ctx.where, Expression.class),
+            Optional.empty(),
+            visitIfPresent(ctx.limitOffsetClause().offset, Offset.class),
+            visitIfPresent(ctx.limitOffsetClause().limit, Node.class))
+        : new ShowDevice(
+            getLocation(ctx),
+            new Table(getLocation(ctx), name),
+            visitIfPresent(ctx.where, Expression.class).orElse(null),
+            visitIfPresent(ctx.limitOffsetClause().offset, Offset.class).orElse(null),
+            visitIfPresent(ctx.limitOffsetClause().limit, Node.class).orElse(null));
   }
 
   @Override
   public Node visitCountDevicesStatement(
       final RelationalSqlParser.CountDevicesStatementContext ctx) {
-    return new CountDevice(
-        getLocation(ctx),
-        new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
-        visitIfPresent(ctx.where, Expression.class).orElse(null));
+    final QualifiedName name = getQualifiedName(ctx.tableName);
+    return InformationSchema.INFORMATION_DATABASE.equals(
+            name.getPrefix().map(QualifiedName::toString).orElse(clientSession.getDatabaseName()))
+        ? new CountStatement(
+            getLocation(ctx), name.getSuffix(), visitIfPresent(ctx.where, Expression.class))
+        : new CountDevice(
+            getLocation(ctx),
+            new Table(getLocation(ctx), name),
+            visitIfPresent(ctx.where, Expression.class).orElse(null));
   }
 
   @Override
@@ -1855,8 +1871,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitInSubquery(RelationalSqlParser.InSubqueryContext ctx) {
-    throw new SemanticException("Only TableSubquery is supported now");
-    /*Expression result =
+    Expression result =
         new InPredicate(
             getLocation(ctx),
             (Expression) visit(ctx.value),
@@ -1866,7 +1881,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       result = new NotExpression(getLocation(ctx), result);
     }
 
-    return result;*/
+    return result;
   }
 
   @Override

@@ -33,9 +33,15 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -48,7 +54,7 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 
 public abstract class TableScanNode extends SourceNode {
 
-  protected final QualifiedObjectName qualifiedObjectName;
+  protected QualifiedObjectName qualifiedObjectName;
   // Indicate the column this node need to output
   protected List<Symbol> outputSymbols;
   // Indicate the column this node need to fetch from StorageEngine,
@@ -97,6 +103,8 @@ public abstract class TableScanNode extends SourceNode {
     this.pushDownOffset = pushDownOffset;
   }
 
+  protected TableScanNode() {}
+
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitTableScan(this, context);
@@ -141,6 +149,10 @@ public abstract class TableScanNode extends SourceNode {
   }
 
   public Optional<Symbol> getTimeColumn() {
+    return getTimeColumn(assignments);
+  }
+
+  public static Optional<Symbol> getTimeColumn(Map<Symbol, ColumnSchema> assignments) {
     for (Map.Entry<Symbol, ColumnSchema> entry : assignments.entrySet()) {
       if (entry.getValue().getColumnCategory() == TIME) {
         return Optional.of(entry.getKey());
@@ -211,6 +223,110 @@ public abstract class TableScanNode extends SourceNode {
 
   public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
     this.regionReplicaSet = regionReplicaSet;
+  }
+
+  protected static void serializeMemberVariables(
+      TableScanNode node, ByteBuffer byteBuffer, boolean serializeOutputSymbols) {
+    if (node.qualifiedObjectName.getDatabaseName() != null) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      ReadWriteIOUtils.write(node.qualifiedObjectName.getDatabaseName(), byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    }
+    ReadWriteIOUtils.write(node.qualifiedObjectName.getObjectName(), byteBuffer);
+
+    if (serializeOutputSymbols) {
+      ReadWriteIOUtils.write(node.outputSymbols.size(), byteBuffer);
+      node.outputSymbols.forEach(symbol -> ReadWriteIOUtils.write(symbol.getName(), byteBuffer));
+    }
+
+    ReadWriteIOUtils.write(node.assignments.size(), byteBuffer);
+    for (Map.Entry<Symbol, ColumnSchema> entry : node.assignments.entrySet()) {
+      Symbol.serialize(entry.getKey(), byteBuffer);
+      ColumnSchema.serialize(entry.getValue(), byteBuffer);
+    }
+
+    if (node.pushDownPredicate != null) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      Expression.serialize(node.pushDownPredicate, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    }
+
+    ReadWriteIOUtils.write(node.pushDownLimit, byteBuffer);
+    ReadWriteIOUtils.write(node.pushDownOffset, byteBuffer);
+  }
+
+  protected static void serializeMemberVariables(
+      TableScanNode node, DataOutputStream stream, boolean serializeOutputSymbols)
+      throws IOException {
+    if (node.qualifiedObjectName.getDatabaseName() != null) {
+      ReadWriteIOUtils.write(true, stream);
+      ReadWriteIOUtils.write(node.qualifiedObjectName.getDatabaseName(), stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
+    ReadWriteIOUtils.write(node.qualifiedObjectName.getObjectName(), stream);
+
+    if (serializeOutputSymbols) {
+      ReadWriteIOUtils.write(node.outputSymbols.size(), stream);
+      for (Symbol symbol : node.outputSymbols) {
+        ReadWriteIOUtils.write(symbol.getName(), stream);
+      }
+    }
+
+    ReadWriteIOUtils.write(node.assignments.size(), stream);
+    for (Map.Entry<Symbol, ColumnSchema> entry : node.assignments.entrySet()) {
+      Symbol.serialize(entry.getKey(), stream);
+      ColumnSchema.serialize(entry.getValue(), stream);
+    }
+
+    if (node.pushDownPredicate != null) {
+      ReadWriteIOUtils.write(true, stream);
+      Expression.serialize(node.pushDownPredicate, stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
+
+    ReadWriteIOUtils.write(node.pushDownLimit, stream);
+    ReadWriteIOUtils.write(node.pushDownOffset, stream);
+  }
+
+  protected static void deserializeMemberVariables(
+      ByteBuffer byteBuffer, TableScanNode node, boolean deserializeOutputSymbols) {
+    boolean hasDatabaseName = ReadWriteIOUtils.readBool(byteBuffer);
+    String databaseName = null;
+    if (hasDatabaseName) {
+      databaseName = ReadWriteIOUtils.readString(byteBuffer);
+    }
+    String tableName = ReadWriteIOUtils.readString(byteBuffer);
+    node.qualifiedObjectName = new QualifiedObjectName(databaseName, tableName);
+
+    int size;
+
+    if (deserializeOutputSymbols) {
+      size = ReadWriteIOUtils.readInt(byteBuffer);
+      List<Symbol> outputSymbols = new ArrayList<>(size);
+      for (int i = 0; i < size; i++) {
+        outputSymbols.add(Symbol.deserialize(byteBuffer));
+      }
+      node.outputSymbols = outputSymbols;
+    }
+
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    Map<Symbol, ColumnSchema> assignments = new HashMap<>(size);
+    for (int i = 0; i < size; i++) {
+      assignments.put(Symbol.deserialize(byteBuffer), ColumnSchema.deserialize(byteBuffer));
+    }
+    node.assignments = assignments;
+
+    boolean hasPushDownPredicate = ReadWriteIOUtils.readBool(byteBuffer);
+    if (hasPushDownPredicate) {
+      node.pushDownPredicate = Expression.deserialize(byteBuffer);
+    }
+
+    node.pushDownLimit = ReadWriteIOUtils.readLong(byteBuffer);
+    node.pushDownOffset = ReadWriteIOUtils.readLong(byteBuffer);
   }
 
   @Override

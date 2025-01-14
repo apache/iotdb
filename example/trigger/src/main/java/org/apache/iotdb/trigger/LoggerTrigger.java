@@ -39,17 +39,17 @@ public class LoggerTrigger implements Trigger {
     List<IMeasurementSchema> measurementSchemaList = tablet.getSchemas();
     for (int i = 0, n = measurementSchemaList.size(); i < n; i++) {
       if (measurementSchemaList.get(i).getType().equals(TSDataType.DOUBLE)) {
-        logDouble((double[]) tablet.values[i]);
+        logDouble((double[]) tablet.getValues()[i]);
       } else if (measurementSchemaList.get(i).getType().equals(TSDataType.FLOAT)) {
-        logFloat((float[]) tablet.values[i]);
+        logFloat((float[]) tablet.getValues()[i]);
       } else if (measurementSchemaList.get(i).getType().equals(TSDataType.INT64)) {
-        logLong((long[]) tablet.values[i]);
+        logLong((long[]) tablet.getValues()[i]);
       } else if (measurementSchemaList.get(i).getType().equals(TSDataType.INT32)) {
-        logInt((int[]) tablet.values[i]);
+        logInt((int[]) tablet.getValues()[i]);
       } else if (measurementSchemaList.get(i).getType().equals(TSDataType.TEXT)) {
-        logText((Binary[]) tablet.values[i]);
+        logText((Binary[]) tablet.getValues()[i]);
       } else if (measurementSchemaList.get(i).getType().equals(TSDataType.BOOLEAN)) {
-        logBoolean((boolean[]) tablet.values[i]);
+        logBoolean((boolean[]) tablet.getValues()[i]);
       }
     }
     return true;

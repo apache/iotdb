@@ -20,9 +20,9 @@
 package org.apache.iotdb.relational.it.query.recent.subquery;
 
 public class SubqueryDataSetUtils {
-  protected static final String DATABASE_NAME = "subqueryTest";
-  protected static final String[] NUMERIC_MEASUREMENTS = new String[] {"s1", "s2", "s3", "s4"};
-  protected static final String[] CREATE_SQLS =
+  public static final String DATABASE_NAME = "subqueryTest";
+  public static final String[] NUMERIC_MEASUREMENTS = new String[] {"s1", "s2", "s3", "s4"};
+  public static final String[] CREATE_SQLS =
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
@@ -104,6 +104,12 @@ public class SubqueryDataSetUtils {
             + " values(4, 'd1', 'text4', 'string4', X'cafebabe04', 4, '2024-10-04')",
         "INSERT INTO table2(time,device_id,s1,s2,s3,s4,s5) "
             + " values(5, 'd1', 5, 55, 5.5, 55.5, false)",
+        // table3
+        "CREATE TABLE table3(device_id STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 BOOLEAN FIELD, s6 TEXT FIELD, s7 STRING FIELD, s8 BLOB FIELD, s9 TIMESTAMP FIELD, s10 DATE FIELD)",
+        "INSERT INTO table3(time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values (2024-09-24T06:13:30.000+00:00,'d01',30,30,30.0,30.0,true,'shanghai_huangpu_red_A_d01_30','shanghai_huangpu_red_A_d01_30',X'cafebabe30',2024-09-24T06:13:00.000+00:00,'2024-09-23')",
+        "INSERT INTO table3(time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values (2024-09-24T06:14:30.000+00:00,'d01',40,40,40.0,40.0,false,'shanghai_huangpu_red_A_d01_40','shanghai_huangpu_red_A_d01_40',X'cafebabe40',2024-09-24T06:14:00.000+00:00,'2024-09-24')",
+        "INSERT INTO table3(time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values (2024-09-24T06:13:30.000+00:00,'d_null',30,30,30.0,30.0,true,'shanghai_huangpu_red_A_d01_30','shanghai_huangpu_red_A_d01_30',X'cafebabe30',2024-09-24T06:13:00.000+00:00,'2024-09-23')",
+        "INSERT INTO table3(time,device_id,s2,s3,s4,s5,s6,s7,s8,s9,s10) values (2024-09-24T06:14:30.000+00:00,'d_null',40,40.0,40.0,false,'shanghai_huangpu_red_A_d01_40','shanghai_huangpu_red_A_d01_40',X'cafebabe40',2024-09-24T06:14:00.000+00:00,'2024-09-24')",
         "FLUSH",
         "CLEAR ATTRIBUTE CACHE",
       };

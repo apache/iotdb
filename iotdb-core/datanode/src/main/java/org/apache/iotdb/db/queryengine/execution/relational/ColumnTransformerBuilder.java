@@ -157,8 +157,8 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Tr
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TrimColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TryCastFunctionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.UpperColumnTransformer;
-import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
-import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
+import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -1019,16 +1019,16 @@ public class ColumnTransformerBuilder
         ScalarFunction scalarFunction = TableUDFUtils.getScalarFunction(functionName);
         List<ColumnTransformer> childrenColumnTransformer =
             children.stream().map(child -> process(child, context)).collect(Collectors.toList());
-        FunctionParameters parameters =
-            new FunctionParameters(
+        FunctionArguments parameters =
+            new FunctionArguments(
                 childrenColumnTransformer.stream()
                     .map(i -> UDFDataTypeTransformer.transformReadTypeToUDFDataType(i.getType()))
                     .collect(Collectors.toList()),
                 Collections.emptyMap());
-        ScalarFunctionConfig config = new ScalarFunctionConfig();
-        scalarFunction.beforeStart(parameters, config);
+        ScalarFunctionAnalysis analysis = scalarFunction.analyze(parameters);
+        scalarFunction.beforeStart(parameters);
         Type returnType =
-            UDFDataTypeTransformer.transformUDFDataTypeToReadType(config.getOutputDataType());
+            UDFDataTypeTransformer.transformUDFDataTypeToReadType(analysis.getOutputDataType());
         return new UserDefineScalarFunctionTransformer(
             returnType, scalarFunction, childrenColumnTransformer);
       }

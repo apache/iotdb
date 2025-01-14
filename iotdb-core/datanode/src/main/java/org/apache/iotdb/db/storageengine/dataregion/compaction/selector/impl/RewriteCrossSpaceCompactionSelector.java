@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionSourceFileDeletedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
@@ -53,6 +54,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -67,7 +69,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   protected TsFileManager tsFileManager;
 
   private static boolean hasPrintedLog = false;
-  private static int maxDeserializedFileNumToCheckInsertionCandidateValid = 500;
+  private static int maxDeserializedFileNumToCheckInsertionCandidateValid = 100;
+  private static int maxFileNumToSelectInsertionTaskInOnePartition = 200;
 
   private final long memoryBudget;
   private final int maxCrossCompactionFileNum;
@@ -139,6 +142,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           candidate.getUnseqFiles().size());
 
       return executeTaskResourceSelection(candidate);
+    } catch (CompactionSourceFileDeletedException e) {
+      return new CrossCompactionTaskResource();
     } catch (Exception e) {
       if (e instanceof StopReadTsFileByInterruptException || Thread.interrupted()) {
         Thread.currentThread().interrupt();
@@ -162,6 +167,14 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           "Selecting insertion cross compaction task resources from {} seqFile, {} unseqFiles",
           candidate.getSeqFiles().size(),
           candidate.getUnseqFiles().size());
+      boolean delaySelection =
+          candidate.getSeqFiles().size() + candidate.getUnseqFiles().size()
+              > maxFileNumToSelectInsertionTaskInOnePartition;
+      if (delaySelection) {
+        context.delayInsertionSelection(timePartition);
+        return new InsertionCrossCompactionTaskResource();
+      }
+
       InsertionCrossCompactionTaskResource result =
           insertionCrossSpaceCompactionSelector.executeInsertionCrossSpaceCompactionTaskSelection();
       if (result.isValid()) {
@@ -226,7 +239,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           compactionEstimator.roughEstimateCrossCompactionMemory(
               newSelectedSeqResources, newSelectedUnseqResources);
       long memoryCost =
-          CompactionEstimateUtils.shouldAccurateEstimate(roughEstimatedMemoryCost)
+          CompactionEstimateUtils.shouldUseRoughEstimatedResult(roughEstimatedMemoryCost)
               ? roughEstimatedMemoryCost
               : compactionEstimator.estimateCrossCompactionMemory(
                   newSelectedSeqResources, newSelectedUnseqResources);
@@ -466,7 +479,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       InsertionCrossCompactionTaskResource result = new InsertionCrossCompactionTaskResource();
 
       boolean hasPreviousSeqFile = false;
-      for (DeviceInfo unseqDeviceInfo : unseqFile.getDeviceInfoList()) {
+      for (Iterator<DeviceInfo> it = unseqFile.getDeviceInfoIterator(); it.hasNext(); ) {
+        DeviceInfo unseqDeviceInfo = it.next();
         IDeviceID deviceId = unseqDeviceInfo.deviceId;
         long startTimeOfUnSeqDevice = unseqDeviceInfo.startTime;
         long endTimeOfUnSeqDevice = unseqDeviceInfo.endTime;
@@ -613,7 +627,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         return true;
       }
 
-      for (DeviceInfo device : candidate2.getDeviceInfoList()) {
+      for (Iterator<DeviceInfo> it = candidate2.getDeviceInfoIterator(); it.hasNext(); ) {
+        DeviceInfo device = it.next();
         IDeviceID deviceId = device.deviceId;
         if (!candidate1.containsDevice(deviceId)) {
           continue;

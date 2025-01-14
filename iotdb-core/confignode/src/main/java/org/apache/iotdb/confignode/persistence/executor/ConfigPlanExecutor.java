@@ -322,10 +322,14 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.getTemplateSetInfo((GetTemplateSetInfoPlan) req);
       case ShowTable:
         return clusterSchemaInfo.showTables((ShowTablePlan) req);
+      case ShowTable4InformationSchema:
+        return clusterSchemaInfo.showTables4InformationSchema();
       case FetchTable:
         return clusterSchemaInfo.fetchTables((FetchTablePlan) req);
       case DescTable:
         return clusterSchemaInfo.descTable((DescTablePlan) req);
+      case DescTable4InformationSchema:
+        return clusterSchemaInfo.descTable4InformationSchema();
       case GetTriggerTable:
         return triggerInfo.getTriggerTable((GetTriggerTablePlan) req);
       case GetTriggerLocation:
@@ -608,6 +612,7 @@ public class ConfigPlanExecutor {
       case PipeDeleteTimeSeries:
       case PipeDeleteLogicalView:
       case PipeDeactivateTemplate:
+      case PipeDeleteDevices:
         // Pipe payload, used to trigger plan extraction.
         // Will not be actually executed.
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

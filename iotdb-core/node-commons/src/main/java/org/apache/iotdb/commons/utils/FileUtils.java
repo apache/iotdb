@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -41,7 +42,10 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Stack;
 
 public class FileUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(FileUtils.class);
@@ -49,6 +53,29 @@ public class FileUtils {
   private static final int BUFFER_SIZE = 1024;
 
   private FileUtils() {}
+
+  public static List<File> listFilesRecursively(File dir, FileFilter fileFilter) {
+    List<File> result = new ArrayList<>();
+    Stack<File> stack = new Stack<>();
+    if (dir.exists()) {
+      stack.push(dir);
+    }
+    while (!stack.isEmpty()) {
+      File file = stack.pop();
+      if (file.isDirectory()) {
+        File[] files = file.listFiles();
+        if (files != null) {
+          for (File f : files) {
+            stack.push(f);
+          }
+        }
+      }
+      if (fileFilter.accept(file)) {
+        result.add(file);
+      }
+    }
+    return result;
+  }
 
   public static boolean deleteFileIfExist(File file) {
     try {
@@ -79,6 +106,28 @@ public class FileUtils {
       if (!quietForNoSuchFile) {
         LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(file.list()), e);
       }
+    } catch (DirectoryNotEmptyException e) {
+      LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(file.list()), e);
+    } catch (Exception e) {
+      LOGGER.warn("{}: {}", e.getMessage(), file.getName(), e);
+    }
+  }
+
+  public static void deleteFileOrDirectoryWithRetry(File file) {
+    if (file.isDirectory()) {
+      File[] files = file.listFiles();
+      if (files != null) {
+        for (File subfile : files) {
+          deleteFileOrDirectoryWithRetry(subfile);
+        }
+      }
+    }
+    try {
+      RetryUtils.retryOnException(
+          () -> {
+            Files.delete(file.toPath());
+            return null;
+          });
     } catch (DirectoryNotEmptyException e) {
       LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(file.list()), e);
     } catch (Exception e) {
