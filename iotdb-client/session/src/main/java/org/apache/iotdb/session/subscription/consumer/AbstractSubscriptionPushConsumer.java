@@ -21,7 +21,6 @@ package org.apache.iotdb.session.subscription.consumer;
 
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer.AutoPollWorker;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.util.CollectionUtils;
 
@@ -36,6 +35,16 @@ import java.util.Properties;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * The {@link SubscriptionPushConsumer} corresponds to the push consumption mode in the message
+ * queue.
+ *
+ * <p>User code is triggered by newly arrived data events and only needs to pre-configure message
+ * acknowledgment strategy ({@link #ackStrategy}) and consumption handling logic ({@link
+ * #consumeListener}).
+ *
+ * <p>User code does not need to manually commit the consumption progress.
+ */
 public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscriptionConsumer {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPushConsumer.class);
@@ -79,7 +88,7 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
                 ConsumerConstant.AUTO_POLL_TIMEOUT_MS_DEFAULT_VALUE));
   }
 
-  private AbstractSubscriptionPushConsumer(
+  protected AbstractSubscriptionPushConsumer(
       final Properties config,
       final AckStrategy ackStrategy,
       final ConsumeListener consumeListener,

@@ -19,65 +19,65 @@
 
 package org.apache.iotdb.session.subscription.consumer;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.session.subscription.consumer.SubscriptionConsumer.Builder;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
-import org.apache.iotdb.session.subscription.util.CollectionUtils;
 import org.apache.iotdb.session.subscription.util.IdentifierUtils;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.thrift.annotation.Nullable;
 
 import java.time.Duration;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
-import java.util.SortedMap;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 
-/**
- * The {@link SubscriptionPullConsumer} corresponds to the pull consumption mode in the message
- * queue.
- *
- * <p>User code needs to actively call the data retrieval logic, i.e., the {@link #poll} method.
- *
- * <p>Auto-commit for consumption progress can be configured in {@link #autoCommit}.
- *
- * <p>NOTE: It is not recommended to use the {@link #poll} method with the same consumer in a
- * multithreaded environment. Instead, it is advised to increase the number of consumers to improve
- * data retrieval parallelism.
- */
-public class SubscriptionPullConsumer extends SubscriptionConsumer {
+public class SubscriptionPullConsumer extends AbstractSubscriptionPullConsumer
+    implements ISubscriptionPullConsumer {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPullConsumer.class);
-
-  private final boolean autoCommit;
-  private final long autoCommitIntervalMs;
-
-  private SortedMap<Long, Set<SubscriptionMessage>> uncommittedMessages;
-
-  private final AtomicBoolean isClosed = new AtomicBoolean(true);
+  /////////////////////////////// provider ///////////////////////////////
 
   @Override
-  boolean isClosed() {
-    return isClosed.get();
+  AbstractSubscriptionProvider constructSubscriptionProvider(
+      TEndPoint endPoint,
+      String username,
+      String password,
+      String consumerId,
+      String consumerGroupId,
+      int thriftMaxFrameSize) {
+    return new SubscriptionProvider(
+        endPoint, username, password, consumerId, consumerGroupId, thriftMaxFrameSize);
   }
 
   /////////////////////////////// ctor ///////////////////////////////
 
-  protected SubscriptionPullConsumer(final SubscriptionPullConsumer.Builder builder) {
+  protected SubscriptionPullConsumer(final SubscriptionPullConsumerBuilder builder) {
     super(builder);
+  }
 
-    this.autoCommit = builder.autoCommit;
-    this.autoCommitIntervalMs = builder.autoCommitIntervalMs;
+  @Deprecated // keep for forward compatibility
+  private SubscriptionPullConsumer(final SubscriptionPullConsumer.Builder builder) {
+    super(
+        new SubscriptionPullConsumerBuilder()
+            .host(builder.host)
+            .port(builder.port)
+            .nodeUrls(builder.nodeUrls)
+            .username(builder.username)
+            .password(builder.password)
+            .consumerId(builder.consumerId)
+            .consumerGroupId(builder.consumerGroupId)
+            .heartbeatIntervalMs(builder.heartbeatIntervalMs)
+            .endpointsSyncIntervalMs(builder.endpointsSyncIntervalMs)
+            .fileSaveDir(builder.fileSaveDir)
+            .fileSaveFsync(builder.fileSaveFsync)
+            .thriftMaxFrameSize(builder.thriftMaxFrameSize)
+            .maxPollParallelism(builder.maxPollParallelism)
+            .autoCommit(builder.autoCommit)
+            .autoCommitIntervalMs(builder.autoCommitIntervalMs));
   }
 
   public SubscriptionPullConsumer(final Properties properties) {
@@ -94,281 +94,175 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   private SubscriptionPullConsumer(
       final Properties properties, final boolean autoCommit, final long autoCommitIntervalMs) {
-    super(
-        new Builder().autoCommit(autoCommit).autoCommitIntervalMs(autoCommitIntervalMs),
-        properties);
-
-    this.autoCommit = autoCommit;
-    this.autoCommitIntervalMs =
-        Math.max(autoCommitIntervalMs, ConsumerConstant.AUTO_COMMIT_INTERVAL_MS_MIN_VALUE);
+    super(properties, autoCommit, autoCommitIntervalMs);
   }
 
-  /////////////////////////////// open & close ///////////////////////////////
+  /////////////////////////////// interface ///////////////////////////////
 
-  public synchronized void open() throws SubscriptionException {
-    if (!isClosed.get()) {
-      return;
-    }
-
+  @Override
+  public void open() throws SubscriptionException {
     super.open();
-
-    // set isClosed to false before submitting workers
-    isClosed.set(false);
-
-    // submit auto poll worker if enabling auto commit
-    if (autoCommit) {
-      uncommittedMessages = new ConcurrentSkipListMap<>();
-      submitAutoCommitWorker();
-    }
   }
 
   @Override
-  public synchronized void close() {
-    if (isClosed.get()) {
-      return;
-    }
-
-    if (autoCommit) {
-      // commit all uncommitted messages
-      commitAllUncommittedMessages();
-    }
-
+  public void close() throws SubscriptionException {
     super.close();
-    isClosed.set(true);
   }
 
-  /////////////////////////////// poll & commit ///////////////////////////////
-
+  @Override
   public List<SubscriptionMessage> poll(final Duration timeout) throws SubscriptionException {
-    return poll(Collections.emptySet(), timeout.toMillis());
+    return super.poll(timeout);
   }
 
+  @Override
   public List<SubscriptionMessage> poll(final long timeoutMs) throws SubscriptionException {
-    return poll(Collections.emptySet(), timeoutMs);
+    return super.poll(timeoutMs);
   }
 
+  @Override
   public List<SubscriptionMessage> poll(final Set<String> topicNames, final Duration timeout)
       throws SubscriptionException {
-    return poll(topicNames, timeout.toMillis());
+    return super.poll(topicNames, timeout);
   }
 
-  public List<SubscriptionMessage> poll(final Set<String> topicNames, final long timeoutMs)
-      throws SubscriptionException {
-    // parse topic names from external source
-    Set<String> parsedTopicNames =
-        topicNames.stream()
-            .map(IdentifierUtils::checkAndParseIdentifier)
-            .collect(Collectors.toSet());
-
-    if (!parsedTopicNames.isEmpty()) {
-      // filter unsubscribed topics
-      parsedTopicNames.stream()
-          .filter(topicName -> !subscribedTopics.containsKey(topicName))
-          .forEach(
-              topicName ->
-                  LOGGER.warn(
-                      "SubscriptionPullConsumer {} does not subscribe to topic {}",
-                      this,
-                      topicName));
-    } else {
-      parsedTopicNames = subscribedTopics.keySet();
-    }
-
-    if (parsedTopicNames.isEmpty()) {
-      return Collections.emptyList();
-    }
-
-    final List<SubscriptionMessage> messages = multiplePoll(parsedTopicNames, timeoutMs);
-    if (messages.isEmpty()) {
-      LOGGER.info(
-          "SubscriptionPullConsumer {} poll empty message from topics {} after {} millisecond(s)",
-          this,
-          CollectionUtils.getLimitedString(parsedTopicNames, 32),
-          timeoutMs);
-      return messages;
-    }
-
-    // add to uncommitted messages
-    if (autoCommit) {
-      final long currentTimestamp = System.currentTimeMillis();
-      long index = currentTimestamp / autoCommitIntervalMs;
-      if (currentTimestamp % autoCommitIntervalMs == 0) {
-        index -= 1;
-      }
-      uncommittedMessages
-          .computeIfAbsent(index, o -> new ConcurrentSkipListSet<>())
-          .addAll(messages);
-    }
-
-    return messages;
+  @Override
+  public List<SubscriptionMessage> poll(final Set<String> topicNames, final long timeoutMs) {
+    return super.poll(topicNames, timeoutMs);
   }
 
-  /////////////////////////////// commit ///////////////////////////////
-
+  @Override
   public void commitSync(final SubscriptionMessage message) throws SubscriptionException {
-    super.ack(Collections.singletonList(message));
+    super.commitSync(message);
   }
 
+  @Override
   public void commitSync(final Iterable<SubscriptionMessage> messages)
       throws SubscriptionException {
-    super.ack(messages);
+    super.commitSync(messages);
   }
 
+  @Override
   public CompletableFuture<Void> commitAsync(final SubscriptionMessage message) {
-    return super.commitAsync(Collections.singletonList(message));
+    return super.commitAsync(message);
   }
 
+  @Override
   public CompletableFuture<Void> commitAsync(final Iterable<SubscriptionMessage> messages) {
     return super.commitAsync(messages);
   }
 
+  @Override
   public void commitAsync(final SubscriptionMessage message, final AsyncCommitCallback callback) {
-    super.commitAsync(Collections.singletonList(message), callback);
+    super.commitAsync(message, callback);
   }
 
+  @Override
   public void commitAsync(
       final Iterable<SubscriptionMessage> messages, final AsyncCommitCallback callback) {
     super.commitAsync(messages, callback);
   }
 
-  /////////////////////////////// auto commit ///////////////////////////////
-
-  private void submitAutoCommitWorker() {
-    final ScheduledFuture<?>[] future = new ScheduledFuture<?>[1];
-    future[0] =
-        SubscriptionExecutorServiceManager.submitAutoCommitWorker(
-            () -> {
-              if (isClosed()) {
-                if (Objects.nonNull(future[0])) {
-                  future[0].cancel(false);
-                  LOGGER.info("SubscriptionPullConsumer {} cancel auto commit worker", this);
-                }
-                return;
-              }
-              new AutoCommitWorker().run();
-            },
-            autoCommitIntervalMs);
-    LOGGER.info("SubscriptionPullConsumer {} submit auto commit worker", this);
-  }
-
-  private class AutoCommitWorker implements Runnable {
-    @Override
-    public void run() {
-      if (isClosed()) {
-        return;
-      }
-
-      final long currentTimestamp = System.currentTimeMillis();
-      long index = currentTimestamp / autoCommitIntervalMs;
-      if (currentTimestamp % autoCommitIntervalMs == 0) {
-        index -= 1;
-      }
-
-      for (final Map.Entry<Long, Set<SubscriptionMessage>> entry :
-          uncommittedMessages.headMap(index).entrySet()) {
-        try {
-          ack(entry.getValue());
-          uncommittedMessages.remove(entry.getKey());
-        } catch (final Exception e) {
-          LOGGER.warn("something unexpected happened when auto commit messages...", e);
-        }
-      }
-    }
-  }
-
-  private void commitAllUncommittedMessages() {
-    for (final Map.Entry<Long, Set<SubscriptionMessage>> entry : uncommittedMessages.entrySet()) {
-      try {
-        ack(entry.getValue());
-        uncommittedMessages.remove(entry.getKey());
-      } catch (final Exception e) {
-        LOGGER.warn("something unexpected happened when commit messages during close", e);
-      }
-    }
-  }
-
   /////////////////////////////// builder ///////////////////////////////
 
-  public static class Builder extends SubscriptionConsumer.Builder {
+  @Deprecated // keep for forward compatibility
+  public static class Builder {
+
+    private String host;
+    private Integer port;
+    private List<String> nodeUrls;
+
+    private String username = SessionConfig.DEFAULT_USER;
+    private String password = SessionConfig.DEFAULT_PASSWORD;
+
+    private String consumerId;
+    private String consumerGroupId;
+
+    private long heartbeatIntervalMs = ConsumerConstant.HEARTBEAT_INTERVAL_MS_DEFAULT_VALUE;
+    private long endpointsSyncIntervalMs =
+        ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE;
+
+    private String fileSaveDir = ConsumerConstant.FILE_SAVE_DIR_DEFAULT_VALUE;
+    private boolean fileSaveFsync = ConsumerConstant.FILE_SAVE_FSYNC_DEFAULT_VALUE;
+
+    private int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
+    private int maxPollParallelism = ConsumerConstant.MAX_POLL_PARALLELISM_DEFAULT_VALUE;
 
     private boolean autoCommit = ConsumerConstant.AUTO_COMMIT_DEFAULT_VALUE;
     private long autoCommitIntervalMs = ConsumerConstant.AUTO_COMMIT_INTERVAL_MS_DEFAULT_VALUE;
 
-    @Override
     public Builder host(final String host) {
-      super.host(host);
+      this.host = host;
       return this;
     }
 
-    @Override
     public Builder port(final int port) {
-      super.port(port);
+      this.port = port;
       return this;
     }
 
-    @Override
     public Builder nodeUrls(final List<String> nodeUrls) {
-      super.nodeUrls(nodeUrls);
+      this.nodeUrls = nodeUrls;
       return this;
     }
 
-    @Override
     public Builder username(final String username) {
-      super.username(username);
+      this.username = username;
       return this;
     }
 
-    @Override
     public Builder password(final String password) {
-      super.password(password);
+      this.password = password;
       return this;
     }
 
-    @Override
-    public Builder consumerId(final String consumerId) {
-      super.consumerId(consumerId);
+    public Builder consumerId(@Nullable final String consumerId) {
+      if (Objects.isNull(consumerId)) {
+        return this;
+      }
+      this.consumerId = IdentifierUtils.checkAndParseIdentifier(consumerId);
       return this;
     }
 
-    @Override
-    public Builder consumerGroupId(final String consumerGroupId) {
-      super.consumerGroupId(consumerGroupId);
+    public Builder consumerGroupId(@Nullable final String consumerGroupId) {
+      if (Objects.isNull(consumerGroupId)) {
+        return this;
+      }
+      this.consumerGroupId = IdentifierUtils.checkAndParseIdentifier(consumerGroupId);
       return this;
     }
 
-    @Override
     public Builder heartbeatIntervalMs(final long heartbeatIntervalMs) {
-      super.heartbeatIntervalMs(heartbeatIntervalMs);
+      this.heartbeatIntervalMs =
+          Math.max(heartbeatIntervalMs, ConsumerConstant.HEARTBEAT_INTERVAL_MS_MIN_VALUE);
       return this;
     }
 
-    @Override
     public Builder endpointsSyncIntervalMs(final long endpointsSyncIntervalMs) {
-      super.endpointsSyncIntervalMs(endpointsSyncIntervalMs);
+      this.endpointsSyncIntervalMs =
+          Math.max(endpointsSyncIntervalMs, ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_MIN_VALUE);
       return this;
     }
 
-    @Override
     public Builder fileSaveDir(final String fileSaveDir) {
-      super.fileSaveDir(fileSaveDir);
+      this.fileSaveDir = fileSaveDir;
       return this;
     }
 
-    @Override
     public Builder fileSaveFsync(final boolean fileSaveFsync) {
-      super.fileSaveFsync(fileSaveFsync);
+      this.fileSaveFsync = fileSaveFsync;
       return this;
     }
 
-    @Override
     public Builder thriftMaxFrameSize(final int thriftMaxFrameSize) {
-      super.thriftMaxFrameSize(thriftMaxFrameSize);
+      this.thriftMaxFrameSize = thriftMaxFrameSize;
       return this;
     }
 
-    @Override
     public Builder maxPollParallelism(final int maxPollParallelism) {
-      super.maxPollParallelism(maxPollParallelism);
+      // Here the minimum value of max poll parallelism is set to 1 instead of 0, in order to use a
+      // single thread to execute poll whenever there are idle resources available, thereby
+      // achieving strict timeout.
+      this.maxPollParallelism = Math.max(maxPollParallelism, 1);
       return this;
     }
 
@@ -383,40 +277,8 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       return this;
     }
 
-    @Override
     public SubscriptionPullConsumer buildPullConsumer() {
       return new SubscriptionPullConsumer(this);
     }
-
-    @Override
-    public SubscriptionPushConsumer buildPushConsumer() {
-      throw new SubscriptionException(
-          "SubscriptionPullConsumer.Builder do not support build push consumer.");
-    }
-  }
-
-  /////////////////////////////// stringify ///////////////////////////////
-
-  @Override
-  public String toString() {
-    return "SubscriptionPullConsumer" + this.coreReportMessage();
-  }
-
-  @Override
-  protected Map<String, String> coreReportMessage() {
-    final Map<String, String> coreReportMessage = super.coreReportMessage();
-    coreReportMessage.put("autoCommit", String.valueOf(autoCommit));
-    return coreReportMessage;
-  }
-
-  @Override
-  protected Map<String, String> allReportMessage() {
-    final Map<String, String> allReportMessage = super.allReportMessage();
-    allReportMessage.put("autoCommit", String.valueOf(autoCommit));
-    allReportMessage.put("autoCommitIntervalMs", String.valueOf(autoCommitIntervalMs));
-    if (autoCommit) {
-      allReportMessage.put("uncommittedMessages", uncommittedMessages.toString());
-    }
-    return allReportMessage;
   }
 }

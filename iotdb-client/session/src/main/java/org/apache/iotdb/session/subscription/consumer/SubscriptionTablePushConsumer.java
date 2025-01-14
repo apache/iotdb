@@ -25,9 +25,7 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 public class SubscriptionTablePushConsumer extends AbstractSubscriptionPushConsumer
     implements ISubscriptionTablePushConsumer {
 
-  protected SubscriptionTablePushConsumer(AbstractSubscriptionPushConsumerBuilder builder) {
-    super(builder);
-  }
+  /////////////////////////////// provider ///////////////////////////////
 
   @Override
   AbstractSubscriptionProvider constructSubscriptionProvider(
@@ -40,6 +38,14 @@ public class SubscriptionTablePushConsumer extends AbstractSubscriptionPushConsu
     return new SubscriptionTableProvider(
         endPoint, username, password, consumerId, consumerGroupId, thriftMaxFrameSize);
   }
+
+  /////////////////////////////// ctor ///////////////////////////////
+
+  protected SubscriptionTablePushConsumer(AbstractSubscriptionPushConsumerBuilder builder) {
+    super(builder);
+  }
+
+  /////////////////////////////// interface ///////////////////////////////
 
   @Override
   public void open() throws SubscriptionException {

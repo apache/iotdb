@@ -19,4 +19,39 @@
 
 package org.apache.iotdb.session.subscription.consumer;
 
-public interface ISubscriptionPullConsumer {}
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+
+import java.time.Duration;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+
+public interface ISubscriptionPullConsumer {
+
+  void open() throws SubscriptionException;
+
+  void close() throws SubscriptionException;
+
+  List<SubscriptionMessage> poll(final Duration timeout) throws SubscriptionException;
+
+  List<SubscriptionMessage> poll(final long timeoutMs) throws SubscriptionException;
+
+  List<SubscriptionMessage> poll(final Set<String> topicNames, final Duration timeout)
+      throws SubscriptionException;
+
+  List<SubscriptionMessage> poll(final Set<String> topicNames, final long timeoutMs);
+
+  void commitSync(final SubscriptionMessage message) throws SubscriptionException;
+
+  void commitSync(final Iterable<SubscriptionMessage> messages) throws SubscriptionException;
+
+  CompletableFuture<Void> commitAsync(final SubscriptionMessage message);
+
+  CompletableFuture<Void> commitAsync(final Iterable<SubscriptionMessage> messages);
+
+  void commitAsync(final SubscriptionMessage message, final AsyncCommitCallback callback);
+
+  void commitAsync(
+      final Iterable<SubscriptionMessage> messages, final AsyncCommitCallback callback);
+}

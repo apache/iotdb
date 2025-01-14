@@ -19,4 +19,11 @@
 
 package org.apache.iotdb.session.subscription.consumer;
 
-public interface ISubscriptionPushConsumer {}
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+
+public interface ISubscriptionPushConsumer {
+
+  void open() throws SubscriptionException;
+
+  void close() throws SubscriptionException;
+}

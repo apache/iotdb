@@ -36,12 +36,12 @@ public class SubscriptionSession extends AbstractSubscriptionSession
     super(new SubscriptionSessionWrapper(builder));
   }
 
-  // keep for forward compatibility
+  @Deprecated // keep for forward compatibility
   public SubscriptionSession(final String host, final int port) {
     super(new SubscriptionSessionWrapper(new SubscriptionSessionBuilder().host(host).port(port)));
   }
 
-  // keep for forward compatibility
+  @Deprecated // keep for forward compatibility
   public SubscriptionSession(
       final String host,
       final int port,
@@ -135,7 +135,7 @@ public class SubscriptionSession extends AbstractSubscriptionSession
 
   /////////////////////////////// builder ///////////////////////////////
 
-  // keep for forward compatibility
+  @Deprecated // keep for forward compatibility
   public static class Builder extends AbstractSessionBuilder {
 
     public Builder() {

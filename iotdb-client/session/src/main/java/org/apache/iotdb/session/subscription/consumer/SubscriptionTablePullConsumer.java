@@ -31,9 +31,7 @@ import java.util.concurrent.CompletableFuture;
 public class SubscriptionTablePullConsumer extends AbstractSubscriptionPullConsumer
     implements ISubscriptionTablePullConsumer {
 
-  protected SubscriptionTablePullConsumer(final SubscriptionTablePullConsumerBuilder builder) {
-    super(builder);
-  }
+  /////////////////////////////// provider ///////////////////////////////
 
   @Override
   AbstractSubscriptionProvider constructSubscriptionProvider(
@@ -46,6 +44,14 @@ public class SubscriptionTablePullConsumer extends AbstractSubscriptionPullConsu
     return new SubscriptionTableProvider(
         endPoint, username, password, consumerId, consumerGroupId, thriftMaxFrameSize);
   }
+
+  /////////////////////////////// ctor ///////////////////////////////
+
+  protected SubscriptionTablePullConsumer(final SubscriptionTablePullConsumerBuilder builder) {
+    super(builder);
+  }
+
+  /////////////////////////////// interface ///////////////////////////////
 
   @Override
   public void open() throws SubscriptionException {

@@ -204,7 +204,8 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
 
   @Test(expected = NullPointerException.class)
   public void testCreateConsumer_null() {
-    new SubscriptionPushConsumer(null).open();
+    final Properties properties = null;
+    new SubscriptionPushConsumer(properties).open();
   }
 
   @Test(
