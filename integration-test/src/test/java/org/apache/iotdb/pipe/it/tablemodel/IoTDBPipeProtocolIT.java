@@ -435,7 +435,6 @@ public class IoTDBPipeProtocolIT extends AbstractPipeTableModelTestIT {
       extractorAttributes.put("database-name", "test.*");
       extractorAttributes.put("table-name", "test.*");
       extractorAttributes.put("inclusion", "data.insert");
-      extractorAttributes.put("mode.streaming", "true");
       extractorAttributes.put("mode.snapshot", "false");
       extractorAttributes.put("mode.strict", "true");
 
