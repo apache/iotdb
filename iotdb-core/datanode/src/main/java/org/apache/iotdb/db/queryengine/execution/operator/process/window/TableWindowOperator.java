@@ -23,7 +23,6 @@ import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.SortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.PartitionExecutor;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;

@@ -37,7 +37,7 @@ public class RowNumberFunction implements WindowFunction {
       int frameEnd,
       int peerGroupStart,
       int peerGroupEnd) {
-    builder.writeLong((long)index + 1);
+    builder.writeLong((long) index + 1);
   }
 
   @Override
