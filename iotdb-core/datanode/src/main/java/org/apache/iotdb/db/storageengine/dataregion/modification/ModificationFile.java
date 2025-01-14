@@ -227,7 +227,7 @@ public class ModificationFile implements AutoCloseable {
     List<ModEntry> result = new ArrayList<>();
     try (ModificationFileV1 modificationFileV1 =
         new ModificationFileV1(ModificationFileV1.getNormalMods(tsfile).getPath())) {
-      if (modificationFileV1.exists()) {
+      if (!modificationFileV1.exists()) {
         return Collections.emptyList();
       }
       for (Modification modification : modificationFileV1.getModificationsIter()) {
