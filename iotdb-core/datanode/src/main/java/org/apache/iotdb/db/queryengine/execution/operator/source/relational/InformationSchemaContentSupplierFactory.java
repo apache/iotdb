@@ -282,11 +282,11 @@ public class InformationSchemaContentSupplierFactory {
     public boolean hasNext() {
       // Get next table info iterator
       while (Objects.isNull(currentTable)) {
-        while (tableInfoIterator.hasNext()) {
+        while (Objects.nonNull(tableInfoIterator) && tableInfoIterator.hasNext()) {
           final TTableInfo info = tableInfoIterator.next();
           if (canShowTable(userName, dbName, info.getTableName())) {
             currentTable = info;
-            break;
+            return true;
           }
         }
         if (!dbIterator.hasNext()) {
