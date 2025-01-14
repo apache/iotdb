@@ -473,6 +473,11 @@ public class IoTDBDatabaseIT {
                   "information_schema,tables,INF,USING,",
                   "information_schema,columns,INF,USING,",
                   "information_schema,queries,INF,USING,",
+                  "information_schema,regions,INF,",
+                  "information_schema,topics,INF,",
+                  "information_schema,pipe_plugins,INF,",
+                  "information_schema,pipes,INF,",
+                  "information_schema,subscriptions,INF,",
                   "test,test,INF,USING,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from tables where status = 'USING'"),
