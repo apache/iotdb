@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.isession.subscription.model;
+package org.apache.iotdb.session.subscription.model;
 
 public class Subscription {
 

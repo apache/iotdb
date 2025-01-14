@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.isession.subscription.ISubscriptionTableSession;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.AbstractSessionBuilder;
 

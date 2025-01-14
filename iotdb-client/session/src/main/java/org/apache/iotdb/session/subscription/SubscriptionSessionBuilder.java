@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.isession.subscription.ISubscriptionSession;
 import org.apache.iotdb.session.AbstractSessionBuilder;
 
 public class SubscriptionSessionBuilder extends AbstractSessionBuilder {

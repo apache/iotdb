@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.isession.subscription;
+package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.isession.subscription.model.Subscription;
-import org.apache.iotdb.isession.subscription.model.Topic;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.subscription.model.Subscription;
+import org.apache.iotdb.session.subscription.model.Topic;
 
 import java.util.Optional;
 import java.util.Properties;

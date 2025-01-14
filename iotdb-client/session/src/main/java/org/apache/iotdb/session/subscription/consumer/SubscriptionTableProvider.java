@@ -17,26 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb;
+package org.apache.iotdb.session.subscription.consumer;
 
-import org.apache.iotdb.rpc.subscription.config.TopicConstant;
-import org.apache.iotdb.session.subscription.ISubscriptionTableSession;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.session.AbstractSessionBuilder;
 import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
 
-import java.util.Properties;
+public class SubscriptionTableProvider extends AbstractSubscriptionProvider {
 
-public class TableModelSubscriptionSessionExample {
+  SubscriptionTableProvider(
+      TEndPoint endPoint,
+      String username,
+      String password,
+      String consumerId,
+      String consumerGroupId,
+      int thriftMaxFrameSize) {
+    super(endPoint, username, password, consumerId, consumerGroupId, thriftMaxFrameSize);
+  }
 
-  public static void main(final String[] args) throws Exception {
-    try (final ISubscriptionTableSession session =
-        new SubscriptionTableSessionBuilder().host("localhost").port(6667).build()) {
-      // no need to open
-      final Properties config = new Properties();
-      config.put(TopicConstant.DATABASE_KEY, "test");
-      config.put(TopicConstant.TABLE_KEY, "test");
-      config.put(TopicConstant.START_TIME_KEY, 25);
-      config.put(TopicConstant.END_TIME_KEY, 75);
-      session.createTopic("test", config);
-    }
+  @Override
+  AbstractSessionBuilder constructSubscriptionSessionBuilder(
+      String host, int port, String username, String password, int thriftMaxFrameSize) {
+    return new SubscriptionTableSessionBuilder()
+        .host(host)
+        .port(port)
+        .username(username)
+        .password(password)
+        .thriftMaxFrameSize(thriftMaxFrameSize);
   }
 }

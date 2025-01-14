@@ -29,7 +29,7 @@ import org.apache.iotdb.session.SessionConnection;
 import java.time.ZoneId;
 import java.util.Objects;
 
-final class SubscriptionSessionWrapper extends Session {
+public final class SubscriptionSessionWrapper extends Session {
 
   public SubscriptionSessionWrapper(final AbstractSessionBuilder builder) {
     super(builder);
@@ -62,11 +62,11 @@ final class SubscriptionSessionWrapper extends Session {
         database);
   }
 
-  SubscriptionSessionConnection getSessionConnection() {
+  public SubscriptionSessionConnection getSessionConnection() {
     return (SubscriptionSessionConnection) defaultSessionConnection;
   }
 
-  int getThriftMaxFrameSize() {
+  public int getThriftMaxFrameSize() {
     return thriftMaxFrameSize;
   }
 }

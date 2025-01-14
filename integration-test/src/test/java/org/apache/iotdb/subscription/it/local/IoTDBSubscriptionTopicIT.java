@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.subscription.it.local;
 
-import org.apache.iotdb.isession.subscription.model.Topic;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
+import org.apache.iotdb.session.subscription.model.Topic;
 
 import org.junit.Assert;
 import org.junit.Before;

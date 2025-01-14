@@ -20,11 +20,11 @@
 package org.apache.iotdb.session.subscription;
 
 import org.apache.iotdb.isession.SessionDataSet;
-import org.apache.iotdb.isession.subscription.model.Subscription;
-import org.apache.iotdb.isession.subscription.model.Topic;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.session.subscription.model.Subscription;
+import org.apache.iotdb.session.subscription.model.Topic;
 import org.apache.iotdb.session.subscription.util.IdentifierUtils;
 
 import org.apache.tsfile.read.common.Field;
