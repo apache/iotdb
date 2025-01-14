@@ -34,10 +34,8 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
@@ -1064,27 +1062,10 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void checkDataType(InsertNode node) throws DataTypeInconsistentException {
-    if (node instanceof InsertRowsNode) {
-      List<InsertRowNode> insertRowNodeList = ((InsertRowsNode) node).getInsertRowNodeList();
-      for (InsertRowNode insertRowNode : insertRowNodeList) {
-        doCheckDataType(insertRowNode);
-      }
-    } else if (node instanceof InsertMultiTabletsNode) {
-      List<InsertTabletNode> insertTabletNodeList =
-          ((InsertMultiTabletsNode) node).getInsertTabletNodeList();
-      for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
-        doCheckDataType(insertTabletNode);
-      }
-    } else {
-      doCheckDataType(node);
-    }
+    node.checkDataType(this);
   }
 
-  private void doCheckDataType(InsertNode node) throws DataTypeInconsistentException {
-    IWritableMemChunkGroup memChunkGroup = memTableMap.get(node.getDeviceID());
-    if (memChunkGroup == null) {
-      return;
-    }
-    memChunkGroup.checkDataType(node);
+  public IWritableMemChunkGroup getWritableMemChunkGroup(IDeviceID deviceID) {
+    return memTableMap.get(deviceID);
   }
 }
