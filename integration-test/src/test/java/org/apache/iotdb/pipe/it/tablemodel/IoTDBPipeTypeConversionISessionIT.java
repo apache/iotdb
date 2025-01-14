@@ -137,7 +137,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
                   validateResultSet(
                       query(receiverSession, tablet.getSchemas(), tablet.getTableName()),
                       expectedValues,
-                      tablet.timestamps);
+                      tablet.getTimestamps());
                 } catch (Exception e) {
                   fail(e.getMessage());
                 }
@@ -335,7 +335,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
       final Tablet tablet, List<Pair<MeasurementSchema, MeasurementSchema>> pairs) {
     List<List<Object>> insertRecords = new ArrayList<>(tablet.getRowSize());
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
-    final Object[] values = tablet.values;
+    final Object[] values = tablet.getValues();
     for (int i = 0; i < tablet.getRowSize(); i++) {
       List<Object> insertRecord = new ArrayList<>();
       for (int j = 0; j < schemas.size(); j++) {
@@ -349,7 +349,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
                 ValueConverter.convert(
                     sourceType,
                     targetType,
-                    tablet.bitMaps[j].isMarked(i) ? null : ((long[]) values[j])[i]);
+                    tablet.getBitMaps()[j].isMarked(i) ? null : ((long[]) values[j])[i]);
             insertRecord.add(convert(value, targetType));
             break;
           case INT32:
@@ -357,7 +357,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
                 ValueConverter.convert(
                     sourceType,
                     targetType,
-                    tablet.bitMaps[j].isMarked(i) ? null : ((int[]) values[j])[i]);
+                    tablet.getBitMaps()[j].isMarked(i) ? null : ((int[]) values[j])[i]);
             insertRecord.add(convert(value, targetType));
             break;
           case DOUBLE:
@@ -365,7 +365,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
                 ValueConverter.convert(
                     sourceType,
                     targetType,
-                    tablet.bitMaps[j].isMarked(i) ? null : ((double[]) values[j])[i]);
+                    tablet.getBitMaps()[j].isMarked(i) ? null : ((double[]) values[j])[i]);
             insertRecord.add(convert(value, targetType));
             break;
           case FLOAT:
@@ -373,7 +373,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
                 ValueConverter.convert(
                     sourceType,
                     targetType,
-                    tablet.bitMaps[j].isMarked(i) ? null : ((float[]) values[j])[i]);
+                    tablet.getBitMaps()[j].isMarked(i) ? null : ((float[]) values[j])[i]);
             insertRecord.add(convert(value, targetType));
             break;
           case DATE:
@@ -381,7 +381,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
                 ValueConverter.convert(
                     sourceType,
                     targetType,
-                    tablet.bitMaps[j].isMarked(i)
+                    tablet.getBitMaps()[j].isMarked(i)
                         ? null
                         : DateUtils.parseDateExpressionToInt(((LocalDate[]) values[j])[i]));
             insertRecord.add(convert(value, targetType));
@@ -392,7 +392,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
                 ValueConverter.convert(
                     sourceType,
                     targetType,
-                    tablet.bitMaps[j].isMarked(i) ? null : ((Binary[]) values[j])[i]);
+                    tablet.getBitMaps()[j].isMarked(i) ? null : ((Binary[]) values[j])[i]);
             insertRecord.add(convert(value, targetType));
             break;
           case BLOB:
@@ -400,7 +400,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
                 ValueConverter.convert(
                     sourceType,
                     targetType,
-                    tablet.bitMaps[j].isMarked(i) ? null : ((Binary[]) values[j])[i]);
+                    tablet.getBitMaps()[j].isMarked(i) ? null : ((Binary[]) values[j])[i]);
             insertRecord.add(convert(value, targetType));
             break;
           case BOOLEAN:
@@ -408,12 +408,12 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
                 ValueConverter.convert(
                     sourceType,
                     targetType,
-                    tablet.bitMaps[j].isMarked(i) ? null : ((boolean[]) values[j])[i]);
+                    tablet.getBitMaps()[j].isMarked(i) ? null : ((boolean[]) values[j])[i]);
             insertRecord.add(convert(value, targetType));
             break;
         }
       }
-      insertRecord.add(tablet.timestamps[i]);
+      insertRecord.add(tablet.getTimestamp(i));
       insertRecords.add(insertRecord);
     }
 

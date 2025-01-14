@@ -42,7 +42,6 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -507,14 +506,9 @@ public class IoTDBSessionSimpleIT {
             new Binary(String.valueOf(time), TSFileConfig.STRING_CHARSET));
       }
 
-      BitMap[] bitMaps = new BitMap[schemaList.size()];
       for (int i = 0; i < schemaList.size(); i++) {
-        if (bitMaps[i] == null) {
-          bitMaps[i] = new BitMap(10);
-        }
-        bitMaps[i].mark(i);
+        tablet.getBitMaps()[i].mark(i);
       }
-      tablet.bitMaps = bitMaps;
 
       if (tablet.getRowSize() != 0) {
         session.insertTablet(tablet);
