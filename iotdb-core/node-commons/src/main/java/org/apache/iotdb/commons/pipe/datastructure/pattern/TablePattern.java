@@ -96,7 +96,7 @@ public class TablePattern {
   }
 
   public boolean hasTablePattern() {
-    return databasePattern != null;
+    return tablePattern != null;
   }
 
   /**
