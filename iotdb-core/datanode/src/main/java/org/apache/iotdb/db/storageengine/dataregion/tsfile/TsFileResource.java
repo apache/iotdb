@@ -313,7 +313,8 @@ public class TsFileResource implements PersistentResource {
 
       if (inputStream.available() > 0) {
         String modFilePath = ReadWriteIOUtils.readString(inputStream);
-        if (modFilePath != null && !modFilePath.isEmpty()) {
+        // ends with ".mods2" means it is a new version resource file
+        if (modFilePath != null && modFilePath.endsWith(ModificationFile.FILE_SUFFIX)) {
           sharedModFileOffset = ReadWriteIOUtils.readLong(inputStream);
           if (sharedModFilePathFuture != null) {
             sharedModFilePathFuture.complete(modFilePath);
@@ -391,9 +392,11 @@ public class TsFileResource implements PersistentResource {
 
   public void linkModFile(TsFileResource target) throws IOException {
     if (exclusiveModFileExists()) {
+      File modsFileForTargetResource = ModificationFile.getExclusiveMods(target.getTsFile());
       Files.createLink(
-          ModificationFile.getExclusiveMods(target.getTsFile()).toPath(),
+          modsFileForTargetResource.toPath(),
           ModificationFile.getExclusiveMods(getTsFile()).toPath());
+      target.setExclusiveModFile(new ModificationFile(modsFileForTargetResource, true));
     }
     if (sharedModFileExists()) {
       modFileManagement.addReference(target, sharedModFile);
@@ -1038,7 +1041,6 @@ public class TsFileResource implements PersistentResource {
     return timeIndex.isSpanMultiTimePartitions();
   }
 
-  @TestOnly
   public void setExclusiveModFile(ModificationFile exclusiveModFile) {
     synchronized (this) {
       this.exclusiveModFile = exclusiveModFile;

@@ -600,6 +600,17 @@ public class IoTDBSessionSimpleIT {
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         List<Field> fields = rowRecord.getFields();
+        // this test may occasionally fail by IndexOutOfBoundsException
+        if (fields.size() != 7) {
+          SessionDataSet showTimeseriesDataSet =
+              session.executeQueryStatement("show timeseries root.sg1.d1.*");
+          LOGGER.error("show timeseries result:");
+          while (showTimeseriesDataSet.hasNext()) {
+            RowRecord row = showTimeseriesDataSet.next();
+            LOGGER.error(row.toString());
+          }
+          LOGGER.error("The number of fields is not correct. fields values: " + fields);
+        }
         assertEquals(fields.get(5).getBinaryV(), fields.get(6).getBinaryV());
       }
     } catch (Exception e) {
