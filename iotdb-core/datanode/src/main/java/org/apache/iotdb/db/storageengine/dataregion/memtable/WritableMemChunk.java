@@ -480,7 +480,7 @@ public class WritableMemChunk implements IWritableMemChunk {
           continue;
         }
         size++;
-        long currentTime = list.getTime(i);
+        long currentTime = tvList.getTime(i);
         if (currentTime < minTime) {
           firstTvPair = tvList.getTimeValuePair(i);
           minTime = currentTime;

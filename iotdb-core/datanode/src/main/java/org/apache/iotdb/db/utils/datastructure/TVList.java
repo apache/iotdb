@@ -119,13 +119,16 @@ public abstract class TVList implements WALEntryValue {
     return null;
   }
 
-  // TODO: memory cost for indices and bitmap
   public static long tvListArrayMemCost(TSDataType type) {
     long size = 0;
     // time array mem size
     size += PrimitiveArrayManager.ARRAY_SIZE * 8L;
     // value array mem size
     size += PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
+    // index array mem size
+    size += PrimitiveArrayManager.ARRAY_SIZE * 4L;
+    // bimap array mem size
+    size += PrimitiveArrayManager.ARRAY_SIZE / 8 + 1L;
     // two array headers mem size
     size += NUM_BYTES_ARRAY_HEADER * 2L;
     // Object references size in ArrayList
