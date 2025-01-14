@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame;
 
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.exception.FrameTypeException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.ColumnList;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
@@ -80,7 +80,7 @@ public class GroupsFrame implements Frame {
         break;
       default:
         // UNBOUND_FOLLOWING is not allowed in frame start
-        throw new FrameTypeException(true);
+        throw new SemanticException("UNBOUND FOLLOWING is not allowed in frame start!");
     }
 
     int frameEnd;
@@ -99,7 +99,7 @@ public class GroupsFrame implements Frame {
         break;
       default:
         // UNBOUND_PRECEDING is not allowed in frame end
-        throw new FrameTypeException(false);
+        throw new SemanticException("UNBOUND PRECEDING is not allowed in frame end!");
     }
 
     // Empty frame

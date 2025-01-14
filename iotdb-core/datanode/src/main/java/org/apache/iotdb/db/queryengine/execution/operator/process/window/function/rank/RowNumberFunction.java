@@ -25,8 +25,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.partiti
 import org.apache.tsfile.block.column.ColumnBuilder;
 
 public class RowNumberFunction implements WindowFunction {
-  public RowNumberFunction() {}
-
   @Override
   public void reset() {}
 
@@ -39,7 +37,7 @@ public class RowNumberFunction implements WindowFunction {
       int frameEnd,
       int peerGroupStart,
       int peerGroupEnd) {
-    builder.writeLong(index + 1);
+    builder.writeLong((long)index + 1);
   }
 
   @Override

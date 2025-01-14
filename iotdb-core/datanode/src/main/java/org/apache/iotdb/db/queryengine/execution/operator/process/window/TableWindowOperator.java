@@ -47,7 +47,7 @@ import static org.apache.iotdb.db.queryengine.execution.operator.source.relation
 
 public class TableWindowOperator implements ProcessOperator {
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(SortOperator.class);
+      RamUsageEstimator.shallowSizeOfInstance(TableWindowOperator.class);
 
   // Common fields
   private final OperatorContext operatorContext;

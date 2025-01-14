@@ -76,7 +76,6 @@ public class LeadFunction implements WindowFunction {
         builder.appendNull();
       }
     } else if (defaultVal != null) {
-      // TODO: Replace write object
       builder.writeObject(defaultVal);
     } else {
       builder.appendNull();

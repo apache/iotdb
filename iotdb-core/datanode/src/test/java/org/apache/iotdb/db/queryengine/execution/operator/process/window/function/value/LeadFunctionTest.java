@@ -75,7 +75,7 @@ public class LeadFunctionTest {
   }
 
   @Test
-  public void testLagFunctionIgnoreNullWithDefault() {
+  public void testLeadFunctionIgnoreNullWithDefault() {
     int[] expected = {2, 2, 2, 3, 4, 4, 5, 6, 6, 10, 10, 10, 10, 10, 10, 10};
 
     TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
@@ -100,7 +100,7 @@ public class LeadFunctionTest {
   }
 
   @Test
-  public void testLagFunctionNotIgnoreNullWithoutDefault() {
+  public void testLeadFunctionNotIgnoreNullWithoutDefault() {
     int[] expected = {-1, 1, 2, -1, 3, 4, -1, 5, 6, -1, -1, -1, -1, -1, -1, -1};
 
     TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
@@ -129,7 +129,7 @@ public class LeadFunctionTest {
   }
 
   @Test
-  public void testLagFunctionNotIgnoreNullWithDefault() {
+  public void testLeadFunctionNotIgnoreNullWithDefault() {
     int[] expected = {-1, 1, 2, -1, 3, 4, -1, 5, 6, -1, -1, -1, -1, -1, 10, 10};
 
     TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);

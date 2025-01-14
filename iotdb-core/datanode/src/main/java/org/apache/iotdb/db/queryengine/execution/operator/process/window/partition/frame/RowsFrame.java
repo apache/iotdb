@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame;
 
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.exception.FrameTypeException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class RowsFrame implements Frame {
   private final FrameInfo frameInfo;
@@ -28,7 +30,7 @@ public class RowsFrame implements Frame {
   private final int partitionSize;
 
   public RowsFrame(FrameInfo frameInfo, int partitionStart, int partitionEnd) {
-    assert frameInfo.getFrameType() == FrameInfo.FrameType.ROWS;
+    checkArgument(frameInfo.getFrameType() == FrameInfo.FrameType.ROWS);
 
     this.frameInfo = frameInfo;
     this.partitionStart = partitionStart;
@@ -59,7 +61,7 @@ public class RowsFrame implements Frame {
         break;
       default:
         // UNBOUND_FOLLOWING is not allowed in frame start
-        throw new FrameTypeException(true);
+        throw new SemanticException("UNBOUND PRECEDING is not allowed in frame start!");
     }
 
     int frameEnd;
@@ -80,7 +82,7 @@ public class RowsFrame implements Frame {
         break;
       default:
         // UNBOUND_PRECEDING is not allowed in frame end
-        throw new FrameTypeException(false);
+        throw new SemanticException("UNBOUND PRECEDING is not allowed in frame end!");
     }
 
     // Empty frame

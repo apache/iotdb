@@ -34,7 +34,7 @@ public class ColumnList {
   public ColumnList(List<Column> columns) {
     this.columns = columns;
 
-    positionCounts = new ArrayList<>();
+    positionCounts = new ArrayList<>(columns.size());
     for (Column column : columns) {
       positionCounts.add(column.getPositionCount());
     }
@@ -66,7 +66,7 @@ public class ColumnList {
     }
   }
 
-  public ColumnListIndex getColumnIndex(int rowIndex) {
+  public ColumnListIndex getColumnListIndex(int rowIndex) {
     int columnIndex = 0;
     while (columnIndex < columns.size() && rowIndex >= positionCounts.get(columnIndex)) {
       rowIndex -= positionCounts.get(columnIndex);
@@ -83,7 +83,7 @@ public class ColumnList {
   }
 
   public boolean getBoolean(int position) {
-    ColumnListIndex columnListIndex = getColumnIndex(position);
+    ColumnListIndex columnListIndex = getColumnListIndex(position);
     int columnIndex = columnListIndex.getColumnIndex();
     int offsetInColumn = columnListIndex.getOffsetInColumn();
 
@@ -91,49 +91,49 @@ public class ColumnList {
   }
 
   public int getInt(int position) {
-    ColumnListIndex columnListIndex = getColumnIndex(position);
+    ColumnListIndex columnListIndex = getColumnListIndex(position);
     int columnIndex = columnListIndex.getColumnIndex();
     int offsetInColumn = columnListIndex.getOffsetInColumn();
     return columns.get(columnIndex).getInt(offsetInColumn);
   }
 
   public long getLong(int position) {
-    ColumnListIndex columnListIndex = getColumnIndex(position);
+    ColumnListIndex columnListIndex = getColumnListIndex(position);
     int columnIndex = columnListIndex.getColumnIndex();
     int offsetInColumn = columnListIndex.getOffsetInColumn();
     return columns.get(columnIndex).getLong(offsetInColumn);
   }
 
   public float getFloat(int position) {
-    ColumnListIndex columnListIndex = getColumnIndex(position);
+    ColumnListIndex columnListIndex = getColumnListIndex(position);
     int columnIndex = columnListIndex.getColumnIndex();
     int offsetInColumn = columnListIndex.getOffsetInColumn();
     return columns.get(columnIndex).getFloat(offsetInColumn);
   }
 
   public double getDouble(int position) {
-    ColumnListIndex columnListIndex = getColumnIndex(position);
+    ColumnListIndex columnListIndex = getColumnListIndex(position);
     int columnIndex = columnListIndex.getColumnIndex();
     int offsetInColumn = columnListIndex.getOffsetInColumn();
     return columns.get(columnIndex).getDouble(offsetInColumn);
   }
 
   public Binary getBinary(int position) {
-    ColumnListIndex columnListIndex = getColumnIndex(position);
+    ColumnListIndex columnListIndex = getColumnListIndex(position);
     int columnIndex = columnListIndex.getColumnIndex();
     int offsetInColumn = columnListIndex.getOffsetInColumn();
     return columns.get(columnIndex).getBinary(offsetInColumn);
   }
 
   public Object getObject(int position) {
-    ColumnListIndex columnListIndex = getColumnIndex(position);
+    ColumnListIndex columnListIndex = getColumnListIndex(position);
     int columnIndex = columnListIndex.getColumnIndex();
     int offsetInColumn = columnListIndex.getOffsetInColumn();
     return columns.get(columnIndex).getObject(offsetInColumn);
   }
 
   public boolean isNull(int position) {
-    ColumnListIndex columnListIndex = getColumnIndex(position);
+    ColumnListIndex columnListIndex = getColumnListIndex(position);
     int columnIndex = columnListIndex.getColumnIndex();
     int offsetInColumn = columnListIndex.getOffsetInColumn();
     return columns.get(columnIndex).isNull(offsetInColumn);
