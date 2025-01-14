@@ -47,7 +47,6 @@ import org.apache.iotdb.session.subscription.util.PollTimer;
 import org.apache.iotdb.session.subscription.util.RandomStringGenerator;
 import org.apache.iotdb.session.util.SessionUtils;
 
-import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -299,15 +298,15 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// subscribe & unsubscribe ///////////////////////////////
 
-  public void subscribe(final String topicName) throws SubscriptionException {
+  protected void subscribe(final String topicName) throws SubscriptionException {
     subscribe(Collections.singleton(topicName));
   }
 
-  public void subscribe(final String... topicNames) throws SubscriptionException {
+  protected void subscribe(final String... topicNames) throws SubscriptionException {
     subscribe(new HashSet<>(Arrays.asList(topicNames)));
   }
 
-  public void subscribe(final Set<String> topicNames) throws SubscriptionException {
+  protected void subscribe(final Set<String> topicNames) throws SubscriptionException {
     // parse topic names from external source
     subscribe(topicNames, true);
   }
@@ -331,15 +330,15 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  public void unsubscribe(final String topicName) throws SubscriptionException {
+  protected void unsubscribe(final String topicName) throws SubscriptionException {
     unsubscribe(Collections.singleton(topicName));
   }
 
-  public void unsubscribe(final String... topicNames) throws SubscriptionException {
+  protected void unsubscribe(final String... topicNames) throws SubscriptionException {
     unsubscribe(new HashSet<>(Arrays.asList(topicNames)));
   }
 
-  public void unsubscribe(final Set<String> topicNames) throws SubscriptionException {
+  protected void unsubscribe(final Set<String> topicNames) throws SubscriptionException {
     // parse topic names from external source
     unsubscribe(topicNames, true);
   }
@@ -1370,111 +1369,6 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             this, providers);
     LOGGER.warn(errorMessage);
     throw new SubscriptionRuntimeCriticalException(errorMessage);
-  }
-
-  /////////////////////////////// builder ///////////////////////////////
-
-  public abstract static class Builder {
-
-    protected String host;
-    protected Integer port;
-    protected List<String> nodeUrls;
-
-    protected String username = SessionConfig.DEFAULT_USER;
-    protected String password = SessionConfig.DEFAULT_PASSWORD;
-
-    protected String consumerId;
-    protected String consumerGroupId;
-
-    protected long heartbeatIntervalMs = ConsumerConstant.HEARTBEAT_INTERVAL_MS_DEFAULT_VALUE;
-    protected long endpointsSyncIntervalMs =
-        ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE;
-
-    protected String fileSaveDir = ConsumerConstant.FILE_SAVE_DIR_DEFAULT_VALUE;
-    protected boolean fileSaveFsync = ConsumerConstant.FILE_SAVE_FSYNC_DEFAULT_VALUE;
-
-    protected int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
-    protected int maxPollParallelism = ConsumerConstant.MAX_POLL_PARALLELISM_DEFAULT_VALUE;
-
-    public Builder host(final String host) {
-      this.host = host;
-      return this;
-    }
-
-    public Builder port(final int port) {
-      this.port = port;
-      return this;
-    }
-
-    public Builder nodeUrls(final List<String> nodeUrls) {
-      this.nodeUrls = nodeUrls;
-      return this;
-    }
-
-    public Builder username(final String username) {
-      this.username = username;
-      return this;
-    }
-
-    public Builder password(final String password) {
-      this.password = password;
-      return this;
-    }
-
-    public Builder consumerId(@Nullable final String consumerId) {
-      if (Objects.isNull(consumerId)) {
-        return this;
-      }
-      this.consumerId = IdentifierUtils.checkAndParseIdentifier(consumerId);
-      return this;
-    }
-
-    public Builder consumerGroupId(@Nullable final String consumerGroupId) {
-      if (Objects.isNull(consumerGroupId)) {
-        return this;
-      }
-      this.consumerGroupId = IdentifierUtils.checkAndParseIdentifier(consumerGroupId);
-      return this;
-    }
-
-    public Builder heartbeatIntervalMs(final long heartbeatIntervalMs) {
-      this.heartbeatIntervalMs =
-          Math.max(heartbeatIntervalMs, ConsumerConstant.HEARTBEAT_INTERVAL_MS_MIN_VALUE);
-      return this;
-    }
-
-    public Builder endpointsSyncIntervalMs(final long endpointsSyncIntervalMs) {
-      this.endpointsSyncIntervalMs =
-          Math.max(endpointsSyncIntervalMs, ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_MIN_VALUE);
-      return this;
-    }
-
-    public Builder fileSaveDir(final String fileSaveDir) {
-      this.fileSaveDir = fileSaveDir;
-      return this;
-    }
-
-    public Builder fileSaveFsync(final boolean fileSaveFsync) {
-      this.fileSaveFsync = fileSaveFsync;
-      return this;
-    }
-
-    public Builder thriftMaxFrameSize(final int thriftMaxFrameSize) {
-      this.thriftMaxFrameSize = thriftMaxFrameSize;
-      return this;
-    }
-
-    public Builder maxPollParallelism(final int maxPollParallelism) {
-      // Here the minimum value of max poll parallelism is set to 1 instead of 0, in order to use a
-      // single thread to execute poll whenever there are idle resources available, thereby
-      // achieving strict timeout.
-      this.maxPollParallelism = Math.max(maxPollParallelism, 1);
-      return this;
-    }
-
-    public abstract SubscriptionPullConsumer buildPullConsumer();
-
-    public abstract SubscriptionPushConsumer buildPushConsumer();
   }
 
   /////////////////////////////// stringify ///////////////////////////////

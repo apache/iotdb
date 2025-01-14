@@ -103,26 +103,26 @@ public class SubscriptionTablePushConsumerBuilder extends AbstractSubscriptionPu
   }
 
   @Override
-  public AbstractSubscriptionPushConsumerBuilder ackStrategy(final AckStrategy ackStrategy) {
+  public SubscriptionTablePushConsumerBuilder ackStrategy(final AckStrategy ackStrategy) {
     super.ackStrategy(ackStrategy);
     return this;
   }
 
   @Override
-  public AbstractSubscriptionPushConsumerBuilder consumeListener(
+  public SubscriptionTablePushConsumerBuilder consumeListener(
       final ConsumeListener consumeListener) {
     super.consumeListener(consumeListener);
     return this;
   }
 
   @Override
-  public AbstractSubscriptionPushConsumerBuilder autoPollIntervalMs(final long autoPollIntervalMs) {
+  public SubscriptionTablePushConsumerBuilder autoPollIntervalMs(final long autoPollIntervalMs) {
     super.autoPollIntervalMs(autoPollIntervalMs);
     return this;
   }
 
   @Override
-  public AbstractSubscriptionPushConsumerBuilder autoPollTimeoutMs(final long autoPollTimeoutMs) {
+  public SubscriptionTablePushConsumerBuilder autoPollTimeoutMs(final long autoPollTimeoutMs) {
     super.autoPollTimeoutMs(autoPollTimeoutMs);
     return this;
   }

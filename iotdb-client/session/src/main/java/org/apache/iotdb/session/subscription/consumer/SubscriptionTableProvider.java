@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.session.AbstractSessionBuilder;
 import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
 
-public class SubscriptionTableProvider extends AbstractSubscriptionProvider {
+final class SubscriptionTableProvider extends AbstractSubscriptionProvider {
 
   SubscriptionTableProvider(
       TEndPoint endPoint,

@@ -30,6 +30,7 @@ import org.apache.thrift.annotation.Nullable;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.Set;
 
 public class SubscriptionPushConsumer extends AbstractSubscriptionPushConsumer
     implements ISubscriptionPushConsumer {
@@ -115,6 +116,36 @@ public class SubscriptionPushConsumer extends AbstractSubscriptionPushConsumer
   @Override
   public void close() throws SubscriptionException {
     super.close();
+  }
+
+  @Override
+  public void subscribe(String topicName) throws SubscriptionException {
+    super.subscribe(topicName);
+  }
+
+  @Override
+  public void subscribe(String... topicNames) throws SubscriptionException {
+    super.subscribe(topicNames);
+  }
+
+  @Override
+  public void subscribe(Set<String> topicNames) throws SubscriptionException {
+    super.subscribe(topicNames);
+  }
+
+  @Override
+  public void unsubscribe(String topicName) throws SubscriptionException {
+    super.unsubscribe(topicName);
+  }
+
+  @Override
+  public void unsubscribe(String... topicNames) throws SubscriptionException {
+    super.unsubscribe(topicNames);
+  }
+
+  @Override
+  public void unsubscribe(Set<String> topicNames) throws SubscriptionException {
+    super.unsubscribe(topicNames);
   }
 
   /////////////////////////////// builder ///////////////////////////////

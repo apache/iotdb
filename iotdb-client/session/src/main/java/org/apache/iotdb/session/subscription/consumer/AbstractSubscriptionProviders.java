@@ -37,7 +37,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
-public class AbstractSubscriptionProviders {
+final class AbstractSubscriptionProviders {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSubscriptionProviders.class);
 

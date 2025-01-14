@@ -44,8 +44,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 /**
- * The {@link SubscriptionPullConsumer} corresponds to the pull consumption mode in the message
- * queue.
+ * The {@link AbstractSubscriptionPullConsumer} corresponds to the pull consumption mode in the
+ * message queue.
  *
  * <p>User code needs to actively call the data retrieval logic, i.e., the {@link #poll} method.
  *
@@ -55,7 +55,7 @@ import java.util.stream.Collectors;
  * multithreaded environment. Instead, it is advised to increase the number of consumers to improve
  * data retrieval parallelism.
  */
-public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscriptionConsumer {
+abstract class AbstractSubscriptionPullConsumer extends AbstractSubscriptionConsumer {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AbstractSubscriptionPullConsumer.class);

@@ -28,8 +28,17 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 
+/**
+ * This interface defines methods for managing topics and subscriptions of tree model in an IoTDB
+ * environment.
+ */
 public interface ISubscriptionSession extends AutoCloseable {
 
+  /**
+   * Opens this session and establishes a connection to IoTDB.
+   *
+   * @throws IoTDBConnectionException If there is an issue with the connection to IoTDB.
+   */
   void open() throws IoTDBConnectionException;
 
   /////////////////////////////// topic ///////////////////////////////
@@ -38,7 +47,7 @@ public interface ISubscriptionSession extends AutoCloseable {
    * Creates a topic with the specified name.
    *
    * <p>If the topic name contains single quotes, it must be enclosed in backticks (`). For example,
-   * to create a topic named 'topic', the value passed in as topicName should be `'topic'`
+   * to create a topic named 'topic', the value passed in as topicName should be `'topic'`.
    *
    * @param topicName If the created topic name contains single quotes, the passed parameter needs
    *     to be enclosed in backticks.
@@ -96,8 +105,8 @@ public interface ISubscriptionSession extends AutoCloseable {
    * <p>This method removes the specified topic from the database. If the topic name contains single
    * quotes, it must be enclosed in backticks (`).
    *
-   * @param topicName The name of the topic to be deleted, if it contains single quotes, needs to be
-   *     enclosed in backticks.
+   * @param topicName The name of the topic to be deleted. If it contains single quotes, it needs to
+   *     be enclosed in backticks.
    * @throws IoTDBConnectionException If there is an issue with the connection to IoTDB.
    * @throws StatementExecutionException If there is an issue executing the SQL statement.
    */
@@ -110,23 +119,59 @@ public interface ISubscriptionSession extends AutoCloseable {
    * <p>This method is similar to {@link #dropTopic(String)}, but includes the 'IF EXISTS'
    * condition. If the topic name contains single quotes, it must be enclosed in backticks (`).
    *
-   * @param topicName The name of the topic to be deleted, if it contains single quotes, needs to be
-   *     enclosed in backticks.
+   * @param topicName The name of the topic to be deleted. If it contains single quotes, it needs to
+   *     be enclosed in backticks.
    * @throws IoTDBConnectionException If there is an issue with the connection to IoTDB.
    * @throws StatementExecutionException If there is an issue executing the SQL statement.
    */
   void dropTopicIfExists(final String topicName)
       throws IoTDBConnectionException, StatementExecutionException;
 
+  /**
+   * Retrieves all existing topics from the IoTDB environment.
+   *
+   * @return A set of {@link Topic} objects representing all existing topics.
+   * @throws IoTDBConnectionException If there is an issue with the connection to IoTDB.
+   * @throws StatementExecutionException If there is an issue executing the SQL statement.
+   */
   Set<Topic> getTopics() throws IoTDBConnectionException, StatementExecutionException;
 
+  /**
+   * Retrieves an optional topic by its name. If the topic does not exist, an empty {@link Optional}
+   * is returned.
+   *
+   * <p>If the topic name contains single quotes, it must be enclosed in backticks (`).
+   *
+   * @param topicName The name of the topic to retrieve. If it contains single quotes, it needs to
+   *     be enclosed in backticks.
+   * @return An {@link Optional} containing the {@link Topic}, or empty if the topic is not found.
+   * @throws IoTDBConnectionException If there is an issue with the connection to IoTDB.
+   * @throws StatementExecutionException If there is an issue executing the SQL statement.
+   */
   Optional<Topic> getTopic(final String topicName)
       throws IoTDBConnectionException, StatementExecutionException;
 
   /////////////////////////////// subscription ///////////////////////////////
 
+  /**
+   * Retrieves all existing subscriptions from the IoTDB environment.
+   *
+   * @return A set of {@link Subscription} objects representing all existing subscriptions.
+   * @throws IoTDBConnectionException If there is an issue with the connection to IoTDB.
+   * @throws StatementExecutionException If there is an issue executing the SQL statement.
+   */
   Set<Subscription> getSubscriptions() throws IoTDBConnectionException, StatementExecutionException;
 
+  /**
+   * Retrieves all subscriptions belonging to a specific topic. If the topic name contains single
+   * quotes, it must be enclosed in backticks (`).
+   *
+   * @param topicName The name of the topic whose subscriptions are to be retrieved. If it contains
+   *     single quotes, it needs to be enclosed in backticks.
+   * @return A set of {@link Subscription} objects for the specified topic.
+   * @throws IoTDBConnectionException If there is an issue with the connection to IoTDB.
+   * @throws StatementExecutionException If there is an issue executing the SQL statement.
+   */
   Set<Subscription> getSubscriptions(final String topicName)
       throws IoTDBConnectionException, StatementExecutionException;
 }

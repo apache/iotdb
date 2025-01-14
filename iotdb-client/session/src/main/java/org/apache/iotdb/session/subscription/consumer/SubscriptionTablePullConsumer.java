@@ -85,6 +85,36 @@ public class SubscriptionTablePullConsumer extends AbstractSubscriptionPullConsu
   }
 
   @Override
+  public void subscribe(String topicName) throws SubscriptionException {
+    super.subscribe(topicName);
+  }
+
+  @Override
+  public void subscribe(String... topicNames) throws SubscriptionException {
+    super.subscribe(topicNames);
+  }
+
+  @Override
+  public void subscribe(Set<String> topicNames) throws SubscriptionException {
+    super.subscribe(topicNames);
+  }
+
+  @Override
+  public void unsubscribe(String topicName) throws SubscriptionException {
+    super.unsubscribe(topicName);
+  }
+
+  @Override
+  public void unsubscribe(String... topicNames) throws SubscriptionException {
+    super.unsubscribe(topicNames);
+  }
+
+  @Override
+  public void unsubscribe(Set<String> topicNames) throws SubscriptionException {
+    super.unsubscribe(topicNames);
+  }
+
+  @Override
   public void commitSync(final SubscriptionMessage message) throws SubscriptionException {
     super.commitSync(message);
   }

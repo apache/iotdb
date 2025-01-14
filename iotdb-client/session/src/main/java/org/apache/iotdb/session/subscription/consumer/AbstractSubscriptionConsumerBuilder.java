@@ -28,7 +28,7 @@ import org.apache.thrift.annotation.Nullable;
 import java.util.List;
 import java.util.Objects;
 
-public class AbstractSubscriptionConsumerBuilder {
+class AbstractSubscriptionConsumerBuilder {
 
   protected String host;
   protected Integer port;

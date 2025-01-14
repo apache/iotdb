@@ -22,6 +22,8 @@ package org.apache.iotdb.session.subscription.consumer;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
+import java.util.Set;
+
 public class SubscriptionTablePushConsumer extends AbstractSubscriptionPushConsumer
     implements ISubscriptionTablePushConsumer {
 
@@ -55,5 +57,35 @@ public class SubscriptionTablePushConsumer extends AbstractSubscriptionPushConsu
   @Override
   public void close() throws SubscriptionException {
     super.close();
+  }
+
+  @Override
+  public void subscribe(String topicName) throws SubscriptionException {
+    super.subscribe(topicName);
+  }
+
+  @Override
+  public void subscribe(String... topicNames) throws SubscriptionException {
+    super.subscribe(topicNames);
+  }
+
+  @Override
+  public void subscribe(Set<String> topicNames) throws SubscriptionException {
+    super.subscribe(topicNames);
+  }
+
+  @Override
+  public void unsubscribe(String topicName) throws SubscriptionException {
+    super.unsubscribe(topicName);
+  }
+
+  @Override
+  public void unsubscribe(String... topicNames) throws SubscriptionException {
+    super.unsubscribe(topicNames);
+  }
+
+  @Override
+  public void unsubscribe(Set<String> topicNames) throws SubscriptionException {
+    super.unsubscribe(topicNames);
   }
 }

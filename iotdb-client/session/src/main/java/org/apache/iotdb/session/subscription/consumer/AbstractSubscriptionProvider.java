@@ -67,26 +67,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 abstract class AbstractSubscriptionProvider {
 
-  private final SubscriptionSessionWrapper session;
-
-  public SubscriptionSessionConnection getSessionConnection() {
-    return session.getSessionConnection();
-  }
-
-  public int getThriftMaxFrameSize() {
-    return session.getThriftMaxFrameSize();
-  }
-
-  /////////////////////////////// open & close ///////////////////////////////
-
-  protected void openSession() throws IoTDBConnectionException {
-    session.open();
-  }
-
-  protected void closeSession() throws IoTDBConnectionException {
-    session.close();
-  }
-
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionProvider.class);
 
   private static final String STATUS_FORMATTER = "Status code is [%s], status message is [%s].";
@@ -97,6 +77,8 @@ abstract class AbstractSubscriptionProvider {
           + "Please manually check the subscription correctness later. "
           + STATUS_FORMATTER;
 
+  private final SubscriptionSessionWrapper session;
+
   private String consumerId;
   private String consumerGroupId;
 
@@ -105,6 +87,13 @@ abstract class AbstractSubscriptionProvider {
 
   private final TEndPoint endPoint;
   private int dataNodeId;
+
+  abstract AbstractSessionBuilder constructSubscriptionSessionBuilder(
+      final String host,
+      final int port,
+      final String username,
+      final String password,
+      final int thriftMaxFrameSize);
 
   AbstractSubscriptionProvider(
       final TEndPoint endPoint,
@@ -122,12 +111,9 @@ abstract class AbstractSubscriptionProvider {
     this.consumerGroupId = consumerGroupId;
   }
 
-  abstract AbstractSessionBuilder constructSubscriptionSessionBuilder(
-      final String host,
-      final int port,
-      final String username,
-      final String password,
-      final int thriftMaxFrameSize);
+  SubscriptionSessionConnection getSessionConnection() {
+    return session.getSessionConnection();
+  }
 
   boolean isAvailable() {
     return isAvailable.get();
@@ -164,7 +150,7 @@ abstract class AbstractSubscriptionProvider {
       return;
     }
 
-    this.openSession(); // throw IoTDBConnectionException
+    session.open(); // throw IoTDBConnectionException
 
     // TODO: pass the complete consumer parameter configuration to the server
     final Map<String, String> consumerAttributes = new HashMap<>();
@@ -211,7 +197,7 @@ abstract class AbstractSubscriptionProvider {
     return PipeSubscribeHandshakeResp.fromTPipeSubscribeResp(resp);
   }
 
-  public synchronized void close() throws SubscriptionException, IoTDBConnectionException {
+  synchronized void close() throws SubscriptionException, IoTDBConnectionException {
     if (isClosed.get()) {
       return;
     }
@@ -219,7 +205,7 @@ abstract class AbstractSubscriptionProvider {
     try {
       closeInternal(); // throw SubscriptionException
     } finally {
-      this.closeSession(); // throw IoTDBConnectionException
+      session.close(); // throw IoTDBConnectionException
       setUnavailable();
       isClosed.set(true);
     }
@@ -331,7 +317,7 @@ abstract class AbstractSubscriptionProvider {
             SubscriptionPollRequestType.POLL.getType(),
             new PollPayload(topicNames),
             timeoutMs,
-            getThriftMaxFrameSize()));
+            session.getThriftMaxFrameSize()));
   }
 
   List<SubscriptionPollResponse> pollFile(
@@ -342,7 +328,7 @@ abstract class AbstractSubscriptionProvider {
             SubscriptionPollRequestType.POLL_FILE.getType(),
             new PollFilePayload(commitContext, writingOffset),
             timeoutMs,
-            getThriftMaxFrameSize()));
+            session.getThriftMaxFrameSize()));
   }
 
   List<SubscriptionPollResponse> pollTablets(
@@ -353,7 +339,7 @@ abstract class AbstractSubscriptionProvider {
             SubscriptionPollRequestType.POLL_TABLETS.getType(),
             new PollTabletsPayload(commitContext, offset),
             timeoutMs,
-            getThriftMaxFrameSize()));
+            session.getThriftMaxFrameSize()));
   }
 
   List<SubscriptionPollResponse> poll(final SubscriptionPollRequest pollMessage)

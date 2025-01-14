@@ -23,7 +23,7 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 
 import java.util.List;
 
-public class AbstractSubscriptionPullConsumerBuilder extends AbstractSubscriptionConsumerBuilder {
+class AbstractSubscriptionPullConsumerBuilder extends AbstractSubscriptionConsumerBuilder {
 
   protected boolean autoCommit = ConsumerConstant.AUTO_COMMIT_DEFAULT_VALUE;
   protected long autoCommitIntervalMs = ConsumerConstant.AUTO_COMMIT_INTERVAL_MS_DEFAULT_VALUE;

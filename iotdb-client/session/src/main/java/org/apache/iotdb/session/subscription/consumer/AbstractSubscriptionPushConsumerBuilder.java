@@ -23,7 +23,7 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 
 import java.util.List;
 
-public class AbstractSubscriptionPushConsumerBuilder extends AbstractSubscriptionConsumerBuilder {
+class AbstractSubscriptionPushConsumerBuilder extends AbstractSubscriptionConsumerBuilder {
 
   protected AckStrategy ackStrategy = AckStrategy.defaultValue();
   protected ConsumeListener consumeListener = message -> ConsumeResult.SUCCESS;
