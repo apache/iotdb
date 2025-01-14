@@ -247,7 +247,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.realtime.mode", "forced-log");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("capture.tree", "true");
       extractorAttributes.put("forwarding-pipe-requests", "false");
