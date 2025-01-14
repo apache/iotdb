@@ -24,6 +24,7 @@ import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -81,6 +82,7 @@ public class IoTDBSessionSimpleIT {
 
   @BeforeClass
   public static void setUpClass() throws Exception {
+    AbstractNodeWrapper.customCmdCommands.add("-DisTestMode=True");
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -97,6 +99,7 @@ public class IoTDBSessionSimpleIT {
 
   @AfterClass
   public static void tearDownClass() throws Exception {
+    AbstractNodeWrapper.customCmdCommands.clear();
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 

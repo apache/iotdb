@@ -95,4 +95,9 @@ public class MeasurementSchemaInfo implements IMeasurementSchemaInfo {
   public boolean isLogicalView() {
     return this.schema.isLogicalView();
   }
+
+  @Override
+  public String toString() {
+    return "MeasurementSchemaInfo{" + "schema=" + schema + '}';
+  }
 }

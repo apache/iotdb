@@ -131,6 +131,7 @@ import static org.apache.iotdb.it.env.cluster.EnvUtils.getValueOfIndex;
 
 public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   private static final Logger logger = IoTDBTestLogger.logger;
+  public static List<String> customCmdCommands = new ArrayList<>();
 
   protected final String testClassName;
   protected final String testMethodName;
@@ -483,6 +484,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
         startCmd.add("--add-opens=java.base/java.io=ALL-UNNAMED");
         startCmd.add("--add-opens=java.base/java.net=ALL-UNNAMED");
       }
+      startCmd.addAll(customCmdCommands);
 
       String libPath =
           System.getProperty("user.dir")

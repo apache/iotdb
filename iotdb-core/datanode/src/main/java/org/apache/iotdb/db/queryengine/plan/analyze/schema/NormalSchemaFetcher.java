@@ -33,6 +33,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.Tr
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,6 +42,7 @@ import java.util.stream.Collectors;
 
 class NormalSchemaFetcher {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(NormalSchemaFetcher.class);
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final TreeDeviceSchemaCacheManager schemaCache;
@@ -188,6 +191,10 @@ class NormalSchemaFetcher {
           context);
       indexOfMissingMeasurements =
           schemaTree.compute(schemaComputationWithAutoCreation, indexOfMissingMeasurements);
+      if (IoTDBConfig.isTestMode && LOGGER.isWarnEnabled()) {
+        LOGGER.warn(
+            "Auto created schema for {}, result {}", devicePath, schemaTree.getAllDevices());
+      }
     }
 
     return indexOfMissingMeasurements;
@@ -358,6 +365,10 @@ class NormalSchemaFetcher {
               .collect(Collectors.toList()),
           isAlignedPutInList,
           context);
+      if (IoTDBConfig.isTestMode && LOGGER.isWarnEnabled()) {
+        LOGGER.warn(
+            "Auto created schema for {}, result {}", devicePathList, schemaTree.getAllDevices());
+      }
       indexOfDevicesWithMissingMeasurements = new ArrayList<>();
       indexOfMissingMeasurementsList = new ArrayList<>();
       for (int i = 0; i < indexOfDevicesNeedAutoCreateSchema.size(); i++) {

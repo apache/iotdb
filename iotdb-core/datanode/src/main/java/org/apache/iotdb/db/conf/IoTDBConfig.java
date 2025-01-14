@@ -76,6 +76,7 @@ import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class IoTDBConfig {
 
+  public static boolean isTestMode = false;
   /* Names of Watermark methods */
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
   public static final String CONFIG_NAME = "iotdb-system.properties";

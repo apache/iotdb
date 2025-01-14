@@ -126,6 +126,8 @@ public class IoTDBDescriptor {
   }
 
   protected IoTDBDescriptor() {
+    IoTDBConfig.isTestMode =
+        Boolean.parseBoolean(System.getProperties().getProperty("isTestMode", "false"));
     loadProps();
     ServiceLoader<IPropertiesLoader> propertiesLoaderServiceLoader =
         ServiceLoader.load(IPropertiesLoader.class);

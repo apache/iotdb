@@ -46,9 +46,12 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -59,6 +62,7 @@ import java.util.function.Consumer;
 
 class ClusterSchemaFetchExecutor {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaFetchExecutor.class);
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final Coordinator coordinator;
   private final ITemplateManager templateManager;
@@ -166,6 +170,12 @@ class ClusterSchemaFetchExecutor {
       String[] measurements,
       List<Integer> indexOfTargetMeasurements,
       MPPQueryContext context) {
+    if (IoTDBConfig.isTestMode
+        && devicePath.toString().equals("root.sg1.d1")
+        && LOGGER.isWarnEnabled()) {
+      LOGGER.warn(
+          "Fetch schema for device {}, measurements {}", devicePath, Arrays.toString(measurements));
+    }
     PathPatternTree patternTree = new PathPatternTree();
     for (int index : indexOfTargetMeasurements) {
       patternTree.appendFullPath(devicePath, measurements[index]);
@@ -224,6 +234,22 @@ class ClusterSchemaFetchExecutor {
                 true,
                 false),
             context);
+    if (IoTDBConfig.isTestMode
+        && patternTree.getAllDevicePaths().stream()
+            .anyMatch(
+                path -> {
+                  try {
+                    return path.matchFullPath(new PartialPath("root.sg1.d1"));
+                  } catch (IllegalPathException e) {
+                    throw new RuntimeException(e);
+                  }
+                })
+        && LOGGER.isWarnEnabled()) {
+      LOGGER.warn(
+          "Fetched schema for device {}, schema tree {}",
+          patternTree.getAllDevicePaths(),
+          schemaTree.getAllDevices());
+    }
     if (!schemaTree.isEmpty()) {
       schemaCacheUpdater.accept(schemaTree);
     }

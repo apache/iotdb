@@ -138,4 +138,18 @@ public class DeviceSchemaInfo {
     }
     return measurementPaths;
   }
+
+  @Override
+  public String toString() {
+    return "DeviceSchemaInfo{"
+        + "devicePath="
+        + devicePath
+        + ", isAligned="
+        + isAligned
+        + ", measurementSchemaInfoList="
+        + measurementSchemaInfoList
+        + ", templateId="
+        + templateId
+        + '}';
+  }
 }
