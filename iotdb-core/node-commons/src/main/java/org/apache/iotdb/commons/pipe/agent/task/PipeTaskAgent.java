@@ -468,7 +468,7 @@ public abstract class PipeTaskAgent {
     final boolean needToStartPipe = pipeStatusFromCoordinator.get() == PipeStatus.RUNNING;
     pipeStatusFromCoordinator.set(PipeStatus.STOPPED);
 
-    pipeMetaKeeper.addPipeMeta(pipeName, pipeMetaFromCoordinator);
+    pipeMetaKeeper.addPipeMeta(pipeMetaFromCoordinator);
 
     // If the pipe status from coordinator is RUNNING, we will start the pipe later.
     return needToStartPipe;

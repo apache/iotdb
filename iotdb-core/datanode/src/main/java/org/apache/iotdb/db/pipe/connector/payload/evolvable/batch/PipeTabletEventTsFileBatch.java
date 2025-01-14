@@ -210,6 +210,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     super.close();
 
     pipeName2WeightMap.clear();
+
     tableModeTsFileBuilder.close();
     treeModeTsFileBuilder.close();
   }

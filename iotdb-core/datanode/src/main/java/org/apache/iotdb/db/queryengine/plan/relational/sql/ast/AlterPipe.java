@@ -88,7 +88,7 @@ public class AlterPipe extends PipeStatement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitAlterPipe(this, context);
   }
 
@@ -106,25 +106,25 @@ public class AlterPipe extends PipeStatement {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    AlterPipe alterPipe = (AlterPipe) obj;
-    return Objects.equals(pipeName, alterPipe.pipeName)
-        && Objects.equals(ifExistsCondition, alterPipe.ifExistsCondition)
-        && Objects.equals(extractorAttributes, alterPipe.extractorAttributes)
-        && Objects.equals(processorAttributes, alterPipe.processorAttributes)
-        && Objects.equals(connectorAttributes, alterPipe.connectorAttributes)
+    final AlterPipe that = (AlterPipe) obj;
+    return Objects.equals(this.pipeName, that.pipeName)
+        && Objects.equals(this.ifExistsCondition, that.ifExistsCondition)
+        && Objects.equals(this.extractorAttributes, that.extractorAttributes)
+        && Objects.equals(this.processorAttributes, that.processorAttributes)
+        && Objects.equals(this.connectorAttributes, that.connectorAttributes)
         && Objects.equals(
-            isReplaceAllExtractorAttributes, alterPipe.isReplaceAllExtractorAttributes)
+            this.isReplaceAllExtractorAttributes, that.isReplaceAllExtractorAttributes)
         && Objects.equals(
-            isReplaceAllProcessorAttributes, alterPipe.isReplaceAllProcessorAttributes)
+            this.isReplaceAllProcessorAttributes, that.isReplaceAllProcessorAttributes)
         && Objects.equals(
-            isReplaceAllConnectorAttributes, alterPipe.isReplaceAllConnectorAttributes);
+            this.isReplaceAllConnectorAttributes, that.isReplaceAllConnectorAttributes);
   }
 
   @Override
