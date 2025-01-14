@@ -490,59 +490,62 @@ public class ClusterSchemaManager {
         continue;
       }
 
+      // Adjust maxSchemaRegionGroupNum for each Database.
+      // All Databases share the DataNodes equally.
+      // The allocated SchemaRegionGroups will not be shrunk.
+      final int allocatedSchemaRegionGroupCount;
       try {
-        // Adjust maxSchemaRegionGroupNum for each Database.
-        // All Databases share the DataNodes equally.
-        // The allocated SchemaRegionGroups will not be shrunk.
-        final int allocatedSchemaRegionGroupCount;
-        try {
-          allocatedSchemaRegionGroupCount =
-              getPartitionManager()
-                  .getRegionGroupCount(databaseSchema.getName(), TConsensusGroupType.SchemaRegion);
-        } catch (final DatabaseNotExistsException e) {
-          // ignore the pre deleted database
-          continue;
-        }
+        allocatedSchemaRegionGroupCount =
+            getPartitionManager()
+                .getRegionGroupCount(databaseSchema.getName(), TConsensusGroupType.SchemaRegion);
+      } catch (final DatabaseNotExistsException e) {
+        // ignore the pre deleted database
+        continue;
+      }
 
-        final int maxSchemaRegionGroupNum =
-            calcMaxRegionGroupNum(
-                databaseSchema.getMinSchemaRegionGroupNum(),
-                SCHEMA_REGION_PER_DATA_NODE,
-                dataNodeNum,
-                databaseNum,
-                databaseSchema.getSchemaReplicationFactor(),
-                allocatedSchemaRegionGroupCount);
-        LOGGER.info(
-            "[AdjustRegionGroupNum] The maximum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
-            databaseSchema.getName(),
-            maxSchemaRegionGroupNum);
+      final int maxSchemaRegionGroupNum =
+          calcMaxRegionGroupNum(
+              databaseSchema.getMinSchemaRegionGroupNum(),
+              SCHEMA_REGION_PER_DATA_NODE,
+              dataNodeNum,
+              databaseNum,
+              databaseSchema.getSchemaReplicationFactor(),
+              allocatedSchemaRegionGroupCount);
+      LOGGER.info(
+          "[AdjustRegionGroupNum] The maximum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
+          databaseSchema.getName(),
+          maxSchemaRegionGroupNum);
 
-        // Adjust maxDataRegionGroupNum for each Database.
-        // All Databases share the DataNodes equally.
-        // The allocated DataRegionGroups will not be shrunk.
-        final int allocatedDataRegionGroupCount =
+      // Adjust maxDataRegionGroupNum for each Database.
+      // All Databases share the DataNodes equally.
+      // The allocated DataRegionGroups will not be shrunk.
+      final int allocatedDataRegionGroupCount;
+      try {
+        allocatedDataRegionGroupCount =
             getPartitionManager()
                 .getRegionGroupCount(databaseSchema.getName(), TConsensusGroupType.DataRegion);
-        final int maxDataRegionGroupNum =
-            calcMaxRegionGroupNum(
-                databaseSchema.getMinDataRegionGroupNum(),
-                DATA_REGION_PER_DATA_NODE == 0
-                    ? CONF.getDataRegionPerDataNodeProportion()
-                    : DATA_REGION_PER_DATA_NODE,
-                DATA_REGION_PER_DATA_NODE == 0 ? totalCpuCoreNum : dataNodeNum,
-                databaseNum,
-                databaseSchema.getDataReplicationFactor(),
-                allocatedDataRegionGroupCount);
-        LOGGER.info(
-            "[AdjustRegionGroupNum] The maximum number of DataRegionGroups for Database: {} is adjusted to: {}",
-            databaseSchema.getName(),
-            maxDataRegionGroupNum);
-
-        adjustMaxRegionGroupNumPlan.putEntry(
-            databaseSchema.getName(), new Pair<>(maxSchemaRegionGroupNum, maxDataRegionGroupNum));
       } catch (final DatabaseNotExistsException e) {
-        LOGGER.warn("Adjust maxRegionGroupNum failed because Database doesn't exist", e);
+        // ignore the pre deleted database
+        continue;
       }
+
+      final int maxDataRegionGroupNum =
+          calcMaxRegionGroupNum(
+              databaseSchema.getMinDataRegionGroupNum(),
+              DATA_REGION_PER_DATA_NODE == 0
+                  ? CONF.getDataRegionPerDataNodeProportion()
+                  : DATA_REGION_PER_DATA_NODE,
+              DATA_REGION_PER_DATA_NODE == 0 ? totalCpuCoreNum : dataNodeNum,
+              databaseNum,
+              databaseSchema.getDataReplicationFactor(),
+              allocatedDataRegionGroupCount);
+      LOGGER.info(
+          "[AdjustRegionGroupNum] The maximum number of DataRegionGroups for Database: {} is adjusted to: {}",
+          databaseSchema.getName(),
+          maxDataRegionGroupNum);
+
+      adjustMaxRegionGroupNumPlan.putEntry(
+          databaseSchema.getName(), new Pair<>(maxSchemaRegionGroupNum, maxDataRegionGroupNum));
     }
     try {
       getConsensusManager().write(adjustMaxRegionGroupNumPlan);
@@ -1275,11 +1278,13 @@ public class ClusterSchemaManager {
   public synchronized TSStatus addTableColumn(
       final String database,
       final String tableName,
-      final List<TsTableColumnSchema> columnSchemaList) {
+      final List<TsTableColumnSchema> columnSchemaList,
+      final boolean isGeneratedByPipe) {
     final AddTableColumnPlan addTableColumnPlan =
         new AddTableColumnPlan(database, tableName, columnSchemaList, false);
     try {
-      return getConsensusManager().write(addTableColumnPlan);
+      return getConsensusManager()
+          .write(isGeneratedByPipe ? new PipeEnrichedPlan(addTableColumnPlan) : addTableColumnPlan);
     } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
@@ -1301,11 +1306,19 @@ public class ClusterSchemaManager {
   }
 
   public synchronized TSStatus renameTableColumn(
-      final String database, final String tableName, final String oldName, final String newName) {
+      final String database,
+      final String tableName,
+      final String oldName,
+      final String newName,
+      final boolean isGeneratedByPipe) {
     final RenameTableColumnPlan renameTableColumnPlan =
         new RenameTableColumnPlan(database, tableName, oldName, newName);
     try {
-      return getConsensusManager().write(renameTableColumnPlan);
+      return getConsensusManager()
+          .write(
+              isGeneratedByPipe
+                  ? new PipeEnrichedPlan(renameTableColumnPlan)
+                  : renameTableColumnPlan);
     } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
@@ -1313,11 +1326,18 @@ public class ClusterSchemaManager {
   }
 
   public synchronized TSStatus setTableProperties(
-      final String database, final String tableName, final Map<String, String> properties) {
+      final String database,
+      final String tableName,
+      final Map<String, String> properties,
+      final boolean isGeneratedByPipe) {
     final SetTablePropertiesPlan setTablePropertiesPlan =
         new SetTablePropertiesPlan(database, tableName, properties);
     try {
-      return getConsensusManager().write(setTablePropertiesPlan);
+      return getConsensusManager()
+          .write(
+              isGeneratedByPipe
+                  ? new PipeEnrichedPlan(setTablePropertiesPlan)
+                  : setTablePropertiesPlan);
     } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());

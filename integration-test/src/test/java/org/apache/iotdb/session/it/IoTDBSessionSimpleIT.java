@@ -20,6 +20,7 @@ package org.apache.iotdb.session.it;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -71,6 +72,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -487,7 +489,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
-  public void insertTabletWithNullValuesTest() {
+  public void insertTabletWithNullValuesTest() throws InterruptedException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
@@ -513,14 +515,9 @@ public class IoTDBSessionSimpleIT {
             new Binary(String.valueOf(time), TSFileConfig.STRING_CHARSET));
       }
 
-      BitMap[] bitMaps = new BitMap[schemaList.size()];
       for (int i = 0; i < schemaList.size(); i++) {
-        if (bitMaps[i] == null) {
-          bitMaps[i] = new BitMap(10);
-        }
-        bitMaps[i].mark(i);
+        tablet.getBitMaps()[i].mark(i);
       }
-      tablet.bitMaps = bitMaps;
 
       if (tablet.getRowSize() != 0) {
         session.insertTablet(tablet);
@@ -534,6 +531,38 @@ public class IoTDBSessionSimpleIT {
         for (Field field : rowRecord.getFields()) {
           assertEquals(9L, field.getLongV());
         }
+      }
+      dataSet = session.executeQueryStatement("select s3 from root.sg1.d1");
+      int result = 0;
+      assertTrue(dataSet.hasNext());
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        Field field = rowRecord.getFields().get(0);
+        // skip null value
+        if (result == 3) {
+          result++;
+        }
+        assertEquals(result++, field.getIntV());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+    TimeUnit.MILLISECONDS.sleep(2000);
+
+    TestUtils.stopForciblyAndRestartDataNodes();
+
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      SessionDataSet dataSet = session.executeQueryStatement("select s3 from root.sg1.d1");
+      int result = 0;
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        Field field = rowRecord.getFields().get(0);
+        // skip null value
+        if (result == 3) {
+          result++;
+        }
+        assertEquals(result++, field.getIntV());
       }
     } catch (Exception e) {
       e.printStackTrace();

@@ -108,7 +108,7 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
     for (final List<Tablet> tablets : device2Tablets.values()) {
       tablets.sort(
           // Each tablet has at least one timestamp
-          Comparator.comparingLong(tablet -> tablet.timestamps[0]));
+          Comparator.comparingLong(tablet -> tablet.getTimestamp(0)));
     }
 
     // Sort the devices by device id
@@ -213,7 +213,7 @@ public class PipeTreeModelTsFileBuilder extends PipeTsFileBuilder {
         final Tablet tablet = tablets.peekFirst();
         if (Objects.isNull(lastTablet)
             // lastTablet.rowSize is not 0
-            || lastTablet.timestamps[lastTablet.getRowSize() - 1] < tablet.timestamps[0]) {
+            || lastTablet.getTimestamp(lastTablet.getRowSize() - 1) < tablet.getTimestamp(0)) {
           tabletsToWrite.add(tablet);
           lastTablet = tablet;
           tablets.pollFirst();

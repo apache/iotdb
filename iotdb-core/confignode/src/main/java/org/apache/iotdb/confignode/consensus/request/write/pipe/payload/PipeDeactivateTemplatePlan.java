@@ -44,7 +44,7 @@ public class PipeDeactivateTemplatePlan extends ConfigPhysicalPlan {
     super(ConfigPhysicalPlanType.PipeDeactivateTemplate);
   }
 
-  public PipeDeactivateTemplatePlan(Map<PartialPath, List<Template>> templateSetInfo) {
+  public PipeDeactivateTemplatePlan(final Map<PartialPath, List<Template>> templateSetInfo) {
     super(ConfigPhysicalPlanType.PipeDeactivateTemplate);
     this.templateSetInfo = templateSetInfo;
   }
@@ -54,26 +54,26 @@ public class PipeDeactivateTemplatePlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
+  protected void serializeImpl(final DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(templateSetInfo.size(), stream);
-    for (Map.Entry<PartialPath, List<Template>> entry : templateSetInfo.entrySet()) {
+    for (final Map.Entry<PartialPath, List<Template>> entry : templateSetInfo.entrySet()) {
       entry.getKey().serialize(stream);
       ReadWriteIOUtils.write(entry.getValue().size(), stream);
-      for (Template template : entry.getValue()) {
+      for (final Template template : entry.getValue()) {
         template.serialize(stream);
       }
     }
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    int size = ReadWriteIOUtils.readInt(buffer);
+  protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
+    final int size = ReadWriteIOUtils.readInt(buffer);
     templateSetInfo = new HashMap<>();
     for (int i = 0; i < size; i++) {
-      PartialPath pattern = (PartialPath) PathDeserializeUtil.deserialize(buffer);
-      int templateNum = ReadWriteIOUtils.readInt(buffer);
-      List<Template> templateList = new ArrayList<>(templateNum);
+      final PartialPath pattern = (PartialPath) PathDeserializeUtil.deserialize(buffer);
+      final int templateNum = ReadWriteIOUtils.readInt(buffer);
+      final List<Template> templateList = new ArrayList<>(templateNum);
       for (int j = 0; j < templateNum; j++) {
         Template template = new Template();
         template.deserialize(buffer);
@@ -84,14 +84,14 @@ public class PipeDeactivateTemplatePlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeDeactivateTemplatePlan that = (PipeDeactivateTemplatePlan) obj;
+    final PipeDeactivateTemplatePlan that = (PipeDeactivateTemplatePlan) obj;
     return templateSetInfo.equals(that.templateSetInfo);
   }
 

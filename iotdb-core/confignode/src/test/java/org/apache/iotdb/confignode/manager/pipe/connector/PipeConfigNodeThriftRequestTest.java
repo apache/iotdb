@@ -89,7 +89,17 @@ public class PipeConfigNodeThriftRequestTest {
 
     PipeTransferConfigSnapshotSealReq req =
         PipeTransferConfigSnapshotSealReq.toTPipeTransferReq(
-            "root.**", snapshotName, 100, templateInfoName, 10, fileType, typeString);
+            "root.**",
+            "db",
+            "table",
+            true,
+            true,
+            snapshotName,
+            100,
+            templateInfoName,
+            10,
+            fileType,
+            typeString);
     PipeTransferConfigSnapshotSealReq deserializeReq =
         PipeTransferConfigSnapshotSealReq.fromTPipeTransferReq(req);
 

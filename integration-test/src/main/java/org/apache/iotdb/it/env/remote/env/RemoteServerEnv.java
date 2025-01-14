@@ -441,6 +441,11 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public void shutdownForciblyAllDataNodes() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public int getMqttPort() {
     throw new UnsupportedOperationException();
   }
