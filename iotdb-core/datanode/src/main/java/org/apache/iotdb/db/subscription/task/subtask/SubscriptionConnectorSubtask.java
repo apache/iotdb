@@ -93,13 +93,4 @@ public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
 
     return SubscriptionAgent.broker().executePrefetch(consumerGroupId, topicName);
   }
-
-  //////////////////////////// APIs provided for metric framework ////////////////////////////
-
-  @Override
-  public int getEventCount(final String pipeName) {
-    // count the number of pipe events in sink queue and prefetching queue, note that can safely
-    // ignore lastEvent
-    return SubscriptionAgent.broker().getPipeEventCount(consumerGroupId, topicName);
-  }
 }

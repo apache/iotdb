@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.PipeProcessor;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -37,6 +38,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicLong;
 
+@TreeModel
 public class CountPointProcessor implements PipeProcessor {
   private static final String AGGREGATE_SERIES_KEY = "aggregate-series";
   private static final AtomicLong writePointCount = new AtomicLong(0);

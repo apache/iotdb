@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.processor.twostage.plugin;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
@@ -41,6 +40,7 @@ import org.apache.iotdb.db.pipe.processor.twostage.exchange.sender.TwoStageAggre
 import org.apache.iotdb.db.pipe.processor.twostage.operator.CountOperator;
 import org.apache.iotdb.db.pipe.processor.twostage.state.CountState;
 import org.apache.iotdb.pipe.api.PipeProcessor;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -49,6 +49,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
@@ -73,6 +74,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_OUTPUT_SERIES_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant._PROCESSOR_OUTPUT_SERIES_KEY;
 
+@TreeModel
 public class TwoStageCountProcessor implements PipeProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TwoStageCountProcessor.class);
@@ -100,32 +102,25 @@ public class TwoStageCountProcessor implements PipeProcessor {
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    checkInvalidParameters(validator.getParameters());
+    checkInvalidParameters(validator);
 
-    final String rawOutputSeries;
-    if (!validator.getParameters().hasAttribute(PROCESSOR_OUTPUT_SERIES_KEY)) {
-      validator.validateRequiredAttribute(_PROCESSOR_OUTPUT_SERIES_KEY);
-      rawOutputSeries = validator.getParameters().getString(_PROCESSOR_OUTPUT_SERIES_KEY);
-    } else {
-      rawOutputSeries = validator.getParameters().getString(PROCESSOR_OUTPUT_SERIES_KEY);
-    }
-
+    final String rawOutputSeries =
+        validator
+            .getParameters()
+            .getStringByKeys(PROCESSOR_OUTPUT_SERIES_KEY, _PROCESSOR_OUTPUT_SERIES_KEY);
     try {
-      PathUtils.isLegalPath(rawOutputSeries);
-    } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Illegal output series path: " + rawOutputSeries);
+      PathUtils.isLegalPath(Objects.requireNonNull(rawOutputSeries));
+    } catch (Exception e) {
+      throw new PipeParameterNotValidException("Illegal output series path: " + rawOutputSeries);
     }
   }
 
-  private void checkInvalidParameters(final PipeParameters parameters) {
+  private void checkInvalidParameters(final PipeParameterValidator validator) {
     // Check coexistence of output.series and output-series
-    if (parameters.hasAttribute(PROCESSOR_OUTPUT_SERIES_KEY)
-        && parameters.hasAttribute(_PROCESSOR_OUTPUT_SERIES_KEY)) {
-      LOGGER.warn(
-          "When {} is specified, specifying {} is invalid.",
-          PROCESSOR_OUTPUT_SERIES_KEY,
-          _PROCESSOR_OUTPUT_SERIES_KEY);
-    }
+    validator.validateSynonymAttributes(
+        Collections.singletonList(PROCESSOR_OUTPUT_SERIES_KEY),
+        Collections.singletonList(_PROCESSOR_OUTPUT_SERIES_KEY),
+        true);
   }
 
   @Override

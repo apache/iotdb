@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.metadata.path;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -49,7 +50,7 @@ public class PatternTreeMapTest {
 
   @Test
   public void stringAppendPatternTreeMapTest() throws IllegalPathException {
-    PatternTreeMap<String, StringSerializer> patternTreeMap =
+    final PatternTreeMap<String, StringSerializer> patternTreeMap =
         PatternTreeMapFactory.getTriggerPatternTreeMap();
 
     patternTreeMap.append(new PartialPath("root.sg1.d1.s1"), "A");
@@ -131,7 +132,7 @@ public class PatternTreeMapTest {
 
   @Test
   public void modificationPatternTreeMapTest() throws IllegalPathException {
-    PatternTreeMap<ModEntry, ModsSerializer> patternTreeMap =
+    final PatternTreeMap<ModEntry, ModsSerializer> patternTreeMap =
         PatternTreeMapFactory.getModsPatternTreeMap();
 
     // [1,3] [6,10]
@@ -195,6 +196,9 @@ public class PatternTreeMapTest {
     patternTreeMap.append(
         new PartialPath("root.sg1.d1.*.d3.s4"),
         new TreeDeletionEntry(new MeasurementPath("root.sg1.d1.*.d3.s4"), 4, 6));
+    patternTreeMap.append(
+        new PartialPath("root.sg1.d1.t1.d*.s5"),
+        new TreeDeletionEntry(new MeasurementPath("root.sg1.d1.t1.d*.s5"), 7, 10));
 
     checkOverlappedByDevice(
         patternTreeMap,
@@ -218,7 +222,8 @@ public class PatternTreeMapTest {
             new TreeDeletionEntry(new MeasurementPath("root.**.s1"), 100, 200),
             new TreeDeletionEntry(new MeasurementPath("root.**"), 10, 100),
             new TreeDeletionEntry(new MeasurementPath("root.sg1.d1.*.d3.s5"), 4, 6),
-            new TreeDeletionEntry(new MeasurementPath("root.sg1.d1.*.d3.s4"), 4, 6)));
+            new TreeDeletionEntry(new MeasurementPath("root.sg1.d1.*.d3.s4"), 4, 6),
+            new TreeDeletionEntry(new MeasurementPath("root.sg1.d1.t1.d*.s5"), 7, 10)));
   }
 
   @Test
@@ -235,8 +240,10 @@ public class PatternTreeMapTest {
   }
 
   private <T> void checkOverlapped(
-      PatternTreeMap<T, ?> patternTreeMap, PartialPath partialPath, List<T> expectedList) {
-    Set<T> resultSet = new HashSet<>(patternTreeMap.getOverlapped(partialPath));
+      final PatternTreeMap<T, ?> patternTreeMap,
+      final PartialPath partialPath,
+      final List<T> expectedList) {
+    final Set<T> resultSet = new HashSet<>(patternTreeMap.getOverlapped(partialPath));
     Assert.assertEquals(expectedList.size(), resultSet.size());
     for (T o : expectedList) {
       assertTrue(resultSet.contains(o));
@@ -244,27 +251,29 @@ public class PatternTreeMapTest {
   }
 
   private <T> void checkOverlappedByDeviceMeasurements(
-      PatternTreeMap<T, ?> patternTreeMap,
-      PartialPath devicePath,
-      List<String> measurements,
-      List<List<T>> expectedList) {
-    List<List<T>> actualList = patternTreeMap.getOverlapped(devicePath, measurements);
+      final PatternTreeMap<T, ?> patternTreeMap,
+      final PartialPath devicePath,
+      final List<String> measurements,
+      final List<List<T>> expectedList) {
+    final List<List<T>> actualList = patternTreeMap.getOverlapped(devicePath, measurements);
     Assert.assertEquals(expectedList.size(), actualList.size());
     for (int i = 0; i < measurements.size(); i++) {
-      List<T> expectedSubList = expectedList.get(i);
-      Set<T> actualSubSet = new HashSet<>(actualList.get(i));
+      final List<T> expectedSubList = expectedList.get(i);
+      final Set<T> actualSubSet = new HashSet<>(actualList.get(i));
       Assert.assertEquals(expectedSubList.size(), actualSubSet.size());
-      for (T o : expectedSubList) {
+      for (final T o : expectedSubList) {
         assertTrue(actualSubSet.contains(o));
       }
     }
   }
 
   private <T> void checkOverlappedByDevice(
-      PatternTreeMap<T, ?> patternTreeMap, PartialPath devicePath, List<T> expectedList) {
-    Set<T> resultSet = new HashSet<>(patternTreeMap.getDeviceOverlapped(devicePath));
+      final PatternTreeMap<T, ?> patternTreeMap,
+      final PartialPath devicePath,
+      final List<T> expectedList) {
+    final Set<T> resultSet = new HashSet<>(patternTreeMap.getDeviceOverlapped(devicePath));
     Assert.assertEquals(expectedList.size(), resultSet.size());
-    for (T o : expectedList) {
+    for (final T o : expectedList) {
       assertTrue(resultSet.contains(o));
     }
   }

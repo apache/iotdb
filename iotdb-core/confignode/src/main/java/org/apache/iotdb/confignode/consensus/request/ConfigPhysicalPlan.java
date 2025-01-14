@@ -50,6 +50,7 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNo
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropTableModelFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropTreeModelFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.UpdateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelInNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
@@ -59,7 +60,9 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataP
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
@@ -295,6 +298,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case CreateFunction:
           plan = new CreateFunctionPlan();
           break;
+        case UpdateFunction:
+          plan = new UpdateFunctionPlan();
+          break;
         case DropTreeModelFunction:
           plan = new DropTreeModelFunctionPlan();
           break;
@@ -338,7 +344,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           plan = new ExtendSchemaTemplatePlan();
           break;
         case PreCreateTable:
-          plan = new PreCreateTablePlan();
+          plan = new PreCreateTablePlan(configPhysicalPlanType);
           break;
         case RollbackCreateTable:
           plan = new RollbackCreateTablePlan();
@@ -447,6 +453,12 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case PipeDeactivateTemplate:
           plan = new PipeDeactivateTemplatePlan();
+          break;
+        case PipeCreateTable:
+          plan = new PipeCreateTablePlan();
+          break;
+        case PipeDeleteDevices:
+          plan = new PipeDeleteDevicesPlan();
           break;
         case UpdateTriggersOnTransferNodes:
           plan = new UpdateTriggersOnTransferNodesPlan();

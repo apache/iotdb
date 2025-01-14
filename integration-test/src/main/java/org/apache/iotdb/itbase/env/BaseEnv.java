@@ -42,6 +42,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
@@ -193,6 +194,8 @@ public interface BaseEnv {
 
   ISession getSessionConnection() throws IoTDBConnectionException;
 
+  ISession getSessionConnection(ZoneId zoneId) throws IoTDBConnectionException;
+
   ISession getSessionConnection(String userName, String password) throws IoTDBConnectionException;
 
   ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException;
@@ -296,6 +299,9 @@ public interface BaseEnv {
 
   /** Shutdown all existed DataNodes. */
   void shutdownAllDataNodes();
+
+  /** Shutdown forcibly all existed DataNodes. */
+  void shutdownForciblyAllDataNodes();
 
   int getMqttPort();
 

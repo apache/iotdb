@@ -21,9 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 
-import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 public class CompactionPathUtils {
@@ -32,17 +30,6 @@ public class CompactionPathUtils {
 
   public static PartialPath getPath(IDeviceID device, String measurement)
       throws IllegalPathException {
-    return getPath(device).concatAsMeasurementPath(measurement);
-  }
-
-  public static PartialPath getPath(IDeviceID device) throws IllegalPathException {
-    PartialPath path;
-    String plainDeviceId = device.toString();
-    if (plainDeviceId.contains(TsFileConstant.BACK_QUOTE_STRING)) {
-      path = DataNodeDevicePathCache.getInstance().getPartialPath(plainDeviceId);
-    } else {
-      path = new PartialPath(plainDeviceId.split(TsFileConstant.PATH_SEPARATER_NO_REGEX));
-    }
-    return path;
+    return new PartialPath(device).concatAsMeasurementPath(measurement);
   }
 }

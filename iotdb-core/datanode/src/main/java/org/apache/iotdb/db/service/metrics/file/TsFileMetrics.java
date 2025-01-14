@@ -27,6 +27,7 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -34,8 +35,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -120,6 +123,10 @@ public class TsFileMetrics implements IMetricSet {
         .forEach(map -> deleteRegionFromMap(map, database, regionId));
     Arrays.asList(seqFileSizeMap, unseqFileSizeMap)
         .forEach(map -> deleteRegionFromMap(map, database, regionId));
+    Arrays.asList(SEQUENCE, UNSEQUENCE)
+        .forEach(orderStr -> deleteGlobalTsFileCountGauge(orderStr, database, regionId));
+    Arrays.asList(SEQUENCE, UNSEQUENCE)
+        .forEach(orderStr -> deleteGlobalTsFileSizeGauge(orderStr, database, regionId));
   }
 
   private <T> void deleteRegionFromMap(
@@ -199,6 +206,22 @@ public class TsFileMetrics implements IMetricSet {
             regionId);
   }
 
+  public void deleteGlobalTsFileCountGauge(String orderStr, String database, String regionId) {
+    // This metric may not exist
+    Optional.ofNullable(this.metricService.get())
+        .ifPresent(
+            service ->
+                service.remove(
+                    MetricType.GAUGE,
+                    FILE_GLOBAL_COUNT,
+                    Tag.NAME.toString(),
+                    orderStr,
+                    Tag.DATABASE.toString(),
+                    database,
+                    Tag.REGION.toString(),
+                    regionId));
+  }
+
   private void updateGlobalTsFileSizeMap(
       Map<String, Map<String, Pair<Long, Gauge>>> map,
       String orderStr,
@@ -244,6 +267,22 @@ public class TsFileMetrics implements IMetricSet {
             database,
             Tag.REGION.toString(),
             regionId);
+  }
+
+  public void deleteGlobalTsFileSizeGauge(String orderStr, String database, String regionId) {
+    // This metric may not exist
+    Optional.ofNullable(this.metricService.get())
+        .ifPresent(
+            service ->
+                service.remove(
+                    MetricType.GAUGE,
+                    FILE_GLOBAL_SIZE,
+                    Tag.NAME.toString(),
+                    orderStr,
+                    Tag.DATABASE.toString(),
+                    database,
+                    Tag.REGION.toString(),
+                    regionId));
   }
 
   // endregion
@@ -399,6 +438,23 @@ public class TsFileMetrics implements IMetricSet {
   }
 
   // endregion
+
+  public Map<Integer, Long> getRegionSizeMap() {
+    Map<Integer, Long> regionSizeMap = new HashMap<>();
+    for (Map<String, Pair<Long, Gauge>> map : seqFileSizeMap.values()) {
+      for (Map.Entry<String, Pair<Long, Gauge>> regionSizeEntry : map.entrySet()) {
+        Integer regionId = Integer.parseInt(regionSizeEntry.getKey());
+        regionSizeMap.put(regionId, regionSizeEntry.getValue().getLeft());
+      }
+    }
+    for (Map<String, Pair<Long, Gauge>> map : unseqFileSizeMap.values()) {
+      for (Map.Entry<String, Pair<Long, Gauge>> regionSizeEntry : map.entrySet()) {
+        Integer regionId = Integer.parseInt(regionSizeEntry.getKey());
+        regionSizeMap.merge(regionId, regionSizeEntry.getValue().getLeft(), Long::sum);
+      }
+    }
+    return regionSizeMap;
+  }
 
   @TestOnly
   public long getFileCount(boolean seq) {

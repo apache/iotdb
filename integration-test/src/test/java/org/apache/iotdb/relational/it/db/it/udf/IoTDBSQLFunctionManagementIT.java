@@ -22,12 +22,13 @@ import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFu
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.category.TableClusterIT;
+import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -38,13 +39,14 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_USER_DEFINED_AGG_FUNC;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_USER_DEFINED_SCALAR_FUNC;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
+@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBSQLFunctionManagementIT {
 
   private static final int BUILTIN_SCALAR_FUNCTIONS_COUNT =
@@ -62,14 +64,19 @@ public class IoTDBSQLFunctionManagementIT {
 
   private static final String UDF_JAR_PREFIX = new File(UDF_LIB_PREFIX).toURI().toString();
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  @After
-  public void tearDown() {
+  @AfterClass
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @After
+  public void dropAll() {
+    SQLFunctionUtils.dropAllUDF();
   }
 
   @Test
@@ -78,7 +85,6 @@ public class IoTDBSQLFunctionManagementIT {
         Statement statement = connection.createStatement()) {
       statement.execute(
           "create function udsf as 'org.apache.iotdb.db.query.udf.example.relational.ContainNull'");
-
       try (ResultSet resultSet = statement.executeQuery("show functions")) {
         assertEquals(4, resultSet.getMetaData().getColumnCount());
         int count = 0;
@@ -88,10 +94,10 @@ public class IoTDBSQLFunctionManagementIT {
             stringBuilder.append(resultSet.getString(i)).append(",");
           }
           String result = stringBuilder.toString();
-          if (result.contains("FUNCTION_TYPE_USER_DEFINED_SCALAR_FUNC")) {
+          if (result.contains(FUNCTION_TYPE_USER_DEFINED_SCALAR_FUNC)) {
             Assert.assertEquals(
                 String.format(
-                    "udsf,%s,org.apache.iotdb.db.query.udf.example.relational.ContainNull,AVAILABLE,",
+                    "UDSF,%s,org.apache.iotdb.db.query.udf.example.relational.ContainNull,AVAILABLE,",
                     FUNCTION_TYPE_USER_DEFINED_SCALAR_FUNC),
                 result);
           }
@@ -110,7 +116,58 @@ public class IoTDBSQLFunctionManagementIT {
             stringBuilder.append(resultSet.getString(i)).append(",");
           }
           String result = stringBuilder.toString();
-          if (result.contains("FUNCTION_TYPE_USER_DEFINED_SCALAR_FUNC")) {
+          if (result.contains(FUNCTION_TYPE_USER_DEFINED_SCALAR_FUNC)) {
+            Assert.fail();
+          }
+          ++count;
+        }
+        Assert.assertEquals(
+            BUILTIN_AGGREGATE_FUNCTIONS_COUNT + BUILTIN_SCALAR_FUNCTIONS_COUNT, count);
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testCreateShowDropAggregateFunction() {
+    try (Connection connection = EnvFactory.getEnv().getTableConnection();
+        Statement statement = connection.createStatement()) {
+      SQLFunctionUtils.createUDF(
+          "udaf", "org.apache.iotdb.db.query.udf.example.relational.MyCount");
+
+      try (ResultSet resultSet = statement.executeQuery("show functions")) {
+        assertEquals(4, resultSet.getMetaData().getColumnCount());
+        int count = 0;
+        while (resultSet.next()) {
+          StringBuilder stringBuilder = new StringBuilder();
+          for (int i = 1; i <= resultSet.getMetaData().getColumnCount(); ++i) {
+            stringBuilder.append(resultSet.getString(i)).append(",");
+          }
+          String result = stringBuilder.toString();
+          if (result.contains(FUNCTION_TYPE_USER_DEFINED_AGG_FUNC)) {
+            Assert.assertEquals(
+                String.format(
+                    "UDAF,%s,org.apache.iotdb.db.query.udf.example.relational.MyCount,AVAILABLE,",
+                    FUNCTION_TYPE_USER_DEFINED_AGG_FUNC),
+                result);
+          }
+          ++count;
+        }
+        Assert.assertEquals(
+            1 + BUILTIN_AGGREGATE_FUNCTIONS_COUNT + BUILTIN_SCALAR_FUNCTIONS_COUNT, count);
+      }
+      statement.execute("drop function udaf");
+      try (ResultSet resultSet = statement.executeQuery("show functions")) {
+        assertEquals(4, resultSet.getMetaData().getColumnCount());
+        int count = 0;
+        while (resultSet.next()) {
+          StringBuilder stringBuilder = new StringBuilder();
+          for (int i = 1; i <= resultSet.getMetaData().getColumnCount(); ++i) {
+            stringBuilder.append(resultSet.getString(i)).append(",");
+          }
+          String result = stringBuilder.toString();
+          if (result.contains(FUNCTION_TYPE_USER_DEFINED_AGG_FUNC)) {
             Assert.fail();
           }
           ++count;
@@ -220,7 +277,7 @@ public class IoTDBSQLFunctionManagementIT {
                 ""));
         fail();
       } catch (Exception e) {
-        assertTrue(e.getMessage().contains("URI"));
+        assertTrue(e.getMessage().contains("701: Untrusted uri "));
       }
 
       try {
@@ -279,13 +336,15 @@ public class IoTDBSQLFunctionManagementIT {
       // ensure that abs is not dropped
       statement.execute("CREATE DATABASE db");
       statement.execute("USE db");
-      statement.execute("CREATE TABLE table0 (device string id, s1 INT32)");
+      statement.execute("CREATE TABLE table0 (device string TAG, s1 INT32)");
       statement.execute("INSERT INTO table0 (time, device, s1) VALUES (1, 'd1', -10)");
       try (ResultSet rs = statement.executeQuery("SELECT time, ABS(s1) FROM table0")) {
         Assert.assertTrue(rs.next());
         Assert.assertEquals(1, rs.getLong(1));
         Assert.assertEquals(10, rs.getInt(2));
         Assert.assertFalse(rs.next());
+      } finally {
+        statement.execute("DROP DATABASE db");
       }
     }
   }

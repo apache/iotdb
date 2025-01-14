@@ -22,7 +22,8 @@ package org.apache.iotdb.db.pipe.connector.protocol.opcua;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.db.pipe.connector.util.PipeTabletEventSorter;
+import org.apache.iotdb.db.pipe.connector.util.sorter.PipeTableModelTabletEventSorter;
+import org.apache.iotdb.db.pipe.connector.util.sorter.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -71,8 +72,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   private final boolean isClientServerModel;
   private final SubscriptionModel subscriptionModel;
   private final OpcUaServerBuilder builder;
-  private final String qualifiedDatabaseName;
-  private final String unQualifiedDatabaseName;
+  private final String databaseName;
   private final String placeHolder;
 
   OpcUaNameSpace(
@@ -84,8 +84,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     super(server, NAMESPACE_URI);
     this.isClientServerModel = isClientServerModel;
     this.builder = builder;
-    this.qualifiedDatabaseName = qualifiedDatabaseName;
-    this.unQualifiedDatabaseName = PathUtils.unQualifyDatabaseName(qualifiedDatabaseName);
+    this.databaseName = PathUtils.unQualifyDatabaseName(qualifiedDatabaseName);
     this.placeHolder = placeHolder;
 
     subscriptionModel = new SubscriptionModel(server, this);
@@ -118,19 +117,20 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
     final List<IMeasurementSchema> newSchemas = new ArrayList<>();
     if (!isTableModel) {
-      new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+      new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
       final List<Long> timestamps = new ArrayList<>();
       final List<Object> values = new ArrayList<>();
 
       for (int i = 0; i < schemas.size(); ++i) {
         for (int j = 0; j < tablet.getRowSize(); ++j) {
-          if (Objects.isNull(tablet.bitMaps)
-              || Objects.isNull(tablet.bitMaps[i])
-              || !tablet.bitMaps[i].isMarked(j)) {
+          if (Objects.isNull(tablet.getBitMaps())
+              || Objects.isNull(tablet.getBitMaps()[i])
+              || !tablet.getBitMaps()[i].isMarked(j)) {
             newSchemas.add(schemas.get(i));
-            timestamps.add(tablet.timestamps[j]);
-            values.add(getTabletObjectValue4Opc(tablet.values[i], j, schemas.get(i).getType()));
+            timestamps.add(tablet.getTimestamp(j));
+            values.add(
+                getTabletObjectValue4Opc(tablet.getValues()[i], j, schemas.get(i).getType()));
             break;
           }
         }
@@ -139,33 +139,35 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       transferTabletRowForClientServerModel(
           tablet.getDeviceId().split("\\."), newSchemas, timestamps, values);
     } else {
+      new PipeTableModelTabletEventSorter(tablet).sortAndDeduplicateByTimestampIfNecessary();
+
       final List<Integer> columnIndexes = new ArrayList<>();
       for (int i = 0; i < schemas.size(); ++i) {
-        if (tablet.getColumnTypes().get(i) == Tablet.ColumnCategory.MEASUREMENT) {
+        if (tablet.getColumnTypes().get(i) == Tablet.ColumnCategory.FIELD) {
           columnIndexes.add(i);
           newSchemas.add(schemas.get(i));
         }
       }
+
       for (int i = 0; i < tablet.getRowSize(); ++i) {
         final Object[] segments = tablet.getDeviceID(i).getSegments();
         final String[] folderSegments = new String[segments.length + 2];
-        folderSegments[0] = "root";
-        folderSegments[1] = unQualifiedDatabaseName;
+        folderSegments[0] = databaseName;
 
         for (int j = 0; j < segments.length; ++j) {
-          folderSegments[j + 2] = Objects.isNull(segments[j]) ? placeHolder : (String) segments[j];
+          folderSegments[j + 1] = Objects.isNull(segments[j]) ? placeHolder : (String) segments[j];
         }
 
         final int finalI = i;
         transferTabletRowForClientServerModel(
             folderSegments,
             newSchemas,
-            Collections.singletonList(tablet.timestamps[i]),
+            Collections.singletonList(tablet.getTimestamp(i)),
             columnIndexes.stream()
                 .map(
                     index ->
                         getTabletObjectValue4Opc(
-                            tablet.values[index], finalI, schemas.get(index).getType()))
+                            tablet.getValues()[index], finalI, schemas.get(index).getType()))
                 .collect(Collectors.toList()));
       }
     }
@@ -325,7 +327,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     if (isTableModel) {
       sourceNameList = new ArrayList<>(tablet.getRowSize());
       for (int i = 0; i < tablet.getRowSize(); ++i) {
-        final StringBuilder idBuilder = new StringBuilder(qualifiedDatabaseName);
+        final StringBuilder idBuilder = new StringBuilder(databaseName);
         for (final Object segment : tablet.getDeviceID(i).getSegments()) {
           idBuilder
               .append(TsFileConstant.PATH_SEPARATOR)
@@ -338,7 +340,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     // Use eventNode here because other nodes doesn't support values and times simultaneously
     for (int columnIndex = 0; columnIndex < tablet.getSchemas().size(); ++columnIndex) {
       if (isTableModel
-          && !tablet.getColumnTypes().get(columnIndex).equals(Tablet.ColumnCategory.MEASUREMENT)) {
+          && !tablet.getColumnTypes().get(columnIndex).equals(Tablet.ColumnCategory.FIELD)) {
         continue;
       }
       final TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();
@@ -356,7 +358,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
       for (int rowIndex = 0; rowIndex < tablet.getRowSize(); ++rowIndex) {
         // Filter null value
-        if (tablet.bitMaps[columnIndex].isMarked(rowIndex)) {
+        if (tablet.getBitMaps()[columnIndex].isMarked(rowIndex)) {
           continue;
         }
 
@@ -372,54 +374,53 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         }
 
         // Time --> TimeStamp
-        eventNode.setTime(new DateTime(timestampToUtc(tablet.timestamps[rowIndex])));
+        eventNode.setTime(new DateTime(timestampToUtc(tablet.getTimestamp(rowIndex))));
 
         // Message --> Value
         switch (dataType) {
           case BOOLEAN:
             eventNode.setMessage(
                 LocalizedText.english(
-                    Boolean.toString(((boolean[]) tablet.values[columnIndex])[rowIndex])));
+                    Boolean.toString((boolean) tablet.getValue(rowIndex, columnIndex))));
             break;
           case INT32:
             eventNode.setMessage(
                 LocalizedText.english(
-                    Integer.toString(((int[]) tablet.values[columnIndex])[rowIndex])));
+                    Integer.toString((int) tablet.getValue(rowIndex, columnIndex))));
             break;
           case DATE:
             eventNode.setMessage(
                 LocalizedText.english(
-                    (((LocalDate[]) tablet.values[columnIndex])[rowIndex])
+                    ((LocalDate) tablet.getValue(rowIndex, columnIndex))
                         .atStartOfDay(ZoneId.systemDefault())
                         .toString()));
             break;
           case INT64:
             eventNode.setMessage(
                 LocalizedText.english(
-                    Long.toString(((long[]) tablet.values[columnIndex])[rowIndex])));
+                    Long.toString((long) tablet.getValue(rowIndex, columnIndex))));
             break;
           case TIMESTAMP:
             eventNode.setMessage(
                 LocalizedText.english(
                     DateTimeUtils.convertLongToDate(
-                        ((long[]) tablet.values[columnIndex])[rowIndex])));
+                        (long) tablet.getValue(rowIndex, columnIndex))));
             break;
           case FLOAT:
             eventNode.setMessage(
                 LocalizedText.english(
-                    Float.toString(((float[]) tablet.values[columnIndex])[rowIndex])));
+                    Float.toString((float) tablet.getValue(rowIndex, columnIndex))));
             break;
           case DOUBLE:
             eventNode.setMessage(
                 LocalizedText.english(
-                    Double.toString(((double[]) tablet.values[columnIndex])[rowIndex])));
+                    Double.toString((double) tablet.getValue(rowIndex, columnIndex))));
             break;
           case TEXT:
           case BLOB:
           case STRING:
             eventNode.setMessage(
-                LocalizedText.english(
-                    ((Binary[]) tablet.values[columnIndex])[rowIndex].toString()));
+                LocalizedText.english(tablet.getValue(rowIndex, columnIndex).toString()));
             break;
           case VECTOR:
           case UNKNOWN:

@@ -283,13 +283,14 @@ public abstract class AbstractThriftServiceThread extends Thread {
 
   @SuppressWarnings("java:S2259")
   private TServerTransport openTransport(String bindAddress, int port) throws TTransportException {
-    return new TServerSocket(new InetSocketAddress(bindAddress, port));
+    // bind any address
+    return new TServerSocket(new InetSocketAddress(port));
   }
 
   private TServerTransport openNonblockingTransport(
       String bindAddress, int port, int connectionTimeoutInMS) throws TTransportException {
-    return new TNonblockingServerSocket(
-        new InetSocketAddress(bindAddress, port), connectionTimeoutInMS);
+    // bind any address
+    return new TNonblockingServerSocket(new InetSocketAddress(port), connectionTimeoutInMS);
   }
 
   public void setThreadStopLatch(CountDownLatch threadStopLatch) {

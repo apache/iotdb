@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
 
@@ -63,6 +64,9 @@ public class SubscriptionEvent {
 
   // record file name for file payload
   private String fileName;
+
+  private static final long NACK_COUNT_REPORT_THRESHOLD = 3;
+  private final AtomicLong nackCount = new AtomicLong();
 
   /**
    * Constructs a {@link SubscriptionEvent} with the response type of {@link
@@ -87,9 +91,12 @@ public class SubscriptionEvent {
    * SubscriptionEventTabletResponse}.
    */
   public SubscriptionEvent(
-      final SubscriptionPipeTabletEventBatch batch, final SubscriptionCommitContext commitContext) {
+      final SubscriptionPipeTabletEventBatch batch,
+      final SubscriptionCommitContextSupplier commitContextSupplier) {
     this.pipeEvents = new SubscriptionPipeTabletBatchEvents(batch);
-    this.response = new SubscriptionEventTabletResponse(batch, commitContext);
+    final SubscriptionCommitContext commitContext = commitContextSupplier.get();
+    this.response =
+        new SubscriptionEventTabletResponse(batch, commitContext, commitContextSupplier);
     this.commitContext = commitContext;
   }
 
@@ -138,8 +145,12 @@ public class SubscriptionEvent {
     return response.isCommittable();
   }
 
-  public void ack() {
+  public void ack(final Consumer<SubscriptionEvent> onCommittedHook) {
+    // NOTE: we should ack pipe events before ack response since multiple events may reuse the same
+    // batch (as pipe events)
+    // TODO: consider more elegant design for this method
     pipeEvents.ack();
+    response.ack(onCommittedHook);
   }
 
   /**
@@ -148,11 +159,8 @@ public class SubscriptionEvent {
    * SubscriptionPrefetchingQueue} or {@link SubscriptionPrefetchingQueue#cleanUp}.
    */
   public void cleanUp() {
-    // reset serialized responses
-    response.cleanUp();
-
-    // clean up pipe events
     pipeEvents.cleanUp();
+    response.cleanUp();
 
     // TODO: clean more fields
   }
@@ -208,6 +216,11 @@ public class SubscriptionEvent {
 
     // reset lastPolledTimestamp makes this event pollable
     lastPolledTimestamp.set(INVALID_TIMESTAMP);
+
+    // record nack count
+    if (nackCount.getAndIncrement() > NACK_COUNT_REPORT_THRESHOLD) {
+      LOGGER.warn("{} has been nacked {} times", this, nackCount);
+    }
   }
 
   public void recordLastPolledConsumerId(final String consumerId) {

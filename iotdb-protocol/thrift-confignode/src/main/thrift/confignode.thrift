@@ -134,7 +134,7 @@ struct TDataNodeRestartResp {
   1: required common.TSStatus status
   2: required list<common.TConfigNodeLocation> configNodeList
   3: optional TRuntimeConfiguration runtimeConfiguration
-  4: optional list<common.TConsensusGroupId> consensusGroupIds
+  4: optional list<common.TRegionReplicaSet> correctConsensusGroups
 }
 
 struct TDataNodeRemoveReq {
@@ -217,7 +217,6 @@ struct TDatabaseSchema {
 // Schema
 struct TSchemaPartitionReq {
   1: required binary pathPatternTree
-  2: optional bool isTableModel
 }
 
 struct TSchemaPartitionTableResp {
@@ -605,12 +604,12 @@ struct TDatabaseInfo {
   10: required i32 minDataRegionNum
   11: required i32 maxDataRegionNum
   12: optional i64 timePartitionOrigin
-  13: optional bool isTableModel
 }
 
 struct TGetDatabaseReq {
   1: required list<string> databasePathPattern
   2: required binary scopePatternTree
+  3: optional bool isTableModel
 }
 
 struct TShowDatabaseResp {
@@ -623,6 +622,7 @@ struct TShowDatabaseResp {
 struct TShowRegionReq {
   1: optional common.TConsensusGroupType consensusGroupType;
   2: optional list<string> databases
+  3: optional bool isTableModel
 }
 
 struct TRegionInfo {
@@ -637,6 +637,7 @@ struct TRegionInfo {
   9: optional string roleType
   10: optional i64 createTime
   11: optional string internalAddress
+  12: optional i64 tsFileSize
 }
 
 struct TShowRegionResp {
@@ -705,12 +706,17 @@ struct TCreatePipePluginReq {
 struct TDropPipePluginReq {
   1: required string pluginName
   2: optional bool ifExistsCondition
+  3: optional bool isTableModel
 }
 
 // Get PipePlugin table from config node
 struct TGetPipePluginTableResp {
   1: required common.TSStatus status
   2: required list<binary> allPipePluginMeta
+}
+
+struct TShowPipePluginReq {
+  1: optional bool isTableModel
 }
 
 // Pipe
@@ -750,11 +756,23 @@ struct TAlterPipeReq {
     6: optional map<string, string> extractorAttributes
     7: optional bool isReplaceAllExtractorAttributes
     8: optional bool ifExistsCondition
+    9: optional bool isTableModel
+}
+
+struct TStartPipeReq {
+    1: required string pipeName
+    2: optional bool isTableModel
+}
+
+struct TStopPipeReq {
+    1: required string pipeName
+    2: optional bool isTableModel
 }
 
 struct TDropPipeReq {
     1: required string pipeName
     2: optional bool ifExistsCondition
+    3: optional bool isTableModel
 }
 
 // Deprecated, restored for compatibility
@@ -767,6 +785,7 @@ struct TPipeSinkInfo {
 struct TShowPipeReq {
   1: optional string pipeName
   2: optional bool whereClause
+  3: optional bool isTableModel
 }
 
 struct TShowPipeResp {
@@ -1070,10 +1089,25 @@ struct TShowTableResp {
    2: optional list<TTableInfo> tableInfoList
 }
 
+struct TShowTable4InformationSchemaResp {
+   1: required common.TSStatus status
+   2: optional map<string, list<TTableInfo>> databaseTableInfoMap
+}
+
 struct TDescTableResp {
    1: required common.TSStatus status
    2: optional binary tableInfo
    3: optional set<string> preDeletedColumns
+}
+
+struct TDescTable4InformationSchemaResp {
+   1: required common.TSStatus status
+   2: optional map<string, map<string, TTableColumnInfo>> tableColumnInfoMap
+}
+
+struct TTableColumnInfo {
+   1: required binary tableInfo
+   2: optional set<string> preDeletedColumns
 }
 
 struct TFetchTableResp {
@@ -1493,6 +1527,11 @@ service IConfigNodeRPCService {
   TGetPipePluginTableResp getPipePluginTable();
 
   /**
+   * Return the pipe plugin table
+   */
+  TGetPipePluginTableResp getPipePluginTableExtended(TShowPipePluginReq req);
+
+  /**
    * Return the pipe plugin jar list of the plugin name list
    */
   TGetJarInListResp getPipePluginJar(TGetJarInListReq req)
@@ -1549,8 +1588,8 @@ service IConfigNodeRPCService {
   /** Kill query */
   common.TSStatus killQuery(string queryId, i32 dataNodeId)
 
-  /** Get all DataNodeLocations of Running DataNodes */
-  TGetDataNodeLocationsResp getRunningDataNodeLocations()
+  /** Get all DataNodeLocations of Readable DataNodes */
+  TGetDataNodeLocationsResp getReadableDataNodeLocations()
 
   // ======================================================
   // Cluster Tools
@@ -1664,8 +1703,14 @@ service IConfigNodeRPCService {
   /** Start Pipe */
   common.TSStatus startPipe(string pipeName)
 
+  /** Start Pipe */
+  common.TSStatus startPipeExtended(TStartPipeReq req)
+
   /** Stop Pipe */
   common.TSStatus stopPipe(string pipeName)
+
+  /** Stop Pipe */
+  common.TSStatus stopPipeExtended(TStopPipeReq req)
 
   /** Drop Pipe */
   common.TSStatus dropPipe(string pipeName)
@@ -1824,7 +1869,11 @@ service IConfigNodeRPCService {
 
   TShowTableResp showTables(string database, bool isDetails)
 
+  TShowTable4InformationSchemaResp showTables4InformationSchema()
+
   TDescTableResp describeTable(string database, string tableName, bool isDetails)
+
+  TDescTable4InformationSchemaResp descTables4InformationSchema()
 
   TFetchTableResp fetchTables(map<string, set<string>> fetchTableMap)
 

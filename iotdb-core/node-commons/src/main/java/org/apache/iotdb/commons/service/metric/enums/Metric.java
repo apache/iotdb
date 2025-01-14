@@ -74,6 +74,7 @@ public enum Metric {
   WAL_BUFFER("wal_buffer"),
   PENDING_FLUSH_TASK("pending_flush_task"),
   WAL_COST("wal_cost"),
+  WAL_QUEUE_MEM_COST("wal_queue_mem_cost"),
   FLUSH_COST("flush_cost"),
   FLUSH_SUB_TASK_COST("flush_sub_task_cost"),
   MEMTABLE_THRESHOLD("memtable_threshold"),
@@ -92,6 +93,7 @@ public enum Metric {
   COMPACTION_TASK_SELECTION_COST("compaction_task_selection_cost"),
   COMPACTION_TASK_SELECTED_FILE("compaction_task_selected_file"),
   COMPACTION_TASK_SELECTED_FILE_SIZE("compaction_task_selected_file_size"),
+  COMPACTION_SELECTION_CACHED_TIME_INDEX_SIZE("compaction_selection_cached_time_index_size"),
   // schema engine related
   MEM("mem"),
   CACHE("cache"),
@@ -185,6 +187,9 @@ public enum Metric {
   LOAD_POINT_COUNT("load_point_count"),
   MEMTABLE_POINT_COUNT("memtable_point_count"),
   BINARY_ALLOCATOR("binary_allocator"),
+  // memory related
+  MEMORY_THRESHOLD_SIZE("memory_threshold_size"),
+  MEMORY_ACTUAL_SIZE("memory_actual_size"),
   ;
 
   final String value;

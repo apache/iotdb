@@ -34,9 +34,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.exception.LoadRuntimeOutOfMemoryException;
-import org.apache.iotdb.db.exception.VerifyMetadataException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
+import org.apache.iotdb.db.exception.load.LoadFileException;
+import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -80,6 +81,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class TreeSchemaAutoCreatorAndVerifier {
+
   private static final Logger LOGGER =
       LoggerFactory.getLogger(TreeSchemaAutoCreatorAndVerifier.class);
 
@@ -103,7 +105,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
   public void autoCreateAndVerify(
       TsFileSequenceReader reader,
       Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadataList)
-      throws IOException, AuthException {
+      throws IOException, AuthException, LoadAnalyzeTypeMismatchException {
     for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry :
         device2TimeseriesMetadataList.entrySet()) {
       final IDeviceID device = entry.getKey();
@@ -125,11 +127,15 @@ public class TreeSchemaAutoCreatorAndVerifier {
             continue;
           }
         } catch (IllegalPathException e) {
-          LOGGER.warn(
-              "Failed to check if device {}, timeseries {} is deleted by mods. Will see it as not deleted.",
-              device,
-              timeseriesMetadata.getMeasurementId(),
-              e);
+          // In aligned devices, there may be empty measurements which will cause
+          // IllegalPathException.
+          if (!timeseriesMetadata.getMeasurementId().isEmpty()) {
+            LOGGER.warn(
+                "Failed to check if device {}, timeseries {} is deleted by mods. Will see it as not deleted.",
+                device,
+                timeseriesMetadata.getMeasurementId(),
+                e);
+          }
         }
 
         final TSDataType dataType = timeseriesMetadata.getTsDataType();
@@ -200,13 +206,14 @@ public class TreeSchemaAutoCreatorAndVerifier {
     schemaCache.clearDeviceIsAlignedCacheIfNecessary();
   }
 
-  public void flush() throws AuthException {
+  public void flush() throws AuthException, LoadAnalyzeTypeMismatchException {
     doAutoCreateAndVerify();
 
     schemaCache.clearTimeSeries();
   }
 
-  private void doAutoCreateAndVerify() throws SemanticException, AuthException {
+  private void doAutoCreateAndVerify()
+      throws SemanticException, AuthException, LoadAnalyzeTypeMismatchException {
     if (schemaCache.getDevice2TimeSeries().isEmpty()) {
       return;
     }
@@ -229,16 +236,27 @@ public class TreeSchemaAutoCreatorAndVerifier {
       }
     } catch (AuthException e) {
       throw e;
+    } catch (LoadAnalyzeTypeMismatchException e) {
+      if (loadTsFileAnalyzer.isConvertOnTypeMismatch()) {
+        // throw exception to convert data type in the upper layer (LoadTsFileAnalyzer)
+        throw e;
+      } else {
+        handleException(e, loadTsFileAnalyzer.getStatementString());
+      }
     } catch (Exception e) {
-      LOGGER.warn("Auto create or verify schema error.", e);
-      throw new SemanticException(
-          String.format(
-              "Auto create or verify schema error when executing statement %s.  Detail: %s.",
-              loadTsFileAnalyzer.getStatementString(), e.getMessage()));
+      handleException(e, loadTsFileAnalyzer.getStatementString());
     }
   }
 
-  private void makeSureNoDuplicatedMeasurementsInDevices() throws VerifyMetadataException {
+  private void handleException(Exception e, String statementString) throws SemanticException {
+    LOGGER.warn("Auto create or verify schema error.", e);
+    throw new SemanticException(
+        String.format(
+            "Auto create or verify schema error when executing statement %s.  Detail: %s.",
+            statementString, e.getMessage()));
+  }
+
+  private void makeSureNoDuplicatedMeasurementsInDevices() throws LoadAnalyzeException {
     for (final Map.Entry<IDeviceID, Set<MeasurementSchema>> entry :
         schemaCache.getDevice2TimeSeries().entrySet()) {
       final IDeviceID device = entry.getKey();
@@ -246,7 +264,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
       for (final MeasurementSchema timeseriesSchema : entry.getValue()) {
         final String measurement = timeseriesSchema.getMeasurementName();
         if (measurement2Schema.containsKey(measurement)) {
-          throw new VerifyMetadataException(
+          throw new LoadAnalyzeException(
               String.format("Duplicated measurements %s in device %s.", measurement, device));
         }
         measurement2Schema.put(measurement, timeseriesSchema);
@@ -255,7 +273,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
   }
 
   private void autoCreateDatabase()
-      throws VerifyMetadataException, LoadFileException, IllegalPathException, AuthException {
+      throws LoadAnalyzeException, LoadFileException, IllegalPathException, AuthException {
     final int databasePrefixNodesLength = loadTsFileAnalyzer.getDatabaseLevel() + 1;
     final Set<PartialPath> databasesNeededToBeSet = new HashSet<>();
 
@@ -264,7 +282,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
 
       final String[] devicePrefixNodes = devicePath.getNodes();
       if (devicePrefixNodes.length < databasePrefixNodesLength) {
-        throw new VerifyMetadataException(
+        throw new LoadAnalyzeException(
             String.format(
                 "Database level %d is longer than device %s.", databasePrefixNodesLength, device));
       }
@@ -331,7 +349,8 @@ public class TreeSchemaAutoCreatorAndVerifier {
                 "",
                 loadTsFileAnalyzer.partitionFetcher,
                 loadTsFileAnalyzer.schemaFetcher,
-                IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
+                IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+                false);
     if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()
         // In tree model, if the user creates a conflict database concurrently, for instance, the
@@ -392,7 +411,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
   }
 
   private void verifySchema(ISchemaTree schemaTree)
-      throws VerifyMetadataException, IllegalPathException {
+      throws LoadAnalyzeException, IllegalPathException {
     for (final Map.Entry<IDeviceID, Set<MeasurementSchema>> entry :
         schemaCache.getDevice2TimeSeries().entrySet()) {
       final IDeviceID device = entry.getKey();
@@ -405,7 +424,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
                   .collect(Collectors.toList()));
 
       if (iotdbDeviceSchemaInfo == null) {
-        throw new VerifyMetadataException(
+        throw new LoadAnalyzeException(
             String.format(
                 "Device %s does not exist in IoTDB and can not be created. "
                     + "Please check weather auto-create-schema is enabled.",
@@ -416,7 +435,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
       final boolean isAlignedInTsFile = schemaCache.getDeviceIsAligned(device);
       final boolean isAlignedInIoTDB = iotdbDeviceSchemaInfo.isAligned();
       if (isAlignedInTsFile != isAlignedInIoTDB) {
-        throw new VerifyMetadataException(
+        throw new LoadAnalyzeException(
             String.format(
                 "Device %s in TsFile is %s, but in IoTDB is %s.",
                 device,
@@ -431,7 +450,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
         final IMeasurementSchema tsFileSchema = tsfileTimeseriesSchemas.get(i);
         final IMeasurementSchema iotdbSchema = iotdbTimeseriesSchemas.get(i);
         if (iotdbSchema == null) {
-          throw new VerifyMetadataException(
+          throw new LoadAnalyzeException(
               String.format(
                   "Measurement %s does not exist in IoTDB and can not be created. "
                       + "Please check weather auto-create-schema is enabled.",
@@ -440,7 +459,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
 
         // check datatype
         if (!tsFileSchema.getType().equals(iotdbSchema.getType())) {
-          throw new VerifyMetadataException(
+          throw new LoadAnalyzeTypeMismatchException(
               String.format(
                   "Measurement %s%s%s datatype not match, TsFile: %s, IoTDB: %s",
                   device,

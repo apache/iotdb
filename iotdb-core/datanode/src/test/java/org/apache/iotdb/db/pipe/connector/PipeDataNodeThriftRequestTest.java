@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.connector;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
@@ -63,7 +64,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class PipeDataNodeThriftRequestTest {
 
@@ -174,7 +174,7 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
-  public void testPipeTransferSchemaPlanReq() {
+  public void testPipeTransferPlanNodeReq() {
     final PipeTransferPlanNodeReq req =
         PipeTransferPlanNodeReq.toTPipeTransferReq(
             new CreateAlignedTimeSeriesNode(
@@ -266,26 +266,7 @@ public class PipeDataNodeThriftRequestTest {
       schemaList.add(new MeasurementSchema("s8", TSDataType.DATE));
       schemaList.add(new MeasurementSchema("s9", TSDataType.BLOB));
       schemaList.add(new MeasurementSchema("s10", TSDataType.STRING));
-      List<Tablet.ColumnCategory> columnTypes = new ArrayList<>();
-      columnTypes.add(Tablet.ColumnCategory.MEASUREMENT);
-      columnTypes.add(Tablet.ColumnCategory.MEASUREMENT);
-      columnTypes.add(Tablet.ColumnCategory.MEASUREMENT);
-      columnTypes.add(Tablet.ColumnCategory.MEASUREMENT);
-      columnTypes.add(Tablet.ColumnCategory.MEASUREMENT);
-      columnTypes.add(Tablet.ColumnCategory.MEASUREMENT);
-      columnTypes.add(Tablet.ColumnCategory.MEASUREMENT);
-      columnTypes.add(Tablet.ColumnCategory.MEASUREMENT);
-      columnTypes.add(Tablet.ColumnCategory.MEASUREMENT);
-      columnTypes.add(Tablet.ColumnCategory.MEASUREMENT);
-      final Tablet t =
-          new Tablet(
-              "root.sg.d",
-              schemaList.stream()
-                  .map(IMeasurementSchema::getMeasurementName)
-                  .collect(Collectors.toList()),
-              IMeasurementSchema.getDataTypeList(schemaList),
-              columnTypes,
-              1024);
+      final Tablet t = new Tablet("root.sg.d", schemaList, 1024);
       t.addTimestamp(0, 2000);
       t.addTimestamp(1, 1000);
       t.addValue("s1", 0, 2);
@@ -568,15 +549,28 @@ public class PipeDataNodeThriftRequestTest {
 
   @Test
   public void testPipeTransferSchemaSnapshotSealReq() throws IOException {
-    final String mTreeSnapshotName = "mtree.snapshot";
-    final String tLogName = "tlog.txt";
+    final String mTreeSnapshotName = SchemaConstant.MTREE_SNAPSHOT;
+    final String tLogName = SchemaConstant.TAG_LOG;
+    final String attributeSnapshotName = SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT;
     final String databaseName = "root.db";
     // CREATE_TIME_SERIES
     final String typeString = "19";
 
     final PipeTransferSchemaSnapshotSealReq req =
         PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
-            "root.**", mTreeSnapshotName, 100, tLogName, 10, databaseName, typeString);
+            "root.**",
+            "db",
+            "table",
+            true,
+            true,
+            mTreeSnapshotName,
+            100,
+            tLogName,
+            10,
+            attributeSnapshotName,
+            10,
+            databaseName,
+            typeString);
     final PipeTransferSchemaSnapshotSealReq deserializeReq =
         PipeTransferSchemaSnapshotSealReq.fromTPipeTransferReq(req);
 

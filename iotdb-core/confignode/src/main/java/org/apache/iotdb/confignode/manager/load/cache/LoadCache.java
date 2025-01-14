@@ -63,6 +63,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /** Maintain all kinds of heartbeat samples and statistics. */
@@ -83,6 +84,8 @@ public class LoadCache {
   private final Map<Integer, BaseNodeCache> nodeCacheMap;
   // Map<RegionGroupId, RegionGroupCache>
   private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
+  // Map<NodeId, Map<RegionGroupId, RegionSize>>
+  private final Map<Integer, Map<Integer, Long>> regionSizeMap;
   // Map<RegionGroupId, ConsensusGroupCache>
   private final Map<TConsensusGroupId, ConsensusGroupCache> consensusGroupCacheMap;
   // Map<DataNodeId, confirmedConfigNodes>
@@ -92,11 +95,12 @@ public class LoadCache {
     this.nodeCacheMap = new ConcurrentHashMap<>();
     this.heartbeatProcessingMap = new ConcurrentHashMap<>();
     this.regionGroupCacheMap = new ConcurrentHashMap<>();
+    this.regionSizeMap = new ConcurrentHashMap<>();
     this.consensusGroupCacheMap = new ConcurrentHashMap<>();
     this.confirmedConfigNodeMap = new ConcurrentHashMap<>();
   }
 
-  public void initHeartbeatCache(IManager configManager) {
+  public void initHeartbeatCache(final IManager configManager) {
     initNodeHeartbeatCache(
         configManager.getNodeManager().getRegisteredConfigNodes(),
         configManager.getNodeManager().getRegisteredDataNodes(),
@@ -539,6 +543,22 @@ public class LoadCache {
   }
 
   /**
+   * Filter DataNodes through the NodeStatus predicate.
+   *
+   * @param statusPredicate The NodeStatus predicate
+   * @return Filtered DataNodes with the predicate
+   */
+  public List<Integer> filterDataNodeThroughStatus(Function<NodeStatus, Boolean> statusPredicate) {
+    return nodeCacheMap.entrySet().stream()
+        .filter(
+            nodeCacheEntry ->
+                nodeCacheEntry.getValue() instanceof DataNodeHeartbeatCache
+                    && statusPredicate.apply(nodeCacheEntry.getValue().getNodeStatus()))
+        .map(Map.Entry::getKey)
+        .collect(Collectors.toList());
+  }
+
+  /**
    * Get the free disk space of the specified DataNode.
    *
    * @param dataNodeId The index of the specified DataNode
@@ -548,22 +568,6 @@ public class LoadCache {
     return Optional.ofNullable((DataNodeHeartbeatCache) nodeCacheMap.get(dataNodeId))
         .map(DataNodeHeartbeatCache::getFreeDiskSpace)
         .orElse(0d);
-  }
-
-  /**
-   * Get the loadScore of each DataNode.
-   *
-   * @return Map<DataNodeId, loadScore>
-   */
-  public Map<Integer, Long> getAllDataNodeLoadScores() {
-    Map<Integer, Long> result = new ConcurrentHashMap<>();
-    nodeCacheMap.forEach(
-        (dataNodeId, heartbeatCache) -> {
-          if (heartbeatCache instanceof DataNodeHeartbeatCache) {
-            result.put(dataNodeId, heartbeatCache.getLoadScore());
-          }
-        });
-    return result;
   }
 
   /**
@@ -763,5 +767,13 @@ public class LoadCache {
 
   public Set<TEndPoint> getConfirmedConfigNodeEndPoints(int dataNodeId) {
     return confirmedConfigNodeMap.get(dataNodeId);
+  }
+
+  public void updateRegionSizeMap(int dataNodeId, Map<Integer, Long> regionSizeMap) {
+    this.regionSizeMap.put(dataNodeId, regionSizeMap);
+  }
+
+  public Map<Integer, Map<Integer, Long>> getRegionSizeMap() {
+    return regionSizeMap;
   }
 }

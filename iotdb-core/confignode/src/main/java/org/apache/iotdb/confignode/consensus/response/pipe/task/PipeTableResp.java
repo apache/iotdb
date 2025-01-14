@@ -94,6 +94,13 @@ public class PipeTableResp implements DataSet {
     }
   }
 
+  public PipeTableResp filter(
+      final Boolean whereClause, final String pipeName, final boolean isTableModel) {
+    final PipeTableResp resp = filter(whereClause, pipeName);
+    resp.allPipeMeta.removeIf(meta -> !meta.getStaticMeta().visibleUnder(isTableModel));
+    return resp;
+  }
+
   public TGetAllPipeInfoResp convertToTGetAllPipeInfoResp() throws IOException {
     final List<ByteBuffer> pipeInformationByteBuffers = new ArrayList<>();
     for (final PipeMeta pipeMeta : allPipeMeta) {

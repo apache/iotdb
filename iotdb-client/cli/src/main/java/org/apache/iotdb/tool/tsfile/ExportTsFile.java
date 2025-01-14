@@ -252,12 +252,6 @@ public class ExportTsFile extends AbstractTsFileTool {
     if (!targetDirectory.endsWith("/") && !targetDirectory.endsWith("\\")) {
       targetDirectory += File.separator;
     }
-    final File file = new File(targetDirectory);
-    if (!file.isDirectory()) {
-      ioTPrinter.println(
-          String.format("Source file or directory %s does not exist", targetDirectory));
-      System.exit(CODE_ERROR);
-    }
   }
 
   /**
@@ -344,9 +338,11 @@ public class ExportTsFile extends AbstractTsFileTool {
     final String path = targetDirectory + targetFile + index + ".tsfile";
     try (SessionDataSet sessionDataSet = session.executeQueryStatement(sql, timeout)) {
       long start = System.currentTimeMillis();
-      writeWithTablets(sessionDataSet, path);
-      long end = System.currentTimeMillis();
-      ioTPrinter.println("Export completely!cost: " + (end - start) + " ms.");
+      boolean isComplete = writeWithTablets(sessionDataSet, path);
+      if (isComplete) {
+        long end = System.currentTimeMillis();
+        ioTPrinter.println("Export completely!cost: " + (end - start) + " ms.");
+      }
     } catch (StatementExecutionException
         | IoTDBConnectionException
         | IOException
@@ -441,9 +437,6 @@ public class ExportTsFile extends AbstractTsFileTool {
           IMeasurementSchema measurementSchema = schemas.get(i);
           // -1 for time not in fields
           Object value = fields.get(columnIndex - 1).getObjectValue(measurementSchema.getType());
-          if (value == null) {
-            tablet.bitMaps[i].mark(rowIndex);
-          }
           tablet.addValue(measurementSchema.getMeasurementName(), rowIndex, value);
         }
 
@@ -466,7 +459,7 @@ public class ExportTsFile extends AbstractTsFileTool {
     "squid:S3776",
     "squid:S6541"
   }) // Suppress high Cognitive Complexity warning, Suppress many task in one method warning
-  public static void writeWithTablets(SessionDataSet sessionDataSet, String filePath)
+  public static Boolean writeWithTablets(SessionDataSet sessionDataSet, String filePath)
       throws IOException,
           IoTDBConnectionException,
           StatementExecutionException,
@@ -477,7 +470,7 @@ public class ExportTsFile extends AbstractTsFileTool {
     if (f.exists()) {
       Files.delete(f.toPath());
     }
-
+    boolean isEmpty = false;
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
       // device -> column indices in columnNames
       Map<String, List<Integer>> deviceColumnIndices = new HashMap<>();
@@ -489,16 +482,19 @@ public class ExportTsFile extends AbstractTsFileTool {
 
       List<Tablet> tabletList = constructTablets(deviceSchemaMap, alignedDevices, tsFileWriter);
 
-      if (tabletList.isEmpty()) {
-        ioTPrinter.println("!!!Warning:Tablet is empty,no data can be exported.");
-        System.exit(CODE_ERROR);
+      if (!tabletList.isEmpty()) {
+        writeWithTablets(
+            sessionDataSet, tabletList, alignedDevices, tsFileWriter, deviceColumnIndices);
+        tsFileWriter.flush();
+      } else {
+        isEmpty = true;
       }
-
-      writeWithTablets(
-          sessionDataSet, tabletList, alignedDevices, tsFileWriter, deviceColumnIndices);
-
-      tsFileWriter.flush();
     }
+    if (isEmpty) {
+      ioTPrinter.println("!!!Warning:Tablet is empty,no data can be exported.");
+      return false;
+    }
+    return true;
   }
 
   private static void writeToTsFile(

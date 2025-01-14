@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.slf4j.Logger;
@@ -38,6 +42,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +55,7 @@ import java.util.stream.Collectors;
 import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static org.apache.iotdb.db.utils.ModificationUtils.sortAndMerge;
+import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public class ModificationFile implements AutoCloseable {
 
@@ -66,22 +72,26 @@ public class ModificationFile implements AutoCloseable {
   private static final long COMPACT_THRESHOLD = 1024 * 1024L;
   private boolean hasCompacted = false;
   private boolean fileExists = false;
+  private final boolean updateMetrics;
 
-  public ModificationFile(String filePath) {
-    this(new File(filePath));
+  private Set<ModificationFile> cascadeFiles = null;
+
+  public ModificationFile(String filePath, boolean updateModMetrics) {
+    this(new File(filePath), updateModMetrics);
   }
 
-  public ModificationFile(File file) {
+  public ModificationFile(File file, boolean updateModMetrics) {
     this.file = file;
     fileExists = file.length() > 0;
+    this.updateMetrics = updateModMetrics;
     if (fileExists) {
-      FileMetrics.getInstance().increaseModFileNum(1);
-      FileMetrics.getInstance().increaseModFileSize(file.length());
+      updateModFileMetric(1, file.length());
     }
   }
 
   @SuppressWarnings("java:S2093") // cannot use try-with-resource, should not close here
   public void write(ModEntry entry) throws IOException {
+    int updateFileNum = 0;
     lock.writeLock().lock();
     long size = 0;
     try {
@@ -92,18 +102,25 @@ public class ModificationFile implements AutoCloseable {
       }
       size += entry.serialize(fileOutputStream);
       fileOutputStream.flush();
+
+      if (cascadeFiles != null) {
+        for (ModificationFile cascadeFile : cascadeFiles) {
+          cascadeFile.write(entry);
+        }
+      }
     } finally {
       lock.writeLock().unlock();
     }
     if (!fileExists) {
       fileExists = true;
-      FileMetrics.getInstance().increaseModFileNum(1);
+      updateFileNum = 1;
     }
-    FileMetrics.getInstance().increaseModFileSize(size);
+    updateModFileMetric(updateFileNum, size);
   }
 
   @SuppressWarnings("java:S2093") // cannot use try-with-resource, should not close here
   public void write(Collection<? extends ModEntry> entries) throws IOException {
+    int updateFileNum = 0;
     lock.writeLock().lock();
     long size = 0;
     try {
@@ -116,14 +133,27 @@ public class ModificationFile implements AutoCloseable {
         size += entry.serialize(fileOutputStream);
       }
       fileOutputStream.flush();
+
+      if (cascadeFiles != null) {
+        for (ModificationFile cascadeFile : cascadeFiles) {
+          cascadeFile.write(entries);
+        }
+      }
     } finally {
       lock.writeLock().unlock();
     }
     if (!fileExists) {
-      FileMetrics.getInstance().increaseModFileNum(1);
+      updateFileNum = 1;
       fileExists = true;
     }
-    FileMetrics.getInstance().increaseModFileSize(size);
+    updateModFileMetric(updateFileNum, size);
+  }
+
+  private void updateModFileMetric(int num, long size) {
+    if (updateMetrics) {
+      FileMetrics.getInstance().increaseModFileNum(num);
+      FileMetrics.getInstance().increaseModFileSize(size);
+    }
   }
 
   public Iterator<ModEntry> getModIterator(long offset) throws IOException {
@@ -181,6 +211,32 @@ public class ModificationFile implements AutoCloseable {
     long levelNum = Long.parseLong(split[0]);
     long modNum = Long.parseLong(split[1]);
     return new long[] {levelNum, modNum};
+  }
+
+  public static List<ModEntry> readAllModifications(
+      File tsfile, boolean readOldModFileIfNewModFileNotExists) throws IOException {
+    try (ModificationFile modificationFile =
+        new ModificationFile(ModificationFile.getExclusiveMods(tsfile), false)) {
+      if (modificationFile.exists()) {
+        return modificationFile.getAllMods();
+      }
+    }
+    if (!readOldModFileIfNewModFileNotExists) {
+      return Collections.emptyList();
+    }
+    List<ModEntry> result = new ArrayList<>();
+    try (ModificationFileV1 modificationFileV1 =
+        new ModificationFileV1(ModificationFileV1.getNormalMods(tsfile).getPath())) {
+      if (!modificationFileV1.exists()) {
+        return Collections.emptyList();
+      }
+      for (Modification modification : modificationFileV1.getModificationsIter()) {
+        if (modification instanceof Deletion) {
+          result.add(new TreeDeletionEntry((Deletion) modification));
+        }
+      }
+    }
+    return result;
   }
 
   public class ModIterator implements Iterator<ModEntry>, AutoCloseable {
@@ -258,13 +314,18 @@ public class ModificationFile implements AutoCloseable {
   public void remove() throws IOException {
     close();
     FileUtils.deleteFileOrDirectory(file);
-    FileMetrics.getInstance().decreaseModFileNum(1);
-    FileMetrics.getInstance().decreaseModFileSize(getFileLength());
+    if (fileExists) {
+      updateModFileMetric(-1, -getFileLength());
+    }
     fileExists = false;
   }
 
   public static ModificationFile getExclusiveMods(TsFileResource tsFileResource) {
-    return new ModificationFile(new File(tsFileResource.getTsFilePath() + FILE_SUFFIX));
+    String tsFilePath = tsFileResource.getTsFilePath();
+    // replace the temp suffix with the final name
+    tsFilePath = tsFilePath.replace(IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX, TSFILE_SUFFIX);
+    tsFilePath = tsFilePath.replace(IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX, TSFILE_SUFFIX);
+    return new ModificationFile(tsFilePath + FILE_SUFFIX, true);
   }
 
   public static File getExclusiveMods(File tsFile) {
@@ -272,7 +333,8 @@ public class ModificationFile implements AutoCloseable {
   }
 
   public static ModificationFile getCompactionMods(TsFileResource tsFileResource) {
-    return new ModificationFile(new File(tsFileResource.getTsFilePath() + COMPACTION_FILE_SUFFIX));
+    return new ModificationFile(
+        new File(tsFileResource.getTsFilePath() + COMPACTION_FILE_SUFFIX), true);
   }
 
   public static File getCompactionMods(File tsFile) {
@@ -298,7 +360,8 @@ public class ModificationFile implements AutoCloseable {
             getAllMods().stream().collect(Collectors.groupingBy(ModEntry::keyOfPatternTree));
         String newModsFileName = getFile().getPath() + COMPACT_SUFFIX;
         List<ModEntry> allSettledModifications = new ArrayList<>();
-        try (ModificationFile compactedModificationFile = new ModificationFile(newModsFileName)) {
+        try (ModificationFile compactedModificationFile =
+            new ModificationFile(newModsFileName, false)) {
           Set<Entry<PartialPath, List<ModEntry>>> modificationsEntrySet =
               pathModificationMap.entrySet();
           for (Map.Entry<PartialPath, List<ModEntry>> modificationEntry : modificationsEntrySet) {
@@ -326,6 +389,15 @@ public class ModificationFile implements AutoCloseable {
         LOGGER.error("remove origin file or rename new mods file error.", e);
       }
       hasCompacted = true;
+    }
+  }
+
+  public void setCascadeFile(Set<ModificationFile> cascadeFiles) {
+    lock.writeLock().lock();
+    try {
+      this.cascadeFiles = cascadeFiles;
+    } finally {
+      lock.writeLock().unlock();
     }
   }
 }

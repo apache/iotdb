@@ -27,11 +27,15 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import java.util.Arrays;
 import java.util.regex.Pattern;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_DATABASE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_TABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_TABLE_NAME_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_TABLE_NAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_DATABASE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_DATABASE_NAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_TABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_TABLE_NAME_KEY;
 
 public class TablePattern {
@@ -91,6 +95,10 @@ public class TablePattern {
     return tablePattern == null ? EXTRACTOR_TABLE_NAME_DEFAULT_VALUE : tablePattern.pattern();
   }
 
+  public boolean hasTablePattern() {
+    return tablePattern != null;
+  }
+
   /**
    * Interpret from source parameters and get a pipe pattern.
    *
@@ -99,21 +107,22 @@ public class TablePattern {
   public static TablePattern parsePipePatternFromSourceParameters(
       final PipeParameters sourceParameters) {
     final boolean isTableModelDataAllowedToBeCaptured =
-        sourceParameters.getBooleanOrDefault(
-            Arrays.asList(
-                PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
-                PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY),
-            !sourceParameters
-                .getStringOrDefault(
-                    SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
-                .equals(SystemConstant.SQL_DIALECT_TREE_VALUE));
+        isTableModelDataAllowToBeCaptured(sourceParameters);
     final String databaseNamePattern =
         sourceParameters.getStringOrDefault(
-            Arrays.asList(EXTRACTOR_DATABASE_NAME_KEY, SOURCE_DATABASE_NAME_KEY),
+            Arrays.asList(
+                EXTRACTOR_DATABASE_NAME_KEY,
+                SOURCE_DATABASE_NAME_KEY,
+                EXTRACTOR_DATABASE_KEY,
+                SOURCE_DATABASE_KEY),
             EXTRACTOR_DATABASE_NAME_DEFAULT_VALUE);
     final String tableNamePattern =
         sourceParameters.getStringOrDefault(
-            Arrays.asList(EXTRACTOR_TABLE_NAME_KEY, SOURCE_TABLE_NAME_KEY),
+            Arrays.asList(
+                EXTRACTOR_TABLE_NAME_KEY,
+                SOURCE_TABLE_NAME_KEY,
+                EXTRACTOR_TABLE_KEY,
+                SOURCE_TABLE_KEY),
             EXTRACTOR_TABLE_NAME_DEFAULT_VALUE);
     try {
       return new TablePattern(
@@ -121,6 +130,22 @@ public class TablePattern {
     } catch (final Exception e) {
       throw new PipeException("Illegal database or table pattern. Detail: " + e.getMessage(), e);
     }
+  }
+
+  public static boolean isTableModelDataAllowToBeCaptured(final PipeParameters sourceParameters) {
+    return sourceParameters.getBooleanOrDefault(
+            Arrays.asList(
+                PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+                PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
+            PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE)
+        || sourceParameters.getBooleanOrDefault(
+            Arrays.asList(
+                PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
+                PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY),
+            !sourceParameters
+                .getStringOrDefault(
+                    SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
+                .equals(SystemConstant.SQL_DIALECT_TREE_VALUE));
   }
 
   @Override

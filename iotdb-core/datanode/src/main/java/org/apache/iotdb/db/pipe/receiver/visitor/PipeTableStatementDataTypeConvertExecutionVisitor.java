@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.receiver.visitor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReqV2;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
@@ -137,16 +137,19 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
 
           final PipeConvertedInsertTabletStatement statement =
               new PipeConvertedInsertTabletStatement(
-                  PipeTransferTabletRawReq.toTPipeTransferRawReq(
+                  PipeTransferTabletRawReqV2.toTPipeTransferRawReq(
                           rawTabletInsertionEvent.convertToTablet(),
-                          rawTabletInsertionEvent.isAligned())
-                      .constructStatement());
+                          rawTabletInsertionEvent.isAligned(),
+                          databaseName)
+                      .constructStatement(),
+                  false);
 
           TSStatus result;
           try {
             result =
-                IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR.visitStatement(
-                    statement, statementExecutor.execute(statement, databaseName));
+                statement.accept(
+                    IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR,
+                    statementExecutor.execute(statement, databaseName));
 
             // Retry max 5 times if the write process is rejected
             for (int i = 0;
@@ -157,8 +160,9 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
                 i++) {
               Thread.sleep(100L * (i + 1));
               result =
-                  IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR.visitStatement(
-                      statement, statementExecutor.execute(statement, databaseName));
+                  statement.accept(
+                      IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR,
+                      statementExecutor.execute(statement, databaseName));
             }
           } catch (final Exception e) {
             if (e instanceof InterruptedException) {

@@ -63,6 +63,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePl
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePluginsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
@@ -98,7 +99,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Function;
+import java.util.function.Predicate;
 
 public interface IConfigTaskExecutor {
 
@@ -133,7 +134,8 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> dropPipePlugin(DropPipePluginStatement dropPipePluginStatement);
 
-  SettableFuture<ConfigTaskResult> showPipePlugins();
+  SettableFuture<ConfigTaskResult> showPipePlugins(
+      ShowPipePluginsStatement showPipePluginsStatement);
 
   SettableFuture<ConfigTaskResult> setTTL(SetTTLStatement setTTLStatement, String taskName);
 
@@ -284,7 +286,7 @@ public interface IConfigTaskExecutor {
   // =============================== table syntax =========================================
 
   SettableFuture<ConfigTaskResult> showDatabases(
-      ShowDB showDB, Function<String, Boolean> canSeenDB);
+      final ShowDB showDB, final Predicate<String> canSeenDB);
 
   SettableFuture<ConfigTaskResult> showCluster(ShowCluster showCluster);
 

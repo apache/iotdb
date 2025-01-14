@@ -725,25 +725,30 @@ primitive_array_size=64
 # Datatype: double
 chunk_metadata_size_proportion=0.1
 
-# Ratio of write memory for invoking flush disk, 0.4 by default
+# Ratio of memtable memory for invoking flush disk, 0.4 by default
 # If you have extremely high write load (like batch=1000), it can be set lower than the default value like 0.2
 # effectiveMode: restart
 # Datatype: double
 flush_proportion=0.4
 
-# Ratio of write memory allocated for buffered arrays, 0.6 by default
+# Ratio of memtable memory allocated for buffered arrays, 0.6 by default
 # effectiveMode: restart
 # Datatype: double
 buffered_arrays_memory_proportion=0.6
 
-# Ratio of write memory for rejecting insertion, 0.8 by default
+# Ratio of memtable memory for rejecting insertion, 0.8 by default
 # If you have extremely high write load (like batch=1000) and the physical memory size is large enough,
 # it can be set higher than the default value like 0.9
 # effectiveMode: restart
 # Datatype: double
 reject_proportion=0.8
 
-# Ratio of memory for the DevicePathCache. DevicePathCache is the deviceId cache, keep only one copy of the same deviceId in memory
+# Ratio of memtable memory for controlling the max memory size of WAL buffer queues, 0.1 by default
+# effectiveMode: restart
+# Datatype: double
+wal_buffer_queue_proportion=0.1
+
+# Ratio of memtable memory for the DevicePathCache. DevicePathCache is the deviceId cache, keep only one copy of the same deviceId in memory
 # effectiveMode: restart
 # Datatype: double
 device_path_cache_proportion=0.05
@@ -860,8 +865,13 @@ enable_auto_create_schema=true
 # Database level when creating schema automatically is enabled
 # e.g. root.sg0.d1.s2
 #      we will set root.sg0 as the database if database level is 1
+# If the incoming path is shorter than this value, the creation/insertion will fail.
 # effectiveMode: hot_reload
 # Datatype: int
+# Range: [1, Integer.MAX_VALUE]
+# Default: 1
+# When illegal: report an error and change nothing during hot-reload; use the default value in
+# start-up
 default_storage_group_level=1
 
 # ALL data types: BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT
@@ -1022,6 +1032,13 @@ sort_buffer_size_in_bytes=1048576
 # Datatype: int
 merge_threshold_of_explain_analyze=10
 
+# The limit of query sampling throughput merge can reach per second
+# 0 means no queries will be recorded
+# negative number means no limit, all queries will be recorded.
+# effectiveMode: hot_reload
+# Datatype: int, Unit: bytes
+query_sample_throughput_bytes_per_sec=160
+
 ####################
 ### TTL Configuration
 ####################
@@ -1137,7 +1154,7 @@ flush_thread_count=0
 
 # In one insert (one device, one timestamp, multiple measurements),
 # if enable partial insert, one measurement failure will not impact other measurements
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: boolean
 enable_partial_insert=true
 
@@ -1403,11 +1420,6 @@ wal_sync_mode_fsync_delay_in_ms=3
 # Datatype: int
 wal_buffer_size_in_byte=33554432
 
-# Blocking queue capacity of each wal buffer, restricts maximum number of WALEdits cached in the blocking queue.
-# effectiveMode: restart
-# Datatype: int
-wal_buffer_queue_capacity=500
-
 # Size threshold of each wal file
 # When a wal file's size exceeds this, the wal file will be closed and a new wal file will be created.
 # If it's a value smaller than 0, use the default value 30 * 1024 * 1024 (30MB).
@@ -1445,10 +1457,10 @@ delete_wal_files_period_in_ms=20000
 
 # The minimum size of wal files when throttle down in IoTConsensus
 # If this value is not set, it will be carefully chosen according to the available disk space.
-# If this value is set smaller than 0, it will default to 50 * 1024 * 1024 * 1024 bytes (50GB).
+# If this value is set smaller than 0, it will default to 200 * 1024 * 1024 * 1024 bytes (200GB).
 # effectiveMode: hot_reload
 # Datatype: long
-wal_throttle_threshold_in_byte=53687091200
+wal_throttle_threshold_in_byte=214748364800
 
 # Maximum wait time of write cache in IoTConsensus
 # If this value is less than or equal to 0, use the default value 10 * 1000 ms (10s)
@@ -1492,7 +1504,7 @@ data_region_iot_max_memory_ratio_for_queue = 0.6
 # values less than or equal to 0 means no limit
 # effectiveMode: hot_reload
 # Datatype: long
-region_migration_speed_limit_bytes_per_second = 33554432
+region_migration_speed_limit_bytes_per_second = 50331648
 
 ####################
 ### Blob Allocator Configuration
@@ -1571,21 +1583,6 @@ value_encoder=PLAIN
 # effectiveMode: hot_reload
 compressor=LZ4
 
-# Encryption configuration
-# Data encryption function switch.
-# effectiveMode: restart
-encrypt_flag=false
-
-# Encryption configuration
-# Data encryption method, supports org.apache.tsfile.encrypt.UNENCRYPTED, org.apache.tsfile.encrypt.AES128.
-# effectiveMode: restart
-encrypt_type=org.apache.tsfile.encrypt.UNENCRYPTED
-
-# Encryption configuration
-# Data encryption key source. The key should be 16 byte String.
-# effectiveMode: restart
-encrypt_key_path=
-
 ####################
 ### Authorization Configuration
 ####################
@@ -1616,6 +1613,12 @@ author_cache_size=1000
 # effectiveMode: restart
 # Datatype: int
 author_cache_expire_time=30
+
+# A regex pattern representing trusted uri by system
+# effectiveMode: hot_reload
+# Datatype: regex
+# If you want to allow all URIs, you can specify it as .*
+trusted_uri_pattern=file:.*
 
 ####################
 ### UDF Configuration
@@ -1888,6 +1891,12 @@ iot_consensus_v2_pipeline_size=5
 # effectiveMode: restart
 # Datatype: string
 iot_consensus_v2_mode=batch
+
+# Blocking queue capacity of each deletion ahead log buffer for iot consensus v2,
+# restricts maximum number of entry in the blocking queue.
+# effectiveMode: restart
+# Datatype: int
+deletion_ahead_log_buffer_queue_capacity=500
 
 ####################
 ### Procedure Configuration
