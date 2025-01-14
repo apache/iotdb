@@ -38,10 +38,10 @@ public class AllSum implements ScalarFunction {
   @Override
   public ScalarFunctionAnalysis analyze(FunctionArguments arguments)
       throws UDFArgumentNotValidException {
-    if (arguments.getChildExpressionsSize() < 1) {
+    if (arguments.getArgumentsSize() < 1) {
       throw new UDFArgumentNotValidException("At least one parameter is required.");
     }
-    for (int i = 0; i < arguments.getChildExpressionsSize(); i++) {
+    for (int i = 0; i < arguments.getArgumentsSize(); i++) {
       if (arguments.getDataType(i) != Type.INT32
           && arguments.getDataType(i) != Type.INT64
           && arguments.getDataType(i) != Type.FLOAT
@@ -62,7 +62,7 @@ public class AllSum implements ScalarFunction {
 
   private Type inferOutputDataType(FunctionArguments arguments) {
     Set<Type> inputTypeSet = new HashSet<>();
-    for (int i = 0; i < arguments.getChildExpressionsSize(); i++) {
+    for (int i = 0; i < arguments.getArgumentsSize(); i++) {
       inputTypeSet.add(arguments.getDataType(i));
     }
     if (inputTypeSet.contains(Type.DOUBLE)) {

@@ -28,6 +28,9 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.manager.ClusterManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -35,9 +38,11 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternOrModReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -72,8 +77,8 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
   // Transient, will not be returned if once recovers
   private long deletedDevicesNum;
 
-  public DeleteDevicesProcedure() {
-    super();
+  public DeleteDevicesProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   public DeleteDevicesProcedure(
@@ -82,8 +87,9 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
       final String queryId,
       final @Nonnull byte[] patternBytes,
       final @Nonnull byte[] filterBytes,
-      final @Nonnull byte[] modBytes) {
-    super(database, tableName, queryId);
+      final @Nonnull byte[] modBytes,
+      final boolean isGeneratedByPipe) {
+    super(database, tableName, queryId, isGeneratedByPipe);
     this.patternBytes = patternBytes;
     this.filterBytes = filterBytes;
     this.modBytes = modBytes;
@@ -119,6 +125,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
         case DELETE_DEVICE_SCHEMA:
           LOGGER.info("Delete devices in {}.{} in schemaEngine", database, tableName);
           deleteDeviceSchema(env);
+          collectPayload4Pipe(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException("Unrecognized state " + state));
@@ -272,6 +279,29 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
         .execute();
   }
 
+  private void collectPayload4Pipe(final ConfigNodeProcedureEnv env) {
+    TSStatus result;
+    try {
+      result =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(
+                  isGeneratedByPipe
+                      ? new PipeEnrichedPlan(
+                          new PipeDeleteDevicesPlan(
+                              database, tableName, patternBytes, filterBytes, modBytes))
+                      : new PipeDeleteDevicesPlan(
+                          database, tableName, patternBytes, filterBytes, modBytes));
+    } catch (final ConsensusException e) {
+      LOGGER.warn(ClusterManager.CONSENSUS_WRITE_ERROR, e);
+      result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+    }
+    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(result.getMessage());
+    }
+  }
+
   @Override
   protected void rollbackState(
       final ConfigNodeProcedureEnv env, final DeleteDevicesState deleteDevicesState)
@@ -316,7 +346,10 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.DELETE_DEVICES_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_DELETE_DEVICES_PROCEDURE.getTypeCode()
+            : ProcedureType.DELETE_DEVICES_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
     ReadWriteIOUtils.write(patternBytes.length, stream);

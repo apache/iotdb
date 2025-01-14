@@ -41,6 +41,8 @@ import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionExtractorMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
+import org.apache.iotdb.pipe.api.annotation.TableModel;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -48,6 +50,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -110,6 +113,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant._EXTRACTOR_WATERMARK_INTERVAL_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant._SOURCE_WATERMARK_INTERVAL_KEY;
 
+@TreeModel
+@TableModel
 public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataRegionExtractor.class);
@@ -134,7 +139,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
             .getStringOrDefault(
                 SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
             .equals(SystemConstant.SQL_DIALECT_TREE_VALUE);
-    final boolean isTreeModelDataAllowedToBeCaptured =
+    final boolean isCaptureTree =
         validator
             .getParameters()
             .getBooleanOrDefault(
@@ -142,7 +147,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
                     PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY,
                     PipeExtractorConstant.SOURCE_CAPTURE_TREE_KEY),
                 isTreeDialect);
-    final boolean isTableModelDataAllowedToBeCaptured =
+    final boolean isCaptureTable =
         validator
             .getParameters()
             .getBooleanOrDefault(
@@ -150,6 +155,21 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
                     PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
                     PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY),
                 !isTreeDialect);
+    if (!isCaptureTree && !isCaptureTable) {
+      throw new PipeParameterNotValidException(
+          "capture.tree and capture.table can not both be specified as false");
+    }
+
+    final boolean isDoubleLiving =
+        validator
+            .getParameters()
+            .getBooleanOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+                    PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
+                PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
+    final boolean isTreeModelDataAllowedToBeCaptured = isDoubleLiving || isCaptureTree;
+    final boolean isTableModelDataAllowedToBeCaptured = isDoubleLiving || isCaptureTable;
     if (!isTreeModelDataAllowedToBeCaptured
         && validator
             .getParameters()

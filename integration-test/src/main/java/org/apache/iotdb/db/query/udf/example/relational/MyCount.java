@@ -58,7 +58,7 @@ public class MyCount implements AggregateFunction {
   @Override
   public AggregateFunctionAnalysis analyze(FunctionArguments arguments)
       throws UDFArgumentNotValidException {
-    if (arguments.getChildExpressionsSize() == 0) {
+    if (arguments.getArgumentsSize() == 0) {
       throw new UDFArgumentNotValidException("MyCount accepts at least one parameter");
     }
     return new AggregateFunctionAnalysis.Builder().outputDataType(Type.INT64).build();

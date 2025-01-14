@@ -31,6 +31,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -116,7 +118,7 @@ public class PipeTaskCoordinator {
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus createPipe(TCreatePipeReq req) {
-    TSStatus status = null;
+    final TSStatus status;
     if (req.getPipeName().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
       status = configManager.getProcedureManager().createConsensusPipe(req);
     } else {
@@ -130,6 +132,17 @@ public class PipeTaskCoordinator {
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus alterPipe(TAlterPipeReq req) {
+    final String pipeName = req.getPipeName();
+    final boolean isSetIfExistsCondition =
+        req.isSetIfExistsCondition() && req.isIfExistsCondition();
+    if (!pipeTaskInfo.isPipeExisted(pipeName, req.isTableModel)) {
+      return isSetIfExistsCondition
+          ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+          : RpcUtils.getStatus(
+              TSStatusCode.PIPE_NOT_EXIST_ERROR,
+              String.format(
+                  "Failed to alter pipe %s. Failures: %s does not exist.", pipeName, pipeName));
+    }
     final TSStatus status = configManager.getProcedureManager().alterPipe(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn("Failed to alter pipe {}. Result status: {}.", req.getPipeName(), status);
@@ -138,8 +151,8 @@ public class PipeTaskCoordinator {
   }
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
-  public TSStatus startPipe(String pipeName) {
-    TSStatus status = null;
+  private TSStatus startPipe(String pipeName) {
+    final TSStatus status;
     if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
       status = configManager.getProcedureManager().startConsensusPipe(pipeName);
     } else {
@@ -152,9 +165,21 @@ public class PipeTaskCoordinator {
   }
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
-  public TSStatus stopPipe(String pipeName) {
+  public TSStatus startPipe(TStartPipeReq req) {
+    final String pipeName = req.getPipeName();
+    if (!pipeTaskInfo.isPipeExisted(pipeName, req.isTableModel)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.PIPE_NOT_EXIST_ERROR,
+          String.format(
+              "Failed to start pipe %s. Failures: %s does not exist.", pipeName, pipeName));
+    }
+    return startPipe(pipeName);
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #lock()}. */
+  private TSStatus stopPipe(String pipeName) {
     final boolean isStoppedByRuntimeException = pipeTaskInfo.isStoppedByRuntimeException(pipeName);
-    TSStatus status = null;
+    final TSStatus status;
     if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
       status = configManager.getProcedureManager().stopConsensusPipe(pipeName);
     } else {
@@ -177,10 +202,31 @@ public class PipeTaskCoordinator {
   }
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
+  public TSStatus stopPipe(TStopPipeReq req) {
+    final String pipeName = req.getPipeName();
+    if (!pipeTaskInfo.isPipeExisted(pipeName, req.isTableModel)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.PIPE_NOT_EXIST_ERROR,
+          String.format(
+              "Failed to stop pipe %s. Failures: %s does not exist.", pipeName, pipeName));
+    }
+    return stopPipe(pipeName);
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus dropPipe(TDropPipeReq req) {
     final String pipeName = req.getPipeName();
-    final boolean isPipeExistedBeforeDrop = pipeTaskInfo.isPipeExisted(pipeName);
-    TSStatus status = null;
+    final boolean isSetIfExistsCondition =
+        req.isSetIfExistsCondition() && req.isIfExistsCondition();
+    if (!pipeTaskInfo.isPipeExisted(pipeName, req.isTableModel)) {
+      return isSetIfExistsCondition
+          ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+          : RpcUtils.getStatus(
+              TSStatusCode.PIPE_NOT_EXIST_ERROR,
+              String.format(
+                  "Failed to drop pipe %s. Failures: %s does not exist.", pipeName, pipeName));
+    }
+    final TSStatus status;
     if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
       status = configManager.getProcedureManager().dropConsensusPipe(pipeName);
     } else {
@@ -189,23 +235,13 @@ public class PipeTaskCoordinator {
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn("Failed to drop pipe {}. Result status: {}.", pipeName, status);
     }
-
-    final boolean isSetIfExistsCondition =
-        req.isSetIfExistsCondition() && req.isIfExistsCondition();
-    // If the `IF EXISTS` condition is not set and the pipe does not exist before the delete
-    // operation, return an error status indicating that the pipe does not exist.
-    return isPipeExistedBeforeDrop || isSetIfExistsCondition
-        ? status
-        : RpcUtils.getStatus(
-            TSStatusCode.PIPE_NOT_EXIST_ERROR,
-            String.format(
-                "Failed to drop pipe %s. Failures: %s does not exist.", pipeName, pipeName));
+    return status;
   }
 
   public TShowPipeResp showPipes(final TShowPipeReq req) {
     try {
       return ((PipeTableResp) configManager.getConsensusManager().read(new ShowPipePlanV2()))
-          .filter(req.whereClause, req.pipeName)
+          .filter(req.whereClause, req.pipeName, req.isTableModel)
           .convertToTShowPipeResp();
     } catch (final ConsensusException e) {
       LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
