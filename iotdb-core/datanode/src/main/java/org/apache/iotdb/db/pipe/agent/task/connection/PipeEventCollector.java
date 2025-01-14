@@ -116,7 +116,8 @@ public class PipeEventCollector implements EventCollector {
     if (!forceTabletFormat
         && (!sourceEvent.shouldParseTimeOrPattern()
             || (sourceEvent.isTableModelEvent()
-                && sourceEvent.getTablePattern() == null
+                && (sourceEvent.getTablePattern() == null
+                    || !sourceEvent.getTablePattern().hasTablePattern())
                 && !sourceEvent.shouldParseTime()))) {
       collectEvent(sourceEvent);
       return;
