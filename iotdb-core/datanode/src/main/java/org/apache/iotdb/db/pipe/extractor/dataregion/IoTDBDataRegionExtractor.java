@@ -58,7 +58,6 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_DATABASE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_END_TIME_KEY;
@@ -98,7 +97,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_TABLE_NAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_WATERMARK_INTERVAL_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_WATERMARK_INTERVAL_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_CAPTURE_TREE_PATH_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_DATABASE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_DATABASE_NAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
@@ -184,12 +182,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
         && validator
             .getParameters()
             .hasAnyAttributes(
-                EXTRACTOR_PATH_KEY,
-                SOURCE_PATH_KEY,
-                EXTRACTOR_CAPTURE_TREE_PATH_KEY,
-                SOURCE_CAPTURE_TREE_PATH_KEY,
-                EXTRACTOR_PATTERN_KEY,
-                SOURCE_PATTERN_KEY)) {
+                EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY, EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY)) {
       throw new PipeException(
           "The pipe cannot extract tree model data when sql dialect is set to table.");
     }
@@ -357,12 +350,6 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
           EXTRACTOR_HISTORY_END_TIME_KEY);
     }
 
-    // Check coexistence of path and capture.tree.path
-    validator.validateSynonymAttributes(
-        Arrays.asList(EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY),
-        Arrays.asList(EXTRACTOR_CAPTURE_TREE_PATH_KEY, SOURCE_CAPTURE_TREE_PATH_KEY),
-        false);
-
     // Check coexistence of database-name and database
     validator.validateSynonymAttributes(
         Arrays.asList(EXTRACTOR_DATABASE_NAME_KEY, SOURCE_DATABASE_NAME_KEY),
@@ -373,12 +360,6 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     validator.validateSynonymAttributes(
         Arrays.asList(EXTRACTOR_TABLE_NAME_KEY, SOURCE_TABLE_NAME_KEY),
         Arrays.asList(EXTRACTOR_TABLE_KEY, SOURCE_TABLE_KEY),
-        false);
-
-    // Check coexistence of path and capture.tree.path
-    validator.validateSynonymAttributes(
-        Arrays.asList(EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY),
-        Arrays.asList(EXTRACTOR_CAPTURE_TREE_PATH_KEY, SOURCE_CAPTURE_TREE_PATH_KEY),
         false);
 
     // Check coexistence of mode.snapshot and mode
@@ -420,7 +401,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
         Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
         EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE)) {
       if (parameters.hasAnyAttributes(EXTRACTOR_MODE_SNAPSHOT_KEY, SOURCE_MODE_SNAPSHOT_KEY)) {
-        LOGGER.info(
+        LOGGER.warn(
             "When '{}' ('{}') is set to false, specifying {} and {} is invalid.",
             EXTRACTOR_REALTIME_ENABLE_KEY,
             SOURCE_REALTIME_ENABLE_KEY,
@@ -428,7 +409,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
             SOURCE_MODE_SNAPSHOT_KEY);
       }
       if (parameters.hasAnyAttributes(EXTRACTOR_MODE_STREAMING_KEY, SOURCE_MODE_STREAMING_KEY)) {
-        LOGGER.info(
+        LOGGER.warn(
             "When '{}' ('{}') is set to false, specifying {} and {} is invalid.",
             EXTRACTOR_REALTIME_ENABLE_KEY,
             SOURCE_REALTIME_ENABLE_KEY,
