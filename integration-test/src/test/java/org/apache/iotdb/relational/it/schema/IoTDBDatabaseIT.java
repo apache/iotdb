@@ -450,7 +450,7 @@ public class IoTDBDatabaseIT {
           new HashSet<>(
               Arrays.asList(
                   "topic_name,STRING,TAG,",
-                  "consumer_group_name,STRING,ATTRIBUTE,",
+                  "consumer_group_name,STRING,TAG,",
                   "subscribed_consumers,STRING,ATTRIBUTE,")));
 
       // Test table query
