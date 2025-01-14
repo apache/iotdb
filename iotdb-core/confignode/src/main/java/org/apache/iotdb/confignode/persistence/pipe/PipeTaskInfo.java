@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
@@ -71,6 +72,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -233,6 +235,15 @@ public class PipeTaskInfo implements SnapshotProcessor {
                 .addOrReplaceEquivalentAttributes(
                     new PipeParameters(alterPipeRequest.getExtractorAttributes()))
                 .getAttribute());
+      }
+    } else {
+      // Ensure that SQL_DIALECT remains unchanged after Alter Pipe
+      final String sqlDialect =
+          copiedPipeStaticMetaFromCoordinator
+              .getExtractorParameters()
+              .getString(SystemConstant.SQL_DIALECT_KEY);
+      if (Objects.nonNull(sqlDialect)) {
+        alterPipeRequest.putToConnectorAttributes(SystemConstant.SQL_DIALECT_KEY, sqlDialect);
       }
     }
 
