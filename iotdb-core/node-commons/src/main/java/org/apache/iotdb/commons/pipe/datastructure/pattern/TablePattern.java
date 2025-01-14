@@ -95,8 +95,8 @@ public class TablePattern {
     return tablePattern == null ? EXTRACTOR_TABLE_NAME_DEFAULT_VALUE : tablePattern.pattern();
   }
 
-  public boolean isCoverAllTables() {
-    return databasePattern == null;
+  public boolean hasTablePattern() {
+    return databasePattern != null;
   }
 
   /**
