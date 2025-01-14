@@ -43,6 +43,8 @@ import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigRegionExtractor
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.pipe.api.annotation.TableModel;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -52,6 +54,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
+@TreeModel
+@TableModel
 public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
 
   public static final PipeConfigPhysicalPlanTreePatternParseVisitor TREE_PATTERN_PARSE_VISITOR =

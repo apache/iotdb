@@ -20,6 +20,8 @@
 package org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector;
 
 import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.annotation.TableModel;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -34,6 +36,8 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
  * server module will replace this class with the real implementation when initializing the IoTDB
  * pipe connector.
  */
+@TreeModel
+@TableModel
 public class PlaceholderConnector implements PipeConnector {
 
   private static final String PLACEHOLDER_ERROR_MSG =

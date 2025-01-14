@@ -160,7 +160,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.realtime.mode", "forced-log");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("capture.tree", "true");
 
@@ -242,28 +241,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
 
   @Test
   public void testWriteBackSink() throws Exception {
-    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
-
-    final String receiverIp = receiverDataNode.getIp();
-    final int receiverPort = receiverDataNode.getPort();
-    final Consumer<String> handleFailure =
-        o -> {
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
-        };
-
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      TableModelUtils.insertData("test", "test", 0, 50, senderEnv, true);
-
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (0, 1)", "flush"))) {
-        return;
-      }
-
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
@@ -271,15 +250,13 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("capture.tree", "true");
       extractorAttributes.put("forwarding-pipe-requests", "false");
+      extractorAttributes.put("extractor.database-name", "test.*");
+      extractorAttributes.put("extractor.table-name", "test.*");
 
       processorAttributes.put("processor", "rename-database-processor");
       processorAttributes.put("processor.new-db-name", "test1");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "true");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-      connectorAttributes.put("connector.realtime-first", "false");
+      connectorAttributes.put("connector", "write-back-sink");
 
       final TSStatus status =
           client.createPipe(
@@ -292,15 +269,20 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      TableModelUtils.insertData("test", "test", 50, 100, senderEnv, true);
-
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"))) {
         return;
       }
 
-      TableModelUtils.assertCountData("test1", "test", 100, receiverEnv, handleFailure);
+      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+      TableModelUtils.insertDataNotThrowError("test", "test", 0, 20, senderEnv);
+
+      TableModelUtils.insertTablet("test", "test", 20, 200, senderEnv, true);
+
+      TableModelUtils.insertTablet("test", "test", 200, 400, senderEnv, true);
+
+      TableModelUtils.assertCountData("test1", "test", 400, senderEnv);
     }
   }
 
@@ -382,7 +364,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.realtime.mode", "forced-log");
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("capture.tree", "true");
       extractorAttributes.put("extractor.database-name", "test.*");
