@@ -500,6 +500,7 @@ public class ProcedureExecutor<Env> {
       subproc.updateMetricsOnSubmit(getEnvironment());
       procedures.put(subproc.getProcId(), subproc);
       scheduler.addFront(subproc);
+      LOG.info("Sub-Procedure pid={} has been submitted", subproc.getProcId());
     }
   }
 
