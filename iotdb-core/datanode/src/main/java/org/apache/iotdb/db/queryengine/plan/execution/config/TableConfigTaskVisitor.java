@@ -209,11 +209,13 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
   @Override
   protected IConfigTask visitCreateDB(final CreateDB node, final MPPQueryContext context) {
+    accessControl.checkCanCreateDatabase(context.getSession().getUserName(), node.getDbName());
     return visitDatabaseStatement(node, context);
   }
 
   @Override
   protected IConfigTask visitAlterDB(final AlterDB node, final MPPQueryContext context) {
+    accessControl.checkCanAlterDatabase(context.getSession().getUserName(), node.getDbName());
     return visitDatabaseStatement(node, context);
   }
 
@@ -226,8 +228,6 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
     final String dbName = node.getDbName();
     validateDatabaseName(dbName);
-
-    accessControl.checkCanCreateDatabase(context.getSession().getUserName(), dbName);
 
     schema.setName(dbName);
 
@@ -381,8 +381,13 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitCreateTable(final CreateTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName(), true);
+    final String database = databaseTablePair.getLeft();
+    final String tableName = databaseTablePair.getRight();
 
-    final TsTable table = new TsTable(databaseTablePair.getRight());
+    accessControl.checkCanCreateTable(
+        context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
+
+    final TsTable table = new TsTable(tableName);
 
     table.setProps(convertPropertiesToMap(node.getProperties(), false));
 
@@ -403,7 +408,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       table.addColumnSchema(
           TableHeaderSchemaValidator.generateColumnSchema(category, columnName, dataType));
     }
-    return new CreateTableTask(table, databaseTablePair.getLeft(), node.isIfNotExists());
+    return new CreateTableTask(table, database, node.isIfNotExists());
   }
 
   private boolean checkTimeColumnIdempotent(
@@ -428,16 +433,20 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitRenameTable(final RenameTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getSource(), true);
+    final String database = databaseTablePair.getLeft();
+    final String tableName = databaseTablePair.getRight();
 
-    final String oldName = databaseTablePair.getRight();
+    accessControl.checkCanAlterTable(
+        context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
+
     final String newName = node.getTarget().getValue();
-    if (oldName.equals(newName)) {
+    if (tableName.equals(newName)) {
       throw new SemanticException("The table's old name shall not be equal to the new one.");
     }
 
     return new AlterTableRenameTableTask(
-        databaseTablePair.getLeft(),
-        databaseTablePair.getRight(),
+        database,
+        tableName,
         node.getTarget().getValue(),
         context.getQueryId().getId(),
         node.tableIfExists());
@@ -447,11 +456,16 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitAddColumn(final AddColumn node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName(), true);
+    final String database = databaseTablePair.getLeft();
+    final String tableName = databaseTablePair.getRight();
+
+    accessControl.checkCanAlterTable(
+        context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
 
     final ColumnDefinition definition = node.getColumn();
     return new AlterTableAddColumnTask(
-        databaseTablePair.getLeft(),
-        databaseTablePair.getRight(),
+        database,
+        tableName,
         Collections.singletonList(
             TableHeaderSchemaValidator.generateColumnSchema(
                 definition.getColumnCategory(),
@@ -466,6 +480,11 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitRenameColumn(final RenameColumn node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable(), true);
+    final String database = databaseTablePair.getLeft();
+    final String tableName = databaseTablePair.getRight();
+
+    accessControl.checkCanAlterTable(
+        context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
 
     final String oldName = node.getSource().getValue();
     final String newName = node.getTarget().getValue();
@@ -474,8 +493,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     }
 
     return new AlterTableRenameColumnTask(
-        databaseTablePair.getLeft(),
-        databaseTablePair.getRight(),
+        database,
+        tableName,
         node.getSource().getValue(),
         node.getTarget().getValue(),
         context.getQueryId().getId(),
@@ -487,10 +506,15 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitDropColumn(final DropColumn node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable(), true);
+    final String database = databaseTablePair.getLeft();
+    final String tableName = databaseTablePair.getRight();
+
+    accessControl.checkCanAlterTable(
+        context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
 
     return new AlterTableDropColumnTask(
-        databaseTablePair.getLeft(),
-        databaseTablePair.getRight(),
+        database,
+        tableName,
         node.getField().getValue(),
         context.getQueryId().getId(),
         node.tableIfExists(),
@@ -502,10 +526,15 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       final SetProperties node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName(), true);
+    final String database = databaseTablePair.getLeft();
+    final String tableName = databaseTablePair.getRight();
+
+    accessControl.checkCanAlterTable(
+        context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
 
     return new AlterTableSetPropertiesTask(
-        databaseTablePair.getLeft(),
-        databaseTablePair.getRight(),
+        database,
+        tableName,
         convertPropertiesToMap(node.getProperties(), true),
         context.getQueryId().getId(),
         node.ifExists());
@@ -581,11 +610,13 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitDropTable(final DropTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName(), true);
-    return new DropTableTask(
-        databaseTablePair.getLeft(),
-        databaseTablePair.getRight(),
-        context.getQueryId().getId(),
-        node.isExists());
+    final String database = databaseTablePair.getLeft();
+    final String tableName = databaseTablePair.getRight();
+
+    accessControl.checkCanDropTable(
+        context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
+
+    return new DropTableTask(database, tableName, context.getQueryId().getId(), node.isExists());
   }
 
   @Override
@@ -599,6 +630,10 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             StatementRewrite.NOOP,
             WarningCollector.NOOP)
         .analyze(node);
+
+    accessControl.checkCanDeleteFromTable(
+        context.getSession().getUserName(),
+        new QualifiedObjectName(node.getDatabase(), node.getTableName()));
     return new DeleteDeviceTask(node, context.getQueryId().getId(), context.getSession());
   }
 
@@ -634,9 +669,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       final DescribeTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable(), false);
+    final String database = databaseTablePair.getLeft();
+    final String tableName = databaseTablePair.getRight();
+
+    accessControl.checkCanShowOrDescTable(
+        context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
     return node.isDetails()
-        ? new DescribeTableDetailsTask(databaseTablePair.getLeft(), databaseTablePair.getRight())
-        : new DescribeTableTask(databaseTablePair.getLeft(), databaseTablePair.getRight());
+        ? new DescribeTableDetailsTask(database, tableName)
+        : new DescribeTableTask(database, tableName);
   }
 
   @Override
