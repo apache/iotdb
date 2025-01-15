@@ -52,7 +52,7 @@ import java.util.stream.Collectors;
  *
  * <p>3. Alter to the timeSeries and templates in batch.
  */
-public class PipeStatementToBatchVisitor extends StatementVisitor<Optional<Statement>, Void> {
+public class PipeTreeStatementToBatchVisitor extends StatementVisitor<Optional<Statement>, Void> {
 
   private static final int MAX_SCHEMA_BATCH_SIZE =
       PipeConfig.getInstance().getPipeSnapshotExecutionMaxBatchSize();

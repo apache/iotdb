@@ -21,8 +21,11 @@ package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import java.util.Arrays;
@@ -35,13 +38,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.getExclusionString;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.getInclusionString;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.parseOptions;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.tableOnlySyncPrefix;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.treeOnlySyncPrefix;
 
 /**
  * {@link SchemaRegionListeningFilter} is to classify the {@link PlanNode}s to help {@link
@@ -53,6 +54,7 @@ public class SchemaRegionListeningFilter {
 
   static {
     try {
+      // Tree model
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.timeseries.view.create"),
           Collections.singletonList(PlanNodeType.CREATE_LOGICAL_VIEW));
@@ -80,52 +82,57 @@ public class SchemaRegionListeningFilter {
                   PlanNodeType.ACTIVATE_TEMPLATE,
                   PlanNodeType.BATCH_ACTIVATE_TEMPLATE,
                   PlanNodeType.INTERNAL_BATCH_ACTIVATE_TEMPLATE)));
-    } catch (IllegalPathException ignore) {
+
+      // Table model
+      OPTION_PLAN_MAP.put(
+          new PartialPath("schema.table.alter"),
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  PlanNodeType.CREATE_OR_UPDATE_TABLE_DEVICE,
+                  PlanNodeType.TABLE_DEVICE_ATTRIBUTE_UPDATE)));
+
+    } catch (final IllegalPathException ignore) {
       // There won't be any exceptions here
     }
   }
 
-  static boolean shouldPlanBeListened(PlanNode node) {
+  static boolean shouldPlanBeListened(final PlanNode node) {
     try {
-      return node.getType().getNodeType() == PlanNodeType.PIPE_ENRICHED_WRITE.getNodeType()
-          || node.getType().getNodeType() == PlanNodeType.PIPE_ENRICHED_NON_WRITE.getNodeType()
-          || OPTION_PLAN_MAP.values().stream().anyMatch(types -> types.contains(node.getType()));
-    } catch (Exception e) {
+      return node.getType() == PlanNodeType.PIPE_ENRICHED_WRITE
+          || node.getType() == PlanNodeType.PIPE_ENRICHED_NON_WRITE
+          || OPTION_PLAN_MAP.values().stream().anyMatch(types -> types.contains(node.getType()))
+              && (node.getType() != PlanNodeType.CREATE_OR_UPDATE_TABLE_DEVICE
+                  || !((CreateOrUpdateTableDeviceNode) node).getAttributeNameList().isEmpty());
+    } catch (final Exception e) {
       // Some plan nodes may not contain "getType()" implementation
       return false;
     }
   }
 
-  public static Set<PlanNodeType> parseListeningPlanTypeSet(PipeParameters parameters)
+  public static Set<PlanNodeType> parseListeningPlanTypeSet(final PipeParameters parameters)
       throws IllegalPathException {
-    Set<PlanNodeType> planTypes = new HashSet<>();
-    Set<PartialPath> inclusionOptions =
-        parseOptions(
-            parameters.getStringOrDefault(
-                Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
-                EXTRACTOR_INCLUSION_DEFAULT_VALUE));
-    Set<PartialPath> exclusionOptions =
-        parseOptions(
-            parameters.getStringOrDefault(
-                Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
-                EXTRACTOR_EXCLUSION_DEFAULT_VALUE));
-    inclusionOptions.forEach(
-        inclusion ->
-            planTypes.addAll(
-                OPTION_PLAN_MAP.keySet().stream()
-                    .filter(path -> path.overlapWithFullPathPrefix(inclusion))
-                    .map(OPTION_PLAN_MAP::get)
-                    .flatMap(Collection::stream)
-                    .collect(Collectors.toSet())));
-    exclusionOptions.forEach(
-        exclusion ->
-            planTypes.removeAll(
-                OPTION_PLAN_MAP.keySet().stream()
-                    .filter(path -> path.overlapWithFullPathPrefix(exclusion))
-                    .map(OPTION_PLAN_MAP::get)
-                    .flatMap(Collection::stream)
-                    .collect(Collectors.toSet())));
+    final Set<PlanNodeType> planTypes = new HashSet<>();
+    final Set<PartialPath> inclusionOptions = parseOptions(getInclusionString(parameters));
+    final Set<PartialPath> exclusionOptions = parseOptions(getExclusionString(parameters));
+    inclusionOptions.forEach(inclusion -> planTypes.addAll(getOptionsByPrefix(inclusion)));
+    exclusionOptions.forEach(exclusion -> planTypes.removeAll(getOptionsByPrefix(exclusion)));
+
+    if (!TreePattern.isTreeModelDataAllowToBeCaptured(parameters)) {
+      planTypes.removeAll(getOptionsByPrefix(treeOnlySyncPrefix));
+    }
+
+    if (!TablePattern.isTableModelDataAllowToBeCaptured(parameters)) {
+      planTypes.removeAll(getOptionsByPrefix(tableOnlySyncPrefix));
+    }
     return planTypes;
+  }
+
+  private static Set<PlanNodeType> getOptionsByPrefix(final PartialPath prefix) {
+    return OPTION_PLAN_MAP.keySet().stream()
+        .filter(path -> path.overlapWithFullPathPrefix(prefix))
+        .map(OPTION_PLAN_MAP::get)
+        .flatMap(Collection::stream)
+        .collect(Collectors.toSet());
   }
 
   private SchemaRegionListeningFilter() {

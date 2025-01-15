@@ -29,6 +29,7 @@ import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.record.Tablet;
@@ -197,9 +198,12 @@ public class PipeMemoryWeightUtil {
       return totalSizeInBytes;
     }
 
+    long[] timestamps = tablet.getTimestamps();
+    Object[] tabletValues = tablet.getValues();
+
     // timestamps
-    if (tablet.timestamps != null) {
-      totalSizeInBytes += tablet.timestamps.length * 8L;
+    if (timestamps != null) {
+      totalSizeInBytes += timestamps.length * 8L;
     }
 
     // values
@@ -217,10 +221,10 @@ public class PipeMemoryWeightUtil {
         }
 
         if (tsDataType.isBinary()) {
-          if (tablet.values == null || tablet.values.length <= column) {
+          if (tabletValues == null || tabletValues.length <= column) {
             continue;
           }
-          final Binary[] values = ((Binary[]) tablet.values[column]);
+          final Binary[] values = ((Binary[]) tabletValues[column]);
           if (values == null) {
             continue;
           }
@@ -229,15 +233,16 @@ public class PipeMemoryWeightUtil {
                 value == null ? 0 : (value.getLength() == -1 ? 0 : value.getLength());
           }
         } else {
-          totalSizeInBytes += (long) tablet.timestamps.length * tsDataType.getDataTypeSize();
+          totalSizeInBytes += (long) timestamps.length * tsDataType.getDataTypeSize();
         }
       }
     }
 
     // bitMaps
-    if (tablet.bitMaps != null) {
-      for (int i = 0; i < tablet.bitMaps.length; i++) {
-        totalSizeInBytes += tablet.bitMaps[i] == null ? 0 : tablet.bitMaps[i].getSize();
+    BitMap[] bitMaps = tablet.getBitMaps();
+    if (bitMaps != null) {
+      for (int i = 0; i < bitMaps.length; i++) {
+        totalSizeInBytes += bitMaps[i] == null ? 0 : bitMaps[i].getSize();
       }
     }
 
