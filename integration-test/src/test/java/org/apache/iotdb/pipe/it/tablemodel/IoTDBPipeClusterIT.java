@@ -78,6 +78,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDataReplicationFactor(3)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
@@ -88,6 +89,60 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
 
     senderEnv.initClusterEnvironment(3, 3, 180);
     receiverEnv.initClusterEnvironment(3, 3, 180);
+  }
+
+  @Test
+  public void test() throws Exception {
+    StringBuilder a = new StringBuilder();
+    for (DataNodeWrapper nodeWrapper : receiverEnv.getDataNodeWrapperList()) {
+      a.append(nodeWrapper.getIp()).append(":").append(nodeWrapper.getPort());
+      a.append(",");
+    }
+    a.deleteCharAt(a.length() - 1);
+
+    TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+    TableModelUtils.insertData("test", "test", 0, 1, senderEnv);
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("extractor", "iotdb-extractor");
+      extractorAttributes.put("capture.table", "true");
+
+      processorAttributes.put("processor", "do-nothing-processor");
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.node-urls", a.toString());
+
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      // The purpose of sleeping here is to ensure that the receiving end has created the database
+      // and created the table.
+      Thread.sleep(10000);
+      receiverEnv.getDataNodeWrapper(0).stop();
+      Thread.sleep(10000);
+      TableModelUtils.insertData("test", "test", 1, 2, senderEnv);
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+
+    for (DataNodeWrapper nodeWrapper : receiverEnv.getDataNodeWrapperList()) {
+      if (!nodeWrapper.isAlive()) {
+        continue;
+      }
+      TableModelUtils.assertCountData("test", "test", 2, receiverEnv, nodeWrapper);
+      return;
+    }
   }
 
   @Test

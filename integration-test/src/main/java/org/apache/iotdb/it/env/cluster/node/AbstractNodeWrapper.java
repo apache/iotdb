@@ -545,8 +545,8 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     }
     this.instance.destroy();
     try {
-      if (!this.instance.waitFor(20, TimeUnit.SECONDS)) {
-        this.instance.destroyForcibly().waitFor(10, TimeUnit.SECONDS);
+      if (!this.instance.waitFor(1, TimeUnit.SECONDS)) {
+        this.instance.destroyForcibly().waitFor(1, TimeUnit.SECONDS);
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
