@@ -197,7 +197,7 @@ public class SubscriptionPullConsumer extends AbstractSubscriptionPullConsumer
   public static class Builder {
 
     private String host;
-    private int port;
+    private Integer port;
     private List<String> nodeUrls;
 
     private String username = SessionConfig.DEFAULT_USER;
