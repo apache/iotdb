@@ -63,6 +63,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -278,11 +279,13 @@ public class AuthorInfo implements SnapshotProcessor {
     String database = authorPlan.getDatabaseName();
     String table = authorPlan.getTableName();
     boolean grantOpt = authorPlan.getGrantOpt();
-    int type = authorPlan.getPermission();
-    PrivilegeType priv = null;
+    Set<Integer> permissions = authorPlan.getPermissions();
+    Set<PrivilegeType> privileges = new HashSet<>();
     if (authorType.ordinal() >= ConfigPhysicalPlanType.RGrantUserAny.ordinal()
         && authorType.ordinal() <= ConfigPhysicalPlanType.RRevokeRoleSysPri.ordinal()) {
-      priv = PrivilegeType.values()[type];
+      for (int permission : permissions) {
+        privileges.add(PrivilegeType.values()[permission]);
+      }
     }
 
     try {
@@ -293,14 +296,14 @@ public class AuthorInfo implements SnapshotProcessor {
         case RCreateRole:
           authorizer.createRole(roleName);
           break;
+        case RUpdateUser:
+          authorizer.updateUserPassword(userName, authorPlan.getPassword());
+          break;
         case RDropRole:
           authorizer.deleteRole(roleName);
           break;
         case RDropUser:
           authorizer.deleteUser(userName);
-          break;
-        case RUpdateUser:
-          authorizer.updateUserPassword(userName, authorPlan.getPassword());
           break;
         case RGrantUserRole:
           authorizer.grantRoleToUser(roleName, userName);
@@ -308,59 +311,141 @@ public class AuthorInfo implements SnapshotProcessor {
         case RRevokeUserRole:
           authorizer.revokeRoleFromUser(roleName, userName);
           break;
-        case RGrantRoleSysPri:
-          authorizer.grantPrivilegeToRole(roleName, new PrivilegeUnion(priv, grantOpt));
+        case RGrantUserAny:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.grantPrivilegeToUser(
+                userName, new PrivilegeUnion(privilege, grantOpt, true));
+          }
           break;
         case RGrantRoleAny:
-          authorizer.grantPrivilegeToRole(roleName, new PrivilegeUnion(priv, grantOpt, true));
+          for (PrivilegeType privilege : privileges) {
+            authorizer.grantPrivilegeToRole(
+                roleName, new PrivilegeUnion(privilege, grantOpt, true));
+          }
           break;
-        case RGrantUserSysPri:
-          authorizer.grantPrivilegeToUser(userName, new PrivilegeUnion(priv, grantOpt));
+        case RGrantUserAll:
+          for (PrivilegeType privilege : PrivilegeType.values()) {
+            if (privilege.forRelationalSys()) {
+              authorizer.grantPrivilegeToUser(userName, new PrivilegeUnion(privilege, grantOpt));
+            }
+            if (privilege.isRelationalPrivilege()) {
+              authorizer.grantPrivilegeToUser(
+                  userName, new PrivilegeUnion(privilege, grantOpt, true));
+            }
+          }
           break;
-        case RGrantUserAny:
-          authorizer.grantPrivilegeToUser(userName, new PrivilegeUnion(priv, grantOpt, true));
-          break;
-        case RGrantRoleDBPriv:
-          authorizer.grantPrivilegeToRole(roleName, new PrivilegeUnion(database, priv, grantOpt));
+        case RGrantRoleAll:
+          for (PrivilegeType privilege : PrivilegeType.values()) {
+            if (privilege.forRelationalSys()) {
+              authorizer.grantPrivilegeToRole(roleName, new PrivilegeUnion(privilege, grantOpt));
+            }
+            if (privilege.isRelationalPrivilege()) {
+              authorizer.grantPrivilegeToRole(
+                  roleName, new PrivilegeUnion(privilege, grantOpt, true));
+            }
+          }
           break;
         case RGrantUserDBPriv:
-          authorizer.grantPrivilegeToUser(userName, new PrivilegeUnion(database, priv, grantOpt));
-          break;
-        case RGrantRoleTBPriv:
-          authorizer.grantPrivilegeToRole(
-              roleName, new PrivilegeUnion(database, table, priv, grantOpt));
+          for (PrivilegeType privilege : privileges) {
+            authorizer.grantPrivilegeToUser(
+                userName, new PrivilegeUnion(database, privilege, grantOpt));
+          }
           break;
         case RGrantUserTBPriv:
-          authorizer.grantPrivilegeToUser(
-              userName, new PrivilegeUnion(database, table, priv, grantOpt));
+          for (PrivilegeType privilege : privileges) {
+            authorizer.grantPrivilegeToUser(
+                userName, new PrivilegeUnion(database, table, privilege, grantOpt));
+          }
           break;
-        case RRevokeRoleSysPri:
-          authorizer.revokePrivilegeFromRole(roleName, new PrivilegeUnion(priv, grantOpt));
+        case RGrantRoleDBPriv:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.grantPrivilegeToRole(
+                roleName, new PrivilegeUnion(database, privilege, grantOpt));
+          }
           break;
-        case RRevokeRoleAny:
-          authorizer.revokePrivilegeFromRole(roleName, new PrivilegeUnion(priv, grantOpt, true));
-          break;
-        case RRevokeUserSysPri:
-          authorizer.revokePrivilegeFromUser(userName, new PrivilegeUnion(priv, grantOpt));
+        case RGrantRoleTBPriv:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.grantPrivilegeToRole(
+                roleName, new PrivilegeUnion(database, table, privilege, grantOpt));
+          }
           break;
         case RRevokeUserAny:
-          authorizer.revokePrivilegeFromUser(userName, new PrivilegeUnion(priv, grantOpt, true));
+          for (PrivilegeType privilege : privileges) {
+            authorizer.revokePrivilegeFromUser(
+                userName, new PrivilegeUnion(privilege, grantOpt, true));
+          }
           break;
-        case RRevokeRoleDBPriv:
-          authorizer.revokePrivilegeFromRole(
-              roleName, new PrivilegeUnion(database, priv, grantOpt));
+        case RRevokeRoleAny:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.revokePrivilegeFromRole(
+                roleName, new PrivilegeUnion(privilege, grantOpt, true));
+          }
+          break;
+        case RRevokeUserAll:
+          for (PrivilegeType privilege : PrivilegeType.values()) {
+            if (privilege.forRelationalSys()) {
+              authorizer.revokePrivilegeFromUser(userName, new PrivilegeUnion(privilege, grantOpt));
+            }
+            if (privilege.isRelationalPrivilege()) {
+              authorizer.revokePrivilegeFromUser(
+                  userName, new PrivilegeUnion(privilege, grantOpt, true));
+            }
+          }
+          break;
+        case RRevokeRoleAll:
+          for (PrivilegeType privilege : PrivilegeType.values()) {
+            if (privilege.forRelationalSys()) {
+              authorizer.revokePrivilegeFromRole(roleName, new PrivilegeUnion(privilege, grantOpt));
+            }
+            if (privilege.isRelationalPrivilege()) {
+              authorizer.revokePrivilegeFromRole(
+                  roleName, new PrivilegeUnion(privilege, grantOpt, true));
+            }
+          }
           break;
         case RRevokeUserDBPriv:
-          authorizer.revokePrivilegeFromUser(
-              userName, new PrivilegeUnion(database, priv, grantOpt));
-          break;
-        case RRevokeRoleTBPriv:
-          authorizer.revokePrivilegeFromRole(
-              roleName, new PrivilegeUnion(database, table, priv, grantOpt));
+          for (PrivilegeType privilege : privileges) {
+            authorizer.revokePrivilegeFromUser(
+                userName, new PrivilegeUnion(database, privilege, grantOpt));
+          }
           break;
         case RRevokeUserTBPriv:
-          authorizer.revokePrivilegeFromUser(
-              userName, new PrivilegeUnion(database, table, priv, grantOpt));
+          for (PrivilegeType privilege : privileges) {
+            authorizer.revokePrivilegeFromUser(
+                userName, new PrivilegeUnion(database, table, privilege, grantOpt));
+          }
+          break;
+        case RRevokeRoleDBPriv:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.revokePrivilegeFromRole(
+                roleName, new PrivilegeUnion(database, privilege, grantOpt));
+          }
+          break;
+        case RRevokeRoleTBPriv:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.revokePrivilegeFromRole(
+                roleName, new PrivilegeUnion(database, table, privilege, grantOpt));
+          }
+          break;
+        case RGrantUserSysPri:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.grantPrivilegeToUser(userName, new PrivilegeUnion(privilege, grantOpt));
+          }
+          break;
+        case RGrantRoleSysPri:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.grantPrivilegeToRole(roleName, new PrivilegeUnion(privilege, grantOpt));
+          }
+          break;
+        case RRevokeUserSysPri:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.revokePrivilegeFromUser(userName, new PrivilegeUnion(privilege, grantOpt));
+          }
+          break;
+        case RRevokeRoleSysPri:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.revokePrivilegeFromRole(roleName, new PrivilegeUnion(privilege, grantOpt));
+          }
           break;
         default:
           throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, "not support");

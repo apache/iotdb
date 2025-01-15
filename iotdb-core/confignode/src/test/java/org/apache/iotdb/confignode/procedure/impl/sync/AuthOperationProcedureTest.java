@@ -109,7 +109,7 @@ public class AuthOperationProcedureTest {
                     "role1",
                     "database",
                     "table",
-                    PrivilegeType.CREATE.ordinal(),
+                    Collections.singleton(PrivilegeType.CREATE.ordinal()),
                     false,
                     "password"),
                 datanodes,

@@ -1433,6 +1433,25 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return new RelationalAuthorStatement(AuthorRType.LIST_ROLE);
   }
 
+  private Set<PrivilegeType> parseSystemPrivilege(RelationalSqlParser.SystemPrivilegesContext ctx) {
+    List<RelationalSqlParser.SystemPrivilegeContext> privilegeContexts = ctx.systemPrivilege();
+    Set<PrivilegeType> privileges = new HashSet<>();
+    for (RelationalSqlParser.SystemPrivilegeContext privilege : privilegeContexts) {
+      privileges.add(PrivilegeType.valueOf(privilege.getText().toUpperCase()));
+    }
+    return privileges;
+  }
+
+  private Set<PrivilegeType> parseRelationalPrivilege(
+      RelationalSqlParser.ObjectPrivilegesContext ctx) {
+    List<RelationalSqlParser.ObjectPrivilegeContext> privilegeContexts = ctx.objectPrivilege();
+    Set<PrivilegeType> privileges = new HashSet<>();
+    for (RelationalSqlParser.ObjectPrivilegeContext privilege : privilegeContexts) {
+      privileges.add(PrivilegeType.valueOf(privilege.getText().toUpperCase()));
+    }
+    return privileges;
+  }
+
   @Override
   public Node visitGrantStatement(RelationalSqlParser.GrantStatementContext ctx) {
     boolean toUser;
@@ -1441,25 +1460,31 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     name = ctx.holderName.getText();
     boolean grantOption = ctx.grantOpt() != null;
     boolean toTable;
-    // SYSTEM PRIVILEGES
+    Set<PrivilegeType> privileges = new HashSet<>();
+    // SYSTEM PRIVILEGES OR ALL PRIVILEGES
     if (ctx.privilegeObjectScope().ON() == null) {
-      String privilegeText = ctx.privilegeObjectScope().systemPrivilege().getText();
-      PrivilegeType priv = PrivilegeType.valueOf(privilegeText.toUpperCase());
-      if (!priv.isSystemPrivilege() || !priv.forRelationalSys()) {
-        throw new SemanticException(priv + " is not System privilege");
+      if (ctx.privilegeObjectScope().ALL() != null) {
+        for (PrivilegeType privilege : PrivilegeType.values()) {
+          if (privilege.isRelationalPrivilege() || privilege.forRelationalSys()) {
+            privileges.add(privilege);
+          }
+        }
+        return new RelationalAuthorStatement(
+            toUser ? AuthorRType.GRANT_USER_ALL : AuthorRType.GRANT_ROLE_ALL,
+            toUser ? name : "",
+            toUser ? "" : name,
+            grantOption);
+      } else {
+        privileges = parseSystemPrivilege(ctx.privilegeObjectScope().systemPrivileges());
+        return new RelationalAuthorStatement(
+            toUser ? AuthorRType.GRANT_USER_SYS : AuthorRType.GRANT_ROLE_SYS,
+            privileges,
+            toUser ? name : "",
+            toUser ? "" : name,
+            grantOption);
       }
-      return new RelationalAuthorStatement(
-          toUser ? AuthorRType.GRANT_USER_SYS : AuthorRType.GRANT_ROLE_SYS,
-          priv,
-          toUser ? name : "",
-          toUser ? "" : name,
-          grantOption);
     } else {
-      String privilegeText = ctx.privilegeObjectScope().objectPrivilege().getText();
-      PrivilegeType priv = PrivilegeType.valueOf(privilegeText.toUpperCase());
-      if (!priv.isRelationalPrivilege()) {
-        throw new SemanticException(priv + "is not Relational privilege");
-      }
+      privileges = parseRelationalPrivilege(ctx.privilegeObjectScope().objectPrivileges());
       // ON TABLE / DB
       if (ctx.privilegeObjectScope().objectType() != null) {
         toTable = ctx.privilegeObjectScope().objectType().getText().equalsIgnoreCase("table");
@@ -1467,7 +1492,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         if (toTable) {
           databaseName = clientSession.getDatabaseName();
           if (databaseName == null) {
-            throw new SemanticException("Database is set yet.");
+            throw new SemanticException("Database is not set yet.");
           }
         }
         String obj = ctx.privilegeObjectScope().objectName.getText();
@@ -1479,7 +1504,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             toUser ? "" : name,
             toTable ? databaseName.toLowerCase() : obj.toLowerCase(),
             toTable ? obj.toLowerCase() : "",
-            priv,
+            privileges,
             grantOption,
             "");
       } else if (ctx.privilegeObjectScope().objectScope() != null) {
@@ -1491,13 +1516,13 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             toUser ? "" : name,
             db,
             tb,
-            priv,
+            privileges,
             grantOption,
             "");
       } else if (ctx.privilegeObjectScope().ANY() != null) {
         return new RelationalAuthorStatement(
             toUser ? AuthorRType.GRANT_USER_ANY : AuthorRType.GRANT_ROLE_ANY,
-            priv,
+            privileges,
             toUser ? name : "",
             toUser ? "" : name,
             grantOption);
@@ -1514,20 +1539,32 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     name = ctx.holderName.getText();
     boolean grantOption = ctx.revokeGrantOpt() != null;
     boolean fromTable;
+    Set<PrivilegeType> privileges = new HashSet<>();
 
-    // SYSTEM PRIVILEGES
+    // SYSTEM PRIVILEGES OR ALL PRIVILEGES
     if (ctx.privilegeObjectScope().ON() == null) {
-      String privilegeText = ctx.privilegeObjectScope().systemPrivilege().getText();
-      PrivilegeType priv = PrivilegeType.valueOf(privilegeText.toUpperCase());
-      return new RelationalAuthorStatement(
-          fromUser ? AuthorRType.REVOKE_USER_SYS : AuthorRType.REVOKE_ROLE_SYS,
-          priv,
-          fromUser ? name : "",
-          fromUser ? "" : name,
-          grantOption);
+      if (ctx.privilegeObjectScope().ALL() != null) {
+        for (PrivilegeType privilege : PrivilegeType.values()) {
+          if (privilege.isRelationalPrivilege() || privilege.forRelationalSys()) {
+            privileges.add(privilege);
+          }
+        }
+        return new RelationalAuthorStatement(
+            fromUser ? AuthorRType.REVOKE_USER_ALL : AuthorRType.REVOKE_ROLE_ALL,
+            fromUser ? name : "",
+            fromUser ? "" : name,
+            grantOption);
+      } else {
+        privileges = parseSystemPrivilege(ctx.privilegeObjectScope().systemPrivileges());
+        return new RelationalAuthorStatement(
+            fromUser ? AuthorRType.REVOKE_USER_SYS : AuthorRType.REVOKE_ROLE_SYS,
+            privileges,
+            fromUser ? name : "",
+            fromUser ? "" : name,
+            grantOption);
+      }
     } else {
-      String privilegeText = ctx.privilegeObjectScope().objectPrivilege().getText();
-      PrivilegeType priv = PrivilegeType.valueOf(privilegeText.toUpperCase());
+      privileges = parseRelationalPrivilege(ctx.privilegeObjectScope().objectPrivileges());
       // ON TABLE / DB
       if (ctx.privilegeObjectScope().objectType() != null) {
         fromTable = ctx.privilegeObjectScope().objectType().getText().equalsIgnoreCase("table");
@@ -1535,7 +1572,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         if (fromTable) {
           databaseName = clientSession.getDatabaseName();
           if (databaseName == null) {
-            throw new SemanticException("Database is set yet.");
+            throw new SemanticException("Database is not set yet.");
           }
         }
         String obj = ctx.privilegeObjectScope().objectName.getText();
@@ -1547,10 +1584,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             fromUser ? "" : name,
             fromTable ? databaseName.toLowerCase() : obj.toLowerCase(),
             fromTable ? obj.toLowerCase() : "",
-            priv,
+            privileges,
             grantOption,
             "");
-      } else if (!ctx.privilegeObjectScope().objectScope().isEmpty()) {
+      } else if (ctx.privilegeObjectScope().objectScope() != null) {
         String db = ctx.privilegeObjectScope().objectScope().dbname.getText().toLowerCase();
         String tb = ctx.privilegeObjectScope().objectScope().tbname.getText().toLowerCase();
         return new RelationalAuthorStatement(
@@ -1559,13 +1596,13 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             fromUser ? "" : name,
             db,
             tb,
-            priv,
+            privileges,
             grantOption,
             "");
       } else if (ctx.privilegeObjectScope().ANY() != null) {
         return new RelationalAuthorStatement(
             fromUser ? AuthorRType.REVOKE_USER_ANY : AuthorRType.REVOKE_ROLE_ANY,
-            priv,
+            privileges,
             fromUser ? name : "",
             fromUser ? "" : name,
             grantOption);

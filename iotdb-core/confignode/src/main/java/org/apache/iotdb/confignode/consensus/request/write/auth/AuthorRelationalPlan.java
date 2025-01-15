@@ -55,6 +55,20 @@ public class AuthorRelationalPlan extends AuthorPlan {
     this.permissions = permissions;
   }
 
+  public AuthorRelationalPlan(
+      final ConfigPhysicalPlanType authorType,
+      final String userName,
+      final String roleName,
+      final String databaseName,
+      final String tableName,
+      final int permission,
+      final boolean grantOpt) {
+    super(authorType, userName, roleName, "", "", grantOpt);
+    this.databaseName = databaseName;
+    this.tableName = tableName;
+    this.permissions = Collections.singleton(permission);
+  }
+
   public String getDatabaseName() {
     return databaseName;
   }

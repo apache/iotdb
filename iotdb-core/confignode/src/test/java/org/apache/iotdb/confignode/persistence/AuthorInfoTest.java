@@ -46,6 +46,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -680,7 +681,14 @@ public class AuthorInfoTest {
     // create user
     AuthorPlan plan =
         new AuthorRelationalPlan(
-            ConfigPhysicalPlanType.RCreateUser, "user", "", "", "", -1, false, "password");
+            ConfigPhysicalPlanType.RCreateUser,
+            "user",
+            "",
+            "",
+            "",
+            Collections.emptySet(),
+            false,
+            "password");
 
     checkAuthorNonQueryReturn(plan);
 
@@ -693,7 +701,14 @@ public class AuthorInfoTest {
 
     plan =
         new AuthorRelationalPlan(
-            ConfigPhysicalPlanType.RDropUser, "user", "", "", "", -1, false, "");
+            ConfigPhysicalPlanType.RDropUser,
+            "user",
+            "",
+            "",
+            "",
+            Collections.emptySet(),
+            false,
+            "");
     checkAuthorNonQueryReturn(plan);
 
     // list user
@@ -715,19 +730,40 @@ public class AuthorInfoTest {
     // create role
     plan =
         new AuthorRelationalPlan(
-            ConfigPhysicalPlanType.RCreateRole, "", "role", "", "", -1, false, "");
+            ConfigPhysicalPlanType.RCreateRole,
+            "",
+            "role",
+            "",
+            "",
+            Collections.emptySet(),
+            false,
+            "");
 
     checkAuthorNonQueryReturn(plan);
 
     // create user
     plan =
         new AuthorRelationalPlan(
-            ConfigPhysicalPlanType.RCreateUser, "user", "", "", "", -1, false, "password");
+            ConfigPhysicalPlanType.RCreateUser,
+            "user",
+            "",
+            "",
+            "",
+            Collections.emptySet(),
+            false,
+            "password");
 
     checkAuthorNonQueryReturn(plan);
     checkAuthorNonQueryReturn(
         new AuthorRelationalPlan(
-            ConfigPhysicalPlanType.RGrantUserRole, "user", "role", "", "", -1, false, ""));
+            ConfigPhysicalPlanType.RGrantUserRole,
+            "user",
+            "role",
+            "",
+            "",
+            Collections.emptySet(),
+            false,
+            ""));
 
     // grant privileges
     checkAuthorNonQueryReturn(
@@ -738,8 +774,7 @@ public class AuthorInfoTest {
             "",
             "",
             PrivilegeType.MAINTAIN.ordinal(),
-            false,
-            ""));
+            false));
 
     checkAuthorNonQueryReturn(
         new AuthorRelationalPlan(
@@ -749,8 +784,7 @@ public class AuthorInfoTest {
             "",
             "",
             PrivilegeType.MANAGE_USER.ordinal(),
-            true,
-            ""));
+            true));
 
     checkAuthorNonQueryReturn(
         new AuthorRelationalPlan(
@@ -760,8 +794,7 @@ public class AuthorInfoTest {
             "",
             "",
             PrivilegeType.DELETE.ordinal(),
-            false,
-            ""));
+            false));
 
     checkAuthorNonQueryReturn(
         new AuthorRelationalPlan(
@@ -771,8 +804,7 @@ public class AuthorInfoTest {
             "testdb",
             "",
             PrivilegeType.SELECT.ordinal(),
-            false,
-            ""));
+            false));
     checkAuthorNonQueryReturn(
         new AuthorRelationalPlan(
             ConfigPhysicalPlanType.RGrantUserDBPriv,
@@ -781,8 +813,7 @@ public class AuthorInfoTest {
             "testdb2",
             "",
             PrivilegeType.INSERT.ordinal(),
-            false,
-            ""));
+            false));
 
     checkAuthorNonQueryReturn(
         new AuthorRelationalPlan(
@@ -792,8 +823,7 @@ public class AuthorInfoTest {
             "testdb",
             "table",
             PrivilegeType.CREATE.ordinal(),
-            false,
-            ""));
+            false));
     checkAuthorNonQueryReturn(
         new AuthorRelationalPlan(
             ConfigPhysicalPlanType.RGrantUserTBPriv,
@@ -802,8 +832,7 @@ public class AuthorInfoTest {
             "testdb",
             "table2",
             PrivilegeType.DELETE.ordinal(),
-            true,
-            ""));
+            true));
 
     checkAuthorNonQueryReturn(
         new AuthorRelationalPlan(
@@ -813,8 +842,7 @@ public class AuthorInfoTest {
             "",
             "",
             PrivilegeType.MANAGE_ROLE.ordinal(),
-            false,
-            ""));
+            false));
     checkAuthorNonQueryReturn(
         new AuthorRelationalPlan(
             ConfigPhysicalPlanType.RGrantRoleTBPriv,
@@ -823,8 +851,7 @@ public class AuthorInfoTest {
             "database",
             "table",
             PrivilegeType.ALTER.ordinal(),
-            false,
-            ""));
+            false));
 
     // privileges status:
     // user <-- role

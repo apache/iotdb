@@ -46,7 +46,7 @@ public class RelationalAuthorStatement extends Statement {
 
   public RelationalAuthorStatement(
       AuthorRType authorType,
-      String username,
+      String userName,
       String roleName,
       String database,
       String table,
@@ -59,7 +59,7 @@ public class RelationalAuthorStatement extends Statement {
     this.tableName = table;
     this.privilegeType = type;
     this.roleName = roleName;
-    this.userName = username;
+    this.userName = userName;
     this.grantOption = grantOption;
     this.password = password;
   }
@@ -72,18 +72,27 @@ public class RelationalAuthorStatement extends Statement {
   public RelationalAuthorStatement(
       AuthorRType statementType,
       Set<PrivilegeType> type,
-      String username,
+      String userName,
       String roleName,
       boolean grantOption) {
     super(null);
     this.authorType = statementType;
     this.privilegeType = type;
-    this.userName = username;
+    this.userName = userName;
     this.roleName = roleName;
     this.grantOption = grantOption;
     this.tableName = null;
     this.database = null;
     this.password = null;
+  }
+
+  public RelationalAuthorStatement(
+      AuthorRType statementType, String userName, String roleName, boolean grantOption) {
+    super(null);
+    this.authorType = statementType;
+    this.userName = userName;
+    this.roleName = roleName;
+    this.grantOption = grantOption;
   }
 
   public AuthorRType getAuthorType() {
@@ -182,6 +191,8 @@ public class RelationalAuthorStatement extends Statement {
       case UPDATE_USER:
       case GRANT_ROLE_ANY:
       case GRANT_USER_ANY:
+      case GRANT_ROLE_ALL:
+      case GRANT_USER_ALL:
       case GRANT_ROLE_DB:
       case GRANT_USER_DB:
       case GRANT_ROLE_TB:
@@ -195,6 +206,8 @@ public class RelationalAuthorStatement extends Statement {
       case REVOKE_USER_TB:
       case REVOKE_ROLE_ANY:
       case REVOKE_USER_ANY:
+      case REVOKE_ROLE_ALL:
+      case REVOKE_USER_ALL:
       case REVOKE_ROLE_SYS:
       case REVOKE_USER_SYS:
       case REVOKE_USER_ROLE:

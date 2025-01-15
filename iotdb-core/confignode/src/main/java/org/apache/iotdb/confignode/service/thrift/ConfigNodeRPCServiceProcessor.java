@@ -738,8 +738,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             req.getRoleName(),
             req.getDatabase(),
             req.getTable(),
-            req.getPrivilege(),
-            req.isGrantopt(),
+            req.getPermissions(),
+            req.isGrantOpt(),
             req.getPassword()));
   }
 
@@ -758,8 +758,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
                     req.getRoleName(),
                     req.getDatabase(),
                     req.getTable(),
-                    req.getPrivilege(),
-                    req.isGrantopt(),
+                    req.getPermissions(),
+                    req.isGrantOpt(),
                     req.getPassword()));
     final TAuthorizerResp resp = new TAuthorizerResp(dataSet.getStatus());
     resp.setMemberInfo(dataSet.getMemberList());

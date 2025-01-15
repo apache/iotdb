@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -208,14 +209,38 @@ public class AccessControlImpl implements AccessControl {
         if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
           throw new RuntimeException(
               new IoTDBException(
-                  "Cannot grant/revoke privileges to admin",
+                  "Cannot grant/revoke privileges to/from admin",
                   TSStatusCode.NO_PERMISSION.getStatusCode()));
         }
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
-        authChecker.checkAnyScopePrivilegeGrantOption(
-            userName, TableModelPrivilege.getTableModelType(statement.getPrivilegeType()));
+        for (PrivilegeType privilegeType : statement.getPrivilegeType()) {
+          authChecker.checkAnyScopePrivilegeGrantOption(
+              userName, TableModelPrivilege.getTableModelType(privilegeType));
+        }
+        return;
+      case GRANT_ROLE_ALL:
+      case REVOKE_ROLE_ALL:
+      case GRANT_USER_ALL:
+      case REVOKE_USER_ALL:
+        if (AuthorityChecker.SUPER_USER.equals(statement.getUserName())) {
+          throw new RuntimeException(
+              new IoTDBException(
+                  "Cannot grant/revoke all privileges to/from admin",
+                  TSStatusCode.NO_PERMISSION.getStatusCode()));
+        }
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return;
+        }
+        for (PrivilegeType privilegeType : statement.getPrivilegeType()) {
+          if (privilegeType.isRelationalPrivilege()) {
+            AuthorityChecker.checkAnyScopePermissionGrantOption(userName, privilegeType);
+          }
+          if (privilegeType.forRelationalSys()) {
+            AuthorityChecker.checkSystemPermissionGrantOption(userName, privilegeType);
+          }
+        }
         return;
       case GRANT_USER_DB:
       case GRANT_ROLE_DB:
@@ -230,10 +255,12 @@ public class AccessControlImpl implements AccessControl {
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
-        authChecker.checkDatabasePrivilegeGrantOption(
-            userName,
-            statement.getDatabase(),
-            TableModelPrivilege.getTableModelType(statement.getPrivilegeType()));
+        for (PrivilegeType privilegeType : statement.getPrivilegeType()) {
+          authChecker.checkDatabasePrivilegeGrantOption(
+              userName,
+              statement.getDatabase(),
+              TableModelPrivilege.getTableModelType(privilegeType));
+        }
         return;
       case GRANT_USER_TB:
       case GRANT_ROLE_TB:
@@ -248,10 +275,12 @@ public class AccessControlImpl implements AccessControl {
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
-        authChecker.checkTablePrivilegeGrantOption(
-            userName,
-            new QualifiedObjectName(statement.getDatabase(), statement.getTableName()),
-            TableModelPrivilege.getTableModelType(statement.getPrivilegeType()));
+        for (PrivilegeType privilegeType : statement.getPrivilegeType()) {
+          authChecker.checkTablePrivilegeGrantOption(
+              userName,
+              new QualifiedObjectName(statement.getDatabase(), statement.getTableName()),
+              TableModelPrivilege.getTableModelType(privilegeType));
+        }
         return;
 
       case GRANT_USER_SYS:
@@ -267,9 +296,10 @@ public class AccessControlImpl implements AccessControl {
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
-        authChecker.checkGlobalPrivilegeGrantOption(
-            userName, TableModelPrivilege.getTableModelType(statement.getPrivilegeType()));
-        return;
+        for (PrivilegeType privilegeType : statement.getPrivilegeType()) {
+          authChecker.checkGlobalPrivilegeGrantOption(
+              userName, TableModelPrivilege.getTableModelType(privilegeType));
+        }
       default:
         //
     }
