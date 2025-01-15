@@ -72,20 +72,18 @@ public enum Type {
       case INT32:
         return o instanceof Integer;
       case INT64:
+      case TIMESTAMP:
         return o instanceof Long;
       case FLOAT:
         return o instanceof Float;
       case DOUBLE:
         return o instanceof Double;
-      case TEXT:
-        return o instanceof String;
-      case TIMESTAMP:
-        return o instanceof Long;
       case DATE:
         return o instanceof LocalDate;
       case BLOB:
         return o instanceof Binary;
       case STRING:
+      case TEXT:
         return o instanceof String;
       default:
         return false;

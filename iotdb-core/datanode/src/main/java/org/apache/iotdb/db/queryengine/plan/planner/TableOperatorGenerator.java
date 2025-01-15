@@ -166,7 +166,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumn
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
-import org.apache.iotdb.udf.api.relational.table.TableFunction;
+import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 
 import com.google.common.collect.ImmutableList;

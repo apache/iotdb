@@ -818,13 +818,13 @@ public class TableDistributedPlanGenerator
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     if (childrenNodes.size() == 1) {
       node.setChild(childrenNodes.get(0));
-      return Collections.singletonList(node);
     } else {
       CollectNode collectNode =
           new CollectNode(queryId.genPlanNodeId(), node.getChildren().get(0).getOutputSymbols());
       childrenNodes.forEach(collectNode::addChild);
-      return Collections.singletonList(collectNode);
+      node.setChild(collectNode);
     }
+    return Collections.singletonList(node);
   }
 
   private void buildRegionNodeMap(

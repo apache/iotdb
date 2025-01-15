@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.udf.api.relational.table;
 
-import org.apache.iotdb.udf.api.relational.table.argument.Descriptor;
+import org.apache.iotdb.udf.api.relational.table.argument.DescribedSchema;
 
 import java.util.HashMap;
 import java.util.List;
@@ -35,12 +35,10 @@ import static java.util.Objects.requireNonNull;
 public class TableFunctionAnalysis {
 
   /**
-   * The `returnedType` field is used to inform the Analyzer of the proper columns returned by the
-   * Table Function, that is, the columns produced by the function, as opposed to the columns passed
-   * from the input tables. The `returnedType` should only be set if the declared returned type is
-   * GENERIC_TABLE.
+   * The `returnedSchema` field is used to inform the Analyzer of the proper columns returned by the
+   * Table Function, that is, the columns produced by the function.
    */
-  private final Optional<Descriptor> returnedType;
+  private final Optional<DescribedSchema> properColumnSchema;
 
   /**
    * The `requiredColumns` field is used to inform the Analyzer of the columns from the table
@@ -51,19 +49,13 @@ public class TableFunctionAnalysis {
   private final Map<String, List<Integer>> requiredColumns;
 
   private TableFunctionAnalysis(
-      Optional<Descriptor> returnedType, Map<String, List<Integer>> requiredColumns) {
-    this.returnedType = requireNonNull(returnedType, "returnedType is null");
-    returnedType.ifPresent(
-        descriptor -> {
-          if (!descriptor.isTyped()) {
-            throw new IllegalArgumentException("field types should be specified");
-          }
-        });
+      Optional<DescribedSchema> properColumnSchema, Map<String, List<Integer>> requiredColumns) {
+    this.properColumnSchema = requireNonNull(properColumnSchema, "returnedType is null");
     this.requiredColumns = requiredColumns;
   }
 
-  public Optional<Descriptor> getReturnedType() {
-    return returnedType;
+  public Optional<DescribedSchema> getProperColumnSchema() {
+    return properColumnSchema;
   }
 
   public Map<String, List<Integer>> getRequiredColumns() {
@@ -75,13 +67,13 @@ public class TableFunctionAnalysis {
   }
 
   public static final class Builder {
-    private Descriptor returnedType;
+    private DescribedSchema properColumnSchema;
     private final Map<String, List<Integer>> requiredColumns = new HashMap<>();
 
     private Builder() {}
 
-    public Builder returnedType(Descriptor returnedType) {
-      this.returnedType = returnedType;
+    public Builder properColumnSchema(DescribedSchema properColumnSchema) {
+      this.properColumnSchema = properColumnSchema;
       return this;
     }
 
@@ -91,7 +83,7 @@ public class TableFunctionAnalysis {
     }
 
     public TableFunctionAnalysis build() {
-      return new TableFunctionAnalysis(Optional.ofNullable(returnedType), requiredColumns);
+      return new TableFunctionAnalysis(Optional.ofNullable(properColumnSchema), requiredColumns);
     }
   }
 }

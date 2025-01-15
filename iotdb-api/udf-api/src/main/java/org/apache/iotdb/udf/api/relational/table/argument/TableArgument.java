@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.udf.api.relational.table.argument;
 
+import org.apache.iotdb.udf.api.type.ColumnCategory;
 import org.apache.iotdb.udf.api.type.Type;
 
 import java.util.List;
@@ -29,18 +30,24 @@ import static java.util.Objects.requireNonNull;
 public class TableArgument implements Argument {
   private final List<Optional<String>> fieldNames;
   private final List<Type> fieldTypes;
+  private final List<ColumnCategory> fieldCategories;
   private final List<String> partitionBy;
   private final List<String> orderBy;
 
   public TableArgument(
       List<Optional<String>> fieldNames,
       List<Type> fieldTypes,
+      List<ColumnCategory> fieldCategories,
       List<String> partitionBy,
       List<String> orderBy) {
     this.fieldNames = requireNonNull(fieldNames, "fieldNames is null");
     this.fieldTypes = requireNonNull(fieldTypes, "fieldTypes is null");
+    this.fieldCategories = requireNonNull(fieldCategories, "fieldCategories is null");
     if (fieldNames.size() != fieldTypes.size()) {
       throw new IllegalArgumentException("fieldNames and fieldTypes must have the same size");
+    }
+    if (fieldNames.size() != fieldCategories.size()) {
+      throw new IllegalArgumentException("fieldNames and fieldCategories must have the same size");
     }
     this.partitionBy = requireNonNull(partitionBy, "partitionBy is null");
     this.orderBy = requireNonNull(orderBy, "orderBy is null");
@@ -52,6 +59,10 @@ public class TableArgument implements Argument {
 
   public List<Type> getFieldTypes() {
     return fieldTypes;
+  }
+
+  public List<ColumnCategory> getFieldCategories() {
+    return fieldCategories;
   }
 
   public List<String> getPartitionBy() {

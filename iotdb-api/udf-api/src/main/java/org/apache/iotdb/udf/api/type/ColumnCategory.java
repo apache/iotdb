@@ -17,22 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.udf.api.relational;
+package org.apache.iotdb.udf.api.type;
 
-import org.apache.iotdb.udf.api.exception.UDFException;
-import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
-import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
-import org.apache.iotdb.udf.api.relational.table.argument.Argument;
-import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecification;
+public enum ColumnCategory {
+  TAG((byte) 0),
+  ATTRIBUTE((byte) 1),
+  TIME((byte) 2),
+  FIELD((byte) 3);
 
-import java.util.List;
-import java.util.Map;
+  private final byte category;
 
-public interface TableFunction {
+  ColumnCategory(byte category) {
+    this.category = category;
+  }
 
-  List<ParameterSpecification> getArgumentsSpecification();
-
-  TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException;
-
-  TableFunctionProcessorProvider getProcessorProvider(Map<String, Argument> arguments);
+  byte getValue() {
+    return category;
+  }
 }

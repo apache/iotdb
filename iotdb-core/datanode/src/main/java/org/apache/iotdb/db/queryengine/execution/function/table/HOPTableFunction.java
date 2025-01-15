@@ -20,34 +20,31 @@
 package org.apache.iotdb.db.queryengine.execution.function.table;
 
 import org.apache.iotdb.udf.api.exception.UDFException;
+import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
-import org.apache.iotdb.udf.api.relational.table.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
-import org.apache.iotdb.udf.api.relational.table.argument.Descriptor;
-import org.apache.iotdb.udf.api.relational.table.argument.DescriptorArgument;
+import org.apache.iotdb.udf.api.relational.table.argument.DescribedSchema;
 import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
 import org.apache.iotdb.udf.api.relational.table.argument.TableArgument;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
-import org.apache.iotdb.udf.api.relational.table.specification.DescriptorParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecification;
-import org.apache.iotdb.udf.api.relational.table.specification.ReturnTypeSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
+import org.apache.iotdb.udf.api.type.ColumnCategory;
 import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
-import static org.apache.iotdb.udf.api.relational.table.specification.ReturnTypeSpecification.GenericTable.GENERIC_TABLE;
-
-public class HOPTableFunction extends TableFunction {
+public class HOPTableFunction implements TableFunction {
 
   private static final String DATA_PARAMETER_NAME = "DATA";
   private static final String TIMECOL_PARAMETER_NAME = "TIMECOL";
@@ -62,42 +59,15 @@ public class HOPTableFunction extends TableFunction {
             .passThroughColumns()
             .keepWhenEmpty()
             .build(),
-        DescriptorParameterSpecification.builder().name(TIMECOL_PARAMETER_NAME).build(),
         ScalarParameterSpecification.builder()
-            .name(SLIDE_PARAMETER_NAME)
-            .type(Type.INT64)
+            .name(TIMECOL_PARAMETER_NAME)
+            .type(Type.STRING)
             .build(),
-        ScalarParameterSpecification.builder()
-            .name(SIZE_PARAMETER_NAME)
-            .type(Type.INT64)
-            .build());
+        ScalarParameterSpecification.builder().name(SLIDE_PARAMETER_NAME).type(Type.INT64).build(),
+        ScalarParameterSpecification.builder().name(SIZE_PARAMETER_NAME).type(Type.INT64).build());
   }
 
-  @Override
-  public ReturnTypeSpecification getReturnTypeSpecification() {
-    return GENERIC_TABLE;
-  }
-
-  @Override
-  public Optional<Descriptor> getReturnProperColumns() {
-    return Optional.of(
-        Descriptor.descriptor(
-            Arrays.asList("window_start", "window_end"),
-            Arrays.asList(Type.TIMESTAMP, Type.TIMESTAMP)));
-  }
-
-  @Override
-  public TableFunctionAnalysis analyze(Map<String, Argument> arguments) {
-    TableArgument tableArgument = (TableArgument) arguments.get(DATA_PARAMETER_NAME);
-    DescriptorArgument descriptorArgument =
-        (DescriptorArgument) arguments.get(TIMECOL_PARAMETER_NAME);
-    String expectedFieldName =
-        descriptorArgument
-            .getDescriptor()
-            .orElseThrow(() -> new UDFException("The descriptor of the argument is empty"))
-            .getFields()
-            .get(0)
-            .getName();
+  private int findTimeColumnIndex(TableArgument tableArgument, String expectedFieldName) {
     int requiredIndex = -1;
     for (int i = 0; i < tableArgument.getFieldTypes().size(); i++) {
       Optional<String> fieldName = tableArgument.getFieldNames().get(i);
@@ -106,22 +76,48 @@ public class HOPTableFunction extends TableFunction {
         break;
       }
     }
+    return requiredIndex;
+  }
+
+  @Override
+  public TableFunctionAnalysis analyze(Map<String, Argument> arguments) {
+    TableArgument tableArgument = (TableArgument) arguments.get(DATA_PARAMETER_NAME);
+    String expectedFieldName =
+        (String) ((ScalarArgument) arguments.get(TIMECOL_PARAMETER_NAME)).getValue();
+    int requiredIndex = findTimeColumnIndex(tableArgument, expectedFieldName);
     if (requiredIndex == -1) {
       throw new UDFException("The required field is not found in the input table");
     }
+    DescribedSchema properColumnSchema =
+        new DescribedSchema.Builder()
+            .addField("window_start", Type.TIMESTAMP, ColumnCategory.FIELD)
+            .addField("window_end", Type.TIMESTAMP, ColumnCategory.FIELD)
+            .build();
+
     return TableFunctionAnalysis.builder()
-        .requiredColumns(DATA_PARAMETER_NAME, Collections.singletonList(requiredIndex))
+        .properColumnSchema(properColumnSchema)
+        .requiredColumns(
+            DATA_PARAMETER_NAME,
+            IntStream.range(0, tableArgument.getFieldTypes().size())
+                .boxed()
+                .collect(Collectors.toList()))
         .build();
   }
 
   @Override
   public TableFunctionProcessorProvider getProcessorProvider(Map<String, Argument> arguments) {
+    TableArgument tableArgument = (TableArgument) arguments.get(DATA_PARAMETER_NAME);
+    String expectedFieldName =
+        (String) ((ScalarArgument) arguments.get(TIMECOL_PARAMETER_NAME)).getValue();
+    int requiredIndex = findTimeColumnIndex(tableArgument, expectedFieldName);
+
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
         return new HOPDataProcessor(
             (Long) ((ScalarArgument) arguments.get(SLIDE_PARAMETER_NAME)).getValue() * 1000,
-            (Long) ((ScalarArgument) arguments.get(SLIDE_PARAMETER_NAME)).getValue() * 1000);
+            (Long) ((ScalarArgument) arguments.get(SLIDE_PARAMETER_NAME)).getValue() * 1000,
+            requiredIndex);
       }
     };
   }
@@ -130,11 +126,13 @@ public class HOPTableFunction extends TableFunction {
 
     private final long slide;
     private final long size;
+    private final int timeColumnIndex;
     private long startTime = Long.MIN_VALUE;
 
-    public HOPDataProcessor(long slide, long size) {
+    public HOPDataProcessor(long slide, long size, int timeColumnIndex) {
       this.slide = slide;
       this.size = size;
+      this.timeColumnIndex = timeColumnIndex;
     }
 
     @Override

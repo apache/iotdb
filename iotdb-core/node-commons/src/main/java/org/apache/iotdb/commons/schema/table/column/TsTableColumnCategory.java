@@ -89,7 +89,7 @@ public enum TsTableColumnCategory {
     }
   }
 
-  public static TsTableColumnCategory fromTsFileColumnType(ColumnCategory columnType) {
+  public static TsTableColumnCategory fromTsFileColumnCategory(ColumnCategory columnType) {
     switch (columnType) {
       case FIELD:
         return FIELD;
@@ -97,6 +97,37 @@ public enum TsTableColumnCategory {
         return TAG;
       case ATTRIBUTE:
         return ATTRIBUTE;
+      default:
+        throw new IllegalArgumentException("Unknown column type: " + columnType);
+    }
+  }
+
+  public org.apache.iotdb.udf.api.type.ColumnCategory toUdfColumnCategory() {
+    switch (this) {
+      case TAG:
+        return org.apache.iotdb.udf.api.type.ColumnCategory.TAG;
+      case ATTRIBUTE:
+        return org.apache.iotdb.udf.api.type.ColumnCategory.ATTRIBUTE;
+      case FIELD:
+        return org.apache.iotdb.udf.api.type.ColumnCategory.FIELD;
+      case TIME:
+        return org.apache.iotdb.udf.api.type.ColumnCategory.TIME;
+      default:
+        throw new IllegalArgumentException("Unsupported column type in UDF: " + this);
+    }
+  }
+
+  public static TsTableColumnCategory fromUdfColumnType(
+      org.apache.iotdb.udf.api.type.ColumnCategory columnType) {
+    switch (columnType) {
+      case FIELD:
+        return FIELD;
+      case TAG:
+        return TAG;
+      case ATTRIBUTE:
+        return ATTRIBUTE;
+      case TIME:
+        return TIME;
       default:
         throw new IllegalArgumentException("Unknown column type: " + columnType);
     }

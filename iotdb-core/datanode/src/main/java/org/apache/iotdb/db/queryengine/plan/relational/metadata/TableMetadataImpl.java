@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.execution.function.table.ExcludeColumnFunction;
 import org.apache.iotdb.db.queryengine.execution.function.table.HOPTableFunction;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -55,7 +56,7 @@ import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
-import org.apache.iotdb.udf.api.relational.table.TableFunction;
+import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.BlobType;
@@ -788,8 +789,13 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public TableFunction getTableFunction(String functionName) {
-    // TODO(UDF): implement it, mock here
-    return new HOPTableFunction();
+    if ("HOP".equalsIgnoreCase(functionName)) {
+      return new HOPTableFunction();
+    } else if ("EXCLUDE".equalsIgnoreCase(functionName)) {
+      return new ExcludeColumnFunction();
+    } else {
+      return null;
+    }
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {

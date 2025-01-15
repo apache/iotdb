@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.function;
 
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.PartitionState;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.type.Type;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
@@ -39,17 +42,24 @@ public class PartitionRecognizer {
 
   private final List<Integer> partitionChannels;
   private final List<Object> partitionValues;
+  private final int[] requiredChannels;
+  private final List<Type> outputDataTypes;
   private TsBlock currentTsBlock = null;
   private boolean noMoreData = false;
   private int currentIndex = 0;
   private PartitionState state = PartitionState.INIT_STATE;
 
-  public PartitionRecognizer(List<Integer> partitionChannels) {
+  public PartitionRecognizer(
+      List<Integer> partitionChannels,
+      List<Integer> requiredChannels,
+      List<TSDataType> outputDataTypes) {
     this.partitionChannels = partitionChannels;
     this.partitionValues = new ArrayList<>(partitionChannels.size());
     for (int i = 0; i < partitionChannels.size(); i++) {
       partitionValues.add(null);
     }
+    this.requiredChannels = requiredChannels.stream().mapToInt(i -> i).toArray();
+    this.outputDataTypes = UDFDataTypeTransformer.transformToUDFDataTypeList(outputDataTypes);
   }
 
   // TsBlock is sorted by partition columns already
@@ -98,7 +108,7 @@ public class PartitionRecognizer {
     if (currentTsBlock == null || currentTsBlock.isEmpty()) {
       return PartitionState.INIT_STATE;
     }
-    int endPartitionIndex = findEndPartitionIndex();
+    int endPartitionIndex = findNextDifferentRowIndex();
     Iterator<Record> recordIterator = getRecordIterator(currentIndex, endPartitionIndex);
     currentIndex = endPartitionIndex;
     return PartitionState.newPartitionState(recordIterator);
@@ -108,7 +118,7 @@ public class PartitionRecognizer {
     if (currentIndex >= currentTsBlock.getPositionCount()) {
       return PartitionState.NEED_MORE_DATA_STATE;
     } else {
-      int endPartitionIndex = findEndPartitionIndex();
+      int endPartitionIndex = findNextDifferentRowIndex();
       Iterator<Record> recordIterator = getRecordIterator(currentIndex, endPartitionIndex);
       currentIndex = endPartitionIndex;
       return PartitionState.newPartitionState(recordIterator);
@@ -121,14 +131,14 @@ public class PartitionRecognizer {
     } else if (currentTsBlock == null || currentTsBlock.isEmpty()) {
       return PartitionState.NEED_MORE_DATA_STATE;
     }
-    int endPartitionIndex = findEndPartitionIndex();
+    int endPartitionIndex = findNextDifferentRowIndex();
     if (endPartitionIndex != 0) {
       Iterator<Record> recordIterator = getRecordIterator(currentIndex, endPartitionIndex);
       currentIndex = endPartitionIndex;
       return PartitionState.iteratingState(recordIterator);
     } else {
       currentIndex = endPartitionIndex;
-      endPartitionIndex = findEndPartitionIndex();
+      endPartitionIndex = findNextDifferentRowIndex();
       Iterator<Record> recordIterator = getRecordIterator(currentIndex, endPartitionIndex);
       currentIndex = endPartitionIndex;
       return PartitionState.newPartitionState(recordIterator);
@@ -139,14 +149,18 @@ public class PartitionRecognizer {
     if (currentIndex >= currentTsBlock.getPositionCount()) {
       return PartitionState.NEED_MORE_DATA_STATE;
     } else {
-      int endPartitionIndex = findEndPartitionIndex();
+      int endPartitionIndex = findNextDifferentRowIndex();
       Iterator<Record> recordIterator = getRecordIterator(currentIndex, endPartitionIndex);
       currentIndex = endPartitionIndex;
       return PartitionState.newPartitionState(recordIterator);
     }
   }
 
-  private int findEndPartitionIndex() {
+  /**
+   * Find next row index whose partition values are different from the current partition values. If
+   * all rows have the same partition values, return the position count of the current TsBlock.
+   */
+  private int findNextDifferentRowIndex() {
     int i = currentIndex;
     while (i < currentTsBlock.getPositionCount()) {
       for (int j = 0; j < partitionChannels.size(); j++) {
@@ -169,7 +183,7 @@ public class PartitionRecognizer {
     return new Iterator<Record>() {
       private int curIndex = startPartitionIndex;
       private final int endIndex = endPartitionIndex;
-      private final TsBlock tsBlock = currentTsBlock;
+      private final Column[] columns = currentTsBlock.getColumns(requiredChannels);
 
       @Override
       public boolean hasNext() {
@@ -185,66 +199,62 @@ public class PartitionRecognizer {
         return new Record() {
           @Override
           public int getInt(int columnIndex) {
-            return tsBlock.getColumn(columnIndex).getInt(idx);
+            return columns[columnIndex].getInt(idx);
           }
 
           @Override
           public long getLong(int columnIndex) {
-            return tsBlock.getColumn(columnIndex).getLong(idx);
+            return columns[columnIndex].getLong(idx);
           }
 
           @Override
           public float getFloat(int columnIndex) {
-            return tsBlock.getColumn(columnIndex).getFloat(idx);
+            return columns[columnIndex].getFloat(idx);
           }
 
           @Override
           public double getDouble(int columnIndex) {
-            return tsBlock.getColumn(columnIndex).getDouble(idx);
+            return columns[columnIndex].getDouble(idx);
           }
 
           @Override
           public boolean getBoolean(int columnIndex) {
-            return tsBlock.getColumn(columnIndex).getBoolean(idx);
+            return columns[columnIndex].getBoolean(idx);
           }
 
           @Override
           public Binary getBinary(int columnIndex) {
-            return tsBlock.getColumn(columnIndex).getBinary(idx);
+            return columns[columnIndex].getBinary(idx);
           }
 
           @Override
           public String getString(int columnIndex) {
-            return tsBlock
-                .getColumn(columnIndex)
-                .getBinary(idx)
-                .getStringValue(TSFileConfig.STRING_CHARSET);
+            return columns[columnIndex].getBinary(idx).getStringValue(TSFileConfig.STRING_CHARSET);
           }
 
           @Override
           public LocalDate getLocalDate(int columnIndex) {
-            return DateUtils.parseIntToLocalDate(tsBlock.getColumn(columnIndex).getInt(idx));
+            return DateUtils.parseIntToLocalDate(columns[columnIndex].getInt(idx));
           }
 
           @Override
           public Object getObject(int columnIndex) {
-            return tsBlock.getColumn(columnIndex).getObject(idx);
+            return columns[columnIndex].getObject(idx);
           }
 
           @Override
           public Type getDataType(int columnIndex) {
-            // TODO(UDF)
-            return null;
+            return outputDataTypes.get(columnIndex);
           }
 
           @Override
           public boolean isNull(int columnIndex) {
-            return tsBlock.getColumn(columnIndex).isNull(idx);
+            return columns[columnIndex].isNull(idx);
           }
 
           @Override
           public int size() {
-            return tsBlock.getValueColumns().length;
+            return columns.length;
           }
         };
       }

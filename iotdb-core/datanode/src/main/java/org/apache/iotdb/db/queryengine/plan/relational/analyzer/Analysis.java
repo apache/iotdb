@@ -188,9 +188,6 @@ public class Analysis implements IAnalysis {
   private final Map<NodeRef<TableFunctionInvocation>, TableFunctionInvocationAnalysis>
       tableFunctionAnalyses = new LinkedHashMap<>();
 
-  private final Set<NodeRef<TableFunctionInvocation>> polymorphicTableFunctions =
-      new LinkedHashSet<>();
-
   private final Map<QualifiedObjectName, Map<Symbol, ColumnSchema>> tableColumnSchemas =
       new HashMap<>();
 
@@ -860,18 +857,6 @@ public class Analysis implements IAnalysis {
     } else {
       return dataPartition.getDataRegionReplicaSetWithTimeFilter(database, deviceId, timeFilter);
     }
-  }
-
-  public Set<NodeRef<TableFunctionInvocation>> getPolymorphicTableFunctions() {
-    return ImmutableSet.copyOf(polymorphicTableFunctions);
-  }
-
-  public void addPolymorphicTableFunction(TableFunctionInvocation invocation) {
-    polymorphicTableFunctions.add(NodeRef.of(invocation));
-  }
-
-  public boolean isPolymorphicTableFunction(TableFunctionInvocation invocation) {
-    return polymorphicTableFunctions.contains(NodeRef.of(invocation));
   }
 
   public void setTableFunctionAnalysis(

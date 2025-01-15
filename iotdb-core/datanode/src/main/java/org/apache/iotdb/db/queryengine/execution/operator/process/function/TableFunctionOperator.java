@@ -47,11 +47,6 @@ public class TableFunctionOperator implements ProcessOperator {
   private final OperatorContext operatorContext;
   private final Operator inputOperator;
   private final TableFunctionProcessorProvider processorProvider;
-  private final List<TSDataType> outputDataTypes;
-  private final int properChannelCount;
-  private final List<Integer> requiredChannels;
-  private final TableFunctionNode.PassThroughSpecification passThroughSpecifications;
-  private final List<Integer> partitionChannels;
   private final PartitionRecognizer partitionRecognizer;
   private final TsBlockBuilder blockBuilder;
 
@@ -72,12 +67,8 @@ public class TableFunctionOperator implements ProcessOperator {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.processorProvider = processorProvider;
-    this.outputDataTypes = outputDataTypes;
-    this.properChannelCount = properChannelCount;
-    this.requiredChannels = requiredChannels;
-    this.passThroughSpecifications = passThroughSpecifications;
-    this.partitionChannels = partitionChannels;
-    this.partitionRecognizer = new PartitionRecognizer(partitionChannels);
+    this.partitionRecognizer =
+        new PartitionRecognizer(partitionChannels, requiredChannels, outputDataTypes);
     this.partitionState = PartitionState.INIT_STATE;
     this.blockBuilder = new TsBlockBuilder(outputDataTypes);
   }

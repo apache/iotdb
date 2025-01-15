@@ -32,10 +32,10 @@ public class TableParameterSpecification extends ParameterSpecification {
       String name, boolean rowSemantics, boolean pruneWhenEmpty, boolean passThroughColumns) {
     // table arguments are always required
     super(name, true, Optional.empty());
-    if (rowSemantics && !pruneWhenEmpty) {
-      throw new IllegalArgumentException(
-          "Cannot set the KEEP WHEN EMPTY property for a table argument with row semantics");
-    }
+    //    if (rowSemantics && !pruneWhenEmpty) {
+    //      throw new IllegalArgumentException(
+    //          "Cannot set the KEEP WHEN EMPTY property for a table argument with row semantics");
+    //    }
     this.rowSemantics = rowSemantics;
     this.pruneWhenEmpty = pruneWhenEmpty;
     this.passThroughColumns = passThroughColumns;

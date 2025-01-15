@@ -162,18 +162,19 @@ import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.udf.api.relational.table.TableFunction;
+import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
+import org.apache.iotdb.udf.api.relational.table.argument.DescribedSchema;
 import org.apache.iotdb.udf.api.relational.table.argument.Descriptor;
 import org.apache.iotdb.udf.api.relational.table.argument.DescriptorArgument;
 import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
 import org.apache.iotdb.udf.api.relational.table.argument.TableArgument;
 import org.apache.iotdb.udf.api.relational.table.specification.DescriptorParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecification;
-import org.apache.iotdb.udf.api.relational.table.specification.ReturnTypeSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
+import org.apache.iotdb.udf.api.type.ColumnCategory;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
@@ -183,8 +184,10 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Streams;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -239,8 +242,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
 import static org.apache.iotdb.udf.api.relational.table.argument.DescriptorArgument.NULL_DESCRIPTOR;
-import static org.apache.iotdb.udf.api.relational.table.specification.ReturnTypeSpecification.GenericTable.GENERIC_TABLE;
-import static org.apache.iotdb.udf.api.relational.table.specification.ReturnTypeSpecification.OnlyPassThrough.ONLY_PASS_THROUGH;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 
 public class StatementAnalyzer {
@@ -3107,13 +3108,6 @@ public class StatementAnalyzer {
 
     @Override
     public Scope visitTableFunctionInvocation(TableFunctionInvocation node, Optional<Scope> scope) {
-      //      TableFunctionMetadata tableFunctionMetadata = resolveTableFunction(node)
-      //              .orElseThrow(() -> semanticException(FUNCTION_NOT_FOUND, node, "Table function
-      // '%s' not registered", node.getName()));
-      //
-      //      ConnectorTableFunction function = tableFunctionMetadata.function();
-      //      CatalogHandle catalogHandle = tableFunctionMetadata.catalogHandle();
-
       TableFunction function = metadata.getTableFunction(node.getName().toString());
       Node errorLocation = node;
       if (!node.getArguments().isEmpty()) {
@@ -3123,61 +3117,12 @@ public class StatementAnalyzer {
       ArgumentsAnalysis argumentsAnalysis =
           analyzeArguments(
               function.getArgumentsSpecification(), node.getArguments(), scope, errorLocation);
-      //
-      //      ConnectorTransactionHandle transactionHandle =
-      // transactionManager.getConnectorTransaction(session.getRequiredTransactionId(),
-      // catalogHandle);
       TableFunctionAnalysis functionAnalysis =
           function.analyze(argumentsAnalysis.getPassedArguments());
 
       if (node.getCopartitioning().size() != 0) {
         // TODO(UDF): support copartition in future
         throw new SemanticException("Copartitioning is not supported now.");
-      }
-
-      // determine the result relation type per SQL standard ISO/IEC 9075-2, 4.33 SQL-invoked
-      // routines, p. 123, 413, 414
-      ReturnTypeSpecification returnTypeSpecification = function.getReturnTypeSpecification();
-      if (returnTypeSpecification == GENERIC_TABLE
-          || !argumentsAnalysis.getTableArgumentAnalyses().isEmpty()) {
-        analysis.addPolymorphicTableFunction(node);
-      }
-      Optional<Descriptor> properColumns = function.getReturnProperColumns();
-      Descriptor properColumnsDescriptor;
-      if (returnTypeSpecification == ONLY_PASS_THROUGH) {
-        if (properColumns.isPresent()) {
-          // If a table function has ONLY PASS THROUGH returned type, it does not produce any proper
-          // columns,
-          // so the function's analyze() method should not return the proper columns descriptor.
-          throw new SemanticException(
-              "A table function with ONLY_PASS_THROUGH return type must not return proper columns.");
-        }
-        if (function.getArgumentsSpecification().stream()
-            .filter(TableParameterSpecification.class::isInstance)
-            .map(TableParameterSpecification.class::cast)
-            .noneMatch(TableParameterSpecification::isPassThroughColumns)) {
-          // According to SQL standard ISO/IEC 9075-2, 10.4 <routine invocation>, p. 764,
-          // if there is no generic table parameter that specifies PASS THROUGH, then number of
-          // proper columns shall be positive.
-          // For GENERIC_TABLE and DescribedTable returned types, this is enforced by the Descriptor
-          // constructor, which requires positive number of fields.
-          // Here we enforce it for the remaining returned type specification: ONLY_PASS_THROUGH.
-          throw new SemanticException(
-              "A table function with ONLY_PASS_THROUGH return type must have a table argument with pass-through columns.");
-        }
-        properColumnsDescriptor = null;
-      } else if (returnTypeSpecification == GENERIC_TABLE) {
-        properColumnsDescriptor =
-            properColumns.orElseThrow(
-                () ->
-                    new SemanticException(
-                        String.format(
-                            "Cannot determine returned relation type for generic table function %s",
-                            node.getName())));
-      } else { // returned type is statically declared at function declaration
-        // TODO(UDF): 如果是DescribedTable，结果在声明的时候就已经知道了。这边或许可以考虑和GENERIC_TABLE合并？
-        properColumnsDescriptor =
-            ((ReturnTypeSpecification.DescribedTable) returnTypeSpecification).getDescriptor();
       }
 
       // validate the required input columns
@@ -3242,23 +3187,17 @@ public class StatementAnalyzer {
       // - for tables without the "pass through columns" option, these are the partitioning columns
       // of the table, if any.
       ImmutableList.Builder<Field> fields = ImmutableList.builder();
-
-      // proper columns first
-      if (properColumnsDescriptor != null) {
-        properColumnsDescriptor.getFields().stream()
-            // per spec, field names are mandatory. We support anonymous fields.
-            .map(
-                field ->
-                    Field.newUnqualified(
-                        field.getName(),
-                        UDFDataTypeTransformer.transformUDFDataTypeToReadType(
-                            field
-                                .getType()
-                                .orElseThrow(
-                                    () -> new SemanticException("Field type is not present."))),
-                        TsTableColumnCategory.FIELD))
-            .forEach(fields::add);
-      }
+      Optional<DescribedSchema> properSchema = functionAnalysis.getProperColumnSchema();
+      properSchema.ifPresent(
+          i ->
+              i.getFields().stream()
+                  .map(
+                      f ->
+                          Field.newUnqualified(
+                              f.getName(),
+                              UDFDataTypeTransformer.transformUDFDataTypeToReadType(f.getType()),
+                              TsTableColumnCategory.fromUdfColumnType(f.getCategory())))
+                  .forEach(fields::add));
 
       // next, columns derived from table arguments, in order of argument declarations
       List<String> tableArgumentNames =
@@ -3292,8 +3231,7 @@ public class StatementAnalyzer {
               argumentsAnalysis.getPassedArguments(),
               orderedTableArguments.build(),
               requiredColumns,
-              properColumnsDescriptor == null ? 0 : properColumnsDescriptor.getFields().size()));
-      // TODO(UDF): 这里也许需要多一个TableFunctionConfiguration
+              properSchema.map(describedSchema -> describedSchema.getFields().size()).orElse(0)));
 
       return createAndAssignScope(node, scope, fields.build());
     }
@@ -3318,7 +3256,7 @@ public class StatementAnalyzer {
           !arguments.isEmpty()
               && arguments.stream().allMatch(argument -> argument.getName().isPresent());
       boolean argumentsPassedByPosition =
-          arguments.stream().allMatch(argument -> argument.getName().isPresent());
+          arguments.stream().noneMatch(argument -> argument.getName().isPresent());
       if (!argumentsPassedByName && !argumentsPassedByPosition) {
         throw new SemanticException(
             "All arguments must be passed by name or all must be passed positionally");
@@ -3456,6 +3394,7 @@ public class StatementAnalyzer {
         Optional<Scope> scope) {
       List<Optional<String>> fieldNames;
       List<org.apache.iotdb.udf.api.type.Type> fieldTypes;
+      List<ColumnCategory> fieldCategories;
       List<String> partitionBy = Collections.emptyList();
       List<String> orderBy = Collections.emptyList();
 
@@ -3478,6 +3417,11 @@ public class StatementAnalyzer {
           fields.stream()
               .map(Field::getType)
               .map(UDFDataTypeTransformer::transformReadTypeToUDFDataType)
+              .collect(toImmutableList());
+      fieldCategories =
+          fields.stream()
+              .map(Field::getColumnCategory)
+              .map(TsTableColumnCategory::toUdfColumnCategory)
               .collect(toImmutableList());
 
       // analyze PARTITION BY
@@ -3578,7 +3522,7 @@ public class StatementAnalyzer {
       analysisBuilder.withPassThroughColumns(argumentSpecification.isPassThroughColumns());
 
       return new ArgumentAnalysis(
-          new TableArgument(fieldNames, fieldTypes, partitionBy, orderBy),
+          new TableArgument(fieldNames, fieldTypes, fieldCategories, partitionBy, orderBy),
           Optional.of(analysisBuilder.build()));
     }
 
@@ -3623,10 +3567,16 @@ public class StatementAnalyzer {
           IrExpressionInterpreter.evaluateConstantExpression(
               expression, new PlannerContext(metadata, typeManager), sessionContext);
       if (!argumentSpecification.getType().checkObjectType(constantValue)) {
-        throw new SemanticException(
-            String.format(
-                "Invalid scalar argument value. Expected type %s, got %s",
-                argumentSpecification.getType(), constantValue.getClass().getSimpleName()));
+        if ((argumentSpecification.getType().equals(org.apache.iotdb.udf.api.type.Type.STRING)
+                || argumentSpecification.getType().equals(org.apache.iotdb.udf.api.type.Type.TEXT))
+            && constantValue instanceof Binary) {
+          constantValue = ((Binary) constantValue).getStringValue(TSFileConfig.STRING_CHARSET);
+        } else {
+          throw new SemanticException(
+              String.format(
+                  "Invalid scalar argument value. Expected type %s, got %s",
+                  argumentSpecification.getType(), constantValue.getClass().getSimpleName()));
+        }
       }
       return new ArgumentAnalysis(
           new ScalarArgument(argumentSpecification.getType(), constantValue), Optional.empty());

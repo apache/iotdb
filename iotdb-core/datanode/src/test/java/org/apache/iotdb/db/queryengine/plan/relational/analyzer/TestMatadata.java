@@ -53,6 +53,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundExceptio
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
+import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -437,6 +438,11 @@ public class TestMatadata implements Metadata {
   public DataPartition getDataPartitionWithUnclosedTimeRange(
       final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return TREE_DB1.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
+  }
+
+  @Override
+  public TableFunction getTableFunction(String functionName) {
+    return null;
   }
 
   private static final DataPartition TABLE_DATA_PARTITION =
