@@ -30,7 +30,7 @@ public class SubscriptionTablePullConsumerBuilder extends AbstractSubscriptionPu
   }
 
   @Override
-  public SubscriptionTablePullConsumerBuilder port(final int port) {
+  public SubscriptionTablePullConsumerBuilder port(final Integer port) {
     super.port(port);
     return this;
   }

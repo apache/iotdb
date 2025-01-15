@@ -55,7 +55,7 @@ class AbstractSubscriptionConsumerBuilder {
     return this;
   }
 
-  public AbstractSubscriptionConsumerBuilder port(final int port) {
+  public AbstractSubscriptionConsumerBuilder port(final Integer port) {
     this.port = port;
     return this;
   }

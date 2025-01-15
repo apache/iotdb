@@ -38,7 +38,7 @@ class AbstractSubscriptionPushConsumerBuilder extends AbstractSubscriptionConsum
   }
 
   @Override
-  public AbstractSubscriptionPushConsumerBuilder port(final int port) {
+  public AbstractSubscriptionPushConsumerBuilder port(final Integer port) {
     super.port(port);
     return this;
   }
