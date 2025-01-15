@@ -186,6 +186,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -903,6 +904,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TGetPipePluginTableResp getPipePluginTable() {
     return configManager.getPipePluginTable();
+  }
+
+  @Override
+  public TGetPipePluginTableResp getPipePluginTableExtended(TShowPipePluginReq req) {
+    return configManager.getPipePluginTableExtended(req);
   }
 
   @Override
