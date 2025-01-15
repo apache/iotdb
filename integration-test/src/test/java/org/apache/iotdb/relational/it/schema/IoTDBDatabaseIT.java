@@ -518,7 +518,7 @@ public class IoTDBDatabaseIT {
                   "IOTDB-THRIFT-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBThriftConnector,null,",
                   "IOTDB-SOURCE,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.iotdb.IoTDBExtractor,null,")));
 
-      statement.execute("create topic tp with ('start-time'='2025-01-13T10:03:19.229+08:00'");
+      statement.execute("create topic tp with ('start-time'='2025-01-13T10:03:19.229+08:00')");
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select * from topics where topic_name = 'tp'"),
           "topic_name,topic_configs,",
