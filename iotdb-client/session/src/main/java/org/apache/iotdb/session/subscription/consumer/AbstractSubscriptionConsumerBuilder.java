@@ -31,7 +31,7 @@ import java.util.Objects;
 class AbstractSubscriptionConsumerBuilder {
 
   protected String host;
-  protected Integer port;
+  protected int port;
   protected List<String> nodeUrls;
 
   protected String username = SessionConfig.DEFAULT_USER;

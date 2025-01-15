@@ -154,7 +154,7 @@ public class SubscriptionPushConsumer extends AbstractSubscriptionPushConsumer
   public static class Builder {
 
     private String host;
-    private Integer port;
+    private int port;
     private List<String> nodeUrls;
 
     private String username = SessionConfig.DEFAULT_USER;
