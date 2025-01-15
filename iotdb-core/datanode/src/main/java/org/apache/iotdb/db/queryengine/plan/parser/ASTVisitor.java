@@ -230,7 +230,7 @@ import org.apache.iotdb.trigger.api.enums.TriggerType;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.BaseEncoding;
-import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -4185,11 +4185,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitReconstructRegion(IoTDBSqlParser.ReconstructRegionContext ctx) {
     int dataNodeId = Integer.parseInt(ctx.targetDataNodeId.getText());
     List<Integer> regionIds =
-        ctx.INTEGER_LITERAL().stream()
-            .map(ParseTree::getText)
+        ctx.regionIds.stream()
+            .map(Token::getText)
             .map(Integer::parseInt)
             .collect(Collectors.toList());
-    regionIds.remove(regionIds.size() - 1);
     return new ReconstructRegionStatement(dataNodeId, regionIds);
   }
 

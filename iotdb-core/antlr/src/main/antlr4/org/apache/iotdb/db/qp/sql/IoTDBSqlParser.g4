@@ -535,7 +535,7 @@ migrateRegion
     ;
 
 reconstructRegion
-    : RECONSTRUCT REGION regionId=INTEGER_LITERAL (COMMA regionId=INTEGER_LITERAL)* ON targetDataNodeId=INTEGER_LITERAL
+    : RECONSTRUCT REGION regionIds+=INTEGER_LITERAL (COMMA regionIds+=INTEGER_LITERAL)* ON targetDataNodeId=INTEGER_LITERAL
     ;
 
 extendRegion

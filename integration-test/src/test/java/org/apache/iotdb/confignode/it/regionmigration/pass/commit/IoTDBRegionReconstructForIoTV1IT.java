@@ -53,9 +53,9 @@ import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
 
 @Category({ClusterIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDB_RegionReconstruct_IoTV1_IT extends IoTDBRegionOperationReliabilityITFramework {
+public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliabilityITFramework {
   private static final String RECONSTRUCT_FORMAT = "reconstruct region %d on %d";
-  private static Logger LOGGER = LoggerFactory.getLogger(IoTDB_RegionReconstruct_IoTV1_IT.class);
+  private static Logger LOGGER = LoggerFactory.getLogger(IoTDBRegionReconstructForIoTV1IT.class);
 
   @Test
   public void normal1C3DTest() throws Exception {

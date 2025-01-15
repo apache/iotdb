@@ -960,8 +960,8 @@ public class ProcedureManager {
   // end region
 
   public TSStatus migrateRegion(TMigrateRegionReq migrateRegionReq) {
-    env.getSubmitRegionMigrateLock().lock();
-    try {
+    try (AutoCloseableLock ignoredLock =
+        AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
       TConsensusGroupId regionGroupId;
       Optional<TConsensusGroupId> optional =
           configManager
@@ -1030,8 +1030,6 @@ public class ProcedureManager {
           coordinatorForRemovePeer);
 
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } finally {
-      env.getSubmitRegionMigrateLock().unlock();
     }
   }
 

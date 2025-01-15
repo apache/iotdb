@@ -45,13 +45,13 @@ import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
 
 @Category({ClusterIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDB_RegionGroupExpandAndShrink_IoTV1_IT
+public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
     extends IoTDBRegionOperationReliabilityITFramework {
   private static final String EXPAND_FORMAT = "extend region %d to %d";
   private static final String SHRINK_FORMAT = "remove region %d from %d";
 
   private static Logger LOGGER =
-      LoggerFactory.getLogger(IoTDB_RegionGroupExpandAndShrink_IoTV1_IT.class);
+      LoggerFactory.getLogger(IoTDBRegionGroupExpandAndShrinkForIoTV1IT.class);
 
   /**
    * 1. Expand: {a} -> {a,b} -> ... -> {a,b,c,d,e}
