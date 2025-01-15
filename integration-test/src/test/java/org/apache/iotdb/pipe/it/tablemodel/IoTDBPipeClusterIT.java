@@ -92,7 +92,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
   }
 
   @Test
-  public void test() throws Exception {
+  public void testMachineDowntime() {
     StringBuilder a = new StringBuilder();
     for (DataNodeWrapper nodeWrapper : receiverEnv.getDataNodeWrapperList()) {
       a.append(nodeWrapper.getIp()).append(":").append(nodeWrapper.getPort());
