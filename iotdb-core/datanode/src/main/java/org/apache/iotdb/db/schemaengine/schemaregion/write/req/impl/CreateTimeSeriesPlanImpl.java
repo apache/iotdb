@@ -170,4 +170,21 @@ public class CreateTimeSeriesPlanImpl implements ICreateTimeSeriesPlan {
   public void setWithMerge(final boolean withMerge) {
     this.withMerge = withMerge;
   }
+
+  @Override
+  public String toString() {
+    return "CreateTimeSeriesPlanImpl{"
+        + "path="
+        + path
+        + ", dataType="
+        + dataType
+        + ", encoding="
+        + encoding
+        + ", compressor="
+        + compressor
+        + ", alias='"
+        + alias
+        + '\''
+        + '}';
+  }
 }

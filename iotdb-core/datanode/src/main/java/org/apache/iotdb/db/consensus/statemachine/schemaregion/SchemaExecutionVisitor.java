@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -191,6 +192,12 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     final List<TSStatus> alreadyExistingTimeSeries = new ArrayList<>();
     final List<TSStatus> failingStatus = new ArrayList<>();
 
+    if (IoTDBConfig.isTestMode && logger.isWarnEnabled()) {
+      logger.warn(
+          "InternalCreateTimeSeries: device {}, measurements {}",
+          devicePath,
+          measurementGroup.getMeasurements());
+    }
     if (node.isAligned()) {
       executeInternalCreateAlignedTimeSeries(
           devicePath,
@@ -282,11 +289,17 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
         // Thus the original ones are not altered
         ((CreateTimeSeriesPlanImpl) createTimeSeriesPlan).setWithMerge(withMerge);
         schemaRegion.createTimeSeries(createTimeSeriesPlan, -1);
+        if (IoTDBConfig.isTestMode) {
+          logger.warn("InternalCreateTimeSeries succeeds: {}", createTimeSeriesPlan);
+        }
       } catch (final MeasurementAlreadyExistException e) {
         // There's no need to internal create time series.
         alreadyExistingTimeSeries.add(
             RpcUtils.getStatus(
                 e.getErrorCode(), MeasurementPath.transformDataToString(e.getMeasurementPath())));
+        if (IoTDBConfig.isTestMode) {
+          logger.warn("InternalCreateTimeSeries already exists: {}", e.getMeasurementPath());
+        }
       } catch (final MetadataException e) {
         logger.warn("{}: MetaData error: ", e.getMessage(), e);
         failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
