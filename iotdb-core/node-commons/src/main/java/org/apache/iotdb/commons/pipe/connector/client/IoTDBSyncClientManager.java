@@ -160,11 +160,15 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       }
     }
 
-    initClientAndStatus(clientAndStatus, endPoint);
-    sendHandshakeReq(clientAndStatus);
+    // It is necessary to ensure that the Client is initialized successfully and not null. If false
+    // is returned, it means that the initialization is not successful and the handshake operation
+    // is not performed.
+    if (initClientAndStatus(clientAndStatus, endPoint)) {
+      sendHandshakeReq(clientAndStatus);
+    }
   }
 
-  private void initClientAndStatus(
+  private boolean initClientAndStatus(
       final Pair<IoTDBSyncClient, Boolean> clientAndStatus, final TEndPoint endPoint) {
     try {
       clientAndStatus.setLeft(
@@ -181,13 +185,15 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
               trustStorePwd));
     } catch (Exception e) {
       endPoint2HandshakeErrorMessage.put(endPoint, e.getMessage());
-      throw new PipeConnectionException(
+      LOGGER.info(
           String.format(
               PipeConnectionException.CONNECTION_ERROR_FORMATTER,
               endPoint.getIp(),
               endPoint.getPort()),
           e);
+      return false;
     }
+    return true;
   }
 
   public void sendHandshakeReq(final Pair<IoTDBSyncClient, Boolean> clientAndStatus) {
