@@ -228,7 +228,7 @@ class RatisClient implements AutoCloseable {
 
     RatisEndlessRetryPolicy(RatisConfig.Client config) {
       endlessPolicy =
-          RetryPolicies.retryForeverWithSleep(TimeDuration.valueOf(120, TimeUnit.SECONDS));
+          RetryPolicies.retryForeverWithSleep(TimeDuration.valueOf(2, TimeUnit.SECONDS));
       defaultPolicy = new RatisRetryPolicy(config);
     }
 
@@ -239,7 +239,6 @@ class RatisClient implements AutoCloseable {
           || cause instanceof ReconfigurationInProgressException
           || cause instanceof TimeoutIOException
           || cause instanceof LeaderSteppingDownException
-          || cause instanceof ReconfigurationTimeoutException
           || cause instanceof ServerNotReadyException
           || cause instanceof NotLeaderException
           || cause instanceof LeaderNotReadyException) {

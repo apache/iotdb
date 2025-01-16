@@ -253,7 +253,7 @@ public class Utils {
     GrpcConfigKeys.Server.setLeaderOutstandingAppendsMax(
         properties, config.getGrpc().getLeaderOutstandingAppendsMax());
 
-    RaftServerConfigKeys.setStagingTimeout(properties, TimeDuration.valueOf(120, TimeUnit.SECONDS));
+    RaftServerConfigKeys.setStagingTimeout(properties, TimeDuration.valueOf(240, TimeUnit.SECONDS));
     RaftServerConfigKeys.Rpc.setSlownessTimeout(properties, config.getRpc().getSlownessTimeout());
     RaftServerConfigKeys.Rpc.setTimeoutMin(properties, config.getRpc().getTimeoutMin());
     RaftServerConfigKeys.Rpc.setTimeoutMax(properties, config.getRpc().getTimeoutMax());
