@@ -11,7 +11,7 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * The result of processing input by {@link TableFunctionDataProcessor} or {@link
- * TableFunctionSplitProcessor}. It can optionally include a portion of output data in the form of
+ * TableFunctionLeafProcessor}. It can optionally include a portion of output data in the form of
  * {@link List<Column>}
  *
  * <ul>

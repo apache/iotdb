@@ -20,7 +20,7 @@
 package org.apache.iotdb.udf.api.relational.table;
 
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
-import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionSplitProcessor;
+import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionLeafProcessor;
 
 public interface TableFunctionProcessorProvider {
   /**
@@ -33,11 +33,11 @@ public interface TableFunctionProcessorProvider {
   }
 
   /**
-   * This method returns a {@linkplain TableFunctionSplitProcessor}. All the necessary information
+   * This method returns a {@linkplain TableFunctionLeafProcessor}. All the necessary information
    * collected during analysis is available in the implementation of TableFunctionProcessorProvider.
    * It is called once per each split processed by the table function.
    */
-  default TableFunctionSplitProcessor getSplitProcessor() {
-    throw new UnsupportedOperationException("this table function does not process splits");
+  default TableFunctionLeafProcessor getSplitProcessor() {
+    throw new UnsupportedOperationException("this table function does not process leaf data");
   }
 }

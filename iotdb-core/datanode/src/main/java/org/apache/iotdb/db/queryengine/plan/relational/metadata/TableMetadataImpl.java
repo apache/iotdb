@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.function.table.ExcludeColumnFunction;
 import org.apache.iotdb.db.queryengine.execution.function.table.HOPTableFunction;
+import org.apache.iotdb.db.queryengine.execution.function.table.SplitFunction;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
@@ -793,6 +794,8 @@ public class TableMetadataImpl implements Metadata {
       return new HOPTableFunction();
     } else if ("EXCLUDE".equalsIgnoreCase(functionName)) {
       return new ExcludeColumnFunction();
+    } else if ("SPLIT".equalsIgnoreCase(functionName)) {
+      return new SplitFunction();
     } else {
       return null;
     }

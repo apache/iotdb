@@ -50,6 +50,7 @@ public class HOPTableFunction implements TableFunction {
   private static final String TIMECOL_PARAMETER_NAME = "TIMECOL";
   private static final String SLIDE_PARAMETER_NAME = "SLIDE";
   private static final String SIZE_PARAMETER_NAME = "SIZE";
+  private static final String START_PARAMETER_NAME = "START";
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecification() {
@@ -64,7 +65,12 @@ public class HOPTableFunction implements TableFunction {
             .type(Type.STRING)
             .build(),
         ScalarParameterSpecification.builder().name(SLIDE_PARAMETER_NAME).type(Type.INT64).build(),
-        ScalarParameterSpecification.builder().name(SIZE_PARAMETER_NAME).type(Type.INT64).build());
+        ScalarParameterSpecification.builder().name(SIZE_PARAMETER_NAME).type(Type.INT64).build(),
+        ScalarParameterSpecification.builder()
+            .name(START_PARAMETER_NAME)
+            .type(Type.TIMESTAMP)
+            .defaultValue(Long.MIN_VALUE)
+            .build());
   }
 
   private int findTimeColumnIndex(TableArgument tableArgument, String expectedFieldName) {
@@ -115,6 +121,7 @@ public class HOPTableFunction implements TableFunction {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
         return new HOPDataProcessor(
+            (Long) ((ScalarArgument) arguments.get(START_PARAMETER_NAME)).getValue(),
             (Long) ((ScalarArgument) arguments.get(SLIDE_PARAMETER_NAME)).getValue() * 1000,
             (Long) ((ScalarArgument) arguments.get(SLIDE_PARAMETER_NAME)).getValue() * 1000,
             requiredIndex);
@@ -127,33 +134,39 @@ public class HOPTableFunction implements TableFunction {
     private final long slide;
     private final long size;
     private final int timeColumnIndex;
-    private long startTime = Long.MIN_VALUE;
+    private long curTime;
 
-    public HOPDataProcessor(long slide, long size, int timeColumnIndex) {
+    public HOPDataProcessor(long startTime, long slide, long size, int timeColumnIndex) {
       this.slide = slide;
       this.size = size;
+      this.curTime = startTime;
       this.timeColumnIndex = timeColumnIndex;
     }
 
     @Override
     public void process(Record input, List<ColumnBuilder> columnBuilders) {
-      long curTime = input.getLong(0);
-      if (startTime == Long.MIN_VALUE) {
-        startTime = curTime;
+      long timeValue = input.getLong(timeColumnIndex);
+      if (curTime == Long.MIN_VALUE) {
+        curTime = timeValue;
       }
-      while (curTime - startTime >= size) {
-        startTime += slide;
+      if (curTime + size <= timeValue) {
+        // jump to appropriate window
+        long move = (timeValue - curTime - size) / slide + 1;
+        curTime += move * slide;
       }
-
-      for (int i = 0; i < input.size(); i++) {
-        if (input.isNull(i)) {
-          columnBuilders.get(i + 2).appendNull();
-        } else {
-          columnBuilders.get(i + 2).writeObject(input.getObject(i));
+      long slideTime = curTime;
+      while (slideTime <= timeValue && slideTime + size > timeValue) {
+        for (int i = 0; i < input.size(); i++) {
+          if (input.isNull(i)) {
+            columnBuilders.get(i + 2).appendNull();
+          } else {
+            columnBuilders.get(i + 2).writeObject(input.getObject(i));
+          }
         }
+        columnBuilders.get(0).writeLong(slideTime);
+        columnBuilders.get(1).writeLong(slideTime + size);
+        slideTime += slide;
       }
-      columnBuilders.get(0).writeLong(startTime);
-      columnBuilders.get(1).writeLong(startTime + size);
     }
 
     @Override

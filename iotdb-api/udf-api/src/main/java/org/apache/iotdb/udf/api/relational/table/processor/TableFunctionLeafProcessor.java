@@ -19,4 +19,19 @@
 
 package org.apache.iotdb.udf.api.relational.table.processor;
 
-public interface TableFunctionSplitProcessor {}
+import org.apache.tsfile.block.column.ColumnBuilder;
+
+import java.util.List;
+
+public interface TableFunctionLeafProcessor {
+  /**
+   * This method processes a portion of data. It is called multiple times until the processor is
+   * fully processed.
+   *
+   * @param columnBuilders a list of {@link ColumnBuilder} for each column in the output table.
+   */
+  void process(List<ColumnBuilder> columnBuilders);
+
+  /** This method is called to determine if the processor has finished processing all data. */
+  boolean isFinish();
+}

@@ -69,7 +69,7 @@ public class TableFunctionOperator implements ProcessOperator {
     this.processorProvider = processorProvider;
     this.partitionRecognizer =
         new PartitionRecognizer(partitionChannels, requiredChannels, outputDataTypes);
-    this.partitionState = PartitionState.INIT_STATE;
+    this.partitionState = null;
     this.blockBuilder = new TsBlockBuilder(outputDataTypes);
   }
 
@@ -107,6 +107,8 @@ public class TableFunctionOperator implements ProcessOperator {
   @Override
   public TsBlock next() throws Exception {
     PartitionState.StateType stateType = partitionState.getStateType();
+    Iterator<Record> recordIterator = partitionState.getRecordIterator();
+    partitionState = null;
     if (stateType == PartitionState.StateType.INIT
         || stateType == PartitionState.StateType.NEED_MORE_DATA) {
       isBlocked = null;
@@ -126,7 +128,6 @@ public class TableFunctionOperator implements ProcessOperator {
         }
         processor = processorProvider.getDataProcessor();
       }
-      Iterator<Record> recordIterator = partitionState.getRecordIterator();
       while (recordIterator.hasNext()) {
         processor.process(recordIterator.next(), columnBuilders);
       }
@@ -147,8 +148,10 @@ public class TableFunctionOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    isBlocked().get(); // wait for the next TsBlock
-    partitionState = partitionRecognizer.getState();
+    if (partitionState == null) {
+      isBlocked().get(); // wait for the next TsBlock
+      partitionState = partitionRecognizer.getState();
+    }
     return !finished;
   }
 
