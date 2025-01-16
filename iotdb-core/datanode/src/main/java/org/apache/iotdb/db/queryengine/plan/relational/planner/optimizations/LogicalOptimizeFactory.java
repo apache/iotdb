@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Me
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitWithSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimits;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MultipleDistinctAggregationToMarkDistinct;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.OptimizeRowPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneAggregationColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneAggregationSourceColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneApplyColumns;
@@ -175,6 +176,13 @@ public class LogicalOptimizeFactory {
     ImmutableList.Builder<PlanOptimizer> optimizerBuilder = ImmutableList.builder();
 
     optimizerBuilder.add(
+        new IterativeOptimizer(
+            plannerContext,
+            ruleStats,
+            ImmutableSet.<Rule<?>>builder()
+                .addAll(new CanonicalizeExpressions(plannerContext, typeAnalyzer).rules())
+                .add(new OptimizeRowPattern())
+                .build()),
         new IterativeOptimizer(
             plannerContext,
             ruleStats,
