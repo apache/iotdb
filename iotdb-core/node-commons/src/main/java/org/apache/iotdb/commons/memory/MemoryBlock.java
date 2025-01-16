@@ -27,16 +27,20 @@ import java.util.concurrent.TimeUnit;
 public class MemoryBlock extends IMemoryBlock {
   private static final Logger LOGGER = LoggerFactory.getLogger(MemoryBlock.class);
 
-  public MemoryBlock(final MemoryManager memoryManager, final long maxMemorySizeInByte) {
+  public MemoryBlock(
+      final String name, final MemoryManager memoryManager, final long maxMemorySizeInByte) {
+    this.name = name;
     this.memoryManager = memoryManager;
     this.maxMemorySizeInByte = maxMemorySizeInByte;
     this.memoryBlockType = MemoryBlockType.NONE;
   }
 
   public MemoryBlock(
+      final String name,
       final MemoryManager memoryManager,
       final long maxMemorySizeInByte,
       final MemoryBlockType memoryBlockType) {
+    this.name = name;
     this.memoryManager = memoryManager;
     this.maxMemorySizeInByte = maxMemorySizeInByte;
     this.memoryBlockType = memoryBlockType;
@@ -50,7 +54,9 @@ public class MemoryBlock extends IMemoryBlock {
   @Override
   public String toString() {
     return "IoTDBMemoryBlock{"
-        + "memoryBlockType="
+        + "name="
+        + name
+        + ", memoryBlockType="
         + memoryBlockType
         + ", maxMemorySizeInByte="
         + maxMemorySizeInByte

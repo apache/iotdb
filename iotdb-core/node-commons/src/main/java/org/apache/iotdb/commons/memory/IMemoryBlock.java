@@ -29,6 +29,9 @@ public abstract class IMemoryBlock implements AutoCloseable {
   /** The reentrant lock of memory block */
   protected final ReentrantLock lock = new ReentrantLock();
 
+  /** The name of this memory block */
+  protected String name;
+
   /** The type of this memory block */
   protected MemoryBlockType memoryBlockType;
 

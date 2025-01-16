@@ -42,6 +42,9 @@ public class MemoryManager {
   /** Min memory size to allocate */
   private static final long MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES = 32;
 
+  /** Name of memory manager */
+  private final String name;
+
   /** Total memory size in byte of memory manager */
   private long totalMemorySizeInBytes = 0L;
 
@@ -57,20 +60,22 @@ public class MemoryManager {
   /** Allocated memory blocks of this memory manager */
   private final Set<MemoryBlock> allocatedMemoryBlocks = new HashSet<>();
 
-  public MemoryManager(MemoryManager parentMemoryManager, long totalMemorySizeInBytes) {
+  public MemoryManager(
+      String name, MemoryManager parentMemoryManager, long totalMemorySizeInBytes) {
+    this.name = name;
     this.parentMemoryManager = parentMemoryManager;
     this.parentMemoryManager.addChildMemoryManager(this);
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
   }
 
   /** Try to force allocate memory block with specified size in bytes. */
-  private MemoryBlock forceAllocate(long sizeInBytes, MemoryBlockType type) {
+  private MemoryBlock forceAllocate(String name, long sizeInBytes, MemoryBlockType type) {
     if (!ENABLED) {
-      return new MemoryBlock(this, sizeInBytes, type);
+      return new MemoryBlock(name, this, sizeInBytes, type);
     }
     for (int i = 0; i < MEMORY_ALLOCATE_MAX_RETRIES; i++) {
       if (totalMemorySizeInBytes - allocatedMemorySizeInBytes >= sizeInBytes) {
-        return registerMemoryBlock(sizeInBytes, type);
+        return registerMemoryBlock(name, sizeInBytes, type);
       }
 
       try {
@@ -94,16 +99,17 @@ public class MemoryManager {
   }
 
   /** Try to force allocate memory block with specified size in bytes when memory is sufficient. */
-  public synchronized MemoryBlock forceAllocateIfSufficient(long sizeInBytes, float usedThreshold) {
+  public synchronized MemoryBlock forceAllocateIfSufficient(
+      String name, long sizeInBytes, float usedThreshold) {
     if (usedThreshold < 0.0f || usedThreshold > 1.0f) {
       return null;
     }
     if (!ENABLED) {
-      return new MemoryBlock(this, sizeInBytes);
+      return new MemoryBlock(name, this, sizeInBytes);
     }
     if (totalMemorySizeInBytes - allocatedMemorySizeInBytes >= sizeInBytes
         && (float) allocatedMemorySizeInBytes / totalMemorySizeInBytes < usedThreshold) {
-      return forceAllocate(sizeInBytes, MemoryBlockType.NONE);
+      return forceAllocate(name, sizeInBytes, MemoryBlockType.NONE);
     } else {
       // TODO @spricoder: consider to find more memory in active way
       LOGGER.debug(
@@ -121,13 +127,16 @@ public class MemoryManager {
 
   /** Try to allocate memory block with customAllocateStrategy */
   public synchronized MemoryBlock tryAllocate(
-      long sizeInBytes, LongUnaryOperator customAllocateStrategy, MemoryBlockType type) {
+      String name,
+      long sizeInBytes,
+      LongUnaryOperator customAllocateStrategy,
+      MemoryBlockType type) {
     if (!ENABLED) {
-      return new MemoryBlock(this, sizeInBytes);
+      return new MemoryBlock(name, this, sizeInBytes);
     }
 
     if (totalMemorySizeInBytes - allocatedMemorySizeInBytes >= sizeInBytes) {
-      return registerMemoryBlock(sizeInBytes, type);
+      return registerMemoryBlock(name, sizeInBytes, type);
     }
 
     long sizeToAllocateInBytes = sizeInBytes;
@@ -142,7 +151,7 @@ public class MemoryManager {
             allocatedMemorySizeInBytes,
             sizeInBytes,
             sizeToAllocateInBytes);
-        return registerMemoryBlock(sizeToAllocateInBytes, type);
+        return registerMemoryBlock(name, sizeToAllocateInBytes, type);
       }
 
       sizeToAllocateInBytes =
@@ -159,13 +168,13 @@ public class MemoryManager {
         totalMemorySizeInBytes,
         allocatedMemorySizeInBytes,
         sizeInBytes);
-    return registerMemoryBlock(0, type);
+    return registerMemoryBlock(name, 0, type);
   }
 
   /** Try to register memory block with specified size in bytes. */
-  private MemoryBlock registerMemoryBlock(long sizeInBytes, MemoryBlockType type) {
+  private MemoryBlock registerMemoryBlock(String name, long sizeInBytes, MemoryBlockType type) {
     allocatedMemorySizeInBytes += sizeInBytes;
-    final MemoryBlock memoryBlock = new MemoryBlock(this, sizeInBytes, type);
+    final MemoryBlock memoryBlock = new MemoryBlock(name, this, sizeInBytes, type);
     allocatedMemoryBlocks.add(memoryBlock);
     return memoryBlock;
   }
