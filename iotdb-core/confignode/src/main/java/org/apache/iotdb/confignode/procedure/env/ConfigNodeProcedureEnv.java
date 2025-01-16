@@ -59,6 +59,7 @@ import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipePluginInstanceReq;
@@ -167,16 +168,20 @@ public class ConfigNodeProcedureEnv {
     for (TDataNodeConfiguration dataNodeConfiguration : allDataNodes) {
       int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
 
-      // If the node is not alive, sleep 1 second and try again
+      // If the node is not alive, retry for up to 10 times
       NodeStatus nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
+      int retryNum = 10;
       if (nodeStatus == NodeStatus.Unknown) {
-        try {
-          TimeUnit.MILLISECONDS.sleep(1000);
-        } catch (InterruptedException e) {
-          LOG.error("Sleep failed in ConfigNodeProcedureEnv: ", e);
-          Thread.currentThread().interrupt();
+        for (int i = 0; i < retryNum && nodeStatus == NodeStatus.Unknown; i++) {
+          try {
+            TimeUnit.MILLISECONDS.sleep(500);
+          } catch (InterruptedException e) {
+            LOG.error("Sleep failed in ConfigNodeProcedureEnv: ", e);
+            Thread.currentThread().interrupt();
+            break;
+          }
+          nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
         }
-        nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
       }
 
       if (nodeStatus == NodeStatus.Running) {
@@ -208,6 +213,7 @@ public class ConfigNodeProcedureEnv {
         LOG.warn(
             "Invalidate cache failed, because DataNode {} is Unknown",
             dataNodeConfiguration.getLocation().getInternalEndPoint());
+        return false;
       }
     }
     return true;
