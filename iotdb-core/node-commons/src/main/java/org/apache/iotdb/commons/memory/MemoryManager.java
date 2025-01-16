@@ -23,7 +23,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.LongUnaryOperator;
 
 public class MemoryManager {
@@ -55,7 +57,7 @@ public class MemoryManager {
   private final MemoryManager parentMemoryManager;
 
   /** Child memory manager, used to statistic memory */
-  private final Set<MemoryManager> childrens = new HashSet<>();
+  private final Map<String, MemoryManager> childrens = new ConcurrentHashMap<>();
 
   /** Allocated memory blocks of this memory manager */
   private final Set<MemoryBlock> allocatedMemoryBlocks = new HashSet<>();
@@ -64,7 +66,7 @@ public class MemoryManager {
       String name, MemoryManager parentMemoryManager, long totalMemorySizeInBytes) {
     this.name = name;
     this.parentMemoryManager = parentMemoryManager;
-    this.parentMemoryManager.addChildMemoryManager(this);
+    this.parentMemoryManager.addChildMemoryManager(name, this);
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
   }
 
@@ -192,9 +194,19 @@ public class MemoryManager {
     this.notifyAll();
   }
 
-  public synchronized void addChildMemoryManager(MemoryManager childMemoryManager) {
+  public synchronized void addChildMemoryManager(String name, MemoryManager childMemoryManager) {
     if (childMemoryManager != null) {
-      childrens.add(childMemoryManager);
+      childrens.put(name, childMemoryManager);
+    }
+  }
+
+  public MemoryManager getMemoryManager(int index, String... names) {
+    if (index >= names.length) return null;
+    MemoryManager memoryManager = childrens.get(names[index]);
+    if (memoryManager != null) {
+      return getMemoryManager(index + 1, names);
+    } else {
+      return null;
     }
   }
 
@@ -203,11 +215,12 @@ public class MemoryManager {
   }
 
   public long getUsedMemorySizeInBytes() {
-    long memoryBlockSize =
+    long memorySize =
         allocatedMemoryBlocks.stream().mapToLong(MemoryBlock::getMemoryUsageInBytes).sum();
-    long childrenMemorySize =
-        childrens.stream().mapToLong(MemoryManager::getUsedMemorySizeInBytes).sum();
-    return memoryBlockSize + childrenMemorySize;
+    for (MemoryManager child : childrens.values()) {
+      memorySize += child.getUsedMemorySizeInBytes();
+    }
+    return memorySize;
   }
 
   public long getAllocatedMemorySizeInBytes() {
