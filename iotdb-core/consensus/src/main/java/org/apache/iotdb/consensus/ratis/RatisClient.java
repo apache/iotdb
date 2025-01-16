@@ -228,7 +228,7 @@ class RatisClient implements AutoCloseable {
 
     RatisEndlessRetryPolicy(RatisConfig.Client config) {
       endlessPolicy =
-          RetryPolicies.retryForeverWithSleep(TimeDuration.valueOf(2, TimeUnit.SECONDS));
+          RetryPolicies.retryForeverWithSleep(TimeDuration.valueOf(120, TimeUnit.SECONDS));
       defaultPolicy = new RatisRetryPolicy(config);
     }
 
