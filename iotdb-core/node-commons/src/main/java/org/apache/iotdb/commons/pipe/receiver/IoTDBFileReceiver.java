@@ -552,10 +552,16 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     }
   }
 
+  // Support null in fileName list, which means that this file is optional and is currently absent
   protected final TPipeTransferResp handleTransferFileSealV2(final PipeTransferFileSealReqV2 req) {
+    final List<String> fileNames = req.getFileNames();
     final List<File> files =
-        req.getFileNames().stream()
-            .map(fileName -> new File(receiverFileDirWithIdSuffix.get(), fileName))
+        fileNames.stream()
+            .map(
+                fileName ->
+                    Objects.nonNull(fileName)
+                        ? new File(receiverFileDirWithIdSuffix.get(), fileName)
+                        : null)
             .collect(Collectors.toList());
     try {
       if (!isWritingFileAvailable()) {
@@ -571,14 +577,16 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
       // Any of the transferred files cannot be empty, or else the receiver
       // will not sense this file because no pieces are sent
-      for (int i = 0; i < req.getFileNames().size(); ++i) {
-        final TPipeTransferResp resp =
-            i == req.getFileNames().size() - 1
-                ? checkFinalFileSeal(req.getFileNames().get(i), req.getFileLengths().get(i))
-                : checkNonFinalFileSeal(
-                    files.get(i), req.getFileNames().get(i), req.getFileLengths().get(i));
-        if (Objects.nonNull(resp)) {
-          return resp;
+      for (int i = 0; i < fileNames.size(); ++i) {
+        final String fileName = fileNames.get(i);
+        if (Objects.nonNull(fileName)) {
+          final TPipeTransferResp resp =
+              i == fileNames.size() - 1
+                  ? checkFinalFileSeal(fileName, req.getFileLengths().get(i))
+                  : checkNonFinalFileSeal(files.get(i), fileName, req.getFileLengths().get(i));
+          if (Objects.nonNull(resp)) {
+            return resp;
+          }
         }
       }
 
@@ -603,7 +611,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       writingFile = null;
 
       final List<String> fileAbsolutePaths =
-          files.stream().map(File::getAbsolutePath).collect(Collectors.toList());
+          files.stream()
+              .map(file -> Objects.nonNull(file) ? file.getAbsolutePath() : null)
+              .collect(Collectors.toList());
 
       final TSStatus status = loadFileV2(req, fileAbsolutePaths);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

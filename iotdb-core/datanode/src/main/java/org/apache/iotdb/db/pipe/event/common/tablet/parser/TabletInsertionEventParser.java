@@ -295,7 +295,7 @@ public abstract class TabletInsertionEventParser {
 
     final long[] originTimestampColumn =
         Arrays.copyOf(
-            tablet.timestamps,
+            tablet.getTimestamps(),
             tablet.getRowSize()); // tablet.timestamps.length == tablet.maxRowNumber
     final List<Integer> rowIndexList = generateRowIndexList(originTimestampColumn);
     this.timestampColumn = rowIndexList.stream().mapToLong(i -> originTimestampColumn[i]).toArray();
@@ -334,14 +334,14 @@ public abstract class TabletInsertionEventParser {
       originValueColumnDataTypes[i] = originMeasurementSchemaList.get(i).getType();
     }
     final Object[] originValueColumns =
-        tablet.values; // we do not reduce value columns here by origin row size
+        tablet.getValues(); // we do not reduce value columns here by origin row size
     final BitMap[] originBitMapList =
-        tablet.bitMaps == null
+        tablet.getBitMaps() == null
             ? IntStream.range(0, originColumnSize)
                 .boxed()
                 .map(o -> new BitMap(tablet.getMaxRowNumber()))
                 .toArray(BitMap[]::new)
-            : tablet.bitMaps; // We do not reduce bitmaps here by origin row size
+            : tablet.getBitMaps(); // We do not reduce bitmaps here by origin row size
     for (int i = 0; i < originBitMapList.length; i++) {
       if (originBitMapList[i] == null) {
         originBitMapList[i] = new BitMap(tablet.getMaxRowNumber());

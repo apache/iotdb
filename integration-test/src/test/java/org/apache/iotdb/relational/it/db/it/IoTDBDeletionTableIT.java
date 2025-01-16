@@ -593,7 +593,7 @@ public class IoTDBDeletionTableIT {
       try (ResultSet ignored = statement.executeQuery("SELECT * FROM vehicle" + testNum)) {
         fail("Exception expected");
       } catch (SQLException e) {
-        assertEquals("701: Table 'test.vehicle12' does not exist", e.getMessage());
+        assertEquals("550: Table 'test.vehicle12' does not exist.", e.getMessage());
       }
 
       statement.execute(

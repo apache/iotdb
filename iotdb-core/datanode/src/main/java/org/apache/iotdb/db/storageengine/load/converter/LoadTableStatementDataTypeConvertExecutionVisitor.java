@@ -90,7 +90,8 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
                           rawTabletInsertionEvent.convertToTablet(),
                           rawTabletInsertionEvent.isAligned(),
                           databaseName)
-                      .constructStatement());
+                      .constructStatement(),
+                  loadTsFileStatement.isConvertOnTypeMismatch());
 
           TSStatus result;
           try {

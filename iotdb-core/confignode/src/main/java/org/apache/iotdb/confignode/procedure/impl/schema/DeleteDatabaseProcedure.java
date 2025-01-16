@@ -309,7 +309,7 @@ public class DeleteDatabaseProcedure
   @Override
   public boolean equals(final Object that) {
     if (that instanceof DeleteDatabaseProcedure) {
-      DeleteDatabaseProcedure thatProc = (DeleteDatabaseProcedure) that;
+      final DeleteDatabaseProcedure thatProc = (DeleteDatabaseProcedure) that;
       return thatProc.getProcId() == this.getProcId()
           && thatProc.getCurrentState().equals(this.getCurrentState())
           && thatProc.getCycles() == this.getCycles()
