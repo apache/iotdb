@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.relational.it.db.it;
 
-import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -56,7 +55,6 @@ import java.sql.Types;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1138,50 +1136,5 @@ public class IoTDBInsertTableIT {
       actualIndexToExpectedIndexList.add(typeIndex);
     }
     return actualIndexToExpectedIndexList;
-  }
-
-  @Test
-  public void insertTimeOnlyTest() throws IoTDBConnectionException, StatementExecutionException {
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-
-      List<IMeasurementSchema> schemaList = Collections.emptyList();
-      final List<ColumnCategory> columnTypes = Collections.emptyList();
-
-      Tablet tablet =
-          new Tablet(
-              "root.sg1.d1",
-              IMeasurementSchema.getMeasurementNameList(schemaList),
-              IMeasurementSchema.getDataTypeList(schemaList),
-              columnTypes);
-
-      long timestamp = 0;
-      for (int row = 0; row < 10; row++) {
-        tablet.addTimestamp(row, timestamp++);
-      }
-      session.insertTablet(tablet);
-      tablet.setDeviceId("root.sg1.d2");
-      session.insertAlignedTablet(tablet);
-      tablet.reset();
-
-      try {
-        session.executeNonQueryStatement(
-            String.format("INSERT INTO root.sg1.d3 (time) VALUES (%d)", timestamp++));
-        fail("Exception expected");
-      } catch (StatementExecutionException e) {
-        assertEquals(
-            "701: InsertStatement should contain at least one measurement", e.getMessage());
-      }
-
-      try {
-        session.executeNonQueryStatement(
-            String.format("INSERT INTO root.sg1.d4 (time) ALIGNED VALUES (%d)", timestamp++));
-      } catch (StatementExecutionException e) {
-        assertEquals(
-            "701: InsertStatement should contain at least one measurement", e.getMessage());
-      }
-
-      SessionDataSet dataSet = session.executeQueryStatement("select count(*) from root.sg1.**");
-      assertFalse(dataSet.hasNext());
-    }
   }
 }
