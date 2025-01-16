@@ -90,7 +90,7 @@ public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPe
       // inherit the mod file
       targetFile.getModFileManagement().addReference(targetFile, seqSourceFile.getSharedModFile());
       targetFile.setSharedModFile(
-          seqSourceFile.getSharedModFile(), false, seqSourceFile.getShardModFileOffset());
+          seqSourceFile.getSharedModFile(), false, seqSourceFile.getSharedModFileOffset());
     }
   }
 

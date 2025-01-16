@@ -134,7 +134,7 @@ public class TsFileResource implements PersistentResource {
   private volatile ModificationFile exclusiveModFile;
 
   private volatile ModificationFile sharedModFile;
-  private long shardModFileOffset;
+  private long sharedModFileOffset;
 
   public static final boolean useSharedModFile = true;
 
@@ -279,7 +279,7 @@ public class TsFileResource implements PersistentResource {
     if (sharedModFile != null) {
       String modFilePath = sharedModFile.getFile().getAbsolutePath();
       ReadWriteIOUtils.write(modFilePath, outputStream);
-      ReadWriteIOUtils.write(shardModFileOffset, outputStream);
+      ReadWriteIOUtils.write(sharedModFileOffset, outputStream);
     } else {
       // make the first "inputStream.available() > 0" in deserialize() happy.
       //
@@ -325,8 +325,14 @@ public class TsFileResource implements PersistentResource {
       String modFilePath = null;
       if (inputStream.available() > 0) {
         modFilePath = ReadWriteIOUtils.readString(inputStream);
-        if (modFilePath != null && !modFilePath.isEmpty()) {
-          shardModFileOffset = ReadWriteIOUtils.readLong(inputStream);
+        // ends with ".mods2" means it is a new version resource file
+        if (modFilePath != null && modFilePath.endsWith(ModificationFile.FILE_SUFFIX)) {
+          sharedModFileOffset = ReadWriteIOUtils.readLong(inputStream);
+          if (sharedModFilePathFuture != null) {
+            sharedModFilePathFuture.complete(modFilePath);
+          } else {
+            sharedModFilePathFuture = CompletableFuture.completedFuture(modFilePath);
+          }
         }
       }
       if (sharedModFilePathFuture != null) {
@@ -406,9 +412,11 @@ public class TsFileResource implements PersistentResource {
 
   public void linkModFile(TsFileResource target) throws IOException {
     if (exclusiveModFileExists()) {
+      File modsFileForTargetResource = ModificationFile.getExclusiveMods(target.getTsFile());
       Files.createLink(
-          ModificationFile.getExclusiveMods(target.getTsFile()).toPath(),
+          modsFileForTargetResource.toPath(),
           ModificationFile.getExclusiveMods(getTsFile()).toPath());
+      target.setExclusiveModFile(new ModificationFile(modsFileForTargetResource, true));
     }
     if (sharedModFileExists()) {
       modFileManagement.addReference(target, sharedModFile);
@@ -455,7 +463,7 @@ public class TsFileResource implements PersistentResource {
 
     sharedModFile = modFile;
     try {
-      shardModFileOffset = modFileOffset < 0 ? sharedModFile.getFileLength() : modFileOffset;
+      sharedModFileOffset = modFileOffset < 0 ? sharedModFile.getFileLength() : modFileOffset;
       if (serializeNow) {
         serializedSharedModFile();
       }
@@ -503,7 +511,7 @@ public class TsFileResource implements PersistentResource {
           if (modFileManagement != null) {
             sharedModFile = modFileManagement.recover(modFilePath, this);
           } else {
-            sharedModFile = new ModificationFile(modFilePath);
+            sharedModFile = new ModificationFile(modFilePath, true);
           }
         }
       } catch (InterruptedException e) {
@@ -515,8 +523,8 @@ public class TsFileResource implements PersistentResource {
     return sharedModFile;
   }
 
-  public long getShardModFileOffset() {
-    return shardModFileOffset;
+  public long getSharedModFileOffset() {
+    return sharedModFileOffset;
   }
 
   @SuppressWarnings("java:S2886")
@@ -1057,7 +1065,6 @@ public class TsFileResource implements PersistentResource {
     return timeIndex.isSpanMultiTimePartitions();
   }
 
-  @TestOnly
   public void setExclusiveModFile(ModificationFile exclusiveModFile) {
     synchronized (this) {
       this.exclusiveModFile = exclusiveModFile;
@@ -1440,7 +1447,7 @@ public class TsFileResource implements PersistentResource {
       Iterator<ModEntry> sharedIterator = null;
       try {
         sharedIterator =
-            getSharedModFile() != null ? sharedModFile.getModIterator(shardModFileOffset) : null;
+            getSharedModFile() != null ? sharedModFile.getModIterator(sharedModFileOffset) : null;
       } catch (IOException e) {
         LOGGER.warn("Failed to read mods from {} for {}", exclusiveModFile, this, e);
       }

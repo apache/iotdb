@@ -399,7 +399,7 @@ public class TsFileManager {
       }
       ModFileManagement modFileManagement = getModFileManagement(partitionIdTsFileParentDir.left);
       for (File modFile : modFiles) {
-        if (modFileManagement.referenceCount(new ModificationFile(modFile)) == 0) {
+        if (modFileManagement.referenceCount(new ModificationFile(modFile, false)) == 0) {
           boolean deleted = modFile.delete();
           LOGGER.info("Unreferenced mod file {} removed: {}", modFile, deleted);
         }

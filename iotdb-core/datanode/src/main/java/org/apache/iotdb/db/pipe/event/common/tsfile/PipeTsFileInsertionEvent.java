@@ -150,7 +150,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     this.isWithSharedMod = isWithMod && resource.sharedModFileExists();
     if (isWithSharedMod) {
       this.sharedModFile = resource.getSharedModFile().getFile();
-      this.sharedModFileOffset = resource.getShardModFileOffset();
+      this.sharedModFileOffset = resource.getSharedModFileOffset();
     }
 
     this.isLoaded = isLoaded;
