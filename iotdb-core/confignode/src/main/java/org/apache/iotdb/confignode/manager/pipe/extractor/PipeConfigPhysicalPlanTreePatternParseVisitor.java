@@ -210,7 +210,7 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitor
                 plan.getRoleName(),
                 plan.getPassword(),
                 plan.getNewPassword(),
-                plan.getPermissions(),
+                permissions,
                 plan.getGrantOpt(),
                 intersectedPaths))
         : Optional.empty();

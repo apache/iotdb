@@ -418,7 +418,7 @@ struct TLoginReq {
 // to check relational privilege, database or table is required
 // to check system privilege, just spec permission
 
-// if grant opt is ture, check grant option of spec permission.
+// if grant opt is true, check grant option of spec permission.
 // if permission is -1, means check visible.
 
 struct TCheckUserPrivilegesReq {

@@ -43,7 +43,7 @@ public interface IEntryManager extends SnapshotProcessor {
    * @param entryName is not null or empty
    * @return True if the role is successfully created, false when the role already exists.
    */
-  boolean createEntry(String entryName);
+  boolean createRole(String entryName);
 
   /**
    * Delete an entry.
@@ -54,7 +54,7 @@ public interface IEntryManager extends SnapshotProcessor {
   boolean deleteEntry(String entryName);
 
   /**
-   * Grant a privilege on a seriesPath to an entry.
+   * Grant a privilege to an entry.
    *
    * @param entryName The name of the entry to which the privilege should be added.
    * @param privilegeUnion The privilege will be granted to entry.
@@ -63,21 +63,20 @@ public interface IEntryManager extends SnapshotProcessor {
   void grantPrivilegeToEntry(String entryName, PrivilegeUnion privilegeUnion) throws AuthException;
 
   /**
-   * Revoke a privilege on seriesPath from a entry.
+   * Revoke a privilege on seriesPath from an entry.
    *
    * @param entryName The name of the entry from which the privilege should be removed.
    * @param privilegeUnion The privilege will be granted to entry.
-   * @return True if the permission is successfully revoked, false if the permission does not exist.
    * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal.
    */
-  boolean revokePrivilegeFromEntry(String entryName, PrivilegeUnion privilegeUnion)
+  void revokePrivilegeFromEntry(String entryName, PrivilegeUnion privilegeUnion)
       throws AuthException;
 
   /** Re-initialize this object. */
   void reset() throws AuthException;
 
   /**
-   * List all roles in the database.
+   * List all users/roles in the database.
    *
    * @return A list that contains names of all roles.
    */

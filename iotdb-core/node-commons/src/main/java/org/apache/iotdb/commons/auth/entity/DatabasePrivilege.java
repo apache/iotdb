@@ -52,7 +52,7 @@ public class DatabasePrivilege {
   }
 
   public DatabasePrivilege() {
-    //
+    // This construction is used for deserializing from thrift.
   }
 
   public String getDatabaseName() {

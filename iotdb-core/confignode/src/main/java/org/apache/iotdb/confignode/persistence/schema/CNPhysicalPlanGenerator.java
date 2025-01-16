@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
@@ -189,7 +190,14 @@ public class CNPhysicalPlanGenerator
     try (final DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
       int tag = dataInputStream.readInt();
-      String user = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+      boolean fromOldVersion = tag < 0;
+      String user;
+      if (fromOldVersion) {
+        user = readString(dataInputStream, STRING_ENCODING, strBufferLocal, -1 * tag);
+      } else {
+        user = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+      }
+
       if (isUser) {
         final String rawPassword = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
         final AuthorTreePlan createUser =
@@ -209,18 +217,50 @@ public class CNPhysicalPlanGenerator
 
       final int privilegeMask = dataInputStream.readInt();
       generateGrantSysPlan(user, isUser, privilegeMask);
-      int num = dataInputStream.readInt();
-      for (int i = 0; i < num; i++) {
-        final String path = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
-        final PartialPath priPath;
-        try {
-          priPath = new PartialPath(path);
-        } catch (IllegalPathException exception) {
-          latestException = exception;
-          return;
+
+      if (fromOldVersion) {
+        while (dataInputStream.available() != 0) {
+          final String path = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+          final PartialPath priPath;
+          try {
+            priPath = new PartialPath(path);
+          } catch (IllegalPathException exception) {
+            latestException = exception;
+            return;
+          }
+          int privileges = dataInputStream.readInt();
+          generateGrantAuthorTreePlan(user, isUser, priPath, privileges);
         }
-        int privileges = dataInputStream.readInt();
-        generateGrantPathPlan(user, isUser, priPath, privileges);
+      } else {
+        int num = dataInputStream.readInt();
+        for (int i = 0; i < num; i++) {
+          final String path = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+          final PartialPath priPath;
+          try {
+            priPath = new PartialPath(path);
+          } catch (IllegalPathException exception) {
+            latestException = exception;
+            return;
+          }
+          int privileges = dataInputStream.readInt();
+          generateGrantAuthorTreePlan(user, isUser, priPath, privileges);
+        }
+        int anyScopePriv = dataInputStream.readInt();
+        generateGrantAuthorRelationalPlan(user, isUser, null, null, anyScopePriv);
+
+        num = dataInputStream.readInt();
+        for (int i = 0; i < num; i++) {
+          final String databaseName = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+          int databasePrivilege = dataInputStream.readInt();
+          generateGrantAuthorRelationalPlan(user, isUser, databaseName, null, databasePrivilege);
+          int tableNum = dataInputStream.readInt();
+          for (int tableid = 0; tableid < tableNum; tableid++) {
+            final String tableName = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+            int tablePrivilege = dataInputStream.readInt();
+            generateGrantAuthorRelationalPlan(
+                user, isUser, databaseName, tableName, tablePrivilege);
+          }
+        }
       }
     } catch (IOException ioException) {
       logger.error(
@@ -291,18 +331,18 @@ public class CNPhysicalPlanGenerator
     }
   }
 
-  private void generateGrantPathPlan(
-      String userName, boolean isUser, PartialPath path, int priMask) {
+  private void generateGrantAuthorTreePlan(
+      String name, boolean isUser, PartialPath path, int priMask) {
     for (int pos = 0; pos < PrivilegeType.getPrivilegeCount(PrivilegeModelType.TREE); pos++) {
       if (((1 << pos) & priMask) != 0) {
         final AuthorTreePlan plan =
             new AuthorTreePlan(
                 isUser ? ConfigPhysicalPlanType.GrantUser : ConfigPhysicalPlanType.GrantRole);
         if (isUser) {
-          plan.setUserName(userName);
+          plan.setUserName(name);
           plan.setRoleName("");
         } else {
-          plan.setRoleName(userName);
+          plan.setRoleName(name);
           plan.setUserName("");
         }
         plan.setPermissions(Collections.singleton(AuthUtils.pathPosToPri(pos)));
@@ -310,6 +350,48 @@ public class CNPhysicalPlanGenerator
         if ((1 << (pos + 16) & priMask) != 0) {
           plan.setGrantOpt(true);
         }
+        planDeque.add(plan);
+      }
+    }
+  }
+
+  private void generateGrantAuthorRelationalPlan(
+      String name, boolean isUser, String database, String table, int priMask) {
+    for (int pos = 0; pos < PrivilegeType.getPrivilegeCount(PrivilegeModelType.RELATIONAL); pos++) {
+      if (((1 << pos) & priMask) != 0) {
+        final AuthorRelationalPlan plan;
+        if (database == null && table == null) {
+          plan =
+              new AuthorRelationalPlan(
+                  isUser
+                      ? ConfigPhysicalPlanType.RGrantUserAny
+                      : ConfigPhysicalPlanType.RGrantRoleAny);
+        } else if (database != null && table == null) {
+          plan =
+              new AuthorRelationalPlan(
+                  isUser
+                      ? ConfigPhysicalPlanType.RGrantUserDBPriv
+                      : ConfigPhysicalPlanType.RGrantRoleDBPriv);
+        } else {
+          plan =
+              new AuthorRelationalPlan(
+                  isUser
+                      ? ConfigPhysicalPlanType.RGrantUserTBPriv
+                      : ConfigPhysicalPlanType.RGrantRoleTBPriv);
+        }
+        if (isUser) {
+          plan.setUserName(name);
+          plan.setRoleName("");
+        } else {
+          plan.setRoleName(name);
+          plan.setUserName("");
+        }
+        plan.setPermissions(Collections.singleton(AuthUtils.posToObjPri(pos).ordinal()));
+        if ((1 << (pos + 16) & priMask) != 0) {
+          plan.setGrantOpt(true);
+        }
+        plan.setDatabaseName(database == null ? "" : database);
+        plan.setTableName(table == null ? "" : table);
         planDeque.add(plan);
       }
     }

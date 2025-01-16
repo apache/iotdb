@@ -78,14 +78,14 @@ public class LocalFileRoleManagerTest {
     Role role = manager.getEntry(roles[0].getName());
     assertNull(role);
     for (Role role1 : roles) {
-      assertTrue(manager.createEntry(role1.getName()));
+      assertTrue(manager.createRole(role1.getName()));
     }
     for (Role role1 : roles) {
       role = manager.getEntry(role1.getName());
       assertEquals(role1.getName(), role.getName());
     }
 
-    assertFalse(manager.createEntry(roles[0].getName()));
+    assertFalse(manager.createRole(roles[0].getName()));
 
     // delete
     assertFalse(manager.deleteEntry("not a role"));

@@ -66,6 +66,7 @@ public interface IAuthorizer extends SnapshotProcessor {
    * Grant a privilege on a seriesPath to a user.
    *
    * @param userName The username of the user to which the privilege should be added.
+   * @param union A combination of user permissions and scope, and tags
    * @throws AuthException If the user does not exist or the privilege or the seriesPath is illegal
    *     or the permission already exists.
    */

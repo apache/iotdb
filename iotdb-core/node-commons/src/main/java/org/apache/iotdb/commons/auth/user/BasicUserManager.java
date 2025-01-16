@@ -71,7 +71,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
     User admin = getEntry(CommonDescriptor.getInstance().getConfig().getAdminName());
 
     if (admin == null) {
-      createEntry(
+      createUser(
           CommonDescriptor.getInstance().getConfig().getAdminName(),
           CommonDescriptor.getInstance().getConfig().getAdminPassword(),
           true,
@@ -104,7 +104,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
     return (User) super.getEntry(username);
   }
 
-  public boolean createEntry(
+  public boolean createUser(
       String username, String password, boolean validCheck, boolean enableEncrypt)
       throws AuthException {
     if (validCheck) {
@@ -198,8 +198,8 @@ public abstract class BasicUserManager extends BasicRoleManager {
   }
 
   @TestOnly
-  public boolean createEntry(String username, String password, boolean validCheck)
+  public boolean createUser(String username, String password, boolean validCheck)
       throws AuthException {
-    return createEntry(username, password, validCheck, true);
+    return createUser(username, password, validCheck, true);
   }
 }

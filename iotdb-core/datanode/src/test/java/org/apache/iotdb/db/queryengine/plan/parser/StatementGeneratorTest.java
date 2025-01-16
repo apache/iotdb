@@ -754,7 +754,9 @@ public class StatementGeneratorTest {
 
     // 3. check simple privilege revoke from user/role on simple path
     for (PrivilegeType type : PrivilegeType.values()) {
-      if (type.isRelationalPrivilege()) continue;
+      if (type.isRelationalPrivilege()) {
+        continue;
+      }
       testRevoke.checkParser(type.toString(), name, true, path, false);
       testRevoke.checkParser(type.toString(), name, false, path, false);
 
@@ -783,7 +785,9 @@ public class StatementGeneratorTest {
     }
 
     for (PrivilegeType type : PrivilegeType.values()) {
-      if (type.isRelationalPrivilege()) continue;
+      if (type.isRelationalPrivilege()) {
+        continue;
+      }
       {
         AuthorStatement stmt =
             createAuthDclStmt(

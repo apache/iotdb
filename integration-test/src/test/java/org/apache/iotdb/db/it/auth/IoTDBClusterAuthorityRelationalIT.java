@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -55,11 +56,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({ClusterIT.class})
+@Category({ClusterIT.class, TableClusterIT.class})
 public class IoTDBClusterAuthorityRelationalIT {
   @Before
   public void setUp() throws Exception {
-    // Init 1C0D environment
+    // Init 1C1D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
   }
 
@@ -96,6 +97,24 @@ public class IoTDBClusterAuthorityRelationalIT {
         status = client.operateRPermission(authorizerReq);
         assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       }
+    }
+
+    // clean role
+    authorizerReq =
+        new TAuthorizerRelationalReq(
+            AuthorRType.LIST_ROLE.ordinal(), "", "", "", "", "", -1, false);
+
+    authorizerResp = client.queryRPermission(authorizerReq);
+    status = authorizerResp.getStatus();
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    List<String> allRoles = authorizerResp.getMemberInfo();
+    for (String role : allRoles) {
+      authorizerReq =
+          new TAuthorizerRelationalReq(
+              AuthorRType.DROP_ROLE.ordinal(), role, "", "", "", "", -1, false);
+      status = client.operateRPermission(authorizerReq);
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
   }
 

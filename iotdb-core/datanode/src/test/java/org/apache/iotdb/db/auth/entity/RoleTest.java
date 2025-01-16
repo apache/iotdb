@@ -71,6 +71,7 @@ public class RoleTest {
         databasePrivilege.grantDBPrivilege(item);
         databasePrivilege.grantDBGrantOption(item);
         databasePrivilege.grantTablePrivilege("testTable", item);
+        databasePrivilege.grantTableGrantOption("testTable", item);
       }
     }
     admin.getDBScopePrivilegeMap().put("testDB", databasePrivilege);

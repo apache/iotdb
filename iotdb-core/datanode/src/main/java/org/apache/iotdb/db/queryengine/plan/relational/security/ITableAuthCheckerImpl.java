@@ -57,6 +57,9 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
   @Override
   public void checkDatabasePrivilegeGrantOption(
       String userName, String databaseName, TableModelPrivilege privilege) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return;
+    }
     TSStatus result =
         AuthorityChecker.getGrantOptTSStatus(
             AuthorityChecker.checkDBPermissionGrantOption(
@@ -92,6 +95,9 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
   @Override
   public void checkTablePrivilegeGrantOption(
       String userName, QualifiedObjectName tableName, TableModelPrivilege privilege) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return;
+    }
     TSStatus result =
         AuthorityChecker.getGrantOptTSStatus(
             AuthorityChecker.checkTablePermissionGrantOption(
@@ -139,7 +145,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       return;
     }
     TSStatus result =
-        AuthorityChecker.getTSStatus(
+        AuthorityChecker.getGrantOptTSStatus(
             AuthorityChecker.checkSystemPermissionGrantOption(
                 userName, privilege.getPrivilegeType()),
             privilege.getPrivilegeType());

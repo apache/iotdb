@@ -115,7 +115,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void createUser(String username, String password) throws AuthException {
-    if (!userManager.createEntry(username, password, true, true)) {
+    if (!userManager.createUser(username, password, true, true)) {
       throw new AuthException(
           TSStatusCode.USER_ALREADY_EXIST, String.format("User %s already exists", username));
     }
@@ -123,7 +123,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void createUserWithoutCheck(String username, String password) throws AuthException {
-    if (!userManager.createEntry(username, password, false, true)) {
+    if (!userManager.createUser(username, password, false, true)) {
       throw new AuthException(
           TSStatusCode.USER_ALREADY_EXIST, String.format("User %s already exists", username));
     }
@@ -131,7 +131,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void createUserWithRawPassword(String username, String password) throws AuthException {
-    if (!userManager.createEntry(username, password, true, false)) {
+    if (!userManager.createUser(username, password, true, false)) {
       throw new AuthException(
           TSStatusCode.USER_ALREADY_EXIST, String.format("User %s already exists", username));
     }
@@ -161,7 +161,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void createRole(String roleName) throws AuthException {
     AuthUtils.validateRolename(roleName);
-    if (!roleManager.createEntry(roleName)) {
+    if (!roleManager.createRole(roleName)) {
       LOGGER.error("Role {} already exists", roleName);
       throw new AuthException(
           TSStatusCode.ROLE_ALREADY_EXIST, String.format("Role %s already exists", roleName));

@@ -1386,7 +1386,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitAlterUserStatement(RelationalSqlParser.AlterUserStatementContext ctx) {
     RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.UPDATE_USER);
-    stmt.setRoleName(ctx.userName.getText());
+    stmt.setUserName(ctx.userName.getText());
     stmt.setPassword(stripQuotes(ctx.password.getText()));
     return stmt;
   }

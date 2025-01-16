@@ -546,7 +546,7 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  public TAuthizedPatternTreeResp generateAuthizedPTree(String username, int permission)
+  public TAuthizedPatternTreeResp generateAuthorizedPTree(String username, int permission)
       throws AuthException {
     TAuthizedPatternTreeResp resp = new TAuthizedPatternTreeResp();
     User user = authorizer.getUser(username);

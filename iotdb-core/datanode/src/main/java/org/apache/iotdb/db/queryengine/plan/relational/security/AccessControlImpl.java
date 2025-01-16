@@ -97,7 +97,8 @@ public class AccessControlImpl implements AccessControl {
   }
 
   @Override
-  public void checkUserCanRunAuthorStatement(String userName, RelationalAuthorStatement statement) {
+  public void checkUserCanRunRelationalAuthorStatement(
+      String userName, RelationalAuthorStatement statement) {
     AuthorRType type = statement.getAuthorType();
     TSStatus status;
     switch (type) {

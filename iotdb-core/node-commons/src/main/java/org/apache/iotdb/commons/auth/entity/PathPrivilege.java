@@ -42,7 +42,7 @@ public class PathPrivilege {
   private Set<PrivilegeType> privileges;
   private Set<PrivilegeType> grantOpts;
 
-  private final int PRI_SIZE = PrivilegeType.getPrivilegeCount(PrivilegeModelType.TREE);
+  private static final int PRI_SIZE = PrivilegeType.getPrivilegeCount(PrivilegeModelType.TREE);
 
   public PathPrivilege() {
     // Empty constructor

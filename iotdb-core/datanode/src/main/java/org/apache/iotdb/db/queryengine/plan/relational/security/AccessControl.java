@@ -138,5 +138,6 @@ public interface AccessControl {
    * @param userName name of user
    * @throws AccessDeniedException if not allowed
    */
-  void checkUserCanRunAuthorStatement(String userName, RelationalAuthorStatement statement);
+  void checkUserCanRunRelationalAuthorStatement(
+      String userName, RelationalAuthorStatement statement);
 }

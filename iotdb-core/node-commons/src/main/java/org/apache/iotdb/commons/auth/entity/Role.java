@@ -329,10 +329,6 @@ public class Role {
     }
   }
 
-  private DatabasePrivilege getObjectPrivilegeInternal(String dbName) {
-    return objectPrivilegeMap.computeIfAbsent(dbName, DatabasePrivilege::new);
-  }
-
   public void grantAnyScopePrivilege(PrivilegeType priv, boolean grantOpt) {
     anyScopePrivilegeSet.add(priv);
     if (grantOpt) {
@@ -367,9 +363,11 @@ public class Role {
   }
 
   public void revokeDBPrivilege(String dbName, PrivilegeType priv) {
-    DatabasePrivilege databasePrivilege = getObjectPrivilegeInternal(dbName);
+    if (!objectPrivilegeMap.containsKey(dbName)) {
+      return;
+    }
+    DatabasePrivilege databasePrivilege = objectPrivilegeMap.get(dbName);
     databasePrivilege.revokeDBPrivilege(priv);
-    databasePrivilege.revokeDBGrantOption(priv);
     if (databasePrivilege.getTablePrivilegeMap().isEmpty()
         && databasePrivilege.getPrivilegeSet().isEmpty()) {
       objectPrivilegeMap.remove(dbName);
@@ -385,8 +383,10 @@ public class Role {
   }
 
   public void revokeTBPrivilege(String dbName, String tbName, PrivilegeType priv) {
-    DatabasePrivilege databasePrivilege = getObjectPrivilegeInternal(dbName);
-    databasePrivilege.revokeTableGrantOption(tbName, priv);
+    if (!objectPrivilegeMap.containsKey(dbName)) {
+      return;
+    }
+    DatabasePrivilege databasePrivilege = objectPrivilegeMap.get(dbName);
     databasePrivilege.revokeTablePrivilege(tbName, priv);
     if (databasePrivilege.getTablePrivilegeMap().isEmpty()
         && databasePrivilege.getPrivilegeSet().isEmpty()) {
@@ -412,6 +412,10 @@ public class Role {
 
   public void revokeSysPrivilege(PrivilegeType priv) {
     sysPrivilegeSet.remove(priv);
+  }
+
+  public void revokeSysPrivilegeGrantOption(PrivilegeType priv) {
+    sysPriGrantOpt.remove(priv);
   }
 
   /** ------------ check func ---------------* */
@@ -495,9 +499,22 @@ public class Role {
   }
 
   public boolean checkTBVisible(String database, String tbName) {
-    return !anyScopePrivilegeSet.isEmpty()
-        || (objectPrivilegeMap.containsKey(database)
-            && objectPrivilegeMap.get(database).getTablePrivilegeMap().containsKey(tbName));
+    // Has any scope privileges
+    if (!anyScopePrivilegeSet.isEmpty()) {
+      return true;
+    }
+
+    // Fail back early
+    if (!objectPrivilegeMap.containsKey(database)) {
+      return false;
+    }
+
+    // Has db scope privileges
+    if (!objectPrivilegeMap.get(database).getPrivilegeSet().isEmpty()) {
+      return true;
+    }
+
+    return objectPrivilegeMap.get(database).getTablePrivilegeMap().containsKey(tbName);
   }
 
   public int getAllSysPrivileges() {
@@ -544,15 +561,13 @@ public class Role {
   @Override
   public int hashCode() {
     return Objects.hash(
-        name, pathPrivilegeList, sysPrivilegeSet, sysPriGrantOpt, objectPrivilegeMap);
-  }
-
-  private void serializePrivilegeSet(DataOutputStream outputStream, Set<PrivilegeType> set)
-      throws IOException {
-    outputStream.writeInt(set.size());
-    for (PrivilegeType priv : set) {
-      outputStream.writeInt(priv.ordinal());
-    }
+        name,
+        pathPrivilegeList,
+        sysPrivilegeSet,
+        sysPriGrantOpt,
+        anyScopePrivilegeSet,
+        anyScopePrivilegeGrantOptSet,
+        objectPrivilegeMap);
   }
 
   public ByteBuffer serialize() {
@@ -562,14 +577,14 @@ public class Role {
     SerializeUtils.serialize(name, dataOutputStream);
 
     try {
-      serializePrivilegeSet(dataOutputStream, sysPrivilegeSet);
-      serializePrivilegeSet(dataOutputStream, sysPriGrantOpt);
+      SerializeUtils.serializePrivilegeTypeSet(sysPrivilegeSet, dataOutputStream);
+      SerializeUtils.serializePrivilegeTypeSet(sysPriGrantOpt, dataOutputStream);
       dataOutputStream.writeInt(pathPrivilegeList.size());
       for (PathPrivilege pathPrivilege : pathPrivilegeList) {
         dataOutputStream.write(pathPrivilege.serialize().array());
       }
-      serializePrivilegeSet(dataOutputStream, anyScopePrivilegeSet);
-      serializePrivilegeSet(dataOutputStream, anyScopePrivilegeGrantOptSet);
+      SerializeUtils.serializePrivilegeTypeSet(anyScopePrivilegeSet, dataOutputStream);
+      SerializeUtils.serializePrivilegeTypeSet(anyScopePrivilegeGrantOptSet, dataOutputStream);
       dataOutputStream.writeInt(objectPrivilegeMap.size());
       for (Map.Entry<String, DatabasePrivilege> item : objectPrivilegeMap.entrySet()) {
         SerializeUtils.serialize(item.getKey(), dataOutputStream);

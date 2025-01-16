@@ -957,7 +957,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitRelationalAuthorPlan(
       RelationalAuthorStatement node, MPPQueryContext context) {
-    accessControl.checkUserCanRunAuthorStatement(context.getSession().getUserName(), node);
+    accessControl.checkUserCanRunRelationalAuthorStatement(
+        context.getSession().getUserName(), node);
     context.setQueryType(node.getQueryType());
     return new RelationalAuthorizerTask(node);
   }

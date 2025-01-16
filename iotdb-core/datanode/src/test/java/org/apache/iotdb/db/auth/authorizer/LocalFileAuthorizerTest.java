@@ -98,17 +98,17 @@ public class LocalFileAuthorizerTest {
 
   @Test
   public void createAndDeleteRole() throws AuthException {
-    authorizer.createRole(userName);
+    authorizer.createRole(roleName);
     try {
-      authorizer.createRole(userName);
+      authorizer.createRole(roleName);
     } catch (AuthException e) {
       assertEquals("Role user already exists", e.getMessage());
     }
-    authorizer.createUser("test", "password");
-    authorizer.grantRoleToUser(userName, "test");
-    authorizer.deleteRole(userName);
+    authorizer.createUser(userName, "password");
+    authorizer.grantRoleToUser(roleName, userName);
+    authorizer.deleteRole(roleName);
     try {
-      authorizer.deleteRole(userName);
+      authorizer.deleteRole(roleName);
     } catch (AuthException e) {
       assertEquals("Role user does not exist", e.getMessage());
     }
@@ -143,12 +143,8 @@ public class LocalFileAuthorizerTest {
 
     authorizer.revokePrivilegeFromUser(
         userName, new PrivilegeUnion(nodeName, PrivilegeType.READ_DATA));
-    try {
-      authorizer.revokePrivilegeFromUser(
-          userName, new PrivilegeUnion(nodeName, PrivilegeType.READ_DATA));
-    } catch (AuthException e) {
-      assertEquals("User user does not have READ_DATA on root.laptop.d1", e.getMessage());
-    }
+    authorizer.revokePrivilegeFromUser(
+        userName, new PrivilegeUnion(nodeName, PrivilegeType.READ_DATA));
   }
 
   @Test

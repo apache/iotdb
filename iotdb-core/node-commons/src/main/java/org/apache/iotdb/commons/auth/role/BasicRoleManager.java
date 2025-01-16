@@ -78,7 +78,7 @@ public abstract class BasicRoleManager implements IEntryManager, SnapshotProcess
     return role;
   }
 
-  public boolean createEntry(String entryName) {
+  public boolean createRole(String entryName) {
     Role role = getEntry(entryName);
     if (role != null) {
       return false;
@@ -146,7 +146,7 @@ public abstract class BasicRoleManager implements IEntryManager, SnapshotProcess
     }
   }
 
-  public boolean revokePrivilegeFromEntry(String entryName, PrivilegeUnion privilegeUnion)
+  public void revokePrivilegeFromEntry(String entryName, PrivilegeUnion privilegeUnion)
       throws AuthException {
     lock.writeLock(entryName);
     PrivilegeType privilegeType = privilegeUnion.getPrivilegeType();
@@ -164,57 +164,48 @@ public abstract class BasicRoleManager implements IEntryManager, SnapshotProcess
         case TREE:
           if (isGrantOption) {
             role.revokePathPrivilegeGrantOption(privilegeUnion.getPath(), privilegeType);
-            return true;
-          }
-          if (!role.hasPrivilegeToRevoke(privilegeUnion.getPath(), privilegeType)) {
-            return false;
+            return;
           }
           role.revokePathPrivilege(privilegeUnion.getPath(), privilegeType);
-          break;
+          return;
         case RELATIONAL:
           if (isAnyScope) {
             if (isGrantOption) {
               role.revokeAnyScopePrivilegeGrantOption(privilegeType);
-              return true;
+              return;
             }
             role.revokeAnyScopePrivilege(privilegeType);
-            break;
+            return;
           }
           // for tb
           if (privilegeUnion.getTbName() != null) {
             if (isGrantOption) {
               role.revokeTBPrivilegeGrantOption(dbName, tbName, privilegeType);
-              return true;
+              return;
             }
-            if (role.hasPrivilegeToRevoke(dbName, tbName, privilegeType)) {
-              role.revokeTBPrivilege(dbName, tbName, privilegeType);
-              return true;
-            }
+            role.revokeTBPrivilege(dbName, tbName, privilegeType);
             // for db
           } else {
             if (isGrantOption) {
               role.revokeDBPrivilegeGrantOption(dbName, privilegeType);
-              return true;
+              return;
             }
-            if (role.hasPrivilegeToRevoke(dbName, privilegeType)) {
-              role.revokeDBPrivilege(dbName, privilegeType);
-            }
-            return true;
+            role.revokeDBPrivilege(dbName, privilegeType);
           }
-          break;
+          return;
         case SYSTEM:
-          if (!role.hasPrivilegeToRevoke(privilegeUnion.getPrivilegeType())) {
-            return false;
+          if (isGrantOption) {
+            role.revokeSysPrivilegeGrantOption(privilegeType);
+            return;
           }
-          role.revokeSysPrivilege(privilegeUnion.getPrivilegeType());
-          break;
+          role.revokeSysPrivilege(privilegeType);
+          return;
         default:
           LOGGER.warn("Not support model type {}", privilegeUnion.getModelType());
       }
     } finally {
       lock.writeUnlock(entryName);
     }
-    return true;
   }
 
   public void reset() throws AuthException {

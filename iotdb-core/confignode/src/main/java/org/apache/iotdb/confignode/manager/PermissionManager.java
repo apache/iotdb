@@ -115,7 +115,7 @@ public class PermissionManager {
 
   public TAuthizedPatternTreeResp fetchAuthizedPTree(String username, int permission)
       throws AuthException {
-    return authorInfo.generateAuthizedPTree(username, permission);
+    return authorInfo.generateAuthorizedPTree(username, permission);
   }
 
   public TPermissionInfoResp checkUserPrivilegeGrantOpt(String username, PrivilegeUnion union)

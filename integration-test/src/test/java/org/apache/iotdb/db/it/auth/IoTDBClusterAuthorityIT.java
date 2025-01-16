@@ -61,7 +61,7 @@ public class IoTDBClusterAuthorityIT {
 
   @Before
   public void setUp() throws Exception {
-    // Init 1C0D environment
+    // Init 1C1D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
   }
 

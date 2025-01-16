@@ -47,7 +47,7 @@ public class TablePrivilege {
   }
 
   public TablePrivilege() {
-    //
+    // this construction just used for deserialize.
   }
 
   public String getTableName() {
