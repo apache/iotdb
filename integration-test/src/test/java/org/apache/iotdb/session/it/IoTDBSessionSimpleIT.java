@@ -1900,7 +1900,8 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
-  public void testWriteRestartAndDeleteDB() throws IoTDBConnectionException, StatementExecutionException {
+  public void testWriteRestartAndDeleteDB()
+      throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.insertRecord("root.sg1.d1", 1, Arrays.asList("s3"), Arrays.asList("1"));
 
