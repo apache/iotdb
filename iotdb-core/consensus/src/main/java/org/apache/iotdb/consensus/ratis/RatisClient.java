@@ -29,7 +29,6 @@ import org.apache.ratis.client.RaftClient;
 import org.apache.ratis.client.RaftClientRpc;
 import org.apache.ratis.conf.RaftProperties;
 import org.apache.ratis.protocol.RaftGroup;
-import org.apache.ratis.protocol.exceptions.LeaderNotReadyException;
 import org.apache.ratis.protocol.exceptions.LeaderSteppingDownException;
 import org.apache.ratis.protocol.exceptions.NotLeaderException;
 import org.apache.ratis.protocol.exceptions.RaftException;
@@ -239,8 +238,7 @@ class RatisClient implements AutoCloseable {
           || cause instanceof TimeoutIOException
           || cause instanceof LeaderSteppingDownException
           || cause instanceof ServerNotReadyException
-          || cause instanceof NotLeaderException
-          || cause instanceof LeaderNotReadyException) {
+          || cause instanceof NotLeaderException) {
         return endlessPolicy.handleAttemptFailure(event);
       }
 
