@@ -217,4 +217,16 @@ public class MemoryManager {
   public long getTotalMemorySizeInBytes() {
     return totalMemorySizeInBytes;
   }
+
+  public static MemoryManager global() {
+    return MemoryManagerHolder.GLOBAL;
+  }
+
+  private static class MemoryManagerHolder {
+
+    private static final MemoryManager GLOBAL =
+        new MemoryManager("GlobalMemoryManager", null, Runtime.getRuntime().totalMemory());
+
+    private MemoryManagerHolder() {}
+  }
 }
