@@ -2965,11 +2965,32 @@ public class StatementAnalyzer {
       ImmutableSet.Builder<Field> inputFieldsOnOutputBuilder = ImmutableSet.builder();
       ImmutableList.Builder<Field> outputFieldsBuilder = ImmutableList.builder();
 
+      // TODO:
+      //      if (!oneRowPerMatch) {
+      //        Field timeField = null;
+      //
+      //        // First, find time column
+      //        for (Field inputField : inputScope.getRelationType().getAllFields()) {
+      //          Optional<String> fieldName = inputField.getName();
+      //          if (fieldName.isPresent() && fieldName.get().equals("time")) {
+      //            timeField = inputField;
+      //            break;
+      //          }
+      //        }
+      //
+      //        // Add time field to the beginning of the output fields if it exists
+      //        if (timeField != null) {
+      //          outputFieldsBuilder.add(unqualified(timeField));
+      //          inputFieldsOnOutputBuilder.add(timeField);
+      //        }
+      //      }
+
       for (Expression expression : relation.getPartitionBy()) {
         Field inputField = validateAndGetInputField(expression, inputScope);
         outputFieldsBuilder.add(unqualifiedVisible(inputField));
         inputFieldsOnOutputBuilder.add(inputField);
       }
+
       if (!oneRowPerMatch) {
         for (SortItem sortItem : getSortItemsFromOrderBy(relation.getOrderBy())) {
           Field inputField = validateAndGetInputField(sortItem.getSortKey(), inputScope);
@@ -2978,13 +2999,15 @@ public class StatementAnalyzer {
               inputField); // might have duplicates (ORDER BY a ASC, a DESC)
         }
       }
+
       for (MeasureDefinition measureDefinition : relation.getMeasures()) {
         outputFieldsBuilder.add(
             Field.newUnqualified(
                 measureDefinition.getName().getValue(),
                 measureTypes.get(NodeRef.of(measureDefinition.getExpression())),
-                TsTableColumnCategory.ATTRIBUTE));
+                TsTableColumnCategory.MEASUREMENT));
       }
+
       if (!oneRowPerMatch) {
         Set<Field> inputFieldsOnOutput = inputFieldsOnOutputBuilder.build();
         for (Field inputField : inputScope.getRelationType().getAllFields()) {
@@ -2993,6 +3016,7 @@ public class StatementAnalyzer {
           }
         }
       }
+
       // pattern recognition output must have at least 1 column
       List<Field> outputFields = outputFieldsBuilder.build();
       if (outputFields.isEmpty()) {

@@ -49,6 +49,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.EnforceSingleR
 import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.PatternRecognitionOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.PreviousFillWithGroupOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableLinearFillOperator;
@@ -169,6 +170,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinct
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
@@ -3113,6 +3115,67 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           partitionChannels,
           node.isRequireRecordSnapshot());
     }
+  }
+
+  // TODO
+  @Override
+  public Operator visitPatternRecognition(
+      PatternRecognitionNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                PatternRecognitionOperator.class.getSimpleName());
+
+    Operator child = node.getChild().accept(this, context);
+
+    Map<Symbol, Integer> childLayout =
+        makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
+
+    List<Symbol> partitionBySymbols = node.getPartitionBy();
+    List<Integer> partitionChannels =
+        ImmutableList.copyOf(getChannelsForSymbols(partitionBySymbols, childLayout));
+
+    List<Integer> sortChannels = ImmutableList.of();
+    List<SortOrder> sortOrder = ImmutableList.of();
+
+    if (node.getOrderingScheme().isPresent()) {
+      OrderingScheme orderingScheme = node.getOrderingScheme().get();
+      sortChannels = getChannelsForSymbols(orderingScheme.getOrderBy(), childLayout);
+      sortOrder = orderingScheme.getOrderingList();
+    }
+
+    // The output order for pattern recognition operation is defined as follows:
+    // - for ONE ROW PER MATCH: partition by symbols, then measures,
+    // - for ALL ROWS PER MATCH: partition by symbols, order by symbols, measures, remaining input
+    // symbols.
+
+    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+
+    //    // input channels to be passed directly to output
+    //    ImmutableList.Builder<Integer> outputChannels = ImmutableList.builder();
+    //
+    //    // all output symbols mapped to output channels
+    //    ImmutableMap.Builder<Symbol, Integer> outputMappings = ImmutableMap.builder();
+    //
+    //    int nextOutputChannel;
+    //
+    //    if (node.getRowsPerMatch() == ONE) { // ONE ROW PER MATCH
+    //      outputChannels.addAll(partitionChannels);
+    //      nextOutputChannel = partitionBySymbols.size();
+    //      for (int i = 0; i < partitionBySymbols.size(); i++) {
+    //        outputMappings.put(partitionBySymbols.get(i), i);
+    //      }
+    //    } else { // ALL ROWS PER MATCH
+    //      outputChannels.addAll(
+    //          IntStream.range(0, child.getTypes().size()).boxed().collect(toImmutableList()));
+    //      nextOutputChannel = source.getTypes().size();
+    //      outputMappings.putAll(source.getLayout());
+    //    }
+
+    return new PatternRecognitionOperator(operatorContext, child);
   }
 
   private boolean[] checkStatisticAndScanOrder(
