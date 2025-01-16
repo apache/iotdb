@@ -37,6 +37,7 @@ public class DropPipePluginStatement extends Statement implements IConfigStateme
 
   private String pluginName;
   private boolean ifExistsCondition;
+  private boolean isTableModel;
 
   public DropPipePluginStatement() {
     super();
@@ -51,12 +52,20 @@ public class DropPipePluginStatement extends Statement implements IConfigStateme
     return ifExistsCondition;
   }
 
-  public void setPluginName(String pluginName) {
+  public boolean isTableModel() {
+    return isTableModel;
+  }
+
+  public void setPluginName(final String pluginName) {
     this.pluginName = pluginName;
   }
 
-  public void setIfExists(boolean ifExistsCondition) {
+  public void setIfExists(final boolean ifExistsCondition) {
     this.ifExistsCondition = ifExistsCondition;
+  }
+
+  public void setTableModel(final boolean tableModel) {
+    this.isTableModel = tableModel;
   }
 
   @Override
@@ -70,12 +79,12 @@ public class DropPipePluginStatement extends Statement implements IConfigStateme
   }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final StatementVisitor<R, C> visitor, final C context) {
     return visitor.visitDropPipePlugin(this, context);
   }
 
   @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
+  public TSStatus checkPermissionBeforeProcess(final String userName) {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }

@@ -70,7 +70,7 @@ public class CompactionTableSchemaCollector {
     Map<String, TableSchema> targetTableSchemaMap = new HashMap<>();
     for (TsFileResource resource : sourceFiles) {
       TsFileSequenceReader reader = readerMap.get(resource);
-      Map<String, TableSchema> tableSchemaMap = reader.readFileMetadata().getTableSchemaMap();
+      Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
       if (tableSchemaMap == null) {
         // v3 tsfile
         continue;

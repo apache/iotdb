@@ -358,7 +358,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
                   validateResultSet(
                       query(receiverSession, tablet.getSchemas(), tablet.getDeviceId()),
                       expectedValues,
-                      tablet.timestamps);
+                      tablet.getTimestamps());
                 } catch (Exception e) {
                   fail();
                 }
@@ -541,7 +541,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
   }
 
   private List<Long> getTimestampList(Tablet tablet) {
-    long[] timestamps = tablet.timestamps;
+    long[] timestamps = tablet.getTimestamps();
     List<Long> data = new ArrayList<>(timestamps.length);
     for (long timestamp : timestamps) {
       data.add(timestamp);
@@ -580,7 +580,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
       final Tablet tablet, List<Pair<MeasurementSchema, MeasurementSchema>> pairs) {
     List<List<Object>> insertRecords = new ArrayList<>(tablet.getRowSize());
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
-    final Object[] values = tablet.values;
+    final Object[] values = tablet.getValues();
     for (int i = 0; i < tablet.getRowSize(); i++) {
       List<Object> insertRecord = new ArrayList<>();
       for (int j = 0; j < schemas.size(); j++) {
@@ -648,7 +648,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
   private List<List<Object>> generateTabletInsertRecordForTable(final Tablet tablet) {
     List<List<Object>> insertRecords = new ArrayList<>(tablet.getRowSize());
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
-    final Object[] values = tablet.values;
+    final Object[] values = tablet.getValues();
     for (int i = 0; i < tablet.getRowSize(); i++) {
       List<Object> insertRecord = new ArrayList<>();
       for (int j = 0; j < schemas.size(); j++) {
@@ -691,7 +691,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
   private List<List<String>> generateTabletInsertStrRecordForTable(Tablet tablet) {
     List<List<String>> insertRecords = new ArrayList<>(tablet.getRowSize());
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
-    final Object[] values = tablet.values;
+    final Object[] values = tablet.getValues();
     for (int i = 0; i < tablet.getRowSize(); i++) {
       List<String> insertRecord = new ArrayList<>();
       for (int j = 0; j < schemas.size(); j++) {

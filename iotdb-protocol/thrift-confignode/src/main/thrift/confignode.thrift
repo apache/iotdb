@@ -706,12 +706,17 @@ struct TCreatePipePluginReq {
 struct TDropPipePluginReq {
   1: required string pluginName
   2: optional bool ifExistsCondition
+  3: optional bool isTableModel
 }
 
 // Get PipePlugin table from config node
 struct TGetPipePluginTableResp {
   1: required common.TSStatus status
   2: required list<binary> allPipePluginMeta
+}
+
+struct TShowPipePluginReq {
+  1: optional bool isTableModel
 }
 
 // Pipe
@@ -1520,6 +1525,11 @@ service IConfigNodeRPCService {
    * Return the pipe plugin table
    */
   TGetPipePluginTableResp getPipePluginTable();
+
+  /**
+   * Return the pipe plugin table
+   */
+  TGetPipePluginTableResp getPipePluginTableExtended(TShowPipePluginReq req);
 
   /**
    * Return the pipe plugin jar list of the plugin name list
