@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.exception.metadata.view.InsertNonWritableViewException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
@@ -37,6 +38,8 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 
@@ -56,6 +59,7 @@ import java.util.stream.IntStream;
  */
 public class TreeDeviceSchemaCacheManager {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(TreeDeviceSchemaCacheManager.class);
   private final ITemplateManager templateManager = ClusterTemplateManager.getInstance();
 
   private final TableDeviceSchemaCache tableDeviceSchemaCache;
@@ -178,6 +182,10 @@ public class TreeDeviceSchemaCacheManager {
           .collect(Collectors.toList());
     }
     final TreeDeviceNormalSchema treeSchema = (TreeDeviceNormalSchema) schema;
+
+    if (IoTDBConfig.isTestMode) {
+      LOGGER.warn("Device Cache of {}: {}", schemaComputation.getDevicePath(), treeSchema);
+    }
 
     for (int i = 0; i < schemaComputation.getMeasurements().length; i++) {
       final SchemaCacheEntry value = treeSchema.getSchemaCacheEntry(measurements[i]);
@@ -348,9 +356,13 @@ public class TreeDeviceSchemaCacheManager {
   public void put(final ClusterSchemaTree tree) {
     tree.getAllDevices()
         .forEach(
-            deviceSchemaInfo ->
-                tableDeviceSchemaCache.putDeviceSchema(
-                    tree.getBelongedDatabase(deviceSchemaInfo.getDevicePath()), deviceSchemaInfo));
+            deviceSchemaInfo -> {
+              tableDeviceSchemaCache.putDeviceSchema(
+                  tree.getBelongedDatabase(deviceSchemaInfo.getDevicePath()), deviceSchemaInfo);
+              if (IoTDBConfig.isTestMode) {
+                LOGGER.warn("Added to TreeSchemaCache: {}", deviceSchemaInfo);
+              }
+            });
   }
 
   public TimeValuePair getLastCache(final MeasurementPath seriesPath) {
@@ -441,6 +453,9 @@ public class TreeDeviceSchemaCacheManager {
               isMultiLevelWildcardMeasurement ? measurementPath : measurementPath.getDevicePath(),
               isMultiLevelWildcardMeasurement);
         });
+    if (IoTDBConfig.isTestMode) {
+      LOGGER.warn("Invalidated TreeDeviceSchemaCache {}", partialPathList);
+    }
   }
 
   public void cleanUp() {
