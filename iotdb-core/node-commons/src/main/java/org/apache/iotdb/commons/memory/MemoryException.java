@@ -26,22 +26,22 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class IoTDBMemoryException extends RuntimeException {
+public class MemoryException extends RuntimeException {
 
   private final long timestamp;
   private static final long VERSION = 1L;
 
-  public IoTDBMemoryException(final String message) {
+  public MemoryException(final String message) {
     super(message);
     this.timestamp = System.currentTimeMillis();
   }
 
-  public IoTDBMemoryException(final String message, final long timeStamp) {
+  public MemoryException(final String message, final long timeStamp) {
     super(message);
     this.timestamp = timeStamp;
   }
 
-  public IoTDBMemoryException(final String message, final Throwable cause) {
+  public MemoryException(final String message, final Throwable cause) {
     super(message, cause);
     this.timestamp = System.currentTimeMillis();
   }
@@ -52,9 +52,9 @@ public class IoTDBMemoryException extends RuntimeException {
 
   @Override
   public boolean equals(Object obj) {
-    return obj instanceof IoTDBMemoryException
-        && Objects.equals(getMessage(), ((IoTDBMemoryException) obj).getMessage())
-        && Objects.equals(getTimestamp(), ((IoTDBMemoryException) obj).getTimestamp());
+    return obj instanceof MemoryException
+        && Objects.equals(getMessage(), ((MemoryException) obj).getMessage())
+        && Objects.equals(getTimestamp(), ((MemoryException) obj).getTimestamp());
   }
 
   @Override

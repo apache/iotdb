@@ -23,56 +23,28 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
-public class IoTDBMemoryBlock extends IIoTDBMemoryBlock {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBMemoryBlock.class);
+public class MemoryBlock extends IMemoryBlock {
+  private static final Logger LOGGER = LoggerFactory.getLogger(MemoryBlock.class);
 
-  public IoTDBMemoryBlock(final IoTDBMemoryManager memoryManager, final long maxMemorySizeInByte) {
+  public MemoryBlock(final MemoryManager memoryManager, final long maxMemorySizeInByte) {
     this.memoryManager = memoryManager;
     this.maxMemorySizeInByte = maxMemorySizeInByte;
-    this.memoryBlockType = IoTDBMemoryBlockType.NONE;
+    this.memoryBlockType = MemoryBlockType.NONE;
   }
 
-  public IoTDBMemoryBlock(
-      final IoTDBMemoryManager memoryManager,
+  public MemoryBlock(
+      final MemoryManager memoryManager,
       final long maxMemorySizeInByte,
-      final IoTDBMemoryBlockType memoryBlockType) {
+      final MemoryBlockType memoryBlockType) {
     this.memoryManager = memoryManager;
     this.maxMemorySizeInByte = maxMemorySizeInByte;
     this.memoryBlockType = memoryBlockType;
   }
 
   @Override
-  public boolean useMemory(final long size) {
-    if (size <= 0) {
-      memoryUsageInBytes.addAndGet(-size);
-      return true;
-    } else {
-
-      AtomicBoolean result = new AtomicBoolean(false);
-      memoryUsageInBytes.updateAndGet(
-          memorySize -> {
-            if (size > maxMemorySizeInByte - memorySize) {
-              LOGGER.debug(
-                  "consensus memory limited. required: {}, used: {}, total: {}",
-                  size,
-                  memorySize,
-                  maxMemorySizeInByte);
-              result.set(false);
-              return memorySize;
-            } else {
-              LOGGER.debug(
-                  "{} add {} bytes, total memory size: {} bytes.",
-                  Thread.currentThread().getName(),
-                  size,
-                  memorySize + size);
-              result.set(true);
-              return memorySize + size;
-            }
-          });
-      return result.get();
-    }
+  public void recordMemory(final long size) {
+    memoryUsageInBytes.addAndGet(size);
   }
 
   @Override
@@ -80,9 +52,9 @@ public class IoTDBMemoryBlock extends IIoTDBMemoryBlock {
     return "IoTDBMemoryBlock{"
         + "memoryBlockType="
         + memoryBlockType
-        + "maxMemorySizeInByte="
+        + ", maxMemorySizeInByte="
         + maxMemorySizeInByte
-        + "memoryUsageInBytes="
+        + ", memoryUsageInBytes="
         + memoryUsageInBytes
         + ", isReleased="
         + isReleased
@@ -95,7 +67,7 @@ public class IoTDBMemoryBlock extends IIoTDBMemoryBlock {
 
     while (true) {
       try {
-        if (lock.tryLock(50, TimeUnit.MICROSECONDS)) {
+        if (lock.tryLock(100, TimeUnit.MICROSECONDS)) {
           try {
             memoryManager.release(this);
             if (isInterrupted) {

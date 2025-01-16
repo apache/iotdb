@@ -22,33 +22,55 @@ package org.apache.iotdb.commons.memory;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
-public abstract class IIoTDBMemoryBlock implements AutoCloseable {
-  protected IoTDBMemoryManager memoryManager;
-  protected IoTDBMemoryBlockType memoryBlockType;
+public abstract class IMemoryBlock implements AutoCloseable {
+  /** The memory manager that manages this memory block */
+  protected MemoryManager memoryManager;
+
+  /** The reentrant lock of memory block */
   protected final ReentrantLock lock = new ReentrantLock();
+
+  /** The type of this memory block */
+  protected MemoryBlockType memoryBlockType;
+
+  /** The maximum memory size in byte of this memory block */
   protected long maxMemorySizeInByte = 0;
+
+  /** The memory usage in byte of this memory block */
   protected final AtomicLong memoryUsageInBytes = new AtomicLong(0);
+
+  /** The flag that indicates whether this memory block is released */
   protected volatile boolean isReleased = false;
 
-  public abstract boolean useMemory(final long size);
+  /** Try to record memory managed by this memory block */
+  public abstract void recordMemory(final long size);
 
-  public long getMaxMemorySizeInByte() {
-    return maxMemorySizeInByte;
-  }
-
-  public long getMemoryUsageInBytes() {
-    return memoryUsageInBytes.get();
-  }
-
+  /** Update maximum memory size in byte of this memory block */
   public void setMaxMemorySizeInByte(final long maxMemorySizeInByte) {
     this.maxMemorySizeInByte = maxMemorySizeInByte;
   }
 
+  /** Get the maximum memory size in byte of this memory block */
+  public long getMaxMemorySizeInByte() {
+    return maxMemorySizeInByte;
+  }
+
+  /** Get the memory usage in byte of this memory block */
+  public long getMemoryUsageInBytes() {
+    return memoryUsageInBytes.get();
+  }
+
+  /** Get whether this memory block is released */
   public boolean isReleased() {
     return isReleased;
   }
 
+  /** Mark this memory block as released */
   public void markAsReleased() {
     isReleased = true;
+  }
+
+  /** Get the type of this memory block */
+  public MemoryBlockType getMemoryBlockType() {
+    return memoryBlockType;
   }
 }

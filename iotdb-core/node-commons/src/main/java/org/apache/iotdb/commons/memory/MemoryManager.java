@@ -26,43 +26,55 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.function.LongUnaryOperator;
 
-public class IoTDBMemoryManager {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBMemoryManager.class);
-  // TODO spricoder: make it configurable
+public class MemoryManager {
+  private static final Logger LOGGER = LoggerFactory.getLogger(MemoryManager.class);
+
+  // TODO @spricoder: make it configurable
+  /** Whether memory management is enabled */
   private static final boolean ENABLED = false;
 
-  /** max retry times for memory allocation */
+  /** Max retry times for memory allocation */
   private static final int MEMORY_ALLOCATE_MAX_RETRIES = 3;
 
-  /** retry interval for memory allocation */
+  /** Retry interval for memory allocation */
   private static final long MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS = 1000;
 
-  /** min memory size to allocate */
+  /** Min memory size to allocate */
   private static final long MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES = 32;
 
+  /** Total memory size in byte of memory manager */
   private long totalMemorySizeInBytes = 0L;
-  private long usedMemorySizeInBytes = 0L;
-  private IoTDBMemoryManager parentMemoryManager;
-  private final Set<IoTDBMemoryManager> childrens = new HashSet<>();
-  private final Set<IoTDBMemoryBlock> allocatedMemoryBlocks = new HashSet<>();
 
-  public IoTDBMemoryManager(IoTDBMemoryManager parentMemoryManager, long totalMemorySizeInBytes) {
+  /** Allocated memory size to allocate */
+  private long allocatedMemorySizeInBytes = 0L;
+
+  /** Parent memory manager, used to apply for memory */
+  private final MemoryManager parentMemoryManager;
+
+  /** Child memory manager, used to statistic memory */
+  private final Set<MemoryManager> childrens = new HashSet<>();
+
+  /** Allocated memory blocks of this memory manager */
+  private final Set<MemoryBlock> allocatedMemoryBlocks = new HashSet<>();
+
+  public MemoryManager(MemoryManager parentMemoryManager, long totalMemorySizeInBytes) {
     this.parentMemoryManager = parentMemoryManager;
     this.parentMemoryManager.addChildMemoryManager(this);
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
   }
 
-  private IoTDBMemoryBlock forceAllocate(long sizeInBytes, IoTDBMemoryBlockType type) {
+  /** Try to force allocate memory block with specified size in bytes. */
+  private MemoryBlock forceAllocate(long sizeInBytes, MemoryBlockType type) {
     if (!ENABLED) {
-      return new IoTDBMemoryBlock(this, sizeInBytes, type);
+      return new MemoryBlock(this, sizeInBytes, type);
     }
     for (int i = 0; i < MEMORY_ALLOCATE_MAX_RETRIES; i++) {
-      if (totalMemorySizeInBytes - usedMemorySizeInBytes >= sizeInBytes) {
-        return registerMemoryBlock(sizeInBytes);
+      if (totalMemorySizeInBytes - allocatedMemorySizeInBytes >= sizeInBytes) {
+        return registerMemoryBlock(sizeInBytes, type);
       }
 
       try {
-        // TODO spricoder: try to find more memory
+        // TODO @spricoder: consider to find more memory in active way
         Thread.sleep(MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -70,37 +82,36 @@ public class IoTDBMemoryManager {
       }
     }
 
-    throw new IoTDBMemoryException(
+    throw new MemoryException(
         String.format(
             "forceAllocate: failed to allocate memory after %d retries, "
                 + "total memory size %d bytes, used memory size %d bytes, "
                 + "requested memory size %d bytes",
             MEMORY_ALLOCATE_MAX_RETRIES,
             totalMemorySizeInBytes,
-            usedMemorySizeInBytes,
+            allocatedMemorySizeInBytes,
             sizeInBytes));
   }
 
-  public synchronized IoTDBMemoryBlock forceAllocateIfSufficient(
-      long sizeInBytes, float usedThreshold) {
+  /** Try to force allocate memory block with specified size in bytes when memory is sufficient. */
+  public synchronized MemoryBlock forceAllocateIfSufficient(long sizeInBytes, float usedThreshold) {
     if (usedThreshold < 0.0f || usedThreshold > 1.0f) {
       return null;
     }
-
     if (!ENABLED) {
-      return new IoTDBMemoryBlock(this, sizeInBytes);
+      return new MemoryBlock(this, sizeInBytes);
     }
-    if (totalMemorySizeInBytes - usedMemorySizeInBytes >= sizeInBytes
-        && (float) usedMemorySizeInBytes / totalMemorySizeInBytes < usedThreshold) {
-      return forceAllocate(sizeInBytes, IoTDBMemoryBlockType.NONE);
+    if (totalMemorySizeInBytes - allocatedMemorySizeInBytes >= sizeInBytes
+        && (float) allocatedMemorySizeInBytes / totalMemorySizeInBytes < usedThreshold) {
+      return forceAllocate(sizeInBytes, MemoryBlockType.NONE);
     } else {
-      // TODO spricoder: try to find more memory
+      // TODO @spricoder: consider to find more memory in active way
       LOGGER.debug(
           "forceAllocateIfSufficient: failed to allocate memory, "
               + "total memory size {} bytes, used memory size {} bytes, "
               + "requested memory size {} bytes, used threshold {}",
           totalMemorySizeInBytes,
-          usedMemorySizeInBytes,
+          allocatedMemorySizeInBytes,
           sizeInBytes,
           usedThreshold);
     }
@@ -108,40 +119,30 @@ public class IoTDBMemoryManager {
     return null;
   }
 
-  private IoTDBMemoryBlock registerMemoryBlock(long sizeInBytes) {
-    return registerMemoryBlock(sizeInBytes, IoTDBMemoryBlockType.NONE);
-  }
-
-  private IoTDBMemoryBlock registerMemoryBlock(long sizeInBytes, IoTDBMemoryBlockType type) {
-    usedMemorySizeInBytes += sizeInBytes;
-    final IoTDBMemoryBlock memoryBlock = new IoTDBMemoryBlock(this, sizeInBytes, type);
-    allocatedMemoryBlocks.add(memoryBlock);
-    return memoryBlock;
-  }
-
-  public synchronized IoTDBMemoryBlock tryAllocate(
-      long sizeInBytes, LongUnaryOperator customAllocateStrategy) {
+  /** Try to allocate memory block with customAllocateStrategy */
+  public synchronized MemoryBlock tryAllocate(
+      long sizeInBytes, LongUnaryOperator customAllocateStrategy, MemoryBlockType type) {
     if (!ENABLED) {
-      return new IoTDBMemoryBlock(this, sizeInBytes);
+      return new MemoryBlock(this, sizeInBytes);
     }
 
-    if (totalMemorySizeInBytes - usedMemorySizeInBytes >= sizeInBytes) {
-      return registerMemoryBlock(sizeInBytes);
+    if (totalMemorySizeInBytes - allocatedMemorySizeInBytes >= sizeInBytes) {
+      return registerMemoryBlock(sizeInBytes, type);
     }
 
     long sizeToAllocateInBytes = sizeInBytes;
     while (sizeToAllocateInBytes > MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES) {
-      if (totalMemorySizeInBytes - usedMemorySizeInBytes >= sizeToAllocateInBytes) {
+      if (totalMemorySizeInBytes - allocatedMemorySizeInBytes >= sizeToAllocateInBytes) {
         LOGGER.info(
             "tryAllocate: allocated memory, "
                 + "total memory size {} bytes, used memory size {} bytes, "
                 + "original requested memory size {} bytes, "
                 + "actual requested memory size {} bytes",
             totalMemorySizeInBytes,
-            usedMemorySizeInBytes,
+            allocatedMemorySizeInBytes,
             sizeInBytes,
             sizeToAllocateInBytes);
-        return registerMemoryBlock(sizeToAllocateInBytes);
+        return registerMemoryBlock(sizeToAllocateInBytes, type);
       }
 
       sizeToAllocateInBytes =
@@ -150,41 +151,58 @@ public class IoTDBMemoryManager {
               MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES);
     }
 
-    // TODO spricoder: try to shrink first
+    // TODO @spricoder: consider to find more memory in active way
     LOGGER.warn(
         "tryAllocate: failed to allocate memory, "
             + "total memory size {} bytes, used memory size {} bytes, "
             + "requested memory size {} bytes",
         totalMemorySizeInBytes,
-        usedMemorySizeInBytes,
+        allocatedMemorySizeInBytes,
         sizeInBytes);
-    return registerMemoryBlock(0);
+    return registerMemoryBlock(0, type);
   }
 
-  public synchronized void release(IoTDBMemoryBlock block) {
+  /** Try to register memory block with specified size in bytes. */
+  private MemoryBlock registerMemoryBlock(long sizeInBytes, MemoryBlockType type) {
+    allocatedMemorySizeInBytes += sizeInBytes;
+    final MemoryBlock memoryBlock = new MemoryBlock(this, sizeInBytes, type);
+    allocatedMemoryBlocks.add(memoryBlock);
+    return memoryBlock;
+  }
+
+  /** Release memory block. */
+  public synchronized void release(MemoryBlock block) {
     if (!ENABLED || block == null || block.isReleased()) {
       return;
     }
 
-    allocatedMemoryBlocks.remove(block);
-    usedMemorySizeInBytes -= block.getMemoryUsageInBytes();
     block.markAsReleased();
+    allocatedMemorySizeInBytes -= block.getMemoryUsageInBytes();
+    allocatedMemoryBlocks.remove(block);
 
     this.notifyAll();
   }
 
-  public synchronized void addChildMemoryManager(IoTDBMemoryManager childMemoryManager) {
+  public synchronized void addChildMemoryManager(MemoryManager childMemoryManager) {
     if (childMemoryManager != null) {
       childrens.add(childMemoryManager);
     }
   }
 
-  public long getUsedMemorySizeInBytes() {
-    return usedMemorySizeInBytes;
+  public long getFreeMemorySizeInBytes() {
+    return totalMemorySizeInBytes - allocatedMemorySizeInBytes;
   }
 
-  public long getFreeMemorySizeInBytes() {
-    return totalMemorySizeInBytes - usedMemorySizeInBytes;
+  public long getUsedMemorySizeInBytes() {
+    long memoryBlockSize =
+        allocatedMemoryBlocks.stream().mapToLong(MemoryBlock::getMemoryUsageInBytes).sum();
+    long childrenMemorySize =
+        childrens.stream().mapToLong(MemoryManager::getUsedMemorySizeInBytes).sum();
+    return memoryBlockSize + childrenMemorySize;
+  }
+
+  public long getAllocatedMemorySizeInBytes() {
+    return allocatedMemorySizeInBytes;
   }
 
   public long getTotalMemorySizeInBytes() {

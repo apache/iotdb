@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.memory;
 
-public enum IoTDBMemoryBlockType {
+public enum MemoryBlockType {
   NONE,
   FUNCTION,
   PERFORMANCE,
