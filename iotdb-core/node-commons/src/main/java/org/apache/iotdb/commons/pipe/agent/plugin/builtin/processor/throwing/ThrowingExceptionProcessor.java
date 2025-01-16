@@ -20,6 +20,8 @@
 package org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.throwing;
 
 import org.apache.iotdb.pipe.api.PipeProcessor;
+import org.apache.iotdb.pipe.api.annotation.TableModel;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -32,6 +34,8 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@TreeModel
+@TableModel
 public class ThrowingExceptionProcessor implements PipeProcessor {
 
   private boolean throwInCustomize = false;

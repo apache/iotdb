@@ -124,12 +124,13 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
       for (int i = 0; i < schemas.size(); ++i) {
         for (int j = 0; j < tablet.getRowSize(); ++j) {
-          if (Objects.isNull(tablet.bitMaps)
-              || Objects.isNull(tablet.bitMaps[i])
-              || !tablet.bitMaps[i].isMarked(j)) {
+          if (Objects.isNull(tablet.getBitMaps())
+              || Objects.isNull(tablet.getBitMaps()[i])
+              || !tablet.getBitMaps()[i].isMarked(j)) {
             newSchemas.add(schemas.get(i));
-            timestamps.add(tablet.timestamps[j]);
-            values.add(getTabletObjectValue4Opc(tablet.values[i], j, schemas.get(i).getType()));
+            timestamps.add(tablet.getTimestamp(j));
+            values.add(
+                getTabletObjectValue4Opc(tablet.getValues()[i], j, schemas.get(i).getType()));
             break;
           }
         }
@@ -161,12 +162,12 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         transferTabletRowForClientServerModel(
             folderSegments,
             newSchemas,
-            Collections.singletonList(tablet.timestamps[i]),
+            Collections.singletonList(tablet.getTimestamp(i)),
             columnIndexes.stream()
                 .map(
                     index ->
                         getTabletObjectValue4Opc(
-                            tablet.values[index], finalI, schemas.get(index).getType()))
+                            tablet.getValues()[index], finalI, schemas.get(index).getType()))
                 .collect(Collectors.toList()));
       }
     }
@@ -357,7 +358,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
 
       for (int rowIndex = 0; rowIndex < tablet.getRowSize(); ++rowIndex) {
         // Filter null value
-        if (tablet.bitMaps[columnIndex].isMarked(rowIndex)) {
+        if (tablet.getBitMaps()[columnIndex].isMarked(rowIndex)) {
           continue;
         }
 
@@ -373,54 +374,53 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         }
 
         // Time --> TimeStamp
-        eventNode.setTime(new DateTime(timestampToUtc(tablet.timestamps[rowIndex])));
+        eventNode.setTime(new DateTime(timestampToUtc(tablet.getTimestamp(rowIndex))));
 
         // Message --> Value
         switch (dataType) {
           case BOOLEAN:
             eventNode.setMessage(
                 LocalizedText.english(
-                    Boolean.toString(((boolean[]) tablet.values[columnIndex])[rowIndex])));
+                    Boolean.toString((boolean) tablet.getValue(rowIndex, columnIndex))));
             break;
           case INT32:
             eventNode.setMessage(
                 LocalizedText.english(
-                    Integer.toString(((int[]) tablet.values[columnIndex])[rowIndex])));
+                    Integer.toString((int) tablet.getValue(rowIndex, columnIndex))));
             break;
           case DATE:
             eventNode.setMessage(
                 LocalizedText.english(
-                    (((LocalDate[]) tablet.values[columnIndex])[rowIndex])
+                    ((LocalDate) tablet.getValue(rowIndex, columnIndex))
                         .atStartOfDay(ZoneId.systemDefault())
                         .toString()));
             break;
           case INT64:
             eventNode.setMessage(
                 LocalizedText.english(
-                    Long.toString(((long[]) tablet.values[columnIndex])[rowIndex])));
+                    Long.toString((long) tablet.getValue(rowIndex, columnIndex))));
             break;
           case TIMESTAMP:
             eventNode.setMessage(
                 LocalizedText.english(
                     DateTimeUtils.convertLongToDate(
-                        ((long[]) tablet.values[columnIndex])[rowIndex])));
+                        (long) tablet.getValue(rowIndex, columnIndex))));
             break;
           case FLOAT:
             eventNode.setMessage(
                 LocalizedText.english(
-                    Float.toString(((float[]) tablet.values[columnIndex])[rowIndex])));
+                    Float.toString((float) tablet.getValue(rowIndex, columnIndex))));
             break;
           case DOUBLE:
             eventNode.setMessage(
                 LocalizedText.english(
-                    Double.toString(((double[]) tablet.values[columnIndex])[rowIndex])));
+                    Double.toString((double) tablet.getValue(rowIndex, columnIndex))));
             break;
           case TEXT:
           case BLOB:
           case STRING:
             eventNode.setMessage(
-                LocalizedText.english(
-                    ((Binary[]) tablet.values[columnIndex])[rowIndex].toString()));
+                LocalizedText.english(tablet.getValue(rowIndex, columnIndex).toString()));
             break;
           case VECTOR:
           case UNKNOWN:

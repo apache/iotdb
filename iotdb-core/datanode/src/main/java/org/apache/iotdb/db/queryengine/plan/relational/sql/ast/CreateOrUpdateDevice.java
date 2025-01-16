@@ -19,9 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import javax.annotation.Nonnull;
+
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory.truncateTailingNull;
 
@@ -37,12 +42,14 @@ public class CreateOrUpdateDevice extends Statement {
 
   private final List<Object[]> attributeValueList;
 
+  // The attributeValueList can be shorter than the "attributeNameList"
+  // Which means that the missing attribute values at tail are all "null"s
   public CreateOrUpdateDevice(
       final String database,
       final String table,
-      final List<Object[]> deviceIdList,
+      final @Nonnull List<Object[]> deviceIdList,
       final List<String> attributeNameList,
-      final List<Object[]> attributeValueList) {
+      final @Nonnull List<Object[]> attributeValueList) {
     super(null);
     this.database = database;
     this.table = table;
@@ -74,7 +81,7 @@ public class CreateOrUpdateDevice extends Statement {
 
   @Override
   public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitCreateDevice(this, context);
+    return visitor.visitCreateOrUpdateDevice(this, context);
   }
 
   @Override
@@ -93,19 +100,29 @@ public class CreateOrUpdateDevice extends Statement {
     final CreateOrUpdateDevice that = (CreateOrUpdateDevice) o;
     return Objects.equals(database, that.database)
         && Objects.equals(table, that.table)
-        && Objects.equals(deviceIdList, that.deviceIdList)
+        && deviceIdList.size() == that.deviceIdList.size()
+        && IntStream.range(0, deviceIdList.size())
+            .allMatch(i -> Arrays.equals(deviceIdList.get(i), that.deviceIdList.get(i)))
         && Objects.equals(attributeNameList, that.attributeNameList)
-        && Objects.equals(attributeValueList, that.attributeValueList);
+        && attributeValueList.size() == that.attributeValueList.size()
+        && IntStream.range(0, attributeValueList.size())
+            .allMatch(
+                i -> Arrays.equals(attributeValueList.get(i), that.attributeValueList.get(i)));
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(database, table, deviceIdList, attributeNameList, attributeValueList);
+    return Objects.hash(
+        database,
+        table,
+        deviceIdList.stream().map(Arrays::hashCode).collect(Collectors.toList()),
+        attributeNameList,
+        attributeValueList.stream().map(Arrays::hashCode).collect(Collectors.toList()));
   }
 
   @Override
   public String toString() {
-    return "CreateDevice{"
+    return "CreateOrUpdateDevice{"
         + "database='"
         + database
         + '\''
