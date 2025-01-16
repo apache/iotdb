@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractLeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.NodeType;
 
@@ -118,6 +119,8 @@ public class ConfigNodeDescriptor {
   }
 
   private void loadProps() {
+    IoTDBConfig.isTestMode =
+        Boolean.parseBoolean(System.getProperties().getProperty("isTestMode", "false"));
     TrimProperties trimProperties = new TrimProperties();
     URL url = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     if (url != null) {

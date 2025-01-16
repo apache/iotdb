@@ -59,6 +59,7 @@ import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipePluginInstanceReq;
@@ -169,6 +170,12 @@ public class ConfigNodeProcedureEnv {
 
       // If the node is not alive, sleep 1 second and try again
       NodeStatus nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
+      if (IoTDBConfig.isTestMode) {
+        LOG.warn(
+            "Invalidating node cache {}, status is {}",
+            dataNodeConfiguration.getLocation(),
+            nodeStatus);
+      }
       if (nodeStatus == NodeStatus.Unknown) {
         try {
           TimeUnit.MILLISECONDS.sleep(1000);
@@ -176,7 +183,15 @@ public class ConfigNodeProcedureEnv {
           LOG.error("Sleep failed in ConfigNodeProcedureEnv: ", e);
           Thread.currentThread().interrupt();
         }
+        // force update node status before retry
+        getLoadManager().getLoadCache().updateNodeStatistics(dataNodeId, true);
         nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
+        if (IoTDBConfig.isTestMode) {
+          LOG.warn(
+              "Invalidating node cache {}, after slepp, status is {}",
+              dataNodeConfiguration.getLocation(),
+              nodeStatus);
+        }
       }
 
       if (nodeStatus == NodeStatus.Running) {
@@ -196,6 +211,12 @@ public class ConfigNodeProcedureEnv {
                         dataNodeConfiguration.getLocation().getInternalEndPoint(),
                         invalidateCacheReq,
                         CnToDnSyncRequestType.INVALIDATE_SCHEMA_CACHE);
+        if (IoTDBConfig.isTestMode) {
+          LOG.warn(
+              "Invalidated node cache {}, status is {}",
+              dataNodeConfiguration.getLocation(),
+              invalidateSchemaStatus);
+        }
 
         if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
           LOG.error(
@@ -208,6 +229,7 @@ public class ConfigNodeProcedureEnv {
         LOG.warn(
             "Invalidate cache failed, because DataNode {} is Unknown",
             dataNodeConfiguration.getLocation().getInternalEndPoint());
+        return false;
       }
     }
     return true;
