@@ -176,21 +176,25 @@ public class ConfigNodeProcedureEnv {
             dataNodeConfiguration.getLocation(),
             nodeStatus);
       }
+      int retryNum = 10;
       if (nodeStatus == NodeStatus.Unknown) {
-        try {
-          TimeUnit.MILLISECONDS.sleep(1000);
-        } catch (InterruptedException e) {
-          LOG.error("Sleep failed in ConfigNodeProcedureEnv: ", e);
-          Thread.currentThread().interrupt();
-        }
-        // force update node status before retry
-        getLoadManager().getLoadCache().updateNodeStatistics(dataNodeId, true);
-        nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
-        if (IoTDBConfig.isTestMode) {
-          LOG.warn(
-              "Invalidating node cache {}, after slepp, status is {}",
-              dataNodeConfiguration.getLocation(),
-              nodeStatus);
+        for (int i = 0; i < retryNum; i++) {
+          try {
+            TimeUnit.MILLISECONDS.sleep(500);
+          } catch (InterruptedException e) {
+            LOG.error("Sleep failed in ConfigNodeProcedureEnv: ", e);
+            Thread.currentThread().interrupt();
+          }
+          nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
+          if (IoTDBConfig.isTestMode) {
+            LOG.warn(
+                "Invalidating node cache {}, after sleep, status is {}",
+                dataNodeConfiguration.getLocation(),
+                nodeStatus);
+          }
+          if (nodeStatus != NodeStatus.Unknown) {
+            break;
+          }
         }
       }
 

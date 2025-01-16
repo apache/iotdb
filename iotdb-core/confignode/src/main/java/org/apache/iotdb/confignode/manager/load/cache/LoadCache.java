@@ -349,16 +349,6 @@ public class LoadCache {
         .forEach(baseNodeCache -> baseNodeCache.updateCurrentStatistics(forceUpdate));
   }
 
-  /** Update the NodeStatistics of one Node. */
-  public void updateNodeStatistics(int nodeId, boolean forceUpdate) {
-    nodeCacheMap.computeIfPresent(
-        nodeId,
-        (nId, cache) -> {
-          cache.updateCurrentStatistics(forceUpdate);
-          return cache;
-        });
-  }
-
   /** Update the RegionGroupStatistics of all RegionGroups. */
   public void updateRegionGroupStatistics() {
     regionGroupCacheMap.values().forEach(RegionGroupCache::updateCurrentStatistics);
