@@ -28,50 +28,50 @@ import java.util.Objects;
 
 public class IoTDBRuntimeOutOfMemoryException extends RuntimeException {
 
-  private final long timeStamp;
+  private final long timestamp;
   private static final long VERSION = 1L;
 
   public IoTDBRuntimeOutOfMemoryException(final String message) {
     super(message);
-    this.timeStamp = System.currentTimeMillis();
+    this.timestamp = System.currentTimeMillis();
   }
 
   public IoTDBRuntimeOutOfMemoryException(final String message, final long timeStamp) {
     super(message);
-    this.timeStamp = timeStamp;
+    this.timestamp = timeStamp;
   }
 
   public IoTDBRuntimeOutOfMemoryException(final String message, final Throwable cause) {
     super(message, cause);
-    this.timeStamp = System.currentTimeMillis();
+    this.timestamp = System.currentTimeMillis();
   }
 
-  public long getTimeStamp() {
-    return timeStamp;
+  public long getTimestamp() {
+    return timestamp;
   }
 
   @Override
   public boolean equals(Object obj) {
     return obj instanceof IoTDBRuntimeOutOfMemoryException
         && Objects.equals(getMessage(), ((IoTDBRuntimeOutOfMemoryException) obj).getMessage())
-        && Objects.equals(getTimeStamp(), ((IoTDBRuntimeOutOfMemoryException) obj).getTimeStamp());
+        && Objects.equals(getTimestamp(), ((IoTDBRuntimeOutOfMemoryException) obj).getTimestamp());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getMessage(), getTimeStamp());
+    return Objects.hash(getMessage(), getTimestamp());
   }
 
   public void serialize(final ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(VERSION, byteBuffer);
     ReadWriteIOUtils.write(getMessage(), byteBuffer);
-    ReadWriteIOUtils.write(getTimeStamp(), byteBuffer);
+    ReadWriteIOUtils.write(getTimestamp(), byteBuffer);
   }
 
   public void serialize(final OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(VERSION, stream);
     ReadWriteIOUtils.write(getMessage(), stream);
-    ReadWriteIOUtils.write(getTimeStamp(), stream);
+    ReadWriteIOUtils.write(getTimestamp(), stream);
   }
 
   @Override
@@ -79,8 +79,8 @@ public class IoTDBRuntimeOutOfMemoryException extends RuntimeException {
     return "IoTDBRuntimeOutOfMemoryException{"
         + "message='"
         + getMessage()
-        + "', timeStamp="
-        + getTimeStamp()
+        + "', timestamp="
+        + getTimestamp()
         + "}";
   }
 }
