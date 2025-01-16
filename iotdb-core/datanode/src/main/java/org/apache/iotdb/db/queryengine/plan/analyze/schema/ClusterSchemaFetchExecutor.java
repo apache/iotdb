@@ -174,7 +174,10 @@ class ClusterSchemaFetchExecutor {
         && devicePath.toString().equals("root.sg1.d1")
         && LOGGER.isWarnEnabled()) {
       LOGGER.warn(
-          "Fetch schema for device {}, measurements {}", devicePath, Arrays.toString(measurements));
+          "Fetch schema for device {}, measurements {}, indices {}",
+          devicePath,
+          Arrays.toString(measurements),
+          indexOfTargetMeasurements);
     }
     PathPatternTree patternTree = new PathPatternTree();
     for (int index : indexOfTargetMeasurements) {

@@ -100,4 +100,9 @@ public class TreeDeviceNormalSchema implements IDeviceSchema {
                             + SchemaCacheEntry.estimateSize(entry.getValue())))
             .reduce(0, Integer::sum);
   }
+
+  @Override
+  public String toString() {
+    return "TreeDeviceNormalSchema{" + "measurementMap=" + measurementMap + '}';
+  }
 }

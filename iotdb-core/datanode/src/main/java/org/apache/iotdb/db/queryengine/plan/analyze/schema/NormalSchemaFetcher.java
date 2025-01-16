@@ -37,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -116,6 +117,13 @@ class NormalSchemaFetcher {
     // [Step 1] Cache 1. compute measurements and record logical views.
     List<Integer> indexOfMissingMeasurements =
         schemaCache.computeWithoutTemplate(schemaComputationWithAutoCreation);
+    if (IoTDBConfig.isTestMode) {
+      LOGGER.warn(
+          "[Before Fetch] Missing measurements of {}.[{}], {}",
+          schemaComputationWithAutoCreation.getDevicePath(),
+          Arrays.toString(schemaComputationWithAutoCreation.getMeasurements()),
+          indexOfMissingMeasurements);
+    }
     // [Step 2] Cache 2. process recorded logical views. If there is no views now, it returns empty
     // lists.
     Pair<List<Integer>, List<String>> missedIndexAndPathString =
@@ -154,6 +162,13 @@ class NormalSchemaFetcher {
     indexOfMissingMeasurements =
         remoteSchemaTree.compute(schemaComputationWithAutoCreation, indexOfMissingMeasurements);
     schemaComputationWithAutoCreation.recordRangeOfLogicalViewSchemaListNow();
+    if (IoTDBConfig.isTestMode) {
+      LOGGER.warn(
+          "[After Fetch] Missing measurements of {}.[{}], {}",
+          schemaComputationWithAutoCreation.getDevicePath(),
+          Arrays.toString(schemaComputationWithAutoCreation.getMeasurements()),
+          indexOfMissingMeasurements);
+    }
 
     // [Step 4] Fetch 2. Some fetched measurements in [Step 3] are views. Process them.
     missedIndexAndPathString =

@@ -117,4 +117,9 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
   public boolean isLogicalView() {
     return this.iMeasurementSchema.isLogicalView();
   }
+
+  @Override
+  public String toString() {
+    return "SchemaCacheEntry{" + "iMeasurementSchema=" + iMeasurementSchema + '}';
+  }
 }
