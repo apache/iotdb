@@ -26,22 +26,22 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class IoTDBRuntimeOutOfMemoryException extends RuntimeException {
+public class IoTDBMemoryException extends RuntimeException {
 
   private final long timestamp;
   private static final long VERSION = 1L;
 
-  public IoTDBRuntimeOutOfMemoryException(final String message) {
+  public IoTDBMemoryException(final String message) {
     super(message);
     this.timestamp = System.currentTimeMillis();
   }
 
-  public IoTDBRuntimeOutOfMemoryException(final String message, final long timeStamp) {
+  public IoTDBMemoryException(final String message, final long timeStamp) {
     super(message);
     this.timestamp = timeStamp;
   }
 
-  public IoTDBRuntimeOutOfMemoryException(final String message, final Throwable cause) {
+  public IoTDBMemoryException(final String message, final Throwable cause) {
     super(message, cause);
     this.timestamp = System.currentTimeMillis();
   }
@@ -52,9 +52,9 @@ public class IoTDBRuntimeOutOfMemoryException extends RuntimeException {
 
   @Override
   public boolean equals(Object obj) {
-    return obj instanceof IoTDBRuntimeOutOfMemoryException
-        && Objects.equals(getMessage(), ((IoTDBRuntimeOutOfMemoryException) obj).getMessage())
-        && Objects.equals(getTimestamp(), ((IoTDBRuntimeOutOfMemoryException) obj).getTimestamp());
+    return obj instanceof IoTDBMemoryException
+        && Objects.equals(getMessage(), ((IoTDBMemoryException) obj).getMessage())
+        && Objects.equals(getTimestamp(), ((IoTDBMemoryException) obj).getTimestamp());
   }
 
   @Override
@@ -76,7 +76,7 @@ public class IoTDBRuntimeOutOfMemoryException extends RuntimeException {
 
   @Override
   public String toString() {
-    return "IoTDBRuntimeOutOfMemoryException{"
+    return "IoTDBMemoryException{"
         + "message='"
         + getMessage()
         + "', timestamp="

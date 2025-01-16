@@ -70,7 +70,7 @@ public class IoTDBMemoryManager {
       }
     }
 
-    throw new IoTDBRuntimeOutOfMemoryException(
+    throw new IoTDBMemoryException(
         String.format(
             "forceAllocate: failed to allocate memory after %d retries, "
                 + "total memory size %d bytes, used memory size %d bytes, "
