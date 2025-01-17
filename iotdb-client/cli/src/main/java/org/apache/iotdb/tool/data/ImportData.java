@@ -163,7 +163,6 @@ public class ImportData extends AbstractDataTool {
         if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
           try {
             commandLine = parser.parse(tsFileOptions, args);
-            //            ImportTsFile.importData(commandLine);
           } catch (ParseException e) {
             ioTPrinter.println("Parse error: " + e.getMessage());
             printHelpOptions(

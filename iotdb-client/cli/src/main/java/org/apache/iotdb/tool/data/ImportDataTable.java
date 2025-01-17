@@ -47,7 +47,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -134,14 +133,6 @@ public class ImportDataTable extends AbstractImportData {
         try {
           sessionDataSet.close();
         } catch (Exception e) {
-          ;
-        }
-      }
-      if (ObjectUtils.isNotEmpty(session)) {
-        try {
-          session.close();
-        } catch (IoTDBConnectionException e) {
-          ;
         }
       }
     }
@@ -182,15 +173,7 @@ public class ImportDataTable extends AbstractImportData {
           session = sessionPool.getSession();
           session.executeNonQueryStatement(sql);
         } catch (IoTDBConnectionException | StatementExecutionException e) {
-          failedRecords.add(Arrays.asList(sql));
-        } finally {
-          if (ObjectUtils.isNotEmpty(session)) {
-            try {
-              session.close();
-            } catch (IoTDBConnectionException e) {
-              ;
-            }
-          }
+          failedRecords.add(Collections.singletonList(sql));
         }
       }
       processSuccessFile();
@@ -268,13 +251,12 @@ public class ImportDataTable extends AbstractImportData {
     queryType(headerTypeMap);
     List<List<Object>> failedRecords = new ArrayList<>();
     List<IMeasurementSchema> schemas = new ArrayList<>();
-    headerNames.stream()
-        .forEach(
-            t -> {
-              if (dataTypes.keySet().contains(t)) {
-                schemas.add(new MeasurementSchema(t, dataTypes.get(t)));
-              }
-            });
+    headerNames.forEach(
+        t -> {
+          if (dataTypes.containsKey(t)) {
+            schemas.add(new MeasurementSchema(t, dataTypes.get(t)));
+          }
+        });
     List<String> headNames = new LinkedList<>(dataTypes.keySet());
     List<TSDataType> columnTypes = new LinkedList<>(dataTypes.values());
     List<Tablet.ColumnCategory> columnCategorys = new LinkedList<>(columnCategory.values());
@@ -288,11 +270,9 @@ public class ImportDataTable extends AbstractImportData {
         if (!"".equals(value)) {
           TSDataType type;
           if (timeColumn.equalsIgnoreCase(headerName)) {
-            // time列
             tablet.addTimestamp(rowSize, rowTimeStamp);
             continue;
           } else if (!headerTypeMap.containsKey(headerName)) {
-            // 未定义列
             type = typeInfer(value);
             if (type != null) {
               headerTypeMap.put(headerName, type);
@@ -388,7 +368,7 @@ public class ImportDataTable extends AbstractImportData {
     } else {
       List<String> noMatch = new ArrayList<>();
       for (String headName : dataType.keySet()) {
-        if (dataTypes.keySet().contains(headName)
+        if (dataTypes.containsKey(headName)
             && !dataTypes.get(headName).equals(dataType.get(headName))) {
           noMatch.add(headName);
         }

@@ -32,7 +32,6 @@ import org.apache.iotdb.tool.tsfile.ImportTsFileScanTool;
 
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
@@ -43,7 +42,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -113,7 +112,7 @@ public class ImportDataTree extends AbstractImportData {
         try {
           sessionPool.executeNonQueryStatement(sql);
         } catch (IoTDBConnectionException | StatementExecutionException e) {
-          failedRecords.add(Arrays.asList(sql));
+          failedRecords.add(Collections.singletonList(sql));
         }
       }
       processSuccessFile(null);
@@ -121,23 +120,12 @@ public class ImportDataTree extends AbstractImportData {
       ioTPrinter.println("SQL file read exception because: " + e.getMessage());
     }
     if (!failedRecords.isEmpty()) {
-      FileWriter writer = null;
-      try {
-        writer = new FileWriter(failedFilePath);
+      try (FileWriter writer = new FileWriter(failedFilePath)) {
         for (List<Object> failedRecord : failedRecords) {
           writer.write(failedRecord.get(0).toString() + "\n");
         }
       } catch (IOException e) {
         ioTPrinter.println("Cannot dump fail result because: " + e.getMessage());
-      } finally {
-        if (ObjectUtils.isNotEmpty(writer)) {
-          try {
-            writer.flush();
-            writer.close();
-          } catch (IOException e) {
-            ;
-          }
-        }
       }
     }
   }
@@ -342,9 +330,7 @@ public class ImportDataTree extends AbstractImportData {
             String value = recordObj.get(headerName);
             if (!"".equals(value)) {
               TSDataType type;
-              // Get the data type directly if the CSV column have data type.
               if (!headerTypeMap.containsKey(headerNameWithoutType)) {
-                boolean hasResult = false;
                 // query the data type in iotdb
                 if (!typeQueriedDevice.contains(deviceName.get())) {
                   if (headerTypeMap.isEmpty()) {
@@ -398,7 +384,6 @@ public class ImportDataTree extends AbstractImportData {
     if (!failedRecords.isEmpty()) {
       writeFailedLinesFile(headerNames, failedFilePath, failedRecords);
     }
-    // ioTPrinter.println("Import completely!");
   }
 
   private static void writeAndEmptyDataSet(
@@ -460,15 +445,6 @@ public class ImportDataTree extends AbstractImportData {
     }
   }
 
-  /**
-   * query data type of timeseries from IoTDB
-   *
-   * @param deviceNames
-   * @param headerTypeMap
-   * @param alignedType
-   * @throws IoTDBConnectionException
-   * @throws StatementExecutionException
-   */
   private static void queryType(
       Set<String> deviceNames, HashMap<String, TSDataType> headerTypeMap, String alignedType) {
     for (String deviceName : deviceNames) {

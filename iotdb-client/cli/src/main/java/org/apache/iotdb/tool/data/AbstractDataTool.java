@@ -730,7 +730,7 @@ public abstract class AbstractDataTool {
       String alignedType) {
     for (String deviceName : deviceNames) {
       String sql = "show timeseries " + deviceName + ".*";
-      SessionDataSet sessionDataSet = null;
+      SessionDataSet sessionDataSet;
       try {
         sessionDataSet = session.executeQueryStatement(sql);
         int tsIndex = sessionDataSet.getColumnNames().indexOf(ColumnHeaderConstant.TIMESERIES);

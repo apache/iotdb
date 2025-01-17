@@ -159,8 +159,6 @@ public class ExportData extends AbstractDataTool {
         if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
           try {
             commandLine = parser.parse(tsFileOptions, args, true);
-            //            ExportTsFile exportTsFile = new ExportTsFile(commandLine);
-            //            exportTsFile.exportTsfile(CODE_OK);
           } catch (ParseException e) {
             ioTPrinter.println("Parse error: " + e.getMessage());
             printHelpOptions(

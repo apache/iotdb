@@ -116,7 +116,6 @@ public class ExportDataTable extends AbstractExportData {
       sql = sqlBuilder.toString();
     }
     String path = targetDirectory + targetFile + index;
-    System.out.println("导出条件sql:" + sql);
     try (SessionDataSet sessionDataSet = tableSession.executeQueryStatement(sql, timeout)) {
       if (Constants.SQL_SUFFIXS.equalsIgnoreCase(exportType)) {
         exportToSqlFile(sessionDataSet, path);
@@ -152,9 +151,6 @@ public class ExportDataTable extends AbstractExportData {
       final String finalFilePath = filePath + "_" + fileIndex + ".sql";
       int countLine = 0;
       try (FileWriter writer = new FileWriter(finalFilePath)) {
-        if (CollectionUtils.isEmpty(headers) || headers.size() <= 1) {
-          break;
-        }
         while (countLine++ < linesPerFile) {
           if (sessionDataSet.hasNext()) {
             RowRecord rowRecord = sessionDataSet.next();
@@ -167,7 +163,7 @@ public class ExportDataTable extends AbstractExportData {
               }
               final TSDataType type = getType(columnTypes.get(i));
               if (TSDataType.TEXT.equals(type) || TSDataType.STRING.equals(type)) {
-                sqlBuilder.append("\'" + fields.get(i).getObjectValue(type) + "\'");
+                sqlBuilder.append("\'").append(fields.get(i).getObjectValue(type)).append("\'");
               } else {
                 sqlBuilder.append(fields.get(i).getObjectValue(type));
               }
