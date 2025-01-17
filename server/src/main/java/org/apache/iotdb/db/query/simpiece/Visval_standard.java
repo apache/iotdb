@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.simpiece;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 // adapted from the open source C++ code
 // https://github.com/ofZach/Visvalingam-Whyatt/blob/master/src/testApp.cpp
@@ -159,13 +160,15 @@ public class Visval_standard {
             results.get(tri.indices[1]).z = previousEA;
             //      System.out.println(tri.indices[1] + "," + previousEA);
 
-            System.out.println(Arrays.toString(tri.indices) + "," + previousEA);
+//            System.out.println(Arrays.toString(tri.indices) + "," + previousEA);
 
             // 更新相邻三角形
             if (tri.prev != null) {
+                // 标记为失效点，同时new一个新的对象接管它的一切数据和前后连接关系，然后更新前后连接关系、更新significance、加入heap使其排好序
+
                 // 1. 处理旧的tri.prev被标记删除的事情（角色替代）
                 // triangleHeap.remove(tri.prev); // Avoid using heap.remove(x) as it is O(n) complexity!
-                tri.prev.markDeleted(); // O(1) 这个点标记为废掉，前后关联都砍断，但是不remove因为那太耗时，只有poll到它就跳过就可以
+                tri.prev.markDeleted(); // O(1) 这个点标记为废掉，前后关联都砍断，但是不remove因为那太耗时，只要heap poll到它就跳过就可以
 
                 Triangle newPre = new Triangle(tri.prev); // deep copy and inherit connection
 //                tri.prev = newPre; // replace TODO can omit
@@ -183,6 +186,8 @@ public class Visval_standard {
             }
 
             if (tri.next != null) {
+                // 标记为失效点，同时new一个新的对象接管它的一切数据和前后连接关系，然后更新前后连接关系、更新significance、加入heap使其排好序
+
                 // 1. 处理旧的tri.next被标记删除的事情（角色替代）
                 // triangleHeap.remove(tri.next); // Avoid using heap.remove(x) as it is O(n) complexity
                 tri.next.markDeleted(); // O(1) 这个点标记为废掉，前后关联都砍断，但是不remove因为那太耗时，只有poll到它就跳过就可以
@@ -211,9 +216,9 @@ public class Visval_standard {
         Polyline polyline = new Polyline();
         List<Polyline> polylineList = new ArrayList<>();
         Random rand = new Random(1);
-        int n = 100000; //1000_000;
+        int n = 1000_000;
 
-        int p = 100;
+        int p = 1000;
         for (int i = 0; i < n; i += p) {
             Polyline polylineBatch = new Polyline();
             for (int j = i; j < Math.min(i + p, n); j++) {
@@ -226,19 +231,19 @@ public class Visval_standard {
             polylineList.add(polylineBatch);
         }
 
-        try (FileWriter writer = new FileWriter("raw.csv")) {
-            // 写入CSV头部
-            writer.append("x,y,z\n");
-
-            // 写入每个点的数据
-            for (int i = 0; i < polyline.size(); i++) {
-                vPoint point = polyline.get(i);
-                writer.append(point.x + "," + point.y + "," + point.z + "\n");
-            }
-            System.out.println("Data has been written");
-        } catch (IOException e) {
-            System.out.println("Error writing to CSV file: " + e.getMessage());
-        }
+//        try (FileWriter writer = new FileWriter("raw.csv")) {
+//            // 写入CSV头部
+//            writer.append("x,y,z\n");
+//
+//            // 写入每个点的数据
+//            for (int i = 0; i < polyline.size(); i++) {
+//                vPoint point = polyline.get(i);
+//                writer.append(point.x + "," + point.y + "," + point.z + "\n");
+//            }
+//            System.out.println("Data has been written");
+//        } catch (IOException e) {
+//            System.out.println("Error writing to CSV file: " + e.getMessage());
+//        }
 
         System.out.println("---------------------------------");
         List<vPoint> results = new ArrayList<>();
@@ -258,47 +263,47 @@ public class Visval_standard {
             }
         }
 
-        try (FileWriter writer = new FileWriter("fast.csv")) {
-            // 写入CSV头部
-            writer.append("x,y,z\n");
-
-            // 写入每个点的数据
-            for (int i = 0; i < results.size(); i++) {
-                vPoint point = results.get(i);
-                writer.append(point.x + "," + point.y + "," + point.z + "\n");
-            }
-            System.out.println("Data has been written");
-        } catch (IOException e) {
-            System.out.println("Error writing to CSV file: " + e.getMessage());
-        }
-
-//        System.out.println("---------------------------------");
-//        List<List<vPoint>> resultsBatchList = new ArrayList<>();
-//        // 计算运行时间
-//        int cnt = 0;
-//        startTime = System.currentTimeMillis();
-//        for (Polyline polylineBatch : polylineList) {
-//            List<vPoint> resultsBatch = new ArrayList<>();
-//            buildEffectiveArea(polylineBatch, resultsBatch);
-//            cnt += resultsBatch.size();
-//            resultsBatchList.add(resultsBatch);
-//        }
-//        // 输出结果
-//        endTime = System.currentTimeMillis();
-//        System.out.println("Time taken to reduce points: " + (endTime - startTime) + "ms");
-//        System.out.println(cnt);
+//        try (FileWriter writer = new FileWriter("fast.csv")) {
+//            // 写入CSV头部
+//            writer.append("x,y,z\n");
 //
-//        System.out.println("---------------------------------");
-//        // 使用 Stream API 合并所有列表
-//        List<vPoint> mergedList =
-//                resultsBatchList.stream().flatMap(List::stream).collect(Collectors.toList());
-//        int sameCnt = 0;
-//        for (int i = 0; i < mergedList.size(); i++) {
-//            if (mergedList.get(i).z == results.get(i).z) {
-//                sameCnt += 1;
+//            // 写入每个点的数据
+//            for (int i = 0; i < results.size(); i++) {
+//                vPoint point = results.get(i);
+//                writer.append(point.x + "," + point.y + "," + point.z + "\n");
 //            }
+//            System.out.println("Data has been written");
+//        } catch (IOException e) {
+//            System.out.println("Error writing to CSV file: " + e.getMessage());
 //        }
-//        System.out.println("sameCnt=" + sameCnt + ", percent=" + sameCnt * 1.0 / mergedList.size());
+
+        System.out.println("---------------------------------");
+        List<List<vPoint>> resultsBatchList = new ArrayList<>();
+        // 计算运行时间
+        int cnt = 0;
+        startTime = System.currentTimeMillis();
+        for (Polyline polylineBatch : polylineList) {
+            List<vPoint> resultsBatch = new ArrayList<>();
+            buildEffectiveArea(polylineBatch, resultsBatch);
+            cnt += resultsBatch.size();
+            resultsBatchList.add(resultsBatch);
+        }
+        // 输出结果
+        endTime = System.currentTimeMillis();
+        System.out.println("Time taken to reduce points: " + (endTime - startTime) + "ms");
+        System.out.println(cnt);
+
+        System.out.println("---------------------------------");
+        // 使用 Stream API 合并所有列表
+        List<vPoint> mergedList =
+                resultsBatchList.stream().flatMap(List::stream).collect(Collectors.toList());
+        int sameCnt = 0;
+        for (int i = 0; i < mergedList.size(); i++) {
+            if (mergedList.get(i).z == results.get(i).z) {
+                sameCnt += 1;
+            }
+        }
+        System.out.println("sameCnt=" + sameCnt + ", percent=" + sameCnt * 1.0 / mergedList.size());
     }
 
     //    float[] vlist = new float[]{11346, 33839, 35469, 23108, 22812, 5519, 5526, 4865, 5842,
