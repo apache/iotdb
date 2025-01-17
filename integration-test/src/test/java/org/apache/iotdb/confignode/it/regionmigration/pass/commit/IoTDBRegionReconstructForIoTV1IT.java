@@ -134,8 +134,8 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
       // now, the query should work fine
       SessionDataSet resultSet = session.executeQueryStatement("select * from root.**");
       RowRecord rowRecord = resultSet.next();
-      Assert.assertEquals("2.0", rowRecord.getField(0).getStringValue());
-      Assert.assertEquals("1.0", rowRecord.getField(1).getStringValue());
+      Assert.assertEquals("2.0", rowRecord.getFields().get(0).getStringValue());
+      Assert.assertEquals("1.0", rowRecord.getFields().get(1).getStringValue());
     }
   }
 }

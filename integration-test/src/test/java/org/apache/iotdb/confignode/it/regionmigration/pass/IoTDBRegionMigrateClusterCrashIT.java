@@ -31,8 +31,7 @@ import org.junit.runner.RunWith;
 
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateClusterCrashIT
-    extends IoTDBRegionOperationReliabilityITFramework {
+public class IoTDBRegionMigrateClusterCrashIT extends IoTDBRegionOperationReliabilityITFramework {
 
   @Test
   public void clusterCrash1() throws Exception {

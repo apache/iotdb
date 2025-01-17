@@ -19,18 +19,16 @@
 
 package org.apache.iotdb.confignode.it.regionmigration.pass.datanodecrash;
 
-import org.apache.iotdb.commons.utils.KillPoint.KillNode;
-import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
-import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusDeleteLocalPeerKillPoints;
-import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateDataNodeCrashITFramework;
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.DailyIT;
 
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+
+import static org.junit.platform.commons.function.Try.success;
 
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)

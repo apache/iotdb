@@ -31,8 +31,7 @@ import org.junit.runner.RunWith;
 
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateDataNodeCrashIT
-    extends IoTDBRegionOperationReliabilityITFramework {
+public class IoTDBRegionMigrateDataNodeCrashIT extends IoTDBRegionOperationReliabilityITFramework {
   // region Coordinator DataNode crash tests
 
   private final int dataReplicateFactor = 2;

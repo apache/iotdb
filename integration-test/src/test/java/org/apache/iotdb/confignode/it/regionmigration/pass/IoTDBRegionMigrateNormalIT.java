@@ -30,8 +30,7 @@ import org.junit.runner.RunWith;
 
 @Category({ClusterIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateNormalIT
-    extends IoTDBRegionOperationReliabilityITFramework {
+public class IoTDBRegionMigrateNormalIT extends IoTDBRegionOperationReliabilityITFramework {
   @Test
   public void normal1C2DTest() throws Exception {
     successTest(1, 1, 1, 2, noKillPoints(), noKillPoints(), KillNode.ALL_NODES);
