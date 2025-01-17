@@ -318,7 +318,7 @@ public class ImportDataTable extends AbstractImportData {
         failedRecords.add(recordObj.stream().collect(Collectors.toList()));
       }
     }
-    if (tablet.values.length > 0) {
+    if (tablet.getValues().length > 0) {
       writeAndEmptyDataSet(tablet, 3);
     }
 
