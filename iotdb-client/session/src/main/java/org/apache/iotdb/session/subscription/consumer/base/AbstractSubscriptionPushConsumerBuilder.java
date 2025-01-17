@@ -17,13 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.consumer;
+package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.session.subscription.consumer.AckStrategy;
+import org.apache.iotdb.session.subscription.consumer.ConsumeListener;
+import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 
 import java.util.List;
 
-class AbstractSubscriptionPushConsumerBuilder extends AbstractSubscriptionConsumerBuilder {
+public class AbstractSubscriptionPushConsumerBuilder extends AbstractSubscriptionConsumerBuilder {
 
   protected AckStrategy ackStrategy = AckStrategy.defaultValue();
   protected ConsumeListener consumeListener = message -> ConsumeResult.SUCCESS;

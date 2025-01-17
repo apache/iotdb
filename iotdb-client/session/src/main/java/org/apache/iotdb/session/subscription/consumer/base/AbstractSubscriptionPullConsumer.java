@@ -17,10 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.consumer;
+package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.session.subscription.consumer.AsyncCommitCallback;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.util.CollectionUtils;
 import org.apache.iotdb.session.subscription.util.IdentifierUtils;
@@ -55,7 +56,7 @@ import java.util.stream.Collectors;
  * multithreaded environment. Instead, it is advised to increase the number of consumers to improve
  * data retrieval parallelism.
  */
-abstract class AbstractSubscriptionPullConsumer extends AbstractSubscriptionConsumer {
+public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscriptionConsumer {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AbstractSubscriptionPullConsumer.class);

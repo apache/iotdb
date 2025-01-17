@@ -17,11 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.consumer;
+package org.apache.iotdb.session.subscription.consumer.table;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.session.AbstractSessionBuilder;
 import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
+import org.apache.iotdb.session.subscription.consumer.base.AbstractSubscriptionProvider;
 
 final class SubscriptionTableProvider extends AbstractSubscriptionProvider {
 
@@ -36,7 +37,7 @@ final class SubscriptionTableProvider extends AbstractSubscriptionProvider {
   }
 
   @Override
-  AbstractSessionBuilder constructSubscriptionSessionBuilder(
+  protected AbstractSessionBuilder constructSubscriptionSessionBuilder(
       String host, int port, String username, String password, int thriftMaxFrameSize) {
     return new SubscriptionTableSessionBuilder()
         .host(host)

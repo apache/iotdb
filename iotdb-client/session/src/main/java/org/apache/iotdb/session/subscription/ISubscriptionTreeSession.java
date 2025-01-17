@@ -32,7 +32,7 @@ import java.util.Set;
  * This interface defines methods for managing topics and subscriptions of tree model in an IoTDB
  * environment.
  */
-public interface ISubscriptionSession extends AutoCloseable {
+public interface ISubscriptionTreeSession extends AutoCloseable {
 
   /**
    * Opens this session and establishes a connection to IoTDB.

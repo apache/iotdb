@@ -17,118 +17,123 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.consumer;
+package org.apache.iotdb.session.subscription.consumer.tree;
+
+import org.apache.iotdb.session.subscription.consumer.AckStrategy;
+import org.apache.iotdb.session.subscription.consumer.ConsumeListener;
+import org.apache.iotdb.session.subscription.consumer.ISubscriptionTreePushConsumer;
+import org.apache.iotdb.session.subscription.consumer.base.AbstractSubscriptionPushConsumerBuilder;
 
 import java.util.List;
 
-public class SubscriptionTablePushConsumerBuilder extends AbstractSubscriptionPushConsumerBuilder {
+public class SubscriptionTreePushConsumerBuilder extends AbstractSubscriptionPushConsumerBuilder {
 
   @Override
-  public SubscriptionTablePushConsumerBuilder host(final String host) {
+  public SubscriptionTreePushConsumerBuilder host(final String host) {
     super.host(host);
     return this;
   }
 
   @Override
-  public SubscriptionTablePushConsumerBuilder port(final Integer port) {
+  public SubscriptionTreePushConsumerBuilder port(final Integer port) {
     super.port(port);
     return this;
   }
 
   @Override
-  public SubscriptionTablePushConsumerBuilder nodeUrls(final List<String> nodeUrls) {
+  public SubscriptionTreePushConsumerBuilder nodeUrls(final List<String> nodeUrls) {
     super.nodeUrls(nodeUrls);
     return this;
   }
 
   @Override
-  public SubscriptionTablePushConsumerBuilder username(final String username) {
+  public SubscriptionTreePushConsumerBuilder username(final String username) {
     super.username(username);
     return this;
   }
 
   @Override
-  public SubscriptionTablePushConsumerBuilder password(final String password) {
+  public SubscriptionTreePushConsumerBuilder password(final String password) {
     super.password(password);
     return this;
   }
 
   @Override
-  public SubscriptionTablePushConsumerBuilder consumerId(final String consumerId) {
+  public SubscriptionTreePushConsumerBuilder consumerId(final String consumerId) {
     super.consumerId(consumerId);
     return this;
   }
 
   @Override
-  public SubscriptionTablePushConsumerBuilder consumerGroupId(final String consumerGroupId) {
+  public SubscriptionTreePushConsumerBuilder consumerGroupId(final String consumerGroupId) {
     super.consumerGroupId(consumerGroupId);
     return this;
   }
 
   @Override
-  public SubscriptionTablePushConsumerBuilder heartbeatIntervalMs(final long heartbeatIntervalMs) {
+  public SubscriptionTreePushConsumerBuilder heartbeatIntervalMs(final long heartbeatIntervalMs) {
     super.heartbeatIntervalMs(heartbeatIntervalMs);
     return this;
   }
 
   @Override
-  public SubscriptionTablePushConsumerBuilder endpointsSyncIntervalMs(
+  public SubscriptionTreePushConsumerBuilder endpointsSyncIntervalMs(
       final long endpointsSyncIntervalMs) {
     super.endpointsSyncIntervalMs(endpointsSyncIntervalMs);
     return this;
   }
 
   @Override
-  public SubscriptionTablePushConsumerBuilder fileSaveDir(final String fileSaveDir) {
+  public SubscriptionTreePushConsumerBuilder fileSaveDir(final String fileSaveDir) {
     super.fileSaveDir(fileSaveDir);
     return this;
   }
 
   @Override
-  public SubscriptionTablePushConsumerBuilder fileSaveFsync(final boolean fileSaveFsync) {
+  public SubscriptionTreePushConsumerBuilder fileSaveFsync(final boolean fileSaveFsync) {
     super.fileSaveFsync(fileSaveFsync);
     return this;
   }
 
   @Override
-  public SubscriptionTablePushConsumerBuilder thriftMaxFrameSize(final int thriftMaxFrameSize) {
+  public SubscriptionTreePushConsumerBuilder thriftMaxFrameSize(final int thriftMaxFrameSize) {
     super.thriftMaxFrameSize(thriftMaxFrameSize);
     return this;
   }
 
   @Override
-  public SubscriptionTablePushConsumerBuilder maxPollParallelism(final int maxPollParallelism) {
+  public SubscriptionTreePushConsumerBuilder maxPollParallelism(final int maxPollParallelism) {
     super.maxPollParallelism(maxPollParallelism);
     return this;
   }
 
   @Override
-  public SubscriptionTablePushConsumerBuilder ackStrategy(final AckStrategy ackStrategy) {
+  public SubscriptionTreePushConsumerBuilder ackStrategy(final AckStrategy ackStrategy) {
     super.ackStrategy(ackStrategy);
     return this;
   }
 
   @Override
-  public SubscriptionTablePushConsumerBuilder consumeListener(
+  public SubscriptionTreePushConsumerBuilder consumeListener(
       final ConsumeListener consumeListener) {
     super.consumeListener(consumeListener);
     return this;
   }
 
   @Override
-  public SubscriptionTablePushConsumerBuilder autoPollIntervalMs(final long autoPollIntervalMs) {
+  public SubscriptionTreePushConsumerBuilder autoPollIntervalMs(final long autoPollIntervalMs) {
     super.autoPollIntervalMs(autoPollIntervalMs);
     return this;
   }
 
   @Override
-  public SubscriptionTablePushConsumerBuilder autoPollTimeoutMs(final long autoPollTimeoutMs) {
+  public SubscriptionTreePushConsumerBuilder autoPollTimeoutMs(final long autoPollTimeoutMs) {
     super.autoPollTimeoutMs(autoPollTimeoutMs);
     return this;
   }
 
   @Override
-  public SubscriptionTablePushConsumer buildTablePushConsumer() {
-    return new SubscriptionTablePushConsumer(this);
+  public ISubscriptionTreePushConsumer buildPushConsumer() {
+    return new SubscriptionTreePushConsumer(this);
   }
 }

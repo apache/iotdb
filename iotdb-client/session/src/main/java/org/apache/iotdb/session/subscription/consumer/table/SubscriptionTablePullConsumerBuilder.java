@@ -17,7 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.consumer;
+package org.apache.iotdb.session.subscription.consumer.table;
+
+import org.apache.iotdb.session.subscription.consumer.ISubscriptionTablePullConsumer;
+import org.apache.iotdb.session.subscription.consumer.base.AbstractSubscriptionPullConsumerBuilder;
 
 import java.util.List;
 

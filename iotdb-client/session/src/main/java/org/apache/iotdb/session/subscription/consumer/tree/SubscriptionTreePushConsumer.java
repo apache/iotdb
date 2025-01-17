@@ -17,12 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.consumer;
+package org.apache.iotdb.session.subscription.consumer.tree;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.session.subscription.consumer.AckStrategy;
+import org.apache.iotdb.session.subscription.consumer.ConsumeListener;
+import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
+import org.apache.iotdb.session.subscription.consumer.ISubscriptionTreePushConsumer;
+import org.apache.iotdb.session.subscription.consumer.base.AbstractSubscriptionProvider;
+import org.apache.iotdb.session.subscription.consumer.base.AbstractSubscriptionPushConsumer;
 import org.apache.iotdb.session.subscription.util.IdentifierUtils;
 
 import org.apache.thrift.annotation.Nullable;
@@ -32,33 +38,33 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 
-public class SubscriptionPushConsumer extends AbstractSubscriptionPushConsumer
-    implements ISubscriptionPushConsumer {
+public class SubscriptionTreePushConsumer extends AbstractSubscriptionPushConsumer
+    implements ISubscriptionTreePushConsumer {
 
   /////////////////////////////// provider ///////////////////////////////
 
   @Override
-  AbstractSubscriptionProvider constructSubscriptionProvider(
+  protected AbstractSubscriptionProvider constructSubscriptionProvider(
       TEndPoint endPoint,
       String username,
       String password,
       String consumerId,
       String consumerGroupId,
       int thriftMaxFrameSize) {
-    return new SubscriptionProvider(
+    return new SubscriptionTreeProvider(
         endPoint, username, password, consumerId, consumerGroupId, thriftMaxFrameSize);
   }
 
   /////////////////////////////// ctor ///////////////////////////////
 
-  public SubscriptionPushConsumer(final SubscriptionPushConsumerBuilder builder) {
+  public SubscriptionTreePushConsumer(final SubscriptionTreePushConsumerBuilder builder) {
     super(builder);
   }
 
   @Deprecated // keep for forward compatibility
-  private SubscriptionPushConsumer(final Builder builder) {
+  private SubscriptionTreePushConsumer(final Builder builder) {
     super(
-        new SubscriptionPushConsumerBuilder()
+        new SubscriptionTreePushConsumerBuilder()
             .host(builder.host)
             .port(builder.port)
             .nodeUrls(builder.nodeUrls)
@@ -78,7 +84,7 @@ public class SubscriptionPushConsumer extends AbstractSubscriptionPushConsumer
             .autoPollTimeoutMs(builder.autoPollTimeoutMs));
   }
 
-  public SubscriptionPushConsumer(final Properties config) {
+  public SubscriptionTreePushConsumer(final Properties config) {
     this(
         config,
         (AckStrategy)
@@ -97,7 +103,7 @@ public class SubscriptionPushConsumer extends AbstractSubscriptionPushConsumer
                 ConsumerConstant.AUTO_POLL_TIMEOUT_MS_DEFAULT_VALUE));
   }
 
-  private SubscriptionPushConsumer(
+  private SubscriptionTreePushConsumer(
       final Properties config,
       final AckStrategy ackStrategy,
       final ConsumeListener consumeListener,
@@ -277,8 +283,8 @@ public class SubscriptionPushConsumer extends AbstractSubscriptionPushConsumer
       return this;
     }
 
-    public SubscriptionPushConsumer buildPushConsumer() {
-      return new SubscriptionPushConsumer(this);
+    public SubscriptionTreePushConsumer buildPushConsumer() {
+      return new SubscriptionTreePushConsumer(this);
     }
   }
 }

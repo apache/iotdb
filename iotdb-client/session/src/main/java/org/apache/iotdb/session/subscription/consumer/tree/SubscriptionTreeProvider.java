@@ -17,15 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.consumer;
+package org.apache.iotdb.session.subscription.consumer.tree;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.session.AbstractSessionBuilder;
-import org.apache.iotdb.session.subscription.SubscriptionSessionBuilder;
+import org.apache.iotdb.session.subscription.SubscriptionTreeSessionBuilder;
+import org.apache.iotdb.session.subscription.consumer.base.AbstractSubscriptionProvider;
 
-final class SubscriptionProvider extends AbstractSubscriptionProvider {
+final class SubscriptionTreeProvider extends AbstractSubscriptionProvider {
 
-  SubscriptionProvider(
+  SubscriptionTreeProvider(
       TEndPoint endPoint,
       String username,
       String password,
@@ -36,9 +37,9 @@ final class SubscriptionProvider extends AbstractSubscriptionProvider {
   }
 
   @Override
-  AbstractSessionBuilder constructSubscriptionSessionBuilder(
+  protected AbstractSessionBuilder constructSubscriptionSessionBuilder(
       String host, int port, String username, String password, int thriftMaxFrameSize) {
-    return new SubscriptionSessionBuilder()
+    return new SubscriptionTreeSessionBuilder()
         .host(host)
         .port(port)
         .username(username)

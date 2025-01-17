@@ -17,13 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.consumer;
+package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 
 import java.util.List;
 
-class AbstractSubscriptionPullConsumerBuilder extends AbstractSubscriptionConsumerBuilder {
+public class AbstractSubscriptionPullConsumerBuilder extends AbstractSubscriptionConsumerBuilder {
 
   protected boolean autoCommit = ConsumerConstant.AUTO_COMMIT_DEFAULT_VALUE;
   protected long autoCommitIntervalMs = ConsumerConstant.AUTO_COMMIT_INTERVAL_MS_DEFAULT_VALUE;

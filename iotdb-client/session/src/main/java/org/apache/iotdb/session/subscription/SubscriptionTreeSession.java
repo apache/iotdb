@@ -29,20 +29,21 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 
-public class SubscriptionSession extends AbstractSubscriptionSession
-    implements ISubscriptionSession {
+public class SubscriptionTreeSession extends AbstractSubscriptionSession
+    implements ISubscriptionTreeSession {
 
-  public SubscriptionSession(final AbstractSessionBuilder builder) {
+  public SubscriptionTreeSession(final AbstractSessionBuilder builder) {
     super(new SubscriptionSessionWrapper(builder));
   }
 
   @Deprecated // keep for forward compatibility
-  public SubscriptionSession(final String host, final int port) {
-    super(new SubscriptionSessionWrapper(new SubscriptionSessionBuilder().host(host).port(port)));
+  public SubscriptionTreeSession(final String host, final int port) {
+    super(
+        new SubscriptionSessionWrapper(new SubscriptionTreeSessionBuilder().host(host).port(port)));
   }
 
   @Deprecated // keep for forward compatibility
-  public SubscriptionSession(
+  public SubscriptionTreeSession(
       final String host,
       final int port,
       final String username,
@@ -50,7 +51,7 @@ public class SubscriptionSession extends AbstractSubscriptionSession
       final int thriftMaxFrameSize) {
     super(
         new SubscriptionSessionWrapper(
-            new SubscriptionSessionBuilder()
+            new SubscriptionTreeSessionBuilder()
                 .host(host)
                 .port(port)
                 .username(username)
@@ -172,8 +173,8 @@ public class SubscriptionSession extends AbstractSubscriptionSession
       return this;
     }
 
-    public ISubscriptionSession build() {
-      return new SubscriptionSession(this);
+    public ISubscriptionTreeSession build() {
+      return new SubscriptionTreeSession(this);
     }
   }
 }

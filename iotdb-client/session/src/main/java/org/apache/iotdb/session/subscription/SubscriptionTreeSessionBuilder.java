@@ -21,9 +21,9 @@ package org.apache.iotdb.session.subscription;
 
 import org.apache.iotdb.session.AbstractSessionBuilder;
 
-public class SubscriptionSessionBuilder extends AbstractSessionBuilder {
+public class SubscriptionTreeSessionBuilder extends AbstractSessionBuilder {
 
-  public SubscriptionSessionBuilder() {
+  public SubscriptionTreeSessionBuilder() {
     // use tree model
     super.sqlDialect = "tree";
     // disable auto fetch
@@ -32,32 +32,32 @@ public class SubscriptionSessionBuilder extends AbstractSessionBuilder {
     super.enableRedirection = false;
   }
 
-  public SubscriptionSessionBuilder host(final String host) {
+  public SubscriptionTreeSessionBuilder host(final String host) {
     super.host = host;
     return this;
   }
 
-  public SubscriptionSessionBuilder port(final int port) {
+  public SubscriptionTreeSessionBuilder port(final int port) {
     super.rpcPort = port;
     return this;
   }
 
-  public SubscriptionSessionBuilder username(final String username) {
+  public SubscriptionTreeSessionBuilder username(final String username) {
     super.username = username;
     return this;
   }
 
-  public SubscriptionSessionBuilder password(final String password) {
+  public SubscriptionTreeSessionBuilder password(final String password) {
     super.pw = password;
     return this;
   }
 
-  public SubscriptionSessionBuilder thriftMaxFrameSize(final int thriftMaxFrameSize) {
+  public SubscriptionTreeSessionBuilder thriftMaxFrameSize(final int thriftMaxFrameSize) {
     super.thriftMaxFrameSize = thriftMaxFrameSize;
     return this;
   }
 
-  public ISubscriptionSession build() {
-    return new SubscriptionSession(this);
+  public ISubscriptionTreeSession build() {
+    return new SubscriptionTreeSession(this);
   }
 }

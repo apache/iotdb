@@ -17,24 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.consumer;
+package org.apache.iotdb.session.subscription.consumer.table;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
-import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.consumer.ISubscriptionTablePushConsumer;
+import org.apache.iotdb.session.subscription.consumer.base.AbstractSubscriptionProvider;
+import org.apache.iotdb.session.subscription.consumer.base.AbstractSubscriptionPushConsumer;
+import org.apache.iotdb.session.subscription.consumer.base.AbstractSubscriptionPushConsumerBuilder;
 
-import java.time.Duration;
-import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 
-public class SubscriptionTablePullConsumer extends AbstractSubscriptionPullConsumer
-    implements ISubscriptionTablePullConsumer {
+public class SubscriptionTablePushConsumer extends AbstractSubscriptionPushConsumer
+    implements ISubscriptionTablePushConsumer {
 
   /////////////////////////////// provider ///////////////////////////////
 
   @Override
-  AbstractSubscriptionProvider constructSubscriptionProvider(
+  protected AbstractSubscriptionProvider constructSubscriptionProvider(
       TEndPoint endPoint,
       String username,
       String password,
@@ -47,7 +47,7 @@ public class SubscriptionTablePullConsumer extends AbstractSubscriptionPullConsu
 
   /////////////////////////////// ctor ///////////////////////////////
 
-  protected SubscriptionTablePullConsumer(final SubscriptionTablePullConsumerBuilder builder) {
+  protected SubscriptionTablePushConsumer(AbstractSubscriptionPushConsumerBuilder builder) {
     super(builder);
   }
 
@@ -61,27 +61,6 @@ public class SubscriptionTablePullConsumer extends AbstractSubscriptionPullConsu
   @Override
   public void close() throws SubscriptionException {
     super.close();
-  }
-
-  @Override
-  public List<SubscriptionMessage> poll(final Duration timeout) throws SubscriptionException {
-    return super.poll(timeout);
-  }
-
-  @Override
-  public List<SubscriptionMessage> poll(final long timeoutMs) throws SubscriptionException {
-    return super.poll(timeoutMs);
-  }
-
-  @Override
-  public List<SubscriptionMessage> poll(final Set<String> topicNames, final Duration timeout)
-      throws SubscriptionException {
-    return super.poll(topicNames, timeout);
-  }
-
-  @Override
-  public List<SubscriptionMessage> poll(final Set<String> topicNames, final long timeoutMs) {
-    return super.poll(topicNames, timeoutMs);
   }
 
   @Override
@@ -112,37 +91,5 @@ public class SubscriptionTablePullConsumer extends AbstractSubscriptionPullConsu
   @Override
   public void unsubscribe(Set<String> topicNames) throws SubscriptionException {
     super.unsubscribe(topicNames);
-  }
-
-  @Override
-  public void commitSync(final SubscriptionMessage message) throws SubscriptionException {
-    super.commitSync(message);
-  }
-
-  @Override
-  public void commitSync(final Iterable<SubscriptionMessage> messages)
-      throws SubscriptionException {
-    super.commitSync(messages);
-  }
-
-  @Override
-  public CompletableFuture<Void> commitAsync(final SubscriptionMessage message) {
-    return super.commitAsync(message);
-  }
-
-  @Override
-  public CompletableFuture<Void> commitAsync(final Iterable<SubscriptionMessage> messages) {
-    return super.commitAsync(messages);
-  }
-
-  @Override
-  public void commitAsync(final SubscriptionMessage message, final AsyncCommitCallback callback) {
-    super.commitAsync(message, callback);
-  }
-
-  @Override
-  public void commitAsync(
-      final Iterable<SubscriptionMessage> messages, final AsyncCommitCallback callback) {
-    super.commitAsync(messages, callback);
   }
 }

@@ -27,7 +27,7 @@ import java.util.Set;
  * A subscription-based push consumer interface for receiving messages from specified topics of tree
  * model.
  */
-public interface ISubscriptionPushConsumer extends AutoCloseable {
+public interface ISubscriptionTreePushConsumer extends AutoCloseable {
 
   /**
    * Opens this consumer to begin receiving messages.

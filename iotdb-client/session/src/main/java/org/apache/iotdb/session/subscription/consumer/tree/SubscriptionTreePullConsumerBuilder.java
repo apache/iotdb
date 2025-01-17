@@ -17,105 +17,108 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.consumer;
+package org.apache.iotdb.session.subscription.consumer.tree;
+
+import org.apache.iotdb.session.subscription.consumer.ISubscriptionTreePullConsumer;
+import org.apache.iotdb.session.subscription.consumer.base.AbstractSubscriptionPullConsumerBuilder;
 
 import java.util.List;
 
-public class SubscriptionPullConsumerBuilder extends AbstractSubscriptionPullConsumerBuilder {
+public class SubscriptionTreePullConsumerBuilder extends AbstractSubscriptionPullConsumerBuilder {
 
   @Override
-  public SubscriptionPullConsumerBuilder host(final String host) {
+  public SubscriptionTreePullConsumerBuilder host(final String host) {
     super.host(host);
     return this;
   }
 
   @Override
-  public SubscriptionPullConsumerBuilder port(final Integer port) {
+  public SubscriptionTreePullConsumerBuilder port(final Integer port) {
     super.port(port);
     return this;
   }
 
   @Override
-  public SubscriptionPullConsumerBuilder nodeUrls(final List<String> nodeUrls) {
+  public SubscriptionTreePullConsumerBuilder nodeUrls(final List<String> nodeUrls) {
     super.nodeUrls(nodeUrls);
     return this;
   }
 
   @Override
-  public SubscriptionPullConsumerBuilder username(final String username) {
+  public SubscriptionTreePullConsumerBuilder username(final String username) {
     super.username(username);
     return this;
   }
 
   @Override
-  public SubscriptionPullConsumerBuilder password(final String password) {
+  public SubscriptionTreePullConsumerBuilder password(final String password) {
     super.password(password);
     return this;
   }
 
   @Override
-  public SubscriptionPullConsumerBuilder consumerId(final String consumerId) {
+  public SubscriptionTreePullConsumerBuilder consumerId(final String consumerId) {
     super.consumerId(consumerId);
     return this;
   }
 
   @Override
-  public SubscriptionPullConsumerBuilder consumerGroupId(final String consumerGroupId) {
+  public SubscriptionTreePullConsumerBuilder consumerGroupId(final String consumerGroupId) {
     super.consumerGroupId(consumerGroupId);
     return this;
   }
 
   @Override
-  public SubscriptionPullConsumerBuilder heartbeatIntervalMs(final long heartbeatIntervalMs) {
+  public SubscriptionTreePullConsumerBuilder heartbeatIntervalMs(final long heartbeatIntervalMs) {
     super.heartbeatIntervalMs(heartbeatIntervalMs);
     return this;
   }
 
   @Override
-  public SubscriptionPullConsumerBuilder endpointsSyncIntervalMs(
+  public SubscriptionTreePullConsumerBuilder endpointsSyncIntervalMs(
       final long endpointsSyncIntervalMs) {
     super.endpointsSyncIntervalMs(endpointsSyncIntervalMs);
     return this;
   }
 
   @Override
-  public SubscriptionPullConsumerBuilder fileSaveDir(final String fileSaveDir) {
+  public SubscriptionTreePullConsumerBuilder fileSaveDir(final String fileSaveDir) {
     super.fileSaveDir(fileSaveDir);
     return this;
   }
 
   @Override
-  public SubscriptionPullConsumerBuilder fileSaveFsync(final boolean fileSaveFsync) {
+  public SubscriptionTreePullConsumerBuilder fileSaveFsync(final boolean fileSaveFsync) {
     super.fileSaveFsync(fileSaveFsync);
     return this;
   }
 
   @Override
-  public SubscriptionPullConsumerBuilder thriftMaxFrameSize(final int thriftMaxFrameSize) {
+  public SubscriptionTreePullConsumerBuilder thriftMaxFrameSize(final int thriftMaxFrameSize) {
     super.thriftMaxFrameSize(thriftMaxFrameSize);
     return this;
   }
 
   @Override
-  public SubscriptionPullConsumerBuilder maxPollParallelism(final int maxPollParallelism) {
+  public SubscriptionTreePullConsumerBuilder maxPollParallelism(final int maxPollParallelism) {
     super.maxPollParallelism(maxPollParallelism);
     return this;
   }
 
   @Override
-  public SubscriptionPullConsumerBuilder autoCommit(final boolean autoCommit) {
+  public SubscriptionTreePullConsumerBuilder autoCommit(final boolean autoCommit) {
     super.autoCommit(autoCommit);
     return this;
   }
 
   @Override
-  public SubscriptionPullConsumerBuilder autoCommitIntervalMs(final long autoCommitIntervalMs) {
+  public SubscriptionTreePullConsumerBuilder autoCommitIntervalMs(final long autoCommitIntervalMs) {
     super.autoCommitIntervalMs(autoCommitIntervalMs);
     return this;
   }
 
   @Override
-  public ISubscriptionPullConsumer buildPullConsumer() {
-    return new SubscriptionPullConsumer(this);
+  public ISubscriptionTreePullConsumer buildPullConsumer() {
+    return new SubscriptionTreePullConsumer(this);
   }
 }

@@ -17,10 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.consumer;
+package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.session.subscription.consumer.AckStrategy;
+import org.apache.iotdb.session.subscription.consumer.ConsumeListener;
+import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.util.CollectionUtils;
 
@@ -45,9 +49,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * <p>User code does not need to manually commit the consumption progress.
  */
-abstract class AbstractSubscriptionPushConsumer extends AbstractSubscriptionConsumer {
+public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscriptionConsumer {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPushConsumer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionTreePushConsumer.class);
 
   private final AckStrategy ackStrategy;
   private final ConsumeListener consumeListener;

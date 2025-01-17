@@ -30,8 +30,8 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionArchVerification;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
-import org.apache.iotdb.session.subscription.SubscriptionSession;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
@@ -126,7 +126,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     final String topicName = "topic1";
     final String host = senderEnv.getIP();
     final int port = Integer.parseInt(senderEnv.getPort());
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       final Properties config = new Properties();
       config.put(TopicConstant.FORMAT_KEY, topicFormat);
@@ -143,8 +143,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     final Thread thread =
         new Thread(
             () -> {
-              try (final SubscriptionPullConsumer consumer =
-                      new SubscriptionPullConsumer.Builder()
+              try (final SubscriptionTreePullConsumer consumer =
+                      new SubscriptionTreePullConsumer.Builder()
                           .host(host)
                           .port(port)
                           .consumerId("c1")
@@ -227,7 +227,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     final String topicName = "topic2";
     final String host = senderEnv.getIP();
     final int port = Integer.parseInt(senderEnv.getPort());
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       final Properties config = new Properties();
       config.put(TopicConstant.FORMAT_KEY, topicFormat);
@@ -244,8 +244,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     final Thread thread =
         new Thread(
             () -> {
-              try (final SubscriptionPullConsumer consumer =
-                      new SubscriptionPullConsumer.Builder()
+              try (final SubscriptionTreePullConsumer consumer =
+                      new SubscriptionTreePullConsumer.Builder()
                           .host(host)
                           .port(port)
                           .consumerId("c1")
@@ -322,7 +322,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     final String topicName = "topic3";
     final String host = senderEnv.getIP();
     final int port = Integer.parseInt(senderEnv.getPort());
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       final Properties config = new Properties();
       config.put(TopicConstant.FORMAT_KEY, topicFormat);
@@ -341,8 +341,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     final Thread thread =
         new Thread(
             () -> {
-              try (final SubscriptionPullConsumer consumer =
-                      new SubscriptionPullConsumer.Builder()
+              try (final SubscriptionTreePullConsumer consumer =
+                      new SubscriptionTreePullConsumer.Builder()
                           .host(host)
                           .port(port)
                           .consumerId("c1")
@@ -423,7 +423,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     final String topic3 = "`\"topic6\"`";
     final String host = senderEnv.getIP();
     final int port = Integer.parseInt(senderEnv.getPort());
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       {
         final Properties config = new Properties();
@@ -458,8 +458,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     final Thread thread =
         new Thread(
             () -> {
-              try (final SubscriptionPullConsumer consumer =
-                      new SubscriptionPullConsumer.Builder()
+              try (final SubscriptionTreePullConsumer consumer =
+                      new SubscriptionTreePullConsumer.Builder()
                           .host(host)
                           .port(port)
                           .consumerId("c1")
@@ -524,7 +524,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     final int port = Integer.parseInt(senderEnv.getPort());
 
     // Scenario 1: invalid time
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       final Properties properties = new Properties();
       properties.put(TopicConstant.START_TIME_KEY, "2024-01-32");
@@ -536,7 +536,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     assertTopicCount(0);
 
     // Scenario 2: test when 'start-time' is greater than 'end-time'
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       final Properties properties = new Properties();
       properties.put(TopicConstant.START_TIME_KEY, "2001.01.01T08:00:00");
@@ -575,7 +575,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     final String topicName = "topic9";
     final String host = senderEnv.getIP();
     final int port = Integer.parseInt(senderEnv.getPort());
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       final Properties config = new Properties();
       config.put(TopicConstant.FORMAT_KEY, topicFormat);
@@ -593,8 +593,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     final Thread thread =
         new Thread(
             () -> {
-              try (final SubscriptionPullConsumer consumer =
-                  new SubscriptionPullConsumer.Builder()
+              try (final SubscriptionTreePullConsumer consumer =
+                  new SubscriptionTreePullConsumer.Builder()
                       .host(host)
                       .port(port)
                       .consumerId("c1")
@@ -723,7 +723,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     final String topicName = "topic10";
     final String host = senderEnv.getIP();
     final int port = Integer.parseInt(senderEnv.getPort());
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       final Properties config = new Properties();
       config.put(TopicConstant.FORMAT_KEY, topicFormat);
@@ -747,8 +747,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     threads.add(
         new Thread(
             () -> {
-              try (final SubscriptionPullConsumer consumer =
-                      new SubscriptionPullConsumer.Builder()
+              try (final SubscriptionTreePullConsumer consumer =
+                      new SubscriptionTreePullConsumer.Builder()
                           .host(host)
                           .port(port)
                           .consumerId("c1")

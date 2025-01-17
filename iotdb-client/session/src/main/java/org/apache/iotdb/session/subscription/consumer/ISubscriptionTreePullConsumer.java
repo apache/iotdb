@@ -31,7 +31,7 @@ import java.util.concurrent.CompletableFuture;
  * A subscription-based pull consumer interface for receiving messages from specified topics of tree
  * model.
  */
-public interface ISubscriptionPullConsumer extends AutoCloseable {
+public interface ISubscriptionTreePullConsumer extends AutoCloseable {
 
   /**
    * Opens this consumer to begin receiving messages.

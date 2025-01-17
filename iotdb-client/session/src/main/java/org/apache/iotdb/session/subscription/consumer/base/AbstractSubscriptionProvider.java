@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.consumer;
+package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -65,9 +65,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-abstract class AbstractSubscriptionProvider {
+public abstract class AbstractSubscriptionProvider {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionProvider.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSubscriptionProvider.class);
 
   private static final String STATUS_FORMATTER = "Status code is [%s], status message is [%s].";
   private static final String INTERNAL_ERROR_FORMATTER =
@@ -88,14 +88,14 @@ abstract class AbstractSubscriptionProvider {
   private final TEndPoint endPoint;
   private int dataNodeId;
 
-  abstract AbstractSessionBuilder constructSubscriptionSessionBuilder(
+  protected abstract AbstractSessionBuilder constructSubscriptionSessionBuilder(
       final String host,
       final int port,
       final String username,
       final String password,
       final int thriftMaxFrameSize);
 
-  AbstractSubscriptionProvider(
+  protected AbstractSubscriptionProvider(
       final TEndPoint endPoint,
       final String username,
       final String password,

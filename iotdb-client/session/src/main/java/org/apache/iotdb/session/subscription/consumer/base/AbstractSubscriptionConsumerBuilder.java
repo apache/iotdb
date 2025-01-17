@@ -17,10 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.consumer;
+package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.session.subscription.consumer.ISubscriptionTablePullConsumer;
+import org.apache.iotdb.session.subscription.consumer.ISubscriptionTablePushConsumer;
+import org.apache.iotdb.session.subscription.consumer.ISubscriptionTreePullConsumer;
+import org.apache.iotdb.session.subscription.consumer.ISubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.util.IdentifierUtils;
 
 import org.apache.thrift.annotation.Nullable;
@@ -28,7 +32,7 @@ import org.apache.thrift.annotation.Nullable;
 import java.util.List;
 import java.util.Objects;
 
-class AbstractSubscriptionConsumerBuilder {
+public class AbstractSubscriptionConsumerBuilder {
 
   protected String host;
   protected Integer port;
@@ -128,11 +132,11 @@ class AbstractSubscriptionConsumerBuilder {
     return this;
   }
 
-  public ISubscriptionPullConsumer buildPullConsumer() {
+  public ISubscriptionTreePullConsumer buildPullConsumer() {
     throw new UnsupportedOperationException();
   }
 
-  public ISubscriptionPushConsumer buildPushConsumer() {
+  public ISubscriptionTreePushConsumer buildPushConsumer() {
     throw new UnsupportedOperationException();
   }
 
