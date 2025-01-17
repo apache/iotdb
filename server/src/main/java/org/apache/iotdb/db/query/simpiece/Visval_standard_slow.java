@@ -119,12 +119,16 @@
 //            // 而poll是删除堆顶元素，需要重新堆化以维护堆的性质，复杂度是O(logk),k是当前堆的大小
 //            Triangle tri = triangleHeap.poll(); // O(logn)
 //
+////            System.out.println(Arrays.toString(tri.indices));
+//
 //            // 更新当前点的重要性（z 轴存储effective area,这是一个单调增的指标）
 //            if (tri.area > previousEA) {
 //                previousEA = tri.area;
 //            }
 //            results.get(tri.indices[1]).z = previousEA;
 //            //      System.out.println(tri.indices[1] + "," + previousEA);
+//
+//            System.out.println(Arrays.toString(tri.indices) + "," + previousEA);
 //
 //            // 更新相邻三角形
 //            if (tri.prev != null) {
@@ -166,13 +170,13 @@
 //        List<Polyline> polylineList = new ArrayList<>();
 //        Random rand = new Random(1);
 ////        int n = 1000_000;
-//        int n = 10000;
+//        int n = 100000;
 //
 //        int p = 100;
 //        for (int i = 0; i < n; i += p) {
 //            Polyline polylineBatch = new Polyline();
 //            for (int j = i; j < Math.min(i + p, n); j++) {
-//                double v = rand.nextInt(1000);
+//                double v = rand.nextInt(1000000);
 //
 //                polyline.addVertex(new vPoint(j, v));
 //
@@ -213,33 +217,33 @@
 //            System.out.println("Error writing to CSV file: " + e.getMessage());
 //        }
 //
-//        System.out.println("---------------------------------");
-//        List<List<vPoint>> resultsBatchList = new ArrayList<>();
-//        // 计算运行时间
-//        int cnt = 0;
-//        startTime = System.currentTimeMillis();
-//        for (Polyline polylineBatch : polylineList) {
-//            List<vPoint> resultsBatch = new ArrayList<>();
-//            buildEffectiveArea(polylineBatch, resultsBatch);
-//            cnt += resultsBatch.size();
-//            resultsBatchList.add(resultsBatch);
-//        }
-//        // 输出结果
-//        endTime = System.currentTimeMillis();
-//        System.out.println("Time taken to reduce points: " + (endTime - startTime) + "ms");
-//        System.out.println(cnt);
-//
-//        System.out.println("---------------------------------");
-//        // 使用 Stream API 合并所有列表
-//        List<vPoint> mergedList =
-//                resultsBatchList.stream().flatMap(List::stream).collect(Collectors.toList());
-//        int sameCnt = 0;
-//        for (int i = 0; i < mergedList.size(); i++) {
-//            if (mergedList.get(i).z == results.get(i).z) {
-//                sameCnt += 1;
-//            }
-//        }
-//        System.out.println("sameCnt=" + sameCnt + ", percent=" + sameCnt * 1.0 / mergedList.size());
+////        System.out.println("---------------------------------");
+////        List<List<vPoint>> resultsBatchList = new ArrayList<>();
+////        // 计算运行时间
+////        int cnt = 0;
+////        startTime = System.currentTimeMillis();
+////        for (Polyline polylineBatch : polylineList) {
+////            List<vPoint> resultsBatch = new ArrayList<>();
+////            buildEffectiveArea(polylineBatch, resultsBatch);
+////            cnt += resultsBatch.size();
+////            resultsBatchList.add(resultsBatch);
+////        }
+////        // 输出结果
+////        endTime = System.currentTimeMillis();
+////        System.out.println("Time taken to reduce points: " + (endTime - startTime) + "ms");
+////        System.out.println(cnt);
+////
+////        System.out.println("---------------------------------");
+////        // 使用 Stream API 合并所有列表
+////        List<vPoint> mergedList =
+////                resultsBatchList.stream().flatMap(List::stream).collect(Collectors.toList());
+////        int sameCnt = 0;
+////        for (int i = 0; i < mergedList.size(); i++) {
+////            if (mergedList.get(i).z == results.get(i).z) {
+////                sameCnt += 1;
+////            }
+////        }
+////        System.out.println("sameCnt=" + sameCnt + ", percent=" + sameCnt * 1.0 / mergedList.size());
 //
 //
 //

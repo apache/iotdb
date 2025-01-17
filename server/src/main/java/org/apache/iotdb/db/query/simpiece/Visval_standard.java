@@ -22,7 +22,6 @@ package org.apache.iotdb.db.query.simpiece;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 // adapted from the open source C++ code
 // https://github.com/ofZach/Visvalingam-Whyatt/blob/master/src/testApp.cpp
@@ -127,9 +126,7 @@ public class Visval_standard {
         // 创建所有三角形并计算初始面积
         for (int i = 1; i < total - 1; i++) {
             int index1 = i - 1, index2 = i, index3 = i + 1;
-            double area =
-                    triArea(
-                            lineToSimplify.get(index1), lineToSimplify.get(index2), lineToSimplify.get(index3));
+            double area = triArea(lineToSimplify.get(index1), lineToSimplify.get(index2), lineToSimplify.get(index3));
             triangles[i - 1] = new Triangle(index1, index2, index3, area);
         }
 
@@ -140,8 +137,7 @@ public class Visval_standard {
         }
 
         // 使用优先队列构建 minHeap
-        PriorityQueue<Triangle> triangleHeap =
-                new PriorityQueue<>(Comparator.comparingDouble(t -> t.area));
+        PriorityQueue<Triangle> triangleHeap = new PriorityQueue<>(Comparator.comparingDouble(t -> t.area));
         Collections.addAll(triangleHeap, triangles); // complexity TODO
 
         double previousEA = -1;
@@ -163,6 +159,8 @@ public class Visval_standard {
             results.get(tri.indices[1]).z = previousEA;
             //      System.out.println(tri.indices[1] + "," + previousEA);
 
+            System.out.println(Arrays.toString(tri.indices) + "," + previousEA);
+
             // 更新相邻三角形
             if (tri.prev != null) {
                 // 1. 处理旧的tri.prev被标记删除的事情（角色替代）
@@ -170,21 +168,17 @@ public class Visval_standard {
                 tri.prev.markDeleted(); // O(1) 这个点标记为废掉，前后关联都砍断，但是不remove因为那太耗时，只有poll到它就跳过就可以
 
                 Triangle newPre = new Triangle(tri.prev); // deep copy and inherit connection
-                tri.prev = newPre; // replace
+//                tri.prev = newPre; // replace TODO can omit
 
                 // 2. 处理pi被淘汰引起tri.prev被更新的事情
                 // 前一个三角形连到后一个三角形
                 tri.prev.next = tri.next; // ATTENTION!!!: 这里的tri.next后面可能会因为处理旧的tri.next被标记删除的事情被换掉！到时候要重新赋值！
                 tri.prev.indices[2] = tri.indices[2];
-                tri.prev.area =
-                        triArea(
-                                lineToSimplify.get(tri.prev.indices[0]),
-                                lineToSimplify.get(tri.prev.indices[1]),
-                                lineToSimplify.get(tri.prev.indices[2]));
+                tri.prev.area = triArea(lineToSimplify.get(tri.prev.indices[0]), lineToSimplify.get(tri.prev.indices[1]), lineToSimplify.get(tri.prev.indices[2]));
 
                 // 重新加入堆
                 // 在 Java 的 PriorityQueue 中，修改元素的属性不会自动更新堆的顺序
-                // 所以必须通过add 来显式重新插入修改后的元素
+                // 所以必须通过add来显式重新插入修改后的元素
                 triangleHeap.add(tri.prev); // O(logn) 注意加入的是一个新的对象isDeleted=false
             }
 
@@ -194,7 +188,7 @@ public class Visval_standard {
                 tri.next.markDeleted(); // O(1) 这个点标记为废掉，前后关联都砍断，但是不remove因为那太耗时，只有poll到它就跳过就可以
 
                 Triangle newNext = new Triangle(tri.next); // deep copy and inherit connection
-                tri.next = newNext; // replace
+//                tri.next = newNext; // replace TODO can omit
 
                 if (tri.prev != null) {
                     tri.prev.next = tri.next; // ATTENTION!!!: 这里的tri.next已经被换掉！所以之前的要重新赋值！
@@ -203,11 +197,7 @@ public class Visval_standard {
                 // 2. 处理pi被淘汰引起tri.next被更新的事情
                 tri.next.prev = tri.prev; // 注意此时tri.prev已经是替代后的节点，tri.next也是，从而被标记为废点的前后关联真正砍断
                 tri.next.indices[0] = tri.indices[0];
-                tri.next.area =
-                        triArea(
-                                lineToSimplify.get(tri.next.indices[0]),
-                                lineToSimplify.get(tri.next.indices[1]),
-                                lineToSimplify.get(tri.next.indices[2]));
+                tri.next.area = triArea(lineToSimplify.get(tri.next.indices[0]), lineToSimplify.get(tri.next.indices[1]), lineToSimplify.get(tri.next.indices[2]));
 
                 // 重新加入堆
                 // 在 Java 的 PriorityQueue 中，修改元素的属性不会自动更新堆的顺序
@@ -221,19 +211,33 @@ public class Visval_standard {
         Polyline polyline = new Polyline();
         List<Polyline> polylineList = new ArrayList<>();
         Random rand = new Random(1);
-        int n = 10000; //1000_000;
+        int n = 100000; //1000_000;
 
         int p = 100;
         for (int i = 0; i < n; i += p) {
             Polyline polylineBatch = new Polyline();
             for (int j = i; j < Math.min(i + p, n); j++) {
-                double v = rand.nextInt(1000);
+                double v = rand.nextInt(1000000);
 
                 polyline.addVertex(new vPoint(j, v));
 
                 polylineBatch.addVertex(new vPoint(j, v));
             }
             polylineList.add(polylineBatch);
+        }
+
+        try (FileWriter writer = new FileWriter("raw.csv")) {
+            // 写入CSV头部
+            writer.append("x,y,z\n");
+
+            // 写入每个点的数据
+            for (int i = 0; i < polyline.size(); i++) {
+                vPoint point = polyline.get(i);
+                writer.append(point.x + "," + point.y + "," + point.z + "\n");
+            }
+            System.out.println("Data has been written");
+        } catch (IOException e) {
+            System.out.println("Error writing to CSV file: " + e.getMessage());
         }
 
         System.out.println("---------------------------------");
@@ -268,33 +272,33 @@ public class Visval_standard {
             System.out.println("Error writing to CSV file: " + e.getMessage());
         }
 
-        System.out.println("---------------------------------");
-        List<List<vPoint>> resultsBatchList = new ArrayList<>();
-        // 计算运行时间
-        int cnt = 0;
-        startTime = System.currentTimeMillis();
-        for (Polyline polylineBatch : polylineList) {
-            List<vPoint> resultsBatch = new ArrayList<>();
-            buildEffectiveArea(polylineBatch, resultsBatch);
-            cnt += resultsBatch.size();
-            resultsBatchList.add(resultsBatch);
-        }
-        // 输出结果
-        endTime = System.currentTimeMillis();
-        System.out.println("Time taken to reduce points: " + (endTime - startTime) + "ms");
-        System.out.println(cnt);
-
-        System.out.println("---------------------------------");
-        // 使用 Stream API 合并所有列表
-        List<vPoint> mergedList =
-                resultsBatchList.stream().flatMap(List::stream).collect(Collectors.toList());
-        int sameCnt = 0;
-        for (int i = 0; i < mergedList.size(); i++) {
-            if (mergedList.get(i).z == results.get(i).z) {
-                sameCnt += 1;
-            }
-        }
-        System.out.println("sameCnt=" + sameCnt + ", percent=" + sameCnt * 1.0 / mergedList.size());
+//        System.out.println("---------------------------------");
+//        List<List<vPoint>> resultsBatchList = new ArrayList<>();
+//        // 计算运行时间
+//        int cnt = 0;
+//        startTime = System.currentTimeMillis();
+//        for (Polyline polylineBatch : polylineList) {
+//            List<vPoint> resultsBatch = new ArrayList<>();
+//            buildEffectiveArea(polylineBatch, resultsBatch);
+//            cnt += resultsBatch.size();
+//            resultsBatchList.add(resultsBatch);
+//        }
+//        // 输出结果
+//        endTime = System.currentTimeMillis();
+//        System.out.println("Time taken to reduce points: " + (endTime - startTime) + "ms");
+//        System.out.println(cnt);
+//
+//        System.out.println("---------------------------------");
+//        // 使用 Stream API 合并所有列表
+//        List<vPoint> mergedList =
+//                resultsBatchList.stream().flatMap(List::stream).collect(Collectors.toList());
+//        int sameCnt = 0;
+//        for (int i = 0; i < mergedList.size(); i++) {
+//            if (mergedList.get(i).z == results.get(i).z) {
+//                sameCnt += 1;
+//            }
+//        }
+//        System.out.println("sameCnt=" + sameCnt + ", percent=" + sameCnt * 1.0 / mergedList.size());
     }
 
     //    float[] vlist = new float[]{11346, 33839, 35469, 23108, 22812, 5519, 5526, 4865, 5842,
