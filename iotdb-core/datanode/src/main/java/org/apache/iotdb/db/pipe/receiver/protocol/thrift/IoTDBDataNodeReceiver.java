@@ -943,7 +943,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       return;
     }
 
-    final TDatabaseSchema schema = new TDatabaseSchema(new TDatabaseSchema(database.toLowerCase()));
+    final TDatabaseSchema schema = new TDatabaseSchema(new TDatabaseSchema(database));
     schema.setIsTableModel(true);
 
     final CreateDBTask task = new CreateDBTask(schema, true);

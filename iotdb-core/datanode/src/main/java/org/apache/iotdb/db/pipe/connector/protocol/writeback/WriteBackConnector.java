@@ -306,8 +306,7 @@ public class WriteBackConnector implements PipeConnector {
       return;
     }
 
-    //
-    final TDatabaseSchema schema = new TDatabaseSchema(new TDatabaseSchema(database.toLowerCase()));
+    final TDatabaseSchema schema = new TDatabaseSchema(new TDatabaseSchema(database));
     schema.setIsTableModel(true);
 
     final CreateDBTask task = new CreateDBTask(schema, true);
