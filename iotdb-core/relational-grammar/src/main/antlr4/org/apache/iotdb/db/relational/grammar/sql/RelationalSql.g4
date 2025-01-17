@@ -168,14 +168,18 @@ charsetDesc
     ;
 
 columnDefinition
-    : identifier columnCategory=(TAG | ATTRIBUTE | TIME) charsetName?
-    | identifier type (columnCategory=(TAG | ATTRIBUTE | TIME | FIELD))? charsetName?
+    : identifier columnCategory=(TAG | ATTRIBUTE | TIME) charsetName? comment?
+    | identifier type (columnCategory=(TAG | ATTRIBUTE | TIME | FIELD))? charsetName? comment?
     ;
 
 charsetName
     : CHAR SET identifier
     | CHARSET identifier
     | CHARACTER SET identifier
+    ;
+
+comment
+    : COMMENT string
     ;
 
 dropTableStatement

@@ -412,7 +412,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             String.format("Columns in table shall not share the same name %s.", columnName));
       }
       table.addColumnSchema(
-          TableHeaderSchemaValidator.generateColumnSchema(category, columnName, dataType));
+          TableHeaderSchemaValidator.generateColumnSchema(category, columnName, dataType, columnDefinition.getComment()));
     }
     return new CreateTableTask(table, database, node.isIfNotExists());
   }
@@ -476,7 +476,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             TableHeaderSchemaValidator.generateColumnSchema(
                 definition.getColumnCategory(),
                 definition.getName().getValue(),
-                getDataType(definition.getType()))),
+                getDataType(definition.getType()), definition.getComment())),
         context.getQueryId().getId(),
         node.tableIfExists(),
         node.columnIfNotExists());

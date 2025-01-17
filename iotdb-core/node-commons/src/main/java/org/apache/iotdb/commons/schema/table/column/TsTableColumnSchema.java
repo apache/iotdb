@@ -24,10 +24,12 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
 public abstract class TsTableColumnSchema {
+  public static final String COMMENT_KEY = "__comment";
 
   protected String columnName;
 
@@ -53,6 +55,13 @@ public abstract class TsTableColumnSchema {
 
   public TSDataType getDataType() {
     return dataType;
+  }
+
+  public Map<String, String> getProps() {
+    if (Objects.isNull(props)) {
+      props = new HashMap<>();
+    }
+    return props;
   }
 
   public abstract TsTableColumnCategory getColumnCategory();
