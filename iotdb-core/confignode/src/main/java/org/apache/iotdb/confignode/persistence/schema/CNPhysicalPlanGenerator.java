@@ -72,7 +72,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
-import static org.apache.iotdb.commons.utils.IOUtils.readAuthString;
 import static org.apache.iotdb.commons.utils.IOUtils.readString;
 
 public class CNPhysicalPlanGenerator
