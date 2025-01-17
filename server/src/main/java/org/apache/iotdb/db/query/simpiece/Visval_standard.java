@@ -216,7 +216,7 @@ public class Visval_standard {
         Polyline polyline = new Polyline();
         List<Polyline> polylineList = new ArrayList<>();
         Random rand = new Random(1);
-        int n = 1000_000;
+        int n = 100_0000;
 
         int p = 1000;
         for (int i = 0; i < n; i += p) {
