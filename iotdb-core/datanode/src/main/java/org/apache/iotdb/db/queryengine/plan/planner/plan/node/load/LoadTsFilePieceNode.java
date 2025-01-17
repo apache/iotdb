@@ -53,17 +53,15 @@ public class LoadTsFilePieceNode extends WritePlanNode {
 
   private long dataSize;
   private List<TsFileData> tsFileDataList;
-  private boolean isFirstPieceNode;
 
   public LoadTsFilePieceNode(PlanNodeId id) {
     super(id);
   }
 
-  public LoadTsFilePieceNode(PlanNodeId id, File tsFile, boolean isFirstPieceNode) {
+  public LoadTsFilePieceNode(PlanNodeId id, File tsFile) {
     super(id);
     this.tsFile = tsFile;
     this.dataSize = 0;
-    this.isFirstPieceNode = isFirstPieceNode;
     this.tsFileDataList = new ArrayList<>();
   }
 
@@ -82,10 +80,6 @@ public class LoadTsFilePieceNode extends WritePlanNode {
 
   public File getTsFile() {
     return tsFile;
-  }
-
-  public boolean isFirstPieceNode() {
-    return isFirstPieceNode;
   }
 
   @Override
@@ -139,7 +133,6 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.LOAD_TSFILE.serialize(stream);
     ReadWriteIOUtils.write(tsFile.getPath(), stream); // TODO: can save this space
-    ReadWriteIOUtils.write(isFirstPieceNode, stream);
     ReadWriteIOUtils.write(tsFileDataList.size(), stream);
     for (TsFileData tsFileData : tsFileDataList) {
       try {
@@ -163,9 +156,7 @@ public class LoadTsFilePieceNode extends WritePlanNode {
     try {
       ReadWriteIOUtils.readShort(stream); // read PlanNodeType
       final File tsFile = new File(ReadWriteIOUtils.readString(stream));
-      final boolean isFirstPieceNode = ReadWriteIOUtils.readBoolean(stream);
-      final LoadTsFilePieceNode pieceNode =
-          new LoadTsFilePieceNode(new PlanNodeId(""), tsFile, isFirstPieceNode);
+      final LoadTsFilePieceNode pieceNode = new LoadTsFilePieceNode(new PlanNodeId(""), tsFile);
       final int tsFileDataSize = ReadWriteIOUtils.readInt(stream);
       for (int i = 0; i < tsFileDataSize; i++) {
         TsFileData tsFileData = TsFileData.deserialize(stream);
@@ -189,25 +180,17 @@ public class LoadTsFilePieceNode extends WritePlanNode {
     }
     LoadTsFilePieceNode loadTsFilePieceNode = (LoadTsFilePieceNode) o;
     return Objects.equals(tsFile, loadTsFilePieceNode.tsFile)
-        && Objects.equals(isFirstPieceNode, loadTsFilePieceNode.isFirstPieceNode)
         && Objects.equals(dataSize, loadTsFilePieceNode.dataSize)
         && Objects.equals(tsFileDataList, loadTsFilePieceNode.tsFileDataList);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tsFile, isFirstPieceNode, dataSize, tsFileDataList);
+    return Objects.hash(tsFile, dataSize, tsFileDataList);
   }
 
   @Override
   public String toString() {
-    return "LoadTsFilePieceNode{"
-        + "tsFile="
-        + tsFile
-        + ", isFirstPieceNode="
-        + isFirstPieceNode
-        + ", dataSize="
-        + dataSize
-        + '}';
+    return "LoadTsFilePieceNode{" + "tsFile=" + tsFile + ", dataSize=" + dataSize + '}';
   }
 }
