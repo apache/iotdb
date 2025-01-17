@@ -312,6 +312,21 @@ struct TMigrateRegionReq {
     3: required i32 toId
 }
 
+struct TReconstructRegionReq {
+    1: required list<i32> regionIds
+    2: required i32 dataNodeId
+}
+
+struct TExtendRegionReq {
+    1: required i32 regionId
+    2: required i32 dataNodeId
+}
+
+struct TRemoveRegionReq {
+    1: required i32 regionId
+    2: required i32 dataNodeId
+}
+
 // Authorize
 struct TAuthorizerReq {
   1: required i32 authorType
@@ -1584,6 +1599,12 @@ service IConfigNodeRPCService {
 
   /** Migrate a region replica from one dataNode to another */
   common.TSStatus migrateRegion(TMigrateRegionReq req)
+
+  common.TSStatus reconstructRegion(TReconstructRegionReq req)
+
+  common.TSStatus extendRegion(TExtendRegionReq req)
+
+  common.TSStatus removeRegion(TRemoveRegionReq req)
 
   /** Kill query */
   common.TSStatus killQuery(string queryId, i32 dataNodeId)

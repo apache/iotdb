@@ -29,7 +29,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
 
   private Boolean isTableModelEvent; // lazy initialization
 
-  private final String treeModelDatabaseName;
+  private String treeModelDatabaseName;
   private String tableModelDatabaseName; // lazy initialization
 
   protected PipeInsertionEvent(
@@ -103,6 +103,9 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
   }
 
   public void renameTableModelDatabase(final String tableModelDatabaseName) {
+    // Please note that if you parse TsFile, you need to use TreeModelDatabaseName, so you need to
+    // rename TreeModelDatabaseName as well.
     this.tableModelDatabaseName = tableModelDatabaseName;
+    this.treeModelDatabaseName = "root." + tableModelDatabaseName;
   }
 }

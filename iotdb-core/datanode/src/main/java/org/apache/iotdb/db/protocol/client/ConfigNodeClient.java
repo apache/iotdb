@@ -100,6 +100,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
@@ -131,7 +132,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
+import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRemoveRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
@@ -1213,6 +1216,24 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus migrateRegion(TMigrateRegionReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.migrateRegion(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus reconstructRegion(TReconstructRegionReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.reconstructRegion(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus extendRegion(TExtendRegionReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.extendRegion(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus removeRegion(TRemoveRegionReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.removeRegion(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
