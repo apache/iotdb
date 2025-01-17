@@ -3306,7 +3306,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> showTables(
-      final String database, final boolean isDetails) {
+      final String database, final Predicate<String> checkCanShowTable, final boolean isDetails) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     if (InformationSchemaUtils.mayShowTable(database, isDetails, future)) {
@@ -3322,9 +3322,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       }
       if (isDetails) {
-        ShowTablesDetailsTask.buildTsBlock(resp.getTableInfoList(), future);
+        ShowTablesDetailsTask.buildTsBlock(resp.getTableInfoList(), future, checkCanShowTable);
       } else {
-        ShowTablesTask.buildTsBlock(resp.getTableInfoList(), future);
+        ShowTablesTask.buildTsBlock(resp.getTableInfoList(), future, checkCanShowTable);
       }
     } catch (final Exception e) {
       future.setException(e);
