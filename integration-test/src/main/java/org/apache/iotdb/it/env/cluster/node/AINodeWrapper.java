@@ -91,6 +91,11 @@ public class AINodeWrapper extends AbstractNodeWrapper {
   }
 
   @Override
+  String getNodeType() {
+    return "ainode";
+  }
+
+  @Override
   public void start() {
     try {
       File stdoutFile = new File(getLogPath());

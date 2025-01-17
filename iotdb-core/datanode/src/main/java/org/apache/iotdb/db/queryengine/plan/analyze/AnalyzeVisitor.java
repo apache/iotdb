@@ -2982,14 +2982,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   @Override
   public Analysis visitPipeEnrichedStatement(
-      PipeEnrichedStatement pipeEnrichedStatement, MPPQueryContext context) {
+      final PipeEnrichedStatement pipeEnrichedStatement, final MPPQueryContext context) {
     // The LoadTsFileStatement is a special case, it needs isGeneratedByPipe information
     // in the analyzer to execute the tsfile-tablet conversion in some cases.
     if (pipeEnrichedStatement.getInnerStatement() instanceof LoadTsFileStatement) {
       ((LoadTsFileStatement) pipeEnrichedStatement.getInnerStatement()).markIsGeneratedByPipe();
     }
 
-    Analysis analysis = pipeEnrichedStatement.getInnerStatement().accept(this, context);
+    final Analysis analysis = pipeEnrichedStatement.getInnerStatement().accept(this, context);
     analysis.setDatabaseName(context.getDatabaseName().orElse(null));
 
     // statement may be changed because of logical view
