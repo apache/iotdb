@@ -103,12 +103,13 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
       session.open();
 
       // delete one DataNode's data dir, stop another DataNode
-      FileUtils.deleteDirectory(
+      File dataDirToBeReconstructed =
           new File(
               EnvFactory.getEnv()
                   .dataNodeIdToWrapper(dataNodeToBeReconstructed)
                   .get()
-                  .getDataPath()));
+                  .getDataPath());
+      FileUtils.deleteDirectory(dataDirToBeReconstructed);
       EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeClosed).get().stopForcibly();
 
       // now, the query should throw exception
@@ -121,11 +122,13 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
       EnvFactory.getAbstractEnv().checkNodeInStatus(dataNodeToBeClosed, NodeStatus.Running);
       session.executeNonQueryStatement(
           String.format(RECONSTRUCT_FORMAT, selectedRegion, dataNodeToBeReconstructed));
-      Thread.sleep(5000);
       Awaitility.await()
           .pollInterval(1, TimeUnit.SECONDS)
           .atMost(1, TimeUnit.MINUTES)
-          .until(() -> getRegionStatusWithoutRunning(session).isEmpty());
+          .until(
+              () ->
+                  getRegionStatusWithoutRunning(session).isEmpty()
+                      && dataDirToBeReconstructed.exists());
       EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeClosed).get().stopForcibly();
 
       // now, the query should work fine
