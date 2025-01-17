@@ -50,7 +50,7 @@ public class SessionUtils {
   public static ByteBuffer getTimeBuffer(Tablet tablet) {
     ByteBuffer timeBuffer = ByteBuffer.allocate(getTimeBytesSize(tablet));
     for (int i = 0; i < tablet.getRowSize(); i++) {
-      timeBuffer.putLong(tablet.timestamps[i]);
+      timeBuffer.putLong(tablet.getTimestamp(i));
     }
     timeBuffer.flip();
     return timeBuffer;
@@ -63,8 +63,9 @@ public class SessionUtils {
       IMeasurementSchema schema = tablet.getSchemas().get(i);
       getValueBufferOfDataType(schema.getType(), tablet, i, valueBuffer);
     }
-    if (tablet.bitMaps != null) {
-      for (BitMap bitMap : tablet.bitMaps) {
+    BitMap[] bitMaps = tablet.getBitMaps();
+    if (bitMaps != null) {
+      for (BitMap bitMap : bitMaps) {
         boolean columnHasNull = bitMap != null && !bitMap.isAllUnmarked(tablet.getRowSize());
         valueBuffer.put(BytesUtils.boolToByte(columnHasNull));
         if (columnHasNull) {
@@ -90,12 +91,12 @@ public class SessionUtils {
     int rowSize = tablet.getRowSize();
     for (IMeasurementSchema schema : schemas) {
       valueOccupation +=
-          calOccupationOfOneColumn(schema.getType(), tablet.values, columnIndex, rowSize);
+          calOccupationOfOneColumn(schema.getType(), tablet.getValues(), columnIndex, rowSize);
       columnIndex++;
     }
 
     // Add bitmap size if the tablet has bitMaps
-    BitMap[] bitMaps = tablet.bitMaps;
+    BitMap[] bitMaps = tablet.getBitMaps();
     if (bitMaps != null) {
       for (BitMap bitMap : bitMaps) {
         // Marker byte
@@ -265,7 +266,7 @@ public class SessionUtils {
 
     switch (dataType) {
       case INT32:
-        int[] intValues = (int[]) tablet.values[i];
+        int[] intValues = (int[]) tablet.getValues()[i];
         for (int index = 0; index < tablet.getRowSize(); index++) {
           if (!tablet.isNull(index, i)) {
             valueBuffer.putInt(intValues[index]);
@@ -276,7 +277,7 @@ public class SessionUtils {
         break;
       case INT64:
       case TIMESTAMP:
-        long[] longValues = (long[]) tablet.values[i];
+        long[] longValues = (long[]) tablet.getValues()[i];
         for (int index = 0; index < tablet.getRowSize(); index++) {
           if (!tablet.isNull(index, i)) {
             valueBuffer.putLong(longValues[index]);
@@ -286,7 +287,7 @@ public class SessionUtils {
         }
         break;
       case FLOAT:
-        float[] floatValues = (float[]) tablet.values[i];
+        float[] floatValues = (float[]) tablet.getValues()[i];
         for (int index = 0; index < tablet.getRowSize(); index++) {
           if (!tablet.isNull(index, i)) {
             valueBuffer.putFloat(floatValues[index]);
@@ -296,7 +297,7 @@ public class SessionUtils {
         }
         break;
       case DOUBLE:
-        double[] doubleValues = (double[]) tablet.values[i];
+        double[] doubleValues = (double[]) tablet.getValues()[i];
         for (int index = 0; index < tablet.getRowSize(); index++) {
           if (!tablet.isNull(index, i)) {
             valueBuffer.putDouble(doubleValues[index]);
@@ -306,7 +307,7 @@ public class SessionUtils {
         }
         break;
       case BOOLEAN:
-        boolean[] boolValues = (boolean[]) tablet.values[i];
+        boolean[] boolValues = (boolean[]) tablet.getValues()[i];
         for (int index = 0; index < tablet.getRowSize(); index++) {
           if (!tablet.isNull(index, i)) {
             valueBuffer.put(BytesUtils.boolToByte(boolValues[index]));
@@ -318,7 +319,7 @@ public class SessionUtils {
       case TEXT:
       case STRING:
       case BLOB:
-        Binary[] binaryValues = (Binary[]) tablet.values[i];
+        Binary[] binaryValues = (Binary[]) tablet.getValues()[i];
         for (int index = 0; index < tablet.getRowSize(); index++) {
           if (!tablet.isNull(index, i) && binaryValues[index] != null) {
             valueBuffer.putInt(binaryValues[index].getLength());
@@ -330,7 +331,7 @@ public class SessionUtils {
         }
         break;
       case DATE:
-        LocalDate[] dateValues = (LocalDate[]) tablet.values[i];
+        LocalDate[] dateValues = (LocalDate[]) tablet.getValues()[i];
         for (int index = 0; index < tablet.getRowSize(); index++) {
           if (!tablet.isNull(index, i) && dateValues[index] != null) {
             valueBuffer.putInt(DateUtils.parseDateExpressionToInt(dateValues[index]));

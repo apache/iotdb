@@ -300,6 +300,9 @@ public interface BaseEnv {
   /** Shutdown all existed DataNodes. */
   void shutdownAllDataNodes();
 
+  /** Shutdown forcibly all existed DataNodes. */
+  void shutdownForciblyAllDataNodes();
+
   int getMqttPort();
 
   String getIP();

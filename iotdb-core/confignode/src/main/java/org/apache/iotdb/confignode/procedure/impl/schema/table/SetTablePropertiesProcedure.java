@@ -56,16 +56,17 @@ public class SetTablePropertiesProcedure
   private Map<String, String> originalProperties = new HashMap<>();
   private Map<String, String> updatedProperties;
 
-  public SetTablePropertiesProcedure() {
-    super();
+  public SetTablePropertiesProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   public SetTablePropertiesProcedure(
       final String database,
       final String tableName,
       final String queryId,
-      final Map<String, String> properties) {
-    super(database, tableName, queryId);
+      final Map<String, String> properties,
+      final boolean isGeneratedByPipe) {
+    super(database, tableName, queryId, isGeneratedByPipe);
     this.updatedProperties = properties;
   }
 
@@ -144,7 +145,7 @@ public class SetTablePropertiesProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .setTableProperties(database, tableName, updatedProperties);
+            .setTableProperties(database, tableName, updatedProperties, isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     } else {
@@ -192,7 +193,7 @@ public class SetTablePropertiesProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .setTableProperties(database, tableName, originalProperties);
+            .setTableProperties(database, tableName, originalProperties, isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
@@ -215,7 +216,10 @@ public class SetTablePropertiesProcedure
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode()
+            : ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
     ReadWriteIOUtils.write(originalProperties, stream);

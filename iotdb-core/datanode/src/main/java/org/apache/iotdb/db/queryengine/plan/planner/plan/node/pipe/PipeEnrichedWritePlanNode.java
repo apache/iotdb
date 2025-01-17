@@ -76,7 +76,7 @@ public class PipeEnrichedWritePlanNode extends WritePlanNode {
 
   private final WritePlanNode writePlanNode;
 
-  public PipeEnrichedWritePlanNode(WritePlanNode schemaWriteNode) {
+  public PipeEnrichedWritePlanNode(final WritePlanNode schemaWriteNode) {
     super(schemaWriteNode.getPlanNodeId());
     this.writePlanNode = schemaWriteNode;
   }
@@ -101,7 +101,7 @@ public class PipeEnrichedWritePlanNode extends WritePlanNode {
   }
 
   @Override
-  public void setPlanNodeId(PlanNodeId id) {
+  public void setPlanNodeId(final PlanNodeId id) {
     writePlanNode.setPlanNodeId(id);
   }
 
@@ -111,7 +111,7 @@ public class PipeEnrichedWritePlanNode extends WritePlanNode {
   }
 
   @Override
-  public void addChild(PlanNode child) {
+  public void addChild(final PlanNode child) {
     writePlanNode.addChild(child);
   }
 
@@ -126,13 +126,14 @@ public class PipeEnrichedWritePlanNode extends WritePlanNode {
   }
 
   @Override
-  public WritePlanNode createSubNode(int subNodeId, int startIndex, int endIndex) {
+  public WritePlanNode createSubNode(
+      final int subNodeId, final int startIndex, final int endIndex) {
     return new PipeEnrichedWritePlanNode(
         (WritePlanNode) writePlanNode.createSubNode(subNodeId, startIndex, endIndex));
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
+  public PlanNode cloneWithChildren(final List<PlanNode> children) {
     return new PipeEnrichedWritePlanNode((WritePlanNode) writePlanNode.cloneWithChildren(children));
   }
 
@@ -147,28 +148,28 @@ public class PipeEnrichedWritePlanNode extends WritePlanNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final PlanVisitor<R, C> visitor, final C context) {
     return visitor.visitPipeEnrichedWritePlanNode(this, context);
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
+  protected void serializeAttributes(final ByteBuffer byteBuffer) {
     PlanNodeType.PIPE_ENRICHED_WRITE.serialize(byteBuffer);
     writePlanNode.serialize(byteBuffer);
   }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+  protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     PlanNodeType.PIPE_ENRICHED_WRITE.serialize(stream);
     writePlanNode.serialize(stream);
   }
 
-  public static PipeEnrichedWritePlanNode deserialize(ByteBuffer buffer) {
+  public static PipeEnrichedWritePlanNode deserialize(final ByteBuffer buffer) {
     return new PipeEnrichedWritePlanNode((WritePlanNode) PlanNodeType.deserialize(buffer));
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     return o instanceof PipeEnrichedWritePlanNode
         && writePlanNode.equals(((PipeEnrichedWritePlanNode) o).writePlanNode);
   }
@@ -184,7 +185,7 @@ public class PipeEnrichedWritePlanNode extends WritePlanNode {
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
+  public List<WritePlanNode> splitByPartition(final IAnalysis analysis) {
     return writePlanNode.splitByPartition(analysis).stream()
         .map(
             plan ->
