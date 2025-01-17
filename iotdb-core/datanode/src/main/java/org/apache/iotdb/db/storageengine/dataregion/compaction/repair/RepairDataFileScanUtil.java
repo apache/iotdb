@@ -279,13 +279,18 @@ public class RepairDataFileScanUtil {
     if (!checkTsFileResource || actualDeviceStartTime > actualDeviceEndTime) {
       return;
     }
-    compareDeviceTimeRange(device, deviceTimeRangeInResource, new TimeRange(actualDeviceStartTime, actualDeviceEndTime));
+    compareDeviceTimeRange(
+        device,
+        deviceTimeRangeInResource,
+        new TimeRange(actualDeviceStartTime, actualDeviceEndTime));
   }
 
-  private void compareDeviceTimeRange(IDeviceID device, TimeRange deviceTimeRangeInResource, TimeRange actualDeviceTimeRange) {
+  private void compareDeviceTimeRange(
+      IDeviceID device, TimeRange deviceTimeRangeInResource, TimeRange actualDeviceTimeRange) {
     long innerCompactionCount = resource.getTsFileID().getInnerCompactionCount();
     if (innerCompactionCount == 0) {
-      // for the files generate by flush with deletions, the statistics may be larger than the actual
+      // for the files generate by flush with deletions, the statistics may be larger than the
+      // actual
       if (!deviceTimeRangeInResource.contains(actualDeviceTimeRange)) {
         throw new CompactionStatisticsCheckFailedException(
             device, deviceTimeRangeInResource, actualDeviceTimeRange);
