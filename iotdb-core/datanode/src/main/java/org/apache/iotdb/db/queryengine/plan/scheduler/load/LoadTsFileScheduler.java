@@ -695,15 +695,14 @@ public class LoadTsFileScheduler implements IScheduler {
 
           dataSize -= pieceNode.getDataSize();
           block.reduceMemoryUsage(pieceNode.getDataSize());
-          regionId2ReplicaSetAndNode.put(
+          regionId2ReplicaSetAndNode.replace(
               sortedRegionId,
               new Pair<>(
                   replicaSet,
                   new LoadTsFilePieceNode(
                       singleTsFileNode.getPlanNodeId(),
-                      singleTsFileNode
-                          .getTsFileResource()
-                          .getTsFile()))); // can not just remove, because of deletion
+                      singleTsFileNode.getTsFileResource().getTsFile(),
+                      false))); // can not just remove, because of deletion
           if (isMemoryEnough()) {
             break;
           }
@@ -742,7 +741,8 @@ public class LoadTsFileScheduler implements IScheduler {
                         replicaSet,
                         new LoadTsFilePieceNode(
                             singleTsFileNode.getPlanNodeId(),
-                            singleTsFileNode.getTsFileResource().getTsFile())))
+                            singleTsFileNode.getTsFileResource().getTsFile(),
+                            true)))
             .getRight()
             .addTsFileData(nonDirectionalChunkData.get(i));
       }

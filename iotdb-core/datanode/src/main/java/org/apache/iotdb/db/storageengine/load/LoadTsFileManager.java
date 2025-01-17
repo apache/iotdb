@@ -207,6 +207,10 @@ public class LoadTsFileManager {
     final Optional<CleanupTask> cleanupTask = Optional.of(uuid2CleanupTask.get(uuid));
     cleanupTask.ifPresent(CleanupTask::markLoadTaskRunning);
     try {
+      if (pieceNode.isFirstPieceNode() && uuid2WriterManager.containsKey(uuid)) {
+        forceCloseWriterManager(uuid);
+      }
+
       final AtomicReference<Exception> exception = new AtomicReference<>();
       final TsFileWriterManager writerManager =
           uuid2WriterManager.computeIfAbsent(

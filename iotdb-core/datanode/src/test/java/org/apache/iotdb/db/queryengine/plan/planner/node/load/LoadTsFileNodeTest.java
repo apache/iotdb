@@ -66,7 +66,7 @@ public class LoadTsFileNodeTest {
 
   @Test
   public void testLoadTsFilePieceNode() {
-    LoadTsFilePieceNode node = new LoadTsFilePieceNode(new PlanNodeId(""), new File("1"));
+    LoadTsFilePieceNode node = new LoadTsFilePieceNode(new PlanNodeId(""), new File("1"), true);
     Assert.assertEquals(0, node.getDataSize());
     Assert.assertEquals(new ArrayList<>(), node.getAllTsFileData());
     Assert.assertEquals(node.getTsFile(), new File("1"));
