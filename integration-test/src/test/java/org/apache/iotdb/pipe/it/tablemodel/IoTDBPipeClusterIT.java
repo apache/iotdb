@@ -78,7 +78,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
-        .setDataReplicationFactor(3)
+        .setDataReplicationFactor(2)
+        .setSchemaReplicationFactor(2)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
@@ -126,11 +127,11 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      // The purpose of sleeping here is to ensure that the receiving end has created the database
-      // and created the table.
-      Thread.sleep(10000);
+      TableModelUtils.assertCountData("test", "test", 1, receiverEnv);
       receiverEnv.getDataNodeWrapper(0).stop();
-      Thread.sleep(10000);
+
+      // Ensure that the kill -9 operation is completed
+      Thread.sleep(5000);
       TableModelUtils.insertData("test", "test", 1, 2, senderEnv);
     } catch (Exception e) {
       fail(e.getMessage());

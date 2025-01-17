@@ -447,7 +447,8 @@ public abstract class AbstractEnv implements BaseEnv {
       final String sqlDialect)
       throws SQLException {
     return new ClusterTestConnection(
-        getWriteConnection(null, dataNodeWrapper, username, password, sqlDialect),
+        getWriteConnectionWithSpecifiedDataNode(
+            dataNodeWrapper, null, username, password, sqlDialect),
         getReadConnections(null, dataNodeWrapper, username, password, sqlDialect));
   }
 
@@ -637,17 +638,6 @@ public abstract class AbstractEnv implements BaseEnv {
 
     return getWriteConnectionFromDataNodeList(
         this.dataNodeWrapperList, version, username, password, sqlDialect);
-  }
-
-  protected NodeConnection getWriteConnection(
-      Constant.Version version,
-      DataNodeWrapper dataNode,
-      String username,
-      String password,
-      String sqlDialect)
-      throws SQLException {
-    return getWriteConnectionFromDataNodeList(
-        Collections.singletonList(dataNode), version, username, password, sqlDialect);
   }
 
   protected NodeConnection getWriteConnectionWithSpecifiedDataNode(
