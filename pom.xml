@@ -129,14 +129,14 @@
         <osgi.version>7.0.0</osgi.version>
         <pax-jdbc-common.version>1.5.6</pax-jdbc-common.version>
         <powermock.version>2.0.9</powermock.version>
-        <ratis-thirdparty-misc.version>1.0.8-7c44349-SNAPSHOT</ratis-thirdparty-misc.version>
+        <ratis-thirdparty-misc.version>1.0.8</ratis-thirdparty-misc.version>
         <!--
       This is an unreleased version of a custom branch. The 8-character part after the version number
       This is an unreleased version of a custom branch. The 8-character part after the version number
       is for ensuring the SNAPSHOT will stay available. We should however have the Ratis folks do a
       new release soon, as releasing with this version is more than sub-ideal.
     -->
-        <ratis.version>3.1.2-a862328-SNAPSHOT</ratis.version>
+        <ratis.version>3.1.3</ratis.version>
         <reactive-streams.version>1.0.4</reactive-streams.version>
         <reactor-netty.version>1.1.20</reactor-netty.version>
         <reactor.version>3.5.18</reactor.version>
