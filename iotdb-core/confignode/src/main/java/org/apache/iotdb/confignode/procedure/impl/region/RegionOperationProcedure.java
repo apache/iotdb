@@ -17,29 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration;
+package org.apache.iotdb.confignode.procedure.impl.region;
 
-import org.apache.iotdb.commons.utils.KillPoint.KillNode;
-import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 
-import org.junit.Before;
+public abstract class RegionOperationProcedure<TState>
+    extends StateMachineProcedure<ConfigNodeProcedureEnv, TState> {
+  TConsensusGroupId regionId;
 
-public class IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV1
-    extends IoTDBRegionOperationReliabilityITFramework {
+  public RegionOperationProcedure() {}
 
-  @Override
-  @Before
-  public void setUp() throws Exception {
-    super.setUp();
-    EnvFactory.getEnv()
-        .getConfig()
-        .getCommonConfig()
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
+  public RegionOperationProcedure(TConsensusGroupId regionId) {
+    this.regionId = regionId;
   }
 
-  @SafeVarargs
-  public final <T extends Enum<T>> void success(T... dataNodeKillPoints) throws Exception {
-    successTest(1, 1, 1, 2, noKillPoints(), buildSet(dataNodeKillPoints), KillNode.ALL_NODES);
+  public void setRegionId(TConsensusGroupId regionId) {
+    this.regionId = regionId;
+  }
+
+  public TConsensusGroupId getRegionId() {
+    return regionId;
+  }
+
+  @Override
+  public String toString() {
+    return super.toString() + ", regionId=" + regionId;
   }
 }
