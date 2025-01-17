@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.utils.PathUtils;
 
+import javax.validation.constraints.NotNull;
+
 public abstract class PipeInsertionEvent extends EnrichedEvent {
 
   private Boolean isTableModelEvent; // lazy initialization
@@ -104,10 +106,10 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
         : tableModelDatabaseName;
   }
 
-  public void renameTableModelDatabase(final String tableModelDatabaseName) {
+  public void renameTableModelDatabase(@NotNull final String tableModelDatabaseName) {
     // Please note that if you parse TsFile, you need to use TreeModelDatabaseName, so you need to
     // rename TreeModelDatabaseName as well.
-    this.tableModelDatabaseName = tableModelDatabaseName;
+    this.tableModelDatabaseName = tableModelDatabaseName.toLowerCase();
     this.treeModelDatabaseName = "root." + tableModelDatabaseName;
   }
 }

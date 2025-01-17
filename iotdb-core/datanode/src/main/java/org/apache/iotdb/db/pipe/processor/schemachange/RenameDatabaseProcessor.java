@@ -47,14 +47,10 @@ public class RenameDatabaseProcessor implements PipeProcessor {
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     validator.validateRequiredAttribute(PROCESSOR_RENAME_DATABASE_NEW_DB_NAME);
-    final String database =
-        validator.getParameters().getString(PROCESSOR_RENAME_DATABASE_NEW_DB_NAME);
-    if (database == null) {
-      throw new PipeException("new database name cannot be null");
-    }
 
     try {
-      TableConfigTaskVisitor.validateDatabaseName(database.toLowerCase());
+      TableConfigTaskVisitor.validateDatabaseName(
+          validator.getParameters().getString(PROCESSOR_RENAME_DATABASE_NEW_DB_NAME));
     } catch (final Exception e) {
       throw new PipeException(
           String.format(
