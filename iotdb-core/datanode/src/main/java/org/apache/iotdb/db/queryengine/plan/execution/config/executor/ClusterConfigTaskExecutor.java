@@ -2834,8 +2834,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               .map(TDataNodeConfiguration::getLocation)
               .filter(location -> finalNodeIds.contains(location.getDataNodeId()))
               .collect(Collectors.toList());
-      LOGGER.info(
-          "Start to remove datanode, removed DataNodes endpoint: {}", removeDataNodeLocations);
+
+      List<String> simplifiedLocations = new ArrayList<>();
+      for (TDataNodeLocation dataNodeLocation : removeDataNodeLocations) {
+        simplifiedLocations.add(
+            dataNodeLocation.getDataNodeId()
+                + "@"
+                + dataNodeLocation.getInternalEndPoint().getIp());
+      }
+
+      LOGGER.info("Start to remove datanode, removed DataNodes endpoint: {}", simplifiedLocations);
       TDataNodeRemoveReq removeReq = new TDataNodeRemoveReq(removeDataNodeLocations);
       TDataNodeRemoveResp removeResp = configNodeClient.removeDataNode(removeReq);
       LOGGER.info("Submit Remove DataNodes result {} ", removeResp);
