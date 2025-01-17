@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.tablemodel;
+package org.apache.iotdb.pipe.it.tablemodel.envstatus;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -25,7 +25,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2TableModel;
+import org.apache.iotdb.itbase.category.MultiClusterIT2EnvStatusTableModel;
+import org.apache.iotdb.pipe.it.tablemodel.AbstractPipeTableModelTestIT;
+import org.apache.iotdb.pipe.it.tablemodel.TableModelUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -40,7 +42,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2TableModel.class})
+@Category({MultiClusterIT2EnvStatusTableModel.class})
 public class IoTDBTablePatternFormatIT extends AbstractPipeTableModelTestIT {
 
   @Test

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.tablemodel;
+package org.apache.iotdb.pipe.it.tablemodel.basicfunc;
 
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
@@ -25,8 +25,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2TableModel;
+import org.apache.iotdb.itbase.category.MultiClusterIT2BasicFunctionTableModel;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.pipe.it.tablemodel.AbstractPipeTableModelTestIT;
+import org.apache.iotdb.pipe.it.tablemodel.TableModelUtils;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -42,7 +44,7 @@ import java.util.function.Consumer;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2TableModel.class})
+@Category({MultiClusterIT2BasicFunctionTableModel.class})
 public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
 
   @Test

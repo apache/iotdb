@@ -26,7 +26,7 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.junit.After;
 import org.junit.Before;
 
-abstract class AbstractPipeTableModelTestIT {
+public abstract class AbstractPipeTableModelTestIT {
 
   protected BaseEnv senderEnv;
   protected BaseEnv receiverEnv;
