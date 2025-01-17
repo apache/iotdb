@@ -36,6 +36,8 @@ public class SubscriptionPipeTsFilePlainEvent implements SubscriptionPipeEvents 
 
   @Override
   public void cleanUp() {
+    // close data container in tsfile event
+    tsFileInsertionEvent.close();
     // clear the reference count of event
     tsFileInsertionEvent.clearReferenceCount(this.getClass().getName());
   }

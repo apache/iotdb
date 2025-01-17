@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.subscription.event.response;
 
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
@@ -55,6 +55,9 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionEventTsFileResponse.class);
+
+  private static final long READ_FILE_BUFFER_SIZE =
+      SubscriptionConfig.getInstance().getSubscriptionReadFileBufferSize();
 
   private final File tsFile;
   private final SubscriptionCommitContext commitContext;
@@ -151,7 +154,8 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
   }
 
   private @NonNull CachedSubscriptionPollResponse generateResponseWithPieceOrSealPayload(
-      final long writingOffset) throws SubscriptionException, IOException, InterruptedException {
+      final long writingOffset)
+      throws IOException, InterruptedException, PipeRuntimeOutOfMemoryCriticalException {
     final long tsFileLength = tsFile.length();
     if (writingOffset >= tsFileLength) {
       // generate subscription poll response with seal payload
@@ -162,15 +166,13 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
           commitContext);
     }
 
-    final long readFileBufferSize =
-        SubscriptionConfig.getInstance().getSubscriptionReadFileBufferSize();
     final long bufferSize;
-    if (writingOffset + readFileBufferSize >= tsFileLength) {
+    if (writingOffset + READ_FILE_BUFFER_SIZE >= tsFileLength) {
       // last piece
       bufferSize = tsFileLength - writingOffset;
     } else {
       // not last piece
-      bufferSize = readFileBufferSize;
+      bufferSize = READ_FILE_BUFFER_SIZE;
     }
 
     waitForResourceEnough4Slicing(SubscriptionAgent.receiver().remainingMs());
@@ -196,6 +198,8 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
               SubscriptionPollResponseType.FILE_PIECE.getType(),
               new FilePiecePayload(tsFile.getName(), writingOffset + readLength, readBuffer),
               commitContext);
+
+      // set fixed memory block for response
       response.setMemoryBlock(memoryBlock);
       return response;
     }
@@ -211,7 +215,7 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
     long lastRecordTime = startTime;
 
     final long memoryCheckIntervalMs =
-        PipeConfig.getInstance().getPipeTsFileParserCheckMemoryEnoughIntervalMs();
+        SubscriptionConfig.getInstance().getSubscriptionCheckMemoryEnoughIntervalMs();
     while (!memoryManager.isEnough4TsFileSlicing()) {
       Thread.sleep(memoryCheckIntervalMs);
 

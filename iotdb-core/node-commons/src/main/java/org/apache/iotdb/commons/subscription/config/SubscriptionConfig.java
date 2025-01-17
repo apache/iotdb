@@ -89,8 +89,12 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionMetaSyncerSyncIntervalMinutes();
   }
 
-  public long getSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs() {
-    return COMMON_CONFIG.getSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs();
+  public long getSubscriptionCheckMemoryEnoughIntervalMs() {
+    return COMMON_CONFIG.getSubscriptionCheckMemoryEnoughIntervalMs();
+  }
+
+  public boolean getSubscriptionPrefetchEnabled() {
+    return COMMON_CONFIG.getSubscriptionPrefetchEnabled();
   }
 
   /////////////////////////////// Utils ///////////////////////////////
@@ -128,8 +132,9 @@ public class SubscriptionConfig {
         "SubscriptionTsFileDeduplicationWindowSeconds: {}",
         getSubscriptionTsFileDeduplicationWindowSeconds());
     LOGGER.info(
-        "SubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs: {}",
-        getSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs());
+        "SubscriptionCheckMemoryEnoughIntervalMs: {}",
+        getSubscriptionCheckMemoryEnoughIntervalMs());
+    LOGGER.info("SubscriptionPrefetchEnabled: {}", getSubscriptionPrefetchEnabled());
 
     LOGGER.info(
         "SubscriptionMetaSyncerInitialSyncDelayMinutes: {}",

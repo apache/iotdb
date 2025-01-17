@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.metrics.core.utils.IoTDBMovingAverage;
@@ -69,6 +70,10 @@ public class SubscriptionPrefetchingQueueStates {
   }
 
   public boolean shouldPrefetch() {
+    if (!SubscriptionConfig.getInstance().getSubscriptionPrefetchEnabled()) {
+      return false;
+    }
+
     if (!isMemoryEnough()) {
       return false;
     }

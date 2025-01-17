@@ -100,6 +100,10 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
     // clear the reference count of events
     for (final EnrichedEvent enrichedEvent : enrichedEvents) {
+      if (enrichedEvent instanceof PipeTsFileInsertionEvent) {
+        // close data container in tsfile event
+        ((PipeTsFileInsertionEvent) enrichedEvent).close();
+      }
       enrichedEvent.clearReferenceCount(this.getClass().getName());
     }
     enrichedEvents.clear();

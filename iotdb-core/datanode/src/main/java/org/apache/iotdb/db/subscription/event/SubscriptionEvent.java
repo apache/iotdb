@@ -233,7 +233,7 @@ public class SubscriptionEvent {
 
   //////////////////////////// prefetch & fetch ////////////////////////////
 
-  public void prefetchRemainingResponses() throws Exception {
+  public void prefetchRemainingResponses() {
     response.prefetchRemainingResponses();
   }
 

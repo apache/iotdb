@@ -31,7 +31,8 @@ public interface SubscriptionEventResponse<E> {
 
   E getCurrentResponse();
 
-  void prefetchRemainingResponses() throws Exception;
+  @Deprecated // TBD.
+  void prefetchRemainingResponses();
 
   void fetchNextResponse(final long offset) throws Exception;
 
