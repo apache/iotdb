@@ -50,7 +50,7 @@ public class RenameDatabaseProcessor implements PipeProcessor {
     final String database =
         validator.getParameters().getString(PROCESSOR_RENAME_DATABASE_NEW_DB_NAME);
     if (database == null) {
-      throw new PipeException("database cannot be null");
+      throw new PipeException("new database name cannot be null");
     }
 
     try {
