@@ -93,7 +93,16 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
   }
 
   @Test
-  public void testMachineDowntime() {
+  public void testMachineDowntimeAsync() {
+    testMachineDowntime("iotdb-thrift-connector");
+  }
+
+  @Test
+  public void testMachineDowntimeSync() {
+    testMachineDowntime("iotdb-thrift-sync-connector");
+  }
+
+  private void testMachineDowntime(String sink) {
     StringBuilder a = new StringBuilder();
     for (DataNodeWrapper nodeWrapper : receiverEnv.getDataNodeWrapperList()) {
       a.append(nodeWrapper.getIp()).append(":").append(nodeWrapper.getPort());
@@ -115,7 +124,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
 
       processorAttributes.put("processor", "do-nothing-processor");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector", sink);
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.node-urls", a.toString());
 
