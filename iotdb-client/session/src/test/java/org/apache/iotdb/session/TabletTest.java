@@ -51,8 +51,7 @@ public class TabletTest {
     ;
     // insert three rows data
     Tablet tablet = new Tablet("root.sg1.d1", schemaList, 3);
-    long[] timestamps = tablet.timestamps;
-    Object[] values = tablet.values;
+    Object[] values = tablet.getValues();
 
     /*
     inorder data before inserting
@@ -62,9 +61,8 @@ public class TabletTest {
     1           2
      */
     // inorder timestamps
-    timestamps[0] = 2;
-    timestamps[1] = 0;
-    timestamps[2] = 1;
+    tablet.setTimestamps(new long[] {2, 0, 1});
+
     values[0] = new long[] {0, 1, 2};
     values[1] = new long[] {0, 1, 2};
     values[2] = new int[] {0, 1, 2};
@@ -105,37 +103,37 @@ public class TabletTest {
 
     If the data equal to above tablet, test pass, otherwise test fialed
      */
-    long[] resTimestamps = tablet.timestamps;
+    long[] resTimestamps = tablet.getTimestamps();
     long[] expectedTimestamps = new long[] {0, 1, 2};
     assertArrayEquals(expectedTimestamps, resTimestamps);
-    assertArrayEquals(new long[] {1, 2, 0}, ((long[]) tablet.values[0]));
-    assertArrayEquals(new long[] {1, 2, 0}, ((long[]) tablet.values[1]));
-    assertArrayEquals(new int[] {1, 2, 0}, ((int[]) tablet.values[2]));
+    assertArrayEquals(new long[] {1, 2, 0}, ((long[]) tablet.getValues()[0]));
+    assertArrayEquals(new long[] {1, 2, 0}, ((long[]) tablet.getValues()[1]));
+    assertArrayEquals(new int[] {1, 2, 0}, ((int[]) tablet.getValues()[2]));
     assertArrayEquals(
         new LocalDate[] {LocalDate.ofEpochDay(1), LocalDate.ofEpochDay(2), LocalDate.ofEpochDay(0)},
-        ((LocalDate[]) tablet.values[3]));
-    assertArrayEquals(new boolean[] {false, true, true}, ((boolean[]) tablet.values[4]));
-    assertArrayEquals(new double[] {1.0, 2.0, 0.0}, ((double[]) tablet.values[5]), 0.001);
+        ((LocalDate[]) tablet.getValues()[3]));
+    assertArrayEquals(new boolean[] {false, true, true}, ((boolean[]) tablet.getValues()[4]));
+    assertArrayEquals(new double[] {1.0, 2.0, 0.0}, ((double[]) tablet.getValues()[5]), 0.001);
     assertArrayEquals(
         new Binary[] {
           new Binary("1".getBytes(StandardCharsets.UTF_8)),
           new Binary("2".getBytes(StandardCharsets.UTF_8)),
           new Binary("0".getBytes(StandardCharsets.UTF_8))
         },
-        ((Binary[]) tablet.values[6]));
+        ((Binary[]) tablet.getValues()[6]));
     assertArrayEquals(
         new Binary[] {
           new Binary("1".getBytes(StandardCharsets.UTF_8)),
           new Binary("2".getBytes(StandardCharsets.UTF_8)),
           new Binary("0".getBytes(StandardCharsets.UTF_8))
         },
-        ((Binary[]) tablet.values[7]));
+        ((Binary[]) tablet.getValues()[7]));
     assertArrayEquals(
         new Binary[] {
           new Binary("1".getBytes(StandardCharsets.UTF_8)),
           new Binary("2".getBytes(StandardCharsets.UTF_8)),
           new Binary("0".getBytes(StandardCharsets.UTF_8))
         },
-        ((Binary[]) tablet.values[8]));
+        ((Binary[]) tablet.getValues()[8]));
   }
 }

@@ -57,7 +57,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
- * The {@link PipeConfigPhysicalPlanPatternParseVisitor} will transform the schema {@link
+ * The {@link PipeConfigPhysicalPlanTreePatternParseVisitor} will transform the schema {@link
  * ConfigPhysicalPlan}s using {@link IoTDBTreePattern}. Rule:
  *
  * <p>1. All patterns in the output {@link ConfigPhysicalPlan} will be the intersection of the
@@ -71,10 +71,10 @@ import java.util.stream.Stream;
  * <p>4. The output {@link PlanNode} shall be a copied form of the original one because the original
  * one is used in the {@link PipeConfigRegionWritePlanEvent} in {@link ConfigRegionListeningQueue}.
  */
-public class PipeConfigPhysicalPlanPatternParseVisitor
+public class PipeConfigPhysicalPlanTreePatternParseVisitor
     extends ConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, IoTDBTreePattern> {
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeConfigPhysicalPlanPatternParseVisitor.class);
+      LoggerFactory.getLogger(PipeConfigPhysicalPlanTreePatternParseVisitor.class);
 
   @Override
   public Optional<ConfigPhysicalPlan> visitPlan(

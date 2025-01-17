@@ -89,6 +89,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
@@ -402,6 +404,8 @@ public class Coordinator {
         || statement instanceof Flush
         || statement instanceof ClearCache
         || statement instanceof SetConfiguration
+        || statement instanceof StartRepairData
+        || statement instanceof StopRepairData
         || statement instanceof PipeStatement
         || statement instanceof SubscriptionStatement
         || statement instanceof ShowCurrentSqlDialect

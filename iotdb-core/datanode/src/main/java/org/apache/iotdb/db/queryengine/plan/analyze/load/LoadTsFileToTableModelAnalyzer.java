@@ -123,6 +123,8 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
       // can be reused when constructing tsfile resource
       final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =
           new TsFileSequenceReaderTimeseriesMetadataIterator(reader, true, 1);
+      final Map<String, org.apache.tsfile.file.metadata.TableSchema> tableSchemaMap =
+          reader.getTableSchemaMap();
 
       // check if the tsfile is empty
       if (!timeseriesMetadataIterator.hasNext()) {
@@ -130,8 +132,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
       }
 
       // check whether the tsfile is table-model or not
-      if (Objects.isNull(reader.readFileMetadata().getTableSchemaMap())
-          || reader.readFileMetadata().getTableSchemaMap().isEmpty()) {
+      if (Objects.isNull(tableSchemaMap) || tableSchemaMap.isEmpty()) {
         throw new SemanticException("Attempted to load a tree-model TsFile into table-model.");
       }
 
@@ -149,7 +150,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
       schemaCache.setCurrentModificationsAndTimeIndex(tsFileResource, reader);
 
       for (Map.Entry<String, org.apache.tsfile.file.metadata.TableSchema> name2Schema :
-          reader.readFileMetadata().getTableSchemaMap().entrySet()) {
+          tableSchemaMap.entrySet()) {
         final TableSchema fileSchema =
             TableSchema.fromTsFileTableSchema(name2Schema.getKey(), name2Schema.getValue());
         schemaCache.createTable(fileSchema, context, metadata);
