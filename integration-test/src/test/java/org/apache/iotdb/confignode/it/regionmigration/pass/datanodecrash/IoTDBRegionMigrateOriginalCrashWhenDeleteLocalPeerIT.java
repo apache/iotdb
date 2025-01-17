@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.confignode.it.regionmigration.pass.datanodecrash;
 
+import org.apache.iotdb.commons.utils.KillPoint.KillNode;
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
+import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusDeleteLocalPeerKillPoints;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateDataNodeCrashITFramework;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -31,7 +35,7 @@ import org.junit.runner.RunWith;
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
 public class IoTDBRegionMigrateOriginalCrashWhenDeleteLocalPeerIT
-    extends IoTDBRegionMigrateDataNodeCrashITFramework {
+    extends IoTDBRegionOperationReliabilityITFramework {
   @Test
   public void crashBeforeDelete() throws Exception {
     success(IoTConsensusDeleteLocalPeerKillPoints.BEFORE_DELETE);

@@ -17,15 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration;
+package org.apache.iotdb.confignode.procedure.state;
 
-import org.apache.iotdb.commons.utils.KillPoint.KillNode;
-
-public class IoTDBRegionMigrateDataNodeCrashITFramework
-    extends IoTDBRegionOperationReliabilityITFramework {
-
-  @SafeVarargs
-  public final <T extends Enum<T>> void success(T... dataNodeKillPoints) throws Exception {
-    successTest(1, 1, 1, 2, noKillPoints(), buildSet(dataNodeKillPoints), KillNode.ALL_NODES);
-  }
+public enum ReconstructRegionState {
+  RECONSTRUCT_REGION_PREPARE,
+  REMOVE_REGION_PEER,
+  CHECK_REMOVE_REGION_PEER,
+  ADD_REGION_PEER,
+  CHECK_ADD_REGION_PEER,
 }
