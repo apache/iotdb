@@ -99,6 +99,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
@@ -115,7 +116,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
+import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TRemoveRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -125,6 +128,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
@@ -234,9 +238,14 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePl
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePluginsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ExtendRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
@@ -1001,7 +1010,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           client.dropPipePlugin(
               new TDropPipePluginReq()
                   .setPluginName(dropPipePluginStatement.getPluginName())
-                  .setIfExistsCondition(dropPipePluginStatement.hasIfExistsCondition()));
+                  .setIfExistsCondition(dropPipePluginStatement.hasIfExistsCondition())
+                  .setIsTableModel(dropPipePluginStatement.isTableModel()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         LOGGER.warn(
             "[{}] Failed to drop pipe plugin {}.",
@@ -1018,11 +1028,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showPipePlugins() {
+  public SettableFuture<ConfigTaskResult> showPipePlugins(
+      ShowPipePluginsStatement showPipePluginsStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TGetPipePluginTableResp getPipePluginTableResp = client.getPipePluginTable();
+      TGetPipePluginTableResp getPipePluginTableResp =
+          client.getPipePluginTableExtended(
+              new TShowPipePluginReq().setIsTableModel(showPipePluginsStatement.isTableModel()));
       if (getPipePluginTableResp.getStatus().getCode()
           != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         future.setException(
@@ -1987,53 +2000,63 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     // Construct temporary pipe static meta for validation
     final String pipeName = alterPipeStatement.getPipeName();
+    final Map<String, String> extractorAttributes;
+    final Map<String, String> processorAttributes;
+    final Map<String, String> connectorAttributes;
     try {
       if (!alterPipeStatement.getExtractorAttributes().isEmpty()) {
         if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
-          PipeDataNodeAgent.plugin().validateExtractor(alterPipeStatement.getExtractorAttributes());
+          extractorAttributes = alterPipeStatement.getExtractorAttributes();
         } else {
           pipeMetaFromCoordinator
               .getStaticMeta()
               .getExtractorParameters()
               .addOrReplaceEquivalentAttributes(
                   new PipeParameters(alterPipeStatement.getExtractorAttributes()));
-          PipeDataNodeAgent.plugin()
-              .validateExtractor(
-                  pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters().getAttribute());
+          extractorAttributes =
+              pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters().getAttribute();
         }
+      } else {
+        extractorAttributes =
+            pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters().getAttribute();
       }
 
       if (!alterPipeStatement.getProcessorAttributes().isEmpty()) {
         if (alterPipeStatement.isReplaceAllProcessorAttributes()) {
-          PipeDataNodeAgent.plugin().validateProcessor(alterPipeStatement.getProcessorAttributes());
+          processorAttributes = alterPipeStatement.getProcessorAttributes();
         } else {
           pipeMetaFromCoordinator
               .getStaticMeta()
               .getProcessorParameters()
               .addOrReplaceEquivalentAttributes(
                   new PipeParameters(alterPipeStatement.getProcessorAttributes()));
-          PipeDataNodeAgent.plugin()
-              .validateProcessor(
-                  pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters().getAttribute());
+          processorAttributes =
+              pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters().getAttribute();
         }
+      } else {
+        processorAttributes =
+            pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters().getAttribute();
       }
 
       if (!alterPipeStatement.getConnectorAttributes().isEmpty()) {
         if (alterPipeStatement.isReplaceAllConnectorAttributes()) {
-          PipeDataNodeAgent.plugin()
-              .validateConnector(pipeName, alterPipeStatement.getConnectorAttributes());
+          connectorAttributes = alterPipeStatement.getConnectorAttributes();
         } else {
           pipeMetaFromCoordinator
               .getStaticMeta()
               .getConnectorParameters()
               .addOrReplaceEquivalentAttributes(
                   new PipeParameters(alterPipeStatement.getConnectorAttributes()));
-          PipeDataNodeAgent.plugin()
-              .validateConnector(
-                  pipeName,
-                  pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters().getAttribute());
+          connectorAttributes =
+              pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters().getAttribute();
         }
+      } else {
+        connectorAttributes =
+            pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters().getAttribute();
       }
+
+      PipeDataNodeAgent.plugin()
+          .validate(pipeName, extractorAttributes, processorAttributes, connectorAttributes);
     } catch (final Exception e) {
       future.setException(
           new IoTDBException(e.getMessage(), TSStatusCode.PIPE_ERROR.getStatusCode()));
@@ -2257,9 +2280,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         new TopicMeta(topicName, System.currentTimeMillis(), topicAttributes);
     try {
       PipeDataNodeAgent.plugin()
-          .validateExtractor(temporaryTopicMeta.generateExtractorAttributes());
-      PipeDataNodeAgent.plugin()
-          .validateProcessor(temporaryTopicMeta.generateProcessorAttributes());
+          .validate(
+              "fakePipeName",
+              temporaryTopicMeta.generateExtractorAttributes(),
+              temporaryTopicMeta.generateProcessorAttributes(),
+              temporaryTopicMeta.generateConnectorAttributes("fakeConsumerGroupId"));
     } catch (final Exception e) {
       future.setException(
           new IoTDBException(e.getMessage(), TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode()));
@@ -2836,6 +2861,73 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> reconstructRegion(
+      ReconstructRegionStatement reconstructRegionStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TReconstructRegionReq req =
+          new TReconstructRegionReq(
+              reconstructRegionStatement.getRegionIds(),
+              reconstructRegionStatement.getDataNodeId());
+      final TSStatus status = configNodeClient.reconstructRegion(req);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(new IoTDBException(status.message, status.code));
+        return future;
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> extendRegion(
+      ExtendRegionStatement extendRegionStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TExtendRegionReq req =
+          new TExtendRegionReq(
+              extendRegionStatement.getRegionId(), extendRegionStatement.getDataNodeId());
+      final TSStatus status = configNodeClient.extendRegion(req);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(new IoTDBException(status.message, status.code));
+        return future;
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> removeRegion(
+      RemoveRegionStatement removeRegionStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TRemoveRegionReq req =
+          new TRemoveRegionReq(
+              removeRegionStatement.getRegionId(), removeRegionStatement.getDataNodeId());
+      final TSStatus status = configNodeClient.removeRegion(req);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(new IoTDBException(status.message, status.code));
+        return future;
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> createContinuousQuery(
       final CreateContinuousQueryStatement createContinuousQueryStatement,
       final MPPQueryContext context) {
@@ -3350,7 +3442,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> showTables(
-      final String database, final boolean isDetails) {
+      final String database, final Predicate<String> checkCanShowTable, final boolean isDetails) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     if (InformationSchemaUtils.mayShowTable(database, isDetails, future)) {
@@ -3366,9 +3458,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       }
       if (isDetails) {
-        ShowTablesDetailsTask.buildTsBlock(resp.getTableInfoList(), future);
+        ShowTablesDetailsTask.buildTsBlock(resp.getTableInfoList(), future, checkCanShowTable);
       } else {
-        ShowTablesTask.buildTsBlock(resp.getTableInfoList(), future);
+        ShowTablesTask.buildTsBlock(resp.getTableInfoList(), future, checkCanShowTable);
       }
     } catch (final Exception e) {
       future.setException(e);

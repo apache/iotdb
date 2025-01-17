@@ -183,6 +183,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePlug
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ExtendRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
@@ -230,6 +234,7 @@ import org.apache.iotdb.trigger.api.enums.TriggerType;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.BaseEncoding;
+import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.commons.lang3.StringUtils;
@@ -4184,6 +4189,29 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         Integer.parseInt(ctx.regionId.getText()),
         Integer.parseInt(ctx.fromId.getText()),
         Integer.parseInt(ctx.toId.getText()));
+  }
+
+  @Override
+  public Statement visitReconstructRegion(IoTDBSqlParser.ReconstructRegionContext ctx) {
+    int dataNodeId = Integer.parseInt(ctx.targetDataNodeId.getText());
+    List<Integer> regionIds =
+        ctx.regionIds.stream()
+            .map(Token::getText)
+            .map(Integer::parseInt)
+            .collect(Collectors.toList());
+    return new ReconstructRegionStatement(dataNodeId, regionIds);
+  }
+
+  @Override
+  public Statement visitExtendRegion(IoTDBSqlParser.ExtendRegionContext ctx) {
+    return new ExtendRegionStatement(
+        Integer.parseInt(ctx.regionId.getText()), Integer.parseInt(ctx.targetDataNodeId.getText()));
+  }
+
+  @Override
+  public Statement visitRemoveRegion(IoTDBSqlParser.RemoveRegionContext ctx) {
+    return new RemoveRegionStatement(
+        Integer.parseInt(ctx.regionId.getText()), Integer.parseInt(ctx.targetDataNodeId.getText()));
   }
 
   @Override

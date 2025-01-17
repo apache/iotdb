@@ -330,6 +330,10 @@ public abstract class AbstractEnv implements BaseEnv {
     return result;
   }
 
+  public void checkNodeInStatus(int nodeId, NodeStatus expectation) {
+    checkClusterStatus(nodeStatusMap -> expectation.getStatus().equals(nodeStatusMap.get(nodeId)));
+  }
+
   public void checkClusterStatusWithoutUnknown() {
     checkClusterStatus(
         nodeStatusMap -> nodeStatusMap.values().stream().noneMatch("Unknown"::equals));

@@ -88,6 +88,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePlug
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ExtendRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
@@ -576,6 +580,19 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitMigrateRegion(MigrateRegionStatement migrateRegionStatement, C context) {
     return visitStatement(migrateRegionStatement, context);
+  }
+
+  public R visitReconstructRegion(
+      ReconstructRegionStatement reconstructRegionStatement, C context) {
+    return visitStatement(reconstructRegionStatement, context);
+  }
+
+  public R visitExtendRegion(ExtendRegionStatement extendRegionStatement, C context) {
+    return visitStatement(extendRegionStatement, context);
+  }
+
+  public R visitRemoveRegion(RemoveRegionStatement removeRegionStatement, C context) {
+    return visitStatement(removeRegionStatement, context);
   }
 
   public R visitRemoveDataNode(RemoveDataNodeStatement removeDataNodeStatement, C context) {

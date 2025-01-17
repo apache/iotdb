@@ -61,6 +61,10 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.UnSetTTLTa
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.CreateModelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.DropModelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowModelsTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ExtendRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.RemoveRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.AlterSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.CreateSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.DeactivateSchemaTemplateTask;
@@ -143,6 +147,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePlug
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ExtendRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
@@ -399,7 +407,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitShowPipePlugins(
       ShowPipePluginsStatement showPipePluginStatement, MPPQueryContext context) {
-    return new ShowPipePluginsTask();
+    return new ShowPipePluginsTask(showPipePluginStatement);
   }
 
   @Override
@@ -628,6 +636,24 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitMigrateRegion(
       MigrateRegionStatement migrateRegionStatement, MPPQueryContext context) {
     return new MigrateRegionTask(migrateRegionStatement);
+  }
+
+  @Override
+  public IConfigTask visitReconstructRegion(
+      ReconstructRegionStatement reconstructRegionStatement, MPPQueryContext context) {
+    return new ReconstructRegionTask(reconstructRegionStatement);
+  }
+
+  @Override
+  public IConfigTask visitExtendRegion(
+      ExtendRegionStatement extendRegionStatement, MPPQueryContext context) {
+    return new ExtendRegionTask(extendRegionStatement);
+  }
+
+  @Override
+  public IConfigTask visitRemoveRegion(
+      RemoveRegionStatement removeRegionStatement, MPPQueryContext context) {
+    return new RemoveRegionTask(removeRegionStatement);
   }
 
   @Override

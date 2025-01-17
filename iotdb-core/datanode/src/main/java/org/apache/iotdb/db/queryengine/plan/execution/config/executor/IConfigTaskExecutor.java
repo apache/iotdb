@@ -64,9 +64,14 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePl
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePluginsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ExtendRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
@@ -134,7 +139,8 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> dropPipePlugin(DropPipePluginStatement dropPipePluginStatement);
 
-  SettableFuture<ConfigTaskResult> showPipePlugins();
+  SettableFuture<ConfigTaskResult> showPipePlugins(
+      ShowPipePluginsStatement showPipePluginsStatement);
 
   SettableFuture<ConfigTaskResult> setTTL(SetTTLStatement setTTLStatement, String taskName);
 
@@ -250,6 +256,13 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> migrateRegion(MigrateRegionStatement migrateRegionStatement);
 
+  SettableFuture<ConfigTaskResult> reconstructRegion(
+      ReconstructRegionStatement reconstructRegionStatement);
+
+  SettableFuture<ConfigTaskResult> extendRegion(ExtendRegionStatement extendRegionStatement);
+
+  SettableFuture<ConfigTaskResult> removeRegion(RemoveRegionStatement removeRegionStatement);
+
   SettableFuture<ConfigTaskResult> removeDataNode(RemoveDataNodeStatement removeDataNodeStatement);
 
   SettableFuture<ConfigTaskResult> createContinuousQuery(
@@ -307,7 +320,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> describeTable(
       final String database, final String tableName, final boolean isDetails);
 
-  SettableFuture<ConfigTaskResult> showTables(final String database, final boolean isDetails);
+  SettableFuture<ConfigTaskResult> showTables(
+      final String database, final Predicate<String> canSeenDB, final boolean isDetails);
 
   TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
 
