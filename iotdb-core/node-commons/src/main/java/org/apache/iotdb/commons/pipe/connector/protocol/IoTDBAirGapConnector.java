@@ -193,7 +193,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
         sendHandshakeReq(socket);
         isSocketAlive.set(i, true);
       } catch (Exception e) {
-        LOGGER.info(
+        LOGGER.warn(
             "Handshake error occurs. It may be caused by an error on the receiving end. Ignore it.",
             e);
       }
