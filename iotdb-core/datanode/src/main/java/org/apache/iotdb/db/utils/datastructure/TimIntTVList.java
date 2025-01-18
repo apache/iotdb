@@ -33,18 +33,22 @@ public class TimIntTVList extends IntTVList implements TimSort {
 
   @Override
   public void sort() {
+    sort(0, rowCount);
+  }
+
+  @Override
+  public void sort(int lo, int hi) {
+    int len = hi - lo;
     if (sortedTimestamps == null
-        || sortedTimestamps.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
+        || sortedTimestamps.length < PrimitiveArrayManager.getArrayRowCount(len)) {
       sortedTimestamps =
-          (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, rowCount);
+          (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, len);
     }
-    if (sortedValues == null
-        || sortedValues.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
-      sortedValues =
-          (int[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT32, rowCount);
+    if (sortedValues == null || sortedValues.length < PrimitiveArrayManager.getArrayRowCount(len)) {
+      sortedValues = (int[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT32, len);
     }
     if (!sorted) {
-      sort(0, rowCount);
+      timSort(0, len);
     }
     clearSortedValue();
     clearSortedTime();
@@ -52,7 +56,7 @@ public class TimIntTVList extends IntTVList implements TimSort {
   }
 
   @Override
-  public void tim_set(int src, int dest) {
+  public void timSet(int src, int dest) {
     set(src, dest);
   }
 

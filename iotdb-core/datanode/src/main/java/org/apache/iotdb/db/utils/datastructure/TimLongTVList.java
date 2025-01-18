@@ -43,7 +43,7 @@ public class TimLongTVList extends LongTVList implements TimSort {
           (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, rowCount);
     }
     if (!sorted) {
-      sort(0, rowCount);
+      timSort(0, rowCount);
     }
     clearSortedValue();
     clearSortedTime();
@@ -51,7 +51,12 @@ public class TimLongTVList extends LongTVList implements TimSort {
   }
 
   @Override
-  public void tim_set(int src, int dest) {
+  public void sort(int lo, int hi) {
+    timSort(lo, hi);
+  }
+
+  @Override
+  public void timSet(int src, int dest) {
     set(src, dest);
   }
 
