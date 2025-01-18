@@ -125,6 +125,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         return;
       }
     }
+
+    // If all clients are not available, throw an exception
     final StringBuilder errorMessage =
         new StringBuilder(
             String.format(
