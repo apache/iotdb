@@ -299,7 +299,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
           final AlterTimeSeriesStatement alterTimeSeriesStatement =
               new AlterTimeSeriesStatement(true);
           alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.UPSERT);
-          alterTimeSeriesStatement.setPath(path);
+          alterTimeSeriesStatement.setPath((MeasurementPath) path);
           try {
             Pair<Map<String, String>, Map<String, String>> tagsAndAttribute =
                 getTagsAndAttributes(node.getOffset());
@@ -319,7 +319,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
         return null;
       } else {
         final CreateTimeSeriesStatement stmt = new CreateTimeSeriesStatement();
-        stmt.setPath(new MeasurementPath(path.getNodes()));
+        stmt.setPath((MeasurementPath) path);
         stmt.setAlias(node.getAlias());
         stmt.setCompressor(node.getAsMeasurementMNode().getSchema().getCompressor());
         stmt.setDataType(node.getDataType());
