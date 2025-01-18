@@ -162,7 +162,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       }
     }
 
-    // It is necessary to ensure that the Client is initialized successfully and not null. If false
+    // It is necessary to ensure that the client is initialized successfully and not null. If false
     // is returned, it means that the initialization is not successful and the handshake operation
     // is not performed.
     if (initClientAndStatus(clientAndStatus, endPoint)) {
