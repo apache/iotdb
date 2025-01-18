@@ -358,7 +358,8 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
 
     @Override
     public List<Object> visitMeasurementMNode(
-        final AbstractMeasurementMNode<?, ? extends IMNode<?>> node, final PartialPath path) {
+        final AbstractMeasurementMNode<?, ? extends IMNode<?>> node, PartialPath path) {
+      path = new MeasurementPath(path.getNodes());
       if (node.isLogicalView()) {
         final List<Object> statementList = new ArrayList<>();
         final CreateLogicalViewStatement stmt = new CreateLogicalViewStatement();
@@ -373,7 +374,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
           final AlterTimeSeriesStatement alterTimeSeriesStatement =
               new AlterTimeSeriesStatement(true);
           alterTimeSeriesStatement.setAlterType(AlterTimeSeriesStatement.AlterType.UPSERT);
-          alterTimeSeriesStatement.setPath(path);
+          alterTimeSeriesStatement.setPath((MeasurementPath) path);
           try {
             final Pair<Map<String, String>, Map<String, String>> tagsAndAttribute =
                 getTagsAndAttributes(node.getOffset());
@@ -393,7 +394,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
         return null;
       } else {
         final CreateTimeSeriesStatement stmt = new CreateTimeSeriesStatement();
-        stmt.setPath(new MeasurementPath(path.getNodes()));
+        stmt.setPath((MeasurementPath) path);
         stmt.setAlias(node.getAlias());
         stmt.setCompressor(node.getAsMeasurementMNode().getSchema().getCompressor());
         stmt.setDataType(node.getDataType());

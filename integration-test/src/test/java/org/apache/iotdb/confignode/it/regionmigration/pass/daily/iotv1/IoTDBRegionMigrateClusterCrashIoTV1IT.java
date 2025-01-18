@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv1;
 
-import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
 import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
 import org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -35,7 +35,7 @@ import org.junit.runner.RunWith;
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
 public class IoTDBRegionMigrateClusterCrashIoTV1IT
-    extends IoTDBRegionMigrateReliabilityITFramework {
+    extends IoTDBRegionOperationReliabilityITFramework {
 
   @Override
   @Before
