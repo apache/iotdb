@@ -37,6 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.MemUtils;
+import org.apache.iotdb.db.utils.datastructure.TopkDivideMemoryNotEnoughException;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -88,9 +89,9 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private long minPlanIndex = Long.MAX_VALUE;
 
-  private final long memTableId = memTableIdCounter.incrementAndGet();
+  private long memTableId = memTableIdCounter.incrementAndGet();
 
-  private final long createdTime = System.currentTimeMillis();
+  private long createdTime = System.currentTimeMillis();
 
   /** this time is updated by the timed flush, same as createdTime when the feature is disabled. */
   private long updateTime = createdTime;
@@ -124,6 +125,34 @@ public abstract class AbstractMemTable implements IMemTable {
     this.database = database;
     this.dataRegionId = dataRegionId;
     this.memTableMap = memTableMap;
+  }
+
+  /** create memtable from last memtable, preserve topk points */
+  protected AbstractMemTable(
+      String database,
+      String dataRegionId,
+      Map<IDeviceID, IWritableMemChunkGroup> memTableMap,
+      AbstractMemTable lastMemTable) {
+    this.database = database;
+    this.dataRegionId = dataRegionId;
+    this.memTableMap = memTableMap;
+    for (IDeviceID key : memTableMap.keySet()) {
+      Map<String, IWritableMemChunk> memChunkMap = memTableMap.get(key).getMemChunkMap();
+      for (String schema : memChunkMap.keySet()) {
+        IWritableMemChunk memChunk = memChunkMap.get(schema);
+        totalPointsNum += memChunk.getTVList().rowCount();
+        memSize +=
+            (long) memChunk.getTVList().rowCount()
+                * memChunk.getSchema().getType().getDataTypeSize();
+      }
+    }
+    totalPointsNumThreshold = lastMemTable.getTotalPointsNumThreshold();
+    createdTime = System.currentTimeMillis();
+    memTableId = memTableIdCounter.incrementAndGet();
+    seriesNumber = lastMemTable.getSeriesNumber();
+    tvListRamCost = lastMemTable.getTVListsRamCost() * totalPointsNum / lastMemTable.totalPointsNum;
+    shouldFlush = false;
+    flushStatus = FlushStatus.WORKING;
   }
 
   @Override
@@ -440,6 +469,16 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
+  public void setMemSize(long m) {
+    memSize = memSize + m;
+  }
+
+  @Override
+  public void setTotalPointsNum(long m) {
+    totalPointsNum = totalPointsNum + m;
+  }
+
+  @Override
   public boolean reachTotalPointNumThreshold() {
     if (totalPointsNum == 0) {
       return false;
@@ -527,6 +566,21 @@ public abstract class AbstractMemTable implements IMemTable {
     if (memChunkGroup.getMemChunkMap().isEmpty()) {
       memTableMap.remove(deviceIDFactory.getDeviceID(devicePath));
     }
+  }
+
+  @Override
+  public IMemTable divide() throws TopkDivideMemoryNotEnoughException {
+    Map<IDeviceID, IWritableMemChunkGroup> topkMemTableMap = new HashMap<>();
+    for (IDeviceID key : memTableMap.keySet()) {
+      IWritableMemChunkGroup chunkGroupTemp = memTableMap.get(key).divide();
+      topkMemTableMap.put(key, chunkGroupTemp);
+    }
+    PrimitiveMemTable topkMemtable =
+        new PrimitiveMemTable(database, dataRegionId, topkMemTableMap, this);
+    memSize -= topkMemtable.memSize();
+    totalPointsNum -= topkMemtable.getTotalPointsNum();
+    tvListRamCost -= topkMemtable.getTVListsRamCost();
+    return topkMemtable;
   }
 
   @Override
@@ -689,6 +743,15 @@ public abstract class AbstractMemTable implements IMemTable {
     return latestTimeForEachDevice;
   }
 
+  @Override
+  public Map<String, Long> getTopKTime() {
+    Map<String, Long> latestTimeForEachDevice = new HashMap<>();
+    for (Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
+      latestTimeForEachDevice.put(entry.getKey().toStringID(), entry.getValue().getTopKTime());
+    }
+    return latestTimeForEachDevice;
+  }
+
   public static class Factory {
     private Factory() {
       // Empty constructor
@@ -733,5 +796,9 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public boolean isTotallyGeneratedByPipe() {
     return this.isTotallyGeneratedByPipe.get();
+  }
+
+  public long getTotalPointsNumThreshold() {
+    return totalPointsNumThreshold;
   }
 }

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.db.utils.datastructure.TopkDivideMemoryNotEnoughException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -83,6 +84,8 @@ public interface IWritableMemChunk extends WALEntryValue {
 
   IMeasurementSchema getSchema();
 
+  void setSchema(IMeasurementSchema s);
+
   /**
    * served for read requests.
    *
@@ -128,6 +131,10 @@ public interface IWritableMemChunk extends WALEntryValue {
     return Long.MAX_VALUE;
   }
 
+  default long getTopKTime() {
+    return Long.MAX_VALUE;
+  }
+
   /** @return how many points are deleted */
   int delete(long lowerBound, long upperBound);
 
@@ -140,6 +147,8 @@ public interface IWritableMemChunk extends WALEntryValue {
   long getFirstPoint();
 
   long getLastPoint();
+
+  IWritableMemChunk divide() throws TopkDivideMemoryNotEnoughException;
 
   boolean isEmpty();
 }

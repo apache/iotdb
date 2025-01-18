@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
+import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.MEMTABLE_TOPK_SIZE;
 import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
 import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
@@ -56,6 +57,8 @@ public abstract class TVList implements WALEntryValue {
 
   protected boolean sorted = true;
   protected long maxTime;
+  protected long topKTime;
+  protected int sortCount;
   // record reference count of this tv list
   // currently this reference will only be increase because we can't know when to decrease it
   protected AtomicInteger referenceCount;
@@ -64,7 +67,9 @@ public abstract class TVList implements WALEntryValue {
   protected TVList() {
     timestamps = new ArrayList<>();
     rowCount = 0;
+    sortCount = 0;
     maxTime = Long.MIN_VALUE;
+    topKTime = Long.MIN_VALUE;
     referenceCount = new AtomicInteger();
   }
 
@@ -106,6 +111,8 @@ public abstract class TVList implements WALEntryValue {
   }
 
   public abstract void sort();
+
+  public abstract void sort(int lo, int hi);
 
   public void increaseReferenceCount() {
     referenceCount.incrementAndGet();
@@ -212,6 +219,10 @@ public abstract class TVList implements WALEntryValue {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
+  public TVList divide() throws TopkDivideMemoryNotEnoughException {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
   public Object getAlignedValue(int index) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
@@ -227,6 +238,10 @@ public abstract class TVList implements WALEntryValue {
 
   public long getMaxTime() {
     return maxTime;
+  }
+
+  public long getTopKTime() {
+    return topKTime;
   }
 
   public long getVersion() {
@@ -328,6 +343,7 @@ public abstract class TVList implements WALEntryValue {
     for (int i = start; i < end; i++) {
       inPutMinTime = Math.min(inPutMinTime, time[i]);
       maxTime = Math.max(maxTime, time[i]);
+      topKTime = Math.max(topKTime, time[Math.max(0, i - MEMTABLE_TOPK_SIZE)]);
       if (inputSorted && i < length - 1 && time[i] > time[i + 1]) {
         inputSorted = false;
       }

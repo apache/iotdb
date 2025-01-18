@@ -39,9 +39,14 @@ public class QuickDoubleTVList extends DoubleTVList implements QuickSort {
   @Override
   public void sort() {
     if (!sorted) {
-      qsort(0, rowCount - 1);
+      qSort(0, rowCount - 1);
     }
     sorted = true;
+  }
+
+  @Override
+  public void sort(int lo, int hi) {
+    qSort(lo, hi);
   }
 
   @Override
