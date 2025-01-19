@@ -254,7 +254,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
       extractorAttributes.put("extractor.table-name", "test.*");
 
       processorAttributes.put("processor", "rename-database-processor");
-      processorAttributes.put("processor.new-db-name", "test1");
+      processorAttributes.put("processor.new-db-name", "Test1");
 
       connectorAttributes.put("connector", "write-back-sink");
 
