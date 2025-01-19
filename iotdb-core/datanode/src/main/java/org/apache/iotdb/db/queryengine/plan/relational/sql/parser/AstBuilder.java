@@ -1506,7 +1506,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             toTable ? obj.toLowerCase() : "",
             privileges,
             grantOption,
-            "");
+            null);
       } else if (ctx.privilegeObjectScope().objectScope() != null) {
         String db = ctx.privilegeObjectScope().objectScope().dbname.getText().toLowerCase();
         String tb = ctx.privilegeObjectScope().objectScope().tbname.getText().toLowerCase();
@@ -1518,7 +1518,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             tb,
             privileges,
             grantOption,
-            "");
+            null);
       } else if (ctx.privilegeObjectScope().ANY() != null) {
         return new RelationalAuthorStatement(
             toUser ? AuthorRType.GRANT_USER_ANY : AuthorRType.GRANT_ROLE_ANY,
@@ -1586,7 +1586,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             fromTable ? obj.toLowerCase() : "",
             privileges,
             grantOption,
-            "");
+            null);
       } else if (ctx.privilegeObjectScope().objectScope() != null) {
         String db = ctx.privilegeObjectScope().objectScope().dbname.getText().toLowerCase();
         String tb = ctx.privilegeObjectScope().objectScope().tbname.getText().toLowerCase();
@@ -1598,7 +1598,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             tb,
             privileges,
             grantOption,
-            "");
+            null);
       } else if (ctx.privilegeObjectScope().ANY() != null) {
         return new RelationalAuthorStatement(
             fromUser ? AuthorRType.REVOKE_USER_ANY : AuthorRType.REVOKE_ROLE_ANY,

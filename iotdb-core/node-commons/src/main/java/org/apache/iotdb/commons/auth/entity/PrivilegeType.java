@@ -95,4 +95,8 @@ public enum PrivilegeType {
   public boolean forRelationalSys() {
     return this == MAINTAIN || this == MANAGE_USER || this == MANAGE_ROLE;
   }
+
+  public PrivilegeModelType getModelType() {
+    return modelType;
+  }
 }

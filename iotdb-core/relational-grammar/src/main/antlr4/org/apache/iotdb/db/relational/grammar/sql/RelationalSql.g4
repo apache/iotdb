@@ -583,11 +583,11 @@ alterUserStatement
     ;
 
 grantUserRoleStatement
-    : GRANT ROLE roleName=identifier TO USER userName=identifier
+    : GRANT ROLE roleName=identifier TO userName=identifier
     ;
 
 revokeUserRoleStatement
-    : REVOKE ROLE roleName=identifier FROM USER userName=identifier
+    : REVOKE ROLE roleName=identifier FROM userName=identifier
     ;
 
 

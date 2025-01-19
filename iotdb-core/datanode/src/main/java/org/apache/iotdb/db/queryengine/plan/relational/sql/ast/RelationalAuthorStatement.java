@@ -119,7 +119,7 @@ public class RelationalAuthorStatement extends Statement {
     return this.password;
   }
 
-  public boolean hasGrantOption() {
+  public boolean isGrantOption() {
     return grantOption;
   }
 

@@ -662,6 +662,6 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         authorStatement.getPrivilegeType().isEmpty()
             ? Collections.emptySet()
             : authorStatement.getPrivilegeIds(),
-        authorStatement.hasGrantOption());
+        authorStatement.isGrantOption());
   }
 }
