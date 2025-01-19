@@ -220,7 +220,7 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitorTest {
     Assert.assertEquals(
         Collections.singletonList(new PartialPath("root.db.device.**")),
         ((AuthorTreePlan)
-                IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+                IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
                     .visitGrantUser(
                         new AuthorTreePlan(
                             ConfigPhysicalPlanType.GrantUser,
@@ -242,7 +242,7 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitorTest {
     Assert.assertEquals(
         Collections.singletonList(new PartialPath("root.db.device.**")),
         ((AuthorTreePlan)
-                IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+                IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
                     .visitRevokeUser(
                         new AuthorTreePlan(
                             ConfigPhysicalPlanType.RevokeUser,
@@ -264,7 +264,7 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitorTest {
     Assert.assertEquals(
         Collections.singletonList(new PartialPath("root.db.device.**")),
         ((AuthorTreePlan)
-                IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+                IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
                     .visitGrantRole(
                         new AuthorTreePlan(
                             ConfigPhysicalPlanType.GrantRole,
@@ -286,7 +286,7 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitorTest {
     Assert.assertEquals(
         Collections.singletonList(new PartialPath("root.db.device.**")),
         ((AuthorTreePlan)
-                IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+                IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
                     .visitRevokeRole(
                         new AuthorTreePlan(
                             ConfigPhysicalPlanType.RevokeRole,

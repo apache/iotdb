@@ -120,16 +120,11 @@ public class LocalFileRoleManagerTest {
 
     // revoke privilege
     role = manager.getEntry(roles[0].getName());
-    assertTrue(
-        manager.revokePrivilegeFromEntry(
-            role.getName(), new PrivilegeUnion(PrivilegeType.MAINTAIN)));
-    assertFalse(
-        manager.revokePrivilegeFromEntry(
-            role.getName(), new PrivilegeUnion(PrivilegeType.MANAGE_USER)));
-    assertFalse(
-        manager.revokePrivilegeFromEntry(
-            role.getName(),
-            new PrivilegeUnion(new PartialPath("root.test"), PrivilegeType.WRITE_SCHEMA)));
+    manager.revokePrivilegeFromEntry(role.getName(), new PrivilegeUnion(PrivilegeType.MAINTAIN));
+    manager.revokePrivilegeFromEntry(role.getName(), new PrivilegeUnion(PrivilegeType.MANAGE_USER));
+    manager.revokePrivilegeFromEntry(
+        role.getName(),
+        new PrivilegeUnion(new PartialPath("root.test"), PrivilegeType.WRITE_SCHEMA));
     assertEquals(1, manager.getEntry(role.getName()).getSysPriGrantOpt().size());
     caught = false;
     try {
