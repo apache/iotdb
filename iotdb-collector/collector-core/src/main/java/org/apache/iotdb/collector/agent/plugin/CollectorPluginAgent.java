@@ -17,8 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.collector.config;
+package org.apache.iotdb.collector.agent.plugin;
 
-public class CollectorConstant {
-  public static final String PROPERTIES_FILE_NAME = "system.properties";
+public class CollectorPluginAgent {
+  private final CollectorPluginConstructor collectorPluginConstructor =
+      CollectorPluginConstructor.instance();
+
+  private CollectorPluginAgent() {}
+
+  public CollectorPluginConstructor constructor() {
+    return CollectorPluginAgentHolder.INSTANCE.collectorPluginConstructor;
+  }
+
+  public static CollectorPluginAgent instance() {
+    return new CollectorPluginAgent();
+  }
+
+  private static class CollectorPluginAgentHolder {
+    private static final CollectorPluginAgent INSTANCE = new CollectorPluginAgent();
+  }
 }

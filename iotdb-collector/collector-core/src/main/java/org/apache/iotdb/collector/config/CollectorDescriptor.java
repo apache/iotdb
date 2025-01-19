@@ -37,41 +37,10 @@ public class CollectorDescriptor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CollectorDescriptor.class);
 
+  private static final String CONFIG_FILE_NAME = "iotdb-collector-system.properties";
   private static final CollectorConfig CONFIG = new CollectorConfig();
-  private static final String CONFIG_NAME = CollectorConfig.CONFIG_NAME;
 
-  static {
-    final Optional<URL> systemConfigUrl = getPropsUrl();
-    systemConfigUrl.ifPresent(
-        url -> {
-          try {
-            ConfigFileUtils.checkAndMayUpdate(url);
-          } catch (final Exception e) {
-            if (e instanceof InterruptedException) {
-              Thread.currentThread().interrupt();
-            }
-            LOGGER.error("Failed to update config file", e);
-          }
-        });
-  }
-
-  private static Optional<URL> getPropsUrl() {
-    final URL url = CollectorConfig.class.getResource("/" + CONFIG_NAME);
-
-    if (url != null) {
-      return Optional.of(url);
-    } else {
-      LOGGER.warn(
-          "Cannot find IOTDB_COLLECTOR_HOME or IOTDB_COLLECTOR_CONF environment variable when loading "
-              + "config file {}, use default configuration",
-          CONFIG_NAME);
-      // TODO update path
-      // IoTDBConfig: updatePath()
-      return Optional.empty();
-    }
-  }
-
-  protected CollectorDescriptor() {
+  private CollectorDescriptor() {
     loadProps();
   }
 
@@ -87,17 +56,34 @@ public class CollectorDescriptor {
         collectorProperties.putAll(properties);
         loadProperties(collectorProperties);
       } catch (final FileNotFoundException e) {
-        LOGGER.error("Fail to find config file {}, reject DataNode startup.", url.get(), e);
+        LOGGER.error("Fail to find config file {}, reject CollectorNode startup.", url.get(), e);
         System.exit(-1);
       } catch (final IOException e) {
-        LOGGER.error("Cannot load config file, reject DataNode startup.", e);
+        LOGGER.error("Cannot load config file, reject CollectorNode startup.", e);
         System.exit(-1);
       } catch (final Exception e) {
-        LOGGER.error("Incorrect format in config file, reject DataNode startup.", e);
+        LOGGER.error("Incorrect format in config file, reject CollectorNode startup.", e);
         System.exit(-1);
       }
     } else {
-      LOGGER.warn("Couldn't load the configuration {} from any of the known sources.", CONFIG_NAME);
+      LOGGER.warn(
+          "Couldn't load the configuration {} from any of the known sources.", CONFIG_FILE_NAME);
+      System.exit(-1);
+    }
+  }
+
+  private static Optional<URL> getPropsUrl() {
+    final URL url = CollectorConfig.class.getResource("/" + CONFIG_FILE_NAME);
+
+    if (url != null) {
+      return Optional.of(url);
+    } else {
+      LOGGER.warn(
+          "Cannot find IOTDB_COLLECTOR_HOME or IOTDB_COLLECTOR_CONF environment variable when loading "
+              + "config file {}, use default configuration",
+          CONFIG_FILE_NAME);
+
+      return Optional.empty();
     }
   }
 
@@ -105,7 +91,7 @@ public class CollectorDescriptor {
   private void loadProperties(final TrimProperties properties) {
     CONFIG.setRestServicePort(
         Integer.parseInt(
-            Optional.ofNullable(properties.getProperty("collector_rest_port"))
+            Optional.ofNullable(properties.getProperty("collector_rest_service_port"))
                 .orElse(String.valueOf(CONFIG.getRestServicePort()))));
   }
 
