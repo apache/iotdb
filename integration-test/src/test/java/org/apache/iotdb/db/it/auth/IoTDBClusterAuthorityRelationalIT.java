@@ -82,7 +82,7 @@ public class IoTDBClusterAuthorityRelationalIT {
     // clean user
     TAuthorizerRelationalReq authorizerReq =
         new TAuthorizerRelationalReq(
-            AuthorRType.LIST_USER.ordinal(), "", "", "", "", "", -1, false);
+            AuthorRType.LIST_USER.ordinal(), "", "", "", "", "", Collections.emptySet(), false);
 
     TAuthorizerResp authorizerResp = client.queryRPermission(authorizerReq);
     status = authorizerResp.getStatus();
@@ -93,7 +93,14 @@ public class IoTDBClusterAuthorityRelationalIT {
       if (!user.equals("root")) {
         authorizerReq =
             new TAuthorizerRelationalReq(
-                AuthorRType.DROP_USER.ordinal(), user, "", "", "", "", -1, false);
+                AuthorRType.DROP_USER.ordinal(),
+                user,
+                "",
+                "",
+                "",
+                "",
+                Collections.emptySet(),
+                false);
         status = client.operateRPermission(authorizerReq);
         assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       }
@@ -102,7 +109,7 @@ public class IoTDBClusterAuthorityRelationalIT {
     // clean role
     authorizerReq =
         new TAuthorizerRelationalReq(
-            AuthorRType.LIST_ROLE.ordinal(), "", "", "", "", "", -1, false);
+            AuthorRType.LIST_ROLE.ordinal(), "", "", "", "", "", Collections.emptySet(), false);
 
     authorizerResp = client.queryRPermission(authorizerReq);
     status = authorizerResp.getStatus();
@@ -112,7 +119,7 @@ public class IoTDBClusterAuthorityRelationalIT {
     for (String role : allRoles) {
       authorizerReq =
           new TAuthorizerRelationalReq(
-              AuthorRType.DROP_ROLE.ordinal(), role, "", "", "", "", -1, false);
+              AuthorRType.DROP_ROLE.ordinal(), role, "", "", "", "", Collections.emptySet(), false);
       status = client.operateRPermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
@@ -130,7 +137,7 @@ public class IoTDBClusterAuthorityRelationalIT {
             password,
             "",
             "",
-            -1,
+            Collections.emptySet(),
             false);
     status = client.operateRPermission(authorizerReq);
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -142,7 +149,7 @@ public class IoTDBClusterAuthorityRelationalIT {
             "",
             "",
             "",
-            -1,
+            Collections.emptySet(),
             false);
     TAuthorizerResp resp = client.queryRPermission(authorizerReq);
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
@@ -166,7 +173,7 @@ public class IoTDBClusterAuthorityRelationalIT {
             "",
             "",
             "",
-            sysPriv.ordinal(),
+            Collections.singleton(sysPriv.ordinal()),
             grantOpt);
 
     status = client.operateRPermission(authorizerRelationalReq);
@@ -220,7 +227,7 @@ public class IoTDBClusterAuthorityRelationalIT {
             "",
             union.getDBName() == null ? "" : union.getDBName(),
             union.getTbName() == null ? "" : union.getTbName(),
-            union.getPrivilegeType().ordinal(),
+            Collections.singleton(union.getPrivilegeType().ordinal()),
             union.isGrantOption());
     status = client.operateRPermission(authorizerRelationalReq);
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -331,7 +338,14 @@ public class IoTDBClusterAuthorityRelationalIT {
       runAndCheck(
           client,
           new TAuthorizerRelationalReq(
-              AuthorRType.GRANT_USER_ROLE.ordinal(), "user1", "role1", "", "", "", -1, false));
+              AuthorRType.GRANT_USER_ROLE.ordinal(),
+              "user1",
+              "role1",
+              "",
+              "",
+              "",
+              Collections.emptySet(),
+              false));
       grantSysPrivilegeAndCheck(client, "user1", "role1", true, PrivilegeType.MANAGE_USER, false);
       grantSysPrivilegeAndCheck(client, "user1", "role1", true, PrivilegeType.MANAGE_ROLE, true);
       grantSysPrivilegeAndCheck(client, "user1", "role1", false, PrivilegeType.MAINTAIN, true);
