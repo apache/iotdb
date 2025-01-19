@@ -171,6 +171,12 @@ public class RemoteServerEnv implements BaseEnv {
     return connection;
   }
 
+  @Override
+  public Connection getConnection(DataNodeWrapper dataNodeWrapper, String username, String password)
+      throws SQLException {
+    throw new UnsupportedOperationException();
+  }
+
   public void setTestMethodName(String testCaseName) {
     // Do nothing
   }
