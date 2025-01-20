@@ -395,7 +395,8 @@ public class IoTDBDatabaseIT {
                   "column_name,STRING,TAG,",
                   "datatype,STRING,ATTRIBUTE,",
                   "category,STRING,ATTRIBUTE,",
-                  "status,STRING,ATTRIBUTE,")));
+                  "status,STRING,ATTRIBUTE,",
+                  "comment,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc queries"),
           "ColumnName,DataType,Category,",
@@ -409,7 +410,7 @@ public class IoTDBDatabaseIT {
 
       // Test table query
       statement.execute("create database test");
-      statement.execute("create table test.test (a tag, b attribute, c int32)");
+      statement.execute("create table test.test (a tag, b attribute, c int32 comment 'turbine')");
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select * from databases"),
@@ -435,18 +436,18 @@ public class IoTDBDatabaseIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "select * from columns where table_name = 'queries' or database = 'test'"),
-          "database,table_name,column_name,datatype,category,status,",
+          "database,table_name,column_name,datatype,category,status,comment,",
           new HashSet<>(
               Arrays.asList(
-                  "information_schema,queries,query_id,STRING,TAG,USING,",
-                  "information_schema,queries,start_time,TIMESTAMP,ATTRIBUTE,USING,",
-                  "information_schema,queries,datanode_id,INT32,ATTRIBUTE,USING,",
-                  "information_schema,queries,elapsed_time,FLOAT,ATTRIBUTE,USING,",
-                  "information_schema,queries,statement,STRING,ATTRIBUTE,USING,",
-                  "test,test,time,TIMESTAMP,TIME,USING,",
-                  "test,test,a,STRING,TAG,USING,",
-                  "test,test,b,STRING,ATTRIBUTE,USING,",
-                  "test,test,c,INT32,FIELD,USING,")));
+                  "information_schema,queries,query_id,STRING,TAG,USING,null,",
+                  "information_schema,queries,start_time,TIMESTAMP,ATTRIBUTE,USING,null,",
+                  "information_schema,queries,datanode_id,INT32,ATTRIBUTE,USING,null,",
+                  "information_schema,queries,elapsed_time,FLOAT,ATTRIBUTE,USING,null,",
+                  "information_schema,queries,statement,STRING,ATTRIBUTE,USING,null,",
+                  "test,test,time,TIMESTAMP,TIME,USING,null,",
+                  "test,test,a,STRING,TAG,USING,null,",
+                  "test,test,b,STRING,ATTRIBUTE,USING,null,",
+                  "test,test,c,INT32,FIELD,USING,turbine,")));
     }
   }
 

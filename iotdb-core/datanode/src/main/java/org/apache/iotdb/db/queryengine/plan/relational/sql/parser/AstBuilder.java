@@ -130,6 +130,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
@@ -357,7 +358,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getColumnCategory(ctx.columnCategory),
         ctx.charsetName() == null
             ? null
-            : ((Identifier) visit(ctx.charsetName().identifier())).getValue());
+            : ((Identifier) visit(ctx.charsetName().identifier())).getValue(),
+        ctx.comment() == null ? null : ((StringLiteral) visit(ctx.comment().string())).getValue());
   }
 
   @Override
@@ -446,6 +448,23 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getQualifiedName(ctx.qualifiedName()),
         properties,
         Objects.nonNull(ctx.EXISTS()));
+  }
+
+  @Override
+  public Node visitSetColumnComment(final RelationalSqlParser.SetColumnCommentContext ctx) {
+    return new SetColumnComment(
+        getLocation(ctx),
+        getQualifiedName(ctx.qualifiedName()),
+        lowerIdentifier((Identifier) visit(ctx.column)),
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() < ctx.MODIFY().getSymbol().getTokenIndex()),
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() > ctx.MODIFY().getSymbol().getTokenIndex()),
+        ((StringLiteral) visit(ctx.comment().string())).getValue());
   }
 
   @Override

@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnP
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -104,6 +105,8 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
         return visitCommitDeleteTable((CommitDeleteTablePlan) plan, context);
       case PipeDeleteDevices:
         return visitPipeDeleteDevices((PipeDeleteDevicesPlan) plan, context);
+      case SetTableColumnComment:
+        return visitSetTableColumnComment((SetTableColumnCommentPlan) plan, context);
       default:
         return visitPlan(plan, context);
     }
@@ -247,5 +250,10 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
   public R visitPipeDeleteDevices(
       final PipeDeleteDevicesPlan pipeDeleteDevicesPlan, final C context) {
     return visitPlan(pipeDeleteDevicesPlan, context);
+  }
+
+  public R visitSetTableColumnComment(
+      final SetTableColumnCommentPlan setTableColumnCommentPlan, final C context) {
+    return visitPlan(setTableColumnCommentPlan, context);
   }
 }

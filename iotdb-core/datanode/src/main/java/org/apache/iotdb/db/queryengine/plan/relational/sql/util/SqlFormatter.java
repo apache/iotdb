@@ -68,6 +68,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentDatabase;
@@ -698,9 +699,10 @@ public final class SqlFormatter {
       column
           .getCharsetName()
           .ifPresent(charset -> stringBuilder.append(" CHARSET ").append(charset));
-      column
-          .getComment()
-          .ifPresent(comment -> stringBuilder.append(" COMMENT '").append(comment).append("'"));
+
+      if (Objects.nonNull(column.getComment())) {
+        stringBuilder.append(" COMMENT '").append(column.getComment()).append("'");
+      }
       return stringBuilder.toString();
     }
 
@@ -771,7 +773,7 @@ public final class SqlFormatter {
         builder.append("IF EXISTS ");
       }
 
-      builder.append(formatName(node.getTable())).append(" RENAME COLUMN ");
+      builder.append(formatName(node.getTable())).append("RENAME COLUMN ");
       if (node.columnIfExists()) {
         builder.append("IF EXISTS ");
       }
@@ -791,9 +793,9 @@ public final class SqlFormatter {
         builder.append("IF EXISTS ");
       }
 
-      builder.append(formatName(node.getTable())).append(" DROP COLUMN ");
+      builder.append(formatName(node.getTable())).append("DROP COLUMN ");
       if (node.columnIfExists()) {
-        builder.append("IF NOT EXISTS ");
+        builder.append("IF EXISTS ");
       }
 
       builder.append(formatName(node.getField()));
@@ -808,12 +810,33 @@ public final class SqlFormatter {
         builder.append("IF EXISTS ");
       }
 
-      builder.append(formatName(node.getTableName())).append(" ADD COLUMN ");
+      builder.append(formatName(node.getTableName())).append("ADD COLUMN ");
       if (node.columnIfNotExists()) {
         builder.append("IF NOT EXISTS ");
       }
 
       builder.append(formatColumnDefinition(node.getColumn()));
+
+      return null;
+    }
+
+    @Override
+    protected Void visitSetColumnComment(final SetColumnComment node, final Integer indent) {
+      builder.append("ALTER TABLE ");
+      if (node.tableIfExists()) {
+        builder.append("IF EXISTS ");
+      }
+
+      builder.append(formatName(node.getTable())).append("MODIFY COLUMN ");
+      if (node.columnIfExists()) {
+        builder.append("IF EXISTS ");
+      }
+
+      builder.append(formatName(node.getField()));
+
+      builder.append(" COMMENT ");
+
+      builder.append(node.getComment());
 
       return null;
     }

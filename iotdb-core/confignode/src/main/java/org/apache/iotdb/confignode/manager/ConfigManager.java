@@ -246,6 +246,7 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -2639,6 +2640,13 @@ public class ConfigManager implements IManager {
           return procedureManager.alterTableDropColumn(req);
         case DROP_TABLE:
           return procedureManager.dropTable(req);
+        case COMMENT_COLUMN:
+          return clusterSchemaManager.setTableColumnComment(
+              req.getDatabase(),
+              req.getTableName(),
+              ReadWriteIOUtils.readString(req.updateInfo),
+              ReadWriteIOUtils.readString(req.updateInfo),
+              false);
         default:
           throw new IllegalArgumentException();
       }

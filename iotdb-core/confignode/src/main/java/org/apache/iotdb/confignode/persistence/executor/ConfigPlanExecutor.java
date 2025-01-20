@@ -545,6 +545,8 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.preDeleteTable((PreDeleteTablePlan) physicalPlan);
       case CommitDeleteTable:
         return clusterSchemaInfo.dropTable((CommitDeleteTablePlan) physicalPlan);
+      case SetTableColumnComment:
+        return null;
       case CreatePipeV2:
         return pipeInfo.createPipe((CreatePipePlanV2) physicalPlan);
       case SetPipeStatusV2:

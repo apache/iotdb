@@ -54,6 +54,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnP
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
@@ -535,6 +536,15 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((CommitDeleteTablePlan) plan).getTableName(),
                     queryId,
                     true));
+      case SetTableColumnComment:
+        return configManager
+            .getClusterSchemaManager()
+            .setTableColumnComment(
+                ((SetTableColumnCommentPlan) plan).getDatabase(),
+                ((SetTableColumnCommentPlan) plan).getTableName(),
+                ((SetTableColumnCommentPlan) plan).getColumnName(),
+                ((SetTableColumnCommentPlan) plan).getComment(),
+                true);
       case PipeDeleteDevices:
         return configManager
             .getProcedureManager()
