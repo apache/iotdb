@@ -330,6 +330,10 @@ public abstract class AbstractEnv implements BaseEnv {
     return result;
   }
 
+  public void checkNodeInStatus(int nodeId, NodeStatus expectation) {
+    checkClusterStatus(nodeStatusMap -> expectation.getStatus().equals(nodeStatusMap.get(nodeId)));
+  }
+
   public void checkClusterStatusWithoutUnknown() {
     checkClusterStatus(
         nodeStatusMap -> nodeStatusMap.values().stream().noneMatch("Unknown"::equals));
@@ -437,6 +441,19 @@ public abstract class AbstractEnv implements BaseEnv {
     return new ClusterTestConnection(
         getWriteConnection(null, username, password, sqlDialect),
         getReadConnections(null, username, password, sqlDialect));
+  }
+
+  @Override
+  public Connection getConnection(
+      final DataNodeWrapper dataNodeWrapper,
+      final String username,
+      final String password,
+      final String sqlDialect)
+      throws SQLException {
+    return new ClusterTestConnection(
+        getWriteConnectionWithSpecifiedDataNode(
+            dataNodeWrapper, null, username, password, sqlDialect),
+        getReadConnections(null, dataNodeWrapper, username, password, sqlDialect));
   }
 
   @Override
@@ -699,6 +716,33 @@ public abstract class AbstractEnv implements BaseEnv {
                                   + getParam(version, NODE_NETWORK_TIMEOUT_MS, ZERO_TIME_ZONE),
                               BaseEnv.constructProperties(username, password, sqlDialect))));
             });
+    return readConnRequestDelegate.requestAll();
+  }
+
+  protected List<NodeConnection> getReadConnections(
+      final Constant.Version version,
+      final DataNodeWrapper dataNode,
+      final String username,
+      final String password,
+      final String sqlDialect)
+      throws SQLException {
+    final List<String> endpoints = new ArrayList<>();
+    final ParallelRequestDelegate<NodeConnection> readConnRequestDelegate =
+        new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT);
+
+    endpoints.add(dataNode.getIpAndPortString());
+    readConnRequestDelegate.addRequest(
+        () ->
+            new NodeConnection(
+                dataNode.getIpAndPortString(),
+                NodeConnection.NodeRole.DATA_NODE,
+                NodeConnection.ConnectionRole.READ,
+                DriverManager.getConnection(
+                    Config.IOTDB_URL_PREFIX
+                        + dataNode.getIpAndPortString()
+                        + getParam(version, NODE_NETWORK_TIMEOUT_MS, ZERO_TIME_ZONE),
+                    BaseEnv.constructProperties(username, password, sqlDialect))));
+
     return readConnRequestDelegate.requestAll();
   }
 

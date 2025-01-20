@@ -254,6 +254,8 @@ public class AccumulatorFactory {
     switch (aggregationType) {
       case COUNT:
         return new CountAccumulator();
+      case COUNT_ALL:
+        return new CountAllAccumulator();
       case COUNT_IF:
         return new CountIfAccumulator();
       case AVG:
