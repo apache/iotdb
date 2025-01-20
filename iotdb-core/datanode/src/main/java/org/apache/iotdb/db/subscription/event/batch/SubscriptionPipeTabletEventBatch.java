@@ -216,7 +216,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
         // reset
         currentTabletInsertionEventsIterator = null;
         currentTsFileInsertionEvent = null;
-        return false;
+        return hasNext();
       }
     }
 
