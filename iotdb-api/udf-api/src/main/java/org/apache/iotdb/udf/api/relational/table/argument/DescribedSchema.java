@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.udf.api.relational.table.argument;
 
-import org.apache.iotdb.udf.api.type.ColumnCategory;
 import org.apache.iotdb.udf.api.type.Type;
 
 import java.util.ArrayList;
@@ -50,13 +49,13 @@ public class DescribedSchema {
   public static class Builder {
     private final List<Field> fields = new ArrayList<>();
 
-    public Builder addField(String name, Type type, ColumnCategory category) {
-      fields.add(new Field(name, type, category));
+    public Builder addField(String name, Type type) {
+      fields.add(new Field(name, type));
       return this;
     }
 
-    public Builder addField(Optional<String> name, Type type, ColumnCategory category) {
-      fields.add(new Field(name, type, category));
+    public Builder addField(Optional<String> name, Type type) {
+      fields.add(new Field(name, type));
       return this;
     }
 
@@ -68,18 +67,15 @@ public class DescribedSchema {
   public static class Field {
     private final Optional<String> name;
     private final Type type;
-    private final ColumnCategory category;
 
-    public Field(String name, Type type, ColumnCategory category) {
+    public Field(String name, Type type) {
       this.name = Optional.ofNullable(name);
       this.type = type;
-      this.category = category;
     }
 
-    public Field(Optional<String> name, Type type, ColumnCategory category) {
+    public Field(Optional<String> name, Type type) {
       this.name = name;
       this.type = type;
-      this.category = category;
     }
 
     public Optional<String> getName() {
@@ -88,10 +84,6 @@ public class DescribedSchema {
 
     public Type getType() {
       return type;
-    }
-
-    public ColumnCategory getCategory() {
-      return category;
     }
   }
 }

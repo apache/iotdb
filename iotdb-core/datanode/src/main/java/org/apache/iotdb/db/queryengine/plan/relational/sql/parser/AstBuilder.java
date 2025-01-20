@@ -243,6 +243,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSe
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName.mapIdentifier;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionDescriptorArgument.descriptorArgument;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionDescriptorArgument.nullDescriptorArgument;
+import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_AGGREGATION;
@@ -1834,7 +1835,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     } else if (context.descriptorArgument() != null) {
       value = visit(context.descriptorArgument());
     } else {
-      value = visit(context.expression());
+      value = visit(context.scalarArgument());
     }
 
     return new TableFunctionArgument(getLocation(context), name, value);
@@ -1929,6 +1930,24 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getLocation(context),
         (Identifier) visit(context.identifier()),
         visitIfPresent(context.type(), DataType.class));
+  }
+
+  @Override
+  public Node visitScalarArgument(RelationalSqlParser.ScalarArgumentContext ctx) {
+    if (ctx.expression() != null) {
+      return visit(ctx.expression());
+    } else {
+      TimeDuration timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
+
+      if (timeDuration.monthDuration != 0 && timeDuration.nonMonthDuration != 0) {
+        throw new SemanticException(
+            "Simultaneous setting of monthly and non-monthly intervals is not supported.");
+      }
+
+      return new LongLiteral(
+          getLocation(ctx.timeDuration()),
+          String.valueOf(timeDuration.getTotalDuration(currPrecision)));
+    }
   }
 
   // ********************* predicates *******************

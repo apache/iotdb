@@ -29,7 +29,6 @@ import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionLeafProcessor;
 import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSpecification;
-import org.apache.iotdb.udf.api.type.ColumnCategory;
 import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -57,8 +56,7 @@ public class SplitFunction implements TableFunction {
 
   @Override
   public TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException {
-    DescribedSchema schema =
-        DescribedSchema.builder().addField("output", Type.STRING, ColumnCategory.FIELD).build();
+    DescribedSchema schema = DescribedSchema.builder().addField("output", Type.STRING).build();
     return TableFunctionAnalysis.builder().properColumnSchema(schema).build();
   }
 

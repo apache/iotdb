@@ -32,7 +32,6 @@ import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProc
 import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
-import org.apache.iotdb.udf.api.type.ColumnCategory;
 import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -85,6 +84,7 @@ public class HOPTableFunction implements TableFunction {
     return requiredIndex;
   }
 
+  // TODO: ImmutableMap
   @Override
   public TableFunctionAnalysis analyze(Map<String, Argument> arguments) {
     TableArgument tableArgument = (TableArgument) arguments.get(DATA_PARAMETER_NAME);
@@ -96,10 +96,11 @@ public class HOPTableFunction implements TableFunction {
     }
     DescribedSchema properColumnSchema =
         new DescribedSchema.Builder()
-            .addField("window_start", Type.TIMESTAMP, ColumnCategory.FIELD)
-            .addField("window_end", Type.TIMESTAMP, ColumnCategory.FIELD)
+            .addField("window_start", Type.TIMESTAMP)
+            .addField("window_end", Type.TIMESTAMP)
             .build();
 
+    // outputColumnSchema
     return TableFunctionAnalysis.builder()
         .properColumnSchema(properColumnSchema)
         .requiredColumns(
@@ -122,8 +123,8 @@ public class HOPTableFunction implements TableFunction {
       public TableFunctionDataProcessor getDataProcessor() {
         return new HOPDataProcessor(
             (Long) ((ScalarArgument) arguments.get(START_PARAMETER_NAME)).getValue(),
-            (Long) ((ScalarArgument) arguments.get(SLIDE_PARAMETER_NAME)).getValue() * 1000,
-            (Long) ((ScalarArgument) arguments.get(SLIDE_PARAMETER_NAME)).getValue() * 1000,
+            (Long) ((ScalarArgument) arguments.get(SLIDE_PARAMETER_NAME)).getValue(),
+            (Long) ((ScalarArgument) arguments.get(SIZE_PARAMETER_NAME)).getValue(),
             requiredIndex);
       }
     };

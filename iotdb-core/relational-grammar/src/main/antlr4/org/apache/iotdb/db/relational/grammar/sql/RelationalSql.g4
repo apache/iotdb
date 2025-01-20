@@ -735,7 +735,7 @@ tableFunctionCall
     ;
 
 tableFunctionArgument
-    : (identifier '=>')? (tableArgument | descriptorArgument | expression) // descriptor before expression to avoid parsing descriptor as a function call
+    : (identifier '=>')? (tableArgument | descriptorArgument | scalarArgument) // descriptor before expression to avoid parsing descriptor as a function call
     ;
 
 tableArgument
@@ -757,6 +757,11 @@ descriptorArgument
 
 descriptorField
     : identifier type?
+    ;
+
+scalarArgument
+    : expression
+    | timeDuration
     ;
 
 copartitionTables

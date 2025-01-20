@@ -174,7 +174,6 @@ import org.apache.iotdb.udf.api.relational.table.specification.DescriptorParamet
 import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
-import org.apache.iotdb.udf.api.type.ColumnCategory;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
@@ -3196,7 +3195,7 @@ public class StatementAnalyzer {
                           Field.newUnqualified(
                               f.getName(),
                               UDFDataTypeTransformer.transformUDFDataTypeToReadType(f.getType()),
-                              TsTableColumnCategory.fromUdfColumnType(f.getCategory())))
+                              TsTableColumnCategory.FIELD))
                   .forEach(fields::add));
 
       // next, columns derived from table arguments, in order of argument declarations
@@ -3394,7 +3393,6 @@ public class StatementAnalyzer {
         Optional<Scope> scope) {
       List<Optional<String>> fieldNames;
       List<org.apache.iotdb.udf.api.type.Type> fieldTypes;
-      List<ColumnCategory> fieldCategories;
       List<String> partitionBy = Collections.emptyList();
       List<String> orderBy = Collections.emptyList();
 
@@ -3417,11 +3415,6 @@ public class StatementAnalyzer {
           fields.stream()
               .map(Field::getType)
               .map(UDFDataTypeTransformer::transformReadTypeToUDFDataType)
-              .collect(toImmutableList());
-      fieldCategories =
-          fields.stream()
-              .map(Field::getColumnCategory)
-              .map(TsTableColumnCategory::toUdfColumnCategory)
               .collect(toImmutableList());
 
       // analyze PARTITION BY
@@ -3522,7 +3515,7 @@ public class StatementAnalyzer {
       analysisBuilder.withPassThroughColumns(argumentSpecification.isPassThroughColumns());
 
       return new ArgumentAnalysis(
-          new TableArgument(fieldNames, fieldTypes, fieldCategories, partitionBy, orderBy),
+          new TableArgument(fieldNames, fieldTypes, partitionBy, orderBy),
           Optional.of(analysisBuilder.build()));
     }
 
