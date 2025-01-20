@@ -37,7 +37,7 @@ public class RegionGroupCacheTest {
   public void getRegionStatusTest() {
     long currentTime = System.nanoTime();
     RegionGroupCache regionGroupCache =
-        new RegionGroupCache(DATABASE, Stream.of(0, 1, 2, 3).collect(Collectors.toSet()));
+        new RegionGroupCache(DATABASE, Stream.of(0, 1, 2, 3).collect(Collectors.toSet()), false);
     regionGroupCache.cacheHeartbeatSample(
         0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     regionGroupCache.cacheHeartbeatSample(
@@ -62,7 +62,7 @@ public class RegionGroupCacheTest {
   public void getRegionGroupStatusTest() {
     long currentTime = System.nanoTime();
     RegionGroupCache runningRegionGroup =
-        new RegionGroupCache(DATABASE, Stream.of(0, 1, 2).collect(Collectors.toSet()));
+        new RegionGroupCache(DATABASE, Stream.of(0, 1, 2).collect(Collectors.toSet()), false);
     runningRegionGroup.cacheHeartbeatSample(
         0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     runningRegionGroup.cacheHeartbeatSample(
@@ -75,7 +75,7 @@ public class RegionGroupCacheTest {
         runningRegionGroup.getCurrentStatistics().getRegionGroupStatus());
 
     RegionGroupCache availableRegionGroup =
-        new RegionGroupCache(DATABASE, Stream.of(0, 1, 2).collect(Collectors.toSet()));
+        new RegionGroupCache(DATABASE, Stream.of(0, 1, 2).collect(Collectors.toSet()), false);
     availableRegionGroup.cacheHeartbeatSample(
         0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     availableRegionGroup.cacheHeartbeatSample(
@@ -88,7 +88,7 @@ public class RegionGroupCacheTest {
         availableRegionGroup.getCurrentStatistics().getRegionGroupStatus());
 
     RegionGroupCache disabledRegionGroup0 =
-        new RegionGroupCache(DATABASE, Stream.of(0, 1, 2).collect(Collectors.toSet()));
+        new RegionGroupCache(DATABASE, Stream.of(0, 1, 2).collect(Collectors.toSet()), false);
     disabledRegionGroup0.cacheHeartbeatSample(
         0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     disabledRegionGroup0.cacheHeartbeatSample(
@@ -101,7 +101,7 @@ public class RegionGroupCacheTest {
         disabledRegionGroup0.getCurrentStatistics().getRegionGroupStatus());
 
     RegionGroupCache disabledRegionGroup1 =
-        new RegionGroupCache(DATABASE, Stream.of(0, 1, 2).collect(Collectors.toSet()));
+        new RegionGroupCache(DATABASE, Stream.of(0, 1, 2).collect(Collectors.toSet()), false);
     disabledRegionGroup1.cacheHeartbeatSample(
         0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     disabledRegionGroup1.cacheHeartbeatSample(
@@ -114,7 +114,7 @@ public class RegionGroupCacheTest {
         disabledRegionGroup1.getCurrentStatistics().getRegionGroupStatus());
 
     RegionGroupCache disabledRegionGroup2 =
-        new RegionGroupCache(DATABASE, Stream.of(0, 1, 2).collect(Collectors.toSet()));
+        new RegionGroupCache(DATABASE, Stream.of(0, 1, 2).collect(Collectors.toSet()), false);
     disabledRegionGroup2.cacheHeartbeatSample(
         0, new RegionHeartbeatSample(currentTime, RegionStatus.Running));
     disabledRegionGroup2.cacheHeartbeatSample(

@@ -42,14 +42,16 @@ public class RegionGroupCache {
   private final Map<Integer, RegionCache> regionCacheMap;
   // The current RegionGroupStatistics, used for providing statistics to other services
   private final AtomicReference<RegionGroupStatistics> currentStatistics;
+  private final boolean isStrictConsensus;
 
   /** Constructor for create RegionGroupCache with default RegionGroupStatistics. */
-  public RegionGroupCache(String database, Set<Integer> dataNodeIds) {
+  public RegionGroupCache(String database, Set<Integer> dataNodeIds, boolean isStrictConsensus) {
     this.database = database;
     this.regionCacheMap = new ConcurrentHashMap<>();
     dataNodeIds.forEach(dataNodeId -> regionCacheMap.put(dataNodeId, new RegionCache()));
     this.currentStatistics =
         new AtomicReference<>(RegionGroupStatistics.generateDefaultRegionGroupStatistics());
+    this.isStrictConsensus = isStrictConsensus;
   }
 
   /**

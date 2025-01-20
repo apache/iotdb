@@ -30,6 +30,8 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupCache;
@@ -46,6 +48,7 @@ import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatisti
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionStatistics;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
+import org.apache.iotdb.consensus.ConsensusFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,6 +79,8 @@ public class LoadCache {
       Math.max(
           ProcedureManager.PROCEDURE_WAIT_TIME_OUT - TimeUnit.SECONDS.toMillis(2),
           TimeUnit.SECONDS.toMillis(10));
+
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
   // Map<NodeId, is heartbeat processing>
   // False indicates there is no processing heartbeat request, true otherwise
@@ -165,13 +170,21 @@ public class LoadCache {
             regionReplicaSets.forEach(
                 regionReplicaSet -> {
                   TConsensusGroupId regionGroupId = regionReplicaSet.getRegionId();
+                  boolean isStrictConsensus =
+                      (TConsensusGroupType.SchemaRegion.equals(regionGroupId.getType())
+                              && CONF.getSchemaRegionConsensusProtocolClass()
+                                  .equals(ConsensusFactory.RATIS_CONSENSUS))
+                          || (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
+                              && CONF.getDataRegionConsensusProtocolClass()
+                                  .equals(ConsensusFactory.RATIS_CONSENSUS));
                   regionGroupCacheMap.put(
                       regionGroupId,
                       new RegionGroupCache(
                           database,
                           regionReplicaSet.getDataNodeLocations().stream()
                               .map(TDataNodeLocation::getDataNodeId)
-                              .collect(Collectors.toSet())));
+                              .collect(Collectors.toSet()),
+                          isStrictConsensus));
                   consensusGroupCacheMap.put(regionGroupId, new ConsensusGroupCache());
                 }));
   }
@@ -278,7 +291,15 @@ public class LoadCache {
    */
   public void createRegionGroupHeartbeatCache(
       String database, TConsensusGroupId regionGroupId, Set<Integer> dataNodeIds) {
-    regionGroupCacheMap.put(regionGroupId, new RegionGroupCache(database, dataNodeIds));
+    boolean isStrictConsensus =
+        (TConsensusGroupType.SchemaRegion.equals(regionGroupId.getType())
+                && CONF.getSchemaRegionConsensusProtocolClass()
+                    .equals(ConsensusFactory.RATIS_CONSENSUS))
+            || (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
+                && CONF.getDataRegionConsensusProtocolClass()
+                    .equals(ConsensusFactory.RATIS_CONSENSUS));
+    regionGroupCacheMap.put(
+        regionGroupId, new RegionGroupCache(database, dataNodeIds, isStrictConsensus));
     consensusGroupCacheMap.put(regionGroupId, new ConsensusGroupCache());
   }
 
