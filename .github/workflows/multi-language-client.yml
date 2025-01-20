@@ -106,7 +106,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: client-cpp-${{ runner.os }}
-          path: client-cpp/target/*.zip
+          path: iotdb-client/client-cpp/target/*.zip
           retention-days: 1
       - name: Upload Artifact
         if: failure()
