@@ -25,7 +25,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public class RegisterManager {
@@ -57,8 +56,7 @@ public class RegisterManager {
 
   /** stop all service and clear iService list. */
   public void deregisterAll() {
-    Collections.reverse(iServices);
-    for (IService service : iServices) {
+    for (final IService service : iServices) {
       try {
         service.waitAndStop(DEREGISTER_TIME_OUT);
         LOGGER.debug("{} deregistered", service.getID());

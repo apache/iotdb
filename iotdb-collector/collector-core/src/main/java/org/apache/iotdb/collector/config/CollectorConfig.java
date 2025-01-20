@@ -19,9 +19,15 @@
 
 package org.apache.iotdb.collector.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.lang.reflect.Field;
+import java.util.Arrays;
+
 public class CollectorConfig {
 
-  public static final String CONFIG_NAME = "iotdb-collector-system.properties";
+  private static final Logger LOGGER = LoggerFactory.getLogger(CollectorConfig.class);
 
   private int restServicePort = 17070;
 
@@ -35,5 +41,39 @@ public class CollectorConfig {
 
   public void setRestServicePort(int restServicePort) {
     this.restServicePort = restServicePort;
+  }
+
+  public String getConfigMessage() {
+    final StringBuilder configMessage = new StringBuilder();
+    String configContent;
+
+    for (final Field configField : CollectorConfig.class.getDeclaredFields()) {
+      try {
+        final String configType = configField.getGenericType().getTypeName();
+        if (configType.contains("java.lang.String[][]")) {
+          final String[][] configList = (String[][]) configField.get(this);
+          final StringBuilder builder = new StringBuilder();
+          for (final String[] strings : configList) {
+            builder.append(Arrays.asList(strings)).append(";");
+          }
+          configContent = builder.toString();
+        } else if (configType.contains("java.lang.String[]")) {
+          final String[] configList = (String[]) configField.get(this);
+          configContent = Arrays.asList(configList).toString();
+        } else {
+          configContent = configField.get(this).toString();
+        }
+        configMessage
+            .append("\n\t")
+            .append(configField.getName())
+            .append("=")
+            .append(configContent)
+            .append(";");
+      } catch (final IllegalAccessException e) {
+        LOGGER.warn("failed to show config message", e);
+      }
+    }
+
+    return configMessage.toString();
   }
 }

@@ -127,29 +127,21 @@ components:
       title: CreatePipeRequest
       type: object
       properties:
-        timestamps:
-          type: array
-          items:
-            type: integer
-            format: int64
-        measurements:
-          type: array
-          items:
+        sourceAttribute:
+          type: object
+          additionalProperties:
             type: string
-        dataTypes:
-          type: array
-          items:
+        processorAttribute:
+          type: object
+          additionalProperties:
             type: string
-        values:
-          type: array
-          items:
-            type: array
-            items:
-              type: object
-        isAligned:
-          type: boolean
-        deviceId:
+        sinkAttribute:
+          type: object
+          additionalProperties:
+            type: string
+        taskId:
           type: string
+
 
     AlterPipeRequest:
       title: AlterPipeRequest
@@ -211,28 +203,7 @@ components:
       title: StopPipeRequest
       type: object
       properties:
-        timestamps:
-          type: array
-          items:
-            type: integer
-            format: int64
-        measurements:
-          type: array
-          items:
-            type: string
-        dataTypes:
-          type: array
-          items:
-            type: string
-        values:
-          type: array
-          items:
-            type: array
-            items:
-              type: object
-        isAligned:
-          type: boolean
-        deviceId:
+        taskId:
           type: string
 
     DropPipeRequest:

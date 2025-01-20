@@ -17,30 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.collector.protocol.rest.filter;
+package org.apache.iotdb.collector.agent.collect;
+
+import org.apache.iotdb.pipe.api.collector.EventCollector;
+import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.servlet.annotation.WebFilter;
-import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.container.ContainerRequestFilter;
-import javax.ws.rs.container.ContainerResponseContext;
-import javax.ws.rs.container.ContainerResponseFilter;
-import javax.ws.rs.ext.Provider;
+import java.util.concurrent.BlockingQueue;
 
-import java.io.IOException;
+public class CollectorEventCollector implements EventCollector {
 
-@WebFilter("/*")
-@Provider
-public class AuthorizationFilter implements ContainerRequestFilter, ContainerResponseFilter {
+  private static final Logger LOGGER = LoggerFactory.getLogger(CollectorEventCollector.class);
 
-  @Override
-  public void filter(final ContainerRequestContext containerRequestContext) throws IOException {}
+  private final BlockingQueue<Event> pendingQueue;
+
+  public CollectorEventCollector(final BlockingQueue<Event> pendingQueue) {
+    this.pendingQueue = pendingQueue;
+  }
 
   @Override
-  public void filter(
-      final ContainerRequestContext containerRequestContext,
-      final ContainerResponseContext containerResponseContext)
-      throws IOException {}
+  public void collect(final Event event) {
+    try {
+      pendingQueue.put(event);
+    } catch (final InterruptedException e) {
+      LOGGER.warn("collect event failed because {}", e.getMessage(), e);
+    }
+  }
 }
