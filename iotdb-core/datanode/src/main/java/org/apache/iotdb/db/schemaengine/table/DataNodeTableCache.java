@@ -384,6 +384,7 @@ public class DataNodeTableCache implements ITableCache {
     if (Objects.isNull(newTable)) {
       return "RemovedTable: " + oldTable;
     }
+    boolean modified = false;
     final StringBuilder builder = new StringBuilder("TableName: " + oldTable.getTableName());
     final Map<String, String> oldProps = new HashMap<>(oldTable.getProps());
     final Map<String, String> newProps = new HashMap<>(newTable.getProps());
@@ -399,6 +400,7 @@ public class DataNodeTableCache implements ITableCache {
                 return false;
               });
       builder.append(" RemovedProps: ").append(oldProps).append(" AddedProps: ").append(newProps);
+      modified = true;
     }
 
     final List<TsTableColumnSchema> oldSchema =
@@ -432,11 +434,13 @@ public class DataNodeTableCache implements ITableCache {
 
     if (!oldSchema.isEmpty()) {
       builder.append(" RemovedColumn(s): ").append(oldSchema);
+      modified = true;
     }
     if (!newSchema.isEmpty()) {
       builder.append(" AddedColumn(s): ").append(newSchema);
+      modified = true;
     }
-    return builder.toString();
+    return modified ? builder.toString() : " Not modified";
   }
 
   private TsTable getTableInCache(final String database, final String tableName) {
