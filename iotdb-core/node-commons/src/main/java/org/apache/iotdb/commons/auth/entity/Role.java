@@ -312,6 +312,26 @@ public class Role {
     }
   }
 
+  public void setAnyScopePrivilegeSet(Set<PrivilegeType> privilegeSet) {
+    this.anyScopePrivilegeSet = privilegeSet;
+  }
+
+  public void setAnyScopePrivilegeSetInt(Set<Integer> privilegeSet) {
+    for (Integer priv : privilegeSet) {
+      this.anyScopePrivilegeSet.add(PrivilegeType.values()[priv]);
+    }
+  }
+
+  public void setAnyScopePrivilegeGrantOptSet(Set<PrivilegeType> grantOpt) {
+    this.anyScopePrivilegeGrantOptSet = grantOpt;
+  }
+
+  public void setAnyScopePrivilegeGrantOptSetInt(Set<Integer> privilegeSet) {
+    for (Integer priv : privilegeSet) {
+      this.anyScopePrivilegeGrantOptSet.add(PrivilegeType.values()[priv]);
+    }
+  }
+
   public void setSysPriGrantOpt(Set<PrivilegeType> grantOpt) {
     this.sysPriGrantOpt = grantOpt;
   }
@@ -654,7 +674,7 @@ public class Role {
     for (PrivilegeType priv : privBak) {
       StringBuilder str = new StringBuilder(String.valueOf(priv));
       if (grantOpt.contains(priv)) {
-        str.append("_with_grant_option ");
+        str.append("_with_grant_option");
       }
       priSet.add(str.toString());
     }

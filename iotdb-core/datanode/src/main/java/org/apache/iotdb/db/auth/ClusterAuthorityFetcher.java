@@ -598,6 +598,10 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     user.setPassword(tPermissionInfoResp.getUserInfo().getPassword());
     user.loadRelationalPrivilegeInfo(
         tPermissionInfoResp.getUserInfo().getPermissionInfo().getDbPrivilegeMap());
+    user.setAnyScopePrivilegeSetInt(
+        tPermissionInfoResp.getUserInfo().getPermissionInfo().getAnyScopeSet());
+    user.setAnyScopePrivilegeGrantOptSetInt(
+        tPermissionInfoResp.getUserInfo().getPermissionInfo().getAnyScopeGrantSet());
     user.setOpenIdUser(tPermissionInfoResp.getUserInfo().isIsOpenIdUser());
     user.setRoleSet(tPermissionInfoResp.getUserInfo().getRoleSet());
     user.setSysPrivilegeSetInt(

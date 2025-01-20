@@ -110,7 +110,7 @@ public class LocalFileAuthorizerTest {
     try {
       authorizer.deleteRole(roleName);
     } catch (AuthException e) {
-      assertEquals("Role user does not exist", e.getMessage());
+      assertEquals("Role role does not exist", e.getMessage());
     }
     assertEquals(0, authorizer.getUser("test").getRoleSet().size());
   }
