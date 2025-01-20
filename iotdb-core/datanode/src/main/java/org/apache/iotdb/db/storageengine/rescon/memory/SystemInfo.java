@@ -403,15 +403,15 @@ public class SystemInfo {
                     * config.getMaxDirectBufferOffHeapMemorySizeProportion());
     memorySizeForMemtable =
         (long)
-            (config.getAllocateMemoryBlockForStorageEngine().getMaxMemorySizeInByte()
+            (config.getStorageEngineMemoryManager().getTotalMemorySizeInBytes()
                 * config.getWriteProportionForMemtable());
     memorySizeForCompaction =
         (long)
-            (config.getAllocateMemoryBlockForStorageEngine().getMaxMemorySizeInByte()
+            (config.getStorageEngineMemoryManager().getTotalMemorySizeInBytes()
                 * config.getCompactionProportion());
     memorySizeForWalBufferQueue =
         (long)
-            (config.getAllocateMemoryBlockForStorageEngine().getMaxMemorySizeInByte()
+            (config.getStorageEngineMemoryManager().getTotalMemorySizeInBytes()
                 * config.getWriteProportionForMemtable()
                 * config.getWalBufferQueueProportion());
     FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();

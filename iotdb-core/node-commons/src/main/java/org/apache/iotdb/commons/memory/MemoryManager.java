@@ -62,12 +62,28 @@ public class MemoryManager {
   /** Allocated memory blocks of this memory manager */
   private final Set<MemoryBlock> allocatedMemoryBlocks = new HashSet<>();
 
-  public MemoryManager(
+  private MemoryManager(
       String name, MemoryManager parentMemoryManager, long totalMemorySizeInBytes) {
     this.name = name;
     this.parentMemoryManager = parentMemoryManager;
-    this.parentMemoryManager.addChildMemoryManager(name, this);
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
+  }
+
+  public MemoryManager createMemoryManager(String name, long totalMemorySizeInBytes) {
+    MemoryManager result = new MemoryManager(name, this, totalMemorySizeInBytes);
+    return childrens.compute(
+        name,
+        (managerName, manager) -> {
+          if (manager != null) {
+            LOGGER.warn(
+                "createMemoryManager failed: memory manager {} already exists, it's size is {}",
+                managerName,
+                manager.getTotalMemorySizeInBytes());
+            return manager;
+          } else {
+            return result;
+          }
+        });
   }
 
   /** Try to force allocate memory block with specified size in bytes. */
@@ -186,18 +202,18 @@ public class MemoryManager {
     if (!ENABLED || block == null || block.isReleased()) {
       return;
     }
+    releaseWithOutNotify(block);
+    this.notifyAll();
+  }
+
+  public synchronized void releaseWithOutNotify(IMemoryBlock block) {
+    if (!ENABLED || block == null || block.isReleased()) {
+      return;
+    }
 
     block.markAsReleased();
     allocatedMemorySizeInBytes -= block.getMemoryUsageInBytes();
     allocatedMemoryBlocks.remove(block);
-
-    this.notifyAll();
-  }
-
-  public synchronized void addChildMemoryManager(String name, MemoryManager childMemoryManager) {
-    if (childMemoryManager != null) {
-      childrens.put(name, childMemoryManager);
-    }
   }
 
   public MemoryManager getMemoryManager(String... names) {
@@ -233,5 +249,32 @@ public class MemoryManager {
 
   public long getTotalMemorySizeInBytes() {
     return totalMemorySizeInBytes;
+  }
+
+  public void resize(long totalMemorySizeInBytes) {
+    this.totalMemorySizeInBytes = totalMemorySizeInBytes;
+  }
+
+  public void clear() {
+    for (MemoryManager child : childrens.values()) {
+      child.clear();
+    }
+    childrens.clear();
+    for (MemoryBlock block : allocatedMemoryBlocks) {
+      releaseWithOutNotify(block);
+    }
+    allocatedMemoryBlocks.clear();
+  }
+
+  public static MemoryManager global() {
+    return MemoryManagerHolder.GLOBAL;
+  }
+
+  private static class MemoryManagerHolder {
+
+    private static final MemoryManager GLOBAL =
+        new MemoryManager("GlobalMemoryManager", null, Runtime.getRuntime().totalMemory());
+
+    private MemoryManagerHolder() {}
   }
 }

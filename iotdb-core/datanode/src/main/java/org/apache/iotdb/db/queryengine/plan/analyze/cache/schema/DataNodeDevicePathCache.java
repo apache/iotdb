@@ -40,7 +40,7 @@ public class DataNodeDevicePathCache {
         Caffeine.newBuilder()
             .maximumWeight(
                 (long)
-                    (config.getAllocateMemoryBlockForStorageEngine().getMaxMemorySizeInByte()
+                    (config.getStorageEngineMemoryManager().getTotalMemorySizeInBytes()
                         * config.getWriteProportionForMemtable()
                         * config.getDevicePathCacheProportion()))
             .weigher(
