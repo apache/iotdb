@@ -394,7 +394,7 @@ public class IoTDBTableIT {
       statement.execute("alter table table2 drop column color");
 
       // Test comment
-      statement.execute("alter table table2 MODIFY region_id COMMENT '重庆'");
+      statement.execute("alter table table2 MODIFY column region_id COMMENT '重庆'");
       statement.execute("COMMENT ON COLUMN test2.table2.time IS 'recent'");
 
       columnNames = new String[] {"time", "region_id", "plant_id", "temperature", "speed"};
