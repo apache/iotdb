@@ -34,7 +34,7 @@ env:
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
 jobs:
-  basic-function-tree-model:
+  tree-model-basic-function:
     strategy:
       fail-fast: false
       max-parallel: 15
@@ -115,7 +115,7 @@ jobs:
           name: cluster-log-auto-create-schema-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster }}-${{ matrix.cluster }}
           path: integration-test/target/cluster-logs
           retention-days: 30
-  data-process-tree-model:
+  tree-model-data-process:
     strategy:
       fail-fast: false
       max-parallel: 15
@@ -218,7 +218,7 @@ jobs:
           name: cluster-log-manual-create-schema-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
           path: integration-test/target/cluster-logs
           retention-days: 30
-  comprehensive-tree-model:
+  tree-model-comprehensive:
     strategy:
       fail-fast: false
       max-parallel: 15
@@ -729,7 +729,7 @@ jobs:
           name: cluster-log-table-model-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster }}-${{ matrix.cluster }}
           path: integration-test/target/cluster-logs
           retention-days: 30
-  table-model-env-status:
+  table-model-comprehensive:
     strategy:
       fail-fast: false
       max-parallel: 15
