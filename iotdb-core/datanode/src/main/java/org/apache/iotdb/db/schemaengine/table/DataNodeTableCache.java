@@ -379,13 +379,13 @@ public class DataNodeTableCache implements ITableCache {
 
   private String compareTable(final TsTable oldTable, final TsTable newTable) {
     if (Objects.isNull(oldTable)) {
-      return "AddedTable: " + newTable;
+      return "Added table: " + newTable;
     }
     if (Objects.isNull(newTable)) {
-      return "RemovedTable: " + oldTable;
+      return "Removed table: " + oldTable;
     }
     boolean modified = false;
-    final StringBuilder builder = new StringBuilder("TableName: " + oldTable.getTableName());
+    final StringBuilder builder = new StringBuilder("Table name: " + oldTable.getTableName());
     final Map<String, String> oldProps = new HashMap<>(oldTable.getProps());
     final Map<String, String> newProps = new HashMap<>(newTable.getProps());
     if (!Objects.equals(oldProps, newProps)) {
@@ -399,7 +399,7 @@ public class DataNodeTableCache implements ITableCache {
                 }
                 return false;
               });
-      builder.append(" RemovedProps: ").append(oldProps).append(" AddedProps: ").append(newProps);
+      builder.append(" Removed props: ").append(oldProps).append(" Added props: ").append(newProps);
       modified = true;
     }
 
@@ -433,11 +433,11 @@ public class DataNodeTableCache implements ITableCache {
             .collect(Collectors.toList());
 
     if (!oldSchema.isEmpty()) {
-      builder.append(" RemovedColumn(s): ").append(oldSchema);
+      builder.append(" Removed column(s): ").append(oldSchema);
       modified = true;
     }
     if (!newSchema.isEmpty()) {
-      builder.append(" AddedColumn(s): ").append(newSchema);
+      builder.append(" Added column(s): ").append(newSchema);
       modified = true;
     }
     return modified ? builder.toString() : " Not modified";
