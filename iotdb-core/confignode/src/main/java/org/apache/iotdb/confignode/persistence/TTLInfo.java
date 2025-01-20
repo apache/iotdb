@@ -158,6 +158,22 @@ public class TTLInfo implements SnapshotProcessor {
     }
   }
 
+  /**
+   * Get the maximum ttl of the subtree of the corresponding database.
+   *
+   * @param database the path of the database.
+   * @return the maximum ttl of the subtree of the corresponding database. return NULL_TTL if the
+   *     TTL is not set or the database does not exist.
+   */
+  public long getDatabaseMaxTTL(String database) {
+    lock.readLock().lock();
+    try {
+      return ttlCache.getDatabaseMaxTTL(database);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);

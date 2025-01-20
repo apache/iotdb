@@ -610,6 +610,16 @@ public class DatabasePartitionTable {
     return dataPartitionTable.getLastDataAllotTable();
   }
 
+  /**
+   * Remove PartitionTable where the TimeSlot is expired.
+   *
+   * @param TTL The Time To Live
+   * @param currentTimeSlot The current TimeSlot
+   */
+  public void autoCleanPartitionTable(long TTL, TTimePartitionSlot currentTimeSlot) {
+    dataPartitionTable.autoCleanPartitionTable(TTL, currentTimeSlot);
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {

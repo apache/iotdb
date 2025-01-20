@@ -30,9 +30,12 @@ import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -51,6 +54,7 @@ import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.AutoCleanPartitionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
@@ -69,6 +73,7 @@ import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
+import org.apache.iotdb.confignode.manager.TTLManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
@@ -124,6 +129,7 @@ public class PartitionManager {
       CONF.getSchemaRegionGroupExtensionPolicy();
   private static final RegionGroupExtensionPolicy DATA_REGION_GROUP_EXTENSION_POLICY =
       CONF.getDataRegionGroupExtensionPolicy();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   private final IManager configManager;
   private final PartitionInfo partitionInfo;
@@ -136,14 +142,21 @@ public class PartitionManager {
   private static final String CONSENSUS_WRITE_ERROR =
       "Failed in the write API executing the consensus layer due to: ";
 
-  /** Region cleaner. */
   // Monitor for leadership change
   private final Object scheduleMonitor = new Object();
 
+  /** Region cleaner. */
   // Try to delete Regions in every 10s
   private static final int REGION_MAINTAINER_WORK_INTERVAL = 10;
+
   private final ScheduledExecutorService regionMaintainer;
   private Future<?> currentRegionMaintainerFuture;
+
+  /** Partition cleaner. */
+  private static final long PARTITION_CLEANER_WORK_INTERVAL = COMMON_CONFIG.getTTLCheckInterval();
+
+  private final ScheduledExecutorService partitionCleaner;
+  private Future<?> currentPartitionCleanerFuture;
 
   public PartitionManager(IManager configManager, PartitionInfo partitionInfo) {
     this.configManager = configManager;
@@ -151,6 +164,9 @@ public class PartitionManager {
     this.regionMaintainer =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.CONFIG_NODE_REGION_MAINTAINER.getName());
+    this.partitionCleaner =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            ThreadName.CONFIG_NODE_PARTITION_CLEANER.getName());
     setSeriesPartitionExecutor();
   }
 
@@ -1449,6 +1465,54 @@ public class PartitionManager {
   }
 
   /**
+   * The ConfigNode-leader will periodically invoke this interface to automatically clean expired
+   * partition table.
+   */
+  public void autoCleanDataPartitionTable() {
+    List<String> databases = getClusterSchemaManager().getDatabaseNames(null);
+    Map<String, Long> databaseTTLMap = getClusterSchemaManager().getTTLInfoForUpgrading();
+    for (String database : databases) {
+      long subTreeMaxTTL = getTTLManager().getDatabaseMaxTTL(database);
+      databaseTTLMap.put(
+          database, Math.max(subTreeMaxTTL, databaseTTLMap.getOrDefault(database, -1L)));
+    }
+    TTimePartitionSlot currentTimePartitionSlot = TimePartitionUtils.getCurrentTimePartitionSlot();
+    try {
+      getConsensusManager()
+          .write(new AutoCleanPartitionTablePlan(databaseTTLMap, currentTimePartitionSlot));
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+    }
+  }
+
+  public void startPartitionTableCleaner() {
+    synchronized (scheduleMonitor) {
+      if (currentPartitionCleanerFuture == null) {
+        /* Start the PartitionCleaner service */
+        currentPartitionCleanerFuture =
+            ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+                partitionCleaner,
+                this::autoCleanDataPartitionTable,
+                PARTITION_CLEANER_WORK_INTERVAL,
+                PARTITION_CLEANER_WORK_INTERVAL,
+                TimeUnit.MILLISECONDS);
+        LOGGER.info("PartitionCleaner is started successfully.");
+      }
+    }
+  }
+
+  public void stopPartitionTableCleaner() {
+    synchronized (scheduleMonitor) {
+      if (currentPartitionCleanerFuture != null) {
+        /* Stop the PartitionCleaner service */
+        currentPartitionCleanerFuture.cancel(false);
+        currentPartitionCleanerFuture = null;
+        LOGGER.info("PartitionCleaner is stopped successfully.");
+      }
+    }
+  }
+
+  /**
    * Filter the RegionGroups in the specified Database through the RegionGroupStatus.
    *
    * @param database The specified Database
@@ -1514,5 +1578,9 @@ public class PartitionManager {
 
   private NodeManager getNodeManager() {
     return configManager.getNodeManager();
+  }
+
+  private TTLManager getTTLManager() {
+    return configManager.getTTLManager();
   }
 }

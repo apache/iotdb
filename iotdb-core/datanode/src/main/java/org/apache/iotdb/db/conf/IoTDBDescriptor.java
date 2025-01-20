@@ -734,11 +734,6 @@ public class IoTDBDescriptor {
                 "inner_compaction_task_selection_mods_file_threshold",
                 Long.toString(conf.getInnerCompactionTaskSelectionModsFileThreshold()))));
 
-    conf.setTtlCheckInterval(
-        Long.parseLong(
-            properties.getProperty(
-                "ttl_check_interval", Long.toString(conf.getTTlCheckInterval()))));
-
     conf.setMaxExpiredTime(
         Long.parseLong(
             properties.getProperty("max_expired_time", Long.toString(conf.getMaxExpiredTime()))));
