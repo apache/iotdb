@@ -2098,27 +2098,27 @@ public class IoTDBMultiTAGsWithAttributesTableIT {
   public void exceptionTest() {
     tableAssertTestFail(
         "select * from table0 t0 full join table1 t1 on t0.num>t1.num",
-            ONLY_SUPPORT_EQUI_JOIN,
+        ONLY_SUPPORT_EQUI_JOIN,
         DATABASE_NAME);
 
     tableAssertTestFail(
         "select * from table0 t0 full join table1 t1 on t0.num!=t1.num",
-            ONLY_SUPPORT_EQUI_JOIN,
+        ONLY_SUPPORT_EQUI_JOIN,
         DATABASE_NAME);
 
     tableAssertTestFail(
         "select * from table0 t0 full join table1 t1 on t0.device=t1.device AND t0.num>t1.num",
-            ONLY_SUPPORT_EQUI_JOIN,
+        ONLY_SUPPORT_EQUI_JOIN,
         DATABASE_NAME);
 
     tableAssertTestFail(
         "select * from table0 t0 full join table1 t1 on t0.device=t1.device OR t0.num>t1.num",
-            ONLY_SUPPORT_EQUI_JOIN,
+        ONLY_SUPPORT_EQUI_JOIN,
         DATABASE_NAME);
 
     tableAssertTestFail(
         "select * from table0 t0 full join table1 t1 on t0.device=t1.device OR t0.time=t1.time",
-            ONLY_SUPPORT_EQUI_JOIN,
+        ONLY_SUPPORT_EQUI_JOIN,
         DATABASE_NAME);
   }
 
