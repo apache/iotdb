@@ -298,6 +298,10 @@ EXPLAIN
     : E X P L A I N
     ;
 
+EXTEND
+    : E X T E N D
+    ;
+
 EXTRACTOR
     : E X T R A C T O R
     ;
@@ -636,6 +640,10 @@ RANGE
 
 READONLY
     : R E A D O N L Y
+    ;
+
+RECONSTRUCT
+    : R E C O N S T R U C T
     ;
 
 REGEXP

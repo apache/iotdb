@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.it.regionmigration.pass;
 
 import org.apache.iotdb.commons.utils.KillPoint.KillNode;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
-import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
 import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
 import org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState;
@@ -39,7 +39,8 @@ import java.util.stream.Collectors;
 
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateConfigNodeCrashIT extends IoTDBRegionMigrateReliabilityITFramework {
+public class IoTDBRegionMigrateConfigNodeCrashIT
+    extends IoTDBRegionOperationReliabilityITFramework {
   @Test
   @Ignore
   public void cnCrashDuringPreCheckTest() throws Exception {
