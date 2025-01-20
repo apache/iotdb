@@ -200,6 +200,10 @@ public class MemoryManager {
     }
   }
 
+  public MemoryManager getMemoryManager(String... names) {
+    return getMemoryManager(0, names);
+  }
+
   public MemoryManager getMemoryManager(int index, String... names) {
     if (index >= names.length) return null;
     MemoryManager memoryManager = childrens.get(names[index]);
