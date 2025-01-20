@@ -430,11 +430,12 @@ public class DataNodeTableCache implements ITableCache {
                             newTable.getColumnSchema(columnSchema.getColumnName()).getProps()))
             .collect(Collectors.toList());
 
-    builder
-        .append(" RemovedColumn(s): ")
-        .append(oldSchema)
-        .append(" AddedColumn(s): ")
-        .append(newSchema);
+    if (!oldSchema.isEmpty()) {
+      builder.append(" RemovedColumn(s): ").append(oldSchema);
+    }
+    if (!newSchema.isEmpty()) {
+      builder.append(" AddedColumn(s): ").append(newSchema);
+    }
     return builder.toString();
   }
 
