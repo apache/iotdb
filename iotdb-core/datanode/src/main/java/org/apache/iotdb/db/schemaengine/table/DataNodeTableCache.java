@@ -421,15 +421,15 @@ public class DataNodeTableCache implements ITableCache {
         newTable.getColumnList().stream()
             .filter(
                 columnSchema ->
-                    Objects.isNull(newTable.getColumnSchema(columnSchema.getColumnName()))
+                    Objects.isNull(oldTable.getColumnSchema(columnSchema.getColumnName()))
                         || !Objects.equals(
                             columnSchema.getColumnCategory(),
-                            newTable
+                            oldTable
                                 .getColumnSchema(columnSchema.getColumnName())
                                 .getColumnCategory())
                         || !Objects.equals(
                             columnSchema.getProps(),
-                            newTable.getColumnSchema(columnSchema.getColumnName()).getProps()))
+                            oldTable.getColumnSchema(columnSchema.getColumnName()).getProps()))
             .collect(Collectors.toList());
 
     if (!oldSchema.isEmpty()) {
