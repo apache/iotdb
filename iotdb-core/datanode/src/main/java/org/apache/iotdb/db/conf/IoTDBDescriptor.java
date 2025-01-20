@@ -2169,6 +2169,7 @@ public class IoTDBDescriptor {
       }
     }
 
+    long storageEngineMemorySize = Runtime.getRuntime().maxMemory() * 3 / 10;
     if (memoryAllocateProportion != null) {
       String[] proportions = memoryAllocateProportion.split(":");
       int proportionSum = 0;
@@ -2176,11 +2177,10 @@ public class IoTDBDescriptor {
         proportionSum += Integer.parseInt(proportion.trim());
       }
       long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
+
       if (proportionSum != 0) {
-        conf.setStorageEngineMemoryManager(
-            globalMemoryManager.createMemoryManager(
-                "StorageEngine",
-                maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum));
+        storageEngineMemorySize =
+            maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum;
         conf.setAllocateMemoryForRead(
             maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
         conf.setAllocateMemoryForSchema(
@@ -2202,6 +2202,8 @@ public class IoTDBDescriptor {
         }
       }
     }
+    conf.setStorageEngineMemoryManager(
+        globalMemoryManager.createMemoryManager("StorageEngine", storageEngineMemorySize));
 
     LOGGER.info("initial allocateMemoryForRead = {}", conf.getAllocateMemoryForRead());
     LOGGER.info(
@@ -2835,7 +2837,6 @@ public class IoTDBDescriptor {
   }
 
   public void reclaimConsensusMemory() {
-    LOGGER.error("SpriCoder: Reclaim consensus memory");
     // first we need to release the memory allocated for consensus
     MemoryManager storageEngineMemoryManager = conf.getStorageEngineMemoryManager();
     MemoryManager consensusMemoryManager = conf.getConsensusMemoryManager();

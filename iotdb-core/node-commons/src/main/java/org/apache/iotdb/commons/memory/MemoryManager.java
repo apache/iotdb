@@ -71,7 +71,6 @@ public class MemoryManager {
 
   public MemoryManager createMemoryManager(String name, long totalMemorySizeInBytes) {
     MemoryManager result = new MemoryManager(name, this, totalMemorySizeInBytes);
-    LOGGER.error("createMemoryManager: {} {}", name, totalMemorySizeInBytes);
     return childrens.compute(
         name,
         (managerName, manager) -> {
