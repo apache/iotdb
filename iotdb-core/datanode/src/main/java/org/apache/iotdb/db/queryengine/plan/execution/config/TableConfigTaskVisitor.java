@@ -424,8 +424,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             String.format("Columns in table shall not share the same name %s.", columnName));
       }
       table.addColumnSchema(
-          TableHeaderSchemaValidator.generateColumnSchema(
-              category, columnName, dataType, comment));
+          TableHeaderSchemaValidator.generateColumnSchema(category, columnName, dataType, comment));
     }
     return new CreateTableTask(table, database, node.isIfNotExists());
   }
