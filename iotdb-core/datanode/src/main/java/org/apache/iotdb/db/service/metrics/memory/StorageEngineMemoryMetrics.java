@@ -45,7 +45,8 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    long storageEngineSize = config.getAllocateMemoryForStorageEngine();
+    long storageEngineSize =
+        config.getAllocateMemoryBlockForStorageEngine().getMaxMemorySizeInByte();
     // Total memory size of storage engine
     metricService
         .getOrCreateGauge(
@@ -61,7 +62,8 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     // The memory of storage engine divided into Write and Compaction
     long writeSize =
         (long)
-            (config.getAllocateMemoryForStorageEngine() * (1 - config.getCompactionProportion()));
+            (config.getAllocateMemoryBlockForStorageEngine().getMaxMemorySizeInByte()
+                * (1 - config.getCompactionProportion()));
     long compactionSize = storageEngineSize - writeSize;
     metricService
         .getOrCreateGauge(
@@ -88,7 +90,8 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     // The write memory of storage engine divided into MemTable and TimePartitionInfo
     long memtableSize =
         (long)
-            (config.getAllocateMemoryForStorageEngine() * config.getWriteProportionForMemtable());
+            (config.getAllocateMemoryBlockForStorageEngine().getMaxMemorySizeInByte()
+                * config.getWriteProportionForMemtable());
     long timePartitionInfoSize = config.getAllocateMemoryForTimePartitionInfo();
     metricService
         .getOrCreateGauge(
@@ -116,12 +119,12 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     // memory is not divided)
     long dataNodeDevicePathCacheSize =
         (long)
-            (config.getAllocateMemoryForStorageEngine()
+            (config.getAllocateMemoryBlockForStorageEngine().getMaxMemorySizeInByte()
                 * config.getWriteProportionForMemtable()
                 * config.getDevicePathCacheProportion());
     long bufferedArraySize =
         (long)
-            (config.getAllocateMemoryForStorageEngine()
+            (config.getAllocateMemoryBlockForStorageEngine().getMaxMemorySizeInByte()
                 * config.getBufferedArraysMemoryProportion());
     metricService
         .getOrCreateGauge(

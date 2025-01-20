@@ -25,6 +25,9 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.memory.MemoryBlockType;
+import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -96,6 +99,8 @@ public class IoTDBDescriptor {
   private static final CommonDescriptor commonDescriptor = CommonDescriptor.getInstance();
 
   private static final IoTDBConfig conf = new IoTDBConfig();
+  private static final MemoryManager globalMemoryManager =
+      new MemoryManager("GlobalMemoryManager", null, Runtime.getRuntime().totalMemory());
 
   private static final long MAX_THROTTLE_THRESHOLD = 600 * 1024 * 1024 * 1024L;
 
@@ -157,6 +162,10 @@ public class IoTDBDescriptor {
 
   public IoTDBConfig getConfig() {
     return conf;
+  }
+
+  public MemoryManager getGlobalMemoryManager() {
+    return globalMemoryManager;
   }
 
   /**
@@ -2152,6 +2161,7 @@ public class IoTDBDescriptor {
 
   private void initMemoryAllocate(TrimProperties properties) {
     String memoryAllocateProportion = properties.getProperty("datanode_memory_proportion", null);
+    // Get global memory manager here
     if (memoryAllocateProportion == null) {
       memoryAllocateProportion =
           properties.getProperty("storage_query_schema_consensus_free_memory_proportion");
@@ -2170,8 +2180,11 @@ public class IoTDBDescriptor {
       }
       long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
       if (proportionSum != 0) {
-        conf.setAllocateMemoryForStorageEngine(
-            maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+        conf.setAllocateMemoryBlockForStorageEngine(
+            globalMemoryManager.forceAllocate(
+                "StorageEngine",
+                maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum,
+                MemoryBlockType.NONE));
         conf.setAllocateMemoryForRead(
             maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
         conf.setAllocateMemoryForSchema(
@@ -2185,7 +2198,7 @@ public class IoTDBDescriptor {
         } else {
           conf.setAllocateMemoryForPipe(
               (maxMemoryAvailable
-                      - (conf.getAllocateMemoryForStorageEngine()
+                      - (conf.getAllocateMemoryBlockForStorageEngine().getMaxMemorySizeInByte()
                           + conf.getAllocateMemoryForRead()
                           + conf.getAllocateMemoryForSchema()
                           + conf.getAllocateMemoryForConsensus()))
@@ -2195,7 +2208,9 @@ public class IoTDBDescriptor {
     }
 
     LOGGER.info("initial allocateMemoryForRead = {}", conf.getAllocateMemoryForRead());
-    LOGGER.info("initial allocateMemoryForWrite = {}", conf.getAllocateMemoryForStorageEngine());
+    LOGGER.info(
+        "initial allocateMemoryForWrite = {}",
+        conf.getAllocateMemoryBlockForStorageEngine().getMaxMemorySizeInByte());
     LOGGER.info("initial allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
     LOGGER.info("initial allocateMemoryForConsensus = {}", conf.getAllocateMemoryForConsensus());
     LOGGER.info("initial allocateMemoryForPipe = {}", conf.getAllocateMemoryForPipe());
@@ -2263,7 +2278,8 @@ public class IoTDBDescriptor {
 
   @SuppressWarnings("java:S3518")
   private void initStorageEngineAllocate(TrimProperties properties) {
-    long storageMemoryTotal = conf.getAllocateMemoryForStorageEngine();
+    long storageMemoryTotal =
+        conf.getAllocateMemoryBlockForStorageEngine().getMaxMemorySizeInByte();
     String valueOfStorageEngineMemoryProportion =
         properties.getProperty("storage_engine_memory_proportion");
     if (valueOfStorageEngineMemoryProportion != null) {
@@ -2824,8 +2840,16 @@ public class IoTDBDescriptor {
   }
 
   public void reclaimConsensusMemory() {
-    conf.setAllocateMemoryForStorageEngine(
-        conf.getAllocateMemoryForStorageEngine() + conf.getAllocateMemoryForConsensus());
+    // first we need to release the memory allocated for consensus
+    IMemoryBlock storageEngineMemory = conf.getAllocateMemoryBlockForStorageEngine();
+    IMemoryBlock consensusMemory = conf.getAllocateMemoryBlockForConsensus();
+    globalMemoryManager.release(storageEngineMemory);
+    globalMemoryManager.release(consensusMemory);
+    // then we need to allocate the memory to storage engine
+    globalMemoryManager.forceAllocate(
+        "StorageEngine",
+        storageEngineMemory.getMaxMemorySizeInByte() + consensusMemory.getMaxMemorySizeInByte(),
+        MemoryBlockType.NONE);
     SystemInfo.getInstance().allocateWriteMemory();
   }
 

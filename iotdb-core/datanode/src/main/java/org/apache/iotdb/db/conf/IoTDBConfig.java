@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -149,18 +150,28 @@ public class IoTDBConfig {
   private int rpcMaxConcurrentClientNum = 65535;
 
   /** Memory allocated for the write process */
+  private IMemoryBlock allocateMemoryBlockForStorageEngine;
+
   private long allocateMemoryForStorageEngine = Runtime.getRuntime().maxMemory() * 3 / 10;
 
   /** Memory allocated for the read process */
+  private IMemoryBlock allocateMemoryBlockForRead;
+
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
 
   /** Memory allocated for the mtree */
+  private IMemoryBlock allocateMemoryBlockForSchema;
+
   private long allocateMemoryForSchema = Runtime.getRuntime().maxMemory() / 10;
 
   /** Memory allocated for the consensus layer */
+  private IMemoryBlock allocateMemoryBlockForConsensus;
+
   private long allocateMemoryForConsensus = Runtime.getRuntime().maxMemory() / 10;
 
   /** Memory allocated for the pipe */
+  private IMemoryBlock allocateMemoryBlockForPipe;
+
   private long allocateMemoryForPipe = Runtime.getRuntime().maxMemory() / 10;
 
   /** Ratio of memory allocated for buffered arrays */
@@ -186,7 +197,7 @@ public class IoTDBConfig {
 
   /**
    * If memory cost of data region increased more than proportion of {@linkplain
-   * IoTDBConfig#getAllocateMemoryForStorageEngine()}*{@linkplain
+   * IoTDBConfig#getAllocateMemoryBlockForStorageEngine()} *{@linkplain
    * IoTDBConfig#getWriteProportionForMemtable()}, report to system.
    */
   private double writeMemoryVariationReportProportion = 0.001;
@@ -2103,16 +2114,17 @@ public class IoTDBConfig {
     this.writeMemoryVariationReportProportion = writeMemoryVariationReportProportion;
   }
 
+  public void setAllocateMemoryBlockForStorageEngine(
+      IMemoryBlock allocateMemoryBlockForStorageEngine) {
+    this.allocateMemoryBlockForStorageEngine = allocateMemoryBlockForStorageEngine;
+  }
+
+  public IMemoryBlock getAllocateMemoryBlockForStorageEngine() {
+    return allocateMemoryBlockForStorageEngine;
+  }
+
   public long getAllocateMemoryForStorageEngine() {
     return allocateMemoryForStorageEngine;
-  }
-
-  public void setAllocateMemoryForStorageEngine(long allocateMemoryForStorageEngine) {
-    this.allocateMemoryForStorageEngine = allocateMemoryForStorageEngine;
-  }
-
-  public long getAllocateMemoryForSchema() {
-    return allocateMemoryForSchema;
   }
 
   public void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
@@ -2121,6 +2133,10 @@ public class IoTDBConfig {
     this.allocateMemoryForSchemaRegion = allocateMemoryForSchema * 5 / 10;
     this.allocateMemoryForSchemaCache = allocateMemoryForSchema * 4 / 10;
     this.allocateMemoryForPartitionCache = allocateMemoryForSchema / 10;
+  }
+
+  public IMemoryBlock getAllocateMemoryBlockForConsensus() {
+    return allocateMemoryBlockForConsensus;
   }
 
   public long getAllocateMemoryForConsensus() {

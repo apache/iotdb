@@ -71,7 +71,7 @@ public class MemoryManager {
   }
 
   /** Try to force allocate memory block with specified size in bytes. */
-  private MemoryBlock forceAllocate(String name, long sizeInBytes, MemoryBlockType type) {
+  public MemoryBlock forceAllocate(String name, long sizeInBytes, MemoryBlockType type) {
     if (!ENABLED) {
       return new MemoryBlock(name, this, sizeInBytes, type);
     }
@@ -182,7 +182,7 @@ public class MemoryManager {
   }
 
   /** Release memory block. */
-  public synchronized void release(MemoryBlock block) {
+  public synchronized void release(IMemoryBlock block) {
     if (!ENABLED || block == null || block.isReleased()) {
       return;
     }
@@ -233,17 +233,5 @@ public class MemoryManager {
 
   public long getTotalMemorySizeInBytes() {
     return totalMemorySizeInBytes;
-  }
-
-  public static MemoryManager global() {
-    return MemoryManagerHolder.GLOBAL;
-  }
-
-  private static class MemoryManagerHolder {
-
-    private static final MemoryManager GLOBAL =
-        new MemoryManager("GlobalMemoryManager", null, Runtime.getRuntime().totalMemory());
-
-    private MemoryManagerHolder() {}
   }
 }

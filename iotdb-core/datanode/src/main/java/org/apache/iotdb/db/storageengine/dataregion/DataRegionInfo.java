@@ -42,7 +42,10 @@ public class DataRegionInfo {
   private final long storageGroupSizeReportThreshold =
       (long)
           (IoTDBDescriptor.getInstance().getConfig().getWriteMemoryVariationReportProportion()
-              * IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForStorageEngine()
+              * IoTDBDescriptor.getInstance()
+                  .getConfig()
+                  .getAllocateMemoryBlockForStorageEngine()
+                  .getMaxMemorySizeInByte()
               * IoTDBDescriptor.getInstance().getConfig().getWriteProportionForMemtable());
 
   private final AtomicLong lastReportedSize = new AtomicLong();

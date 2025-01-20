@@ -53,7 +53,7 @@ public class PrimitiveArrayManagerTest {
 
     /** threshold total size of arrays for all data types */
     double POOLED_ARRAYS_MEMORY_THRESHOLD =
-        config.getAllocateMemoryForStorageEngine()
+        config.getAllocateMemoryBlockForStorageEngine().getMaxMemorySizeInByte()
             * config.getBufferedArraysMemoryProportion()
             / AMPLIFICATION_FACTOR;
     // LIMITS should be updated if (TOTAL_ALLOCATION_REQUEST_COUNT.get() > limitUpdateThreshold)
