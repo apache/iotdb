@@ -35,8 +35,8 @@ import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2ComprehensiveTreeModel;
-import org.apache.iotdb.pipe.it.treemodel.AbstractPipeDualAutoIT;
 import org.apache.iotdb.pipe.it.tablemodel.TableModelUtils;
+import org.apache.iotdb.pipe.it.treemodel.AbstractPipeDualAutoIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
