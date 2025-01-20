@@ -105,7 +105,7 @@ jobs:
       - name: Upload Cpp Client Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: client-cpp-${{ runner.os }}
+          name: client-cpp-${{ matrix.os }}
           path: iotdb-client/client-cpp/target/*.zip
           retention-days: 1
       - name: Upload Artifact
