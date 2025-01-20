@@ -5,6 +5,7 @@ on:
       - master
       - "rc/*"
       - 'force_ci/**'
+      - 'cpp_client_artifact'
     paths:
       - 'pom.xml'
       - 'iotdb-client/pom.xml'
@@ -101,6 +102,12 @@ jobs:
           else  
             ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
           fi
+      - name: Upload Cpp Client Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-cpp-${{ runner.os }}
+          path: client-cpp/target/*.zip
+          retention-days: 1
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4
