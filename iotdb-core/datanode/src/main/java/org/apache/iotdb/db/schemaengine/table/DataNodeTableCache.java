@@ -386,8 +386,14 @@ public class DataNodeTableCache implements ITableCache {
     }
     boolean modified = false;
     final StringBuilder builder = new StringBuilder("Table name: " + oldTable.getTableName());
-    final Map<String, String> oldProps = new HashMap<>(oldTable.getProps());
-    final Map<String, String> newProps = new HashMap<>(newTable.getProps());
+    final Map<String, String> oldProps =
+        Objects.nonNull(oldTable.getProps())
+            ? new HashMap<>(oldTable.getProps())
+            : Collections.emptyMap();
+    final Map<String, String> newProps =
+        Objects.nonNull(newTable.getProps())
+            ? new HashMap<>(newTable.getProps())
+            : Collections.emptyMap();
     if (!Objects.equals(oldProps, newProps)) {
       oldProps
           .keySet()
