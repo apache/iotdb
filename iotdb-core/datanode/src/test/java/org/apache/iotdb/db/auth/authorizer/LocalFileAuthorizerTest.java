@@ -102,7 +102,7 @@ public class LocalFileAuthorizerTest {
     try {
       authorizer.createRole(roleName);
     } catch (AuthException e) {
-      assertEquals("Role user already exists", e.getMessage());
+      assertEquals("Role role already exists", e.getMessage());
     }
     authorizer.createUser(userName, "password");
     authorizer.grantRoleToUser(roleName, userName);
@@ -112,7 +112,7 @@ public class LocalFileAuthorizerTest {
     } catch (AuthException e) {
       assertEquals("Role role does not exist", e.getMessage());
     }
-    assertEquals(0, authorizer.getUser("test").getRoleSet().size());
+    assertEquals(0, authorizer.getUser(userName).getRoleSet().size());
   }
 
   @Test
