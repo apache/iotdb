@@ -183,7 +183,7 @@ public class IoTDBRelationalAuthIT {
       adminStmt.execute("GRANT DROP ON DATABASE testdb to user testuser2 with grant option");
       adminStmt.execute("GRANT SELECT ON ANY to user testuser2 with grant option");
 
-      adminStmt.execute("GRANT ROLE testrole to USER testuser");
+      adminStmt.execute("GRANT ROLE testrole to testuser");
     }
 
     try (Connection userCon1 =
@@ -206,7 +206,7 @@ public class IoTDBRelationalAuthIT {
       // can create role
       userStmt.execute("CREATE ROLE testrole2");
       // can grant role to user
-      userStmt.execute("GRANT ROLE testrole2 to user testuser");
+      userStmt.execute("GRANT ROLE testrole2 to testuser");
       // cannot grant privileges to other
       Assert.assertThrows(
           SQLException.class,
