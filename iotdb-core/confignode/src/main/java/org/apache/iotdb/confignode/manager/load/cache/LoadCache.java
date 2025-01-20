@@ -170,7 +170,7 @@ public class LoadCache {
             regionReplicaSets.forEach(
                 regionReplicaSet -> {
                   TConsensusGroupId regionGroupId = regionReplicaSet.getRegionId();
-                  boolean isStrictConsensus =
+                  boolean isStrongConsistency =
                       (TConsensusGroupType.SchemaRegion.equals(regionGroupId.getType())
                               && CONF.getSchemaRegionConsensusProtocolClass()
                                   .equals(ConsensusFactory.RATIS_CONSENSUS))
@@ -184,7 +184,7 @@ public class LoadCache {
                           regionReplicaSet.getDataNodeLocations().stream()
                               .map(TDataNodeLocation::getDataNodeId)
                               .collect(Collectors.toSet()),
-                          isStrictConsensus));
+                          isStrongConsistency));
                   consensusGroupCacheMap.put(regionGroupId, new ConsensusGroupCache());
                 }));
   }
@@ -291,7 +291,7 @@ public class LoadCache {
    */
   public void createRegionGroupHeartbeatCache(
       String database, TConsensusGroupId regionGroupId, Set<Integer> dataNodeIds) {
-    boolean isStrictConsensus =
+    boolean isStrongConsistency =
         (TConsensusGroupType.SchemaRegion.equals(regionGroupId.getType())
                 && CONF.getSchemaRegionConsensusProtocolClass()
                     .equals(ConsensusFactory.RATIS_CONSENSUS))
@@ -299,7 +299,7 @@ public class LoadCache {
                 && CONF.getDataRegionConsensusProtocolClass()
                     .equals(ConsensusFactory.RATIS_CONSENSUS));
     regionGroupCacheMap.put(
-        regionGroupId, new RegionGroupCache(database, dataNodeIds, isStrictConsensus));
+        regionGroupId, new RegionGroupCache(database, dataNodeIds, isStrongConsistency));
     consensusGroupCacheMap.put(regionGroupId, new ConsensusGroupCache());
   }
 
