@@ -2123,8 +2123,8 @@ public class IoTDBConfig {
     return allocateMemoryBlockForStorageEngine;
   }
 
-  public long getAllocateMemoryForStorageEngine() {
-    return allocateMemoryForStorageEngine;
+  public long getAllocateMemoryForSchema() {
+    return allocateMemoryForSchema;
   }
 
   public void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
