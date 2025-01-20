@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationS
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
@@ -350,6 +351,26 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
       return new PlanAndMappings(
           node.replaceChildren(ImmutableList.of(rewrittenSource.getRoot())),
           rewrittenSource.getMappings());
+    }
+
+    @Override
+    public PlanAndMappings visitMarkDistinct(MarkDistinctNode node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+      Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      Symbol newMarkerSymbol = mapper.map(node.getMarkerSymbol());
+      List<Symbol> newDistinctSymbols = mapper.mapAndDistinct(node.getDistinctSymbols());
+      Optional<Symbol> newHashSymbol = node.getHashSymbol().map(mapper::map);
+
+      return new PlanAndMappings(
+          new MarkDistinctNode(
+              node.getPlanNodeId(),
+              rewrittenSource.getRoot(),
+              newMarkerSymbol,
+              newDistinctSymbols,
+              newHashSymbol),
+          mapping);
     }
 
     @Override

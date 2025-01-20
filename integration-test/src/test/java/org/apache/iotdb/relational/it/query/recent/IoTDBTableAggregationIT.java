@@ -4844,6 +4844,35 @@ public class IoTDBTableAggregationIT {
   }
 
   @Test
+  public void singleInputDistinctAggregationTest() {
+    String[] expectedHeader = new String[] {"_col0", "_col1"};
+    String[] retArray =
+        new String[] {
+          "5,40.4,",
+        };
+
+    tableResultSetEqualTest(
+        "select count(distinct s1), avg(distinct s1) from table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"province", "city", "region", "_col3", "_col4"};
+    retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,5,40.4,",
+          "beijing,beijing,haidian,5,40.4,",
+          "shanghai,shanghai,huangpu,5,40.4,",
+          "shanghai,shanghai,pudong,5,40.4,"
+        };
+    tableResultSetEqualTest(
+        "select province,city,region,count(distinct s1), avg(distinct s1) from table1 group by 1,2,3 order by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void exceptionTest2() {
     tableAssertTestFail(
         "select count(distinct *) from table1",
