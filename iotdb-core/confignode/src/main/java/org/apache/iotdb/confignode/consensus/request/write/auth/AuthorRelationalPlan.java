@@ -28,6 +28,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -150,11 +151,13 @@ public class AuthorRelationalPlan extends AuthorPlan {
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
+    newPassword = "";
     userName = BasicStructureSerDeUtil.readString(buffer);
     roleName = BasicStructureSerDeUtil.readString(buffer);
     password = BasicStructureSerDeUtil.readString(buffer);
     databaseName = BasicStructureSerDeUtil.readString(buffer);
     tableName = BasicStructureSerDeUtil.readString(buffer);
+    permissions = new HashSet<>();
     int size = buffer.getInt();
     for (int i = 0; i < size; i++) {
       permissions.add(buffer.getInt());

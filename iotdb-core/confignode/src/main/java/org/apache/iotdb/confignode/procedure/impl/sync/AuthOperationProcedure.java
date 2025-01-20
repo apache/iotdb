@@ -221,7 +221,7 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
     }
     this.timeoutMS = ReadWriteIOUtils.readLong(byteBuffer);
     try {
-      int length = ReadWriteIOUtils.readInt(byteBuffer);
+      int length = byteBuffer.getInt();
       int pos = byteBuffer.position();
       this.plan = (AuthorPlan) ConfigPhysicalPlan.Factory.create(byteBuffer);
       byteBuffer.position(pos + length);

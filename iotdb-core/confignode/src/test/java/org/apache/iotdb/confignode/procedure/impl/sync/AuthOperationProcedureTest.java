@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
 import static org.junit.Assert.fail;
@@ -109,7 +110,7 @@ public class AuthOperationProcedureTest {
                     "role1",
                     "database",
                     "table",
-                    Collections.singleton(PrivilegeType.CREATE.ordinal()),
+                    new HashSet<>(PrivilegeType.CREATE.ordinal(), PrivilegeType.SELECT.ordinal()),
                     false,
                     "password"),
                 datanodes,

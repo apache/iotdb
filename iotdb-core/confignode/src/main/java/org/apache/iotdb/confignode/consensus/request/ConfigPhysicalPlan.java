@@ -297,12 +297,16 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case RRevokeUserRole:
         case RGrantRoleAny:
         case RGrantUserAny:
+        case RGrantUserAll:
+        case RGrantRoleAll:
         case RGrantUserDBPriv:
         case RGrantUserTBPriv:
         case RGrantRoleDBPriv:
         case RGrantRoleTBPriv:
         case RRevokeRoleAny:
         case RRevokeUserAny:
+        case RRevokeUserAll:
+        case RRevokeRoleAll:
         case RRevokeUserDBPriv:
         case RRevokeUserTBPriv:
         case RRevokeRoleDBPriv:
