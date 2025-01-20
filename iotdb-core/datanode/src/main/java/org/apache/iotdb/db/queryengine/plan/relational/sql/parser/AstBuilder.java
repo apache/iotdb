@@ -468,6 +468,17 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitCommentStatement(final RelationalSqlParser.CommentStatementContext ctx) {
+    return new SetColumnComment(
+        getLocation(ctx),
+        getQualifiedName(ctx.qualifiedName()),
+        lowerIdentifier((Identifier) visit(ctx.column)),
+        false,
+        false,
+        ((StringLiteral) visit(ctx.string())).getValue());
+  }
+
+  @Override
   public Node visitCreateIndexStatement(RelationalSqlParser.CreateIndexStatementContext ctx) {
     return new CreateIndex(
         getLocation(ctx),

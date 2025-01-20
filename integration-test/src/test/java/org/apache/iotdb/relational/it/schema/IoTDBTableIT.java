@@ -258,7 +258,7 @@ public class IoTDBTableIT {
       statement.execute(
           "create table table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD) with (TTL=6600000)");
 
-      statement.execute("alter table table2 add column speed DOUBLE FIELD");
+      statement.execute("alter table table2 add column speed DOUBLE FIELD COMMENT 'fast'");
 
       try {
         statement.execute("alter table table2 add column speed DOUBLE FIELD");
@@ -394,13 +394,14 @@ public class IoTDBTableIT {
       statement.execute("alter table table2 drop column color");
 
       // Test comment
-      statement.execute("alter table table2 MODIFY speed COMMENT 'fast'");
+      statement.execute("alter table table2 MODIFY region_id COMMENT '重庆'");
+      statement.execute("COMMENT ON COLUMN test2.table2.temperature IS 'sky'");
 
       columnNames = new String[] {"time", "region_id", "plant_id", "temperature", "speed"};
       dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "FLOAT", "DOUBLE"};
       categories = new String[] {"TIME", "TAG", "TAG", "FIELD", "FIELD"};
       final String[] statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
-      final String[] comments = new String[] {"", "", "", "", "fast"};
+      final String[] comments = new String[] {"", "重庆", "", "sky", "fast"};
       try (final ResultSet resultSet = statement.executeQuery("describe table2 details")) {
         int cnt = 0;
         ResultSetMetaData metaData = resultSet.getMetaData();
