@@ -21,16 +21,19 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -50,7 +53,7 @@ public class MarkDistinctNode extends SingleChildProcessNode {
       List<Symbol> distinctSymbols,
       Optional<Symbol> hashSymbol) {
     super(id);
-    this.child = requireNonNull(child, "child is null");
+    this.child = child;
     this.markerSymbol = requireNonNull(markerSymbol, "markerSymbol is null");
     this.hashSymbol = requireNonNull(hashSymbol, "hashSymbol is null");
     requireNonNull(distinctSymbols, "distinctSymbols is null");
@@ -99,10 +102,53 @@ public class MarkDistinctNode extends SingleChildProcessNode {
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.MARK_DISTINCT_NODE.serialize(byteBuffer);
+    Symbol.serialize(markerSymbol, byteBuffer);
+    if (hashSymbol.isPresent()) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      Symbol.serialize(hashSymbol.get(), byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    }
+    ReadWriteIOUtils.write(distinctSymbols.size(), byteBuffer);
+    for (Symbol distinctSymbol : distinctSymbols) {
+      Symbol.serialize(distinctSymbol, byteBuffer);
+      ;
+    }
+  }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.MARK_DISTINCT_NODE.serialize(stream);
+    Symbol.serialize(markerSymbol, stream);
+    if (hashSymbol.isPresent()) {
+      ReadWriteIOUtils.write(true, stream);
+      Symbol.serialize(hashSymbol.get(), stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
+    ReadWriteIOUtils.write(distinctSymbols.size(), stream);
+    for (Symbol distinctSymbol : distinctSymbols) {
+      Symbol.serialize(distinctSymbol, stream);
+    }
+  }
+
+  public static MarkDistinctNode deserialize(ByteBuffer byteBuffer) {
+    Symbol markerSymbol = Symbol.deserialize(byteBuffer);
+    Optional<Symbol> hashSymbol = Optional.empty();
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      hashSymbol = Optional.of(Symbol.deserialize(byteBuffer));
+    }
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<Symbol> distinctSymbols = new ArrayList<>(size);
+    while (size-- > 0) {
+      distinctSymbols.add(Symbol.deserialize(byteBuffer));
+    }
+
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new MarkDistinctNode(planNodeId, null, markerSymbol, distinctSymbols, hashSymbol);
+  }
 
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
