@@ -71,6 +71,7 @@ public class MemoryManager {
 
   public MemoryManager createMemoryManager(String name, long totalMemorySizeInBytes) {
     MemoryManager result = new MemoryManager(name, this, totalMemorySizeInBytes);
+    LOGGER.error("createMemoryManager: {} {}", name, totalMemorySizeInBytes);
     return childrens.compute(
         name,
         (managerName, manager) -> {
@@ -255,6 +256,10 @@ public class MemoryManager {
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
   }
 
+  public void removeChild(String name) {
+    childrens.remove(name);
+  }
+
   public void clear() {
     for (MemoryManager child : childrens.values()) {
       child.clear();
@@ -264,6 +269,7 @@ public class MemoryManager {
       releaseWithOutNotify(block);
     }
     allocatedMemoryBlocks.clear();
+    parentMemoryManager.removeChild(name);
   }
 
   public static MemoryManager global() {

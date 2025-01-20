@@ -2835,6 +2835,7 @@ public class IoTDBDescriptor {
   }
 
   public void reclaimConsensusMemory() {
+    LOGGER.error("SpriCoder: Reclaim consensus memory");
     // first we need to release the memory allocated for consensus
     MemoryManager storageEngineMemoryManager = conf.getStorageEngineMemoryManager();
     MemoryManager consensusMemoryManager = conf.getConsensusMemoryManager();
