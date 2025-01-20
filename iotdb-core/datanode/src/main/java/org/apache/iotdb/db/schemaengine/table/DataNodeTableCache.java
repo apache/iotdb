@@ -399,7 +399,12 @@ public class DataNodeTableCache implements ITableCache {
                 }
                 return false;
               });
-      builder.append(" Removed props: ").append(oldProps).append(" Added props: ").append(newProps);
+      if (!oldProps.isEmpty()) {
+        builder.append(" Removed props: ").append(oldProps);
+      }
+      if (!newProps.isEmpty()) {
+        builder.append(" Added props: ").append(newProps);
+      }
       modified = true;
     }
 
