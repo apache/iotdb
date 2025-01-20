@@ -1533,9 +1533,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     Type sourceJoinKeyType =
         context.getTypeProvider().getTableModelType(node.getSourceJoinSymbol());
+
     checkIfJoinKeyTypeMatches(
         sourceJoinKeyType,
         context.getTypeProvider().getTableModelType(node.getFilteringSourceJoinSymbol()));
+
     OperatorContext operatorContext =
         context
             .getDriverContext()
