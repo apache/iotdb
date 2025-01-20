@@ -24,7 +24,9 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -181,6 +183,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrustedUriErrorMsg;
 import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
+import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REGION_GROUP_NUM_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.SCHEMA_REGION_GROUP_NUM_KEY;
@@ -405,7 +408,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       final TsTableColumnCategory category = columnDefinition.getColumnCategory();
       final String columnName = columnDefinition.getName().getValue();
       final TSDataType dataType = getDataType(columnDefinition.getType());
-      if (checkTimeColumnIdempotent(category, columnName, dataType) && !hasTimeColumn) {
+      final String comment = columnDefinition.getComment();
+      if (checkTimeColumnIdempotent(
+              category,
+              columnName,
+              dataType,
+              comment,
+              (TimeColumnSchema) table.getColumnSchema(TIME_COLUMN_NAME))
+          && !hasTimeColumn) {
         hasTimeColumn = true;
         continue;
       }
@@ -415,17 +425,24 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       }
       table.addColumnSchema(
           TableHeaderSchemaValidator.generateColumnSchema(
-              category, columnName, dataType, columnDefinition.getComment()));
+              category, columnName, dataType, comment));
     }
     return new CreateTableTask(table, database, node.isIfNotExists());
   }
 
   private boolean checkTimeColumnIdempotent(
-      final TsTableColumnCategory category, final String columnName, final TSDataType dataType) {
-    if (category == TsTableColumnCategory.TIME || columnName.equals(TsTable.TIME_COLUMN_NAME)) {
+      final TsTableColumnCategory category,
+      final String columnName,
+      final TSDataType dataType,
+      final String comment,
+      final TimeColumnSchema timeColumnSchema) {
+    if (category == TsTableColumnCategory.TIME || columnName.equals(TIME_COLUMN_NAME)) {
       if (category == TsTableColumnCategory.TIME
-          && columnName.equals(TsTable.TIME_COLUMN_NAME)
+          && columnName.equals(TIME_COLUMN_NAME)
           && dataType == TSDataType.TIMESTAMP) {
+        if (Objects.nonNull(comment)) {
+          timeColumnSchema.getProps().put(TsTableColumnSchema.COMMENT_KEY, comment);
+        }
         return true;
       } else if (dataType == TSDataType.TIMESTAMP) {
         throw new SemanticException(
