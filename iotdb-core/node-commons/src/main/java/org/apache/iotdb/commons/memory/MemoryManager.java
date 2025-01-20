@@ -283,4 +283,17 @@ public class MemoryManager {
 
     private MemoryManagerHolder() {}
   }
+
+  @Override
+  public String toString() {
+    return "MemoryManager{"
+        + "name='"
+        + name
+        + '\''
+        + ", totalMemorySizeInBytes="
+        + totalMemorySizeInBytes
+        + ", allocatedMemorySizeInBytes="
+        + allocatedMemorySizeInBytes
+        + '}';
+  }
 }

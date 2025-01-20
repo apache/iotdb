@@ -2109,6 +2109,7 @@ public class IoTDBConfig {
   }
 
   public void setStorageEngineMemoryManager(MemoryManager storageEngineMemoryManager) {
+    logger.error("StorageEngineMemoryManager is set to {}", storageEngineMemoryManager);
     this.storageEngineMemoryManager = storageEngineMemoryManager;
   }
 
