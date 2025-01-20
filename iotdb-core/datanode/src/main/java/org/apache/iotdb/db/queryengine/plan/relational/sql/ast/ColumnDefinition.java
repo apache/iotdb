@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.ratis.protocol.GroupManagementRequest;
 
 import javax.annotation.Nullable;
 

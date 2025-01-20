@@ -54,6 +54,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -282,7 +283,10 @@ public class TableHeaderSchemaValidator {
   }
 
   public static TsTableColumnSchema generateColumnSchema(
-          final TsTableColumnCategory category, final String columnName, final TSDataType dataType, final @Nullable String comment) {
+      final TsTableColumnCategory category,
+      final String columnName,
+      final TSDataType dataType,
+      final @Nullable String comment) {
     final TsTableColumnSchema schema;
     switch (category) {
       case TAG:
@@ -303,11 +307,12 @@ public class TableHeaderSchemaValidator {
         throw new SemanticException(
             "Create table or add column statement shall not specify column category TIME");
       case FIELD:
-        schema =  new FieldColumnSchema(
-            columnName,
-            dataType,
-            getDefaultEncoding(dataType),
-            TSFileDescriptor.getInstance().getConfig().getCompressor());
+        schema =
+            new FieldColumnSchema(
+                columnName,
+                dataType,
+                getDefaultEncoding(dataType),
+                TSFileDescriptor.getInstance().getConfig().getCompressor());
         break;
       default:
         throw new IllegalArgumentException();

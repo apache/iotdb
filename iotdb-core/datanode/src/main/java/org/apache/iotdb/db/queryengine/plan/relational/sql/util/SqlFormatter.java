@@ -698,7 +698,9 @@ public final class SqlFormatter {
       column
           .getCharsetName()
           .ifPresent(charset -> stringBuilder.append(" CHARSET ").append(charset));
-      column.getComment().ifPresent(comment -> stringBuilder.append(" COMMENT '").append(comment).append("'"));
+      column
+          .getComment()
+          .ifPresent(comment -> stringBuilder.append(" COMMENT '").append(comment).append("'"));
       return stringBuilder.toString();
     }
 

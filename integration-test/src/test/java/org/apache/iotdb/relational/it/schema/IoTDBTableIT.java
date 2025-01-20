@@ -393,10 +393,14 @@ public class IoTDBTableIT {
       // Test drop column
       statement.execute("alter table table2 drop column color");
 
+      // Test comment
+      statement.execute("alter table table2 MODIFY speed COMMENT 'fast'");
+
       columnNames = new String[] {"time", "region_id", "plant_id", "temperature", "speed"};
       dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "FLOAT", "DOUBLE"};
       categories = new String[] {"TIME", "TAG", "TAG", "FIELD", "FIELD"};
       final String[] statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
+      final String[] comments = new String[] {"", "", "", "", "fast"};
       try (final ResultSet resultSet = statement.executeQuery("describe table2 details")) {
         int cnt = 0;
         ResultSetMetaData metaData = resultSet.getMetaData();
@@ -411,6 +415,7 @@ public class IoTDBTableIT {
           assertEquals(dataTypes[cnt], resultSet.getString(2));
           assertEquals(categories[cnt], resultSet.getString(3));
           assertEquals(statuses[cnt], resultSet.getString(4));
+          assertEquals(comments[cnt], resultSet.getString(5));
           cnt++;
         }
         assertEquals(columnNames.length, cnt);

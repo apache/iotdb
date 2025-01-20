@@ -310,6 +310,9 @@ public class InformationSchemaContentSupplierFactory {
           new Binary(
               preDeletedColumns.contains(schema.getColumnName()) ? "PRE_DELETE" : "USING",
               TSFileConfig.STRING_CHARSET));
+      columnBuilders[6].writeBinary(
+          new Binary(
+              schema.getProps().get(TsTableColumnSchema.COMMENT_KEY), TSFileConfig.STRING_CHARSET));
       resultBuilder.declarePosition();
     }
 
