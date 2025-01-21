@@ -409,8 +409,8 @@ public class IoTDBTableIT {
       columnNames = new String[] {"time", "region_id", "plant_id", "temperature", "speed"};
       dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "FLOAT", "DOUBLE"};
       categories = new String[] {"TIME", "TAG", "TAG", "FIELD", "FIELD"};
-      final String[] statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
-      final String[] comments = new String[] {"recent", "", "", "", "fast"};
+      statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
+      comments = new String[] {"recent", "", "", "", "fast"};
       try (final ResultSet resultSet = statement.executeQuery("describe table2 details")) {
         int cnt = 0;
         ResultSetMetaData metaData = resultSet.getMetaData();
