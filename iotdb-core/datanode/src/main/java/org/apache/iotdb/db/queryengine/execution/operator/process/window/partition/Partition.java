@@ -39,7 +39,7 @@ public class Partition {
       return;
     }
 
-    this.tsBlocks = new ArrayList<>();
+    this.tsBlocks = new ArrayList<>(tsBlocks.size());
     // First TsBlock
     TsBlock firstBlock = tsBlocks.get(0).subTsBlock(startIndexInFirstBlock);
     this.tsBlocks.add(firstBlock);

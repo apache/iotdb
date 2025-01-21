@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.partiti
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
@@ -43,6 +44,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.CURRENT_USED_MEMORY;
 
 public class TableWindowOperator implements ProcessOperator {
   private static final long INSTANCE_SIZE =
@@ -53,6 +55,8 @@ public class TableWindowOperator implements ProcessOperator {
   private final Operator inputOperator;
   private final List<TSDataType> inputDataTypes;
   private final TsBlockBuilder tsBlockBuilder;
+  long totalMemorySize = 0;
+  private final MemoryReservationManager memoryReservationManager;
 
   // Basic information about window operator
   private final List<WindowFunction> windowFunctions;
@@ -107,6 +111,11 @@ public class TableWindowOperator implements ProcessOperator {
     // Misc
     this.cachedTsBlocks = new ArrayList<>();
     this.startIndexInFirstBlock = -1;
+    this.memoryReservationManager =
+        operatorContext
+            .getDriverContext()
+            .getFragmentInstanceContext()
+            .getMemoryReservationContext();
   }
 
   @Override
@@ -158,6 +167,7 @@ public class TableWindowOperator implements ProcessOperator {
               sortChannels);
       cachedPartitionExecutors.addLast(partitionExecutor);
       cachedTsBlocks.clear();
+      releaseAllCachedTsBlockMemory();
 
       TsBlock tsBlock = transform();
       if (tsBlock == null) {
@@ -216,6 +226,7 @@ public class TableWindowOperator implements ProcessOperator {
 
         partitionExecutors.addLast(partitionExecutor);
         cachedTsBlocks.clear();
+        releaseAllCachedTsBlockMemory();
         startIndexInFirstBlock = -1;
       }
     }
@@ -246,6 +257,7 @@ public class TableWindowOperator implements ProcessOperator {
                   sortChannels);
         } else {
           // Large partition crosses multiple TsBlocks
+          reserveOneTsBlockMemory(tsBlock);
           cachedTsBlocks.add(tsBlock);
           partitionExecutor =
               new PartitionExecutor(
@@ -258,6 +270,7 @@ public class TableWindowOperator implements ProcessOperator {
                   sortChannels);
           // Clear TsBlock of last partition
           cachedTsBlocks.clear();
+          releaseAllCachedTsBlockMemory();
         }
         partitionExecutors.addLast(partitionExecutor);
 
@@ -269,6 +282,7 @@ public class TableWindowOperator implements ProcessOperator {
         if (startIndexInFirstBlock == -1) {
           startIndexInFirstBlock = partitionStartInCurrentBlock;
         }
+        reserveOneTsBlockMemory(tsBlock);
         cachedTsBlocks.add(tsBlock);
         // For count == 1
         break;
@@ -324,11 +338,28 @@ public class TableWindowOperator implements ProcessOperator {
   @Override
   public void close() throws Exception {
     inputOperator.close();
+    if (totalMemorySize != 0) {
+      memoryReservationManager.releaseMemoryCumulatively(totalMemorySize);
+    }
   }
 
   @Override
   public boolean isFinished() throws Exception {
     return !this.hasNextWithTimer();
+  }
+
+  private void reserveOneTsBlockMemory(TsBlock tsBlock) {
+    long reserved = tsBlock.getTotalInstanceSize();
+    memoryReservationManager.reserveMemoryCumulatively(reserved);
+    totalMemorySize += reserved;
+    operatorContext.recordSpecifiedInfo(CURRENT_USED_MEMORY, Long.toString(totalMemorySize));
+  }
+
+  private void releaseAllCachedTsBlockMemory() {
+    long released = cachedTsBlocks.stream().mapToInt(TsBlock::getTotalInstanceSize).sum();
+    memoryReservationManager.releaseMemoryCumulatively(released);
+    totalMemorySize -= released;
+    operatorContext.recordSpecifiedInfo(CURRENT_USED_MEMORY, Long.toString(totalMemorySize));
   }
 
   @Override

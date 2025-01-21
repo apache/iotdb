@@ -29,6 +29,7 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.util.List;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo.FrameBoundType.CURRENT_ROW;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo.FrameBoundType.UNBOUNDED_PRECEDING;
@@ -52,7 +53,7 @@ public class RangeFrame implements Frame {
       RowComparator comparator) {
     this.frameInfo = frameInfo;
     // Only one sort key is allowed in range frame
-    assert columns.size() == 1;
+    checkArgument(columns.size() == 1);
     this.column = columns.get(0);
     this.dataType = column.getDataType();
     this.partitionStart = partitionStart;
