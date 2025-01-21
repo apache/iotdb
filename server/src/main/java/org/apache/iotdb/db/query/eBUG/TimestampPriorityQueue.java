@@ -1,10 +1,5 @@
 package org.apache.iotdb.db.query.eBUG;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.PriorityQueue;
-
 import java.util.*;
 
 public class TimestampPriorityQueue {
@@ -16,43 +11,40 @@ public class TimestampPriorityQueue {
     public TimestampPriorityQueue(int e) {
         this.e = e;
         this.insertionOrder = new LinkedList<>();
-        this.queue = new PriorityQueue<>(Comparator.comparingDouble(p -> p.timestamp));
+        this.queue = new PriorityQueue<>(Comparator.comparingDouble(p -> p.x));
+    }
+
+    public int size() {
+        return queue.size();
     }
 
     // 插入新的元素
     public void insert(Point newPoint) {
         // 如果队列已满，移除最早插入的点
         if (queue.size() == e) {
-            Point removedPoint = insertionOrder.removeFirst();  // 移除最早加入的点
-            queue.remove(removedPoint);  // 从优先队列中移除该点
+            Point removedPoint = insertionOrder.removeFirst();  // 移除最早加入的点 复杂度1
+            queue.remove(removedPoint);  // 从优先队列中移除该点 TODO 复杂度O(e)!
         }
 
         // 将新点添加到插入顺序队列中
-        insertionOrder.addLast(newPoint);
+        insertionOrder.addLast(newPoint); // 复杂度1
 
         // 插入到优先队列，保持时间戳顺序
-        queue.offer(newPoint);
+        queue.offer(newPoint); // 复杂度log(e)
     }
 
     // 获取队列中的所有元素（按时间戳排序）
     public List<Point> getQueue() {
-        return new ArrayList<>(queue);
+        return new ArrayList<>(queue); // 浅复制
     }
 
-    // Point 类，代表一个带时间戳的点
-    public static class Point {
-        int value;
-        long timestamp;
-
-        public Point(int value, long timestamp) {
-            this.value = value;
-            this.timestamp = timestamp;
+    public String toString() {
+        StringBuffer stringBuffer = new StringBuffer();
+        for (Point point : queue) {
+            stringBuffer.append(point.toString());
+            stringBuffer.append(",");
         }
-
-        @Override
-        public String toString() {
-            return "Value: " + value + ", Timestamp: " + timestamp;
-        }
+        return stringBuffer.toString();
     }
 
     public static void main(String[] args) {
@@ -61,7 +53,7 @@ public class TimestampPriorityQueue {
         tq.insert(new Point(10, 1000));
         tq.insert(new Point(20, 2000));
         tq.insert(new Point(15, 1500));
-        tq.insert(new Point(25, 2500));
+        tq.insert(new Point(25, 500));
 
         // 打印队列内容
         for (Point point : tq.getQueue()) {
