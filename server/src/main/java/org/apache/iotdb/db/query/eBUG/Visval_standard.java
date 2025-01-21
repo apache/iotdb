@@ -17,102 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.simpiece;
+package org.apache.iotdb.db.query.eBUG;
 
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-// adapted from the open source C++ code
-// https://github.com/ofZach/Visvalingam-Whyatt/blob/master/src/testApp.cpp
-class Triangle {
-
-    int[] indices = new int[3];
-    double area;
-    Triangle prev;
-    Triangle next;
-    boolean isDeleted;
-
-    public Triangle(int index1, int index2, int index3, double area) {
-        this.indices[0] = index1;
-        this.indices[1] = index2;
-        this.indices[2] = index3;
-        this.area = area;
-        this.isDeleted = false; // flag for removal. Avoid using heap.remove(x) as it is O(n) complexity
-    }
-
-    public Triangle(Triangle oldTri) {
-        // deep copy and inherit connection
-
-        this.indices[0] = oldTri.indices[0];
-        this.indices[1] = oldTri.indices[1];
-        this.indices[2] = oldTri.indices[2];
-        this.area = oldTri.area;
-        this.prev = oldTri.prev;
-        this.next = oldTri.next;
-
-        // TODO important! inherit connection relationship to this new point
-        if (this.prev != null) { // previous point to this new point
-            this.prev.next = this;
-        }
-        if (this.next != null) { // next point to this new point
-            this.next.prev = this;
-        }
-
-        this.isDeleted = false; // this new triangle is not deleted
-    }
-
-    public boolean isValid() {
-        return !isDeleted;
-    }
-
-    public void markDeleted() {
-        this.isDeleted = true;
-    }
-}
-
-class vPoint {
-
-    double x, y, z;
-
-    public vPoint(double x, double y) {
-        this.x = x;
-        this.y = y;
-        this.z = Double.POSITIVE_INFINITY; // effective area
-    }
-}
-
-class Polyline {
-
-    private List<vPoint> vertices = new ArrayList<>();
-
-    public void addVertex(vPoint point) {
-        vertices.add(point);
-    }
-
-    public List<vPoint> getVertices() {
-        return new ArrayList<>(vertices);
-    }
-
-    public int size() {
-        return vertices.size();
-    }
-
-    public vPoint get(int index) {
-        return vertices.get(index);
-    }
-}
+import static org.apache.iotdb.db.query.eBUG.Tool.triArea;
 
 public class Visval_standard {
 
-    // 计算三角形面积
-    private static double triArea(vPoint d0, vPoint d1, vPoint d2) {
-        double dArea = ((d1.x - d0.x) * (d2.y - d0.y) - (d2.x - d0.x) * (d1.y - d0.y)) / 2.0;
-        return (double) ((dArea > 0.0) ? dArea : -dArea); // abs
-    }
-
-    public static void buildEffectiveArea(Polyline lineToSimplify, List<vPoint> results) {
+    public static void buildEffectiveArea(Polyline lineToSimplify, List<Point> results) {
         results.clear();
         results.addAll(lineToSimplify.getVertices()); // TODO debug
 
@@ -216,37 +132,37 @@ public class Visval_standard {
         Polyline polyline = new Polyline();
         List<Polyline> polylineList = new ArrayList<>();
         Random rand = new Random(1);
-        int n = 100_0000;
+        int n = 10_0000;
 
-        int p = 1000;
+        int p = 700;
         for (int i = 0; i < n; i += p) {
             Polyline polylineBatch = new Polyline();
             for (int j = i; j < Math.min(i + p, n); j++) {
                 double v = rand.nextInt(1000000);
 
-                polyline.addVertex(new vPoint(j, v));
+                polyline.addVertex(new Point(j, v));
 
-                polylineBatch.addVertex(new vPoint(j, v));
+                polylineBatch.addVertex(new Point(j, v));
             }
             polylineList.add(polylineBatch);
         }
 
-//        try (FileWriter writer = new FileWriter("raw.csv")) {
-//            // 写入CSV头部
-//            writer.append("x,y,z\n");
-//
-//            // 写入每个点的数据
-//            for (int i = 0; i < polyline.size(); i++) {
-//                vPoint point = polyline.get(i);
-//                writer.append(point.x + "," + point.y + "," + point.z + "\n");
-//            }
-//            System.out.println("Data has been written");
-//        } catch (IOException e) {
-//            System.out.println("Error writing to CSV file: " + e.getMessage());
-//        }
+        try (FileWriter writer = new FileWriter("raw.csv")) {
+            // 写入CSV头部
+            writer.append("x,y,z\n");
+
+            // 写入每个点的数据
+            for (int i = 0; i < polyline.size(); i++) {
+                Point point = polyline.get(i);
+                writer.append(point.x + "," + point.y + "," + point.z + "\n");
+            }
+            System.out.println("Data has been written");
+        } catch (IOException e) {
+            System.out.println("Error writing to CSV file: " + e.getMessage());
+        }
 
         System.out.println("---------------------------------");
-        List<vPoint> results = new ArrayList<>();
+        List<Point> results = new ArrayList<>();
         // 计算运行时间
         long startTime = System.currentTimeMillis();
         buildEffectiveArea(polyline, results);
@@ -258,32 +174,32 @@ public class Visval_standard {
         if (results.size() <= 100) {
             System.out.println("+++++++++++++++++++");
             for (int i = 0; i < results.size(); i++) {
-                vPoint point = results.get(i);
+                Point point = results.get(i);
                 System.out.println("Point: (" + point.x + ", " + point.y + ", " + point.z + ")");
             }
         }
 
-//        try (FileWriter writer = new FileWriter("fast.csv")) {
-//            // 写入CSV头部
-//            writer.append("x,y,z\n");
-//
-//            // 写入每个点的数据
-//            for (int i = 0; i < results.size(); i++) {
-//                vPoint point = results.get(i);
-//                writer.append(point.x + "," + point.y + "," + point.z + "\n");
-//            }
-//            System.out.println("Data has been written");
-//        } catch (IOException e) {
-//            System.out.println("Error writing to CSV file: " + e.getMessage());
-//        }
+        try (FileWriter writer = new FileWriter("fast.csv")) {
+            // 写入CSV头部
+            writer.append("x,y,z\n");
+
+            // 写入每个点的数据
+            for (int i = 0; i < results.size(); i++) {
+                Point point = results.get(i);
+                writer.append(point.x + "," + point.y + "," + point.z + "\n");
+            }
+            System.out.println("Data has been written");
+        } catch (IOException e) {
+            System.out.println("Error writing to CSV file: " + e.getMessage());
+        }
 
         System.out.println("---------------------------------");
-        List<List<vPoint>> resultsBatchList = new ArrayList<>();
+        List<List<Point>> resultsBatchList = new ArrayList<>();
         // 计算运行时间
         int cnt = 0;
         startTime = System.currentTimeMillis();
         for (Polyline polylineBatch : polylineList) {
-            List<vPoint> resultsBatch = new ArrayList<>();
+            List<Point> resultsBatch = new ArrayList<>();
             buildEffectiveArea(polylineBatch, resultsBatch);
             cnt += resultsBatch.size();
             resultsBatchList.add(resultsBatch);
@@ -295,7 +211,7 @@ public class Visval_standard {
 
         System.out.println("---------------------------------");
         // 使用 Stream API 合并所有列表
-        List<vPoint> mergedList =
+        List<Point> mergedList =
                 resultsBatchList.stream().flatMap(List::stream).collect(Collectors.toList());
         int sameCnt = 0;
         for (int i = 0; i < mergedList.size(); i++) {
@@ -304,6 +220,20 @@ public class Visval_standard {
             }
         }
         System.out.println("sameCnt=" + sameCnt + ", percent=" + sameCnt * 1.0 / mergedList.size());
+
+        try (FileWriter writer = new FileWriter("batch.csv")) {
+            // 写入CSV头部
+            writer.append("x,y,z\n");
+
+            // 写入每个点的数据
+            for (int i = 0; i < mergedList.size(); i++) {
+                Point point = mergedList.get(i);
+                writer.append(point.x + "," + point.y + "," + point.z + "\n");
+            }
+            System.out.println("Data has been written");
+        } catch (IOException e) {
+            System.out.println("Error writing to CSV file: " + e.getMessage());
+        }
     }
 
     //    float[] vlist = new float[]{11346, 33839, 35469, 23108, 22812, 5519, 5526, 4865, 5842,
