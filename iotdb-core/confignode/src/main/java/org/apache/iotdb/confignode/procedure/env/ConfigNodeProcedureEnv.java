@@ -138,8 +138,8 @@ public class ConfigNodeProcedureEnv {
    * @return tsStatus
    */
   public TSStatus deleteDatabaseConfig(final String name, final boolean isGeneratedByPipe) {
-    final DeleteDatabasePlan deleteDatabasePlan = new DeleteDatabasePlan(name);
-    return getClusterSchemaManager().deleteDatabase(deleteDatabasePlan, isGeneratedByPipe);
+    return getClusterSchemaManager()
+        .deleteDatabase(new DeleteDatabasePlan(name), isGeneratedByPipe);
   }
 
   /**
@@ -167,16 +167,20 @@ public class ConfigNodeProcedureEnv {
     for (TDataNodeConfiguration dataNodeConfiguration : allDataNodes) {
       int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
 
-      // If the node is not alive, sleep 1 second and try again
+      // If the node is not alive, retry for up to 10 times
       NodeStatus nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
+      int retryNum = 10;
       if (nodeStatus == NodeStatus.Unknown) {
-        try {
-          TimeUnit.MILLISECONDS.sleep(1000);
-        } catch (InterruptedException e) {
-          LOG.error("Sleep failed in ConfigNodeProcedureEnv: ", e);
-          Thread.currentThread().interrupt();
+        for (int i = 0; i < retryNum && nodeStatus == NodeStatus.Unknown; i++) {
+          try {
+            TimeUnit.MILLISECONDS.sleep(500);
+          } catch (InterruptedException e) {
+            LOG.error("Sleep failed in ConfigNodeProcedureEnv: ", e);
+            Thread.currentThread().interrupt();
+            break;
+          }
+          nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
         }
-        nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
       }
 
       if (nodeStatus == NodeStatus.Running) {
@@ -208,6 +212,7 @@ public class ConfigNodeProcedureEnv {
         LOG.warn(
             "Invalidate cache failed, because DataNode {} is Unknown",
             dataNodeConfiguration.getLocation().getInternalEndPoint());
+        return false;
       }
     }
     return true;

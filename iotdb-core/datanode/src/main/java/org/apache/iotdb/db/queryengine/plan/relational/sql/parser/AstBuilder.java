@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpressio
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
@@ -158,8 +159,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
@@ -181,6 +184,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
@@ -1022,21 +1027,36 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitShowDevicesStatement(final RelationalSqlParser.ShowDevicesStatementContext ctx) {
-    return new ShowDevice(
-        getLocation(ctx),
-        new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
-        visitIfPresent(ctx.where, Expression.class).orElse(null),
-        visitIfPresent(ctx.limitOffsetClause().offset, Offset.class).orElse(null),
-        visitIfPresent(ctx.limitOffsetClause().limit, Node.class).orElse(null));
+    final QualifiedName name = getQualifiedName(ctx.tableName);
+    return InformationSchema.INFORMATION_DATABASE.equals(
+            name.getPrefix().map(QualifiedName::toString).orElse(clientSession.getDatabaseName()))
+        ? new ShowStatement(
+            getLocation(ctx),
+            name.getSuffix(),
+            visitIfPresent(ctx.where, Expression.class),
+            Optional.empty(),
+            visitIfPresent(ctx.limitOffsetClause().offset, Offset.class),
+            visitIfPresent(ctx.limitOffsetClause().limit, Node.class))
+        : new ShowDevice(
+            getLocation(ctx),
+            new Table(getLocation(ctx), name),
+            visitIfPresent(ctx.where, Expression.class).orElse(null),
+            visitIfPresent(ctx.limitOffsetClause().offset, Offset.class).orElse(null),
+            visitIfPresent(ctx.limitOffsetClause().limit, Node.class).orElse(null));
   }
 
   @Override
   public Node visitCountDevicesStatement(
       final RelationalSqlParser.CountDevicesStatementContext ctx) {
-    return new CountDevice(
-        getLocation(ctx),
-        new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
-        visitIfPresent(ctx.where, Expression.class).orElse(null));
+    final QualifiedName name = getQualifiedName(ctx.tableName);
+    return InformationSchema.INFORMATION_DATABASE.equals(
+            name.getPrefix().map(QualifiedName::toString).orElse(clientSession.getDatabaseName()))
+        ? new CountStatement(
+            getLocation(ctx), name.getSuffix(), visitIfPresent(ctx.where, Expression.class))
+        : new CountDevice(
+            getLocation(ctx),
+            new Table(getLocation(ctx), name),
+            visitIfPresent(ctx.where, Expression.class).orElse(null));
   }
 
   @Override
@@ -1162,11 +1182,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitRepairDataStatement(RelationalSqlParser.RepairDataStatementContext ctx) {
-    return super.visitRepairDataStatement(ctx);
-  }
-
-  @Override
   public Node visitSetSystemStatusStatement(
       RelationalSqlParser.SetSystemStatusStatementContext ctx) {
     return super.visitSetSystemStatusStatement(ctx);
@@ -1275,6 +1290,23 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     setConfigurationStatement.setNodeId(nodeId);
     setConfigurationStatement.setConfigItems(configItems);
     return new SetConfiguration(setConfigurationStatement, null);
+  }
+
+  @Override
+  public Node visitStartRepairDataStatement(
+      RelationalSqlParser.StartRepairDataStatementContext ctx) {
+    StartRepairDataStatement startRepairDataStatement =
+        new StartRepairDataStatement(StatementType.START_REPAIR_DATA);
+    startRepairDataStatement.setOnCluster(ctx.localOrClusterMode().LOCAL() == null);
+    return new StartRepairData(startRepairDataStatement, null);
+  }
+
+  @Override
+  public Node visitStopRepairDataStatement(RelationalSqlParser.StopRepairDataStatementContext ctx) {
+    StopRepairDataStatement stopRepairDataStatement =
+        new StopRepairDataStatement(StatementType.STOP_REPAIR_DATA);
+    stopRepairDataStatement.setOnCluster(ctx.localOrClusterMode().LOCAL() == null);
+    return new StopRepairData(stopRepairDataStatement, null);
   }
 
   @Override
@@ -1855,8 +1887,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitInSubquery(RelationalSqlParser.InSubqueryContext ctx) {
-    throw new SemanticException("Only TableSubquery is supported now");
-    /*Expression result =
+    Expression result =
         new InPredicate(
             getLocation(ctx),
             (Expression) visit(ctx.value),
@@ -1866,7 +1897,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       result = new NotExpression(getLocation(ctx), result);
     }
 
-    return result;*/
+    return result;
   }
 
   @Override

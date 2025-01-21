@@ -71,6 +71,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -314,7 +315,7 @@ public class AnalyzeUtils {
     validateSchema(node, queryContext);
 
     try (final ConfigNodeClient configNodeClient =
-        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID); ) {
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // TODO: may use time and db/table to filter
       final TRegionRouteMapResp latestRegionRouteMap = configNodeClient.getLatestRegionRouteMap();
       final Set<TRegionReplicaSet> replicaSets = new HashSet<>();
@@ -346,7 +347,11 @@ public class AnalyzeUtils {
       throw new SemanticException("Table " + tableName + " not found");
     }
 
-    node.setTableDeletionEntries(parseExpressions2ModEntries(node.getWhere().orElse(null), table));
+    // Maybe set by pipe transfer
+    if (Objects.isNull(node.getTableDeletionEntries())) {
+      node.setTableDeletionEntries(
+          parseExpressions2ModEntries(node.getWhere().orElse(null), table));
+    }
   }
 
   public static List<TableDeletionEntry> parseExpressions2ModEntries(
@@ -399,14 +404,14 @@ public class AnalyzeUtils {
       List<Expression> leftList, List<Expression> rightList, Operator operator) {
     List<Expression> results = new ArrayList<>();
     for (Expression leftExp : leftList) {
-      List<Expression> terms = new ArrayList<>();
-      if (leftExp instanceof LogicalExpression) {
-        terms.addAll(((LogicalExpression) leftExp).getTerms());
-      } else {
-        terms.add(leftExp);
-      }
-
       for (Expression rightExp : rightList) {
+        List<Expression> terms = new ArrayList<>();
+        if (leftExp instanceof LogicalExpression) {
+          terms.addAll(((LogicalExpression) leftExp).getTerms());
+        } else {
+          terms.add(leftExp);
+        }
+
         if (rightExp instanceof LogicalExpression) {
           terms.addAll(((LogicalExpression) rightExp).getTerms());
         } else {
@@ -475,7 +480,7 @@ public class AnalyzeUtils {
     int idColumnOrdinal = table.getIdColumnOrdinal(columnName);
     if (idColumnOrdinal == -1) {
       throw new SemanticException(
-          "The column '" + columnName + "' does not exist or is not an id column");
+          "The column '" + columnName + "' does not exist or is not a tag column");
     }
 
     // the first segment is the table name, so + 1
@@ -546,7 +551,7 @@ public class AnalyzeUtils {
     int idColumnOrdinal = table.getIdColumnOrdinal(columnName);
     if (idColumnOrdinal == -1) {
       throw new SemanticException(
-          "The column '" + columnName + "' does not exist or is not an id column");
+          "The column '" + columnName + "' does not exist or is not a tag column");
     }
 
     IDPredicate newPredicate = getIdPredicate(comparisonExpression, right, idColumnOrdinal);
@@ -556,7 +561,7 @@ public class AnalyzeUtils {
   private static IDPredicate getIdPredicate(
       ComparisonExpression comparisonExpression, Expression right, int idColumnOrdinal) {
     if (comparisonExpression.getOperator() != ComparisonExpression.Operator.EQUAL) {
-      throw new SemanticException("The operator of id predicate must be '=' for " + right);
+      throw new SemanticException("The operator of tag predicate must be '=' for " + right);
     }
 
     String rightHandValue;
@@ -564,10 +569,10 @@ public class AnalyzeUtils {
       rightHandValue = ((StringLiteral) right).getValue();
     } else if (right instanceof NullLiteral) {
       throw new SemanticException(
-          "The right hand value of id predicate cannot be null with '=' operator, please use 'IS NULL' instead");
+          "The right hand value of tag predicate cannot be null with '=' operator, please use 'IS NULL' instead");
     } else {
       throw new SemanticException(
-          "The right hand value of id predicate must be a string: " + right);
+          "The right hand value of tag predicate must be a string: " + right);
     }
     // the first segment is the table name, so + 1
     return new SegmentExactMatch(rightHandValue, idColumnOrdinal + 1);

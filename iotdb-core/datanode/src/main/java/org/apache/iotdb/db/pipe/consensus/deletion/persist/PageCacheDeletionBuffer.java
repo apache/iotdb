@@ -61,7 +61,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   // Buffer config keep consistent with WAL.
   private static final int ONE_THIRD_WAL_BUFFER_SIZE = config.getWalBufferSize() / 3;
   private static final double FSYNC_BUFFER_RATIO = 0.95;
-  private static final int QUEUE_CAPACITY = config.getPageCacheDeletionBufferQueueCapacity();
+  private static final int QUEUE_CAPACITY = config.getDeletionAheadLogBufferQueueCapacity();
   private static final long MAX_WAIT_CLOSE_TIME_IN_MS = 10000;
 
   // DeletionResources received from storage engine, which is waiting to be persisted.

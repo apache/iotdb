@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
 
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 
@@ -28,7 +30,7 @@ public interface GroupedAccumulator {
 
   void setGroupCount(long groupCount);
 
-  void addInput(int[] groupIds, Column[] arguments);
+  void addInput(int[] groupIds, Column[] arguments, AggregationMask mask);
 
   void addIntermediate(int[] groupIds, Column argument);
 
@@ -36,6 +38,10 @@ public interface GroupedAccumulator {
 
   void evaluateFinal(int groupId, ColumnBuilder columnBuilder);
 
+  /**
+   * This interface will be used for order by in agg function (not implemented), implementations are
+   * all empty now.
+   */
   void prepareFinal();
 
   void reset();

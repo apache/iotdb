@@ -53,14 +53,17 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.PlainDeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileDataCacheMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
@@ -89,6 +92,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -130,6 +134,7 @@ public class LoadTsFileScheduler implements IScheduler {
   private final LoadTsFileDispatcherImpl dispatcher;
   private final DataPartitionBatchFetcher partitionFetcher;
   private final List<LoadSingleTsFileNode> tsFileNodeList;
+  private final List<Integer> failedTsFileNodeIndexes;
   private final PlanFragmentId fragmentId;
   private final Set<TRegionReplicaSet> allReplicaSets;
   private final boolean isGeneratedByPipe;
@@ -145,6 +150,7 @@ public class LoadTsFileScheduler implements IScheduler {
     this.queryContext = queryContext;
     this.stateMachine = stateMachine;
     this.tsFileNodeList = new ArrayList<>();
+    this.failedTsFileNodeIndexes = new ArrayList<>();
     this.fragmentId = distributedQueryPlan.getRootSubPlan().getPlanFragment().getId();
     this.dispatcher = new LoadTsFileDispatcherImpl(internalServiceClientManager, isGeneratedByPipe);
     this.partitionFetcher = new DataPartitionBatchFetcher(partitionFetcher);
@@ -191,8 +197,8 @@ public class LoadTsFileScheduler implements IScheduler {
           } else if (!node.needDecodeTsFile(
               slotList ->
                   partitionFetcher.queryDataPartition(
-                      slotList,
-                      queryContext.getSession().getUserName()))) { // do not decode, load locally
+                      slotList, queryContext.getSession().getUserName()))) {
+            // do not decode, load locally
             final long startTime = System.nanoTime();
             try {
               isLoadSingleTsFileSuccess = loadLocally(node);
@@ -200,7 +206,8 @@ public class LoadTsFileScheduler implements IScheduler {
               LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
                   LoadTsFileCostMetricsSet.LOAD_LOCALLY, System.nanoTime() - startTime);
             }
-          } else { // need decode, load locally or remotely, use two phases method
+          } else {
+            // need decode, load locally or remotely, use two phases method
             String uuid = UUID.randomUUID().toString();
             dispatcher.setUuid(uuid);
             allReplicaSets.clear();
@@ -239,6 +246,7 @@ public class LoadTsFileScheduler implements IScheduler {
                 tsFileNodeListSize);
           } else {
             isLoadSuccess = false;
+            failedTsFileNodeIndexes.add(i);
             LOGGER.warn(
                 "Can not Load TsFile {}, load process [{}/{}]",
                 filePath,
@@ -247,6 +255,7 @@ public class LoadTsFileScheduler implements IScheduler {
           }
         } catch (Exception e) {
           isLoadSuccess = false;
+          failedTsFileNodeIndexes.add(i);
           stateMachine.transitionToFailed(e);
           LOGGER.warn("LoadTsFileScheduler loads TsFile {} error", filePath, e);
         } finally {
@@ -257,8 +266,18 @@ public class LoadTsFileScheduler implements IScheduler {
           }
         }
       }
+
       if (isLoadSuccess) {
         stateMachine.transitionToFinished();
+      } else {
+        final long startTime = System.nanoTime();
+        try {
+          // if failed to load some TsFiles, then try to convert the TsFiles to Tablets
+          convertFailedTsFilesToTabletsAndRetry();
+        } finally {
+          LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
+              LoadTsFileCostMetricsSet.CAST_TABLETS, System.nanoTime() - startTime);
+        }
       }
     } finally {
       LoadTsFileMemoryManager.getInstance().releaseDataCacheMemoryBlock();
@@ -351,7 +370,7 @@ public class LoadTsFileScheduler implements IScheduler {
           for (TSStatus status : result.getFailureStatus().getSubStatus()) {
             LOGGER.warn(
                 "Sub status code {}. Sub status message {}.",
-                TSStatusCode.representOf(status.getCode()).name(),
+                TSStatusCode.representOf(status.getCode()).toString(),
                 status.getMessage());
           }
         }
@@ -532,6 +551,62 @@ public class LoadTsFileScheduler implements IScheduler {
             });
 
     return true;
+  }
+
+  private void convertFailedTsFilesToTabletsAndRetry() {
+    final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
+        new LoadTsFileDataTypeConverter(isGeneratedByPipe);
+
+    final Iterator<Integer> iterator = failedTsFileNodeIndexes.listIterator();
+    while (iterator.hasNext()) {
+      final int failedLoadTsFileIndex = iterator.next();
+      final LoadSingleTsFileNode failedNode = tsFileNodeList.get(failedLoadTsFileIndex);
+      final String filePath = failedNode.getTsFileResource().getTsFilePath();
+
+      try {
+        final TSStatus status =
+            failedNode.isTableModel()
+                ? loadTsFileDataTypeConverter
+                    .convertForTableModel(
+                        new LoadTsFile(null, filePath, Collections.emptyMap())
+                            .setDatabase(failedNode.getDatabase()))
+                    .orElse(null)
+                : loadTsFileDataTypeConverter
+                    .convertForTreeModel(new LoadTsFileStatement(filePath))
+                    .orElse(null);
+
+        if (loadTsFileDataTypeConverter.isSuccessful(status)) {
+          iterator.remove();
+          LOGGER.info(
+              "Load: Successfully converted TsFile {} into tablets and inserted.",
+              failedNode.getTsFileResource().getTsFilePath());
+        } else {
+          LOGGER.warn(
+              "Load: Failed to convert to tablets from TsFile {}. Status: {}",
+              failedNode.getTsFileResource().getTsFilePath(),
+              status);
+        }
+      } catch (final Exception e) {
+        LOGGER.warn(
+            "Load: Failed to convert to tablets from TsFile {}. Exception: {}",
+            failedNode.getTsFileResource().getTsFilePath(),
+            e.getMessage(),
+            e);
+      }
+    }
+
+    // If all failed TsFiles are converted into tablets and inserted,
+    // we can consider the load process as successful.
+    if (failedTsFileNodeIndexes.isEmpty()) {
+      stateMachine.transitionToFinished();
+    } else {
+      stateMachine.transitionToFailed(
+          new LoadFileException(
+              "Failed to load some TsFiles by converting them into tablets. Failed TsFiles: "
+                  + failedTsFileNodeIndexes.stream()
+                      .map(i -> tsFileNodeList.get(i).getTsFileResource().getTsFilePath())
+                      .collect(Collectors.joining(", "))));
+    }
   }
 
   @Override
