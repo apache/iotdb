@@ -43,7 +43,10 @@ public class TimePartitionManager {
 
   long memCost = 0;
   long timePartitionInfoMemoryThreshold =
-      IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForTimePartitionInfo();
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .getTimePartitionInfoMemoryManager()
+          .getTotalMemorySizeInBytes();
 
   private TimePartitionManager() {
     timePartitionInfoMap = new HashMap<>();

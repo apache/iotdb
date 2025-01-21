@@ -91,7 +91,8 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
         (long)
             (config.getStorageEngineMemoryManager().getTotalMemorySizeInBytes()
                 * config.getWriteProportionForMemtable());
-    long timePartitionInfoSize = config.getAllocateMemoryForTimePartitionInfo();
+    long timePartitionInfoSize =
+        config.getTimePartitionInfoMemoryManager().getTotalMemorySizeInBytes();
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),

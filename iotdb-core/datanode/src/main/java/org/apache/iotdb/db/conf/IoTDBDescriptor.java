@@ -2202,8 +2202,9 @@ public class IoTDBDescriptor {
         }
       }
     }
-    conf.setStorageEngineMemoryManager(
-        globalMemoryManager.createMemoryManager("StorageEngine", storageEngineMemorySize));
+    MemoryManager storageEngineMemoryManager =
+        globalMemoryManager.createMemoryManager("StorageEngine", storageEngineMemorySize);
+    conf.setStorageEngineMemoryManager(storageEngineMemoryManager);
 
     LOGGER.info("initial allocateMemoryForRead = {}", conf.getAllocateMemoryForRead());
     LOGGER.info(
@@ -2214,7 +2215,7 @@ public class IoTDBDescriptor {
     LOGGER.info("initial allocateMemoryForPipe = {}", conf.getAllocateMemoryForPipe());
 
     initSchemaMemoryAllocate(properties);
-    initStorageEngineAllocate(properties);
+    initStorageEngineAllocate(storageEngineMemoryManager, properties);
 
     conf.setEnableQueryMemoryEstimation(
         Boolean.parseBoolean(
@@ -2275,10 +2276,12 @@ public class IoTDBDescriptor {
   }
 
   @SuppressWarnings("java:S3518")
-  private void initStorageEngineAllocate(TrimProperties properties) {
-    long storageMemoryTotal = conf.getStorageEngineMemoryManager().getTotalMemorySizeInBytes();
+  private void initStorageEngineAllocate(
+      MemoryManager storageEngineMemoryManager, TrimProperties properties) {
+    long storageMemoryTotal = storageEngineMemoryManager.getTotalMemorySizeInBytes();
     String valueOfStorageEngineMemoryProportion =
         properties.getProperty("storage_engine_memory_proportion");
+    long timePartitionInfoMemorySize = storageMemoryTotal * 8 / 10 / 20;
     if (valueOfStorageEngineMemoryProportion != null) {
       String[] storageProportionArray = valueOfStorageEngineMemoryProportion.split(":");
       int storageEngineMemoryProportion = 0;
@@ -2321,12 +2324,15 @@ public class IoTDBDescriptor {
             writeAllProportionOfStorageEngineMemory * memTableProportion);
 
         // allocateMemoryForTimePartitionInfo = storageMemoryTotal * 8/10 * 1/20 default
-        conf.setAllocateMemoryForTimePartitionInfo(
+        timePartitionInfoMemorySize =
             (long)
                 ((writeAllProportionOfStorageEngineMemory * timePartitionInfoProportion)
-                    * storageMemoryTotal));
+                    * storageMemoryTotal);
       }
     }
+    conf.setTimePartitionInfoMemoryManager(
+        storageEngineMemoryManager.createMemoryManager(
+            "TimePartitionInfo", timePartitionInfoMemorySize));
   }
 
   @SuppressWarnings("squid:S3518")

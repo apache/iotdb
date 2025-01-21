@@ -623,6 +623,8 @@ public class IoTDBConfig {
   private long allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
 
   /** Memory allocated proportion for time partition info */
+  private MemoryManager timePartitionInfoMemoryManager;
+
   private long allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 8 / 10 / 20;
 
   /**
@@ -2400,12 +2402,12 @@ public class IoTDBConfig {
     this.allocateMemoryForTimeIndex = allocateMemoryForTimeIndex;
   }
 
-  public long getAllocateMemoryForTimePartitionInfo() {
-    return allocateMemoryForTimePartitionInfo;
+  public MemoryManager getTimePartitionInfoMemoryManager() {
+    return timePartitionInfoMemoryManager;
   }
 
-  public void setAllocateMemoryForTimePartitionInfo(long allocateMemoryForTimePartitionInfo) {
-    this.allocateMemoryForTimePartitionInfo = allocateMemoryForTimePartitionInfo;
+  public void setTimePartitionInfoMemoryManager(MemoryManager timePartitionInfoMemoryManager) {
+    this.timePartitionInfoMemoryManager = timePartitionInfoMemoryManager;
   }
 
   public boolean isEnableQueryMemoryEstimation() {
