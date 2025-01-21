@@ -123,6 +123,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         return;
       }
     }
+
+    // If all clients are not available, throw an exception
     final StringBuilder errorMessage =
         new StringBuilder(
             String.format(
@@ -130,7 +132,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
     for (final Map.Entry<TEndPoint, String> entry : endPoint2HandshakeErrorMessage.entrySet()) {
       errorMessage
           .append(" (")
-          .append(" host: ")
+          .append("host: ")
           .append(entry.getKey().getIp())
           .append(", port: ")
           .append(entry.getKey().getPort())
@@ -158,11 +160,15 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       }
     }
 
-    initClientAndStatus(clientAndStatus, endPoint);
-    sendHandshakeReq(clientAndStatus);
+    // It is necessary to ensure that the client is initialized successfully and not null. If false
+    // is returned, it means that the initialization is not successful and the handshake operation
+    // is not performed.
+    if (initClientAndStatus(clientAndStatus, endPoint)) {
+      sendHandshakeReq(clientAndStatus);
+    }
   }
 
-  private void initClientAndStatus(
+  private boolean initClientAndStatus(
       final Pair<IoTDBSyncClient, Boolean> clientAndStatus, final TEndPoint endPoint) {
     try {
       clientAndStatus.setLeft(
@@ -177,14 +183,16 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
               useSSL,
               trustStorePath,
               trustStorePwd));
+      return true;
     } catch (Exception e) {
       endPoint2HandshakeErrorMessage.put(endPoint, e.getMessage());
-      throw new PipeConnectionException(
-          String.format(
-              PipeConnectionException.CONNECTION_ERROR_FORMATTER,
-              endPoint.getIp(),
-              endPoint.getPort()),
+      LOGGER.warn(
+          "Failed to initialize client with target server ip: {}, port: {}, because {}",
+          endPoint.getIp(),
+          endPoint.getPort(),
+          e.getMessage(),
           e);
+      return false;
     }
   }
 
@@ -209,7 +217,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       // Receiver may be an old version, so we need to retry to handshake by
       // PipeTransferHandshakeV1Req.
       if (resp.getStatus().getCode() == TSStatusCode.PIPE_TYPE_ERROR.getStatusCode()) {
-        LOGGER.info(
+        LOGGER.warn(
             "Handshake error with target server ip: {}, port: {}, because: {}. "
                 + "Retry to handshake by PipeTransferHandshakeV1Req.",
             client.getIpAddress(),

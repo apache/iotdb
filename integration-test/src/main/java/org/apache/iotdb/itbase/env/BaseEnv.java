@@ -112,6 +112,9 @@ public interface BaseEnv {
 
   Connection getConnection(String username, String password) throws SQLException;
 
+  Connection getConnection(DataNodeWrapper dataNodeWrapper, String username, String password)
+      throws SQLException;
+
   default Connection getWriteOnlyConnectionWithSpecifiedDataNode(DataNodeWrapper dataNode)
       throws SQLException {
     return getWriteOnlyConnectionWithSpecifiedDataNode(

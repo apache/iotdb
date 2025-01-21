@@ -256,7 +256,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       // Retry to handshake by PipeTransferHandshakeV1Req.
       if (resp.get() != null
           && resp.get().getStatus().getCode() == TSStatusCode.PIPE_TYPE_ERROR.getStatusCode()) {
-        LOGGER.info(
+        LOGGER.warn(
             "Handshake error by PipeTransferHandshakeV2Req with receiver {}:{} "
                 + "retry to handshake by PipeTransferHandshakeV1Req.",
             targetNodeUrl.getIp(),
