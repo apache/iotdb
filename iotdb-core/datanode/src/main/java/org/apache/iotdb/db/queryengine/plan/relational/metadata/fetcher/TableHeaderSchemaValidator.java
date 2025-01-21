@@ -318,7 +318,7 @@ public class TableHeaderSchemaValidator {
         throw new IllegalArgumentException();
     }
     if (Objects.nonNull(comment)) {
-      schema.getProps().put(TsTableColumnSchema.COMMENT_KEY, comment);
+      schema.getProps().put(TsTable.COMMENT_KEY, comment);
     }
     return schema;
   }

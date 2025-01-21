@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -401,6 +400,9 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final TsTable table = new TsTable(tableName);
 
     table.setProps(convertPropertiesToMap(node.getProperties(), false));
+    if (Objects.nonNull(node.getComment())) {
+      table.addProp(TsTable.COMMENT_KEY, node.getComment());
+    }
 
     // TODO: Place the check at statement analyzer
     boolean hasTimeColumn = false;
@@ -440,7 +442,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
           && columnName.equals(TIME_COLUMN_NAME)
           && dataType == TSDataType.TIMESTAMP) {
         if (Objects.nonNull(comment)) {
-          timeColumnSchema.getProps().put(TsTableColumnSchema.COMMENT_KEY, comment);
+          timeColumnSchema.getProps().put(TsTable.COMMENT_KEY, comment);
         }
         return true;
       } else if (dataType == TSDataType.TIMESTAMP) {

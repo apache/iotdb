@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.Objects;
 
 public abstract class TsTableColumnSchema {
-  public static final String COMMENT_KEY = "__comment";
 
   protected String columnName;
 

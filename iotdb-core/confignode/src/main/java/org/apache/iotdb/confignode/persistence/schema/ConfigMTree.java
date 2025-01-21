@@ -724,7 +724,7 @@ public class ConfigMTree {
       throw new ColumnNotExistsException(
           PathUtils.unQualifyDatabaseName(database.getFullPath()), tableName, columnName);
     }
-    columnSchema.getProps().put(TsTableColumnSchema.COMMENT_KEY, comment);
+    columnSchema.getProps().put(TsTable.COMMENT_KEY, comment);
   }
 
   public List<TsTable> getAllUsingTablesUnderSpecificDatabase(final PartialPath databasePath)
