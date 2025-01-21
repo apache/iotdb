@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
@@ -27,6 +29,7 @@ import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFu
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -49,6 +52,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundExceptio
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.customizer.analysis.AggregateFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
@@ -586,7 +590,7 @@ public class TableMetadataImpl implements Metadata {
         if (argumentTypes.size() != 2) {
           throw new SemanticException(
               String.format(
-                  "Aggregate functions [%s] should only have two arguments", functionName));
+                  "Aggregate functions [%s] should only have one or two arguments", functionName));
         } else if (!isTimestampType(argumentTypes.get(1))) {
           throw new SemanticException(
               String.format(
@@ -598,7 +602,8 @@ public class TableMetadataImpl implements Metadata {
         if (argumentTypes.size() != 3) {
           throw new SemanticException(
               String.format(
-                  "Aggregate functions [%s] should only have three arguments", functionName));
+                  "Aggregate functions [%s] should only have two or three arguments",
+                  functionName));
         }
         break;
       case SqlConstant.MAX_BY:
@@ -623,6 +628,7 @@ public class TableMetadataImpl implements Metadata {
     // get return type
     switch (functionName.toLowerCase(Locale.ENGLISH)) {
       case SqlConstant.COUNT:
+      case SqlConstant.COUNT_ALL:
       case SqlConstant.COUNT_IF:
         return INT64;
       case SqlConstant.FIRST_AGGREGATION:
@@ -734,7 +740,8 @@ public class TableMetadataImpl implements Metadata {
       TableSchema tableSchema,
       MPPQueryContext context,
       boolean allowCreateTable,
-      boolean isStrictIdColumn) {
+      boolean isStrictIdColumn)
+      throws LoadAnalyzeTableColumnDisorderException {
     return TableHeaderSchemaValidator.getInstance()
         .validateTableHeaderSchema(
             database, tableSchema, context, allowCreateTable, isStrictIdColumn);
@@ -897,5 +904,16 @@ public class TableMetadataImpl implements Metadata {
       return true;
     }
     return isArithmeticType(left) && isArithmeticType(right);
+  }
+
+  public static void throwTableNotExistsException(final String database, final String tableName) {
+    throw new SemanticException(new TableNotExistsException(database, tableName));
+  }
+
+  public static void throwColumnNotExistsException(final Object columnName) {
+    throw new SemanticException(
+        new IoTDBException(
+            String.format("Column '%s' cannot be resolved.", columnName),
+            TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode()));
   }
 }

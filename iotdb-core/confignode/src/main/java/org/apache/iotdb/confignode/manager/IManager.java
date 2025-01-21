@@ -96,6 +96,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
@@ -125,7 +126,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
+import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRemoveRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
@@ -138,6 +141,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
@@ -147,6 +151,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
@@ -554,6 +560,9 @@ public interface IManager {
   /** Show pipe plugins. */
   TGetPipePluginTableResp getPipePluginTable();
 
+  /** Show pipe plugins. */
+  TGetPipePluginTableResp getPipePluginTableExtended(TShowPipePluginReq req);
+
   /** Get pipe plugin jar. */
   TGetJarInListResp getPipePluginJar(TGetJarInListReq req);
 
@@ -694,34 +703,39 @@ public interface IManager {
    * Alter Pipe.
    *
    * @param req Info about Pipe
-   * @return TSStatus
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if altered the pipe successfully, {@link
+   *     TSStatusCode#PIPE_ERROR} if encountered failure, {@link TSStatusCode#PIPE_NOT_EXIST_ERROR}
+   *     if the pipe does not exist.
    */
   TSStatus alterPipe(TAlterPipeReq req);
 
   /**
    * Start Pipe.
    *
-   * @param pipeName name of Pipe
+   * @param req Info about Pipe
    * @return {@link TSStatusCode#SUCCESS_STATUS} if started the pipe successfully, {@link
-   *     TSStatusCode#PIPE_ERROR} if encountered failure.
+   *     TSStatusCode#PIPE_ERROR} if encountered failure, {@link TSStatusCode#PIPE_NOT_EXIST_ERROR}
+   *     if the pipe does not exist.
    */
-  TSStatus startPipe(String pipeName);
+  TSStatus startPipe(TStartPipeReq req);
 
   /**
    * Stop Pipe.
    *
-   * @param pipeName name of Pipe
+   * @param req Info about Pipe
    * @return {@link TSStatusCode#SUCCESS_STATUS} if stopped the pipe successfully, {@link
-   *     TSStatusCode#PIPE_ERROR} if encountered failure.
+   *     TSStatusCode#PIPE_ERROR} if encountered failure, {@link TSStatusCode#PIPE_NOT_EXIST_ERROR}
+   *     if the pipe does not exist.
    */
-  TSStatus stopPipe(String pipeName);
+  TSStatus stopPipe(TStopPipeReq req);
 
   /**
    * Drop Pipe.
    *
    * @param req Info about Pipe
    * @return {@link TSStatusCode#SUCCESS_STATUS} if dropped the pipe successfully, {@link
-   *     TSStatusCode#PIPE_ERROR} if encountered failure.
+   *     TSStatusCode#PIPE_ERROR} if encountered failure, {@link TSStatusCode#PIPE_NOT_EXIST_ERROR}
+   *     if the pipe does not exist.
    */
   TSStatus dropPipe(TDropPipeReq req);
 
@@ -811,6 +825,12 @@ public interface IManager {
   TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req);
 
   TSStatus migrateRegion(TMigrateRegionReq req);
+
+  TSStatus reconstructRegion(TReconstructRegionReq req);
+
+  TSStatus extendRegion(TExtendRegionReq req);
+
+  TSStatus removeRegion(TRemoveRegionReq req);
 
   TSStatus createCQ(TCreateCQReq req);
 

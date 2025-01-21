@@ -82,7 +82,7 @@ public class MemAlignedChunkLoaderTest {
     Mockito.when(statistics6.hasNullValue(2)).thenReturn(true);
 
     Statistics timeStatistics = Mockito.mock(Statistics.class);
-    Mockito.when(timeStatistics.getCount()).thenReturn(2L);
+    Mockito.when(timeStatistics.getCount()).thenReturn(2);
 
     Mockito.when(chunkMetadata1.getStatistics()).thenReturn(timeStatistics);
     Mockito.when(chunkMetadata1.getTimeStatistics()).thenReturn(timeStatistics);

@@ -497,8 +497,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
   @Override
   public PlanNode visitPipeEnrichedStatement(
-      PipeEnrichedStatement pipeEnrichedStatement, MPPQueryContext context) {
-    WritePlanNode node =
+      final PipeEnrichedStatement pipeEnrichedStatement, final MPPQueryContext context) {
+    final WritePlanNode node =
         (WritePlanNode) pipeEnrichedStatement.getInnerStatement().accept(this, context);
 
     if (node instanceof LoadTsFileNode) {

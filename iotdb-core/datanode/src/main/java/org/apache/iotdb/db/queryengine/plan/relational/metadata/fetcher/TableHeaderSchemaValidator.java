@@ -27,9 +27,11 @@ import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
 import org.apache.iotdb.db.exception.sql.ColumnCreationFailException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -37,7 +39,10 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterCon
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableAddColumnTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
@@ -67,6 +72,7 @@ public class TableHeaderSchemaValidator {
 
   private final ClusterConfigTaskExecutor configTaskExecutor =
       ClusterConfigTaskExecutor.getInstance();
+  private final AccessControl accessControl = Coordinator.getInstance().getAccessControl();
 
   private TableHeaderSchemaValidator() {
     // do nothing
@@ -86,7 +92,8 @@ public class TableHeaderSchemaValidator {
       final TableSchema tableSchema,
       final MPPQueryContext context,
       final boolean allowCreateTable,
-      final boolean isStrictIdColumn) {
+      final boolean isStrictIdColumn)
+      throws LoadAnalyzeTableColumnDisorderException {
     InformationSchemaUtils.checkDBNameInWrite(database);
 
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
@@ -114,14 +121,14 @@ public class TableHeaderSchemaValidator {
       // it's ok that many write requests concurrently auto create same table, the thread safety
       // will be guaranteed by ProcedureManager.createTable in CN
       if (allowCreateTable && isAutoCreateSchemaEnabled) {
-        autoCreateTable(database, tableSchema);
+        autoCreateTable(context, database, tableSchema);
         table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
         if (table == null) {
           throw new IllegalStateException(
               "auto create table succeed, but cannot get table schema in current node's DataNodeTableCache, may be caused by concurrently auto creating table");
         }
       } else {
-        throw new SemanticException("Table " + tableSchema.getTableName() + " does not exist");
+        TableMetadataImpl.throwTableNotExistsException(database, tableSchema.getTableName());
       }
     } else {
       // If table with this name already exists and isStrictIdColumn is true, make sure the existing
@@ -136,7 +143,7 @@ public class TableHeaderSchemaValidator {
             final String idName = realIdColumns.get(indexReal).getColumnName();
             final int indexIncoming = tableSchema.getIndexAmongIdColumns(idName);
             if (indexIncoming != indexReal) {
-              throw new SemanticException(
+              throw new LoadAnalyzeTableColumnDisorderException(
                   String.format(
                       "Can not create table because incoming table has no less id columns than existing table, "
                           + "and the existing id columns are not the prefix of the incoming id columns. "
@@ -151,7 +158,7 @@ public class TableHeaderSchemaValidator {
             final String idName = incomingIdColumns.get(indexIncoming).getName();
             final int indexReal = table.getIdColumnOrdinal(idName);
             if (indexReal != indexIncoming) {
-              throw new SemanticException(
+              throw new LoadAnalyzeTableColumnDisorderException(
                   String.format(
                       "Can not create table because existing table has more id columns than incoming table, "
                           + "and the incoming id columns are not the prefix of the existing id columns. "
@@ -235,9 +242,13 @@ public class TableHeaderSchemaValidator {
     return Optional.of(new TableSchema(tableSchema.getTableName(), resultColumnList));
   }
 
-  private void autoCreateTable(final String database, final TableSchema tableSchema) {
+  private void autoCreateTable(
+      final MPPQueryContext context, final String database, final TableSchema tableSchema) {
     final TsTable tsTable = new TsTable(tableSchema.getTableName());
     addColumnSchema(tableSchema.getColumns(), tsTable);
+    accessControl.checkCanCreateTable(
+        context.getSession().getUserName(),
+        new QualifiedObjectName(database, tableSchema.getTableName()));
     final CreateTableTask createTableTask = new CreateTableTask(tsTable, database, true);
     try {
       final ListenableFuture<ConfigTaskResult> future = createTableTask.execute(configTaskExecutor);
@@ -311,6 +322,8 @@ public class TableHeaderSchemaValidator {
       final String tableName,
       final List<ColumnSchema> inputColumnList,
       final MPPQueryContext context) {
+    accessControl.checkCanAlterTable(
+        context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
     final AlterTableAddColumnTask task =
         new AlterTableAddColumnTask(
             database,

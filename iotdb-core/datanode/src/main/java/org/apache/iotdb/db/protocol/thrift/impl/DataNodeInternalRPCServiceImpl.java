@@ -704,6 +704,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             new RegionWriteExecutor()
                 .execute(
                     new DataRegionId(consensusGroupId.getId()),
+                    // Now the deletion plan may be re-collected here by pipe, resulting multiple
+                    // transfer to delete time series plan. Now just ignore.
                     req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
                         ? new PipeEnrichedDeleteDataNode(
                             new DeleteDataNode(
@@ -1497,7 +1499,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         return result.status;
       }
     } catch (Exception e) {
-      // TODO call the coordinator to release query resource
       return onQueryException(e, "\"" + executedSQL + "\". " + OperationType.EXECUTE_STATEMENT);
     } finally {
       SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);

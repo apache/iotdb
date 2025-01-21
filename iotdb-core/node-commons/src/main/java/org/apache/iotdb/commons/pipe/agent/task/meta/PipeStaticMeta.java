@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.meta;
 
+import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -34,6 +38,8 @@ import java.util.Map;
 import java.util.Objects;
 
 public class PipeStaticMeta {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeStaticMeta.class);
 
   private String pipeName;
   private long creationTime;
@@ -222,5 +228,13 @@ public class PipeStaticMeta {
   public static String generateSubscriptionPipeName(
       final String topicName, final String consumerGroupId) {
     return SUBSCRIPTION_PIPE_PREFIX + topicName + "_" + consumerGroupId;
+  }
+
+  /////////////////////////////////  Tree & Table Isolation  /////////////////////////////////
+
+  public boolean visibleUnder(final boolean isTableModel) {
+    final Visibility visibility =
+        VisibilityUtils.calculateFromExtractorParameters(extractorParameters);
+    return VisibilityUtils.isCompatible(visibility, isTableModel);
   }
 }

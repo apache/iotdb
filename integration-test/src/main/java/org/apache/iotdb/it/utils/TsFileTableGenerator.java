@@ -19,11 +19,9 @@
 
 package org.apache.iotdb.it.utils;
 
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.TableSchema;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -74,8 +72,7 @@ public class TsFileTableGenerator implements AutoCloseable {
     table2ColumnCategory.put(tableName, columnCategoryList);
   }
 
-  public void generateData(
-      final String tableName, final int number, final long timeGap, final boolean isAligned)
+  public void generateData(final String tableName, final int number, final long timeGap)
       throws IOException, WriteProcessException {
     final List<IMeasurementSchema> schemas = table2MeasurementSchema.get(tableName);
     final List<String> columnNameList =
@@ -85,7 +82,7 @@ public class TsFileTableGenerator implements AutoCloseable {
     final List<Tablet.ColumnCategory> columnCategoryList = table2ColumnCategory.get(tableName);
     final TreeSet<Long> timeSet = table2TimeSet.get(tableName);
     final Tablet tablet = new Tablet(tableName, columnNameList, dataTypeList, columnCategoryList);
-    final Object[] values = tablet.values;
+    final Object[] values = tablet.getValues();
     final long sensorNum = schemas.size();
     long startTime = timeSet.isEmpty() ? 0L : timeSet.last();
 
@@ -95,97 +92,84 @@ public class TsFileTableGenerator implements AutoCloseable {
       tablet.addTimestamp(row, startTime);
       timeSet.add(startTime);
       for (int i = 0; i < sensorNum; i++) {
-        generateDataPoint(values[i], row, schemas.get(i));
+        generateDataPoint(tablet, i, row, schemas.get(i));
       }
       // write
       if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
-        if (!isAligned) {
-          writer.writeTable(tablet);
-        } else {
-          writer.writeAligned(tablet);
-        }
+        writer.writeTable(tablet);
         tablet.reset();
       }
     }
     // write
     if (tablet.getRowSize() != 0) {
-      if (!isAligned) {
-        writer.writeTable(tablet);
-      } else {
-        writer.writeAligned(tablet);
-      }
+      writer.writeTable(tablet);
       tablet.reset();
     }
 
     LOGGER.info("Write {} points into table {}", number, tableName);
   }
 
-  private void generateDataPoint(final Object obj, final int row, final IMeasurementSchema schema) {
+  private void generateDataPoint(
+      final Tablet tablet, final int column, final int row, final IMeasurementSchema schema) {
     switch (schema.getType()) {
       case INT32:
-        generateINT32(obj, row);
+        generateINT32(tablet, column, row);
         break;
       case DATE:
-        generateDATE(obj, row);
+        generateDATE(tablet, column, row);
         break;
       case INT64:
       case TIMESTAMP:
-        generateINT64(obj, row);
+        generateINT64(tablet, column, row);
         break;
       case FLOAT:
-        generateFLOAT(obj, row);
+        generateFLOAT(tablet, column, row);
         break;
       case DOUBLE:
-        generateDOUBLE(obj, row);
+        generateDOUBLE(tablet, column, row);
         break;
       case BOOLEAN:
-        generateBOOLEAN(obj, row);
+        generateBOOLEAN(tablet, column, row);
         break;
       case TEXT:
       case BLOB:
       case STRING:
-        generateTEXT(obj, row);
+        generateTEXT(tablet, column, row);
         break;
       default:
         LOGGER.error("Wrong data type {}.", schema.getType());
     }
   }
 
-  private void generateINT32(final Object obj, final int row) {
-    final int[] ints = (int[]) obj;
-    ints[row] = random.nextInt();
+  private void generateINT32(final Tablet tablet, final int column, final int row) {
+    tablet.addValue(row, column, random.nextInt());
   }
 
-  private void generateDATE(final Object obj, final int row) {
-    final LocalDate[] dates = (LocalDate[]) obj;
-    dates[row] =
-        LocalDate.of(1000 + random.nextInt(9000), 1 + random.nextInt(12), 1 + random.nextInt(28));
+  private void generateDATE(final Tablet tablet, final int column, final int row) {
+    tablet.addValue(
+        row,
+        column,
+        LocalDate.of(1000 + random.nextInt(9000), 1 + random.nextInt(12), 1 + random.nextInt(28)));
   }
 
-  private void generateINT64(final Object obj, final int row) {
-    final long[] longs = (long[]) obj;
-    longs[row] = random.nextLong();
+  private void generateINT64(final Tablet tablet, final int column, final int row) {
+    tablet.addValue(row, column, random.nextLong());
   }
 
-  private void generateFLOAT(final Object obj, final int row) {
-    final float[] floats = (float[]) obj;
-    floats[row] = random.nextFloat();
+  private void generateFLOAT(final Tablet tablet, final int column, final int row) {
+    tablet.addValue(row, column, random.nextFloat());
   }
 
-  private void generateDOUBLE(final Object obj, final int row) {
-    final double[] doubles = (double[]) obj;
-    doubles[row] = random.nextDouble();
+  private void generateDOUBLE(final Tablet tablet, final int column, final int row) {
+    tablet.addValue(row, column, random.nextDouble());
   }
 
-  private void generateBOOLEAN(final Object obj, final int row) {
-    final boolean[] booleans = (boolean[]) obj;
-    booleans[row] = random.nextBoolean();
+  private void generateBOOLEAN(final Tablet tablet, final int column, final int row) {
+    tablet.addValue(row, column, random.nextBoolean());
   }
 
-  private void generateTEXT(final Object obj, final int row) {
-    final Binary[] binaries = (Binary[]) obj;
-    binaries[row] =
-        new Binary(String.format("test point %d", random.nextInt()), TSFileConfig.STRING_CHARSET);
+  private void generateTEXT(final Tablet tablet, final int column, final int row) {
+    tablet.addValue(row, column, String.format("test point %d", random.nextInt()));
   }
 
   public long getTotalNumber() {

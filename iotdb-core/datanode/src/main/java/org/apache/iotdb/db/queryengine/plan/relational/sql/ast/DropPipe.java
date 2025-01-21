@@ -43,7 +43,7 @@ public class DropPipe extends PipeStatement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitDropPipe(this, context);
   }
 
@@ -53,16 +53,16 @@ public class DropPipe extends PipeStatement {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    DropPipe other = (DropPipe) obj;
-    return Objects.equals(pipeName, other.pipeName)
-        && Objects.equals(ifExistsCondition, other.ifExistsCondition);
+    final DropPipe that = (DropPipe) obj;
+    return Objects.equals(this.pipeName, that.pipeName)
+        && Objects.equals(this.ifExistsCondition, that.ifExistsCondition);
   }
 
   @Override

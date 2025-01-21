@@ -488,7 +488,7 @@ public class LoadTsFileManager {
             }
 
             dataPartition2ModificationFile.put(
-                partitionInfo, new ModificationFile(newModificationFile.getAbsolutePath()));
+                partitionInfo, new ModificationFile(newModificationFile, false));
           }
           ModificationFile modificationFile = dataPartition2ModificationFile.get(partitionInfo);
           writer.flush();
