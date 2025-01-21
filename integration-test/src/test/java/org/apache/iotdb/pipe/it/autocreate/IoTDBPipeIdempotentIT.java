@@ -427,10 +427,15 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
   }
 
   @Test
+  public void testSetTableCommentIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Collections.singletonList("create table test(a tag)"), "COMMENT ON TABLE test is 'tag'");
+  }
+
+  @Test
   public void testSetTableColumnCommentIdempotent() throws Exception {
     testTableConfigIdempotent(
-        Collections.singletonList("create table test(a tag)"),
-        "ALTER TABLE test MODIFY COLUMN a COMMENT 'tag'");
+        Collections.singletonList("create table test(a tag)"), "COMMENT ON COLUMN test.a IS 'tag'");
   }
 
   private void testIdempotent(
