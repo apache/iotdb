@@ -36,9 +36,4 @@ public class NoopProcedure extends Procedure<TestProcEnv> {
 
   @Override
   protected void rollback(TestProcEnv testProcEnv) throws IOException, InterruptedException {}
-
-  @Override
-  protected boolean abort(TestProcEnv testProcEnv) {
-    return false;
-  }
 }
