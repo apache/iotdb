@@ -1174,58 +1174,219 @@ public final class SqlFormatter {
     protected Void visitRelationalAuthorPlan(RelationalAuthorStatement node, Integer context) {
       switch (node.getAuthorType()) {
         case GRANT_USER_ANY:
+          builder.append(
+              "GRANT "
+                  + node.getPrivilegesString()
+                  + " ON ANY"
+                  + " TO USER "
+                  + node.getUserName()
+                  + (node.isGrantOption() ? " WITH GRANT OPTION" : ""));
+          break;
+        case GRANT_USER_ALL:
+          builder.append(
+              "GRANT ALL TO USER "
+                  + node.getUserName()
+                  + (node.isGrantOption() ? " WITH GRANT OPTION" : ""));
+          break;
         case GRANT_USER_DB:
+          builder.append(
+              "GRANT "
+                  + node.getPrivilegesString()
+                  + " ON DATABASE "
+                  + node.getDatabase()
+                  + " TO USER "
+                  + node.getUserName()
+                  + (node.isGrantOption() ? " WITH GRANT OPTION" : ""));
+          break;
         case GRANT_USER_SYS:
+          builder.append(
+              "GRANT "
+                  + node.getPrivilegesString()
+                  + " TO USER "
+                  + node.getUserName()
+                  + (node.isGrantOption() ? " WITH GRANT OPTION" : ""));
+          break;
         case GRANT_USER_TB:
-          builder.append("GRANT USER PRIVILEGES");
+          builder.append(
+              "GRANT "
+                  + node.getPrivilegesString()
+                  + " ON TABLE "
+                  + node.getDatabase()
+                  + "."
+                  + node.getTableName()
+                  + " TO USER "
+                  + node.getUserName()
+                  + (node.isGrantOption() ? " WITH GRANT OPTION" : ""));
           break;
         case GRANT_ROLE_ANY:
-        case GRANT_ROLE_DB:
-        case GRANT_ROLE_SYS:
-        case GRANT_ROLE_TB:
-          builder.append("GRANT ROLE PRIVILEGES");
+          builder.append(
+              "GRANT "
+                  + node.getPrivilegesString()
+                  + " ON ANY"
+                  + " TO ROLE "
+                  + node.getRoleName()
+                  + (node.isGrantOption() ? " WITH GRANT OPTION" : ""));
           break;
-        case REVOKE_ROLE_ANY:
-        case REVOKE_ROLE_DB:
-        case REVOKE_ROLE_SYS:
-        case REVOKE_ROLE_TB:
-          builder.append("REVOKE ROLE PRIVILEGES");
+        case GRANT_ROLE_ALL:
+          builder.append(
+              "GRANT ALL TO ROLE "
+                  + node.getRoleName()
+                  + (node.isGrantOption() ? " WITH GRANT OPTION" : ""));
+          break;
+        case GRANT_ROLE_DB:
+          builder.append(
+              "GRANT "
+                  + node.getPrivilegesString()
+                  + " ON DATABASE "
+                  + node.getDatabase()
+                  + " TO ROLE "
+                  + node.getRoleName()
+                  + (node.isGrantOption() ? " WITH GRANT OPTION" : ""));
+          break;
+        case GRANT_ROLE_SYS:
+          builder.append(
+              "GRANT "
+                  + node.getPrivilegesString()
+                  + " TO ROLE "
+                  + node.getRoleName()
+                  + (node.isGrantOption() ? " WITH GRANT OPTION" : ""));
+          break;
+        case GRANT_ROLE_TB:
+          builder.append(
+              "GRANT "
+                  + node.getPrivilegesString()
+                  + " ON TABLE "
+                  + node.getDatabase()
+                  + "."
+                  + node.getTableName()
+                  + " TO ROLE "
+                  + node.getRoleName()
+                  + (node.isGrantOption() ? " WITH GRANT OPTION" : ""));
           break;
         case REVOKE_USER_ANY:
+          builder.append(
+              "REVOKE "
+                  + (node.isGrantOption() ? "GRANT OPTION FOR " : "")
+                  + node.getPrivilegesString()
+                  + " ON ANY FROM USER "
+                  + node.getUserName());
+          break;
+        case REVOKE_USER_ALL:
+          builder.append(
+              "REVOKE"
+                  + (node.isGrantOption() ? "GRANT OPTION FOR ALL" : "ALL")
+                  + " FROM USER "
+                  + node.getUserName());
+          break;
         case REVOKE_USER_DB:
+          builder.append(
+              "REVOKE "
+                  + (node.isGrantOption() ? "GRANT OPTION FOR " : "")
+                  + node.getPrivilegesString()
+                  + " ON DATABASE "
+                  + node.getDatabase()
+                  + " FROM USER "
+                  + node.getUserName());
+          break;
         case REVOKE_USER_SYS:
+          builder.append(
+              "REVOKE "
+                  + (node.isGrantOption() ? "GRANT OPTION FOR " : "")
+                  + node.getPrivilegesString()
+                  + "FROM USER "
+                  + node.getUserName());
+          break;
         case REVOKE_USER_TB:
-          builder.append("REVOKE USER PRIVILEGES");
+          builder.append(
+              "REVOKE "
+                  + (node.isGrantOption() ? "GRANT OPTION FOR " : "")
+                  + node.getPrivilegesString()
+                  + " ON TABLE "
+                  + node.getDatabase()
+                  + "."
+                  + node.getTableName()
+                  + " FROM USER "
+                  + node.getUserName());
           break;
-        case REVOKE_USER_ROLE:
-          builder.append("REVOKE USER ROLE");
+        case REVOKE_ROLE_ANY:
+          builder.append(
+              "REVOKE "
+                  + (node.isGrantOption() ? "GRANT OPTION FOR " : "")
+                  + node.getPrivilegesString()
+                  + " ON ANY FROM ROLE "
+                  + node.getRoleName());
           break;
-        case UPDATE_USER:
-          builder.append("UPDATE USER");
+        case REVOKE_ROLE_ALL:
+          builder.append(
+              "REVOKE "
+                  + (node.isGrantOption() ? "GRANT OPTION FOR ALL" : "ALL")
+                  + " FROM ROLE "
+                  + node.getRoleName());
           break;
-        case CREATE_USER:
-          builder.append("CREATE USER");
+        case REVOKE_ROLE_DB:
+          builder.append(
+              "REVOKE "
+                  + (node.isGrantOption() ? "GRANT OPTION FOR " : "")
+                  + node.getPrivilegesString()
+                  + " ON DATABASE "
+                  + node.getDatabase()
+                  + " FROM ROLE "
+                  + node.getRoleName());
+          break;
+        case REVOKE_ROLE_SYS:
+          builder.append(
+              "REVOKE "
+                  + (node.isGrantOption() ? "GRANT OPTION FOR " : "")
+                  + node.getPrivilegesString()
+                  + " FROM ROLE "
+                  + node.getRoleName());
+          break;
+        case REVOKE_ROLE_TB:
+          builder.append(
+              "REVOKE "
+                  + (node.isGrantOption() ? "GRANT OPTION FOR " : "")
+                  + node.getPrivilegesString()
+                  + " ON TABLE "
+                  + node.getDatabase()
+                  + "."
+                  + node.getTableName()
+                  + " FROM ROLE "
+                  + node.getRoleName());
           break;
         case GRANT_USER_ROLE:
-          builder.append("GRANT USER ROLE");
+          builder.append("GRANT ROLE " + node.getRoleName() + " TO " + node.getUserName());
           break;
-        case LIST_ROLE:
-          builder.append("LIST ROLE");
+        case REVOKE_USER_ROLE:
+          builder.append("REVOKE ROLE " + node.getRoleName() + " FROM " + node.getUserName());
+          break;
+        case CREATE_USER:
+          builder.append("CREATE USER " + node.getUserName());
+          break;
+        case CREATE_ROLE:
+          builder.append("CREATE ROLE " + node.getRoleName());
+          break;
+        case UPDATE_USER:
+          builder.append("ALTER USER " + node.getUserName() + " SET PASSWORD");
           break;
         case LIST_USER:
-          builder.append("LIST USER");
+          builder.append("LIST USER ");
           break;
-        case LIST_ROLE_PRIV:
-          builder.append("LIST ROLE PRIVILEGES");
+        case LIST_ROLE:
+          builder.append("LIST ROLE ");
           break;
         case LIST_USER_PRIV:
-          builder.append("LIST USER PRIVILEGES");
+          builder.append("LIST PRIVILEGES OF USER " + node.getUserName());
+          break;
+        case LIST_ROLE_PRIV:
+          builder.append("LIST PRIVILEGES OF ROLE " + node.getRoleName());
           break;
         case DROP_ROLE:
-          builder.append("DROP ROLE");
+          builder.append("DROP ROLE " + node.getRoleName());
           break;
         case DROP_USER:
-          builder.append("DROP USER");
+          builder.append("DROP USER " + node.getUserName());
+          break;
+        default:
           break;
       }
       return null;

@@ -130,6 +130,7 @@ public class LocalFileRoleAccessor implements IEntryAccessor {
 
   protected void loadPrivileges(DataInputStream dataInputStream, Role role)
       throws IOException, IllegalPathException {
+    role.setSysPrivilegesWithMask(dataInputStream.readInt());
     int num = ReadWriteIOUtils.readInt(dataInputStream);
     List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
     for (int i = 0; i < num; i++) {
@@ -193,7 +194,6 @@ public class LocalFileRoleAccessor implements IEntryAccessor {
       assert version == VERSION;
       entryName = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
       Role role = new Role(entryName);
-      role.setSysPrivilegesWithMask(dataInputStream.readInt());
       loadPrivileges(dataInputStream, role);
       return role;
     } catch (Exception e) {

@@ -60,7 +60,7 @@ public class AuthorStatementTest {
   private void checkUserManagerFiled(RelationalAuthorStatement authorStatement) {
     assertNull(authorStatement.getDatabase());
     assertNull(authorStatement.getTableName());
-    assertNull(authorStatement.getPrivilegeType());
+    assertNull(authorStatement.getPrivilegeTypes());
     assertFalse(authorStatement.isGrantOption());
   }
 
@@ -127,7 +127,7 @@ public class AuthorStatementTest {
     RelationalAuthorStatement stmt = createAuthorStatement(sql);
     PrivilegeModelType modelType = PrivilegeModelType.INVALID;
     int ind = 0;
-    for (PrivilegeType privilegeType : stmt.getPrivilegeType()) {
+    for (PrivilegeType privilegeType : stmt.getPrivilegeTypes()) {
       if (ind == 0) {
         modelType = privilegeType.getModelType();
       }
@@ -158,7 +158,7 @@ public class AuthorStatementTest {
     assertEquals(authorRType, stmt.getAuthorType());
     assertEquals(isUser ? idName : "", stmt.getUserName());
     assertEquals(isUser ? "" : idName, stmt.getRoleName());
-    Set<PrivilegeType> privilegeTypes = stmt.getPrivilegeType();
+    Set<PrivilegeType> privilegeTypes = stmt.getPrivilegeTypes();
     Set<PrivilegeType> privilegeTypeSet = new HashSet<>(privilegeTypeList);
     assertEquals(privilegeTypes, privilegeTypeSet);
     assertNull(stmt.getPassword());
@@ -194,7 +194,7 @@ public class AuthorStatementTest {
     PrivilegeModelType modelType = PrivilegeModelType.INVALID;
     // 1. All privileges are same model.
     int ind = 0;
-    for (PrivilegeType privilegeType : stmt.getPrivilegeType()) {
+    for (PrivilegeType privilegeType : stmt.getPrivilegeTypes()) {
       if (ind == 0) {
         modelType = privilegeType.getModelType();
       }
@@ -223,7 +223,7 @@ public class AuthorStatementTest {
     assertEquals(authType, stmt.getAuthorType());
     assertEquals(isUser ? idName : "", stmt.getUserName());
     assertEquals(isUser ? "" : idName, stmt.getRoleName());
-    Set<PrivilegeType> privilegeTypes = stmt.getPrivilegeType();
+    Set<PrivilegeType> privilegeTypes = stmt.getPrivilegeTypes();
     Set<PrivilegeType> privilegeTypeSet = new HashSet<>(privilegeTypeList);
     assertEquals(privilegeTypeSet, privilegeTypes);
     assertNull(stmt.getPassword());

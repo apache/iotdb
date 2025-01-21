@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class RelationalAuthorStatement extends Statement {
 
@@ -123,8 +124,12 @@ public class RelationalAuthorStatement extends Statement {
     return grantOption;
   }
 
-  public Set<PrivilegeType> getPrivilegeType() {
+  public Set<PrivilegeType> getPrivilegeTypes() {
     return privilegeType;
+  }
+
+  public String getPrivilegesString() {
+    return privilegeType.stream().map(Enum::name).collect(Collectors.joining(","));
   }
 
   public Set<Integer> getPrivilegeIds() {

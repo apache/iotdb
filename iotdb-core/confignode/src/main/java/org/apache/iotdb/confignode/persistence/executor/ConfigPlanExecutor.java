@@ -483,6 +483,8 @@ public class ConfigPlanExecutor {
       case RGrantUserRole:
       case RGrantRoleAny:
       case RGrantUserAny:
+      case RGrantUserAll:
+      case RGrantRoleAll:
       case RGrantUserDBPriv:
       case RGrantUserSysPri:
       case RGrantUserTBPriv:
@@ -491,6 +493,8 @@ public class ConfigPlanExecutor {
       case RGrantRoleTBPriv:
       case RRevokeRoleAny:
       case RRevokeUserAny:
+      case RRevokeUserAll:
+      case RRevokeRoleAll:
       case RRevokeUserDBPriv:
       case RRevokeUserSysPri:
       case RRevokeUserTBPriv:

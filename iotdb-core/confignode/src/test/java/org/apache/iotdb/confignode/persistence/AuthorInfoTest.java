@@ -256,11 +256,11 @@ public class AuthorInfoTest {
     status = authorInfo.authorNonQuery(authorPlan);
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorInfo
             .checkUserPrivileges("user0", new PrivilegeUnion(nodeNameList, PrivilegeType.READ_DATA))
             .getStatus()
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            .getCode());
 
     // grant user system privilege
     authorPlan =
@@ -269,11 +269,11 @@ public class AuthorInfoTest {
     status = authorInfo.authorNonQuery(authorPlan);
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorInfo
             .checkUserPrivileges("user0", new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
             .getStatus()
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            .getCode());
     // check user privileges
     status =
         authorInfo
@@ -868,94 +868,94 @@ public class AuthorInfoTest {
     // TB:  database.table ALTER
 
     assertEquals(
-        authorInfo.checkRoleOfUser("user", "role").getStatus().getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorInfo.checkRoleOfUser("user", "role").getStatus().getCode());
     assertEquals(
-        authorInfo.checkRoleOfUser("user", "role2").getStatus().getCode(),
-        TSStatusCode.USER_NOT_HAS_ROLE.getStatusCode());
+        TSStatusCode.USER_NOT_HAS_ROLE.getStatusCode(),
+        authorInfo.checkRoleOfUser("user", "role2").getStatus().getCode());
     // check visible
     assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorInfo
             .checkUserPrivileges("user", new PrivilegeUnion("testdb", null))
             .getStatus()
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            .getCode());
     assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorInfo
             .checkUserPrivileges("user", new PrivilegeUnion("database", null))
             .getStatus()
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            .getCode());
     assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorInfo
             .checkUserPrivileges("user", new PrivilegeUnion("database", "table", null))
             .getStatus()
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            .getCode());
     assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorInfo
             .checkUserPrivileges("user", new PrivilegeUnion("database", "table2", null))
             .getStatus()
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            .getCode());
     assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorInfo
             .checkUserPrivileges("user", new PrivilegeUnion("database2", "table2", null))
             .getStatus()
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            .getCode());
     assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorInfo
             .checkUserPrivileges("user", new PrivilegeUnion("testdb", PrivilegeType.SELECT))
             .getStatus()
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            .getCode());
 
     assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
         authorInfo
             .checkUserPrivileges(
                 "user", new PrivilegeUnion("testdb", "testtb", PrivilegeType.INSERT))
             .getStatus()
-            .getCode(),
-        TSStatusCode.NO_PERMISSION.getStatusCode());
+            .getCode());
 
     assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorInfo
             .checkUserPrivileges(
                 "user", new PrivilegeUnion("testdb", "table", PrivilegeType.CREATE))
             .getStatus()
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            .getCode());
 
     assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorInfo
             .checkUserPrivileges("user", new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
             .getStatus()
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            .getCode());
 
     assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorInfo
             .checkUserPrivileges(
                 "user", new PrivilegeUnion("database", "table", PrivilegeType.ALTER))
             .getStatus()
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            .getCode());
 
     assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorInfo
             .checkUserPrivileges(
                 "user", new PrivilegeUnion("testdb", "table2", PrivilegeType.DELETE, true))
             .getStatus()
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            .getCode());
 
     assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
         authorInfo
             .checkUserPrivileges(
                 "user", new PrivilegeUnion("database", "table", PrivilegeType.ALTER, true))
             .getStatus()
-            .getCode(),
-        TSStatusCode.NO_PERMISSION.getStatusCode());
+            .getCode());
   }
 }

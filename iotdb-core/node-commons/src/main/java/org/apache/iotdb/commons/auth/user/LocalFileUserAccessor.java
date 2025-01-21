@@ -168,37 +168,37 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
 
         File roleOfUser = checkFileAvailable(entryName, "_role");
 
-        Set<String> roleList = new HashSet<>();
+        Set<String> roleSet = new HashSet<>();
         if (roleOfUser != null && roleOfUser.exists()) {
           inputStream = new FileInputStream(roleOfUser);
-          try (DataInputStream roleInpuStream =
+          try (DataInputStream roleInputStream =
               new DataInputStream(new BufferedInputStream(inputStream))) {
 
-            for (int i = 0; roleInpuStream.available() != 0; i++) {
-              String rolename = IOUtils.readString(roleInpuStream, STRING_ENCODING, strBufferLocal);
-              roleList.add(rolename);
+            for (int i = 0; roleInputStream.available() != 0; i++) {
+              String roleName =
+                  IOUtils.readString(roleInputStream, STRING_ENCODING, strBufferLocal);
+              roleSet.add(roleName);
             }
           }
         }
-        user.setRoleSet(roleList);
+        user.setRoleSet(roleSet);
         return user;
       }
       assert (tag == VERSION);
       user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
       user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
-      user.setSysPrivilegesWithMask(dataInputStream.readInt());
       loadPrivileges(dataInputStream, user);
 
       File roleOfUser = checkFileAvailable(entryName, "_role");
       Set<String> roleSet = new HashSet<>();
       if (roleOfUser.exists()) {
         inputStream = new FileInputStream(roleOfUser);
-        try (DataInputStream roleInpuStream =
+        try (DataInputStream userInputStream =
             new DataInputStream(new BufferedInputStream(inputStream))) {
-          int num = roleInpuStream.readInt();
+          int num = userInputStream.readInt();
           for (int i = 0; i < num; i++) {
-            String rolename = IOUtils.readString(roleInpuStream, STRING_ENCODING, strBufferLocal);
-            roleSet.add(rolename);
+            String roleName = IOUtils.readString(userInputStream, STRING_ENCODING, strBufferLocal);
+            roleSet.add(roleName);
           }
         }
       }
@@ -254,7 +254,9 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
             (dir, name) ->
                 (name.endsWith(IoTDBConstant.PROFILE_SUFFIX)
                         && !name.endsWith(ROLE_SUFFIX + IoTDBConstant.PROFILE_SUFFIX))
-                    || (name.endsWith(TEMP_SUFFIX) && !name.endsWith(ROLE_SUFFIX + TEMP_SUFFIX)));
+                    || (name.endsWith(TEMP_SUFFIX)
+                        && !name.endsWith(
+                            ROLE_SUFFIX + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX)));
     return getEntryStrings(names);
   }
 

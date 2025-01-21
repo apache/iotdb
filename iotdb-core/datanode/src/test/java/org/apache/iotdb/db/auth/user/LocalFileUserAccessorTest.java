@@ -40,6 +40,9 @@ import java.util.HashSet;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 public class LocalFileUserAccessorTest {
 
@@ -79,6 +82,23 @@ public class LocalFileUserAccessorTest {
     accessor.reset();
     User loadUser = accessor.loadEntry("test");
     assertEquals(user, loadUser);
+    user.setName("test1");
+    accessor.saveEntry(user);
+
+    // list
+    List<String> usernames = accessor.listAllEntries();
+    usernames.sort(null);
+    assertTrue(usernames.contains("test"));
+    assertTrue(usernames.contains("test1"));
+
+    // delete
+    assertFalse(accessor.deleteEntry("not a user"));
+    assertTrue(accessor.deleteEntry(user.getName()));
+    usernames = accessor.listAllEntries();
+    assertEquals(1, usernames.size());
+    assertTrue(usernames.contains("test"));
+    User nullUser = accessor.loadEntry(user.getName());
+    assertNull(nullUser);
   }
 
   @Test

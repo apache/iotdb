@@ -140,12 +140,12 @@ public class AuthorizerManagerTest {
     // 3. READ_DATA root.d1.**
     // 4. WRITE_SCHEMA root.d1.** with grant option
     // 5. SELECT on database, ALTER on database with grant option
-    // 6. UPDATE on database.table, DELETE on database.table with grant option
+    // 6. DELETE on database.table with grant option
 
     // role's priv:
     // 1. USE_UDF
     // 2. USE_CQ with grant option
-    // 3. READ_DATA root.t9.** with grant option
+    // 3. READ_DATA root.t.** with grant option
     user.addRole("role1");
 
     authorityFetcher.getAuthorCache().putUserCache("user1", user);
@@ -153,88 +153,88 @@ public class AuthorizerManagerTest {
 
     // for system priv. we have USE_PIPE grant option.
     Assert.assertEquals(
-        authorityFetcher.checkUserSysPrivilegesGrantOpt("user1", PrivilegeType.USE_PIPE).getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorityFetcher.checkUserSysPrivilegesGrantOpt("user1", PrivilegeType.USE_PIPE).getCode());
     Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
         authorityFetcher
             .checkUserSysPrivilegesGrantOpt("user1", PrivilegeType.MANAGE_USER)
-            .getCode(),
-        TSStatusCode.NO_PERMISSION.getStatusCode());
+            .getCode());
 
     // for path priv. we have write_schema on root.d1.** with grant option.
     // require root.d1.** with write_schema, return true
     Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorityFetcher
             .checkUserPathPrivilegesGrantOpt(
                 "user1",
                 Collections.singletonList(new PartialPath("root.d1.**")),
                 PrivilegeType.WRITE_SCHEMA)
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            .getCode());
     // require root.** with write_schema, return false
     Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
         authorityFetcher
             .checkUserPathPrivilegesGrantOpt(
                 "user1",
                 Collections.singletonList(new PartialPath("root.**")),
                 PrivilegeType.WRITE_SCHEMA)
-            .getCode(),
-        TSStatusCode.NO_PERMISSION.getStatusCode());
-    // reuqire root.d1.d2 with write_schema, return true
+            .getCode());
+    // require root.d1.d2 with write_schema, return true
     Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorityFetcher
             .checkUserPathPrivilegesGrantOpt(
                 "user1",
-                Collections.singletonList(new PartialPath("root.d1.d1.**")),
+                Collections.singletonList(new PartialPath("root.d1.d2")),
                 PrivilegeType.WRITE_SCHEMA)
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            .getCode());
 
     // require root.d1.d2 with read_schema, return false
     Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
         authorityFetcher
             .checkUserPathPrivilegesGrantOpt(
                 "user1",
                 Collections.singletonList(new PartialPath("root.d1.d2")),
                 PrivilegeType.READ_SCHEMA)
-            .getCode(),
-        TSStatusCode.NO_PERMISSION.getStatusCode());
+            .getCode());
 
     Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorityFetcher
             .checkUserDBPrivilegesGrantOpt("user1", "database", PrivilegeType.ALTER)
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            .getCode());
     Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
         authorityFetcher
             .checkUserTBPrivilegesGrantOpt("user1", "database", "table", PrivilegeType.SELECT)
-            .getCode(),
-        TSStatusCode.NO_PERMISSION.getStatusCode());
+            .getCode());
     // role test
     Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorityFetcher
             .checkUserPathPrivilegesGrantOpt(
                 "user1",
                 Collections.singletonList(new PartialPath("root.t.**")),
                 PrivilegeType.READ_DATA)
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            .getCode());
 
     Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorityFetcher
             .checkUserPathPrivilegesGrantOpt(
                 "user1",
                 Collections.singletonList(new PartialPath("root.t.t1")),
                 PrivilegeType.READ_DATA)
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            .getCode());
     Assert.assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
         authorityFetcher
             .checkUserSysPrivilegesGrantOpt("user1", PrivilegeType.USE_TRIGGER)
-            .getCode(),
-        TSStatusCode.NO_PERMISSION.getStatusCode());
+            .getCode());
     Assert.assertEquals(
-        authorityFetcher.checkUserSysPrivilegesGrantOpt("user1", PrivilegeType.USE_CQ).getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorityFetcher.checkUserSysPrivilegesGrantOpt("user1", PrivilegeType.USE_CQ).getCode());
   }
 }

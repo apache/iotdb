@@ -663,7 +663,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         authorStatement.getPassword() == null ? "" : authorStatement.getPassword(),
         authorStatement.getDatabase() == null ? "" : authorStatement.getDatabase(),
         authorStatement.getTableName() == null ? "" : authorStatement.getTableName(),
-        authorStatement.getPrivilegeType() == null
+        authorStatement.getPrivilegeTypes() == null
             ? Collections.emptySet()
             : authorStatement.getPrivilegeIds(),
         authorStatement.isGrantOption());

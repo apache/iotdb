@@ -216,7 +216,7 @@ public class AccessControlImpl implements AccessControl {
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
-        for (PrivilegeType privilegeType : statement.getPrivilegeType()) {
+        for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
           authChecker.checkAnyScopePrivilegeGrantOption(
               userName, TableModelPrivilege.getTableModelType(privilegeType));
         }
@@ -234,7 +234,7 @@ public class AccessControlImpl implements AccessControl {
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
-        for (PrivilegeType privilegeType : statement.getPrivilegeType()) {
+        for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
           if (privilegeType.isRelationalPrivilege()) {
             AuthorityChecker.checkAnyScopePermissionGrantOption(userName, privilegeType);
           }
@@ -256,7 +256,7 @@ public class AccessControlImpl implements AccessControl {
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
-        for (PrivilegeType privilegeType : statement.getPrivilegeType()) {
+        for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
           authChecker.checkDatabasePrivilegeGrantOption(
               userName,
               statement.getDatabase(),
@@ -276,7 +276,7 @@ public class AccessControlImpl implements AccessControl {
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
-        for (PrivilegeType privilegeType : statement.getPrivilegeType()) {
+        for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
           authChecker.checkTablePrivilegeGrantOption(
               userName,
               new QualifiedObjectName(statement.getDatabase(), statement.getTableName()),
@@ -297,7 +297,7 @@ public class AccessControlImpl implements AccessControl {
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
-        for (PrivilegeType privilegeType : statement.getPrivilegeType()) {
+        for (PrivilegeType privilegeType : statement.getPrivilegeTypes()) {
           authChecker.checkGlobalPrivilegeGrantOption(
               userName, TableModelPrivilege.getTableModelType(privilegeType));
         }
