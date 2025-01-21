@@ -47,7 +47,7 @@ public class PipeMemoryManager {
       PipeConfig.getInstance().getPipeMemoryAllocateRetryIntervalInMs();
 
   private static final long TOTAL_MEMORY_SIZE_IN_BYTES =
-      IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForPipe();
+      IoTDBDescriptor.getInstance().getConfig().getPipeMemoryManager().getTotalMemorySizeInBytes();
   private static final long MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES =
       PipeConfig.getInstance().getPipeMemoryAllocateMinSizeInBytes();
 

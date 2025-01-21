@@ -162,7 +162,7 @@ public class IoTDBConfig {
   private MemoryManager ConsensusMemoryManager;
 
   /** Memory allocated for the pipe */
-  private long allocateMemoryForPipe = Runtime.getRuntime().maxMemory() / 10;
+  private MemoryManager PipeMemoryManager;
 
   /** Ratio of memory allocated for buffered arrays */
   private double bufferedArraysMemoryProportion = 0.6;
@@ -2149,12 +2149,12 @@ public class IoTDBConfig {
     this.allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
   }
 
-  public long getAllocateMemoryForPipe() {
-    return allocateMemoryForPipe;
+  public MemoryManager getPipeMemoryManager() {
+    return PipeMemoryManager;
   }
 
-  public void setAllocateMemoryForPipe(long allocateMemoryForPipe) {
-    this.allocateMemoryForPipe = allocateMemoryForPipe;
+  public void setPipeMemoryManager(MemoryManager pipeMemoryManager) {
+    PipeMemoryManager = pipeMemoryManager;
   }
 
   public boolean isEnablePartialInsert() {

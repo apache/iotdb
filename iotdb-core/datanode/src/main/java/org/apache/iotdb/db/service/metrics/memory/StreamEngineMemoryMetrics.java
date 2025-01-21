@@ -44,7 +44,7 @@ public class StreamEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[1])
-        .set(config.getAllocateMemoryForPipe());
+        .set(config.getPipeMemoryManager().getTotalMemorySizeInBytes());
   }
 
   @Override
