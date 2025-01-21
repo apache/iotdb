@@ -29,15 +29,45 @@ import static org.apache.iotdb.db.query.eBUG.Tool.triArea;
 
 public class eBUG {
     public static List<Point> findEliminated(Polyline lineToSimplify, int[] recentEliminated,
-                                             Point pa, Point pi, Point pb) {
-        // TODO 寻找最近淘汰的e个点，并且是位于pa~pb之间的
+                                             int pa_idx, int pi_idx, int pb_idx) {
+        // TODO 复杂度分析
+        //  从最近淘汰的e个点里寻找位于pa~pb之间的：e
+        //  把上一步找到的点和pa pi pb一起按照时间戳递增排序：记c=b-a。如果e<c，那么eloge，否则c
+        //  后面鞋带公式计算面积：min(e+3,c)
         // 性质：最近淘汰的那一个点一定是位于pa~pb之间，因为正是这个点的淘汰才使得pi的significance要更新！
         // pi: the point whose significance needs updating
         // pa: left adjacent non-eliminated point of pi
         // pb: right adjacent non-eliminated point of pi
         // return a list of points, containing pa,p,pb and points between pa&pa from the e most recently eliminated points,
         // order by time in ascending order
+
+        Point pa = lineToSimplify.get(pa_idx);
+        Point pi = lineToSimplify.get(pi_idx);
+        Point pb = lineToSimplify.get(pb_idx);
+
         List<Point> res = new ArrayList<>();
+
+//        if (recentEliminated.length == 0) { // e=0
+//            System.out.println("e=0");
+//            res.add(pa);
+//            res.add(pi);
+//            res.add(pb);
+//            return res; // pa pi pb已经按照时间戳递增
+//        }
+
+        if (recentEliminated.length >= (pb_idx - pa_idx - 2)) { // e >= the total number of eliminated points in this region
+            System.out.println("[c=(b-a-2)]<=e, use T directly"); // worst case下, k=c
+            res = lineToSimplify.getVertices().subList(pa_idx, pb_idx + 1); // 左闭右开
+            return res; // 已经按照时间戳递增
+        }
+
+        // 从最近淘汰的e个点里寻找位于pa~pb之间的点，找到的有可能小于e个点
+        System.out.println("k>=[c=(b-a-2)]>e, search among e");
+        res.add(pa);
+        res.add(pi);
+        res.add(pb);
+
+        // 包括了c>e=0的情况
         for (int idx : recentEliminated) { // e points
             if (idx == 0) { // init, not filled by real eliminated points yet
                 break;
@@ -47,10 +77,10 @@ public class eBUG {
                 res.add(p);
             }
         }
-        res.add(pa);
-        res.add(pi);
-        res.add(pb);
+
+        // 按照时间戳递增排序，这是为了后面计算total areal displacement需要
         res.sort(Comparator.comparingDouble(p -> p.x)); // 按时间戳排序 TODO 这样的话时间复杂度要变成e*log(e)了吧？
+
         return res;
     }
 
@@ -146,9 +176,9 @@ public class eBUG {
 
                 // e parameter
                 List<Point> pointsForSig = findEliminated(lineToSimplify, recentEliminated,
-                        lineToSimplify.get(tri.prev.indices[0]),
-                        lineToSimplify.get(tri.prev.indices[1]),
-                        lineToSimplify.get(tri.prev.indices[2])); // TODO complexity ?
+                        tri.prev.indices[0],
+                        tri.prev.indices[1],
+                        tri.prev.indices[2]); // TODO complexity ?
                 if (debug) {
                     System.out.println("(2) update point on the left " + lineToSimplify.get(tri.prev.indices[1]));
                     for (Point point : pointsForSig) {
@@ -195,9 +225,9 @@ public class eBUG {
 
                 // e parameter
                 List<Point> pointsForSig = findEliminated(lineToSimplify, recentEliminated,
-                        lineToSimplify.get(tri.next.indices[0]),
-                        lineToSimplify.get(tri.next.indices[1]),
-                        lineToSimplify.get(tri.next.indices[2])); // TODO complexity
+                        tri.next.indices[0],
+                        tri.next.indices[1],
+                        tri.next.indices[2]); // TODO complexity
                 if (debug) {
                     System.out.println("(2) updating point on the right " + lineToSimplify.get(tri.next.indices[1]));
                     for (Point point : pointsForSig) {
@@ -234,7 +264,7 @@ public class eBUG {
         Polyline polyline = new Polyline();
         List<Polyline> polylineList = new ArrayList<>();
         Random rand = new Random(1);
-        int n = 10;
+        int n = 100;
 
         int p = 10;
         for (int i = 0; i < n; i += p) {
@@ -266,7 +296,7 @@ public class eBUG {
         System.out.println("---------------------------------");
 //        List<Point> results = new ArrayList<>();
         // 计算运行时间
-        int eParam = 1;
+        int eParam = 10;
         long startTime = System.currentTimeMillis();
         List<Point> results = buildEffectiveArea(polyline, eParam, false);
         // 输出结果

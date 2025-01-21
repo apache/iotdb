@@ -12,9 +12,9 @@ public class Tool {
         return (dArea > 0.0) ? dArea : -dArea; // abs
     }
 
-    // 计算多边形面积（鞋带公式）
+    // 计算简单多边形（边不交叉）的面积（鞋带公式）
     public static double calculatePolygonArea(List<Point> points) {
-        // points多边形顶点，按照逆时针或者顺时针的顺序枚举
+        // points多边形顶点，要求按照逆时针或者顺时针的顺序枚举，否则鞋带公式无法给出正确结果
         int n = points.size();
         double area = 0;
         for (int i = 0; i < n; i++) {
@@ -67,7 +67,7 @@ public class Tool {
         return new Object[]{false, null};
     }
 
-    // 计算总的多边形面积（通过时间序列扫描交点）
+    // 计算总的多边形面积（通过时间序列扫描交点），默认要求点按照时间戳严格递增排列
     public static double total_areal_displacement(List<Point> points, List<Point> points2, boolean debug) {
         double totalArea = 0;
         int i = 0, j = 0; // i for points, j for points2
@@ -122,7 +122,7 @@ public class Tool {
 //                        polygonArray[k] = polygon.get(k);
 //                    }
 
-                    // 计算多边形面积
+                    // 计算多边形面积，注意polygon里的点一定是按照顺时针/逆时针几何连接顺序枚举的多边形顶点
                     double area = calculatePolygonArea(polygon);
                     if (debug) {
                         System.out.println("Area = " + area);
