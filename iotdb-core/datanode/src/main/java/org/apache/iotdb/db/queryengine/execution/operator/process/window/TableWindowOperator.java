@@ -27,9 +27,9 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.functio
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.PartitionExecutor;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
