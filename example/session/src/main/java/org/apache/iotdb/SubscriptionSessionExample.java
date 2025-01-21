@@ -24,11 +24,11 @@ import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.subscription.SubscriptionSession;
+import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
@@ -122,7 +122,8 @@ public class SubscriptionSessionExample {
   /** single pull consumer subscribe topic with path and time range */
   private static void dataSubscription1() throws Exception {
     // Create topics
-    try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
+    try (final SubscriptionTreeSession subscriptionSession =
+        new SubscriptionTreeSession(HOST, PORT)) {
       subscriptionSession.open();
       final Properties config = new Properties();
       config.put(TopicConstant.PATH_KEY, "root.db.d1.s1");
@@ -136,7 +137,7 @@ public class SubscriptionSessionExample {
     final Properties config = new Properties();
     config.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
     config.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-    try (SubscriptionPullConsumer consumer1 = new SubscriptionPullConsumer(config)) {
+    try (SubscriptionTreePullConsumer consumer1 = new SubscriptionTreePullConsumer(config)) {
       consumer1.open();
       consumer1.subscribe(TOPIC_1);
       while (true) {
@@ -160,7 +161,8 @@ public class SubscriptionSessionExample {
       }
 
       // Show topics and subscriptions
-      try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
+      try (final SubscriptionTreeSession subscriptionSession =
+          new SubscriptionTreeSession(HOST, PORT)) {
         subscriptionSession.open();
         subscriptionSession.getTopics().forEach((System.out::println));
         subscriptionSession.getSubscriptions().forEach((System.out::println));
@@ -172,7 +174,8 @@ public class SubscriptionSessionExample {
 
   /** multi pull consumer subscribe topic with tsfile format */
   private static void dataSubscription2() throws Exception {
-    try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
+    try (final SubscriptionTreeSession subscriptionSession =
+        new SubscriptionTreeSession(HOST, PORT)) {
       subscriptionSession.open();
       final Properties config = new Properties();
       config.put(TopicConstant.START_TIME_KEY, CURRENT_TIME + 33);
@@ -189,8 +192,8 @@ public class SubscriptionSessionExample {
               () -> {
                 int retryCount = 0;
                 // Subscription: builder-style ctor
-                try (final SubscriptionPullConsumer consumer2 =
-                    new SubscriptionPullConsumer.Builder()
+                try (final SubscriptionTreePullConsumer consumer2 =
+                    new SubscriptionTreePullConsumer.Builder()
                         .consumerId("c" + idx)
                         .consumerGroupId("cg2")
                         .autoCommit(false)
@@ -238,7 +241,8 @@ public class SubscriptionSessionExample {
 
   /** multi push consumer subscribe topic with tsfile format and snapshot mode */
   private static void dataSubscription3() throws Exception {
-    try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
+    try (final SubscriptionTreeSession subscriptionSession =
+        new SubscriptionTreeSession(HOST, PORT)) {
       subscriptionSession.open();
       final Properties config = new Properties();
       config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
@@ -253,8 +257,8 @@ public class SubscriptionSessionExample {
           new Thread(
               () -> {
                 // Subscription: builder-style ctor
-                try (final SubscriptionPushConsumer consumer3 =
-                    new SubscriptionPushConsumer.Builder()
+                try (final SubscriptionTreePushConsumer consumer3 =
+                    new SubscriptionTreePushConsumer.Builder()
                         .consumerId("c" + idx)
                         .consumerGroupId("cg3")
                         .ackStrategy(AckStrategy.AFTER_CONSUME)
@@ -284,7 +288,8 @@ public class SubscriptionSessionExample {
 
   /** multi pull consumer subscribe topic with tsfile format and snapshot mode */
   private static void dataSubscription4() throws Exception {
-    try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
+    try (final SubscriptionTreeSession subscriptionSession =
+        new SubscriptionTreeSession(HOST, PORT)) {
       subscriptionSession.open();
       final Properties config = new Properties();
       config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
@@ -300,8 +305,8 @@ public class SubscriptionSessionExample {
           new Thread(
               () -> {
                 // Subscription: builder-style ctor
-                try (final SubscriptionPullConsumer consumer4 =
-                    new SubscriptionPullConsumer.Builder()
+                try (final SubscriptionTreePullConsumer consumer4 =
+                    new SubscriptionTreePullConsumer.Builder()
                         .consumerId("c" + idx)
                         .consumerGroupId("cg4")
                         .autoCommit(true)
