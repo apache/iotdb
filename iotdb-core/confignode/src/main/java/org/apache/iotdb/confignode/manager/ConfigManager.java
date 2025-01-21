@@ -2667,6 +2667,12 @@ public class ConfigManager implements IManager {
           return procedureManager.alterTableDropColumn(req);
         case DROP_TABLE:
           return procedureManager.dropTable(req);
+        case COMMENT_TABLE:
+          return clusterSchemaManager.setTableComment(
+              req.getDatabase(),
+              req.getTableName(),
+              ReadWriteIOUtils.readString(req.updateInfo),
+              false);
         case COMMENT_COLUMN:
           return clusterSchemaManager.setTableColumnComment(
               req.getDatabase(),

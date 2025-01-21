@@ -711,6 +711,17 @@ public class ConfigMTree {
     store.deleteChild(databaseNode, tableName);
   }
 
+  public void setTableComment(
+      final PartialPath database, final String tableName, final String comment)
+      throws MetadataException {
+    final TsTable table = getTable(database, tableName);
+    if (Objects.nonNull(comment)) {
+      table.addProp(TsTable.COMMENT_KEY, comment);
+    } else {
+      table.removeProp(TsTable.COMMENT_KEY);
+    }
+  }
+
   public void setTableColumnComment(
       final PartialPath database,
       final String tableName,

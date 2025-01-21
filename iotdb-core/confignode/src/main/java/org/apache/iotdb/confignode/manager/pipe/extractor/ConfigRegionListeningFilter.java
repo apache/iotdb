@@ -111,6 +111,7 @@ public class ConfigRegionListeningFilter {
           Collections.unmodifiableList(
               Arrays.asList(
                   ConfigPhysicalPlanType.SetTableProperties,
+                  ConfigPhysicalPlanType.SetTableComment,
                   ConfigPhysicalPlanType.SetTableColumnComment)));
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.table.drop"),
