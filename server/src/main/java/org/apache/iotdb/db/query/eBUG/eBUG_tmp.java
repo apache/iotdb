@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.db.query.eBUG;
 
-import java.io.*;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.*;
 
 import static org.apache.iotdb.db.query.eBUG.Tool.total_areal_displacement;
 import static org.apache.iotdb.db.query.eBUG.Tool.triArea;
 
 
-public class eBUG {
+public class eBUG_tmp {
     public static List<Point> findEliminated(Polyline lineToSimplify, TimestampPriorityQueue recentEliminatedOrdered,
                                              int pa_idx, int pi_idx, int pb_idx) {
         // TODO 复杂度分析
@@ -265,7 +266,8 @@ public class eBUG {
         Polyline polyline = new Polyline();
         List<Polyline> polylineList = new ArrayList<>();
         Random rand = new Random(1);
-        int n = 100_0000;
+//        int n = 1000_0000;
+        int n = 10000;
 
         int p = 10;
         for (int i = 0; i < n; i += p) {
@@ -280,61 +282,52 @@ public class eBUG {
             polylineList.add(polylineBatch);
         }
 
-//        try (FileWriter writer = new FileWriter("raw.csv")) {
-//            // 写入CSV头部
-//            writer.append("x,y,z\n");
-//
-//            // 写入每个点的数据
-//            for (int i = 0; i < polyline.size(); i++) {
-//                Point point = polyline.get(i);
-//                writer.append(point.x + "," + point.y + "," + point.z + "\n");
-//            }
-//            System.out.println("Data has been written");
-//        } catch (IOException e) {
-//            System.out.println("Error writing to CSV file: " + e.getMessage());
-//        }
+        try (FileWriter writer = new FileWriter("raw.csv")) {
+            // 写入CSV头部
+            writer.append("x,y,z\n");
+
+            // 写入每个点的数据
+            for (int i = 0; i < polyline.size(); i++) {
+                Point point = polyline.get(i);
+                writer.append(point.x + "," + point.y + "," + point.z + "\n");
+            }
+            System.out.println("Data has been written");
+        } catch (IOException e) {
+            System.out.println("Error writing to CSV file: " + e.getMessage());
+        }
 
         System.out.println("---------------------------------");
 //        List<Point> results = new ArrayList<>();
         // 计算运行时间
-//        int eParam = 10;
-        try (PrintWriter writer = new PrintWriter(new File("exp2.csv"))) {
-            int[] eParamList = {0, 1, 100, 500, 1000, 5000, 10000, 50000, 10_0000, 50_0000, 100_0000, 200_0000};
-//            for (int eParam = 0; eParam < 2 * n; eParam += 1000) {
-            for (int eParam : eParamList) {
-                long startTime = System.currentTimeMillis();
-                List<Point> results = buildEffectiveArea(polyline, eParam, false);
-                // 输出结果
-                long endTime = System.currentTimeMillis();
-                System.out.println("n=" + n + ", e=" + eParam + ", Time taken to reduce points: " + (endTime - startTime) + "ms");
-                System.out.println(results.size());
-                writer.println(n + "," + eParam + "," + (endTime - startTime));
+        int eParam = 0;
+        long startTime = System.currentTimeMillis();
+        List<Point> results = buildEffectiveArea(polyline, eParam, false);
+        // 输出结果
+        long endTime = System.currentTimeMillis();
+        System.out.println("Time taken to reduce points: " + (endTime - startTime) + "ms");
+        System.out.println(results.size());
+
+        if (results.size() <= 100) {
+            System.out.println("+++++++++++++++++++");
+            for (int i = 0; i < results.size(); i++) {
+                Point point = results.get(i);
+                System.out.println("Point: (" + point.x + ", " + point.y + ", " + point.z + ")");
             }
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
         }
 
-//        if (results.size() <= 100) {
-//            System.out.println("+++++++++++++++++++");
-//            for (int i = 0; i < results.size(); i++) {
-//                Point point = results.get(i);
-//                System.out.println("Point: (" + point.x + ", " + point.y + ", " + point.z + ")");
-//            }
-//        }
+        try (FileWriter writer = new FileWriter("fast.csv")) {
+            // 写入CSV头部
+            writer.append("x,y,z\n");
 
-//        try (FileWriter writer = new FileWriter("fast.csv")) {
-//            // 写入CSV头部
-//            writer.append("x,y,z\n");
-//
-//            // 写入每个点的数据
-//            for (int i = 0; i < results.size(); i++) {
-//                Point point = results.get(i);
-//                writer.append(point.x + "," + point.y + "," + point.z + "\n");
-//            }
-//            System.out.println("Data has been written");
-//        } catch (IOException e) {
-//            System.out.println("Error writing to CSV file: " + e.getMessage());
-//        }
+            // 写入每个点的数据
+            for (int i = 0; i < results.size(); i++) {
+                Point point = results.get(i);
+                writer.append(point.x + "," + point.y + "," + point.z + "\n");
+            }
+            System.out.println("Data has been written");
+        } catch (IOException e) {
+            System.out.println("Error writing to CSV file: " + e.getMessage());
+        }
 
 //        System.out.println("---------------------------------");
 //        List<List<Point>> resultsBatchList = new ArrayList<>();

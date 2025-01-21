@@ -299,7 +299,8 @@ public class eBUG_old {
         // 计算运行时间
 //        int eParam = 10;
         try (PrintWriter writer = new PrintWriter(new File("exp.csv"))) {
-            int[] eParamList = {0, 1, 100, 500, 1000, 5000, 10000, 50000, 10_0000, 50_0000, 100_0000, 200_0000};
+            int[] eParamList = {0, 1, 100, 500, 1000, 5000, 10000, 50000, 10_0000, 30_0000, 50_0000, 60_0000,
+                    70_0000, 80_0000, 90_0000, 100_0000, 150_0000, 200_0000, 250_0000, 300_0000};
 //            for (int eParam = 0; eParam < 2 * n; eParam += 1000) {
             for (int eParam : eParamList) {
                 long startTime = System.currentTimeMillis();

@@ -264,7 +264,7 @@ public class eBUG_old_tmp {
         Polyline polyline = new Polyline();
         List<Polyline> polylineList = new ArrayList<>();
         Random rand = new Random(1);
-        int n = 20;
+        int n = 10000;
 
         int p = 10;
         for (int i = 0; i < n; i += p) {
@@ -298,7 +298,7 @@ public class eBUG_old_tmp {
         // 计算运行时间
 //        int eParam = 10;
 //            for (int eParam = 0; eParam < 2 * n; eParam += 1000) {
-        int eParam = 10;
+        int eParam = 22;
         long startTime = System.currentTimeMillis();
         List<Point> results = buildEffectiveArea(polyline, eParam, false);
         // 输出结果
