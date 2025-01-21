@@ -19,13 +19,16 @@
 
 package org.apache.iotdb.db.query.eBUG;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
 import java.util.*;
 
 import static org.apache.iotdb.db.query.eBUG.Tool.total_areal_displacement;
 import static org.apache.iotdb.db.query.eBUG.Tool.triArea;
 
 
-public class eBUG {
+public class eBUG_old {
     public static List<Point> findEliminated(Polyline lineToSimplify, int[] recentEliminated,
                                              int pa_idx, int pi_idx, int pb_idx) {
         // TODO 复杂度分析
@@ -262,7 +265,7 @@ public class eBUG {
         Polyline polyline = new Polyline();
         List<Polyline> polylineList = new ArrayList<>();
         Random rand = new Random(1);
-        int n = 1000_0000;
+        int n = 100_0000;
 
         int p = 10;
         for (int i = 0; i < n; i += p) {
@@ -294,13 +297,22 @@ public class eBUG {
         System.out.println("---------------------------------");
 //        List<Point> results = new ArrayList<>();
         // 计算运行时间
-        int eParam = 10;
-        long startTime = System.currentTimeMillis();
-        List<Point> results = buildEffectiveArea(polyline, eParam, false);
-        // 输出结果
-        long endTime = System.currentTimeMillis();
-        System.out.println("Time taken to reduce points: " + (endTime - startTime) + "ms");
-        System.out.println(results.size());
+//        int eParam = 10;
+        try (PrintWriter writer = new PrintWriter(new File("exp.csv"))) {
+            int[] eParamList = {0, 1, 100, 500, 1000, 5000, 10000, 50000, 10_0000, 50_0000, 100_0000, 200_0000};
+//            for (int eParam = 0; eParam < 2 * n; eParam += 1000) {
+            for (int eParam : eParamList) {
+                long startTime = System.currentTimeMillis();
+                List<Point> results = buildEffectiveArea(polyline, eParam, false);
+                // 输出结果
+                long endTime = System.currentTimeMillis();
+                System.out.println("n=" + n + ", e=" + eParam + ", Time taken to reduce points: " + (endTime - startTime) + "ms");
+                System.out.println(results.size());
+                writer.println(n + "," + eParam + "," + (endTime - startTime));
+            }
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
 
 //        if (results.size() <= 100) {
 //            System.out.println("+++++++++++++++++++");
