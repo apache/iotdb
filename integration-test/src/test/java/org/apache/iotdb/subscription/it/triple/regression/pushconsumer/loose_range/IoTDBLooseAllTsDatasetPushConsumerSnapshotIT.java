@@ -47,7 +47,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
+import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT_WITH_FLUSH;
 
 /***
  * PushConsumer
@@ -189,7 +189,8 @@ public class IoTDBLooseAllTsDatasetPushConsumerSnapshotIT extends AbstractSubscr
     session_src.executeNonQueryStatement("flush");
     System.out.println("src: " + getCount(session_src, sql));
 
-    AWAIT.untilAsserted(
+    AWAIT_WITH_FLUSH(
+        session_src,
         () -> {
           check_count_non_strict(
               9, "select count(s_0) from " + device, "Consumption data: s_0 " + device);
@@ -213,7 +214,8 @@ public class IoTDBLooseAllTsDatasetPushConsumerSnapshotIT extends AbstractSubscr
 
     // Consumption data: Progress is not retained after cancellation and re-subscription. Full
     // synchronization.
-    AWAIT.untilAsserted(
+    AWAIT_WITH_FLUSH(
+        session_src,
         () -> {
           check_count_non_strict(
               11, "select count(s_0) from " + device, "consume data again: s_0 " + device);

@@ -29,6 +29,7 @@ import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
+import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.WrappedVoidSupplier;
 import org.apache.iotdb.subscription.it.triple.AbstractSubscriptionTripleIT;
 
 import org.apache.thrift.TException;
@@ -57,6 +58,8 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
+import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.MAX_RETRY_TIMES;
 import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS;
 
 public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscriptionTripleIT {
@@ -285,12 +288,18 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
           StatementExecutionException,
           InterruptedException,
           IoTDBConnectionException {
+    int retryCount = 0;
     while (true) {
       Thread.sleep(1000);
-
+      // That is, the consumer poll will keep pulling if no messages are fetched within the timeout,
+      // until a message is fetched or the time exceeds the timeout.
       List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(POLL_TIMEOUT_MS));
       if (messages.isEmpty()) {
-        break;
+        retryCount++;
+        session_src.executeNonQueryStatement("flush");
+        if (retryCount >= MAX_RETRY_TIMES) {
+          break;
+        }
       }
       for (final SubscriptionMessage message : messages) {
         for (final Iterator<Tablet> it = message.getSessionDataSetsHandler().tabletIterator();
@@ -299,26 +308,30 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
           session.insertTablet(tablet);
         }
       }
-      consumer.commitSync(messages);
+      if (!consumer.isAutoCommit()) {
+        consumer.commitSync(messages);
+      }
     }
   }
 
   public List<Integer> consume_tsfile_withFileCount(
-      SubscriptionPullConsumer consumer, String device) throws InterruptedException {
+      SubscriptionPullConsumer consumer, String device)
+      throws InterruptedException, IoTDBConnectionException, StatementExecutionException {
     return consume_tsfile(consumer, Collections.singletonList(device));
   }
 
   public int consume_tsfile(SubscriptionPullConsumer consumer, String device)
-      throws InterruptedException {
+      throws InterruptedException, IoTDBConnectionException, StatementExecutionException {
     return consume_tsfile(consumer, Collections.singletonList(device)).get(0);
   }
 
   public List<Integer> consume_tsfile(SubscriptionPullConsumer consumer, List<String> devices)
-      throws InterruptedException {
+      throws InterruptedException, IoTDBConnectionException, StatementExecutionException {
     List<AtomicInteger> rowCounts = new ArrayList<>(devices.size());
     for (int i = 0; i < devices.size(); i++) {
       rowCounts.add(new AtomicInteger(0));
     }
+    int retryCount = 0;
     AtomicInteger onReceived = new AtomicInteger(0);
     while (true) {
       Thread.sleep(1000);
@@ -326,7 +339,11 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
       // until a message is fetched or the time exceeds the timeout.
       List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(POLL_TIMEOUT_MS));
       if (messages.isEmpty()) {
-        break;
+        retryCount++;
+        session_src.executeNonQueryStatement("flush");
+        if (retryCount >= MAX_RETRY_TIMES) {
+          break;
+        }
       }
       for (final SubscriptionMessage message : messages) {
         onReceived.incrementAndGet();
@@ -349,7 +366,9 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
           throw new RuntimeException(e);
         }
       }
-      consumer.commitSync(messages);
+      if (!consumer.isAutoCommit()) {
+        consumer.commitSync(messages);
+      }
     }
     List<Integer> results = new ArrayList<>(devices.size());
     for (AtomicInteger rowCount : rowCounts) {
@@ -359,26 +378,6 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
     return results;
   }
 
-  public static void consume_data_long(
-      SubscriptionPullConsumer consumer, Session session, Long timeout)
-      throws StatementExecutionException, InterruptedException, IoTDBConnectionException {
-    timeout = System.currentTimeMillis() + timeout;
-    while (System.currentTimeMillis() < timeout) {
-      List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(POLL_TIMEOUT_MS));
-      if (messages.isEmpty()) {
-        Thread.sleep(1000);
-      }
-      for (final SubscriptionMessage message : messages) {
-        for (final Iterator<Tablet> it = message.getSessionDataSetsHandler().tabletIterator();
-            it.hasNext(); ) {
-          final Tablet tablet = it.next();
-          session.insertTablet(tablet);
-        }
-      }
-      consumer.commitSync(messages);
-    }
-  }
-
   public void consume_data(SubscriptionPullConsumer consumer)
       throws TException,
           IOException,
@@ -386,6 +385,68 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
           InterruptedException,
           IoTDBConnectionException {
     consume_data(consumer, session_dest);
+  }
+
+  public void consume_data_await(
+      SubscriptionPullConsumer consumer, Session session, List<WrappedVoidSupplier> assertions) {
+    AWAIT.untilAsserted(
+        () -> {
+          List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(POLL_TIMEOUT_MS));
+          if (messages.isEmpty()) {
+            session_src.executeNonQueryStatement("flush");
+          }
+          for (final SubscriptionMessage message : messages) {
+            for (final Iterator<Tablet> it = message.getSessionDataSetsHandler().tabletIterator();
+                it.hasNext(); ) {
+              final Tablet tablet = it.next();
+              session.insertTablet(tablet);
+            }
+          }
+          if (!consumer.isAutoCommit()) {
+            consumer.commitSync(messages);
+          }
+          for (final WrappedVoidSupplier assertion : assertions) {
+            assertion.get();
+          }
+        });
+  }
+
+  public void consume_tsfile_await(
+      SubscriptionPullConsumer consumer, List<String> devices, List<Integer> expected) {
+    final List<AtomicInteger> counters = new ArrayList<>(devices.size());
+    for (int i = 0; i < devices.size(); i++) {
+      counters.add(new AtomicInteger(0));
+    }
+    AWAIT.untilAsserted(
+        () -> {
+          List<SubscriptionMessage> messages = consumer.poll(Duration.ofMillis(POLL_TIMEOUT_MS));
+          if (messages.isEmpty()) {
+            session_src.executeNonQueryStatement("flush");
+          }
+          for (final SubscriptionMessage message : messages) {
+            final SubscriptionTsFileHandler tsFileHandler = message.getTsFileHandler();
+            try (final TsFileReader tsFileReader = tsFileHandler.openReader()) {
+              for (int i = 0; i < devices.size(); i++) {
+                final Path path = new Path(devices.get(i), "s_0", true);
+                final QueryDataSet dataSet =
+                    tsFileReader.query(
+                        QueryExpression.create(Collections.singletonList(path), null));
+                while (dataSet.hasNext()) {
+                  dataSet.next();
+                  counters.get(i).addAndGet(1);
+                }
+              }
+            } catch (IOException e) {
+              throw new RuntimeException(e);
+            }
+          }
+          if (!consumer.isAutoCommit()) {
+            consumer.commitSync(messages);
+          }
+          for (int i = 0; i < devices.size(); i++) {
+            assertEquals(counters.get(i).get(), expected.get(i));
+          }
+        });
   }
 
   //////////////////////////// strict assertions ////////////////////////////
