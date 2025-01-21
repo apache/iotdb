@@ -266,12 +266,6 @@
         <dependency>
             <groupId>io.moquette</groupId>
             <artifactId>moquette-broker</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-reload4j</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>
