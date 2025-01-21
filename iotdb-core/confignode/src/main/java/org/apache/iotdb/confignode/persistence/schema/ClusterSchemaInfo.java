@@ -1200,6 +1200,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                                 pair.getLeft().getTableName(),
                                 pair.getLeft().getPropValue(TTL_PROPERTY).orElse(TTL_INFINITE));
                         info.setState(pair.getRight().ordinal());
+                        pair.getLeft()
+                            .getPropValue(TsTable.COMMENT_KEY)
+                            .ifPresent(info::setComment);
                         return info;
                       })
                   .collect(Collectors.toList())
@@ -1241,6 +1244,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                                                 .getPropValue(TTL_PROPERTY)
                                                 .orElse(TTL_INFINITE));
                                     info.setState(pair.getRight().ordinal());
+                                    pair.getLeft()
+                                        .getPropValue(TsTable.COMMENT_KEY)
+                                        .ifPresent(info::setComment);
                                     return info;
                                   })
                               .collect(Collectors.toList()))));
