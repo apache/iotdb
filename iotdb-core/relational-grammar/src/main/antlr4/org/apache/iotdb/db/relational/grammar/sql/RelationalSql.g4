@@ -207,7 +207,8 @@ alterTableStatement
     ;
 
 commentStatement
-    : COMMENT ON COLUMN qualifiedName '.' column=identifier IS (string | NULL)
+    : COMMENT ON TABLE qualifiedName IS (string | NULL) #commentTable
+    | COMMENT ON COLUMN qualifiedName '.' column=identifier IS (string | NULL) #commentColumn
     ;
 
 // ------------------------------------------- Index Statement ---------------------------------------------------------

@@ -70,6 +70,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentSqlDialect;
@@ -827,23 +828,24 @@ public final class SqlFormatter {
     }
 
     @Override
+    protected Void visitSetTableComment(final SetTableComment node, final Integer indent) {
+      builder
+          .append("COMMENT ON TABLE ")
+          .append(formatName(node.getTableName()))
+          .append(" IS ")
+          .append(node.getComment());
+      return null;
+    }
+
+    @Override
     protected Void visitSetColumnComment(final SetColumnComment node, final Integer indent) {
-      builder.append("ALTER TABLE ");
-      if (node.tableIfExists()) {
-        builder.append("IF EXISTS ");
-      }
-
-      builder.append(formatName(node.getTable())).append("MODIFY COLUMN ");
-      if (node.columnIfExists()) {
-        builder.append("IF EXISTS ");
-      }
-
-      builder.append(formatName(node.getField()));
-
-      builder.append(" COMMENT ");
-
-      builder.append(node.getComment());
-
+      builder
+          .append("COMMENT ON COLUMN ")
+          .append(formatName(node.getTable()))
+          .append(".")
+          .append(formatName(node.getField()))
+          .append(" IS ")
+          .append(node.getComment());
       return null;
     }
 
