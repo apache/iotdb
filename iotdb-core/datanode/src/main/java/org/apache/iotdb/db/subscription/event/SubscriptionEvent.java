@@ -43,7 +43,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Consumer;
 
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
 
@@ -91,12 +90,10 @@ public class SubscriptionEvent {
    * SubscriptionEventTabletResponse}.
    */
   public SubscriptionEvent(
-      final SubscriptionPipeTabletEventBatch batch,
-      final SubscriptionCommitContextSupplier commitContextSupplier) {
+      final SubscriptionPipeTabletEventBatch batch, final SubscriptionPrefetchingQueue queue) {
     this.pipeEvents = new SubscriptionPipeTabletBatchEvents(batch);
-    final SubscriptionCommitContext commitContext = commitContextSupplier.get();
-    this.response =
-        new SubscriptionEventTabletResponse(batch, commitContext, commitContextSupplier);
+    final SubscriptionCommitContext commitContext = queue.generateSubscriptionCommitContext();
+    this.response = new SubscriptionEventTabletResponse(batch, commitContext, queue);
     this.commitContext = commitContext;
   }
 
@@ -145,12 +142,8 @@ public class SubscriptionEvent {
     return response.isCommittable();
   }
 
-  public void ack(final Consumer<SubscriptionEvent> onCommittedHook) {
-    // NOTE: we should ack pipe events before ack response since multiple events may reuse the same
-    // batch (as pipe events)
-    // TODO: consider more elegant design for this method
+  public void ack() {
     pipeEvents.ack();
-    response.ack(onCommittedHook);
   }
 
   /**

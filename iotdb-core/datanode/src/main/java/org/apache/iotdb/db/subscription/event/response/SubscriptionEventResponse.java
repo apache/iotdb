@@ -19,11 +19,8 @@
 
 package org.apache.iotdb.db.subscription.event.response;
 
-import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.function.Consumer;
 
 public interface SubscriptionEventResponse<E> {
 
@@ -47,10 +44,6 @@ public interface SubscriptionEventResponse<E> {
   void invalidateCurrentResponseByteBuffer();
 
   /////////////////////////////// lifecycle ///////////////////////////////
-
-  default void ack(final Consumer<SubscriptionEvent> onCommittedHook) {
-    // do nothing
-  }
 
   void nack();
 

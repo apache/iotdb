@@ -26,7 +26,7 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
-import org.apache.iotdb.db.subscription.event.SubscriptionCommitContextSupplier;
+import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
 import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
@@ -44,7 +44,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
 
 /**
  * The {@code SubscriptionEventTabletResponse} class extends {@link
@@ -65,7 +64,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
 
   private final SubscriptionPipeTabletEventBatch batch;
   private final SubscriptionCommitContext commitContext;
-  private final SubscriptionCommitContextSupplier commitContextSupplier;
+  private final SubscriptionPrefetchingQueue queue;
 
   private volatile int totalTablets;
   private final AtomicInteger nextOffset = new AtomicInteger(0);
@@ -77,10 +76,10 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
   public SubscriptionEventTabletResponse(
       final SubscriptionPipeTabletEventBatch batch,
       final SubscriptionCommitContext commitContext,
-      final SubscriptionCommitContextSupplier commitContextSupplier) {
+      final SubscriptionPrefetchingQueue queue) {
     this.batch = batch;
     this.commitContext = commitContext;
-    this.commitContextSupplier = commitContextSupplier;
+    this.queue = queue;
 
     init();
   }
@@ -103,14 +102,6 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
           this);
     } else {
       previousResponse.closeMemoryBlock();
-    }
-  }
-
-  @Override
-  public synchronized void ack(final Consumer<SubscriptionEvent> onCommittedHook) {
-    if (availableForNext) {
-      // generate next subscription event with the same batch
-      onCommittedHook.accept(new SubscriptionEvent(batch, commitContextSupplier));
     }
   }
 
@@ -168,6 +159,8 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
   private synchronized CachedSubscriptionPollResponse generateNextTabletResponse()
       throws InterruptedException, PipeRuntimeOutOfMemoryCriticalException {
     if (availableForNext) {
+      // generate next subscription event with the same batch
+      queue.enqueueEventToPrefetchingQueue(new SubscriptionEvent(batch, queue));
       return new CachedSubscriptionPollResponse(
           SubscriptionPollResponseType.TABLETS.getType(),
           new TabletsPayload(Collections.emptyList(), -totalTablets),

@@ -149,8 +149,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   @Override
   protected List<SubscriptionEvent> generateSubscriptionEvents() {
     resetIterator();
-    return Collections.singletonList(
-        new SubscriptionEvent(this, prefetchingQueue::generateSubscriptionCommitContext));
+    return Collections.singletonList(new SubscriptionEvent(this, prefetchingQueue));
   }
 
   @Override

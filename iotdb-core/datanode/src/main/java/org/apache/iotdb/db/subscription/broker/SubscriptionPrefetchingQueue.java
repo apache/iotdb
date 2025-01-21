@@ -286,7 +286,7 @@ public abstract class SubscriptionPrefetchingQueue {
     }
   }
 
-  protected void enqueueEventToPrefetchingQueue(final SubscriptionEvent event) {
+  public void enqueueEventToPrefetchingQueue(final SubscriptionEvent event) {
     event.trySerializeCurrentResponse();
     prefetchingQueue.add(event);
   }
@@ -449,7 +449,7 @@ public abstract class SubscriptionPrefetchingQueue {
                 this);
           }
 
-          ev.ack(this::enqueueEventToPrefetchingQueue);
+          ev.ack();
           ev.recordCommittedTimestamp(); // now committed
           acked.set(true);
 
