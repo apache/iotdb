@@ -107,7 +107,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public boolean login(String username, String password) throws AuthException {
-    User user = userManager.getEntry(username);
+    User user = userManager.getEntity(username);
     return user != null
         && password != null
         && AuthUtils.validatePassword(password, user.getPassword());
@@ -140,7 +140,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void deleteUser(String username) throws AuthException {
     checkAdmin(username, "Default administrator cannot be deleted");
-    if (!userManager.deleteEntry(username)) {
+    if (!userManager.deleteEntity(username)) {
       throw new AuthException(
           TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", username));
     }
@@ -149,13 +149,13 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void grantPrivilegeToUser(String username, PrivilegeUnion union) throws AuthException {
     checkAdmin(username, "Invalid operation, administrator already has all privileges");
-    userManager.grantPrivilegeToEntry(username, union);
+    userManager.grantPrivilegeToEntity(username, union);
   }
 
   @Override
   public void revokePrivilegeFromUser(String username, PrivilegeUnion union) throws AuthException {
     checkAdmin(username, "Invalid operation, administrator must have all privileges");
-    userManager.revokePrivilegeFromEntry(username, union);
+    userManager.revokePrivilegeFromEntity(username, union);
   }
 
   @Override
@@ -170,7 +170,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void deleteRole(String roleName) throws AuthException {
-    boolean success = roleManager.deleteEntry(roleName);
+    boolean success = roleManager.deleteEntity(roleName);
     if (!success) {
       throw new AuthException(
           TSStatusCode.ROLE_NOT_EXIST, String.format("Role %s does not exist", roleName));
@@ -193,18 +193,18 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void grantPrivilegeToRole(String rolename, PrivilegeUnion union) throws AuthException {
-    roleManager.grantPrivilegeToEntry(rolename, union);
+    roleManager.grantPrivilegeToEntity(rolename, union);
   }
 
   @Override
   public void revokePrivilegeFromRole(String roleName, PrivilegeUnion union) throws AuthException {
-    roleManager.revokePrivilegeFromEntry(roleName, union);
+    roleManager.revokePrivilegeFromEntity(roleName, union);
   }
 
   @Override
   public void grantRoleToUser(String roleName, String userName) throws AuthException {
     checkAdmin(userName, "Invalid operation, cannot grant role to administrator");
-    Role role = roleManager.getEntry(roleName);
+    Role role = roleManager.getEntity(roleName);
     if (role == null) {
       throw new AuthException(
           TSStatusCode.ROLE_NOT_EXIST, String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
@@ -212,7 +212,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     // the role may be deleted before it ts granted to the user, so a double check is necessary.
     boolean success = userManager.grantRoleToUser(roleName, userName);
     if (success) {
-      role = roleManager.getEntry(roleName);
+      role = roleManager.getEntity(roleName);
       if (role == null) {
         throw new AuthException(
             TSStatusCode.ROLE_NOT_EXIST, String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
@@ -231,7 +231,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           TSStatusCode.NO_PERMISSION, "Invalid operation, cannot revoke role from administrator ");
     }
 
-    Role role = roleManager.getEntry(roleName);
+    Role role = roleManager.getEntity(roleName);
     if (role == null) {
       throw new AuthException(
           TSStatusCode.ROLE_NOT_EXIST, String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
@@ -245,7 +245,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public Set<PrivilegeType> getPrivileges(String username, PartialPath path) throws AuthException {
-    User user = userManager.getEntry(username);
+    User user = userManager.getEntity(username);
     if (user == null) {
       throw new AuthException(
           TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_EXCEPTION, username));
@@ -254,7 +254,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     Set<PrivilegeType> privileges = user.getPathPrivileges(path);
     // merge the privileges of the roles of the user
     for (String roleName : user.getRoleSet()) {
-      Role role = roleManager.getEntry(roleName);
+      Role role = roleManager.getEntity(roleName);
       if (role != null) {
         privileges.addAll(role.getPathPrivileges(path));
       }
@@ -275,25 +275,25 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     if (isAdmin(username)) {
       return true;
     }
-    User user = userManager.getEntry(username);
+    User user = userManager.getEntity(username);
     if (user == null) {
       throw new AuthException(
           TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_EXCEPTION, username));
     }
-    if (checkEntryPrivileges(user, union)) {
+    if (checkEntityPrivileges(user, union)) {
       return true;
     }
 
     for (String roleName : user.getRoleSet()) {
-      Role role = roleManager.getEntry(roleName);
-      if (checkEntryPrivileges(role, union)) {
+      Role role = roleManager.getEntity(roleName);
+      if (checkEntityPrivileges(role, union)) {
         return true;
       }
     }
     return false;
   }
 
-  private boolean checkEntryPrivileges(Role role, PrivilegeUnion union) {
+  private boolean checkEntityPrivileges(Role role, PrivilegeUnion union) {
     switch (union.getModelType()) {
       case TREE:
         if (union.isGrantOption()) {
@@ -400,12 +400,12 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public Role getRole(String roleName) throws AuthException {
-    return roleManager.getEntry(roleName);
+    return roleManager.getEntity(roleName);
   }
 
   @Override
   public User getUser(String username) throws AuthException {
-    return userManager.getEntry(username);
+    return userManager.getEntity(username);
   }
 
   @Override

@@ -83,13 +83,13 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
   }
 
   @Override
-  protected String getEntrySnapshotFileName() {
+  protected String getEntitySnapshotFileName() {
     return "system" + File.separator + "users";
   }
 
   @Override
-  protected void saveEntryName(BufferedOutputStream outputStream, Role role) throws IOException {
-    super.saveEntryName(outputStream, role);
+  protected void saveEntityName(BufferedOutputStream outputStream, Role role) throws IOException {
+    super.saveEntityName(outputStream, role);
     IOUtils.writeString(
         outputStream, ((User) role).getPassword(), STRING_ENCODING, encodingBufferLocal);
   }
@@ -99,7 +99,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
     User user = (User) role;
     File roleProfile =
         SystemFileFactory.INSTANCE.getFile(
-            entryDirPath
+            entityDirPath
                 + File.separator
                 + user.getName()
                 + ROLE_SUFFIX
@@ -123,7 +123,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
 
     File oldURoleFile =
         SystemFileFactory.INSTANCE.getFile(
-            entryDirPath
+            entityDirPath
                 + File.separator
                 + user.getName()
                 + ROLE_SUFFIX
@@ -134,12 +134,12 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
   /**
    * Deserialize a user from its user file.
    *
-   * @param entryName The name of the user to be deserialized.
+   * @param entityName The name of the user to be deserialized.
    * @return The user object or null if no such user.
    */
   @Override
-  public User loadEntry(String entryName) throws IOException {
-    File entryFile = checkFileAvailable(entryName, "");
+  public User loadEntity(String entityName) throws IOException {
+    File entryFile = checkFileAvailable(entityName, "");
     if (entryFile == null) {
       return null;
     }
@@ -166,7 +166,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
         }
         user.setPrivilegeList(pathPrivilegeList);
 
-        File roleOfUser = checkFileAvailable(entryName, "_role");
+        File roleOfUser = checkFileAvailable(entityName, "_role");
 
         Set<String> roleSet = new HashSet<>();
         if (roleOfUser != null && roleOfUser.exists()) {
@@ -189,7 +189,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
       user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
       loadPrivileges(dataInputStream, user);
 
-      File roleOfUser = checkFileAvailable(entryName, "_role");
+      File roleOfUser = checkFileAvailable(entityName, "_role");
       Set<String> roleSet = new HashSet<>();
       if (roleOfUser.exists()) {
         inputStream = new FileInputStream(roleOfUser);
@@ -215,22 +215,22 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
   /**
    * Delete a user's user file.
    *
-   * @param entryName The name of the user to be deleted.
+   * @param entityName The name of the user to be deleted.
    * @return True if the file is successfully deleted, false if the file does not exist.
    * @throws IOException when the file cannot be deleted.
    */
   @Override
-  public boolean deleteEntry(String entryName) throws IOException {
-    return super.deleteEntry(entryName) && deleteURole(entryName);
+  public boolean deleteEntity(String entityName) throws IOException {
+    return super.deleteEntity(entityName) && deleteURole(entityName);
   }
 
   private boolean deleteURole(String username) throws IOException {
     File uRoleProfile =
         SystemFileFactory.INSTANCE.getFile(
-            entryDirPath + File.separator + username + ROLE_SUFFIX + IoTDBConstant.PROFILE_SUFFIX);
+            entityDirPath + File.separator + username + ROLE_SUFFIX + IoTDBConstant.PROFILE_SUFFIX);
     File backProfile =
         SystemFileFactory.INSTANCE.getFile(
-            entryDirPath
+            entityDirPath
                 + File.separator
                 + username
                 + ROLE_SUFFIX
@@ -247,8 +247,8 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
   }
 
   @Override
-  public List<String> listAllEntries() {
-    File userDir = SystemFileFactory.INSTANCE.getFile(entryDirPath);
+  public List<String> listAllEntities() {
+    File userDir = SystemFileFactory.INSTANCE.getFile(entityDirPath);
     String[] names =
         userDir.list(
             (dir, name) ->
@@ -257,16 +257,16 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
                     || (name.endsWith(TEMP_SUFFIX)
                         && !name.endsWith(
                             ROLE_SUFFIX + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX)));
-    return getEntryStrings(names);
+    return getEntityStrings(names);
   }
 
   @Override
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
     SystemFileFactory systemFileFactory = SystemFileFactory.INSTANCE;
-    File userFolder = systemFileFactory.getFile(entryDirPath);
+    File userFolder = systemFileFactory.getFile(entityDirPath);
     File userTmpFolder =
         systemFileFactory.getFile(userFolder.getAbsolutePath() + "-" + UUID.randomUUID());
-    File userSnapshotDir = systemFileFactory.getFile(snapshotDir, getEntrySnapshotFileName());
+    File userSnapshotDir = systemFileFactory.getFile(snapshotDir, getEntitySnapshotFileName());
 
     try {
       org.apache.commons.io.FileUtils.moveDirectory(userFolder, userTmpFolder);
@@ -285,7 +285,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
   public void saveUserOldVersion(User user) throws IOException {
     File userProfile =
         SystemFileFactory.INSTANCE.getFile(
-            entryDirPath
+            entityDirPath
                 + File.separator
                 + user.getName()
                 + IoTDBConstant.PROFILE_SUFFIX
@@ -317,7 +317,7 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
 
     File oldFile =
         SystemFileFactory.INSTANCE.getFile(
-            entryDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX);
+            entityDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX);
     IOUtils.replaceFile(userProfile, oldFile);
   }
 }

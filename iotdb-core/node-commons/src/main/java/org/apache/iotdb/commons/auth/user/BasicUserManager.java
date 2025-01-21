@@ -19,7 +19,7 @@
 package org.apache.iotdb.commons.auth.user;
 
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.IEntryAccessor;
+import org.apache.iotdb.commons.auth.entity.IEntityAccessor;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
@@ -41,12 +41,12 @@ public abstract class BasicUserManager extends BasicRoleManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(BasicUserManager.class);
 
   @Override
-  protected TSStatusCode getEntryNotExistErrorCode() {
+  protected TSStatusCode getEntityNotExistErrorCode() {
     return TSStatusCode.USER_NOT_EXIST;
   }
 
   @Override
-  protected String getNoSuchEntryError() {
+  protected String getNoSuchEntityError() {
     return "No such user %s";
   }
 
@@ -56,7 +56,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
    * @param accessor user accessor
    * @throws AuthException Authentication Exception
    */
-  protected BasicUserManager(IEntryAccessor accessor) throws AuthException {
+  protected BasicUserManager(IEntityAccessor accessor) throws AuthException {
     super(accessor);
     this.accessor = accessor;
     init();
@@ -68,7 +68,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
    * @throws AuthException if an exception is raised when interacting with the lower storage.
    */
   private void initAdmin() throws AuthException {
-    User admin = getEntry(CommonDescriptor.getInstance().getConfig().getAdminName());
+    User admin = this.getEntity(CommonDescriptor.getInstance().getConfig().getAdminName());
 
     if (admin == null) {
       createUser(
@@ -77,7 +77,7 @@ public abstract class BasicUserManager extends BasicRoleManager {
           true,
           true);
     }
-    admin = getEntry(CommonDescriptor.getInstance().getConfig().getAdminName());
+    admin = this.getEntity(CommonDescriptor.getInstance().getConfig().getAdminName());
     try {
       PartialPath rootPath = new PartialPath(IoTDBConstant.PATH_ROOT + ".**");
       PathPrivilege pathPri = new PathPrivilege(rootPath);
@@ -100,8 +100,8 @@ public abstract class BasicUserManager extends BasicRoleManager {
   }
 
   @Override
-  public User getEntry(String username) {
-    return (User) super.getEntry(username);
+  public User getEntity(String entityName) {
+    return (User) super.getEntity(entityName);
   }
 
   public boolean createUser(
@@ -114,14 +114,14 @@ public abstract class BasicUserManager extends BasicRoleManager {
       }
     }
 
-    User user = getEntry(username);
+    User user = this.getEntity(username);
     if (user != null) {
       return false;
     }
     lock.writeLock(username);
     try {
       user = new User(username, enableEncrypt ? AuthUtils.encryptPassword(password) : password);
-      entryMap.put(username, user);
+      entityMap.put(username, user);
       return true;
     } finally {
       lock.writeUnlock(username);
@@ -138,10 +138,10 @@ public abstract class BasicUserManager extends BasicRoleManager {
 
     lock.writeLock(username);
     try {
-      User user = getEntry(username);
+      User user = this.getEntity(username);
       if (user == null) {
         throw new AuthException(
-            getEntryNotExistErrorCode(), String.format(getNoSuchEntryError(), username));
+            getEntityNotExistErrorCode(), String.format(getNoSuchEntityError(), username));
       }
       user.setPassword(AuthUtils.encryptPassword(newPassword));
       return true;
@@ -153,10 +153,10 @@ public abstract class BasicUserManager extends BasicRoleManager {
   public boolean grantRoleToUser(String roleName, String username) throws AuthException {
     lock.writeLock(username);
     try {
-      User user = getEntry(username);
+      User user = this.getEntity(username);
       if (user == null) {
         throw new AuthException(
-            getEntryNotExistErrorCode(), String.format(getNoSuchEntryError(), username));
+            getEntityNotExistErrorCode(), String.format(getNoSuchEntityError(), username));
       }
       if (user.hasRole(roleName)) {
         return false;
@@ -171,10 +171,10 @@ public abstract class BasicUserManager extends BasicRoleManager {
   public boolean revokeRoleFromUser(String roleName, String username) throws AuthException {
     lock.writeLock(username);
     try {
-      User user = getEntry(username);
+      User user = this.getEntity(username);
       if (user == null) {
         throw new AuthException(
-            getEntryNotExistErrorCode(), String.format(getNoSuchEntryError(), username));
+            getEntityNotExistErrorCode(), String.format(getNoSuchEntityError(), username));
       }
       if (!user.hasRole(roleName)) {
         return false;

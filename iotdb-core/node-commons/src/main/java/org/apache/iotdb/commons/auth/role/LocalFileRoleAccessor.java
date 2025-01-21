@@ -19,7 +19,7 @@
 package org.apache.iotdb.commons.auth.role;
 
 import org.apache.iotdb.commons.auth.entity.DatabasePrivilege;
-import org.apache.iotdb.commons.auth.entity.IEntryAccessor;
+import org.apache.iotdb.commons.auth.entity.IEntityAccessor;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -76,11 +76,11 @@ import java.util.UUID;
  * All user/role file store in config node's user/role folder. when our system start, we load all
  * user/role from folder. If we did some alter query, we just store raft log.
  */
-public class LocalFileRoleAccessor implements IEntryAccessor {
+public class LocalFileRoleAccessor implements IEntityAccessor {
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalFileRoleAccessor.class);
   protected static final String TEMP_SUFFIX = ".temp";
   protected static final String STRING_ENCODING = "utf-8";
-  protected final String entryDirPath;
+  protected final String entityDirPath;
 
   // It might be a good idea to use a Version number to control upgrade compatibility.
   // Now it's version 1
@@ -95,18 +95,18 @@ public class LocalFileRoleAccessor implements IEntryAccessor {
   protected final ThreadLocal<byte[]> strBufferLocal = new ThreadLocal<>();
 
   public LocalFileRoleAccessor(String roleDirPath) {
-    this.entryDirPath = roleDirPath;
+    this.entityDirPath = roleDirPath;
   }
 
-  protected String getEntrySnapshotFileName() {
+  protected String getEntitySnapshotFileName() {
     return "system" + File.separator + "roles";
   }
 
-  protected void saveEntryVersion(BufferedOutputStream outputStream) throws IOException {
+  protected void saveEntityVersion(BufferedOutputStream outputStream) throws IOException {
     IOUtils.writeInt(outputStream, VERSION, encodingBufferLocal);
   }
 
-  protected void saveEntryName(BufferedOutputStream outputStream, Role role) throws IOException {
+  protected void saveEntityName(BufferedOutputStream outputStream, Role role) throws IOException {
     IOUtils.writeString(outputStream, role.getName(), STRING_ENCODING, encodingBufferLocal);
   }
 
@@ -154,17 +154,17 @@ public class LocalFileRoleAccessor implements IEntryAccessor {
     // Do nothing.
   }
 
-  protected File checkFileAvailable(String entryName, String suffix) {
+  protected File checkFileAvailable(String entityName, String suffix) {
     File userProfile =
         SystemFileFactory.INSTANCE.getFile(
-            entryDirPath + File.separator + entryName + suffix + IoTDBConstant.PROFILE_SUFFIX);
+            entityDirPath + File.separator + entityName + suffix + IoTDBConstant.PROFILE_SUFFIX);
     if (!userProfile.exists() || !userProfile.isFile()) {
       // System may crush before a newer file is renamed.
       File newProfile =
           SystemFileFactory.INSTANCE.getFile(
-              entryDirPath
+              entityDirPath
                   + File.separator
-                  + entryName
+                  + entityName
                   + suffix
                   + IoTDBConstant.PROFILE_SUFFIX
                   + TEMP_SUFFIX);
@@ -181,19 +181,19 @@ public class LocalFileRoleAccessor implements IEntryAccessor {
   }
 
   @Override
-  public Role loadEntry(String entryName) throws IOException {
-    File entryFile = checkFileAvailable(entryName, "");
-    if (entryFile == null) {
+  public Role loadEntity(String entityName) throws IOException {
+    File entityFile = checkFileAvailable(entityName, "");
+    if (entityFile == null) {
       return null;
     }
 
-    FileInputStream inputStream = new FileInputStream(entryFile);
+    FileInputStream inputStream = new FileInputStream(entityFile);
     try (DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
       int version = dataInputStream.readInt();
       assert version == VERSION;
-      entryName = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
-      Role role = new Role(entryName);
+      entityName = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+      Role role = new Role(entityName);
       loadPrivileges(dataInputStream, role);
       return role;
     } catch (Exception e) {
@@ -204,28 +204,28 @@ public class LocalFileRoleAccessor implements IEntryAccessor {
   }
 
   @Override
-  public void saveEntry(Role role) throws IOException {
+  public void saveEntity(Role entity) throws IOException {
     File roleProfile =
         SystemFileFactory.INSTANCE.getFile(
-            entryDirPath
+            entityDirPath
                 + File.separator
-                + role.getName()
+                + entity.getName()
                 + IoTDBConstant.PROFILE_SUFFIX
                 + TEMP_SUFFIX);
-    File roleDir = new File(entryDirPath);
+    File roleDir = new File(entityDirPath);
     if (!roleDir.exists() && !roleDir.mkdirs()) {
-      LOGGER.error("Failed to create role dir {}", entryDirPath);
+      LOGGER.error("Failed to create role dir {}", entityDirPath);
     }
 
     try (FileOutputStream fileOutputStream = new FileOutputStream(roleProfile);
         BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
-      saveEntryVersion(outputStream);
-      saveEntryName(outputStream, role);
-      savePrivileges(outputStream, role);
+      saveEntityVersion(outputStream);
+      saveEntityName(outputStream, entity);
+      savePrivileges(outputStream, entity);
       outputStream.flush();
       fileOutputStream.getFD().sync();
     } catch (Exception e) {
-      LOGGER.warn("meet error when save role: {}", role.getName());
+      LOGGER.warn("meet error when save role: {}", entity.getName());
       throw new IOException(e);
     } finally {
       encodingBufferLocal.remove();
@@ -233,40 +233,44 @@ public class LocalFileRoleAccessor implements IEntryAccessor {
 
     File oldFile =
         SystemFileFactory.INSTANCE.getFile(
-            entryDirPath + File.separator + role.getName() + IoTDBConstant.PROFILE_SUFFIX);
+            entityDirPath + File.separator + entity.getName() + IoTDBConstant.PROFILE_SUFFIX);
     IOUtils.replaceFile(roleProfile, oldFile);
-    saveRoles(role);
+    saveRoles(entity);
   }
 
   @Override
-  public boolean deleteEntry(String entryName) throws IOException {
+  public boolean deleteEntity(String entityName) throws IOException {
     File roleProfile =
         SystemFileFactory.INSTANCE.getFile(
-            entryDirPath + File.separator + entryName + IoTDBConstant.PROFILE_SUFFIX);
+            entityDirPath + File.separator + entityName + IoTDBConstant.PROFILE_SUFFIX);
     File backFile =
         SystemFileFactory.INSTANCE.getFile(
-            entryDirPath + File.separator + entryName + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
+            entityDirPath
+                + File.separator
+                + entityName
+                + IoTDBConstant.PROFILE_SUFFIX
+                + TEMP_SUFFIX);
     if (!roleProfile.exists() && !backFile.exists()) {
       return false;
     }
     if ((roleProfile.exists() && !roleProfile.delete())
         || (backFile.exists() && !backFile.delete())) {
-      throw new IOException(String.format("Cannot delete role file of %s", entryName));
+      throw new IOException(String.format("Cannot delete role file of %s", entityName));
     }
     return true;
   }
 
   @Override
-  public List<String> listAllEntries() {
-    File roleDir = SystemFileFactory.INSTANCE.getFile(entryDirPath);
+  public List<String> listAllEntities() {
+    File roleDir = SystemFileFactory.INSTANCE.getFile(entityDirPath);
     String[] names =
         roleDir.list(
             (dir, name) ->
                 name.endsWith(IoTDBConstant.PROFILE_SUFFIX) || name.endsWith(TEMP_SUFFIX));
-    return getEntryStrings(names);
+    return getEntityStrings(names);
   }
 
-  public static List<String> getEntryStrings(String[] names) {
+  public static List<String> getEntityStrings(String[] names) {
     List<String> retList = new ArrayList<>();
     if (names != null) {
       // in very rare situations, normal file and backup file may exist at the same time
@@ -283,8 +287,8 @@ public class LocalFileRoleAccessor implements IEntryAccessor {
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
     SystemFileFactory systemFileFactory = SystemFileFactory.INSTANCE;
-    File roleFolder = systemFileFactory.getFile(entryDirPath);
-    File roleSnapshotDir = systemFileFactory.getFile(snapshotDir, getEntrySnapshotFileName());
+    File roleFolder = systemFileFactory.getFile(entityDirPath);
+    File roleSnapshotDir = systemFileFactory.getFile(snapshotDir, getEntitySnapshotFileName());
     File roleTmpSnapshotDir =
         systemFileFactory.getFile(roleSnapshotDir.getAbsolutePath() + "-" + UUID.randomUUID());
 
@@ -303,10 +307,10 @@ public class LocalFileRoleAccessor implements IEntryAccessor {
   @Override
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
     SystemFileFactory systemFileFactory = SystemFileFactory.INSTANCE;
-    File roleFolder = systemFileFactory.getFile(entryDirPath);
+    File roleFolder = systemFileFactory.getFile(entityDirPath);
     File roleTmpFolder =
         systemFileFactory.getFile(roleFolder.getAbsolutePath() + "-" + UUID.randomUUID());
-    File roleSnapshotDir = systemFileFactory.getFile(snapshotDir, getEntrySnapshotFileName());
+    File roleSnapshotDir = systemFileFactory.getFile(snapshotDir, getEntitySnapshotFileName());
     if (roleSnapshotDir.exists()) {
       try {
         org.apache.commons.io.FileUtils.moveDirectory(roleFolder, roleTmpFolder);
@@ -326,15 +330,15 @@ public class LocalFileRoleAccessor implements IEntryAccessor {
 
   @Override
   public void reset() {
-    checkOldEntryDir(SystemFileFactory.INSTANCE.getFile(entryDirPath));
-    if (SystemFileFactory.INSTANCE.getFile(entryDirPath).mkdirs()) {
-      LOGGER.info("role info dir {} is created", entryDirPath);
-    } else if (!SystemFileFactory.INSTANCE.getFile(entryDirPath).exists()) {
-      LOGGER.error("role info dir {} can not be created", entryDirPath);
+    checkOldEntityDir(SystemFileFactory.INSTANCE.getFile(entityDirPath));
+    if (SystemFileFactory.INSTANCE.getFile(entityDirPath).mkdirs()) {
+      LOGGER.info("role info dir {} is created", entityDirPath);
+    } else if (!SystemFileFactory.INSTANCE.getFile(entityDirPath).exists()) {
+      LOGGER.error("role info dir {} can not be created", entityDirPath);
     }
   }
 
-  private void checkOldEntryDir(File newDir) {
+  private void checkOldEntityDir(File newDir) {
     File oldDir = new File(CommonDescriptor.getInstance().getConfig().getOldRoleFolder());
     if (oldDir.exists()) {
       if (!FileUtils.moveFileSafe(oldDir, newDir)) {
@@ -344,8 +348,8 @@ public class LocalFileRoleAccessor implements IEntryAccessor {
   }
 
   @Override
-  public void cleanEntryFolder() {
-    File[] files = SystemFileFactory.INSTANCE.getFile(entryDirPath).listFiles();
+  public void cleanEntityFolder() {
+    File[] files = SystemFileFactory.INSTANCE.getFile(entityDirPath).listFiles();
     if (files != null) {
       for (File file : files) {
         FileUtils.deleteFileIfExist(file);

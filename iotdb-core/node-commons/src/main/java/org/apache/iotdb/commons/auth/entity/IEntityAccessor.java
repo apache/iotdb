@@ -24,43 +24,43 @@ import java.io.IOException;
 import java.util.List;
 
 /** This interface manages the serialization/deserialization of the entry objects. */
-public interface IEntryAccessor extends SnapshotProcessor {
+public interface IEntityAccessor extends SnapshotProcessor {
 
   /**
    * Deserialize an entry from lower storage.
    *
-   * @param entryName The name of the user/role to be deserialized.
+   * @param entityName The name of the user/role to be deserialized.
    * @return The user object or null if no such entry.
    * @throws IOException if an exception is raised when interacting with the lower storage.
    */
-  Role loadEntry(String entryName) throws IOException;
+  Role loadEntity(String entityName) throws IOException;
 
   /**
-   * Serialize the entry object to lower storage.
+   * Serialize the entity object to lower storage.
    *
-   * @param entry The user/role object that is to be saved.
+   * @param entity The user/role object that is to be saved.
    * @throws IOException if an exception is raised when interacting with the lower storage.
    */
-  void saveEntry(Role entry) throws IOException;
+  void saveEntity(Role entity) throws IOException;
 
   /**
    * Delete a user's from lower storage.
    *
-   * @param entryName The name of the user/role to be deleted.
+   * @param entityName The name of the user/role to be deleted.
    * @return True if the user/role is successfully deleted, false if the user does not exist.
    * @throws IOException if an exception is raised when interacting with the lower storage.
    */
-  boolean deleteEntry(String entryName) throws IOException;
+  boolean deleteEntity(String entityName) throws IOException;
 
   /**
    * List all users existing in the database.
    *
    * @return A list that contains names of all users.
    */
-  List<String> listAllEntries();
+  List<String> listAllEntities();
 
   /** Delete entries' folders. */
-  void cleanEntryFolder();
+  void cleanEntityFolder();
 
   /** Re-initialize this object. */
   void reset();

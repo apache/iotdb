@@ -78,26 +78,26 @@ public class LocalFileUserAccessorTest {
     user.grantTBPrivilege("testdb", "testtb", PrivilegeType.ALTER, true);
     user.addRole("testRole1");
     user.addRole("testRole2");
-    accessor.saveEntry(user);
+    accessor.saveEntity(user);
     accessor.reset();
-    User loadUser = accessor.loadEntry("test");
+    User loadUser = accessor.loadEntity("test");
     assertEquals(user, loadUser);
     user.setName("test1");
-    accessor.saveEntry(user);
+    accessor.saveEntity(user);
 
     // list
-    List<String> usernames = accessor.listAllEntries();
+    List<String> usernames = accessor.listAllEntities();
     usernames.sort(null);
     assertTrue(usernames.contains("test"));
     assertTrue(usernames.contains("test1"));
 
     // delete
-    assertFalse(accessor.deleteEntry("not a user"));
-    assertTrue(accessor.deleteEntry(user.getName()));
-    usernames = accessor.listAllEntries();
+    assertFalse(accessor.deleteEntity("not a user"));
+    assertTrue(accessor.deleteEntity(user.getName()));
+    usernames = accessor.listAllEntities();
     assertEquals(1, usernames.size());
     assertTrue(usernames.contains("test"));
-    User nullUser = accessor.loadEntry(user.getName());
+    User nullUser = accessor.loadEntity(user.getName());
     assertNull(nullUser);
   }
 
@@ -125,11 +125,11 @@ public class LocalFileUserAccessorTest {
     role.setSysPrivilegeSet(new HashSet<>());
     role.setRoleSet(new HashSet<>());
     accessor.saveUserOldVersion(role);
-    User newRole = accessor.loadEntry("root");
+    User newRole = accessor.loadEntity("root");
     assertEquals(role, newRole);
     newRole.setName("root2");
-    accessor.saveEntry(newRole);
-    User newRole2 = accessor.loadEntry("root2");
+    accessor.saveEntity(newRole);
+    User newRole2 = accessor.loadEntity("root2");
     assertEquals(newRole, newRole2);
   }
 }

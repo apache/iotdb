@@ -19,7 +19,7 @@
 package org.apache.iotdb.commons.auth.role;
 
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.IEntryAccessor;
+import org.apache.iotdb.commons.auth.entity.IEntityAccessor;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.auth.entity.Role;
@@ -43,68 +43,68 @@ import java.util.Map;
  * information from filesystem. Access filesystem only happens at starting、taking snapshot、 loading
  * snapshot.
  */
-public abstract class BasicRoleManager implements IEntryManager, SnapshotProcessor {
+public abstract class BasicRoleManager implements IEntityManager, SnapshotProcessor {
 
-  protected Map<String, Role> entryMap;
-  protected IEntryAccessor accessor;
+  protected Map<String, Role> entityMap;
+  protected IEntityAccessor accessor;
 
   protected HashLock lock;
   private static final Logger LOGGER = LoggerFactory.getLogger(BasicRoleManager.class);
 
-  protected TSStatusCode getEntryNotExistErrorCode() {
+  protected TSStatusCode getEntityNotExistErrorCode() {
     return TSStatusCode.ROLE_NOT_EXIST;
   }
 
-  protected String getNoSuchEntryError() {
+  protected String getNoSuchEntityError() {
     return "No such role %s";
   }
 
   protected BasicRoleManager() {
-    this.entryMap = new HashMap<>();
+    this.entityMap = new HashMap<>();
     this.lock = new HashLock();
   }
 
-  protected BasicRoleManager(IEntryAccessor accessor) {
-    this.entryMap = new HashMap<>();
+  protected BasicRoleManager(IEntityAccessor accessor) {
+    this.entityMap = new HashMap<>();
     this.accessor = accessor;
     this.lock = new HashLock();
     this.accessor.reset();
   }
 
-  public Role getEntry(String entryName) {
-    lock.readLock(entryName);
-    Role role = entryMap.get(entryName);
-    lock.readUnlock(entryName);
+  public Role getEntity(String entityName) {
+    lock.readLock(entityName);
+    Role role = entityMap.get(entityName);
+    lock.readUnlock(entityName);
     return role;
   }
 
-  public boolean createRole(String entryName) {
-    Role role = getEntry(entryName);
+  public boolean createRole(String entityName) {
+    Role role = getEntity(entityName);
     if (role != null) {
       return false;
     }
-    lock.writeLock(entryName);
-    role = new Role(entryName);
-    entryMap.put(entryName, role);
-    lock.writeUnlock(entryName);
+    lock.writeLock(entityName);
+    role = new Role(entityName);
+    entityMap.put(entityName, role);
+    lock.writeUnlock(entityName);
     return true;
   }
 
-  public boolean deleteEntry(String entryName) {
-    lock.writeLock(entryName);
-    boolean result = entryMap.remove(entryName) != null;
-    lock.writeUnlock(entryName);
+  public boolean deleteEntity(String entityName) {
+    lock.writeLock(entityName);
+    boolean result = entityMap.remove(entityName) != null;
+    lock.writeUnlock(entityName);
     return result;
   }
 
-  public void grantPrivilegeToEntry(String entryName, PrivilegeUnion privilegeUnion)
+  public void grantPrivilegeToEntity(String entityName, PrivilegeUnion privilegeUnion)
       throws AuthException {
-    lock.writeLock(entryName);
+    lock.writeLock(entityName);
     try {
-      Role role = getEntry(entryName);
+      Role role = getEntity(entityName);
       if (role == null) {
         throw new AuthException(
-            getEntryNotExistErrorCode(), String.format(getNoSuchEntryError(), entryName));
+            getEntityNotExistErrorCode(), String.format(getNoSuchEntityError(), entityName));
       }
 
       switch (privilegeUnion.getModelType()) {
@@ -142,23 +142,23 @@ public abstract class BasicRoleManager implements IEntryManager, SnapshotProcess
           LOGGER.warn("Not support model type {}", privilegeUnion.getModelType());
       }
     } finally {
-      lock.writeUnlock(entryName);
+      lock.writeUnlock(entityName);
     }
   }
 
-  public void revokePrivilegeFromEntry(String entryName, PrivilegeUnion privilegeUnion)
+  public void revokePrivilegeFromEntity(String entityName, PrivilegeUnion privilegeUnion)
       throws AuthException {
-    lock.writeLock(entryName);
+    lock.writeLock(entityName);
     PrivilegeType privilegeType = privilegeUnion.getPrivilegeType();
     boolean isGrantOption = privilegeUnion.isGrantOption();
     boolean isAnyScope = privilegeUnion.isForAny();
     String dbName = privilegeUnion.getDBName();
     String tbName = privilegeUnion.getTbName();
     try {
-      Role role = getEntry(entryName);
+      Role role = getEntity(entityName);
       if (role == null) {
         throw new AuthException(
-            getEntryNotExistErrorCode(), String.format(getNoSuchEntryError(), entryName));
+            getEntityNotExistErrorCode(), String.format(getNoSuchEntityError(), entityName));
       }
       switch (privilegeUnion.getModelType()) {
         case TREE:
@@ -204,18 +204,18 @@ public abstract class BasicRoleManager implements IEntryManager, SnapshotProcess
           LOGGER.warn("Not support model type {}", privilegeUnion.getModelType());
       }
     } finally {
-      lock.writeUnlock(entryName);
+      lock.writeUnlock(entityName);
     }
   }
 
   public void reset() throws AuthException {
     accessor.reset();
-    entryMap.clear();
-    for (String entryName : accessor.listAllEntries()) {
+    entityMap.clear();
+    for (String entityName : accessor.listAllEntities()) {
       try {
-        entryMap.put(entryName, accessor.loadEntry(entryName));
+        entityMap.put(entityName, accessor.loadEntity(entityName));
       } catch (IOException e) {
-        LOGGER.warn("Get exception when load role {}", entryName);
+        LOGGER.warn("Get exception when load role {}", entityName);
         throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
       }
     }
@@ -224,7 +224,7 @@ public abstract class BasicRoleManager implements IEntryManager, SnapshotProcess
   public List<String> listAllEntries() {
 
     List<String> rtlist = new ArrayList<>();
-    entryMap.forEach((name, item) -> rtlist.add(name));
+    entityMap.forEach((name, item) -> rtlist.add(name));
     rtlist.sort(null);
     return rtlist;
   }

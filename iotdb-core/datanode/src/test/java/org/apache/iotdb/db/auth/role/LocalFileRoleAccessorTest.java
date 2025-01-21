@@ -92,27 +92,27 @@ public class LocalFileRoleAccessorTest {
 
     // save
     for (Role role : roles) {
-      accessor.saveEntry(role);
+      accessor.saveEntity(role);
     }
 
     // load
     for (Role role : roles) {
-      Role loadedRole = accessor.loadEntry(role.getName());
+      Role loadedRole = accessor.loadEntity(role.getName());
       assertEquals(role, loadedRole);
     }
-    assertNull(accessor.loadEntry("not a role"));
+    assertNull(accessor.loadEntity("not a role"));
 
     // delete
-    assertTrue(accessor.deleteEntry(roles[roles.length - 1].getName()));
-    assertFalse(accessor.deleteEntry(roles[roles.length - 1].getName()));
-    assertNull(accessor.loadEntry(roles[roles.length - 1].getName()));
+    assertTrue(accessor.deleteEntity(roles[roles.length - 1].getName()));
+    assertFalse(accessor.deleteEntity(roles[roles.length - 1].getName()));
+    assertNull(accessor.loadEntity(roles[roles.length - 1].getName()));
 
     // list
-    List<String> roleNames = accessor.listAllEntries();
+    List<String> roleNames = accessor.listAllEntities();
     roleNames.sort(null);
     for (int i = 0; i < roleNames.size(); i++) {
       assertEquals(roles[i].getName(), roleNames.get(i));
-      accessor.deleteEntry(roleNames.get(i));
+      accessor.deleteEntity(roleNames.get(i));
     }
     String[] files = testFolder.list();
     if (files != null) {

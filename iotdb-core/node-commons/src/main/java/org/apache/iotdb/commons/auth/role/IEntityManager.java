@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import java.util.List;
 
 /** We can call user or role as entry of access control, they all can obtain privileges */
-public interface IEntryManager extends SnapshotProcessor {
+public interface IEntityManager extends SnapshotProcessor {
 
   /**
    * Get an entry object.
@@ -35,7 +35,7 @@ public interface IEntryManager extends SnapshotProcessor {
    * @return A role object whose name is entryName or null if such role does not exist.
    * @throws AuthException if exception is raised while getting the role.
    */
-  Role getEntry(String entryName) throws AuthException;
+  Role getEntity(String entryName) throws AuthException;
 
   /**
    * Create a role/user with given entryName. New roles/users will only be granted no privileges.
@@ -51,7 +51,7 @@ public interface IEntryManager extends SnapshotProcessor {
    * @param entryName the name of the user/role.
    * @return boolean, true means we have the role in entryManager.
    */
-  boolean deleteEntry(String entryName);
+  boolean deleteEntity(String entryName);
 
   /**
    * Grant a privilege to an entry.
@@ -60,7 +60,7 @@ public interface IEntryManager extends SnapshotProcessor {
    * @param privilegeUnion The privilege will be granted to entry.
    * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal.
    */
-  void grantPrivilegeToEntry(String entryName, PrivilegeUnion privilegeUnion) throws AuthException;
+  void grantPrivilegeToEntity(String entryName, PrivilegeUnion privilegeUnion) throws AuthException;
 
   /**
    * Revoke a privilege on seriesPath from an entry.
@@ -69,7 +69,7 @@ public interface IEntryManager extends SnapshotProcessor {
    * @param privilegeUnion The privilege will be granted to entry.
    * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal.
    */
-  void revokePrivilegeFromEntry(String entryName, PrivilegeUnion privilegeUnion)
+  void revokePrivilegeFromEntity(String entryName, PrivilegeUnion privilegeUnion)
       throws AuthException;
 
   /** Re-initialize this object. */

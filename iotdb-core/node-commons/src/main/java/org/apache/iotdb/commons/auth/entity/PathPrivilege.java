@@ -182,7 +182,7 @@ public class PathPrivilege {
     PathPrivilege that = (PathPrivilege) o;
     return Objects.equals(privileges, that.privileges)
         && Objects.equals(path, that.path)
-        && Objects.equals(grantOpts, this.grantOpts);
+        && Objects.equals(grantOpts, that.grantOpts);
   }
 
   @Override
