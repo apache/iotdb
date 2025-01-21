@@ -24,7 +24,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionCon
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
@@ -61,7 +61,7 @@ public class IoTDBTimeTsDatasetPullConsumerIT extends AbstractSubscriptionRegres
   private String device3 = database2 + ".d_2";
   private String pattern = device + ".s_0";
   private List<IMeasurementSchema> schemaList = new ArrayList<>();
-  private SubscriptionPullConsumer consumer;
+  private SubscriptionTreePullConsumer consumer;
 
   @Override
   @Before

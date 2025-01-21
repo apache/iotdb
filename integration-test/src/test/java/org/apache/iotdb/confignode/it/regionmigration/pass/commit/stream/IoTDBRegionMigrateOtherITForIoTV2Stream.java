@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.it.regionmigration.pass.commit.stream;
 
 import org.apache.iotdb.commons.utils.KillPoint.KillNode;
 import org.apache.iotdb.commons.utils.KillPoint.NeverTriggeredKillPoint;
-import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -36,7 +36,7 @@ import org.junit.runner.RunWith;
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBRegionMigrateOtherITForIoTV2Stream
-    extends IoTDBRegionMigrateReliabilityITFramework {
+    extends IoTDBRegionOperationReliabilityITFramework {
 
   @Override
   @Before

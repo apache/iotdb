@@ -99,8 +99,8 @@ public class DataNodeRegionManager {
 
   public ReentrantReadWriteLock getRegionLock(ConsensusGroupId consensusGroupId) {
     return consensusGroupId instanceof DataRegionId
-        ? dataRegionLockMap.get((DataRegionId) consensusGroupId)
-        : schemaRegionLockMap.get((SchemaRegionId) consensusGroupId);
+        ? dataRegionLockMap.get(consensusGroupId)
+        : schemaRegionLockMap.get(consensusGroupId);
   }
 
   public TSStatus createSchemaRegion(

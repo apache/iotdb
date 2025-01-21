@@ -89,6 +89,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
@@ -402,6 +404,8 @@ public class Coordinator {
         || statement instanceof Flush
         || statement instanceof ClearCache
         || statement instanceof SetConfiguration
+        || statement instanceof StartRepairData
+        || statement instanceof StopRepairData
         || statement instanceof PipeStatement
         || statement instanceof SubscriptionStatement
         || statement instanceof ShowCurrentSqlDialect
@@ -455,7 +459,6 @@ public class Coordinator {
     return queryExecutionMap.size();
   }
 
-  // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ExecutorService getQueryExecutor() {
     int coordinatorReadExecutorSize = CONFIG.getCoordinatorReadExecutorSize();
     return IoTDBThreadPoolFactory.newFixedThreadPool(
@@ -468,7 +471,6 @@ public class Coordinator {
         coordinatorWriteExecutorSize, ThreadName.MPP_COORDINATOR_WRITE_EXECUTOR.getName());
   }
 
-  // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ScheduledExecutorService getScheduledExecutor() {
     return IoTDBThreadPoolFactory.newScheduledThreadPool(
         COORDINATOR_SCHEDULED_EXECUTOR_SIZE,

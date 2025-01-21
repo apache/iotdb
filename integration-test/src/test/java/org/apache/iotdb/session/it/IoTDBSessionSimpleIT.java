@@ -1898,4 +1898,27 @@ public class IoTDBSessionSimpleIT {
       e.printStackTrace();
     }
   }
+
+  @Test
+  public void testWriteRestartAndDeleteDB()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.insertRecord("root.sg1.d1", 1, Arrays.asList("s3"), Arrays.asList("1"));
+
+      TestUtils.stopForciblyAndRestartDataNodes();
+
+      SessionDataSet dataSet = session.executeQueryStatement("select s3 from root.sg1.d1");
+      dataSet.next();
+      dataSet.close();
+
+      session.executeNonQueryStatement("DELETE DATABASE root.sg1");
+
+      session.insertRecord(
+          "root.sg1.d1", 1, Arrays.asList("s1", "s2", "s3"), Arrays.asList("1", "1", "1"));
+
+      dataSet = session.executeQueryStatement("SELECT * FROM root.sg1.d1");
+      RowRecord record = dataSet.next();
+      assertEquals(3, record.getFields().size());
+    }
+  }
 }

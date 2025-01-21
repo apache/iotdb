@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.it.regionmigration.pass.commit.batch;
 
 import org.apache.iotdb.commons.utils.KillPoint.KillNode;
-import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 
@@ -31,7 +31,7 @@ import org.junit.runner.RunWith;
 @Category({ClusterIT.class})
 @RunWith(IoTDBTestRunner.class)
 public class IoTDBRegionMigrateNormalITForIoTV2Batch
-    extends IoTDBRegionMigrateReliabilityITFramework {
+    extends IoTDBRegionOperationReliabilityITFramework {
   @Test
   public void normal1C2DTest() throws Exception {
     successTest(1, 1, 1, 2, noKillPoints(), noKillPoints(), KillNode.ALL_NODES);

@@ -700,6 +700,15 @@ public class TableDistributedPlanGenerator
       return Collections.singletonList(node);
     }
 
+    // We cannot do multi-stage Aggregate if any aggregation-function is distinct.
+    if (node.getAggregations().values().stream()
+        .anyMatch(AggregationNode.Aggregation::isDistinct)) {
+      node.setChild(
+          mergeChildrenViaCollectOrMergeSort(
+              nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()), childrenNodes));
+      return Collections.singletonList(node);
+    }
+
     Pair<AggregationNode, AggregationNode> splitResult = split(node, symbolAllocator, queryId);
     AggregationNode intermediate = splitResult.right;
 

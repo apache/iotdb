@@ -172,12 +172,13 @@ public class ModificationFile implements AutoCloseable {
 
   @Override
   public void close() throws IOException {
-    if (fileOutputStream == null) {
-      return;
-    }
-
     lock.writeLock().lock();
+
     try {
+      if (fileOutputStream == null) {
+        return;
+      }
+
       fileOutputStream.close();
       fileOutputStream = null;
       channel.force(true);
@@ -342,8 +343,13 @@ public class ModificationFile implements AutoCloseable {
   }
 
   public void truncate(long size) throws IOException {
-    if (channel != null) {
-      channel.truncate(size);
+    lock.writeLock().lock();
+    try {
+      if (channel != null) {
+        channel.truncate(size);
+      }
+    } finally {
+      lock.writeLock().unlock();
     }
   }
 

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.consumer;
+package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
