@@ -654,7 +654,13 @@ public final class SqlFormatter {
       builder.append(columnList);
       builder.append("\n").append(")");
 
+      node.getCharsetName().ifPresent(charset -> builder.append(" CHARSET ").append(charset));
+
       builder.append(formatPropertiesMultiLine(node.getProperties()));
+
+      if (Objects.nonNull(node.getComment())) {
+        builder.append(" COMMENT '").append(node.getComment()).append("'");
+      }
 
       return null;
     }

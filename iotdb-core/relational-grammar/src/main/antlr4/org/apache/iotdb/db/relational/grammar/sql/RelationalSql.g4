@@ -161,7 +161,7 @@ createTableStatement
     : CREATE TABLE (IF NOT EXISTS)? qualifiedName
         '(' (columnDefinition (',' columnDefinition)*)? ')'
         charsetDesc?
-        (WITH properties)?
+        (WITH properties)? comment?
      ;
 
 charsetDesc
