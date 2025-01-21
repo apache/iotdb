@@ -384,7 +384,8 @@ public class IoTDBDatabaseIT {
                   "database,STRING,TAG,",
                   "table_name,STRING,TAG,",
                   "ttl(ms),STRING,ATTRIBUTE,",
-                  "status,STRING,ATTRIBUTE,")));
+                  "status,STRING,ATTRIBUTE,",
+                  "comment,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc columns"),
           "ColumnName,DataType,Category,",
@@ -410,7 +411,8 @@ public class IoTDBDatabaseIT {
 
       // Test table query
       statement.execute("create database test");
-      statement.execute("create table test.test (a tag, b attribute, c int32 comment 'turbine')");
+      statement.execute(
+          "create table test.test (a tag, b attribute, c int32 comment 'turbine') comment 'test'");
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select * from databases"),
@@ -424,11 +426,11 @@ public class IoTDBDatabaseIT {
           "database,table_name,ttl(ms),status,",
           new HashSet<>(
               Arrays.asList(
-                  "information_schema,databases,INF,USING,",
-                  "information_schema,tables,INF,USING,",
-                  "information_schema,columns,INF,USING,",
-                  "information_schema,queries,INF,USING,",
-                  "test,test,INF,USING,")));
+                  "information_schema,databases,INF,USING,null,",
+                  "information_schema,tables,INF,USING,null,",
+                  "information_schema,columns,INF,USING,null,",
+                  "information_schema,queries,INF,USING,null,",
+                  "test,test,INF,USING,test,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from tables where status = 'USING'"),
           "count(devices),",

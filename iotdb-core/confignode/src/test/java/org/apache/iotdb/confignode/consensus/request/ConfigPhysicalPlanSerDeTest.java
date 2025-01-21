@@ -135,6 +135,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTableP
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -1292,18 +1293,30 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
+  public void SetTableCommentPlanTest() throws IOException {
+    final SetTableCommentPlan setTableCommentPlan =
+        new SetTableCommentPlan("database1", "table1", "comment");
+    final SetTableCommentPlan setTableCommentPlan1 =
+        (SetTableCommentPlan)
+            ConfigPhysicalPlan.Factory.create(setTableCommentPlan.serializeToByteBuffer());
+    Assert.assertEquals(setTableCommentPlan.getDatabase(), setTableCommentPlan1.getDatabase());
+    Assert.assertEquals(setTableCommentPlan.getTableName(), setTableCommentPlan1.getTableName());
+    Assert.assertEquals(setTableCommentPlan.getComment(), setTableCommentPlan1.getComment());
+  }
+
+  @Test
   public void SetTableColumnCommentPlanTest() throws IOException {
-    final SetTableColumnCommentPlan commitDeleteColumnPlan =
+    final SetTableColumnCommentPlan setTableColumnCommentPlan =
         new SetTableColumnCommentPlan("database1", "table1", "field", "comment");
-    final SetTableColumnCommentPlan commitDeleteColumnPlan1 =
+    final SetTableColumnCommentPlan setTableColumnCommentPlan1 =
         (SetTableColumnCommentPlan)
-            ConfigPhysicalPlan.Factory.create(commitDeleteColumnPlan.serializeToByteBuffer());
+            ConfigPhysicalPlan.Factory.create(setTableColumnCommentPlan.serializeToByteBuffer());
     Assert.assertEquals(
-        commitDeleteColumnPlan.getDatabase(), commitDeleteColumnPlan1.getDatabase());
+        setTableColumnCommentPlan.getDatabase(), setTableColumnCommentPlan1.getDatabase());
     Assert.assertEquals(
-        commitDeleteColumnPlan.getTableName(), commitDeleteColumnPlan1.getTableName());
+        setTableColumnCommentPlan.getTableName(), setTableColumnCommentPlan1.getTableName());
     Assert.assertEquals(
-        commitDeleteColumnPlan.getColumnName(), commitDeleteColumnPlan1.getColumnName());
+        setTableColumnCommentPlan.getColumnName(), setTableColumnCommentPlan1.getColumnName());
   }
 
   @Test
