@@ -44,7 +44,7 @@ public class ConsensusMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[1])
-        .set(config.getAllocateMemoryForConsensus());
+        .set(config.getConsensusMemoryManager().getTotalMemorySizeInBytes());
   }
 
   @Override

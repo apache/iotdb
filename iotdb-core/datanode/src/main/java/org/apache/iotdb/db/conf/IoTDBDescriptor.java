@@ -2170,6 +2170,7 @@ public class IoTDBDescriptor {
     }
 
     long storageEngineMemorySize = Runtime.getRuntime().maxMemory() * 3 / 10;
+    long consensusMemorySize = Runtime.getRuntime().maxMemory() / 10;
     if (memoryAllocateProportion != null) {
       String[] proportions = memoryAllocateProportion.split(":");
       int proportionSum = 0;
@@ -2185,8 +2186,8 @@ public class IoTDBDescriptor {
             maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
         conf.setAllocateMemoryForSchema(
             maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
-        conf.setAllocateMemoryForConsensus(
-            maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum);
+        consensusMemorySize =
+            maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum;
         // if pipe proportion is set, use it, otherwise use the default value
         if (proportions.length >= 6) {
           conf.setAllocateMemoryForPipe(
@@ -2197,7 +2198,7 @@ public class IoTDBDescriptor {
                       - (conf.getStorageEngineMemoryManager().getTotalMemorySizeInBytes()
                           + conf.getAllocateMemoryForRead()
                           + conf.getAllocateMemoryForSchema()
-                          + conf.getAllocateMemoryForConsensus()))
+                          + conf.getConsensusMemoryManager().getTotalMemorySizeInBytes()))
                   / 2);
         }
       }
@@ -2205,13 +2206,18 @@ public class IoTDBDescriptor {
     MemoryManager storageEngineMemoryManager =
         globalMemoryManager.createMemoryManager("StorageEngine", storageEngineMemorySize);
     conf.setStorageEngineMemoryManager(storageEngineMemoryManager);
+    MemoryManager consensusMemoryManager =
+        globalMemoryManager.createMemoryManager("Consensus", consensusMemorySize);
+    conf.setConsensusMemoryManager(consensusMemoryManager);
 
     LOGGER.info("initial allocateMemoryForRead = {}", conf.getAllocateMemoryForRead());
     LOGGER.info(
         "initial allocateMemoryForWrite = {}",
         conf.getStorageEngineMemoryManager().getTotalMemorySizeInBytes());
     LOGGER.info("initial allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
-    LOGGER.info("initial allocateMemoryForConsensus = {}", conf.getAllocateMemoryForConsensus());
+    LOGGER.info(
+        "initial allocateMemoryForConsensus = {}",
+        conf.getConsensusMemoryManager().getTotalMemorySizeInBytes());
     LOGGER.info("initial allocateMemoryForPipe = {}", conf.getAllocateMemoryForPipe());
 
     initSchemaMemoryAllocate(properties);

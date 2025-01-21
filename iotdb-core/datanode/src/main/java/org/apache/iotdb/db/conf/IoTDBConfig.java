@@ -149,7 +149,7 @@ public class IoTDBConfig {
   /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 65535;
 
-  /** Memory allocated for the write process */
+  /** Memory manager for the write process */
   private MemoryManager storageEngineMemoryManager;
 
   /** Memory allocated for the read process */
@@ -158,10 +158,8 @@ public class IoTDBConfig {
   /** Memory allocated for the mtree */
   private long allocateMemoryForSchema = Runtime.getRuntime().maxMemory() / 10;
 
-  /** Memory allocated for the consensus layer */
+  /** Memory manager for the consensus layer */
   private MemoryManager ConsensusMemoryManager;
-
-  private long allocateMemoryForConsensus = Runtime.getRuntime().maxMemory() / 10;
 
   /** Memory allocated for the pipe */
   private long allocateMemoryForPipe = Runtime.getRuntime().maxMemory() / 10;
@@ -620,7 +618,7 @@ public class IoTDBConfig {
   /** Memory allocated proportion for timeIndex */
   private long allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
 
-  /** Memory allocated proportion for time partition info */
+  /** Memory manager for time partition info */
   private MemoryManager timePartitionInfoMemoryManager;
 
   /**
@@ -2130,12 +2128,8 @@ public class IoTDBConfig {
     return ConsensusMemoryManager;
   }
 
-  public long getAllocateMemoryForConsensus() {
-    return allocateMemoryForConsensus;
-  }
-
-  public void setAllocateMemoryForConsensus(long allocateMemoryForConsensus) {
-    this.allocateMemoryForConsensus = allocateMemoryForConsensus;
+  public void setConsensusMemoryManager(MemoryManager consensusMemoryManager) {
+    ConsensusMemoryManager = consensusMemoryManager;
   }
 
   public long getAllocateMemoryForRead() {
