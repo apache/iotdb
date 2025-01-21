@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteCol
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 
 import java.util.Optional;
@@ -125,6 +126,15 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitor
     return matchDatabaseAndTableName(
             commitDeleteTablePlan.getDatabase(), commitDeleteTablePlan.getTableName(), pattern)
         ? Optional.of(commitDeleteTablePlan)
+        : Optional.empty();
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitSetTableComment(
+      final SetTableCommentPlan setTableCommentPlan, final TablePattern pattern) {
+    return matchDatabaseAndTableName(
+            setTableCommentPlan.getDatabase(), setTableCommentPlan.getTableName(), pattern)
+        ? Optional.of(setTableCommentPlan)
         : Optional.empty();
   }
 
