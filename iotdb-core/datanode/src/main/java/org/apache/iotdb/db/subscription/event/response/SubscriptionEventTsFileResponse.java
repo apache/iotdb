@@ -42,6 +42,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -247,5 +248,18 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
     final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
     LOGGER.info(
         "Wait for resource enough for slicing tsfile {} for {} seconds.", tsFile, waitTimeSeconds);
+  }
+
+  /////////////////////////////// stringify ///////////////////////////////
+
+  @Override
+  public String toString() {
+    return "SubscriptionEventTsFileResponse" + coreReportMessage();
+  }
+
+  protected Map<String, String> coreReportMessage() {
+    final Map<String, String> result = super.coreReportMessage();
+    result.put("tsFile", String.valueOf(tsFile));
+    return result;
   }
 }

@@ -86,13 +86,6 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
   /////////////////////////////// ack & clean ///////////////////////////////
 
-  public List<EnrichedEvent> moveIteratedEnrichedEvents() {
-    final List<EnrichedEvent> result = Collections.unmodifiableList(iteratedEnrichedEvents);
-    iteratedEnrichedEvents = new ArrayList<>();
-    referenceCount.incrementAndGet();
-    return result;
-  }
-
   @Override
   public synchronized void ack() {
     referenceCount.decrementAndGet();
@@ -207,6 +200,13 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   }
 
   /////////////////////////////// iterator ///////////////////////////////
+
+  public List<EnrichedEvent> sendIterationSnapshot() {
+    final List<EnrichedEvent> result = Collections.unmodifiableList(iteratedEnrichedEvents);
+    iteratedEnrichedEvents = new ArrayList<>();
+    referenceCount.incrementAndGet();
+    return result;
+  }
 
   public void resetForIteration() {
     currentEnrichedEventsIterator = enrichedEvents.iterator();
@@ -331,6 +331,8 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     coreReportMessage.put(
         "estimatedRawTabletInsertionEventSize",
         String.valueOf(getEstimatedRawTabletInsertionEventSize()));
+    coreReportMessage.put("referenceCount", String.valueOf(referenceCount));
+    coreReportMessage.put("iteratedCount", String.valueOf(iteratedCount));
     return coreReportMessage;
   }
 }

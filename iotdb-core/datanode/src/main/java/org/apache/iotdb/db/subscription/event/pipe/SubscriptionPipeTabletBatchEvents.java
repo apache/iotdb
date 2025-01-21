@@ -24,15 +24,21 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
 
 import java.util.List;
+import java.util.stream.Collectors;
+
+import static com.google.common.base.MoreObjects.toStringHelper;
 
 public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents {
 
   private final SubscriptionPipeTabletEventBatch batch;
-  private final List<EnrichedEvent> iteratedEnrichedEvents;
+  private volatile List<EnrichedEvent> iteratedEnrichedEvents;
 
   public SubscriptionPipeTabletBatchEvents(final SubscriptionPipeTabletEventBatch batch) {
     this.batch = batch;
-    this.iteratedEnrichedEvents = batch.moveIteratedEnrichedEvents();
+  }
+
+  public void receiveIterationSnapshot(final List<EnrichedEvent> iteratedEnrichedEvents) {
+    this.iteratedEnrichedEvents = iteratedEnrichedEvents;
   }
 
   @Override
@@ -58,7 +64,24 @@ public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents
 
   @Override
   public String toString() {
-    return "SubscriptionPipeTabletBatchEvents{batch=" + batch + "}";
+    return toStringHelper(this)
+        .add("batch", batch)
+        .add("events", formatEnrichedEvents(iteratedEnrichedEvents, 4))
+        .toString();
+  }
+
+  private static String formatEnrichedEvents(
+      final List<EnrichedEvent> enrichedEvents, final int threshold) {
+    final List<String> eventMessageList =
+        enrichedEvents.stream()
+            .limit(threshold)
+            .map(EnrichedEvent::coreReportMessage)
+            .collect(Collectors.toList());
+    if (eventMessageList.size() > threshold) {
+      eventMessageList.add(
+          String.format("omit the remaining %s event(s)...", eventMessageList.size() - threshold));
+    }
+    return eventMessageList.toString();
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////

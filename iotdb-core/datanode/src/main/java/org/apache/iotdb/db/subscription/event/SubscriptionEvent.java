@@ -91,9 +91,10 @@ public class SubscriptionEvent {
    */
   public SubscriptionEvent(
       final SubscriptionPipeTabletEventBatch batch, final SubscriptionPrefetchingQueue queue) {
-    this.pipeEvents = new SubscriptionPipeTabletBatchEvents(batch);
+    final SubscriptionPipeTabletBatchEvents events = new SubscriptionPipeTabletBatchEvents(batch);
     final SubscriptionCommitContext commitContext = queue.generateSubscriptionCommitContext();
-    this.response = new SubscriptionEventTabletResponse(batch, commitContext, queue);
+    this.pipeEvents = events;
+    this.response = new SubscriptionEventTabletResponse(batch, commitContext, queue, events);
     this.commitContext = commitContext;
   }
 

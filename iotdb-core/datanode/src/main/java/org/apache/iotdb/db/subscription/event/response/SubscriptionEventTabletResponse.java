@@ -29,6 +29,7 @@ import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
 import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
+import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTabletBatchEvents;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
@@ -41,6 +42,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -64,6 +66,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
   private final SubscriptionPipeTabletEventBatch batch;
   private final SubscriptionCommitContext commitContext;
   private final SubscriptionPrefetchingQueue queue;
+  private final SubscriptionPipeTabletBatchEvents events;
 
   private volatile int totalTablets;
   private final AtomicInteger nextOffset = new AtomicInteger(0);
@@ -75,10 +78,12 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
   public SubscriptionEventTabletResponse(
       final SubscriptionPipeTabletEventBatch batch,
       final SubscriptionCommitContext commitContext,
-      final SubscriptionPrefetchingQueue queue) {
+      final SubscriptionPrefetchingQueue queue,
+      final SubscriptionPipeTabletBatchEvents events) {
     this.batch = batch;
     this.commitContext = commitContext;
     this.queue = queue;
+    this.events = events;
 
     init();
   }
@@ -161,6 +166,9 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       // generate next subscription event with the same batch
       // add first to prefetching queue to provide best-effort ordering
       queue.addFirst(new SubscriptionEvent(batch, queue));
+      // frozen iterated enriched events
+      transportIterationSnapshot();
+      // return last response of this subscription event
       return new CachedSubscriptionPollResponse(
           SubscriptionPollResponseType.TABLETS.getType(),
           new TabletsPayload(Collections.emptyList(), -totalTablets),
@@ -224,6 +232,9 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
 
     if (Objects.isNull(response)) {
       if (currentTablets.isEmpty()) {
+        // frozen iterated enriched events
+        transportIterationSnapshot();
+        // return last response of this subscription event
         response =
             new CachedSubscriptionPollResponse(
                 SubscriptionPollResponseType.TABLETS.getType(),
@@ -293,5 +304,25 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
         "SubscriptionEventTabletResponse {} wait for resource enough for parsing tablets {} seconds.",
         commitContext,
         waitTimeSeconds);
+  }
+
+  private void transportIterationSnapshot() {
+    events.receiveIterationSnapshot(batch.sendIterationSnapshot());
+  }
+
+  /////////////////////////////// stringify ///////////////////////////////
+
+  @Override
+  public String toString() {
+    return "SubscriptionEventTabletResponse" + coreReportMessage();
+  }
+
+  protected Map<String, String> coreReportMessage() {
+    final Map<String, String> result = super.coreReportMessage();
+    result.put("totalTablets", String.valueOf(totalTablets));
+    result.put("nextOffset", String.valueOf(nextOffset));
+    result.put("totalBufferSize", String.valueOf(totalBufferSize));
+    result.put("availableForNext", String.valueOf(availableForNext));
+    return result;
   }
 }

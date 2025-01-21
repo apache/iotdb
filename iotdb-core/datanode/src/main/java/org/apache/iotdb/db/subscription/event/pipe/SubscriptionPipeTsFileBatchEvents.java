@@ -23,6 +23,8 @@ import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTsFileEventB
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 public class SubscriptionPipeTsFileBatchEvents implements SubscriptionPipeEvents {
 
   private final SubscriptionPipeTsFileEventBatch batch;
@@ -54,11 +56,10 @@ public class SubscriptionPipeTsFileBatchEvents implements SubscriptionPipeEvents
 
   @Override
   public String toString() {
-    return "SubscriptionPipeTsFileBatchEvents{batch="
-        + batch
-        + ", referenceCount="
-        + referenceCount
-        + "}";
+    return toStringHelper(this)
+        .add("batch", batch)
+        .add("referenceCount", referenceCount)
+        .toString();
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
