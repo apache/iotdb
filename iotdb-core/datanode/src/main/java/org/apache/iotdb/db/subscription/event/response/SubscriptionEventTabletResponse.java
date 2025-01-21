@@ -159,7 +159,8 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       throws InterruptedException, PipeRuntimeOutOfMemoryCriticalException {
     if (availableForNext) {
       // generate next subscription event with the same batch
-      queue.enqueueEventToPrefetchingQueue(new SubscriptionEvent(batch, queue));
+      // add first to prefetching queue to provide best-effort ordering
+      queue.addFirst(new SubscriptionEvent(batch, queue));
       return new CachedSubscriptionPollResponse(
           SubscriptionPollResponseType.TABLETS.getType(),
           new TabletsPayload(Collections.emptyList(), -totalTablets),

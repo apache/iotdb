@@ -97,8 +97,12 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionPrefetchMissingRateThreshold();
   }
 
-  public int getSubscriptionPrefetchEventCountThreshold() {
-    return COMMON_CONFIG.getSubscriptionPrefetchEventCountThreshold();
+  public int getSubscriptionPrefetchEventLocalCountThreshold() {
+    return COMMON_CONFIG.getSubscriptionPrefetchEventLocalCountThreshold();
+  }
+
+  public int getSubscriptionPrefetchEventGlobalCountThreshold() {
+    return COMMON_CONFIG.getSubscriptionPrefetchEventGlobalCountThreshold();
   }
 
   public long getSubscriptionMetaSyncerInitialSyncDelayMinutes() {
@@ -116,7 +120,6 @@ public class SubscriptionConfig {
   public void printAllConfigs() {
     LOGGER.info(
         "SubscriptionCacheMemoryUsagePercentage: {}", getSubscriptionCacheMemoryUsagePercentage());
-
     LOGGER.info(
         "SubscriptionSubtaskExecutorMaxThreadNum: {}",
         getSubscriptionSubtaskExecutorMaxThreadNum());
@@ -155,8 +158,11 @@ public class SubscriptionConfig {
         "SubscriptionPrefetchMissingRateThreshold: {}",
         getSubscriptionPrefetchMissingRateThreshold());
     LOGGER.info(
-        "SubscriptionPrefetchEventCountThreshold: {}",
-        getSubscriptionPrefetchEventCountThreshold());
+        "SubscriptionPrefetchEventLocalCountThreshold: {}",
+        getSubscriptionPrefetchEventLocalCountThreshold());
+    LOGGER.info(
+        "SubscriptionPrefetchEventGlobalCountThreshold: {}",
+        getSubscriptionPrefetchEventGlobalCountThreshold());
 
     LOGGER.info(
         "SubscriptionMetaSyncerInitialSyncDelayMinutes: {}",

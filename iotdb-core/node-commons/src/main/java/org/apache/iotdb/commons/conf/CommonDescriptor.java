@@ -644,7 +644,6 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_cache_memory_usage_percentage",
                 String.valueOf(config.getSubscriptionCacheMemoryUsagePercentage()))));
-
     config.setSubscriptionSubtaskExecutorMaxThreadNum(
         Integer.parseInt(
             properties.getProperty(
@@ -727,11 +726,16 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_prefetch_missing_rate_threshold",
                 String.valueOf(config.getSubscriptionPrefetchMemoryThreshold()))));
-    config.setSubscriptionPrefetchEventCountThreshold(
+    config.setSubscriptionPrefetchEventLocalCountThreshold(
         Integer.parseInt(
             properties.getProperty(
-                "subscription_prefetch_event_count_threshold",
-                String.valueOf(config.getSubscriptionPrefetchEventCountThreshold()))));
+                "subscription_prefetch_event_local_count_threshold",
+                String.valueOf(config.getSubscriptionPrefetchEventLocalCountThreshold()))));
+    config.setSubscriptionPrefetchEventGlobalCountThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_prefetch_event_global_count_threshold",
+                String.valueOf(config.getSubscriptionPrefetchEventGlobalCountThreshold()))));
 
     config.setSubscriptionMetaSyncerInitialSyncDelayMinutes(
         Long.parseLong(

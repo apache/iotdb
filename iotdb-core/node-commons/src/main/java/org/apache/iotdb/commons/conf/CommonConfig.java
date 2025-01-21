@@ -286,8 +286,7 @@ public class CommonConfig {
   private long pipeEventReferenceEliminateIntervalSeconds = 10;
 
   private float subscriptionCacheMemoryUsagePercentage = 0.2F;
-
-  private int subscriptionSubtaskExecutorMaxThreadNum = 1;
+  private int subscriptionSubtaskExecutorMaxThreadNum = 2;
 
   private int subscriptionPrefetchTabletBatchMaxDelayInMs = 1000; // 1s
   private long subscriptionPrefetchTabletBatchMaxSizeInBytes = 16 * MB;
@@ -305,7 +304,8 @@ public class CommonConfig {
   private boolean subscriptionPrefetchEnabled = true;
   private float subscriptionPrefetchMemoryThreshold = 0.5F;
   private float subscriptionPrefetchMissingRateThreshold = 0.9F;
-  private int subscriptionPrefetchEventCountThreshold = 100;
+  private int subscriptionPrefetchEventLocalCountThreshold = 10;
+  private int subscriptionPrefetchEventGlobalCountThreshold = 100;
 
   private long subscriptionMetaSyncerInitialSyncDelayMinutes = 3;
   private long subscriptionMetaSyncerSyncIntervalMinutes = 3;
@@ -1426,13 +1426,24 @@ public class CommonConfig {
     this.subscriptionPrefetchMissingRateThreshold = subscriptionPrefetchMissingRateThreshold;
   }
 
-  public int getSubscriptionPrefetchEventCountThreshold() {
-    return subscriptionPrefetchEventCountThreshold;
+  public int getSubscriptionPrefetchEventLocalCountThreshold() {
+    return subscriptionPrefetchEventLocalCountThreshold;
   }
 
-  public void setSubscriptionPrefetchEventCountThreshold(
-      int subscriptionPrefetchEventCountThreshold) {
-    this.subscriptionPrefetchEventCountThreshold = subscriptionPrefetchEventCountThreshold;
+  public void setSubscriptionPrefetchEventLocalCountThreshold(
+      int subscriptionPrefetchEventLocalCountThreshold) {
+    this.subscriptionPrefetchEventLocalCountThreshold =
+        subscriptionPrefetchEventLocalCountThreshold;
+  }
+
+  public int getSubscriptionPrefetchEventGlobalCountThreshold() {
+    return subscriptionPrefetchEventGlobalCountThreshold;
+  }
+
+  public void setSubscriptionPrefetchEventGlobalCountThreshold(
+      int subscriptionPrefetchEventGlobalCountThreshold) {
+    this.subscriptionPrefetchEventGlobalCountThreshold =
+        subscriptionPrefetchEventGlobalCountThreshold;
   }
 
   public long getSubscriptionMetaSyncerInitialSyncDelayMinutes() {
