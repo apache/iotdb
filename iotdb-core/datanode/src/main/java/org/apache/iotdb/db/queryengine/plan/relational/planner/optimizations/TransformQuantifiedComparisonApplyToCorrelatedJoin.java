@@ -21,7 +21,12 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
+import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
+import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.FunctionNullability;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SimplePlanRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
@@ -49,6 +54,7 @@ import org.apache.tsfile.read.common.type.Type;
 
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -60,7 +66,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.globalAggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.singleAggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode.Quantifier.ALL;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Util.getResolvedBuiltInAggregateFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.FALSE_LITERAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
@@ -137,7 +142,7 @@ public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanO
                   minValue,
                       new AggregationNode.Aggregation(
                           getResolvedBuiltInAggregateFunction(
-                              metadata, "min", ImmutableList.of(outputColumnType)),
+                              "min", ImmutableList.of(outputColumnType)),
                           outputColumnReferences,
                           false,
                           Optional.empty(),
@@ -146,7 +151,7 @@ public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanO
                   maxValue,
                       new AggregationNode.Aggregation(
                           getResolvedBuiltInAggregateFunction(
-                              metadata, "max", ImmutableList.of(outputColumnType)),
+                              "max", ImmutableList.of(outputColumnType)),
                           outputColumnReferences,
                           false,
                           Optional.empty(),
@@ -155,7 +160,7 @@ public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanO
                   countAllValue,
                       new AggregationNode.Aggregation(
                           getResolvedBuiltInAggregateFunction(
-                              metadata, "count_all", ImmutableList.of(outputColumnType)),
+                              "count_all", ImmutableList.of(outputColumnType)),
                           outputColumnReferences,
                           false,
                           Optional.empty(),
@@ -164,7 +169,7 @@ public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanO
                   countNonNullValue,
                       new AggregationNode.Aggregation(
                           getResolvedBuiltInAggregateFunction(
-                              metadata, "count", ImmutableList.of(outputColumnType)),
+                              "count", ImmutableList.of(outputColumnType)),
                           outputColumnReferences,
                           false,
                           Optional.empty(),
@@ -190,6 +195,18 @@ public class TransformQuantifiedComparisonApplyToCorrelatedJoin implements PlanO
 
       return projectExpressions(
           join, Assignments.of(quantifiedComparisonSymbol, valueComparedToSubquery));
+    }
+
+    private ResolvedFunction getResolvedBuiltInAggregateFunction(
+        String functionName, List<Type> argumentTypes) {
+      // The same as the code in ExpressionAnalyzer
+      Type type = metadata.getFunctionReturnType(functionName, argumentTypes);
+      return new ResolvedFunction(
+          new BoundSignature(functionName.toLowerCase(Locale.ENGLISH), type, argumentTypes),
+          new FunctionId("noop"),
+          FunctionKind.AGGREGATE,
+          true,
+          FunctionNullability.getAggregationFunctionNullability(argumentTypes.size()));
     }
 
     public Expression rewriteUsingBounds(
