@@ -452,23 +452,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitSetColumnComment(final RelationalSqlParser.SetColumnCommentContext ctx) {
-    return new SetColumnComment(
-        getLocation(ctx),
-        getQualifiedName(ctx.qualifiedName()),
-        lowerIdentifier((Identifier) visit(ctx.column)),
-        ctx.EXISTS().stream()
-            .anyMatch(
-                node ->
-                    node.getSymbol().getTokenIndex() < ctx.MODIFY().getSymbol().getTokenIndex()),
-        ctx.EXISTS().stream()
-            .anyMatch(
-                node ->
-                    node.getSymbol().getTokenIndex() > ctx.MODIFY().getSymbol().getTokenIndex()),
-        ((StringLiteral) visit(ctx.comment().string())).getValue());
-  }
-
-  @Override
   public Node visitCommentStatement(final RelationalSqlParser.CommentStatementContext ctx) {
     return new SetColumnComment(
         getLocation(ctx),
@@ -476,7 +459,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         lowerIdentifier((Identifier) visit(ctx.column)),
         false,
         false,
-        ((StringLiteral) visit(ctx.string())).getValue());
+        Objects.nonNull(ctx.string()) ? ((StringLiteral) visit(ctx.string())).getValue() : null);
   }
 
   @Override

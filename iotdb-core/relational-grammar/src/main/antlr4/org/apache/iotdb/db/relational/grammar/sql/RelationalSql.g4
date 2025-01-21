@@ -204,11 +204,10 @@ alterTableStatement
     | ALTER TABLE (IF EXISTS)? tableName=qualifiedName DROP COLUMN (IF EXISTS)? column=identifier                     #dropColumn
     // set TTL can use this
     | ALTER TABLE (IF EXISTS)? tableName=qualifiedName SET PROPERTIES propertyAssignments                #setTableProperties
-    | ALTER TABLE (IF EXISTS)? tableName=qualifiedName MODIFY COLUMN column=identifier (IF EXISTS)? comment #setColumnComment
     ;
 
 commentStatement
-    : COMMENT ON COLUMN qualifiedName '.' column=identifier IS string
+    : COMMENT ON COLUMN qualifiedName '.' column=identifier IS (string | NULL)
     ;
 
 // ------------------------------------------- Index Statement ---------------------------------------------------------

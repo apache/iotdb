@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
 
+import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Objects;
 
@@ -33,7 +34,7 @@ public class SetColumnComment extends Statement {
 
   private final boolean tableIfExists;
   private final boolean columnIfExists;
-  private final String comment;
+  @Nullable private final String comment;
 
   public SetColumnComment(
       final NodeLocation location,
@@ -41,7 +42,7 @@ public class SetColumnComment extends Statement {
       final Identifier field,
       final boolean tableIfExists,
       final boolean columnIfExists,
-      final String comment) {
+      final @Nullable String comment) {
     super(requireNonNull(location, "location is null"));
     this.table = requireNonNull(table, "table is null");
     this.field = requireNonNull(field, "field is null");
