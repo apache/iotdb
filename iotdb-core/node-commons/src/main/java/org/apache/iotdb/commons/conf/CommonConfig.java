@@ -282,13 +282,13 @@ public class CommonConfig {
   private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000L; // 3 minutes
   private long twoStageAggregateSenderEndPointsCacheInMs = 3 * 60 * 1000L; // 3 minutes
 
-  private float subscriptionCacheMemoryUsagePercentage = 0.2F;
-
   private boolean pipeEventReferenceTrackingEnabled = true;
   private long pipeEventReferenceEliminateIntervalSeconds = 10;
 
-  private int subscriptionSubtaskExecutorMaxThreadNum =
-      Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
+  private float subscriptionCacheMemoryUsagePercentage = 0.2F;
+
+  private int subscriptionSubtaskExecutorMaxThreadNum = 1;
+
   private int subscriptionPrefetchTabletBatchMaxDelayInMs = 1000; // 1s
   private long subscriptionPrefetchTabletBatchMaxSizeInBytes = 16 * MB;
   private int subscriptionPrefetchTsFileBatchMaxDelayInMs = 5000; // 5s
@@ -301,7 +301,11 @@ public class CommonConfig {
   private long subscriptionReadTabletBufferSize = 8 * MB;
   private long subscriptionTsFileDeduplicationWindowSeconds = 120; // 120s
   private volatile long subscriptionCheckMemoryEnoughIntervalMs = 10L;
+
   private boolean subscriptionPrefetchEnabled = true;
+  private float subscriptionPrefetchMemoryThreshold = 0.5F;
+  private float subscriptionPrefetchMissingRateThreshold = 0.9F;
+  private int subscriptionPrefetchEventCountThreshold = 100;
 
   private long subscriptionMetaSyncerInitialSyncDelayMinutes = 3;
   private long subscriptionMetaSyncerSyncIntervalMinutes = 3;
@@ -1287,10 +1291,7 @@ public class CommonConfig {
 
   public void setSubscriptionSubtaskExecutorMaxThreadNum(
       int subscriptionSubtaskExecutorMaxThreadNum) {
-    this.subscriptionSubtaskExecutorMaxThreadNum =
-        Math.min(
-            subscriptionSubtaskExecutorMaxThreadNum,
-            Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
+    this.subscriptionSubtaskExecutorMaxThreadNum = subscriptionSubtaskExecutorMaxThreadNum;
   }
 
   public int getSubscriptionPrefetchTabletBatchMaxDelayInMs() {
@@ -1406,6 +1407,32 @@ public class CommonConfig {
 
   public void setSubscriptionPrefetchEnabled(boolean subscriptionPrefetchEnabled) {
     this.subscriptionPrefetchEnabled = subscriptionPrefetchEnabled;
+  }
+
+  public float getSubscriptionPrefetchMemoryThreshold() {
+    return subscriptionPrefetchMemoryThreshold;
+  }
+
+  public void setSubscriptionPrefetchMemoryThreshold(float subscriptionPrefetchMemoryThreshold) {
+    this.subscriptionPrefetchMemoryThreshold = subscriptionPrefetchMemoryThreshold;
+  }
+
+  public float getSubscriptionPrefetchMissingRateThreshold() {
+    return subscriptionPrefetchMissingRateThreshold;
+  }
+
+  public void setSubscriptionPrefetchMissingRateThreshold(
+      float subscriptionPrefetchMissingRateThreshold) {
+    this.subscriptionPrefetchMissingRateThreshold = subscriptionPrefetchMissingRateThreshold;
+  }
+
+  public int getSubscriptionPrefetchEventCountThreshold() {
+    return subscriptionPrefetchEventCountThreshold;
+  }
+
+  public void setSubscriptionPrefetchEventCountThreshold(
+      int subscriptionPrefetchEventCountThreshold) {
+    this.subscriptionPrefetchEventCountThreshold = subscriptionPrefetchEventCountThreshold;
   }
 
   public long getSubscriptionMetaSyncerInitialSyncDelayMinutes() {

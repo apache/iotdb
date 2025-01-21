@@ -650,9 +650,7 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_subtask_executor_max_thread_num",
                 Integer.toString(config.getSubscriptionSubtaskExecutorMaxThreadNum()))));
-    if (config.getSubscriptionSubtaskExecutorMaxThreadNum() <= 0) {
-      config.setSubscriptionSubtaskExecutorMaxThreadNum(5);
-    }
+
     config.setSubscriptionPrefetchTabletBatchMaxDelayInMs(
         Integer.parseInt(
             properties.getProperty(
@@ -713,11 +711,27 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_check_memory_enough_interval_ms",
                 String.valueOf(config.getSubscriptionCheckMemoryEnoughIntervalMs()))));
+
     config.setSubscriptionPrefetchEnabled(
         Boolean.parseBoolean(
             properties.getProperty(
                 "subscription_prefetch_enabled",
                 String.valueOf(config.getSubscriptionPrefetchEnabled()))));
+    config.setSubscriptionPrefetchMemoryThreshold(
+        Float.parseFloat(
+            properties.getProperty(
+                "subscription_prefetch_memory_threshold",
+                String.valueOf(config.getSubscriptionPrefetchMemoryThreshold()))));
+    config.setSubscriptionPrefetchMissingRateThreshold(
+        Float.parseFloat(
+            properties.getProperty(
+                "subscription_prefetch_missing_rate_threshold",
+                String.valueOf(config.getSubscriptionPrefetchMemoryThreshold()))));
+    config.setSubscriptionPrefetchEventCountThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_prefetch_event_count_threshold",
+                String.valueOf(config.getSubscriptionPrefetchEventCountThreshold()))));
 
     config.setSubscriptionMetaSyncerInitialSyncDelayMinutes(
         Long.parseLong(

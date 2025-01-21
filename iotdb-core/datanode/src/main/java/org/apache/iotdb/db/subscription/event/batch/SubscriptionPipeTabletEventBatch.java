@@ -63,7 +63,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   private final Meter rawTabletInsertionEventSizeEstimator;
 
   private volatile List<EnrichedEvent> iteratedEnrichedEvents;
-  private final AtomicInteger referenceCount;
+  private final AtomicInteger referenceCount = new AtomicInteger();
 
   private static final long ITERATED_COUNT_REPORT_FREQ =
       30000; // based on the full parse of a 128MB tsfile estimate
@@ -81,8 +81,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     this.rawTabletInsertionEventSizeEstimator =
         new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
 
-    this.iteratedEnrichedEvents = new ArrayList<>();
-    this.referenceCount = new AtomicInteger();
+    resetForIteration();
   }
 
   /////////////////////////////// ack & clean ///////////////////////////////
@@ -117,9 +116,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     }
     enrichedEvents.clear();
 
-    currentEnrichedEventsIterator = null;
-    currentTabletInsertionEventsIterator = null;
-    currentTsFileInsertionEvent = null;
+    resetForIteration();
   }
 
   /////////////////////////////// utility ///////////////////////////////
@@ -157,7 +154,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
   @Override
   protected List<SubscriptionEvent> generateSubscriptionEvents() {
-    resetIterator();
+    resetForIteration();
     return Collections.singletonList(new SubscriptionEvent(this, prefetchingQueue));
   }
 
@@ -211,12 +208,15 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
   /////////////////////////////// iterator ///////////////////////////////
 
-  public void resetIterator() {
+  public void resetForIteration() {
     currentEnrichedEventsIterator = enrichedEvents.iterator();
     currentTabletInsertionEventsIterator = null;
     currentTsFileInsertionEvent = null;
 
-    iteratedEnrichedEvents.clear();
+    iteratedEnrichedEvents = new ArrayList<>();
+    referenceCount.set(0);
+
+    iteratedCount.set(0);
   }
 
   @Override

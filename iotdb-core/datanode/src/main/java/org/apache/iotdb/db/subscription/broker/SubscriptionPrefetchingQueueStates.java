@@ -41,10 +41,12 @@ public class SubscriptionPrefetchingQueueStates {
 
   private static final double EPSILON = 1e-6;
 
-  // TODO: config
-  private static final double PREFETCH_MEMORY_THRESHOLD = 0.6;
-  private static final double MISSING_RATE_THRESHOLD = 0.9;
-  private static final int PREFETCHED_EVENT_COUNT_CONTROL_PARAMETER = 100;
+  private static final double PREFETCH_MEMORY_THRESHOLD =
+      SubscriptionConfig.getInstance().getSubscriptionPrefetchMemoryThreshold();
+  private static final double MISSING_RATE_THRESHOLD =
+      SubscriptionConfig.getInstance().getSubscriptionPrefetchMissingRateThreshold();
+  private static final int PREFETCHED_EVENT_COUNT_CONTROL_PARAMETER =
+      SubscriptionConfig.getInstance().getSubscriptionPrefetchEventCountThreshold();
 
   private final SubscriptionPrefetchingQueue prefetchingQueue;
 

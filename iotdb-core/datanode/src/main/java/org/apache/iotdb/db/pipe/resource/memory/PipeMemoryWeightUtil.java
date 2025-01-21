@@ -116,6 +116,12 @@ public class PipeMemoryWeightUtil {
    * @return left is the row count of tablet, right is the memory cost of tablet in bytes
    */
   public static Pair<Integer, Integer> calculateTabletRowCountAndMemory(BatchData batchData) {
+    Pair<Integer, Integer> pair = calculateBatchDataTotalSizeInBytesAndSchemaCount(batchData);
+    return calculateTabletRowCountAndMemoryBySize(pair.getLeft(), pair.getRight());
+  }
+
+  private static Pair<Integer, Integer> calculateBatchDataTotalSizeInBytesAndSchemaCount(
+      BatchData batchData) {
     int totalSizeInBytes = 0;
     int schemaCount = 0;
 
@@ -151,7 +157,7 @@ public class PipeMemoryWeightUtil {
       }
     }
 
-    return calculateTabletRowCountAndMemoryBySize(totalSizeInBytes, schemaCount);
+    return new Pair<>(totalSizeInBytes, schemaCount);
   }
 
   /**
@@ -189,6 +195,11 @@ public class PipeMemoryWeightUtil {
       return new Pair<>(
           rowNumber, PipeConfig.getInstance().getPipeDataStructureTabletSizeInBytes());
     }
+  }
+
+  public static int calculateBatchDataRamBytesUsed(BatchData batchData) {
+    Pair<Integer, Integer> pair = calculateBatchDataTotalSizeInBytesAndSchemaCount(batchData);
+    return batchData.length() * pair.getLeft();
   }
 
   public static long calculateTabletSizeInBytes(Tablet tablet) {

@@ -25,7 +25,6 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
-import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
@@ -116,7 +115,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
 
     // should not reset the iterator of batch when init
     // TODO: avoid completely rewinding the iterator
-    batch.resetIterator();
+    batch.resetForIteration();
     init();
   }
 
@@ -171,7 +170,8 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
     final List<Tablet> currentTablets = new ArrayList<>();
     long currentBufferSize = 0;
 
-    waitForResourceEnough4Parsing(SubscriptionAgent.receiver().remainingMs());
+    // TODO: TBD.
+    // waitForResourceEnough4Parsing(SubscriptionAgent.receiver().remainingMs());
 
     while (batch.hasNext()) {
       final List<Tablet> tablets = batch.next();
