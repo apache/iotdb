@@ -231,6 +231,11 @@ public class InformationSchemaContentSupplierFactory {
       columnBuilders[3].writeBinary(
           new Binary(
               TableNodeStatus.values()[info.getState()].toString(), TSFileConfig.STRING_CHARSET));
+      if (info.isSetComment()) {
+        columnBuilders[4].writeBinary(new Binary(info.getComment(), TSFileConfig.STRING_CHARSET));
+      } else {
+        columnBuilders[4].appendNull();
+      }
       resultBuilder.declarePosition();
     }
 
