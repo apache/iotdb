@@ -681,8 +681,11 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
                 context.getSession().getUserName(),
                 new QualifiedObjectName(finalDatabase, tableName));
             return true;
-          } catch (final AccessControlException e) {
-            return false;
+          } catch (final RuntimeException e) {
+            if (e.getCause() instanceof IoTDBException) {
+              return false;
+            }
+            throw e;
           }
         };
     return node.isDetails()
