@@ -43,6 +43,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
@@ -61,7 +62,8 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   private final Meter insertNodeTabletInsertionEventSizeEstimator;
   private final Meter rawTabletInsertionEventSizeEstimator;
 
-  private final List<EnrichedEvent> iteratedEnrichedEvents = new ArrayList<>();
+  private volatile List<EnrichedEvent> iteratedEnrichedEvents;
+  private final AtomicInteger referenceCount;
 
   private static final long ITERATED_COUNT_REPORT_FREQ =
       30000; // based on the full parse of a 128MB tsfile estimate
@@ -78,23 +80,30 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
         new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
     this.rawTabletInsertionEventSizeEstimator =
         new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
+
+    this.iteratedEnrichedEvents = new ArrayList<>();
+    this.referenceCount = new AtomicInteger();
   }
 
   /////////////////////////////// ack & clean ///////////////////////////////
 
+  public List<EnrichedEvent> moveIteratedEnrichedEvents() {
+    final List<EnrichedEvent> result = Collections.unmodifiableList(iteratedEnrichedEvents);
+    iteratedEnrichedEvents = new ArrayList<>();
+    referenceCount.incrementAndGet();
+    return result;
+  }
+
   @Override
   public synchronized void ack() {
-    // only decrease the reference count of iterated events
-    for (final EnrichedEvent enrichedEvent : iteratedEnrichedEvents) {
-      enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
-    }
-    iteratedEnrichedEvents.clear();
+    referenceCount.decrementAndGet();
+    // do nothing for iterated enriched events, see SubscriptionPipeTabletBatchEvents
   }
 
   @Override
   public synchronized void cleanUp() {
-    // do nothing if it has next
-    if (hasNext()) {
+    // do nothing if it has next or still referenced by unacked response
+    if (hasNext() || referenceCount.get() != 0) {
       return;
     }
 

@@ -19,19 +19,34 @@
 
 package org.apache.iotdb.db.subscription.event.pipe;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
+
+import java.util.List;
 
 public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents {
 
   private final SubscriptionPipeTabletEventBatch batch;
+  private final List<EnrichedEvent> iteratedEnrichedEvents;
 
   public SubscriptionPipeTabletBatchEvents(final SubscriptionPipeTabletEventBatch batch) {
     this.batch = batch;
+    this.iteratedEnrichedEvents = batch.moveIteratedEnrichedEvents();
   }
 
   @Override
   public void ack() {
     batch.ack();
+
+    // only decrease the reference count of iterated events
+    for (final EnrichedEvent enrichedEvent : iteratedEnrichedEvents) {
+      if (enrichedEvent instanceof PipeTsFileInsertionEvent) {
+        // close data container in tsfile event
+        ((PipeTsFileInsertionEvent) enrichedEvent).close();
+      }
+      enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
+    }
   }
 
   @Override
@@ -50,6 +65,6 @@ public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents
 
   @Override
   public int getPipeEventCount() {
-    return batch.getPipeEventCount();
+    return iteratedEnrichedEvents.size();
   }
 }
