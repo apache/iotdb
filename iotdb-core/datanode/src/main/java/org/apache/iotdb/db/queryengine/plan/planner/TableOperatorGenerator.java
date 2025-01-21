@@ -1501,7 +1501,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           !node.getFilter().isPresent() || node.getFilter().get().equals(TRUE_LITERAL),
           String.format(
               "Filter is not supported in %s. Filter is %s.",
-              node.getJoinType(), node.getFilter().get()));
+              node.getJoinType(), node.getFilter().map(Expression::toString).orElse("null")));
       checkArgument(
           !node.getCriteria().isEmpty(),
           String.format("%s must have join keys.", node.getJoinType()));
