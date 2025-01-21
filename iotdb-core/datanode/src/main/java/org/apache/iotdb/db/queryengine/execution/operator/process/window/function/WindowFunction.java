@@ -24,7 +24,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.partiti
 import org.apache.tsfile.block.column.ColumnBuilder;
 
 public interface WindowFunction {
-  void reset();
+  default void reset() {}
 
   void transform(
       Partition partition,

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate;
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAccumulator;
 
 import com.google.common.primitives.Ints;
@@ -69,7 +70,8 @@ public class WindowAggregator {
       arguments = new Column[] {new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, count)};
     }
 
-    accumulator.addInput(arguments);
+    AggregationMask mask = AggregationMask.createSelectAll(count);
+    accumulator.addInput(arguments, mask);
   }
 
   public void removeInput(Partition partition) {

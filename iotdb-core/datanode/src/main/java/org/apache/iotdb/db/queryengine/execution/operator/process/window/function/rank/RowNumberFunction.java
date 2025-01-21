@@ -26,9 +26,6 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 
 public class RowNumberFunction implements WindowFunction {
   @Override
-  public void reset() {}
-
-  @Override
   public void transform(
       Partition partition,
       ColumnBuilder builder,

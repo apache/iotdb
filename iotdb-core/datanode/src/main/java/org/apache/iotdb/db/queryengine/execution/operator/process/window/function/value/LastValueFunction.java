@@ -34,9 +34,6 @@ public class LastValueFunction implements WindowFunction {
   }
 
   @Override
-  public void reset() {}
-
-  @Override
   public void transform(
       Partition partition,
       ColumnBuilder builder,

@@ -38,9 +38,6 @@ public class LagFunction implements WindowFunction {
   }
 
   @Override
-  public void reset() {}
-
-  @Override
   public void transform(
       Partition partition,
       ColumnBuilder builder,
