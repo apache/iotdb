@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.treemodel.basic;
+package org.apache.iotdb.pipe.it.treemodel.dataprocess;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -27,6 +27,7 @@ import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2BasicFunctionTreeModel;
+import org.apache.iotdb.itbase.category.MultiClusterIT2DataProcessTreeModel;
 import org.apache.iotdb.pipe.it.treemodel.AbstractPipeDualAutoIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -52,7 +53,7 @@ import java.util.function.Consumer;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2BasicFunctionTreeModel.class})
+@Category({MultiClusterIT2DataProcessTreeModel.class})
 public class IoTDBPipeNullValueIT extends AbstractPipeDualAutoIT {
 
   // Test dimensions:
