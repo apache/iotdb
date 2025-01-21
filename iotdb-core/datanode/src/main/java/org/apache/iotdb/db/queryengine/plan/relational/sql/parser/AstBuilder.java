@@ -159,8 +159,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
@@ -182,6 +184,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
@@ -1178,11 +1182,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitRepairDataStatement(RelationalSqlParser.RepairDataStatementContext ctx) {
-    return super.visitRepairDataStatement(ctx);
-  }
-
-  @Override
   public Node visitSetSystemStatusStatement(
       RelationalSqlParser.SetSystemStatusStatementContext ctx) {
     return super.visitSetSystemStatusStatement(ctx);
@@ -1291,6 +1290,23 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     setConfigurationStatement.setNodeId(nodeId);
     setConfigurationStatement.setConfigItems(configItems);
     return new SetConfiguration(setConfigurationStatement, null);
+  }
+
+  @Override
+  public Node visitStartRepairDataStatement(
+      RelationalSqlParser.StartRepairDataStatementContext ctx) {
+    StartRepairDataStatement startRepairDataStatement =
+        new StartRepairDataStatement(StatementType.START_REPAIR_DATA);
+    startRepairDataStatement.setOnCluster(ctx.localOrClusterMode().LOCAL() == null);
+    return new StartRepairData(startRepairDataStatement, null);
+  }
+
+  @Override
+  public Node visitStopRepairDataStatement(RelationalSqlParser.StopRepairDataStatementContext ctx) {
+    StopRepairDataStatement stopRepairDataStatement =
+        new StopRepairDataStatement(StatementType.STOP_REPAIR_DATA);
+    stopRepairDataStatement.setOnCluster(ctx.localOrClusterMode().LOCAL() == null);
+    return new StopRepairData(stopRepairDataStatement, null);
   }
 
   @Override

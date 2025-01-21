@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.table;
 
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -35,6 +36,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.concurrent.GuardedBy;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -136,7 +138,7 @@ public class DataNodeTableCache implements ITableCache {
                   return v;
                 }
               });
-      LOGGER.info("Pre-update table {}.{} successfully", database, table);
+      LOGGER.info("Pre-update table {}.{} successfully", database, table.getTableName());
     } finally {
       readWriteLock.writeLock().unlock();
     }
@@ -171,12 +173,20 @@ public class DataNodeTableCache implements ITableCache {
     database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
-      databaseTableMap
-          .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
-          .put(tableName, preUpdateTableMap.get(database).get(tableName).getLeft());
+      final TsTable newTable = preUpdateTableMap.get(database).get(tableName).getLeft();
+      final TsTable oldTable =
+          databaseTableMap
+              .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
+              .put(tableName, newTable);
+      if (LOGGER.isInfoEnabled()) {
+        LOGGER.info(
+            "Commit-update table {}.{} successfully, {}",
+            database,
+            tableName,
+            compareTable(oldTable, newTable));
+      }
       removeTableFromPreUpdateMap(database, tableName);
       version.incrementAndGet();
-      LOGGER.info("Commit-update table {}.{} successfully", database, tableName);
     } finally {
       readWriteLock.writeLock().unlock();
     }
@@ -340,11 +350,14 @@ public class DataNodeTableCache implements ITableCache {
                     }
                     isUpdated.set(true);
                     LOGGER.info(
-                        "Update table {}.{} by table fetch, table in preUpdateMap: {}, new table: {}",
+                        "Update table {}.{} by table fetch, {}",
                         database,
-                        existingPair.getLeft().getTableName(),
-                        existingPair.getLeft(),
-                        tsTable);
+                        tableName,
+                        compareTable(
+                            existingPair.getLeft(),
+                            databaseTableMap
+                                .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
+                                .get(tableName)));
                     existingPair.setLeft(null);
                     if (Objects.nonNull(tsTable)) {
                       databaseTableMap
@@ -362,6 +375,83 @@ public class DataNodeTableCache implements ITableCache {
     } finally {
       readWriteLock.writeLock().unlock();
     }
+  }
+
+  private String compareTable(final TsTable oldTable, final TsTable newTable) {
+    if (Objects.isNull(oldTable)) {
+      return "Added table: " + newTable;
+    }
+    if (Objects.isNull(newTable)) {
+      return "Removed table: " + oldTable;
+    }
+    boolean modified = false;
+    final StringBuilder builder = new StringBuilder("Table name: " + oldTable.getTableName());
+    final Map<String, String> oldProps =
+        Objects.nonNull(oldTable.getProps())
+            ? new HashMap<>(oldTable.getProps())
+            : Collections.emptyMap();
+    final Map<String, String> newProps =
+        Objects.nonNull(newTable.getProps())
+            ? new HashMap<>(newTable.getProps())
+            : Collections.emptyMap();
+    if (!Objects.equals(oldProps, newProps)) {
+      oldProps
+          .keySet()
+          .removeIf(
+              key -> {
+                if (Objects.equals(oldProps.get(key), newProps.get(key))) {
+                  newProps.remove(key);
+                  return true;
+                }
+                return false;
+              });
+      if (!oldProps.isEmpty()) {
+        builder.append(" Removed props: ").append(oldProps);
+      }
+      if (!newProps.isEmpty()) {
+        builder.append(" Added props: ").append(newProps);
+      }
+      modified = true;
+    }
+
+    final List<TsTableColumnSchema> oldSchema =
+        oldTable.getColumnList().stream()
+            .filter(
+                columnSchema ->
+                    Objects.isNull(newTable.getColumnSchema(columnSchema.getColumnName()))
+                        || !Objects.equals(
+                            columnSchema.getColumnCategory(),
+                            newTable
+                                .getColumnSchema(columnSchema.getColumnName())
+                                .getColumnCategory())
+                        || !Objects.equals(
+                            columnSchema.getProps(),
+                            newTable.getColumnSchema(columnSchema.getColumnName()).getProps()))
+            .collect(Collectors.toList());
+    final List<TsTableColumnSchema> newSchema =
+        newTable.getColumnList().stream()
+            .filter(
+                columnSchema ->
+                    Objects.isNull(oldTable.getColumnSchema(columnSchema.getColumnName()))
+                        || !Objects.equals(
+                            columnSchema.getColumnCategory(),
+                            oldTable
+                                .getColumnSchema(columnSchema.getColumnName())
+                                .getColumnCategory())
+                        || !Objects.equals(
+                            columnSchema.getProps(),
+                            oldTable.getColumnSchema(columnSchema.getColumnName()).getProps()))
+            .collect(Collectors.toList());
+
+    if (!oldSchema.isEmpty()) {
+      builder.append(" Removed column(s): ").append(oldSchema);
+      modified = true;
+    }
+    if (!newSchema.isEmpty()) {
+      builder.append(" Added column(s): ").append(newSchema);
+      modified = true;
+    }
+    return modified ? builder.toString() : " Not modified";
   }
 
   private TsTable getTableInCache(final String database, final String tableName) {

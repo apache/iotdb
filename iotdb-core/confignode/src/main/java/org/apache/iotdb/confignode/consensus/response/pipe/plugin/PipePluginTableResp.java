@@ -21,6 +21,8 @@ package org.apache.iotdb.confignode.consensus.response.pipe.plugin;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.consensus.common.DataSet;
 
@@ -28,15 +30,22 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class PipePluginTableResp implements DataSet {
 
   private final TSStatus status;
   private final List<PipePluginMeta> allPipePluginMeta;
+  private final Map<String, Visibility> pipePluginNameToVisibilityMap;
 
-  public PipePluginTableResp(TSStatus status, List<PipePluginMeta> allPipePluginMeta) {
+  public PipePluginTableResp(
+      TSStatus status,
+      List<PipePluginMeta> allPipePluginMeta,
+      Map<String, Visibility> pipePluginNameToVisibilityMap) {
     this.status = status;
     this.allPipePluginMeta = allPipePluginMeta;
+    this.pipePluginNameToVisibilityMap = pipePluginNameToVisibilityMap;
   }
 
   public TGetPipePluginTableResp convertToThriftResponse() throws IOException {
@@ -45,5 +54,21 @@ public class PipePluginTableResp implements DataSet {
       pipePluginInformationByteBuffers.add(pipePluginMeta.serialize());
     }
     return new TGetPipePluginTableResp(status, pipePluginInformationByteBuffers);
+  }
+
+  public PipePluginTableResp filter(final boolean isTableModel) {
+    return new PipePluginTableResp(
+        status,
+        allPipePluginMeta.stream()
+            .filter(
+                meta -> {
+                  final String pipePluginName = meta.getPluginName();
+                  final Visibility visibility =
+                      pipePluginNameToVisibilityMap.getOrDefault(
+                          pipePluginName, Visibility.TREE_ONLY);
+                  return VisibilityUtils.isCompatible(visibility, isTableModel);
+                })
+            .collect(Collectors.toList()),
+        pipePluginNameToVisibilityMap);
   }
 }

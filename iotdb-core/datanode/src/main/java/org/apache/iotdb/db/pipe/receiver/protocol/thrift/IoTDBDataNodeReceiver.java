@@ -859,7 +859,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return shouldConvertDataTypeOnTypeMismatch
             && ((statement instanceof InsertBaseStatement
                     && ((InsertBaseStatement) statement).hasFailedMeasurements())
-                || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+                || (status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+                    && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()))
         ? (isTableModelStatement
             ? statement
                 .accept(
@@ -950,7 +951,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final ListenableFuture<ConfigTaskResult> future =
           task.execute(ClusterConfigTaskExecutor.getInstance());
       final ConfigTaskResult result = future.get();
-      if (result.getStatusCode().getStatusCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      final int statusCode = result.getStatusCode().getStatusCode();
+      if (statusCode != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && statusCode != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
         throw new PipeException(
             String.format(
                 "Auto create database failed: %s, status code: %s",
