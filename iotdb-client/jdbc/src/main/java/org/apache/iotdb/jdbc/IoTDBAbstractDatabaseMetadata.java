@@ -836,7 +836,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public String getIdentifierQuoteString() throws SQLException {
-    return "' or \"";
+    return "";
   }
 
   @Override
