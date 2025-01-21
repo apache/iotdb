@@ -69,6 +69,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Tr
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformCorrelatedGroupedAggregationWithProjection;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformCorrelatedGroupedAggregationWithoutProjection;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformCorrelatedJoinToJoin;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformExistsApplyToCorrelatedJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformUncorrelatedInPredicateSubqueryToSemiJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.TransformUncorrelatedSubqueryToJoin;
 
@@ -219,6 +220,10 @@ public class LogicalOptimizeFactory {
         new UnaliasSymbolReferences(plannerContext.getMetadata()),
         columnPruningOptimizer,
         inlineProjectionLimitFiltersOptimizer,
+        new IterativeOptimizer(
+            plannerContext,
+            ruleStats,
+            ImmutableSet.of(new TransformExistsApplyToCorrelatedJoin(plannerContext))),
         new TransformQuantifiedComparisonApplyToCorrelatedJoin(metadata),
         new IterativeOptimizer(
             plannerContext,
