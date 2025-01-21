@@ -152,8 +152,6 @@ public class IoTDBConfig {
   /** Memory allocated for the write process */
   private MemoryManager storageEngineMemoryManager;
 
-  private long allocateMemoryForStorageEngine = Runtime.getRuntime().maxMemory() * 3 / 10;
-
   /** Memory allocated for the read process */
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
 
@@ -624,8 +622,6 @@ public class IoTDBConfig {
 
   /** Memory allocated proportion for time partition info */
   private MemoryManager timePartitionInfoMemoryManager;
-
-  private long allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 8 / 10 / 20;
 
   /**
    * If true, we will estimate each query's possible memory footprint before executing it and deny
