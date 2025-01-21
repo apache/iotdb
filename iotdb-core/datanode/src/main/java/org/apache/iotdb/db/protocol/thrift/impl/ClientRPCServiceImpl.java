@@ -1190,8 +1190,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     String statementType = null;
     Throwable t = null;
     IQueryExecution queryExecution = null;
+    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    Long statementId = req.isSetStatementId() ? req.getStatementId() : null;
     try {
-      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
         finished = true;
         return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
@@ -1242,7 +1243,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long executionTime = COORDINATOR.getTotalExecutionTime(req.queryId);
         CommonUtils.addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        COORDINATOR.cleanupQueryExecution(req.queryId, req, t);
+        clearUp(clientSession, statementId, req.queryId, req, t);
       }
 
       SESSION_MANAGER.updateIdleTime();
@@ -1798,8 +1799,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     String statementType = null;
     Throwable t = null;
     IQueryExecution queryExecution = null;
+    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    Long statementId = req.isSetStatementId() ? req.getStatementId() : null;
     try {
-      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
         finished = true;
         return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
@@ -1850,7 +1852,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long executionTime = COORDINATOR.getTotalExecutionTime(req.queryId);
         CommonUtils.addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        COORDINATOR.cleanupQueryExecution(req.queryId, req, t);
+        clearUp(clientSession, statementId, req.queryId, req, t);
       }
 
       SESSION_MANAGER.updateIdleTime();
