@@ -26,7 +26,6 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2BasicFunctionTreeModel;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DataProcessTreeModel;
 import org.apache.iotdb.pipe.it.treemodel.AbstractPipeDualAutoIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
