@@ -171,10 +171,11 @@ public class Tool {
         points.add(new Point(6, 0));
 
         List<Point> points2 = new ArrayList<>();
-        points2.add(points.get(0));
-        points2.add(points.get(3));
-        points2.add(points.get(6));
-//        points2.add(points.get(5));
+//        points2.add(points.get(0));
+//        points2.add(points.get(3));
+//        points2.add(points.get(6));
+        points2.add(new Point(1,-10));
+        points2.add(new Point(3,0));
 
         double area = total_areal_displacement(points, points2, true);
         System.out.println("Total area: " + area);

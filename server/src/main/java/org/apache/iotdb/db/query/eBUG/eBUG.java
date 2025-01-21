@@ -23,6 +23,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 
+import static org.apache.iotdb.db.query.eBUG.Tool.total_areal_displacement;
 import static org.apache.iotdb.db.query.eBUG.Tool.triArea;
 
 
@@ -31,9 +32,9 @@ public class eBUG {
                                              Point pa, Point pi, Point pb) {
         // TODO 寻找最近淘汰的e个点，并且是位于pa~pb之间的
         // 性质：最近淘汰的那一个点一定是位于pa~pb之间，因为正是这个点的淘汰才使得pi的significance要更新！
-        // pi: point need significance updating
-        // pa: left adjacent non-eliminated point
-        // pb: right adjacent non-eliminated point
+        // pi: the point whose significance needs updating
+        // pa: left adjacent non-eliminated point of pi
+        // pb: right adjacent non-eliminated point of pi
         // return a list of points, containing pa,p,pb and points between pa&pa from the e most recently eliminated points,
         // order by time in ascending order
         List<Point> res = new ArrayList<>();
@@ -53,9 +54,13 @@ public class eBUG {
         return res;
     }
 
-    public static void buildEffectiveArea(Polyline lineToSimplify, List<Point> results, int e) {
-        results.clear();
-        results.addAll(lineToSimplify.getVertices()); // TODO debug
+    public static List<Point> buildEffectiveArea(Polyline lineToSimplify, int e, boolean debug) {
+        if (e < 0) {
+            throw new IllegalArgumentException("Parameter e must be non-negative.");
+        }
+
+        List<Point> results = lineToSimplify.getVertices(); // 浅复制
+//        results.addAll(lineToSimplify.getVertices()); // TODO debug
 
         // TODO 需要一个东西来记录最近淘汰的点依次是谁
         int[] recentEliminated = new int[e]; // init 0 points to the first point, skipped in findEliminated
@@ -63,7 +68,7 @@ public class eBUG {
 
         int total = lineToSimplify.size();
         if (total < 3) {
-            return; // 不足 3 个点无法形成三角形
+            return results; // 不足 3 个点无法形成三角形
         }
 
         int nTriangles = total - 2;
@@ -84,7 +89,7 @@ public class eBUG {
 
         // 使用优先队列构建 minHeap
         PriorityQueue<Triangle> triangleHeap = new PriorityQueue<>(Comparator.comparingDouble(t -> t.area));
-        Collections.addAll(triangleHeap, triangles); // complexity TODO
+        Collections.addAll(triangleHeap, triangles); // complexity TODO O(n) or O(nlogn)?
 
         double previousEA = -1;
         while (!triangleHeap.isEmpty()) {
@@ -95,27 +100,33 @@ public class eBUG {
             // 如果该三角形已经被删除，跳过. Avoid using heap.remove(x) as it is O(n) complexity
             // 而且除了heap里，已经没有其他节点会和它关联了，所有的connections关系已经迁移到新的角色替代节点上
             if (tri.isDeleted) {
+                if (debug) {
+                    System.out.println(">>>bottom-up, remaining " + triangleHeap.size() + " triangles (including those marked for removal)");
+                }
                 continue;
             }
 
             // 真正的淘汰点
-            //TODO 记录最近淘汰的点，注意不要重复记录也就是在上面执行之后再确认淘汰
-//            popOrder.add(tri.indices[1]);
-            System.out.println("eliminate " + lineToSimplify.get(tri.indices[1]));
-            if (e > 0) {
-                recentEliminated[recentEliminatedIdx] = tri.indices[1];
-                recentEliminatedIdx = (recentEliminatedIdx + 1) % e; // 0~e-1
+            // 记录最近淘汰的点，注意不要重复记录也就是在上面执行之后再确认淘汰
+            if (debug) {
+                System.out.println("(1) eliminate " + lineToSimplify.get(tri.indices[1]));
             }
-            System.out.println(Arrays.toString(recentEliminated));
+            if (e > 0) { // otherwise e=0
+                recentEliminated[recentEliminatedIdx] = tri.indices[1];
+                recentEliminatedIdx = (recentEliminatedIdx + 1) % e; // 0~e-1 circulate
+            }
+            if (debug) {
+                System.out.println("the e most recently eliminated points:" + Arrays.toString(recentEliminated));
+            }
 
             // 更新当前点的重要性（z 轴存储effective area,这是一个单调增的指标）
             if (tri.area > previousEA) {
                 previousEA = tri.area;
             }
-            results.get(tri.indices[1]).z = previousEA;
-            //      System.out.println(tri.indices[1] + "," + previousEA);
-
-//            System.out.println(Arrays.toString(tri.indices) + "," + previousEA);
+            results.get(tri.indices[1]).z = previousEA; // dominated significance
+            if (debug) {
+                System.out.println(Arrays.toString(tri.indices) + ", Dominated Sig=" + previousEA);
+            }
 
             // 更新相邻三角形
             if (tri.prev != null) {
@@ -126,26 +137,37 @@ public class eBUG {
                 tri.prev.markDeleted(); // O(1) 这个点标记为废掉，前后关联都砍断，但是不remove因为那太耗时，只要heap poll到它就跳过就可以
 
                 Triangle newPre = new Triangle(tri.prev); // deep copy and inherit connection
-//                tri.prev = newPre; // replace TODO can omit, because already done by new Triangle(tri.prev)
+//                tri.prev = newPre; // can omit, because already done by new Triangle(tri.prev)
 
                 // 2. 处理pi被淘汰引起tri.prev被更新的事情
                 // 前一个三角形连到后一个三角形
                 tri.prev.next = tri.next; // ATTENTION!!!: 这里的tri.next后面可能会因为处理旧的tri.next被标记删除的事情被换掉！到时候要重新赋值！
                 tri.prev.indices[2] = tri.indices[2];
 
-                // TODO e parameter
+                // e parameter
                 List<Point> pointsForSig = findEliminated(lineToSimplify, recentEliminated,
                         lineToSimplify.get(tri.prev.indices[0]),
                         lineToSimplify.get(tri.prev.indices[1]),
-                        lineToSimplify.get(tri.prev.indices[2]));
-                System.out.println("for updating Point on the left " + lineToSimplify.get(tri.prev.indices[1]));
-                for (Point point : pointsForSig) {
-                    System.out.println(point);
+                        lineToSimplify.get(tri.prev.indices[2])); // TODO complexity ?
+                if (debug) {
+                    System.out.println("(2) update point on the left " + lineToSimplify.get(tri.prev.indices[1]));
+                    for (Point point : pointsForSig) {
+                        System.out.println("\t" + point);
+                    }
                 }
+                List<Point> baseLine = new ArrayList<>();
+                baseLine.add(pointsForSig.get(0));
+                baseLine.add(pointsForSig.get(pointsForSig.size() - 1)); // 直接连接左右两边最近的未被淘汰的点
+                double sig = total_areal_displacement(pointsForSig, baseLine, false);
+                tri.prev.area = sig;
 
-                tri.prev.area = triArea(lineToSimplify.get(tri.prev.indices[0]),
-                        lineToSimplify.get(tri.prev.indices[1]),
-                        lineToSimplify.get(tri.prev.indices[2]));
+                if (debug) {
+                    System.out.println("sig=" + sig);
+                    double tmpTri = triArea(lineToSimplify.get(tri.prev.indices[0]),
+                            lineToSimplify.get(tri.prev.indices[1]),
+                            lineToSimplify.get(tri.prev.indices[2]));
+                    System.out.println("\t" + "tri=" + tmpTri + ", " + ((tmpTri > sig) ? "over-estimated" : "equal/less-estimated"));
+                }
 
                 // 重新加入堆
                 // 在 Java 的 PriorityQueue 中，修改元素的属性不会自动更新堆的顺序
@@ -161,7 +183,7 @@ public class eBUG {
                 tri.next.markDeleted(); // O(1) 这个点标记为废掉，前后关联都砍断，但是不remove因为那太耗时，只有poll到它就跳过就可以
 
                 Triangle newNext = new Triangle(tri.next); // deep copy and inherit connection
-//                tri.next = newNext; // replace TODO can omit, because already done by new Triangle(tri.prev)
+//                tri.next = newNext; // omit, because already done by new Triangle(tri.prev)
 
                 if (tri.prev != null) {
                     tri.prev.next = tri.next; // ATTENTION!!!: 这里的tri.next已经被换掉！所以之前的要重新赋值！
@@ -171,27 +193,41 @@ public class eBUG {
                 tri.next.prev = tri.prev; // 注意此时tri.prev已经是替代后的节点，tri.next也是，从而被标记为废点的前后关联真正砍断
                 tri.next.indices[0] = tri.indices[0];
 
-                // TODO e parameter
+                // e parameter
                 List<Point> pointsForSig = findEliminated(lineToSimplify, recentEliminated,
                         lineToSimplify.get(tri.next.indices[0]),
                         lineToSimplify.get(tri.next.indices[1]),
-                        lineToSimplify.get(tri.next.indices[2]));
-                System.out.println("for updating Point on the right " + lineToSimplify.get(tri.next.indices[1]));
-                for (Point point : pointsForSig) {
-                    System.out.println(point);
+                        lineToSimplify.get(tri.next.indices[2])); // TODO complexity
+                if (debug) {
+                    System.out.println("(2) updating point on the right " + lineToSimplify.get(tri.next.indices[1]));
+                    for (Point point : pointsForSig) {
+                        System.out.println("\t" + point);
+                    }
                 }
+                List<Point> baseLine = new ArrayList<>();
+                baseLine.add(pointsForSig.get(0));
+                baseLine.add(pointsForSig.get(pointsForSig.size() - 1)); // 直接连接左右两边最近的未被淘汰的点
+                double sig = total_areal_displacement(pointsForSig, baseLine, false);
+                tri.next.area = sig;
 
-                tri.next.area = triArea(lineToSimplify.get(tri.next.indices[0]),
-                        lineToSimplify.get(tri.next.indices[1]),
-                        lineToSimplify.get(tri.next.indices[2]));
+                if (debug) {
+                    System.out.println("sig=" + sig);
+                    double tmpTri = triArea(lineToSimplify.get(tri.next.indices[0]),
+                            lineToSimplify.get(tri.next.indices[1]),
+                            lineToSimplify.get(tri.next.indices[2]));
+                    System.out.println("\t" + "tri=" + tmpTri + ", " + ((tmpTri > sig) ? "over-estimated" : "equal/less-estimated"));
+                }
 
                 // 重新加入堆
                 // 在 Java 的 PriorityQueue 中，修改元素的属性不会自动更新堆的顺序
                 // 所以必须通过add 来显式重新插入修改后的元素
                 triangleHeap.add(tri.next); // 注意加入的是一个新的对象isDeleted=false
             }
-            System.out.println(">>>");
+            if (debug) {
+                System.out.println(">>>bottom-up, remaining " + triangleHeap.size() + " triangles (including those marked for removal)");
+            }
         }
+        return results; // 注意这就是lineToSimplify.getVertices()
     }
 
     public static void main(String[] args) {
@@ -228,11 +264,11 @@ public class eBUG {
         }
 
         System.out.println("---------------------------------");
-        List<Point> results = new ArrayList<>();
+//        List<Point> results = new ArrayList<>();
         // 计算运行时间
-        int eParam = 3;
+        int eParam = 1;
         long startTime = System.currentTimeMillis();
-        buildEffectiveArea(polyline, results, eParam);
+        List<Point> results = buildEffectiveArea(polyline, eParam, false);
         // 输出结果
         long endTime = System.currentTimeMillis();
         System.out.println("Time taken to reduce points: " + (endTime - startTime) + "ms");

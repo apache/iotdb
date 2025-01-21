@@ -12,8 +12,10 @@ public class Polyline {
     }
 
     public List<Point> getVertices() {
-        return new ArrayList<>(vertices);
+//        return new ArrayList<>(vertices);
+        return vertices;
     }
+
 
     public int size() {
         return vertices.size();
