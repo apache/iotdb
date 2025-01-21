@@ -35,6 +35,7 @@ import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
+import org.apache.iotdb.pipe.it.tablemodel.TableModelUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -80,6 +81,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
+        .setDataReplicationFactor(2)
+        .setSchemaReplicationFactor(3)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
@@ -90,6 +93,101 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
 
     senderEnv.initClusterEnvironment(3, 3, 180);
     receiverEnv.initClusterEnvironment(3, 3, 180);
+  }
+
+  @Test
+  public void testMachineDowntimeAsync() {
+    testMachineDowntime("iotdb-thrift-connector");
+  }
+
+  @Test
+  public void testMachineDowntimeSync() {
+    testMachineDowntime("iotdb-thrift-sync-connector");
+  }
+
+  private void testMachineDowntime(String sink) {
+    StringBuilder a = new StringBuilder();
+    for (DataNodeWrapper nodeWrapper : receiverEnv.getDataNodeWrapperList()) {
+      a.append(nodeWrapper.getIp()).append(":").append(nodeWrapper.getPort());
+      a.append(",");
+    }
+    a.deleteCharAt(a.length() - 1);
+
+    TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+    TableModelUtils.insertData("test", "test", 0, 1, senderEnv);
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "insert into root.db.d1(time, s1) values (2010-01-01T10:00:00+08:00, 1)",
+              "insert into root.db.d1(time, s1) values (2010-01-02T10:00:00+08:00, 2)",
+              "flush"))) {
+        return;
+      }
+
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("extractor", "iotdb-extractor");
+      extractorAttributes.put("capture.tree", "true");
+
+      processorAttributes.put("processor", "do-nothing-processor");
+
+      connectorAttributes.put("connector", sink);
+      connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.node-urls", a.toString());
+
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      receiverEnv.getDataNodeWrapper(0).stop();
+
+      // Ensure that the kill -9 operation is completed
+      Thread.sleep(5000);
+      for (DataNodeWrapper nodeWrapper : receiverEnv.getDataNodeWrapperList()) {
+        if (!nodeWrapper.isAlive()) {
+          continue;
+        }
+        TestUtils.assertDataEventuallyOnEnv(
+            receiverEnv,
+            nodeWrapper,
+            "select count(*) from root.**",
+            "count(root.db.d1.s1),",
+            Collections.singleton("2,"),
+            600);
+      }
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList("insert into root.db.d1(time, s1) values (now(), 3)", "flush"))) {
+        return;
+      }
+
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+
+    for (DataNodeWrapper nodeWrapper : receiverEnv.getDataNodeWrapperList()) {
+      if (!nodeWrapper.isAlive()) {
+        continue;
+      }
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          nodeWrapper,
+          "select count(*) from root.**",
+          "count(root.db.d1.s1),",
+          Collections.singleton("3,"),
+          600);
+      return;
+    }
   }
 
   @Test

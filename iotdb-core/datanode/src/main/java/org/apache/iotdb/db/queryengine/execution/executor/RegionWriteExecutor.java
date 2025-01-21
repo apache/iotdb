@@ -148,9 +148,14 @@ public class RegionWriteExecutor {
   @SuppressWarnings("squid:S1181")
   public RegionExecutionResult execute(ConsensusGroupId groupId, PlanNode planNode) {
     try {
-      WritePlanNodeExecutionContext context =
-          new WritePlanNodeExecutionContext(groupId, regionManager.getRegionLock(groupId));
-      return planNode.accept(executionVisitor, context);
+      ReentrantReadWriteLock lock = regionManager.getRegionLock(groupId);
+      if (lock == null) {
+        return RegionExecutionResult.create(
+            false,
+            "Failed to get the lock of the region because the region is not existed.",
+            RpcUtils.getStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP));
+      }
+      return planNode.accept(executionVisitor, new WritePlanNodeExecutionContext(groupId, lock));
     } catch (Throwable e) {
       LOGGER.warn(e.getMessage(), e);
       return RegionExecutionResult.create(

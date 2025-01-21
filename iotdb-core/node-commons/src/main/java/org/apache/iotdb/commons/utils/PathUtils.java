@@ -216,7 +216,7 @@ public class PathUtils {
 
   public static String unQualifyDatabaseName(String databaseName) {
     if (databaseName != null && databaseName.startsWith("root.")) {
-      databaseName = databaseName.substring(5);
+      databaseName = databaseName.substring(5).toLowerCase();
     }
     return databaseName;
   }

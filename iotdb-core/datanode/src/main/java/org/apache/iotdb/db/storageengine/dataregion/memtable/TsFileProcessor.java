@@ -93,6 +93,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -1652,6 +1653,9 @@ public class TsFileProcessor {
         // Truncate broken metadata
         try {
           writer.reset();
+        } catch (ClosedChannelException e1) {
+          // the file is closed
+          break;
         } catch (IOException e1) {
           logger.error(
               "{}: {} truncate corrupted data meets error",

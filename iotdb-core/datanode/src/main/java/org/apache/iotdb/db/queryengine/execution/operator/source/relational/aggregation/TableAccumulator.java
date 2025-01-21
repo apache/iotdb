@@ -28,7 +28,7 @@ public interface TableAccumulator {
 
   TableAccumulator copy();
 
-  void addInput(Column[] arguments);
+  void addInput(Column[] arguments, AggregationMask mask);
 
   default void removeInput(Column[] arguments) {
     throw new UnsupportedOperationException("This Accumulator does not support removing inputs!");

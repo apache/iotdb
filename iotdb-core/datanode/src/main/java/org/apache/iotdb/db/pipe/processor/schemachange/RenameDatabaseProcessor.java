@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
+import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -36,6 +37,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENG
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_RENAME_DATABASE_NEW_DB_NAME;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
+@TableModel
 public class RenameDatabaseProcessor implements PipeProcessor {
 
   // Currently this processor is only used for table model.
@@ -45,9 +47,10 @@ public class RenameDatabaseProcessor implements PipeProcessor {
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     validator.validateRequiredAttribute(PROCESSOR_RENAME_DATABASE_NEW_DB_NAME);
-    newDatabaseName = validator.getParameters().getString(PROCESSOR_RENAME_DATABASE_NEW_DB_NAME);
+
     try {
-      TableConfigTaskVisitor.validateDatabaseName(newDatabaseName);
+      TableConfigTaskVisitor.validateDatabaseName(
+          validator.getParameters().getString(PROCESSOR_RENAME_DATABASE_NEW_DB_NAME));
     } catch (final Exception e) {
       throw new PipeException(
           String.format(
@@ -64,7 +67,9 @@ public class RenameDatabaseProcessor implements PipeProcessor {
   @Override
   public void customize(PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration)
       throws Exception {
-    // Do nothing
+    // In order to ensure that the database data is not case sensitive, it is necessary to convert
+    // it to lowercase.
+    newDatabaseName = parameters.getString(PROCESSOR_RENAME_DATABASE_NEW_DB_NAME).toLowerCase();
   }
 
   @Override

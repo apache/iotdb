@@ -24,12 +24,15 @@ import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
 import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -68,6 +71,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
   private final Metadata metadata;
 
   private final LoadTsFileTableSchemaCache schemaCache;
+  private final AccessControl accessControl = Coordinator.getInstance().getAccessControl();
 
   public LoadTsFileToTableModelAnalyzer(
       LoadTsFileStatement loadTsFileStatement,
@@ -123,6 +127,8 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
       // can be reused when constructing tsfile resource
       final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =
           new TsFileSequenceReaderTimeseriesMetadataIterator(reader, true, 1);
+      final Map<String, org.apache.tsfile.file.metadata.TableSchema> tableSchemaMap =
+          reader.getTableSchemaMap();
 
       // check if the tsfile is empty
       if (!timeseriesMetadataIterator.hasNext()) {
@@ -130,8 +136,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
       }
 
       // check whether the tsfile is table-model or not
-      if (Objects.isNull(reader.readFileMetadata().getTableSchemaMap())
-          || reader.readFileMetadata().getTableSchemaMap().isEmpty()) {
+      if (Objects.isNull(tableSchemaMap) || tableSchemaMap.isEmpty()) {
         throw new SemanticException("Attempted to load a tree-model TsFile into table-model.");
       }
 
@@ -149,9 +154,12 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
       schemaCache.setCurrentModificationsAndTimeIndex(tsFileResource, reader);
 
       for (Map.Entry<String, org.apache.tsfile.file.metadata.TableSchema> name2Schema :
-          reader.readFileMetadata().getTableSchemaMap().entrySet()) {
+          tableSchemaMap.entrySet()) {
         final TableSchema fileSchema =
             TableSchema.fromTsFileTableSchema(name2Schema.getKey(), name2Schema.getValue());
+        accessControl.checkCanInsertIntoTable(
+            context.getSession().getUserName(),
+            new QualifiedObjectName(database, fileSchema.getTableName()));
         schemaCache.createTable(fileSchema, context, metadata);
       }
 
@@ -193,7 +201,7 @@ public class LoadTsFileToTableModelAnalyzer extends LoadTsFileAnalyzer {
     if (DataNodeTableCache.getInstance().isDatabaseExist(database)) {
       return;
     }
-
+    accessControl.checkCanCreateDatabase(context.getSession().getUserName(), database);
     final CreateDBTask task =
         new CreateDBTask(new TDatabaseSchema(database).setIsTableModel(true), true);
     try {

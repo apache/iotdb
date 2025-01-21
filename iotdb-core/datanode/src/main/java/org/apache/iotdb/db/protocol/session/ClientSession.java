@@ -84,9 +84,23 @@ public class ClientSession extends IClientSession {
 
   @Override
   public void removeQueryId(Long statementId, Long queryId) {
-    Set<Long> queryIds = statementIdToQueryId.get(statementId);
-    if (queryIds != null) {
-      queryIds.remove(queryId);
+    removeQueryId(statementIdToQueryId, statementId, queryId);
+  }
+
+  public static void removeQueryId(
+      Map<Long, Set<Long>> statementIdToQueryId, Long statementId, Long queryId) {
+    if (statementId == null) {
+      statementIdToQueryId.forEach(
+          (k, v) -> {
+            if (v != null) {
+              v.remove(queryId);
+            }
+          });
+    } else {
+      Set<Long> queryIds = statementIdToQueryId.get(statementId);
+      if (queryIds != null) {
+        queryIds.remove(queryId);
+      }
     }
   }
 }
