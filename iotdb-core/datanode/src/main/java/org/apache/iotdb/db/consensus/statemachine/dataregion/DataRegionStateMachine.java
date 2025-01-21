@@ -147,6 +147,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   protected PlanNode grabPlanNode(IndexedConsensusRequest indexedRequest) {
     List<SearchNode> searchNodes = new ArrayList<>();
+    PlanNode onlyOne = null;
     for (IConsensusRequest req : indexedRequest.getRequests()) {
       // PlanNode in IndexedConsensusRequest should always be InsertNode
       PlanNode planNode = getPlanNode(req);
@@ -154,9 +155,27 @@ public class DataRegionStateMachine extends BaseStateMachine {
         ((SearchNode) planNode).setSearchIndex(indexedRequest.getSearchIndex());
         searchNodes.add((SearchNode) planNode);
       } else {
-        logger.warn("Unexpected plan node type {}", planNode.getClass());
+        logger.warn("Unexpected PlanNode type {}, which is not SearchNode", planNode.getClass());
+        if (onlyOne == null) {
+          onlyOne = planNode;
+        } else {
+          throw new IllegalArgumentException(
+              String.format(
+                  "There are two types of PlanNode in one request: %s and %s",
+                  onlyOne.getClass(), planNode.getClass()));
+        }
       }
     }
+    if (onlyOne != null) {
+      if (!searchNodes.isEmpty()) {
+        throw new IllegalArgumentException(
+            String.format(
+                "There are two types of PlanNode in one request: %s and SearchNode",
+                onlyOne.getClass()));
+      }
+      return onlyOne;
+    }
+    // searchNodes should never be empty here
     return searchNodes.get(0).merge(searchNodes);
   }
 
