@@ -64,7 +64,7 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
         .getCommonConfig()
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setDataReplicationFactor(2) // 对方
+        .setDataReplicationFactor(2)
         .setSchemaReplicationFactor(3);
 
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
