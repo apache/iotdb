@@ -39,7 +39,7 @@ public abstract class AbstractGreatestLeastColumnTransformer extends MultiColumn
       final int index = i;
       if (childrenColumns.stream().allMatch(column -> column.isNull(index))) {
         builder.appendNull();
-        break;
+        continue;
       }
       transform(builder, childrenColumns, index);
     }
@@ -52,9 +52,9 @@ public abstract class AbstractGreatestLeastColumnTransformer extends MultiColumn
       final int index = i;
       if (selection[index] || childrenColumns.stream().allMatch(column -> column.isNull(index))) {
         builder.appendNull();
-      } else {
-        transform(builder, childrenColumns, index);
+        continue;
       }
+      transform(builder, childrenColumns, index);
     }
   }
 
