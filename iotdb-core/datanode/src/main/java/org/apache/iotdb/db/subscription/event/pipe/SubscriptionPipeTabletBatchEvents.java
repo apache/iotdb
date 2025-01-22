@@ -73,17 +73,17 @@ public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents
 
   private static String formatEnrichedEvents(
       final List<EnrichedEvent> enrichedEvents, final int threshold) {
-    if (Objects.isNull(enrichedEvents) || enrichedEvents.isEmpty()) {
-      return "";
+    if (Objects.isNull(enrichedEvents)) {
+      return "[]";
     }
     final List<String> eventMessageList =
         enrichedEvents.stream()
             .limit(threshold)
             .map(EnrichedEvent::coreReportMessage)
             .collect(Collectors.toList());
-    if (eventMessageList.size() > threshold) {
+    if (enrichedEvents.size() > threshold) {
       eventMessageList.add(
-          String.format("omit the remaining %s event(s)...", eventMessageList.size() - threshold));
+          String.format("omit the remaining %s event(s)...", enrichedEvents.size() - threshold));
     }
     return eventMessageList.toString();
   }

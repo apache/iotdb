@@ -47,7 +47,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -68,7 +68,7 @@ public abstract class SubscriptionPrefetchingQueue {
   private final AtomicLong commitIdGenerator;
 
   /** A queue containing a series of prefetched pollable {@link SubscriptionEvent}. */
-  protected final LinkedBlockingDeque<SubscriptionEvent> prefetchingQueue;
+  protected final PriorityBlockingQueue<SubscriptionEvent> prefetchingQueue;
 
   /**
    * A map that tracks in-flight {@link SubscriptionEvent}, keyed by consumer id and commit context.
@@ -112,7 +112,7 @@ public abstract class SubscriptionPrefetchingQueue {
     this.inputPendingQueue = inputPendingQueue;
     this.commitIdGenerator = commitIdGenerator;
 
-    this.prefetchingQueue = new LinkedBlockingDeque<>();
+    this.prefetchingQueue = new PriorityBlockingQueue<>();
     this.inFlightEvents = new ConcurrentHashMap<>();
     this.batches = new SubscriptionPipeEventBatches(this, maxDelayInMs, maxBatchSizeInBytes);
 
@@ -288,13 +288,18 @@ public abstract class SubscriptionPrefetchingQueue {
     }
   }
 
-  public void addFirst(final SubscriptionEvent event) {
-    states.markDisorderCause();
-    prefetchingQueue.addFirst(event);
-  }
+  public void prefetchEvent(@NonNull final SubscriptionEvent thisEvent) {
+    final SubscriptionEvent thatEvent = prefetchingQueue.peek();
+    if (Objects.nonNull(thatEvent)) {
+      if (thisEvent.compareTo(thatEvent) < 0) {
+        // disorder causes:
+        // 1. prefetch nacked event
+        // 2. late cross-event of dataset payload
+        states.markDisorderCause();
+      }
+    }
 
-  public void addLast(final SubscriptionEvent event) {
-    prefetchingQueue.addLast(event);
+    prefetchingQueue.add(thisEvent);
   }
 
   /**
@@ -382,14 +387,14 @@ public abstract class SubscriptionPrefetchingQueue {
    * @return {@code true} if there are subscription events prefetched.
    */
   protected boolean onEvent(final TabletInsertionEvent event) {
-    return batches.onEvent((EnrichedEvent) event, this::addLast);
+    return batches.onEvent((EnrichedEvent) event, this::prefetchEvent);
   }
 
   /**
    * @return {@code true} if there are subscription events prefetched.
    */
   protected boolean onEvent() {
-    return batches.onEvent(this::addLast);
+    return batches.onEvent(this::prefetchEvent);
   }
 
   /////////////////////////////// commit ///////////////////////////////
@@ -484,9 +489,6 @@ public abstract class SubscriptionPrefetchingQueue {
    */
   public boolean nackInternal(
       final String consumerId, final SubscriptionCommitContext commitContext) {
-    // nack can lead to potential disorder consumption
-    states.markDisorderCause();
-
     final AtomicBoolean nacked = new AtomicBoolean(false);
     inFlightEvents.compute(
         new Pair<>(consumerId, commitContext),
@@ -664,12 +666,12 @@ public abstract class SubscriptionPrefetchingQueue {
       (ev) -> {
         if (ev.eagerlyPollable()) {
           ev.nack(); // now pollable (the nack operation here is actually unnecessary)
-          addLast(ev);
+          prefetchEvent(ev);
           // no need to log warn for eagerly pollable event
           return null; // remove this entry
         } else if (ev.pollable()) {
           ev.nack(); // now pollable
-          addLast(ev);
+          prefetchEvent(ev);
           LOGGER.warn(
               "Subscription: SubscriptionPrefetchingQueue {} recycle event {} from in flight events, nack and enqueue it to prefetching queue",
               this,

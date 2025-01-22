@@ -64,9 +64,11 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       SubscriptionConfig.getInstance().getSubscriptionPrefetchTabletBatchMaxSizeInBytes();
 
   private final SubscriptionPipeTabletEventBatch batch;
-  private final SubscriptionCommitContext commitContext;
   private final SubscriptionPrefetchingQueue queue;
   private final SubscriptionPipeTabletBatchEvents events;
+
+  private final SubscriptionCommitContext commitContext;
+  private final SubscriptionCommitContext rootCommitContext;
 
   private volatile int totalTablets;
   private final AtomicInteger nextOffset = new AtomicInteger(0);
@@ -77,13 +79,16 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
 
   public SubscriptionEventTabletResponse(
       final SubscriptionPipeTabletEventBatch batch,
-      final SubscriptionCommitContext commitContext,
       final SubscriptionPrefetchingQueue queue,
-      final SubscriptionPipeTabletBatchEvents events) {
+      final SubscriptionPipeTabletBatchEvents events,
+      final SubscriptionCommitContext commitContext,
+      final SubscriptionCommitContext rootCommitContext) {
     this.batch = batch;
-    this.commitContext = commitContext;
     this.queue = queue;
     this.events = events;
+
+    this.commitContext = commitContext;
+    this.rootCommitContext = rootCommitContext;
 
     init();
   }
@@ -164,8 +169,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
       throws InterruptedException, PipeRuntimeOutOfMemoryCriticalException {
     if (availableForNext) {
       // generate next subscription event with the same batch
-      // add first to prefetching queue to provide best-effort ordering
-      queue.addFirst(new SubscriptionEvent(batch, queue));
+      queue.prefetchEvent(new SubscriptionEvent(batch, queue, rootCommitContext));
       // frozen iterated enriched events
       transportIterationSnapshot();
       // return last response of this subscription event

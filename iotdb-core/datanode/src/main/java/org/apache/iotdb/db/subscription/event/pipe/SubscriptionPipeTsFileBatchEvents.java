@@ -56,10 +56,7 @@ public class SubscriptionPipeTsFileBatchEvents implements SubscriptionPipeEvents
 
   @Override
   public String toString() {
-    return toStringHelper(this)
-        .add("batch", batch)
-        .add("referenceCount", referenceCount)
-        .toString();
+    return toStringHelper(this).add("batch", batch).add("count", count).toString();
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////

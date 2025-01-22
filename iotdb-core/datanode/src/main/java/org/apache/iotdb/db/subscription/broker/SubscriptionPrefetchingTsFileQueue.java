@@ -231,7 +231,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
             new SubscriptionPipeTsFilePlainEvent((PipeTsFileInsertionEvent) event),
             ((PipeTsFileInsertionEvent) event).getTsFile(),
             commitContext);
-    super.addLast(ev);
+    super.prefetchEvent(ev);
     return true;
   }
 

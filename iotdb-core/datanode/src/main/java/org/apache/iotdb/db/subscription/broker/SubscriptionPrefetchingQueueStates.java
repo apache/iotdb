@@ -30,6 +30,8 @@ import com.codahale.metrics.Meter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 /**
  * The {@link SubscriptionPrefetchingQueueStates} manages the state of a {@link
  * SubscriptionPrefetchingQueue}. It determines whether prefetching should occur based on memory
@@ -162,14 +164,11 @@ public class SubscriptionPrefetchingQueueStates {
 
   @Override
   public String toString() {
-    return "PollPrefetchStates{lastPollRequestTimestamp="
-        + lastPollRequestTimestamp
-        + ", pollRate="
-        + pollRate()
-        + ", missingRate="
-        + missingRate()
-        + ", disorderCause="
-        + disorderCauseCounter.getCount()
-        + "}";
+    return toStringHelper(this)
+        .add("lastPollRequestTimestamp", lastPollRequestTimestamp)
+        .add("pollRate", pollRate())
+        .add("missingRate", missingRate())
+        .add("disorderCause", disorderCauseCounter.getCount())
+        .toString();
   }
 }

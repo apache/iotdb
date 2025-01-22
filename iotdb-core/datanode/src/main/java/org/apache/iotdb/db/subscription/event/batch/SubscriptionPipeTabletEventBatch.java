@@ -41,7 +41,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -311,28 +310,5 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
           enrichedEvent);
       return null;
     }
-  }
-
-  /////////////////////////////// stringify ///////////////////////////////
-
-  @Override
-  public String toString() {
-    return "SubscriptionPipeTabletEventBatch" + this.coreReportMessage();
-  }
-
-  @Override
-  protected Map<String, String> coreReportMessage() {
-    final Map<String, String> coreReportMessage = super.coreReportMessage();
-    coreReportMessage.put("firstEventProcessingTime", String.valueOf(firstEventProcessingTime));
-    coreReportMessage.put("totalBufferSize", String.valueOf(totalBufferSize));
-    coreReportMessage.put(
-        "estimatedInsertNodeTabletInsertionEventSize",
-        String.valueOf(getEstimatedInsertNodeTabletInsertionEventSize()));
-    coreReportMessage.put(
-        "estimatedRawTabletInsertionEventSize",
-        String.valueOf(getEstimatedRawTabletInsertionEventSize()));
-    coreReportMessage.put("referenceCount", String.valueOf(referenceCount));
-    coreReportMessage.put("iteratedCount", String.valueOf(iteratedCount));
-    return coreReportMessage;
   }
 }
