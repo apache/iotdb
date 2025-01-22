@@ -183,7 +183,6 @@ public class IoTDBTableAggregationFunctionDistinctIT {
           "d01,2024-09-24T06:15:30.000Z,2024-09-24T06:15:35.000Z,2024-09-24T06:15:30.000Z,2024-09-24T06:15:35.000Z,2024-09-24T06:15:50.000Z,2024-09-24T06:15:30.000Z,2024-09-24T06:15:30.000Z,2024-09-24T06:15:35.000Z,",
         };
 
-    // test GroupByDistinctAccumulator
     tableResultSetEqualTest(
         "select device_id, min_by(distinct time, s1), min_by(distinct time, s2), min_by(distinct time, s3), min_by(distinct time, s4), min_by(distinct time, s5), min_by(distinct time, s6), min_by(distinct time, s9), min_by(distinct time, s10) "
             + "from table1 group by 1 order by 1",
