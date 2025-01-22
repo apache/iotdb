@@ -25,7 +25,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
@@ -62,7 +62,7 @@ public class IoTDBTestPushConsumeDataSetIT extends AbstractSubscriptionRegressio
   private static final String topicName = "topic_TestPushConsumeDataSet";
   private static List<IMeasurementSchema> schemaList = new ArrayList<>();
   private static final String pattern = "root.**";
-  private static SubscriptionPushConsumer consumer;
+  private static SubscriptionTreePushConsumer consumer;
   private static final String device = database + ".d_push_dataset";
 
   @Override
@@ -120,7 +120,7 @@ public class IoTDBTestPushConsumeDataSetIT extends AbstractSubscriptionRegressio
 
     final AtomicInteger rowCount = new AtomicInteger(0);
     consumer =
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .nodeUrls(Collections.singletonList(SRC_HOST + ":" + SRC_PORT))
             .consumerId("root_dataset_consumer")
             .consumerGroupId("push_format")

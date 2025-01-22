@@ -62,7 +62,7 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
 
   private Collection<TRegionReplicaSet> replicaSets;
 
-  private String databaseName;
+  private final String databaseName;
 
   public RelationalDeleteDataNode(final PlanNodeId id, final Delete delete) {
     super(id);
@@ -307,5 +307,26 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
 
   public String getDatabaseName() {
     return databaseName;
+  }
+
+  @Override
+  public SearchNode merge(List<SearchNode> searchNodes) {
+    List<RelationalDeleteDataNode> relationalDeleteDataNodeList =
+        searchNodes.stream()
+            .map(searchNode -> (RelationalDeleteDataNode) searchNode)
+            .collect(Collectors.toList());
+    if (relationalDeleteDataNodeList.stream()
+        .anyMatch(
+            relationalDeleteDataNode ->
+                !this.getDatabaseName().equals(relationalDeleteDataNode.getDatabaseName()))) {
+      throw new IllegalArgumentException("All database name need to be same");
+    }
+    List<TableDeletionEntry> allTableDeletionEntries =
+        relationalDeleteDataNodeList.stream()
+            .map(RelationalDeleteDataNode::getModEntries)
+            .flatMap(Collection::stream)
+            .collect(Collectors.toList());
+    return new RelationalDeleteDataNode(
+        this.getPlanNodeId(), allTableDeletionEntries, databaseName);
   }
 }
