@@ -90,8 +90,6 @@ public enum ThreadName {
   CONFIG_NODE_LOAD_PUBLISHER("Cluster-LoadStatistics-Publisher"),
   // -------------------------- ConfigNode-RegionManagement --------------------------
   CONFIG_NODE_REGION_MAINTAINER("IoTDB-Region-Maintainer"),
-  // -------------------------- ConfigNode-PartitionManagement --------------------------
-  CONFIG_NODE_PARTITION_CLEANER("IoTDB-Partition-Cleaner"),
   // -------------------------- ConfigNode-Recover --------------------------
   CONFIG_NODE_RECOVER("ConfigNode-Manager-Recovery"),
   // -------------------------- ConfigNode-Procedure ------------------------
