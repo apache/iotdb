@@ -45,7 +45,7 @@ public class MarkDistinctHash {
   }
 
   public long getEstimatedSize() {
-    return groupByHash.getEstimatedSize();
+    return groupByHash.getEstimatedSize() + Long.BYTES;
   }
 
   public Column markDistinctRows(Column[] columns) {
