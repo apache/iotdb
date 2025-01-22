@@ -74,7 +74,7 @@ public class MemAlignedChunkLoaderTest {
     // Mock getTimeStatisticsList & getValuesStatisticsList
     List<Statistics<? extends Serializable>> timeStatitsticsList = new ArrayList<>();
     Statistics<? extends Serializable> timeStatistics = Mockito.mock(TimeStatistics.class);
-    Mockito.when(timeStatistics.getCount()).thenReturn(2L);
+    Mockito.when(timeStatistics.getCount()).thenReturn(2);
     timeStatitsticsList.add(timeStatistics);
     Mockito.when(chunk.getTimeStatisticsList()).thenReturn(timeStatitsticsList);
     Mockito.when(chunk.getMaxNumberOfPointsInPage()).thenReturn(1000);

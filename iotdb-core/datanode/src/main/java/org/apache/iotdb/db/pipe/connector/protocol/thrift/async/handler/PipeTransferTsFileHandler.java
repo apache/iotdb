@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeAsyncClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
@@ -238,7 +239,11 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
         // Delete current file when using tsFile as batch
         if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
-          FileUtils.delete(currentFile);
+          RetryUtils.retryOnException(
+              () -> {
+                FileUtils.delete(currentFile);
+                return null;
+              });
         }
       } catch (final IOException e) {
         LOGGER.warn(
@@ -341,7 +346,11 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
       // Delete current file when using tsFile as batch
       if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
-        FileUtils.delete(currentFile);
+        RetryUtils.retryOnException(
+            () -> {
+              FileUtils.delete(currentFile);
+              return null;
+            });
       }
     } catch (final IOException e) {
       LOGGER.warn("Failed to close file reader or delete tsFile when failed to transfer file.", e);

@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -45,7 +44,7 @@ import java.util.Map;
 import java.util.Objects;
 
 public class AlterTimeSeriesNode extends WritePlanNode {
-  private PartialPath path;
+  private MeasurementPath path;
   private AlterType alterType;
 
   /**
@@ -68,7 +67,7 @@ public class AlterTimeSeriesNode extends WritePlanNode {
 
   public AlterTimeSeriesNode(
       PlanNodeId id,
-      PartialPath path,
+      MeasurementPath path,
       AlterType alterType,
       Map<String, String> alterMap,
       String alias,
@@ -85,11 +84,11 @@ public class AlterTimeSeriesNode extends WritePlanNode {
     this.isAlterView = isAlterView;
   }
 
-  public PartialPath getPath() {
+  public MeasurementPath getPath() {
     return path;
   }
 
-  public void setPath(PartialPath path) {
+  public void setPath(MeasurementPath path) {
     this.path = path;
   }
 

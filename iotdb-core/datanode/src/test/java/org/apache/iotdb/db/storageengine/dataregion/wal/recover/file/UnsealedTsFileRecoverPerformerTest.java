@@ -48,7 +48,6 @@ import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
-import org.apache.tsfile.file.metadata.TsFileMetadata;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -212,8 +211,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     }
     // check file content
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
-    TsFileMetadata metadata = reader.readFileMetadata();
-    Map<String, TableSchema> tableSchemaMap = reader.readFileMetadata().getTableSchemaMap();
+    Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
     assertEquals(1, tableSchemaMap.size());
     assertTrue(tableSchemaMap.containsKey("table1"));
     reader.close();

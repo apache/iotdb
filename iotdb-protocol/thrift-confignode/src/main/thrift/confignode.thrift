@@ -312,6 +312,21 @@ struct TMigrateRegionReq {
     3: required i32 toId
 }
 
+struct TReconstructRegionReq {
+    1: required list<i32> regionIds
+    2: required i32 dataNodeId
+}
+
+struct TExtendRegionReq {
+    1: required i32 regionId
+    2: required i32 dataNodeId
+}
+
+struct TRemoveRegionReq {
+    1: required i32 regionId
+    2: required i32 dataNodeId
+}
+
 // Authorize
 struct TAuthorizerReq {
   1: required i32 authorType
@@ -706,12 +721,17 @@ struct TCreatePipePluginReq {
 struct TDropPipePluginReq {
   1: required string pluginName
   2: optional bool ifExistsCondition
+  3: optional bool isTableModel
 }
 
 // Get PipePlugin table from config node
 struct TGetPipePluginTableResp {
   1: required common.TSStatus status
   2: required list<binary> allPipePluginMeta
+}
+
+struct TShowPipePluginReq {
+  1: optional bool isTableModel
 }
 
 // Pipe
@@ -751,11 +771,23 @@ struct TAlterPipeReq {
     6: optional map<string, string> extractorAttributes
     7: optional bool isReplaceAllExtractorAttributes
     8: optional bool ifExistsCondition
+    9: optional bool isTableModel
+}
+
+struct TStartPipeReq {
+    1: required string pipeName
+    2: optional bool isTableModel
+}
+
+struct TStopPipeReq {
+    1: required string pipeName
+    2: optional bool isTableModel
 }
 
 struct TDropPipeReq {
     1: required string pipeName
     2: optional bool ifExistsCondition
+    3: optional bool isTableModel
 }
 
 // Deprecated, restored for compatibility
@@ -768,6 +800,7 @@ struct TPipeSinkInfo {
 struct TShowPipeReq {
   1: optional string pipeName
   2: optional bool whereClause
+  3: optional bool isTableModel
 }
 
 struct TShowPipeResp {
@@ -1071,10 +1104,25 @@ struct TShowTableResp {
    2: optional list<TTableInfo> tableInfoList
 }
 
+struct TShowTable4InformationSchemaResp {
+   1: required common.TSStatus status
+   2: optional map<string, list<TTableInfo>> databaseTableInfoMap
+}
+
 struct TDescTableResp {
    1: required common.TSStatus status
    2: optional binary tableInfo
    3: optional set<string> preDeletedColumns
+}
+
+struct TDescTable4InformationSchemaResp {
+   1: required common.TSStatus status
+   2: optional map<string, map<string, TTableColumnInfo>> tableColumnInfoMap
+}
+
+struct TTableColumnInfo {
+   1: required binary tableInfo
+   2: optional set<string> preDeletedColumns
 }
 
 struct TFetchTableResp {
@@ -1494,6 +1542,11 @@ service IConfigNodeRPCService {
   TGetPipePluginTableResp getPipePluginTable();
 
   /**
+   * Return the pipe plugin table
+   */
+  TGetPipePluginTableResp getPipePluginTableExtended(TShowPipePluginReq req);
+
+  /**
    * Return the pipe plugin jar list of the plugin name list
    */
   TGetJarInListResp getPipePluginJar(TGetJarInListReq req)
@@ -1547,11 +1600,17 @@ service IConfigNodeRPCService {
   /** Migrate a region replica from one dataNode to another */
   common.TSStatus migrateRegion(TMigrateRegionReq req)
 
+  common.TSStatus reconstructRegion(TReconstructRegionReq req)
+
+  common.TSStatus extendRegion(TExtendRegionReq req)
+
+  common.TSStatus removeRegion(TRemoveRegionReq req)
+
   /** Kill query */
   common.TSStatus killQuery(string queryId, i32 dataNodeId)
 
-  /** Get all DataNodeLocations of Running DataNodes */
-  TGetDataNodeLocationsResp getRunningDataNodeLocations()
+  /** Get all DataNodeLocations of Readable DataNodes */
+  TGetDataNodeLocationsResp getReadableDataNodeLocations()
 
   // ======================================================
   // Cluster Tools
@@ -1665,8 +1724,14 @@ service IConfigNodeRPCService {
   /** Start Pipe */
   common.TSStatus startPipe(string pipeName)
 
+  /** Start Pipe */
+  common.TSStatus startPipeExtended(TStartPipeReq req)
+
   /** Stop Pipe */
   common.TSStatus stopPipe(string pipeName)
+
+  /** Stop Pipe */
+  common.TSStatus stopPipeExtended(TStopPipeReq req)
 
   /** Drop Pipe */
   common.TSStatus dropPipe(string pipeName)
@@ -1825,7 +1890,11 @@ service IConfigNodeRPCService {
 
   TShowTableResp showTables(string database, bool isDetails)
 
+  TShowTable4InformationSchemaResp showTables4InformationSchema()
+
   TDescTableResp describeTable(string database, string tableName, bool isDetails)
+
+  TDescTable4InformationSchemaResp descTables4InformationSchema()
 
   TFetchTableResp fetchTables(map<string, set<string>> fetchTableMap)
 

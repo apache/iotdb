@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
@@ -60,6 +61,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.HeadInfe
 import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.InferenceWindow;
 import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.TailInferenceWindow;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.AdditionExpression;
@@ -148,7 +150,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropTriggerStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.MigrateRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
@@ -180,6 +181,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePlug
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ExtendRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
@@ -227,6 +232,7 @@ import org.apache.iotdb.trigger.api.enums.TriggerType;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.BaseEncoding;
+import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -1912,7 +1918,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitInsertStatement(IoTDBSqlParser.InsertStatementContext ctx) {
     InsertStatement insertStatement = new InsertStatement();
-    insertStatement.setDevice(parsePrefixPath(ctx.prefixPath()));
+    try {
+      insertStatement.setDevice(
+          DataNodeDevicePathCache.getInstance().getPartialPath(ctx.prefixPath().getText()));
+    } catch (IllegalPathException e) {
+      throw new SemanticException(e);
+    }
     int timeIndex = parseInsertColumnSpec(ctx.insertColumnsSpec(), insertStatement);
     parseInsertValuesSpec(ctx.insertValuesSpec(), insertStatement, timeIndex);
     insertStatement.setAligned(ctx.ALIGNED() != null);
@@ -4175,6 +4186,29 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         Integer.parseInt(ctx.regionId.getText()),
         Integer.parseInt(ctx.fromId.getText()),
         Integer.parseInt(ctx.toId.getText()));
+  }
+
+  @Override
+  public Statement visitReconstructRegion(IoTDBSqlParser.ReconstructRegionContext ctx) {
+    int dataNodeId = Integer.parseInt(ctx.targetDataNodeId.getText());
+    List<Integer> regionIds =
+        ctx.regionIds.stream()
+            .map(Token::getText)
+            .map(Integer::parseInt)
+            .collect(Collectors.toList());
+    return new ReconstructRegionStatement(dataNodeId, regionIds);
+  }
+
+  @Override
+  public Statement visitExtendRegion(IoTDBSqlParser.ExtendRegionContext ctx) {
+    return new ExtendRegionStatement(
+        Integer.parseInt(ctx.regionId.getText()), Integer.parseInt(ctx.targetDataNodeId.getText()));
+  }
+
+  @Override
+  public Statement visitRemoveRegion(IoTDBSqlParser.RemoveRegionContext ctx) {
+    return new RemoveRegionStatement(
+        Integer.parseInt(ctx.regionId.getText()), Integer.parseInt(ctx.targetDataNodeId.getText()));
   }
 
   @Override

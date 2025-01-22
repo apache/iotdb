@@ -704,6 +704,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             new RegionWriteExecutor()
                 .execute(
                     new DataRegionId(consensusGroupId.getId()),
+                    // Now the deletion plan may be re-collected here by pipe, resulting multiple
+                    // transfer to delete time series plan. Now just ignore.
                     req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
                         ? new PipeEnrichedDeleteDataNode(
                             new DeleteDataNode(
@@ -1497,7 +1499,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         return result.status;
       }
     } catch (Exception e) {
-      // TODO call the coordinator to release query resource
       return onQueryException(e, "\"" + executedSQL + "\". " + OperationType.EXECUTE_STATEMENT);
     } finally {
       SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
@@ -1592,7 +1593,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                         new PlanNodeId(""),
                         new TableDeletionEntry(
                             new DeletionPredicate(req.getTableName()),
-                            new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE))))
+                            new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
+                        // the request is only sent to associated region
+                        null))
                 .getStatus());
   }
 
@@ -1678,7 +1681,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                     new DataRegionId(consensusGroupId.getId()),
                     new RelationalDeleteDataNode(
                         new PlanNodeId(""),
-                        DeleteDevice.constructModEntries(req.getPatternOrModInfo())))
+                        DeleteDevice.constructModEntries(req.getPatternOrModInfo()),
+                        // the request is only sent to associated region
+                        null))
                 .getStatus());
   }
 
@@ -1733,7 +1738,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                                     req.getTableName(),
                                     new IDPredicate.NOP(),
                                     Collections.singletonList(req.getColumnName())),
-                                new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE))))
+                                new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
+                            // the request is only sent to associated region
+                            null))
                     .getStatus());
   }
 

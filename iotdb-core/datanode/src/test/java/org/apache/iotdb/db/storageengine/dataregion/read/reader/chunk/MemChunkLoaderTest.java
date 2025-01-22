@@ -91,7 +91,7 @@ public class MemChunkLoaderTest {
     Mockito.when(chunk.getChunkMetaData()).thenReturn(chunkMetadata1);
     Mockito.when(chunk.getPointReader()).thenReturn(null);
     Statistics<? extends Serializable> statistics = Mockito.mock(BooleanStatistics.class);
-    Mockito.when(statistics.getCount()).thenReturn(3L);
+    Mockito.when(statistics.getCount()).thenReturn(2);
 
     Mockito.doReturn(statistics).when(chunkMetadata1).getStatistics();
     Mockito.when(chunkMetadata1.getDataType()).thenReturn(TSDataType.BOOLEAN);
@@ -172,7 +172,7 @@ public class MemChunkLoaderTest {
     Mockito.when(chunk.getChunkMetaData()).thenReturn(chunkMetadata1);
     Mockito.when(chunk.getPointReader()).thenReturn(null);
     Statistics<? extends Serializable> statistics = Mockito.mock(IntegerStatistics.class);
-    Mockito.when(statistics.getCount()).thenReturn(2L);
+    Mockito.when(statistics.getCount()).thenReturn(2);
 
     Mockito.doReturn(statistics).when(chunkMetadata1).getStatistics();
     Mockito.when(chunkMetadata1.getDataType()).thenReturn(TSDataType.INT32);
@@ -253,7 +253,7 @@ public class MemChunkLoaderTest {
     Mockito.when(chunk.getChunkMetaData()).thenReturn(chunkMetadata1);
     Mockito.when(chunk.getPointReader()).thenReturn(null);
     Statistics<? extends Serializable> statistics = Mockito.mock(LongStatistics.class);
-    Mockito.when(statistics.getCount()).thenReturn(2L);
+    Mockito.when(statistics.getCount()).thenReturn(2);
 
     Mockito.doReturn(statistics).when(chunkMetadata1).getStatistics();
     Mockito.when(chunkMetadata1.getDataType()).thenReturn(TSDataType.INT64);
@@ -334,7 +334,7 @@ public class MemChunkLoaderTest {
     Mockito.when(chunk.getChunkMetaData()).thenReturn(chunkMetadata1);
     Mockito.when(chunk.getPointReader()).thenReturn(null);
     Statistics<? extends Serializable> statistics = Mockito.mock(FloatStatistics.class);
-    Mockito.when(statistics.getCount()).thenReturn(2L);
+    Mockito.when(statistics.getCount()).thenReturn(2);
 
     Mockito.doReturn(statistics).when(chunkMetadata1).getStatistics();
     Mockito.when(chunkMetadata1.getDataType()).thenReturn(TSDataType.FLOAT);
@@ -415,7 +415,7 @@ public class MemChunkLoaderTest {
     Mockito.when(chunk.getChunkMetaData()).thenReturn(chunkMetadata1);
     Mockito.when(chunk.getPointReader()).thenReturn(null);
     Statistics<? extends Serializable> statistics = Mockito.mock(DoubleStatistics.class);
-    Mockito.when(statistics.getCount()).thenReturn(2L);
+    Mockito.when(statistics.getCount()).thenReturn(2);
 
     Mockito.doReturn(statistics).when(chunkMetadata1).getStatistics();
     Mockito.when(chunkMetadata1.getDataType()).thenReturn(TSDataType.DOUBLE);
@@ -496,7 +496,7 @@ public class MemChunkLoaderTest {
     Mockito.when(chunk.getChunkMetaData()).thenReturn(chunkMetadata1);
     Mockito.when(chunk.getPointReader()).thenReturn(null);
     Statistics<? extends Serializable> statistics = Mockito.mock(BinaryStatistics.class);
-    Mockito.when(statistics.getCount()).thenReturn(2L);
+    Mockito.when(statistics.getCount()).thenReturn(2);
 
     Mockito.doReturn(statistics).when(chunkMetadata1).getStatistics();
     Mockito.when(chunkMetadata1.getDataType()).thenReturn(TSDataType.TEXT);

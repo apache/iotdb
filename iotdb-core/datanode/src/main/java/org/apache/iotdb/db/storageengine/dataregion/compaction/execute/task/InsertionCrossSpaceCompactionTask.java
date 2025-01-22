@@ -152,7 +152,6 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
       logger.logSourceFile(unseqFileToInsert);
       logger.logTargetFile(targetFile);
       logger.force();
-
       prepareTargetFiles();
 
       validateCompactionResult(
