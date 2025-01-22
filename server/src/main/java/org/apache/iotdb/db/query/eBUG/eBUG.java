@@ -29,56 +29,35 @@ import static org.apache.iotdb.db.query.eBUG.Tool.triArea;
 
 
 public class eBUG {
-    public static List<Point> findEliminated(Polyline lineToSimplify, int[] recentEliminated,
-                                             int pa_idx, int pi_idx, int pb_idx) {
-        //  复杂度分析 记c=b-a。
-        //  如果e<c，那么从最近淘汰的e个点里寻找位于pa~pb之间的，找到的点和pa pi pb一起按照时间戳递增排序，后面鞋带公式计算面积：O(e+eloge)
-        //  否则e>=c，直接取T[a:b]，已经排序号了，后面鞋带公式计算面积：O(c)
-
-        // 性质：最近淘汰的那一个点一定是位于pa~pb之间，因为正是这个点的淘汰才使得pi的significance要更新！
-
-        // pi: the point whose significance needs updating
+    public static List<Point> findEliminated(Polyline lineToSimplify, int pa_idx, int pb_idx) {
         // pa: left adjacent non-eliminated point of pi
         // pb: right adjacent non-eliminated point of pi
-        // return a list of points, containing pa,p,pb and points between pa&pa from the e most recently eliminated points,
-        // order by time in ascending order
+        // return a list of points, T'_max{0,k-e}[a:b] order by time in ascending order
 
-        Point pa = lineToSimplify.get(pa_idx);
-        Point pi = lineToSimplify.get(pi_idx);
-        Point pb = lineToSimplify.get(pb_idx);
+        // 性质：最近淘汰的那一个点一定是位于pa~pb之间，因为正是这个点的淘汰才使得pi的significance要更新！至于其他全局更早淘汰的点则不一定位于a:b之间
+        // pa,xxx,pi,xxx,pb
+        // when e=0，遍历点数就是3
+        // when e>0，遍历点数大于等于4、小于等于e+3
 
         List<Point> res = new ArrayList<>();
-
-        // TODO note: here may happen because e=c=0 or just 0<c<=e
-        if (recentEliminated.length >= (pb_idx - pa_idx - 2)) { // e >= the total number of eliminated points in this region
-//            System.out.println("[c=(b-a-2)]<=e, use T directly"); // worst case下, k=c
-            res = lineToSimplify.getVertices().subList(pa_idx, pb_idx + 1); // 左闭右开
-            return res; // 已经按照时间戳递增
+        Point start = lineToSimplify.get(pa_idx);
+        Point end = lineToSimplify.get(pb_idx);
+//        int cnt = 0;
+        while (start != end) { // Point类里增加prev&next指针，这样T'_max{0,k-e}里点的连接关系就有了，这样从Pa开始沿着指针，遍历点数一定不超过e+3
+            res.add(start);
+            start = start.next; // when e=0, only traversing three points pa pi pb
+//            cnt += 1;
         }
+        res.add(end);
+//        cnt += 1;
+//        System.out.println(cnt); // 3<=cnt<=e+3
 
-        // TODO note: here may happen because c>e=0 or c>e>0. the latter needs search among recentEliminated and sort by timestamp
-        // 从最近淘汰的e个点里寻找位于pa~pb之间的点，找到的有可能小于e个点
-//        System.out.println("k>=[c=(b-a-2)]>e, search among e");
-        res.add(pa); // 注意pa pi pb已经按照时间戳递增
-        res.add(pi);
-        res.add(pb);
-
-        // 包括了c>e=0的情况
-        for (int idx : recentEliminated) { // e points
-            if (idx == 0) { // init, not filled by real eliminated points yet
-                break;
-            }
-            Point p = lineToSimplify.get(idx);
-            if (p.x > pa.x && p.x < pb.x) {
-                res.add(p);
-            }
-        }
-
-        // 按照时间戳递增排序，这是为了后面计算total areal displacement需要
-        if (recentEliminated.length > 0) { // 否则e=0，不需要排序pa pi pb三个点
-            res.sort(Comparator.comparingDouble(p -> p.x)); // 按时间戳排序 这样的话时间复杂度变成e*log(e)
-        }
-
+//        for (int i = pa_idx; i <= pb_idx; i++) { // 左闭右闭
+//            Point p = lineToSimplify.get(i);
+//            if (!p.eliminated) {
+//                res.add(p);
+//            }
+//        }
         return res;
     }
 
@@ -90,8 +69,12 @@ public class eBUG {
         List<Point> results = lineToSimplify.getVertices(); // 浅复制
 
         // 用循环数组来记录最近淘汰的点
-        int[] recentEliminated = new int[e]; // init 0 points to the first point, skipped in findEliminated
-        int recentEliminatedIdx = 0;  // index in the array, circulate
+//        int[] recentEliminated = new int[e]; // init 0 points to the first point, skipped in findEliminated
+//        int recentEliminatedIdx = 0;  // index in the array, circulate
+
+        // 存储的是点的引用，这样可以修改原来序列里点的淘汰状态
+        // 存储的是距离当前最新状态的滞后的尚未施加、待施加的e个淘汰点
+        LinkedList<Point> laggedEliminatedPoints = new LinkedList<>();
 
         int total = lineToSimplify.size();
         if (total < 3) {
@@ -102,10 +85,21 @@ public class eBUG {
         Triangle[] triangles = new Triangle[nTriangles];
 
         // 创建所有三角形并计算初始面积
+//        lineToSimplify.get(0).eliminated = false; // 初始化点的状态 for eBUG usage
+        lineToSimplify.get(0).prev = null;
+        lineToSimplify.get(0).next = lineToSimplify.get(1);
+//        lineToSimplify.get(total - 1).eliminated = false; // 初始化点的状态 for eBUG usage
+        lineToSimplify.get(total - 1).next = null;
+        lineToSimplify.get(total - 1).prev = lineToSimplify.get(total - 2);
         for (int i = 1; i < total - 1; i++) {
             int index1 = i - 1, index2 = i, index3 = i + 1;
             double area = triArea(lineToSimplify.get(index1), lineToSimplify.get(index2), lineToSimplify.get(index3));
             triangles[i - 1] = new Triangle(index1, index2, index3, area);
+
+            // 初始化点的状态 for eBUG usage
+//            lineToSimplify.get(i).eliminated = false;
+            lineToSimplify.get(i).prev = lineToSimplify.get(i - 1);
+            lineToSimplify.get(i).next = lineToSimplify.get(i + 1);
         }
 
         // 设置三角形的前后关系
@@ -138,12 +132,18 @@ public class eBUG {
             if (debug) {
                 System.out.println("(1) eliminate " + lineToSimplify.get(tri.indices[1]));
             }
-            if (e > 0) { // otherwise e=0
-                recentEliminated[recentEliminatedIdx] = tri.indices[1];
-                recentEliminatedIdx = (recentEliminatedIdx + 1) % e; // 0~e-1 circulate
+            if (e > 0) {
+                if (laggedEliminatedPoints.size() == e) {
+                    // 已经有e个滞后淘汰点了，为了把最近淘汰点加入，得先把最老的淘汰点施加上去
+                    Point removedPoint = laggedEliminatedPoints.removeFirst(); // 取出最早加入的淘汰点 复杂度1
+                    removedPoint.markEliminated(); // 注意是引用，所以改的内容后面可以看到
+                }
+                laggedEliminatedPoints.addLast(lineToSimplify.get(tri.indices[1])); // 加入最新的淘汰点，滞后在这里先不施加
+            } else { // e=0 没有滞后 立即标记删除 T'_k
+                lineToSimplify.get(tri.indices[1]).markEliminated();
             }
             if (debug) {
-                System.out.println("the e most recently eliminated points:" + Arrays.toString(recentEliminated));
+                System.out.println("the e most recently eliminated points (lagged):" + laggedEliminatedPoints);
             }
 
             // 更新当前点的重要性（z 轴存储effective area,这是一个单调增的指标）
@@ -172,12 +172,10 @@ public class eBUG {
                 tri.prev.indices[2] = tri.indices[2];
 
                 // e parameter
-                List<Point> pointsForSig = findEliminated(lineToSimplify, recentEliminated,
-                        tri.prev.indices[0],
-                        tri.prev.indices[1],
-                        tri.prev.indices[2]); // TODO complexity ?
+                List<Point> pointsForSig = findEliminated(lineToSimplify, tri.prev.indices[0], tri.prev.indices[2]);
                 if (debug) {
                     System.out.println("(2) update point on the left " + lineToSimplify.get(tri.prev.indices[1]));
+                    System.out.println("3<=cnt<=e+3. cnt=" + pointsForSig.size());
                     for (Point point : pointsForSig) {
                         System.out.println("\t" + point);
                     }
@@ -221,12 +219,10 @@ public class eBUG {
                 tri.next.indices[0] = tri.indices[0];
 
                 // e parameter
-                List<Point> pointsForSig = findEliminated(lineToSimplify, recentEliminated,
-                        tri.next.indices[0],
-                        tri.next.indices[1],
-                        tri.next.indices[2]); // TODO complexity
+                List<Point> pointsForSig = findEliminated(lineToSimplify, tri.next.indices[0], tri.next.indices[2]);
                 if (debug) {
                     System.out.println("(2) updating point on the right " + lineToSimplify.get(tri.next.indices[1]));
+                    System.out.println("3<=cnt<=e+3. cnt=" + pointsForSig.size());
                     for (Point point : pointsForSig) {
                         System.out.println("\t" + point);
                     }
@@ -259,45 +255,52 @@ public class eBUG {
 
     public static void main(String[] args) {
 
-        int eParam = 2000_0000;
-        try (PrintWriter writer = new PrintWriter(new File("exp_varyN_e" + eParam + ".csv"))) {
-            for (int n = 100_0000; n < 2000_0000; n += 200_0000) { // 超过两千万就都变得慢多了，感觉可能是内存有限的原因，而不是算法复杂度
-                // TODO 注意 要有一个点是n=300w
+//        int eParam = 0;
+        int[] eParamList = {0, 1, 2, 3, 4, 5, 10, 14, 15, 16, 20, 30, 40, 50, 100, 200, 500, 1000, 2000, 5000,
+                10000, 50000, 10_0000, 50_0000, 100_0000, 200_0000, 300_0000,
+                500_0000, 800_0000, 1000_0000,
+                1500_0000, 2000_0000, 2500_0000, 3000_0000};
+        for (int eParam : eParamList) {
+            try (PrintWriter writer = new PrintWriter(new File("exp_varyN_e" + eParam + ".csv"))) {
+                for (int n = 100_0000; n < 2000_0000; n += 200_0000) { // 超过两千万就都变得慢多了，感觉可能是内存有限的原因，而不是算法复杂度
+                    // TODO 注意 要有一个点是n=300w
 
-                Polyline polyline = new Polyline();
-                int seed = 1;
-                Random rand = new Random(seed); // TODO 注意seed在每轮里重设
-                for (int i = 0; i < n; i++) {
-                    double v = rand.nextInt(1000000);
-                    polyline.addVertex(new Point(i, v));
+                    Polyline polyline = new Polyline();
+                    int seed = 1;
+                    Random rand = new Random(seed); // TODO 注意seed在每轮里重设
+                    for (int i = 0; i < n; i++) {
+                        double v = rand.nextInt(1000000);
+                        polyline.addVertex(new Point(i, v));
+                    }
+
+                    long startTime = System.currentTimeMillis();
+                    List<Point> results = buildEffectiveArea(polyline, eParam, false);
+                    long endTime = System.currentTimeMillis();
+
+                    System.out.println("n=" + n + ", e=" + eParam + ", Time taken to reduce points: " + (endTime - startTime) + "ms");
+                    writer.println(n + "," + eParam + "," + (endTime - startTime));
+                    System.out.println(results.size());
+
+//                // clear
+//                polyline.clear();
+//                results.clear();
+//                polyline = null;
+//                results = null;
+//                System.gc();
                 }
-
-                long startTime = System.currentTimeMillis();
-                List<Point> results = buildEffectiveArea(polyline, eParam, false);
-                long endTime = System.currentTimeMillis();
-
-                System.out.println("n=" + n + ", e=" + eParam + ", Time taken to reduce points: " + (endTime - startTime) + "ms");
-                writer.println(n + "," + eParam + "," + (endTime - startTime));
-                System.out.println(results.size());
-
-                // clear
-                polyline.clear();
-                results.clear();
-                polyline = null;
-                results = null;
-                System.gc();
+            } catch (FileNotFoundException e) {
+                throw new RuntimeException(e);
             }
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
         }
 
 //        int n = 300_0000;
+//
 //        int seed = 1;
 //        Random rand = new Random(seed); // TODO 注意seed在每轮里重设
 //        Polyline polyline = new Polyline(); // 注意：如果是固定n变化e实验，这个数据要一次性生成，不然每次随机不一样
 //        for (int i = 0; i < n; i++) {
 //            double v = rand.nextInt(1000000);
-//            polyline.addVertex(new Point(i, v));
+//            polyline.addVertex(new Point(i, v)); // point的状态会在buildEffectiveArea里重置的，所以在下面的e遍历里可以复用这一份数据
 //        }
 //
 //        try (PrintWriter writer = new PrintWriter(new File("exp_varyE_n" + n + ".csv"))) {
@@ -314,7 +317,7 @@ public class eBUG {
 //                System.out.println(results.size());
 //
 //                // clear 注意不能把原始数据清除，还要接着用
-//                System.gc();
+////                System.gc();
 //            }
 //        } catch (FileNotFoundException e) {
 //            throw new RuntimeException(e);

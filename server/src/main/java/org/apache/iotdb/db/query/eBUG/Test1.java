@@ -43,11 +43,7 @@ public class Test1 {
         }
 
         System.out.println("---------------------------------");
-//        List<Point> results = new ArrayList<>();
-        // 计算运行时间
-//        int eParam = 10;
-//            for (int eParam = 0; eParam < 2 * n; eParam += 1000) {
-        int eParam = 2;
+        int eParam = 1000000;
         long startTime = System.currentTimeMillis();
         List<Point> results = buildEffectiveArea(polyline, eParam, false);
         // 输出结果

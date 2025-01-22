@@ -8,6 +8,10 @@ public class Polyline {
     private List<Point> vertices = new ArrayList<>();
 
     public void addVertex(Point point) {
+//        if (!vertices.isEmpty()) { //before adding this point
+//            vertices.get(vertices.size() - 1).next = point;
+//            point.prev = vertices.get(vertices.size() - 1);
+//        }
         vertices.add(point);
     }
 
