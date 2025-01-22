@@ -106,6 +106,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.filterDeterministicConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.isEffectivelyLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.CanonicalizeExpressionRewriter.canonicalizeExpression;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.ChildReplacer.replaceChildren;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.FULL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN;
@@ -271,9 +272,11 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
               // conjunct))
               .collect(Collectors.toList());
 
-      PlanNode rewrittenNode =
+      PlanNode rewrittenChild =
           node.getChild()
               .accept(this, new RewriteContext(combineConjuncts(inlinedDeterministicConjuncts)));
+
+      PlanNode rewrittenNode = replaceChildren(node, ImmutableList.of(rewrittenChild));
 
       // All deterministic conjuncts that contains non-inlining targets, and non-deterministic
       // conjuncts,
