@@ -24,4 +24,8 @@ public class Polyline {
     public Point get(int index) {
         return vertices.get(index);
     }
+
+    public void clear() {
+        vertices.clear();
+    }
 }

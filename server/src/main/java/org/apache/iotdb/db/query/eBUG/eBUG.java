@@ -49,23 +49,17 @@ public class eBUG {
 
         List<Point> res = new ArrayList<>();
 
-//        if (recentEliminated.length == 0) { // e=0
-//            System.out.println("e=0");
-//            res.add(pa);
-//            res.add(pi);
-//            res.add(pb);
-//            return res; // pa pi pb已经按照时间戳递增
-//        }
-
+        // TODO note: here may happen because e=c=0 or just 0<c<=e
         if (recentEliminated.length >= (pb_idx - pa_idx - 2)) { // e >= the total number of eliminated points in this region
 //            System.out.println("[c=(b-a-2)]<=e, use T directly"); // worst case下, k=c
             res = lineToSimplify.getVertices().subList(pa_idx, pb_idx + 1); // 左闭右开
             return res; // 已经按照时间戳递增
         }
 
+        // TODO note: here may happen because c>e=0 or c>e>0. the latter needs search among recentEliminated and sort by timestamp
         // 从最近淘汰的e个点里寻找位于pa~pb之间的点，找到的有可能小于e个点
 //        System.out.println("k>=[c=(b-a-2)]>e, search among e");
-        res.add(pa);
+        res.add(pa); // 注意pa pi pb已经按照时间戳递增
         res.add(pi);
         res.add(pb);
 
@@ -81,7 +75,9 @@ public class eBUG {
         }
 
         // 按照时间戳递增排序，这是为了后面计算total areal displacement需要
-        res.sort(Comparator.comparingDouble(p -> p.x)); // 按时间戳排序 这样的话时间复杂度变成e*log(e)
+        if (recentEliminated.length > 0) { // 否则e=0，不需要排序pa pi pb三个点
+            res.sort(Comparator.comparingDouble(p -> p.x)); // 按时间戳排序 这样的话时间复杂度变成e*log(e)
+        }
 
         return res;
     }
@@ -168,7 +164,7 @@ public class eBUG {
                 tri.prev.markDeleted(); // O(1) 这个点标记为废掉，前后关联都砍断，但是不remove因为那太耗时，只要heap poll到它就跳过就可以
 
                 Triangle newPre = new Triangle(tri.prev); // deep copy and inherit connection
-//                tri.prev = newPre; // can omit, because already done by new Triangle(tri.prev)
+                // tri.prev = newPre; // can omit, because already done by new Triangle(tri.prev)
 
                 // 2. 处理pi被淘汰引起tri.prev被更新的事情
                 // 前一个三角形连到后一个三角形
@@ -214,7 +210,7 @@ public class eBUG {
                 tri.next.markDeleted(); // O(1) 这个点标记为废掉，前后关联都砍断，但是不remove因为那太耗时，只有poll到它就跳过就可以
 
                 Triangle newNext = new Triangle(tri.next); // deep copy and inherit connection
-//                tri.next = newNext; // omit, because already done by new Triangle(tri.prev)
+                // tri.next = newNext; // omit, because already done by new Triangle(tri.prev)
 
                 if (tri.prev != null) {
                     tri.prev.next = tri.next; // ATTENTION!!!: 这里的tri.next已经被换掉！所以之前的要重新赋值！
@@ -262,145 +258,68 @@ public class eBUG {
     }
 
     public static void main(String[] args) {
-        Polyline polyline = new Polyline();
-        List<Polyline> polylineList = new ArrayList<>();
-        Random rand = new Random(1);
-        int n = 1000_0000;
 
-        int p = 10;
-        for (int i = 0; i < n; i += p) {
-            Polyline polylineBatch = new Polyline();
-            for (int j = i; j < Math.min(i + p, n); j++) {
-                double v = rand.nextInt(1000000);
+        int eParam = 2000_0000;
+        try (PrintWriter writer = new PrintWriter(new File("exp_varyN_e" + eParam + ".csv"))) {
+            for (int n = 100_0000; n < 2000_0000; n += 200_0000) { // 超过两千万就都变得慢多了，感觉可能是内存有限的原因，而不是算法复杂度
+                // TODO 注意 要有一个点是n=300w
 
-                polyline.addVertex(new Point(j, v));
+                Polyline polyline = new Polyline();
+                int seed = 1;
+                Random rand = new Random(seed); // TODO 注意seed在每轮里重设
+                for (int i = 0; i < n; i++) {
+                    double v = rand.nextInt(1000000);
+                    polyline.addVertex(new Point(i, v));
+                }
 
-                polylineBatch.addVertex(new Point(j, v));
-            }
-            polylineList.add(polylineBatch);
-        }
-
-//        try (FileWriter writer = new FileWriter("raw.csv")) {
-//            // 写入CSV头部
-//            writer.append("x,y,z\n");
-//
-//            // 写入每个点的数据
-//            for (int i = 0; i < polyline.size(); i++) {
-//                Point point = polyline.get(i);
-//                writer.append(point.x + "," + point.y + "," + point.z + "\n");
-//            }
-//            System.out.println("Data has been written");
-//        } catch (IOException e) {
-//            System.out.println("Error writing to CSV file: " + e.getMessage());
-//        }
-
-        System.out.println("---------------------------------");
-//        List<Point> results = new ArrayList<>();
-        // 计算运行时间
-//        int eParam = 10;
-        try (PrintWriter writer = new PrintWriter(new File("exp.csv"))) {
-//            int[] eParamList = {0, 1, 100, 500, 1000, 5000, 10000, 50000, 10_0000, 30_0000, 50_0000, 60_0000,
-//                    70_0000, 80_0000, 90_0000, 100_0000, 150_0000, 200_0000, 250_0000, 300_0000};
-            for (int eParam = 0; eParam < n*1.5; eParam += 2_0000) {
-//            for (int eParam : eParamList) {
                 long startTime = System.currentTimeMillis();
                 List<Point> results = buildEffectiveArea(polyline, eParam, false);
-                // 输出结果
                 long endTime = System.currentTimeMillis();
+
                 System.out.println("n=" + n + ", e=" + eParam + ", Time taken to reduce points: " + (endTime - startTime) + "ms");
-                System.out.println(results.size());
                 writer.println(n + "," + eParam + "," + (endTime - startTime));
+                System.out.println(results.size());
+
+                // clear
+                polyline.clear();
+                results.clear();
+                polyline = null;
+                results = null;
+                System.gc();
             }
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
         }
 
-//        if (results.size() <= 100) {
-//            System.out.println("+++++++++++++++++++");
-//            for (int i = 0; i < results.size(); i++) {
-//                Point point = results.get(i);
-//                System.out.println("Point: (" + point.x + ", " + point.y + ", " + point.z + ")");
+//        int n = 300_0000;
+//        int seed = 1;
+//        Random rand = new Random(seed); // TODO 注意seed在每轮里重设
+//        Polyline polyline = new Polyline(); // 注意：如果是固定n变化e实验，这个数据要一次性生成，不然每次随机不一样
+//        for (int i = 0; i < n; i++) {
+//            double v = rand.nextInt(1000000);
+//            polyline.addVertex(new Point(i, v));
+//        }
+//
+//        try (PrintWriter writer = new PrintWriter(new File("exp_varyE_n" + n + ".csv"))) {
+//            int[] eParamList = {0, 1, 2, 10, 1000, 10000, 10_0000, 30_0000, 50_0000, 60_0000, 80_0000, 100_0000, 150_0000, 200_0000};
+//            for (int eParam : eParamList) {
+//                eParam *= 3; // TODO 注意 因为n=300w而不是100w
+//
+//                long startTime = System.currentTimeMillis();
+//                List<Point> results = buildEffectiveArea(polyline, eParam, false);
+//                long endTime = System.currentTimeMillis();
+//
+//                System.out.println("n=" + n + ", e=" + eParam + ", Time taken to reduce points: " + (endTime - startTime) + "ms");
+//                writer.println(n + "," + eParam + "," + (endTime - startTime));
+//                System.out.println(results.size());
+//
+//                // clear 注意不能把原始数据清除，还要接着用
+//                System.gc();
 //            }
+//        } catch (FileNotFoundException e) {
+//            throw new RuntimeException(e);
 //        }
 
-//        try (FileWriter writer = new FileWriter("fast.csv")) {
-//            // 写入CSV头部
-//            writer.append("x,y,z\n");
-//
-//            // 写入每个点的数据
-//            for (int i = 0; i < results.size(); i++) {
-//                Point point = results.get(i);
-//                writer.append(point.x + "," + point.y + "," + point.z + "\n");
-//            }
-//            System.out.println("Data has been written");
-//        } catch (IOException e) {
-//            System.out.println("Error writing to CSV file: " + e.getMessage());
-//        }
-
-//        System.out.println("---------------------------------");
-//        List<List<Point>> resultsBatchList = new ArrayList<>();
-//        // 计算运行时间
-//        int cnt = 0;
-//        startTime = System.currentTimeMillis();
-//        for (Polyline polylineBatch : polylineList) {
-//            List<Point> resultsBatch = new ArrayList<>();
-//            buildEffectiveArea(polylineBatch, resultsBatch);
-//            cnt += resultsBatch.size();
-//            resultsBatchList.add(resultsBatch);
-//        }
-//        // 输出结果
-//        endTime = System.currentTimeMillis();
-//        System.out.println("Time taken to reduce points: " + (endTime - startTime) + "ms");
-//        System.out.println(cnt);
-//
-//        System.out.println("---------------------------------");
-//        // 使用 Stream API 合并所有列表
-//        List<Point> mergedList = resultsBatchList.stream().flatMap(List::stream).collect(Collectors.toList());
-//        int sameCnt = 0;
-//        for (int i = 0; i < mergedList.size(); i++) {
-//            if (mergedList.get(i).z == results.get(i).z) {
-//                sameCnt += 1;
-//            }
-//        }
-//        System.out.println("sameCnt=" + sameCnt + ", percent=" + sameCnt * 1.0 / mergedList.size());
-//
-//        try (FileWriter writer = new FileWriter("batch.csv")) {
-//            // 写入CSV头部
-//            writer.append("x,y,z\n");
-//
-//            // 写入每个点的数据
-//            for (int i = 0; i < mergedList.size(); i++) {
-//                Point point = mergedList.get(i);
-//                writer.append(point.x + "," + point.y + "," + point.z + "\n");
-//            }
-//            System.out.println("Data has been written");
-//        } catch (IOException e) {
-//            System.out.println("Error writing to CSV file: " + e.getMessage());
-//        }
+        System.out.println("finish");
     }
-
-    //    float[] vlist = new float[]{11346, 33839, 35469, 23108, 22812, 5519, 5526, 4865, 5842,
-    // 23089};
-    //    for (int i = 0; i < vlist.length; i++) {
-    //      polyline.addVertex(new vPoint(i, vlist[i]));
-    //    }
-
-    //    ArrayList<Double> v = new ArrayList<>();
-    //    String filePath = "D://desktop//数据集//New York Stock Exchange//merged_prices.csv";
-    //    try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-    //      String line;
-    //      int count = 0;
-    //      while ((line = br.readLine()) != null && count < 1000) {
-    //        String[] columns = line.split(","); // 假设 CSV 文件以逗号分隔
-    //        v.add(Double.parseDouble(columns[0])); // 读取第一列数据
-    //        count++;
-    //      }
-    //    } catch (Exception e) {
-    //      e.printStackTrace();
-    //    }
-    //    // 打印数据长度
-    //    System.out.println("Data length: " + v.size());
-    //    for (int i = 0; i < v.size(); i++) {
-    //      polyline.addVertex(new vPoint(i, v.get(i)));
-    //    }
 }
