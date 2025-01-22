@@ -1426,6 +1426,21 @@ public class IoTDBDescriptor {
     configModified |=
         innerUnsequenceCompactionSelector != conf.getInnerUnsequenceCompactionSelector();
 
+    conf.setInnerSeqCompactionPerformer(
+        InnerSeqCompactionPerformer.getInnerSeqCompactionPerformer(
+            properties.getProperty(
+                "inner_seq_performer", conf.getInnerSeqCompactionPerformer().toString())));
+
+    conf.setInnerUnseqCompactionPerformer(
+        InnerUnseqCompactionPerformer.getInnerUnseqCompactionPerformer(
+            properties.getProperty(
+                "inner_unseq_performer", conf.getInnerUnseqCompactionPerformer().toString())));
+
+    conf.setCrossCompactionPerformer(
+        CrossCompactionPerformer.getCrossCompactionPerformer(
+            properties.getProperty(
+                "cross_performer", conf.getCrossCompactionPerformer().toString())));
+
     // update inner_compaction_total_file_size_threshold
     long innerCompactionFileSizeThresholdInByte =
         conf.getInnerCompactionTotalFileSizeThresholdInByte();
