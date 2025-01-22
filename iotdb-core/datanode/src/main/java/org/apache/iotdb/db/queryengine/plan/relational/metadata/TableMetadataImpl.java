@@ -888,7 +888,6 @@ public class TableMetadataImpl implements Metadata {
     }
 
     // Boolean type and Binary Type can not be compared with other types
-    // Unknown type can compare with other types
     return (isNumericType(left) && isNumericType(right))
         || (isCharType(left) && isCharType(right))
         || (isUnknownType(left) && (isNumericType(right) || isCharType(right)))

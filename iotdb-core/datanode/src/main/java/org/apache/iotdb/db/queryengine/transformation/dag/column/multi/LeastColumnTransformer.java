@@ -21,8 +21,6 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public class LeastColumnTransformer extends AbstractGreatestLeastColumnTransformer {
@@ -30,7 +28,10 @@ public class LeastColumnTransformer extends AbstractGreatestLeastColumnTransform
     super(returnType, columnTransformerList);
   }
 
-  //  values 都不为空，已在前面进行校验
+  @Override
+  protected void transformBoolean(ColumnBuilder builder, List<Boolean> values) {
+    returnType.writeBoolean(builder, values.stream().min(Boolean::compareTo).orElse(false));
+  }
 
   @Override
   protected void transformInt(ColumnBuilder builder, List<Integer> values) {
