@@ -273,8 +273,7 @@ public class CNPhysicalPlanGenerator
   private void generateGrantRolePhysicalPlan() {
     try (final DataInputStream roleInputStream =
         new DataInputStream(new BufferedInputStream((inputStream)))) {
-      int roleNum = roleInputStream.readInt();
-      for (int i = 0; i < roleNum; i++) {
+      for (int i = 0; roleInputStream.available() != 0; i++) {
         final String roleName = readString(roleInputStream, STRING_ENCODING, strBufferLocal);
         final AuthorTreePlan plan = new AuthorTreePlan(ConfigPhysicalPlanType.GrantRoleToUser);
         plan.setUserName(userName);
