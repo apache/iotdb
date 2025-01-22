@@ -145,6 +145,11 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
+  public InsertNode mergeInsertNode(List<InsertNode> insertNodes) {
+    return insertNode.mergeInsertNode(insertNodes);
+  }
+
+  @Override
   public TRegionReplicaSet getDataRegionReplicaSet() {
     return insertNode.getDataRegionReplicaSet();
   }
