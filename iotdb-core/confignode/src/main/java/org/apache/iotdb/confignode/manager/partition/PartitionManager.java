@@ -35,7 +35,6 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
-import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -54,7 +53,6 @@ import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.write.partition.AutoCleanPartitionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
@@ -139,7 +137,7 @@ public class PartitionManager {
   private static final String CONSENSUS_READ_ERROR =
       "Failed in the read API executing the consensus layer due to: ";
 
-  private static final String CONSENSUS_WRITE_ERROR =
+  public static final String CONSENSUS_WRITE_ERROR =
       "Failed in the write API executing the consensus layer due to: ";
 
   // Monitor for leadership change
@@ -152,21 +150,12 @@ public class PartitionManager {
   private final ScheduledExecutorService regionMaintainer;
   private Future<?> currentRegionMaintainerFuture;
 
-  /** Partition cleaner. */
-  private static final long PARTITION_CLEANER_WORK_INTERVAL = COMMON_CONFIG.getTTLCheckInterval();
-
-  private final ScheduledExecutorService partitionCleaner;
-  private Future<?> currentPartitionCleanerFuture;
-
   public PartitionManager(IManager configManager, PartitionInfo partitionInfo) {
     this.configManager = configManager;
     this.partitionInfo = partitionInfo;
     this.regionMaintainer =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.CONFIG_NODE_REGION_MAINTAINER.getName());
-    this.partitionCleaner =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            ThreadName.CONFIG_NODE_PARTITION_CLEANER.getName());
     setSeriesPartitionExecutor();
   }
 
@@ -1460,54 +1449,6 @@ public class PartitionManager {
         currentRegionMaintainerFuture.cancel(false);
         currentRegionMaintainerFuture = null;
         LOGGER.info("RegionCleaner is stopped successfully.");
-      }
-    }
-  }
-
-  /**
-   * The ConfigNode-leader will periodically invoke this interface to automatically clean expired
-   * partition table.
-   */
-  public void autoCleanDataPartitionTable() {
-    List<String> databases = getClusterSchemaManager().getDatabaseNames(null);
-    Map<String, Long> databaseTTLMap = getClusterSchemaManager().getTTLInfoForUpgrading();
-    for (String database : databases) {
-      long subTreeMaxTTL = getTTLManager().getDatabaseMaxTTL(database);
-      databaseTTLMap.put(
-          database, Math.max(subTreeMaxTTL, databaseTTLMap.getOrDefault(database, -1L)));
-    }
-    TTimePartitionSlot currentTimePartitionSlot = TimePartitionUtils.getCurrentTimePartitionSlot();
-    try {
-      getConsensusManager()
-          .write(new AutoCleanPartitionTablePlan(databaseTTLMap, currentTimePartitionSlot));
-    } catch (ConsensusException e) {
-      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
-    }
-  }
-
-  public void startPartitionTableCleaner() {
-    synchronized (scheduleMonitor) {
-      if (currentPartitionCleanerFuture == null) {
-        /* Start the PartitionCleaner service */
-        currentPartitionCleanerFuture =
-            ScheduledExecutorUtil.safelyScheduleAtFixedRate(
-                partitionCleaner,
-                this::autoCleanDataPartitionTable,
-                PARTITION_CLEANER_WORK_INTERVAL,
-                PARTITION_CLEANER_WORK_INTERVAL,
-                TimeUnit.MILLISECONDS);
-        LOGGER.info("PartitionCleaner is started successfully.");
-      }
-    }
-  }
-
-  public void stopPartitionTableCleaner() {
-    synchronized (scheduleMonitor) {
-      if (currentPartitionCleanerFuture != null) {
-        /* Stop the PartitionCleaner service */
-        currentPartitionCleanerFuture.cancel(false);
-        currentPartitionCleanerFuture = null;
-        LOGGER.info("PartitionCleaner is stopped successfully.");
       }
     }
   }

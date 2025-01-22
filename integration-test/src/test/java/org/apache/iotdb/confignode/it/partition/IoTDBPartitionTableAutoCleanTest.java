@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.confignode.it.partition;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -40,8 +38,6 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.Statement;
-import java.util.List;
-import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 
@@ -52,13 +48,7 @@ public class IoTDBPartitionTableAutoCleanTest {
   private static final int TEST_REPLICATION_FACTOR = 1;
   private static final long TEST_TIME_PARTITION_INTERVAL = 604800000;
   private static final long TEST_TTL_CHECK_INTERVAL = 5_000;
-  //  private static final int TEST_SERIES_SLOT_NUM = 1000;
-  //  private static final String TEST_SERIES_EXECUTOR_CLASS =
-  // "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
 
-  //  private static final SeriesPartitionExecutor TEST_EXECUTOR =
-  //    SeriesPartitionExecutor.getSeriesPartitionExecutor(TEST_SERIES_EXECUTOR_CLASS,
-  // TEST_SERIES_SLOT_NUM);
   private static final TTimePartitionSlot TEST_CURRENT_TIME_SLOT =
       TimePartitionUtils.getCurrentTimePartitionSlot();
   private static final long TEST_TTL = 7 * TEST_TIME_PARTITION_INTERVAL;
@@ -68,8 +58,6 @@ public class IoTDBPartitionTableAutoCleanTest {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        //      .setSeriesSlotNum(TEST_SERIES_SLOT_NUM)
-        //      .setSeriesPartitionExecutorClass(TEST_SERIES_EXECUTOR_CLASS)
         .setSchemaReplicationFactor(TEST_REPLICATION_FACTOR)
         .setDataReplicationFactor(TEST_REPLICATION_FACTOR)
         .setTimePartitionInterval(TEST_TIME_PARTITION_INTERVAL)
@@ -131,24 +119,10 @@ public class IoTDBPartitionTableAutoCleanTest {
         boolean partitionTableAutoCleaned = true;
         TDataPartitionTableResp resp = client.getDataPartitionTable(req);
         if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
-          Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
-              dataPartitionTable = resp.getDataPartitionTable();
-          for (Map.Entry<
-                  String,
-                  Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
-              e1 : dataPartitionTable.entrySet()) {
-            for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
-                e2 : e1.getValue().entrySet()) {
-              if (e2.getValue().size() != 1) {
-                // The PartitionTable of each database should only contain 1 time partition slot
-                partitionTableAutoCleaned = false;
-                break;
-              }
-            }
-            if (!partitionTableAutoCleaned) {
-              break;
-            }
-          }
+          partitionTableAutoCleaned =
+              resp.getDataPartitionTable().entrySet().stream()
+                  .flatMap(e1 -> e1.getValue().entrySet().stream())
+                  .allMatch(e2 -> e2.getValue().size() == 1);
         }
         if (partitionTableAutoCleaned) {
           return;

@@ -260,7 +260,6 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     configManager.getProcedureManager().stopExecutor();
     configManager.getRetryFailedTasksThread().stopRetryFailedTasksService();
     configManager.getPartitionManager().stopRegionCleaner();
-    configManager.getPartitionManager().stopPartitionTableCleaner();
     configManager.getCQManager().stopCQScheduler();
     configManager.getClusterSchemaManager().clearSchemaQuotaCache();
     // Remove Metric after leader change
@@ -295,7 +294,6 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
         () -> configManager.getProcedureManager().getStore().getProcedureInfo().upgrade());
     configManager.getRetryFailedTasksThread().startRetryFailedTasksService();
     configManager.getPartitionManager().startRegionCleaner();
-    configManager.getPartitionManager().startPartitionTableCleaner();
     configManager.checkUserPathPrivilege();
     // Add Metric after leader ready
     configManager.addMetrics();
