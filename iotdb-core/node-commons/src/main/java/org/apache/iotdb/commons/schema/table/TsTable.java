@@ -56,6 +56,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 public class TsTable {
 
   public static final String TIME_COLUMN_NAME = "time";
+  public static final String COMMENT_KEY = "__comment";
   private static final TimeColumnSchema TIME_COLUMN_SCHEMA =
       new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP);
 

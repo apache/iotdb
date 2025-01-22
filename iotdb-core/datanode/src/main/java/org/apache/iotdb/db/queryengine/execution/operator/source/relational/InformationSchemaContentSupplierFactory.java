@@ -231,6 +231,11 @@ public class InformationSchemaContentSupplierFactory {
       columnBuilders[3].writeBinary(
           new Binary(
               TableNodeStatus.values()[info.getState()].toString(), TSFileConfig.STRING_CHARSET));
+      if (info.isSetComment()) {
+        columnBuilders[4].writeBinary(new Binary(info.getComment(), TSFileConfig.STRING_CHARSET));
+      } else {
+        columnBuilders[4].appendNull();
+      }
       resultBuilder.declarePosition();
     }
 
@@ -310,6 +315,13 @@ public class InformationSchemaContentSupplierFactory {
           new Binary(
               preDeletedColumns.contains(schema.getColumnName()) ? "PRE_DELETE" : "USING",
               TSFileConfig.STRING_CHARSET));
+
+      if (schema.getProps().containsKey(TsTable.COMMENT_KEY)) {
+        columnBuilders[6].writeBinary(
+            new Binary(schema.getProps().get(TsTable.COMMENT_KEY), TSFileConfig.STRING_CHARSET));
+      } else {
+        columnBuilders[6].appendNull();
+      }
       resultBuilder.declarePosition();
     }
 
