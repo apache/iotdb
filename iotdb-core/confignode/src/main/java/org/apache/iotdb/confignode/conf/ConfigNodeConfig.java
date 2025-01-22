@@ -1210,7 +1210,7 @@ public class ConfigNodeConfig {
         new TEndPoint(getInternalAddress(), getConsensusPort()));
   }
 
-  public boolean getRegionGroupConsistency(TConsensusGroupId regionGroupId) {
+  public boolean isConsensusGroupStrongConsistency(TConsensusGroupId regionGroupId) {
     return (TConsensusGroupType.SchemaRegion.equals(regionGroupId.getType())
             && getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS))
         || (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())

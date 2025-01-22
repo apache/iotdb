@@ -169,7 +169,8 @@ public class LoadCache {
             regionReplicaSets.forEach(
                 regionReplicaSet -> {
                   TConsensusGroupId regionGroupId = regionReplicaSet.getRegionId();
-                  boolean isStrongConsistency = CONF.getRegionGroupConsistency(regionGroupId);
+                  boolean isStrongConsistency =
+                      CONF.isConsensusGroupStrongConsistency(regionGroupId);
                   regionGroupCacheMap.put(
                       regionGroupId,
                       new RegionGroupCache(
@@ -284,7 +285,7 @@ public class LoadCache {
    */
   public void createRegionGroupHeartbeatCache(
       String database, TConsensusGroupId regionGroupId, Set<Integer> dataNodeIds) {
-    boolean isStrongConsistency = CONF.getRegionGroupConsistency(regionGroupId);
+    boolean isStrongConsistency = CONF.isConsensusGroupStrongConsistency(regionGroupId);
     regionGroupCacheMap.put(
         regionGroupId, new RegionGroupCache(database, dataNodeIds, isStrongConsistency));
     consensusGroupCacheMap.put(regionGroupId, new ConsensusGroupCache());
