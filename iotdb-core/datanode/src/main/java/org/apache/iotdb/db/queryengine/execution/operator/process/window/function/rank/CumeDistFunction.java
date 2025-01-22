@@ -24,9 +24,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.partiti
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 
-public class CumeDistFunction implements WindowFunction {
+public class CumeDistFunction extends RankWindowFunction {
   private long count;
-  private long currentPeerGroupStart;
 
   public CumeDistFunction() {
     reset();
@@ -34,30 +33,16 @@ public class CumeDistFunction implements WindowFunction {
 
   @Override
   public void reset() {
+    super.reset();
     count = 0;
-    currentPeerGroupStart = -1;
   }
 
   @Override
-  public void transform(
-      Partition partition,
-      ColumnBuilder builder,
-      int index,
-      int frameStart,
-      int frameEnd,
-      int peerGroupStart,
-      int peerGroupEnd) {
-    if (currentPeerGroupStart != peerGroupStart) {
-      // New peer group
-      currentPeerGroupStart = peerGroupStart;
-      count += (peerGroupEnd - peerGroupStart + 1);
+  public void transform(Partition partition, ColumnBuilder builder, int index, boolean isNewPeerGroup, int peerGroupCount) {
+    if (isNewPeerGroup) {
+      count += peerGroupCount;
     }
 
     builder.writeDouble(((double) count) / partition.getPositionCount());
-  }
-
-  @Override
-  public boolean needFrame() {
-    return false;
   }
 }

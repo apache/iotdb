@@ -24,10 +24,9 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.partiti
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 
-public class PercentRankFunction implements WindowFunction {
+public class PercentRankFunction extends RankWindowFunction {
   private long rank;
   private long count;
-  private long currentPeerGroupStart;
 
   public PercentRankFunction() {
     reset();
@@ -35,29 +34,20 @@ public class PercentRankFunction implements WindowFunction {
 
   @Override
   public void reset() {
+    super.reset();
     rank = 0;
     count = 1;
-    currentPeerGroupStart = -1;
   }
 
   @Override
-  public void transform(
-      Partition partition,
-      ColumnBuilder builder,
-      int index,
-      int frameStart,
-      int frameEnd,
-      int peerGroupStart,
-      int peerGroupEnd) {
+  public void transform(Partition partition, ColumnBuilder builder, int index, boolean isNewPeerGroup, int peerGroupCount) {
     int total = partition.getPositionCount();
     if (total == 1) {
       builder.writeDouble(0);
       return;
     }
 
-    if (currentPeerGroupStart != peerGroupStart) {
-      // New peer group
-      currentPeerGroupStart = peerGroupStart;
+    if (isNewPeerGroup) {
       rank += count;
       count = 1;
     } else {
@@ -65,10 +55,5 @@ public class PercentRankFunction implements WindowFunction {
     }
 
     builder.writeDouble(((double) (rank - 1)) / (total - 1));
-  }
-
-  @Override
-  public boolean needFrame() {
-    return false;
   }
 }

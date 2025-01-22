@@ -24,26 +24,14 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.partiti
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 
-public class RowNumberFunction implements WindowFunction {
+public class RowNumberFunction extends RankWindowFunction {
   @Override
-  public void transform(
-      Partition partition,
-      ColumnBuilder builder,
-      int index,
-      int frameStart,
-      int frameEnd,
-      int peerGroupStart,
-      int peerGroupEnd) {
+  public void transform(Partition partition, ColumnBuilder builder, int index, boolean isNewPeerGroup, int peerGroupCount) {
     builder.writeLong((long) index + 1);
   }
 
   @Override
   public boolean needPeerGroup() {
-    return false;
-  }
-
-  @Override
-  public boolean needFrame() {
     return false;
   }
 }

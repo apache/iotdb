@@ -24,7 +24,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.partiti
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 
-public class LagFunction implements WindowFunction {
+public class LagFunction extends ValueWindowFunction {
   private final int channel;
   private final Integer offset;
   private final Object defaultVal;
@@ -43,9 +43,7 @@ public class LagFunction implements WindowFunction {
       ColumnBuilder builder,
       int index,
       int frameStart,
-      int frameEnd,
-      int peerGroupStart,
-      int peerGroupEnd) {
+      int frameEnd) {
     int pos;
     if (ignoreNull) {
       int nonNullCount = 0;
@@ -75,11 +73,6 @@ public class LagFunction implements WindowFunction {
     } else {
       builder.appendNull();
     }
-  }
-
-  @Override
-  public boolean needPeerGroup() {
-    return false;
   }
 
   @Override

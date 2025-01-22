@@ -24,7 +24,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.partiti
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 
-public class NTileFunction implements WindowFunction {
+public class NTileFunction extends RankWindowFunction {
   private final int n;
 
   public NTileFunction(int n) {
@@ -32,14 +32,7 @@ public class NTileFunction implements WindowFunction {
   }
 
   @Override
-  public void transform(
-      Partition partition,
-      ColumnBuilder builder,
-      int index,
-      int frameStart,
-      int frameEnd,
-      int peerGroupStart,
-      int peerGroupEnd) {
+  public void transform(Partition partition, ColumnBuilder builder, int index, boolean isNewPeerGroup, int peerGroupCount) {
     builder.writeLong(bucket(n, index, partition.getPositionCount()) + 1);
   }
 
@@ -60,11 +53,6 @@ public class NTileFunction implements WindowFunction {
 
   @Override
   public boolean needPeerGroup() {
-    return false;
-  }
-
-  @Override
-  public boolean needFrame() {
     return false;
   }
 }

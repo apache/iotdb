@@ -24,7 +24,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.partiti
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 
-public class LeadFunction implements WindowFunction {
+public class LeadFunction extends ValueWindowFunction {
   private final int channel;
   private final Integer offset;
   private final Integer defaultVal;
@@ -43,9 +43,7 @@ public class LeadFunction implements WindowFunction {
       ColumnBuilder builder,
       int index,
       int frameStart,
-      int frameEnd,
-      int peerGroupStart,
-      int peerGroupEnd) {
+      int frameEnd) {
     int length = partition.getPositionCount();
 
     int pos;
@@ -77,11 +75,6 @@ public class LeadFunction implements WindowFunction {
     } else {
       builder.appendNull();
     }
-  }
-
-  @Override
-  public boolean needPeerGroup() {
-    return false;
   }
 
   @Override

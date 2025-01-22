@@ -24,9 +24,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.partiti
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 
-public class DenseRankFunction implements WindowFunction {
+public class DenseRankFunction extends RankWindowFunction {
   private long rank;
-  private long currentPeerGroupStart;
 
   public DenseRankFunction() {
     reset();
@@ -34,30 +33,16 @@ public class DenseRankFunction implements WindowFunction {
 
   @Override
   public void reset() {
+    super.reset();
     rank = 0;
-    currentPeerGroupStart = -1;
   }
 
   @Override
-  public void transform(
-      Partition partition,
-      ColumnBuilder builder,
-      int index,
-      int frameStart,
-      int frameEnd,
-      int peerGroupStart,
-      int peerGroupEnd) {
-    if (currentPeerGroupStart != peerGroupStart) {
-      // New peer group
-      currentPeerGroupStart = peerGroupStart;
+  public void transform(Partition partition, ColumnBuilder builder, int index, boolean isNewPeerGroup, int peerGroupCount) {
+    if (isNewPeerGroup) {
       rank++;
     }
 
     builder.writeLong(rank);
-  }
-
-  @Override
-  public boolean needFrame() {
-    return false;
   }
 }

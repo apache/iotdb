@@ -24,7 +24,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.partiti
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 
-public class NthValueFunction implements WindowFunction {
+public class NthValueFunction extends ValueWindowFunction {
   private final int n;
   private final int channel;
   private final boolean ignoreNull;
@@ -41,9 +41,7 @@ public class NthValueFunction implements WindowFunction {
       ColumnBuilder builder,
       int index,
       int frameStart,
-      int frameEnd,
-      int peerGroupStart,
-      int peerGroupEnd) {
+      int frameEnd) {
     // Empty frame
     if (frameStart < 0) {
       builder.appendNull();
@@ -84,10 +82,5 @@ public class NthValueFunction implements WindowFunction {
     } else {
       builder.appendNull();
     }
-  }
-
-  @Override
-  public boolean needPeerGroup() {
-    return false;
   }
 }

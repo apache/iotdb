@@ -24,7 +24,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.partiti
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 
-public class LastValueFunction implements WindowFunction {
+public class LastValueFunction extends ValueWindowFunction {
   private final int channel;
   private final boolean ignoreNull;
 
@@ -39,9 +39,7 @@ public class LastValueFunction implements WindowFunction {
       ColumnBuilder builder,
       int index,
       int frameStart,
-      int frameEnd,
-      int peerGroupStart,
-      int peerGroupEnd) {
+      int frameEnd) {
     // Empty frame
     if (frameStart < 0) {
       builder.appendNull();
@@ -67,10 +65,5 @@ public class LastValueFunction implements WindowFunction {
         partition.writeTo(builder, channel, frameEnd);
       }
     }
-  }
-
-  @Override
-  public boolean needPeerGroup() {
-    return false;
   }
 }
