@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.CURRENT_USED_MEMORY;
@@ -55,7 +56,6 @@ public class TableWindowOperator implements ProcessOperator {
   private final Operator inputOperator;
   private final List<TSDataType> inputDataTypes;
   private final TsBlockBuilder tsBlockBuilder;
-  long totalMemorySize = 0;
   private final MemoryReservationManager memoryReservationManager;
 
   // Basic information about window operator
@@ -73,6 +73,10 @@ public class TableWindowOperator implements ProcessOperator {
 
   // Transformation
   private LinkedList<PartitionExecutor> cachedPartitionExecutors;
+
+  // Misc
+  long totalMemorySize;
+  long maxRuntime;
 
   public TableWindowOperator(
       OperatorContext operatorContext,
@@ -111,6 +115,8 @@ public class TableWindowOperator implements ProcessOperator {
     // Misc
     this.cachedTsBlocks = new ArrayList<>();
     this.startIndexInFirstBlock = -1;
+    this.maxRuntime = this.operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
+    this.totalMemorySize = 0;
     this.memoryReservationManager =
         operatorContext
             .getDriverContext()
@@ -125,9 +131,11 @@ public class TableWindowOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
+    long startTime = System.nanoTime();
+
     // Transform is not finished
     if (!cachedPartitionExecutors.isEmpty()) {
-      TsBlock tsBlock = transform();
+      TsBlock tsBlock = transform(startTime);
       if (tsBlock != null) {
         return tsBlock;
       }
@@ -151,7 +159,7 @@ public class TableWindowOperator implements ProcessOperator {
       }
 
       // May return null if builder is not full
-      return transform();
+      return transform(startTime);
     } else if (!cachedTsBlocks.isEmpty()) {
       // Form last partition
       TsBlock lastTsBlock = cachedTsBlocks.get(cachedTsBlocks.size() - 1);
@@ -169,7 +177,7 @@ public class TableWindowOperator implements ProcessOperator {
       cachedTsBlocks.clear();
       releaseAllCachedTsBlockMemory();
 
-      TsBlock tsBlock = transform();
+      TsBlock tsBlock = transform(startTime);
       if (tsBlock == null) {
         // TsBlockBuilder is not full
         // Force build since this is the last partition
@@ -185,11 +193,7 @@ public class TableWindowOperator implements ProcessOperator {
       // Return remaining data in result TsBlockBuilder
       // This happens when last partition is too large
       // And TsBlockBuilder is not full at the end of transform
-      TsBlock result =
-          tsBlockBuilder.build(
-              new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
-      tsBlockBuilder.reset();
-      return result;
+      return getTsBlockFromTsBlockBuilder();
     }
 
     return null;
@@ -292,11 +296,11 @@ public class TableWindowOperator implements ProcessOperator {
     return partitionExecutors;
   }
 
-  private TsBlock transform() {
+  private TsBlock transform(long startTime) {
     while (!cachedPartitionExecutors.isEmpty()) {
       PartitionExecutor partitionExecutor = cachedPartitionExecutors.getFirst();
 
-      while (!tsBlockBuilder.isFull() && partitionExecutor.hasNext()) {
+      while (System.nanoTime() - startTime < maxRuntime && !tsBlockBuilder.isFull() && partitionExecutor.hasNext()) {
         partitionExecutor.processNextRow(tsBlockBuilder);
       }
 
@@ -304,13 +308,8 @@ public class TableWindowOperator implements ProcessOperator {
         cachedPartitionExecutors.removeFirst();
       }
 
-      if (tsBlockBuilder.isFull()) {
-        TsBlock result =
-            tsBlockBuilder.build(
-                new RunLengthEncodedColumn(
-                    TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
-        tsBlockBuilder.reset();
-        return result;
+      if (System.nanoTime() - startTime >= maxRuntime || tsBlockBuilder.isFull()) {
+        return getTsBlockFromTsBlockBuilder();
       }
     }
 
@@ -325,6 +324,14 @@ public class TableWindowOperator implements ProcessOperator {
       partitionColumns.add(partitionColumn);
     }
     return partitionColumns;
+  }
+
+  private TsBlock getTsBlockFromTsBlockBuilder() {
+    TsBlock result =
+        tsBlockBuilder.build(
+            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
+    tsBlockBuilder.reset();
+    return result;
   }
 
   @Override
