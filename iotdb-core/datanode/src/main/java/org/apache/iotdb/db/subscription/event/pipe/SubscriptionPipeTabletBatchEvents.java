@@ -24,6 +24,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
@@ -72,6 +73,9 @@ public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents
 
   private static String formatEnrichedEvents(
       final List<EnrichedEvent> enrichedEvents, final int threshold) {
+    if (Objects.isNull(enrichedEvents) || enrichedEvents.isEmpty()) {
+      return "";
+    }
     final List<String> eventMessageList =
         enrichedEvents.stream()
             .limit(threshold)
