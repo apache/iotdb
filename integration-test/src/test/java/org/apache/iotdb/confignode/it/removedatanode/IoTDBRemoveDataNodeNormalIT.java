@@ -32,31 +32,31 @@ public class IoTDBRemoveDataNodeNormalIT extends IoTDBRemoveDataNodeITFramework 
 
   @Test
   public void success1C4DTest() throws Exception {
-    successTest(2, 3, 1, 4, 1, 2, true, IoTDBRemoveDataNodeITFramework.NOT_USE_SQL);
+    successTest(2, 3, 1, 4, 1, 2, true, SQLModel.NOT_USE_SQL);
   }
 
   @Test
   public void fail1C3DTest() throws Exception {
-    failTest(2, 3, 1, 3, 1, 2, false, IoTDBRemoveDataNodeITFramework.NOT_USE_SQL);
+    failTest(2, 3, 1, 3, 1, 2, false, SQLModel.NOT_USE_SQL);
   }
 
   @Test
   public void success1C4DTestUseSQL() throws Exception {
-    successTest(2, 3, 1, 4, 1, 2, true, IoTDBRemoveDataNodeITFramework.TREE_MODEL_SQL);
+    successTest(2, 3, 1, 4, 1, 2, true, SQLModel.TREE_MODEL_SQL);
   }
 
   @Test
   public void fail1C3DTestUseSQL() throws Exception {
-    failTest(2, 3, 1, 3, 1, 2, false, IoTDBRemoveDataNodeITFramework.TREE_MODEL_SQL);
+    failTest(2, 3, 1, 3, 1, 2, false, SQLModel.TREE_MODEL_SQL);
   }
 
   @Test
   public void success1C4DTestUseTableSQL() throws Exception {
-    successTest(2, 3, 1, 4, 1, 2, true, IoTDBRemoveDataNodeITFramework.TABLE_MODEL_SQL);
+    successTest(2, 3, 1, 4, 1, 2, true, SQLModel.TABLE_MODEL_SQL);
   }
 
   @Test
   public void fail1C3DTestUseTableSQL() throws Exception {
-    failTest(2, 3, 1, 3, 1, 2, false, IoTDBRemoveDataNodeITFramework.TABLE_MODEL_SQL);
+    failTest(2, 3, 1, 3, 1, 2, false, SQLModel.TABLE_MODEL_SQL);
   }
 }

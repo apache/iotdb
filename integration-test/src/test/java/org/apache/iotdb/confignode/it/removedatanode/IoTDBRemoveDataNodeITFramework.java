@@ -69,10 +69,6 @@ public class IoTDBRemoveDataNodeITFramework {
   private static final String defaultSchemaRegionGroupExtensionPolicy = "CUSTOM";
   private static final String defaultDataRegionGroupExtensionPolicy = "CUSTOM";
 
-  public static final int NOT_USE_SQL = 0;
-  public static final int TREE_MODEL_SQL = 1;
-  public static final int TABLE_MODEL_SQL = 3;
-
   @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv()
@@ -98,7 +94,7 @@ public class IoTDBRemoveDataNodeITFramework {
       final int removeDataNodeNum,
       final int dataRegionPerDataNode,
       final boolean rejoinRemovedDataNode,
-      final int SQLType)
+      final SQLModel model)
       throws Exception {
     testRemoveDataNode(
         dataReplicateFactor,
@@ -109,7 +105,7 @@ public class IoTDBRemoveDataNodeITFramework {
         dataRegionPerDataNode,
         true,
         rejoinRemovedDataNode,
-        SQLType);
+        model);
   }
 
   public void failTest(
@@ -120,7 +116,7 @@ public class IoTDBRemoveDataNodeITFramework {
       final int removeDataNodeNum,
       final int dataRegionPerDataNode,
       final boolean rejoinRemovedDataNode,
-      final int SQLType)
+      final SQLModel model)
       throws Exception {
     testRemoveDataNode(
         dataReplicateFactor,
@@ -131,7 +127,7 @@ public class IoTDBRemoveDataNodeITFramework {
         dataRegionPerDataNode,
         false,
         rejoinRemovedDataNode,
-        SQLType);
+        model);
   }
 
   public void testRemoveDataNode(
@@ -143,7 +139,7 @@ public class IoTDBRemoveDataNodeITFramework {
       final int dataRegionPerDataNode,
       final boolean expectRemoveSuccess,
       final boolean rejoinRemovedDataNode,
-      final int SQLType)
+      final SQLModel model)
       throws Exception {
     // Set up the environment
     EnvFactory.getEnv()
@@ -155,12 +151,12 @@ public class IoTDBRemoveDataNodeITFramework {
             dataRegionPerDataNode * dataNodeNum / dataReplicateFactor);
     EnvFactory.getEnv().initClusterEnvironment(configNodeNum, dataNodeNum);
 
-    try (final Connection connection = makeItCloseQuietly(getConnectionWithSQLType(SQLType));
+    try (final Connection connection = makeItCloseQuietly(getConnectionWithSQLType(model));
         final Statement statement = makeItCloseQuietly(connection.createStatement());
         SyncConfigNodeIServiceClient client =
             (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
-      if (SQLType == TABLE_MODEL_SQL) {
+      if (SQLModel.TABLE_MODEL_SQL.equals(model)) {
         // Insert data in table model
         TableUtils.insertData();
       } else {
@@ -204,22 +200,7 @@ public class IoTDBRemoveDataNodeITFramework {
               .map(TDataNodeConfiguration::getLocation)
               .filter(location -> removeDataNodes.contains(location.getDataNodeId()))
               .collect(Collectors.toList());
-      if (SQLType != NOT_USE_SQL) {
-        String removeDataNodeSQL = generateRemoveString(removeDataNodes);
-        LOGGER.info("Remove DataNodes SQL: {}", removeDataNodeSQL);
-        try {
-          statement.execute(removeDataNodeSQL);
-        } catch (IoTDBSQLException e) {
-          if (expectRemoveSuccess) {
-            LOGGER.error("Remove DataNodes SQL execute fail: {}", e.getMessage());
-            Assert.fail();
-          } else {
-            LOGGER.info("Submit Remove DataNodes fail, as expected");
-            return;
-          }
-        }
-        LOGGER.info("Remove DataNodes SQL submit successfully.");
-      } else {
+      if (SQLModel.NOT_USE_SQL.equals(model)) {
         TDataNodeRemoveReq removeReq = new TDataNodeRemoveReq(removeDataNodeLocations);
 
         // Remove data nodes
@@ -235,6 +216,22 @@ public class IoTDBRemoveDataNodeITFramework {
           }
         }
         LOGGER.info("Submit Remove DataNodes request: {}", removeReq);
+
+      } else {
+        String removeDataNodeSQL = generateRemoveString(removeDataNodes);
+        LOGGER.info("Remove DataNodes SQL: {}", removeDataNodeSQL);
+        try {
+          statement.execute(removeDataNodeSQL);
+        } catch (IoTDBSQLException e) {
+          if (expectRemoveSuccess) {
+            LOGGER.error("Remove DataNodes SQL execute fail: {}", e.getMessage());
+            Assert.fail();
+          } else {
+            LOGGER.info("Submit Remove DataNodes fail, as expected");
+            return;
+          }
+        }
+        LOGGER.info("Remove DataNodes SQL submit successfully.");
       }
 
       // Wait until success
@@ -410,8 +407,8 @@ public class IoTDBRemoveDataNodeITFramework {
     return sb.toString();
   }
 
-  public Connection getConnectionWithSQLType(int SQLType) throws SQLException {
-    if (SQLType == TABLE_MODEL_SQL) {
+  public Connection getConnectionWithSQLType(SQLModel model) throws SQLException {
+    if (SQLModel.TABLE_MODEL_SQL.equals(model)) {
       return EnvFactory.getEnv().getTableConnection();
     } else {
       return EnvFactory.getEnv().getConnection();
