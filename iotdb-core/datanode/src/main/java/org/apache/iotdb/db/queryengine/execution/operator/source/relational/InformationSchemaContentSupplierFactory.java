@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
@@ -61,7 +62,6 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
 
-import java.security.AccessControlException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
@@ -121,7 +121,7 @@ public class InformationSchemaContentSupplierFactory {
       queryExecutions = Coordinator.getInstance().getAllQueryExecutions();
       try {
         Coordinator.getInstance().getAccessControl().checkUserHasMaintainPrivilege(userName);
-      } catch (final AccessControlException e) {
+      } catch (final AccessDeniedException e) {
         queryExecutions =
             queryExecutions.stream()
                 .filter(iQueryExecution -> userName.equals(iQueryExecution.getUser()))
@@ -618,7 +618,7 @@ public class InformationSchemaContentSupplierFactory {
   private static boolean canShowDB(final String userName, final String dbName) {
     try {
       Coordinator.getInstance().getAccessControl().checkCanShowOrUseDatabase(userName, dbName);
-    } catch (final AccessControlException e) {
+    } catch (final AccessDeniedException e) {
       return false;
     }
     return true;
@@ -630,7 +630,7 @@ public class InformationSchemaContentSupplierFactory {
       Coordinator.getInstance()
           .getAccessControl()
           .checkCanShowOrDescTable(userName, new QualifiedObjectName(dbName, tableName));
-    } catch (final AccessControlException e) {
+    } catch (final AccessDeniedException e) {
       return false;
     }
     return true;
