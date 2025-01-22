@@ -49,12 +49,12 @@ public class IoTDBFormatFunctionTableIT {
         // normal cases
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE number_table(device_id STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD)",
-        "CREATE TABLE string_table(device_id STRING TAG, s1 STRING FIELD, s2 TEXT FIELD)",
-        "CREATE TABLE boolean_table(device_id STRING TAG, s1 BOOLEAN FIELD)",
-        "CREATE TABLE timestamp_table(device_id STRING TAG, s1 TIMESTAMP FIELD)",
-        "CREATE TABLE date_table(device_id STRING TAG, s1 DATE FIELD)",
-        "CREATE TABLE null_table(device_id STRING TAG, s1 INT32 FIELD)",
+        "CREATE TABLE number_table(device_id STRING ID, s1 INT32 MEASUREMENT, s2 INT64 MEASUREMENT, s3 FLOAT MEASUREMENT, s4 DOUBLE MEASUREMENT)",
+        "CREATE TABLE string_table(device_id STRING ID, s1 STRING MEASUREMENT, s2 TEXT MEASUREMENT)",
+        "CREATE TABLE boolean_table(device_id STRING ID, s1 BOOLEAN MEASUREMENT)",
+        "CREATE TABLE timestamp_table(device_id STRING ID, s1 TIMESTAMP MEASUREMENT)",
+        "CREATE TABLE date_table(device_id STRING ID, s1 DATE MEASUREMENT)",
+        "CREATE TABLE null_table(device_id STRING ID, s1 INT32 MEASUREMENT)",
         // data for number series
         "INSERT INTO number_table(time, device_id, s1, s2, s3, s4) VALUES (10, 'd1', 1000000, 1000000, 3.1415926, 3.1415926)",
         "INSERT INTO number_table(time, device_id, s1, s2, s3, s4) VALUES (20, 'd1', 1, 1, 1234567.25, 1234567.25)",
@@ -205,5 +205,9 @@ public class IoTDBFormatFunctionTableIT {
         "SELECT FORMAT('%s') FROM string_table",
         "701: Scalar function format must have at least two arguments, and first argument must be char type.",
         DATABASE_NAME);
+
+    tableAssertTestFail(
+        "SELECT FORMAT('%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS.%1$tL',s1) FROM date_table",
+        "701:", DATABASE_NAME);
   }
 }
