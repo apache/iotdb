@@ -14,9 +14,6 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.multi;
 
-import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.TypeUtil;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
@@ -26,8 +23,6 @@ import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 public abstract class AbstractGreatestLeastColumnTransformer extends MultiColumnTransformer {
@@ -66,6 +61,9 @@ public abstract class AbstractGreatestLeastColumnTransformer extends MultiColumn
   protected void transform(ColumnBuilder builder, List<Column> childrenColumns, int i) {
     TypeEnum type = columnTransformerList.get(0).getType().getTypeEnum();
     switch (type) {
+      case BOOLEAN:
+        transformBoolean(builder, getValues(childrenColumns, i, Column::getBoolean));
+        break;
       case INT32:
       case DATE:
         transformInt(builder, getValues(childrenColumns, i, Column::getInt));
@@ -104,6 +102,8 @@ public abstract class AbstractGreatestLeastColumnTransformer extends MultiColumn
   private interface ValueExtractor<T> {
     T extract(Column column, int index);
   }
+
+  protected abstract void transformBoolean(ColumnBuilder builder, List<Boolean> values);
 
   protected abstract void transformInt(ColumnBuilder builder, List<Integer> values);
 

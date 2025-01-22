@@ -21,13 +21,16 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public class GreatestColumnTransformer extends AbstractGreatestLeastColumnTransformer {
   public GreatestColumnTransformer(Type returnType, List<ColumnTransformer> columnTransformerList) {
     super(returnType, columnTransformerList);
+  }
+
+  @Override
+  protected void transformBoolean(ColumnBuilder builder, List<Boolean> values) {
+    returnType.writeBoolean(builder, values.stream().max(Boolean::compareTo).orElse(false));
   }
 
   @Override
