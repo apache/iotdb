@@ -190,12 +190,32 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
     FileInputStream inputStream = new FileInputStream(entityFile);
     try (DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
-      int version = dataInputStream.readInt();
-      assert version == VERSION;
-      entityName = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
-      Role role = new Role(entityName);
-      loadPrivileges(dataInputStream, role);
-      return role;
+      boolean fromOldVersion = false;
+      int tag = dataInputStream.readInt();
+      if (tag < 0) {
+        fromOldVersion = true;
+      }
+
+      if (fromOldVersion) {
+        String name =
+            IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal, -1 * tag);
+        Role role = new Role(name);
+        role.setSysPrivilegesWithMask(dataInputStream.readInt());
+        List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
+        for (int i = 0; dataInputStream.available() != 0; i++) {
+          pathPrivilegeList.add(
+              IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
+        }
+        role.setPrivilegeList(pathPrivilegeList);
+        return role;
+      } else {
+        assert tag == VERSION;
+        entityName = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+        Role role = new Role(entityName);
+        loadPrivileges(dataInputStream, role);
+        return role;
+      }
+
     } catch (Exception e) {
       throw new IOException(e);
     } finally {

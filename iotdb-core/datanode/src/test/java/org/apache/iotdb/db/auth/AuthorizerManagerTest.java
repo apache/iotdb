@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -128,6 +129,8 @@ public class AuthorizerManagerTest {
     user.grantDBPrivilege("database", PrivilegeType.SELECT, false);
     user.grantDBPrivilege("database", PrivilegeType.ALTER, true);
     user.grantTBPrivilege("database", "table", PrivilegeType.DELETE, true);
+    user.grantAnyScopePrivilege(PrivilegeType.ALTER, true);
+
     role.grantSysPrivilege(PrivilegeType.USE_UDF, false);
     role.grantSysPrivilege(PrivilegeType.USE_CQ, true);
     role.grantSysPrivilegeGrantOption(PrivilegeType.USE_CQ);
@@ -141,15 +144,26 @@ public class AuthorizerManagerTest {
     // 4. WRITE_SCHEMA root.d1.** with grant option
     // 5. SELECT on database, ALTER on database with grant option
     // 6. DELETE on database.table with grant option
+    // 7. ALTER on any with grant option
 
     // role's priv:
     // 1. USE_UDF
     // 2. USE_CQ with grant option
     // 3. READ_DATA root.t.** with grant option
+    // 4. INSERT on database with grant option
     user.addRole("role1");
 
-    authorityFetcher.getAuthorCache().putUserCache("user1", user);
-    authorityFetcher.getAuthorCache().putRoleCache("role1", role);
+    TPermissionInfoResp result = new TPermissionInfoResp();
+    TUserResp tUserResp = user.getUserInfo(ModelType.ALL);
+    result.setUserInfo(tUserResp);
+    result.putToRoleInfo(role.getName(), role.getRoleInfo(ModelType.ALL));
+
+    authorityFetcher
+        .getAuthorCache()
+        .putUserCache(user.getName(), authorityFetcher.cacheUser(result));
+
+    Assert.assertEquals(user, authorityFetcher.getAuthorCache().getUserCache(user.getName()));
+    Assert.assertEquals(role, authorityFetcher.getAuthorCache().getRoleCache(role.getName()));
 
     // for system priv. we have USE_PIPE grant option.
     Assert.assertEquals(
@@ -205,6 +219,13 @@ public class AuthorizerManagerTest {
         authorityFetcher
             .checkUserDBPrivilegesGrantOpt("user1", "database", PrivilegeType.ALTER)
             .getCode());
+
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorityFetcher
+            .checkUserTBPrivilegesGrantOpt("user1", "database", "table", PrivilegeType.INSERT)
+            .getCode());
+
     Assert.assertEquals(
         TSStatusCode.NO_PERMISSION.getStatusCode(),
         authorityFetcher

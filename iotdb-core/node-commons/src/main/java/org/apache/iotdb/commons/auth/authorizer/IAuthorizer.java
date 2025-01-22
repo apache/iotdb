@@ -63,26 +63,26 @@ public interface IAuthorizer extends SnapshotProcessor {
   void deleteUser(String username) throws AuthException;
 
   /**
-   * Grant a privilege on a seriesPath to a user.
+   * Grant a privilege to a user.
    *
    * @param userName The username of the user to which the privilege should be added.
-   * @param union A combination of user permissions and scope, and tags
-   * @throws AuthException If the user does not exist or the privilege or the seriesPath is illegal
-   *     or the permission already exists.
+   * @param union A combination of user permissions, scope, and tags
+   * @throws AuthException If the user does not exist or the privilege or the seriesPath is illegal.
    */
   void grantPrivilegeToUser(String userName, PrivilegeUnion union) throws AuthException;
 
   /**
-   * Revoke a privilege on seriesPath from a user.
+   * Revoke a privilege from a user.
    *
    * @param userName The username of the user from which the privilege should be removed.
+   * @param union A combination of user permissions, scope, and tags
    * @throws AuthException If the user does not exist or the privilege or the seriesPath is illegal
    *     or if the permission does not exist.
    */
   void revokePrivilegeFromUser(String userName, PrivilegeUnion union) throws AuthException;
 
   /**
-   * Add a role.
+   * Create a role.
    *
    * @param roleName the name of the role to be added.
    * @throws AuthException if exception raised when adding the role or the role already exists.
@@ -98,70 +98,69 @@ public interface IAuthorizer extends SnapshotProcessor {
   void deleteRole(String roleName) throws AuthException;
 
   /**
-   * Add a privilege on a seriesPath to a role.
+   * Add a privilege to a role.
    *
    * @param roleName The name of the role to which the privilege is added.
-   * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal
-   *     or the privilege already exists.
+   * @param union A combination of user permissions, scope, and tags.
+   * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal.
    */
   void grantPrivilegeToRole(String roleName, PrivilegeUnion union) throws AuthException;
 
   /**
-   * Remove a privilege on a seriesPath from a role.
+   * Remove a privilege from a role.
    *
    * @param roleName The name of the role from which the privilege is removed.
+   * @param union A combination of user permissions, scope, and tags
    * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal
-   *     or the privilege does not exist.
    */
   void revokePrivilegeFromRole(String roleName, PrivilegeUnion union) throws AuthException;
 
   /**
-   * Add a role to a user.
+   * Grant a role to a user.
    *
    * @param roleName The name of the role to be added.
-   * @param username The name of the user to which the role is added.
+   * @param userName The name of the user to which the role is added.
    * @throws AuthException If either the role or the user does not exist or the role already exists.
    */
-  void grantRoleToUser(String roleName, String username) throws AuthException;
+  void grantRoleToUser(String roleName, String userName) throws AuthException;
 
   /**
    * Revoke a role from a user.
    *
    * @param roleName The name of the role to be removed.
-   * @param username The name of the user from which the role is removed.
+   * @param userName The name of the user from which the role is removed.
    * @throws AuthException If either the role or the user does not exist or the role already exists.
    */
-  void revokeRoleFromUser(String roleName, String username) throws AuthException;
+  void revokeRoleFromUser(String roleName, String userName) throws AuthException;
 
   /**
    * Get the all the privileges of a user on a seriesPath.
    *
-   * @param username The user whose privileges are to be queried.
-   * @param path The seriesPath on which the privileges take effect. If the privilege is a
-   *     seriesPath-free privilege, this should be "root".
-   * @return A set of integers each present a privilege.
+   * @param userName The user whose privileges are to be queried.
+   * @param path The path where the privileges take effect.
+   * @return A set of privilege each present a privilege.
    * @throws AuthException if exception raised when finding the privileges.
    */
-  Set<PrivilegeType> getPrivileges(String username, PartialPath path) throws AuthException;
+  Set<PrivilegeType> getPrivileges(String userName, PartialPath path) throws AuthException;
 
   /**
    * Modify the password of a user.
    *
-   * @param username The user whose password is to be modified.
+   * @param userName The user whose password is to be modified.
    * @param newPassword The new password.
    * @throws AuthException If the user does not exist or the new password is illegal.
    */
-  void updateUserPassword(String username, String newPassword) throws AuthException;
+  void updateUserPassword(String userName, String newPassword) throws AuthException;
 
   /**
    * Check if the user have the privilege or grant option on the target.
    *
-   * @param username The name of the user whose privileges are checked.
-   * @param union privilege union to check.
+   * @param userName The name of the user whose privileges are checked.
+   * @param union A combination of user permissions, scope, and tags
    * @return True if the user has such privilege, false if the user does not have such privilege.
    * @throws AuthException If the seriesPath or the privilege is illegal.
    */
-  boolean checkUserPrivileges(String username, PrivilegeUnion union) throws AuthException;
+  boolean checkUserPrivileges(String userName, PrivilegeUnion union) throws AuthException;
 
   /** Reset the Authorizer to initiative status. */
   void reset() throws AuthException;

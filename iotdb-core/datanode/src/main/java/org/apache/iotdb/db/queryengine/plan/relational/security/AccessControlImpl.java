@@ -302,7 +302,7 @@ public class AccessControlImpl implements AccessControl {
               userName, TableModelPrivilege.getTableModelType(privilegeType));
         }
       default:
-        //
+        break;
     }
   }
 }

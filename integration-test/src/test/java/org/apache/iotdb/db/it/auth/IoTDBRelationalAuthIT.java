@@ -138,7 +138,7 @@ public class IoTDBRelationalAuthIT {
             adminStmt.execute("GRANT ROLE testrole to root");
           });
 
-      // cannot grant privileg to admin user
+      // cannot grant privilege to admin user
       Assert.assertThrows(
           SQLException.class,
           () -> {

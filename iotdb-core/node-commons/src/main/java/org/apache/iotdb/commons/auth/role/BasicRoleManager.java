@@ -146,6 +146,7 @@ public abstract class BasicRoleManager implements IEntityManager, SnapshotProces
     }
   }
 
+  @Override
   public void revokePrivilegeFromEntity(String entityName, PrivilegeUnion privilegeUnion)
       throws AuthException {
     lock.writeLock(entityName);

@@ -1460,15 +1460,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     name = ctx.holderName.getText();
     boolean grantOption = ctx.grantOpt() != null;
     boolean toTable;
-    Set<PrivilegeType> privileges = new HashSet<>();
+    Set<PrivilegeType> privileges;
     // SYSTEM PRIVILEGES OR ALL PRIVILEGES
     if (ctx.privilegeObjectScope().ON() == null) {
       if (ctx.privilegeObjectScope().ALL() != null) {
-        for (PrivilegeType privilege : PrivilegeType.values()) {
-          if (privilege.isRelationalPrivilege() || privilege.forRelationalSys()) {
-            privileges.add(privilege);
-          }
-        }
         return new RelationalAuthorStatement(
             toUser ? AuthorRType.GRANT_USER_ALL : AuthorRType.GRANT_ROLE_ALL,
             toUser ? name : "",
@@ -1544,11 +1539,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     // SYSTEM PRIVILEGES OR ALL PRIVILEGES
     if (ctx.privilegeObjectScope().ON() == null) {
       if (ctx.privilegeObjectScope().ALL() != null) {
-        for (PrivilegeType privilege : PrivilegeType.values()) {
-          if (privilege.isRelationalPrivilege() || privilege.forRelationalSys()) {
-            privileges.add(privilege);
-          }
-        }
         return new RelationalAuthorStatement(
             fromUser ? AuthorRType.REVOKE_USER_ALL : AuthorRType.REVOKE_ROLE_ALL,
             fromUser ? name : "",

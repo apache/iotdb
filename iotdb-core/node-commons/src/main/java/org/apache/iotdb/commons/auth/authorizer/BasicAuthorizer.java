@@ -225,8 +225,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
-  public void revokeRoleFromUser(String roleName, String username) throws AuthException {
-    if (isAdmin(username)) {
+  public void revokeRoleFromUser(String roleName, String userName) throws AuthException {
+    if (isAdmin(userName)) {
       throw new AuthException(
           TSStatusCode.NO_PERMISSION, "Invalid operation, cannot revoke role from administrator ");
     }
@@ -236,19 +236,19 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       throw new AuthException(
           TSStatusCode.ROLE_NOT_EXIST, String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
     }
-    if (!userManager.revokeRoleFromUser(roleName, username)) {
+    if (!userManager.revokeRoleFromUser(roleName, userName)) {
       throw new AuthException(
           TSStatusCode.USER_NOT_HAS_ROLE,
-          String.format("User %s does not have role %s", username, roleName));
+          String.format("User %s does not have role %s", userName, roleName));
     }
   }
 
   @Override
-  public Set<PrivilegeType> getPrivileges(String username, PartialPath path) throws AuthException {
-    User user = userManager.getEntity(username);
+  public Set<PrivilegeType> getPrivileges(String userName, PartialPath path) throws AuthException {
+    User user = userManager.getEntity(userName);
     if (user == null) {
       throw new AuthException(
-          TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_EXCEPTION, username));
+          TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_EXCEPTION, userName));
     }
     // get privileges of the user
     Set<PrivilegeType> privileges = user.getPathPrivileges(path);
@@ -263,22 +263,22 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
-  public void updateUserPassword(String username, String newPassword) throws AuthException {
-    if (!userManager.updateUserPassword(username, newPassword)) {
+  public void updateUserPassword(String userName, String newPassword) throws AuthException {
+    if (!userManager.updateUserPassword(userName, newPassword)) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PARAMETER, "password " + newPassword + " is illegal");
     }
   }
 
   @Override
-  public boolean checkUserPrivileges(String username, PrivilegeUnion union) throws AuthException {
-    if (isAdmin(username)) {
+  public boolean checkUserPrivileges(String userName, PrivilegeUnion union) throws AuthException {
+    if (isAdmin(userName)) {
       return true;
     }
-    User user = userManager.getEntity(username);
+    User user = userManager.getEntity(userName);
     if (user == null) {
       throw new AuthException(
-          TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_EXCEPTION, username));
+          TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_EXCEPTION, userName));
     }
     if (checkEntityPrivileges(user, union)) {
       return true;

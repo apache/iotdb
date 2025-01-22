@@ -78,7 +78,7 @@ public enum PrivilegeType {
           size += item.isRelationalPrivilege() ? 1 : 0;
           break;
         default:
-          //
+          break;
       }
     }
     return size;

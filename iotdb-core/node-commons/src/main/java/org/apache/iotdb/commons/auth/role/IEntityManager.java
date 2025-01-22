@@ -25,58 +25,59 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 
 import java.util.List;
 
-/** We can call user or role as entry of access control, they all can obtain privileges */
+/** We can call user or role as entity of access control, they all can obtain privileges */
 public interface IEntityManager extends SnapshotProcessor {
 
   /**
-   * Get an entry object.
+   * Get an entity object.
    *
-   * @param entryName The name of the role.
-   * @return A role object whose name is entryName or null if such role does not exist.
+   * @param entityName The name of the role.
+   * @return A role object whose name is entityName or null if such role does not exist.
    * @throws AuthException if exception is raised while getting the role.
    */
-  Role getEntity(String entryName) throws AuthException;
+  Role getEntity(String entityName) throws AuthException;
 
   /**
-   * Create a role/user with given entryName. New roles/users will only be granted no privileges.
+   * Create a role/user with given entityName. New roles/users will only be granted no privileges.
    *
-   * @param entryName is not null or empty
+   * @param entityName is not null or empty
    * @return True if the role is successfully created, false when the role already exists.
    */
-  boolean createRole(String entryName);
+  boolean createRole(String entityName);
 
   /**
-   * Delete an entry.
+   * Delete an entity.
    *
-   * @param entryName the name of the user/role.
-   * @return boolean, true means we have the role in entryManager.
+   * @param entityName the name of the user/role.
+   * @return boolean, true means we have the role in entityManager.
    */
-  boolean deleteEntity(String entryName);
+  boolean deleteEntity(String entityName);
 
   /**
-   * Grant a privilege to an entry.
+   * Grant a privilege to an entity.
    *
-   * @param entryName The name of the entry to which the privilege should be added.
-   * @param privilegeUnion The privilege will be granted to entry.
-   * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal.
+   * @param entityName The name of the entity to which the privilege should be added.
+   * @param privilegeUnion The privilege will be granted to entity.
+   * @throws AuthException If the role does not exist or the privilege or the path is illegal.
    */
-  void grantPrivilegeToEntity(String entryName, PrivilegeUnion privilegeUnion) throws AuthException;
+  void grantPrivilegeToEntity(String entityName, PrivilegeUnion privilegeUnion)
+      throws AuthException;
 
   /**
-   * Revoke a privilege on seriesPath from an entry.
+   * Revoke a privilege on path from an entity.
    *
-   * @param entryName The name of the entry from which the privilege should be removed.
-   * @param privilegeUnion The privilege will be granted to entry.
-   * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal.
+   * @param entityName The name of the entity from which the privilege should be removed.
+   * @param privilegeUnion The privilege will be granted to entity.
+   * @throws AuthException If the role does not exist or the privilege or the path is illegal.
    */
-  void revokePrivilegeFromEntity(String entryName, PrivilegeUnion privilegeUnion)
+  void revokePrivilegeFromEntity(String entityName, PrivilegeUnion privilegeUnion)
       throws AuthException;
 
   /** Re-initialize this object. */
   void reset() throws AuthException;
 
   /**
-   * List all users/roles in the database.
+   * List all users/roles.
    *
    * @return A list that contains names of all roles.
    */

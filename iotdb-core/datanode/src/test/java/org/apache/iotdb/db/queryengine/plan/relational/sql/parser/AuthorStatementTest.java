@@ -57,7 +57,7 @@ public class AuthorStatementTest {
     return (RelationalAuthorStatement) stmt;
   }
 
-  private void checkUserManagerFiled(RelationalAuthorStatement authorStatement) {
+  private void checkNullStatementFields(RelationalAuthorStatement authorStatement) {
     assertNull(authorStatement.getDatabase());
     assertNull(authorStatement.getTableName());
     assertNull(authorStatement.getPrivilegeTypes());
@@ -70,32 +70,32 @@ public class AuthorStatementTest {
     assertEquals(AuthorRType.CREATE_USER, stmt.getAuthorType());
     assertEquals("user1", stmt.getUserName());
     assertEquals("passw", stmt.getPassword());
-    checkUserManagerFiled(stmt);
+    checkNullStatementFields(stmt);
     stmt = createAuthorStatement("create role role1");
     assertEquals("role1", stmt.getRoleName());
     assertEquals(AuthorRType.CREATE_ROLE, stmt.getAuthorType());
     assertNull(stmt.getUserName());
-    checkUserManagerFiled(stmt);
+    checkNullStatementFields(stmt);
     stmt = createAuthorStatement("GRANT ROLE role1 to user1");
     assertEquals("role1", stmt.getRoleName());
     assertEquals("user1", stmt.getUserName());
     assertEquals(AuthorRType.GRANT_USER_ROLE, stmt.getAuthorType());
-    checkUserManagerFiled(stmt);
+    checkNullStatementFields(stmt);
     stmt = createAuthorStatement("REVOKE ROLE role1 from user1");
     assertEquals("role1", stmt.getRoleName());
     assertEquals("user1", stmt.getUserName());
     assertEquals(AuthorRType.REVOKE_USER_ROLE, stmt.getAuthorType());
-    checkUserManagerFiled(stmt);
+    checkNullStatementFields(stmt);
 
     stmt = createAuthorStatement("DROP USER user1");
     assertEquals("user1", stmt.getUserName());
     assertEquals(AuthorRType.DROP_USER, stmt.getAuthorType());
-    checkUserManagerFiled(stmt);
+    checkNullStatementFields(stmt);
 
     stmt = createAuthorStatement("DROP ROLE role1");
     assertEquals("role1", stmt.getRoleName());
     assertEquals(AuthorRType.DROP_ROLE, stmt.getAuthorType());
-    checkUserManagerFiled(stmt);
+    checkNullStatementFields(stmt);
   }
 
   private void checkRevokePrivileges(

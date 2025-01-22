@@ -718,7 +718,9 @@ public class StatementGeneratorTest {
 
     // 1. check simple privilege grant to user/role with/without grant option.
     for (PrivilegeType privilege : PrivilegeType.values()) {
-      if (privilege.isRelationalPrivilege()) continue;
+      if (privilege.isRelationalPrivilege()) {
+        continue;
+      }
       testGrant.checkParser(privilege.toString(), name, true, path, true);
       testGrant.checkParser(privilege.toString(), name, true, path, false);
       testGrant.checkParser(privilege.toString(), name, false, path, true);

@@ -256,12 +256,12 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
   }
 
   @Override
-  public boolean checkUserPrivileges(String username, PrivilegeUnion union) throws AuthException {
-    return isAdmin(username);
+  public boolean checkUserPrivileges(String userName, PrivilegeUnion union) throws AuthException {
+    return isAdmin(userName);
   }
 
   @Override
-  public void updateUserPassword(String username, String newPassword) {
+  public void updateUserPassword(String userName, String newPassword) {
     throwUnsupportedOperationException();
   }
 }

@@ -107,8 +107,6 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
                 + TEMP_SUFFIX);
     try (FileOutputStream fileOutputStream = new FileOutputStream(roleProfile);
         BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
-      int roleNum = user.getRoleSet().size();
-      IOUtils.writeInt(outputStream, roleNum, encodingBufferLocal);
       for (String roleName : user.getRoleSet()) {
         IOUtils.writeString(outputStream, roleName, STRING_ENCODING, encodingBufferLocal);
       }
@@ -165,39 +163,21 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
               IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
         }
         user.setPrivilegeList(pathPrivilegeList);
-
-        File roleOfUser = checkFileAvailable(entityName, "_role");
-
-        Set<String> roleSet = new HashSet<>();
-        if (roleOfUser != null && roleOfUser.exists()) {
-          inputStream = new FileInputStream(roleOfUser);
-          try (DataInputStream roleInputStream =
-              new DataInputStream(new BufferedInputStream(inputStream))) {
-
-            for (int i = 0; roleInputStream.available() != 0; i++) {
-              String roleName =
-                  IOUtils.readString(roleInputStream, STRING_ENCODING, strBufferLocal);
-              roleSet.add(roleName);
-            }
-          }
-        }
-        user.setRoleSet(roleSet);
-        return user;
+      } else {
+        assert (tag == VERSION);
+        user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
+        user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
+        loadPrivileges(dataInputStream, user);
       }
-      assert (tag == VERSION);
-      user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
-      user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
-      loadPrivileges(dataInputStream, user);
 
       File roleOfUser = checkFileAvailable(entityName, "_role");
       Set<String> roleSet = new HashSet<>();
-      if (roleOfUser.exists()) {
+      if (roleOfUser != null && roleOfUser.exists()) {
         inputStream = new FileInputStream(roleOfUser);
-        try (DataInputStream userInputStream =
+        try (DataInputStream roleInputStream =
             new DataInputStream(new BufferedInputStream(inputStream))) {
-          int num = userInputStream.readInt();
-          for (int i = 0; i < num; i++) {
-            String roleName = IOUtils.readString(userInputStream, STRING_ENCODING, strBufferLocal);
+          for (int i = 0; roleInputStream.available() != 0; i++) {
+            String roleName = IOUtils.readString(roleInputStream, STRING_ENCODING, strBufferLocal);
             roleSet.add(roleName);
           }
         }

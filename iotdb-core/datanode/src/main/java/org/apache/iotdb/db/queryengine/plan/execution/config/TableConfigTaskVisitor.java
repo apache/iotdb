@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -324,11 +324,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             accessControl.checkCanShowOrUseDatabase(
                 context.getSession().getUserName(), databaseName);
             return true;
-          } catch (final RuntimeException e) {
-            if (e.getCause() instanceof IoTDBException) {
-              return false;
-            }
-            throw e;
+          } catch (final AccessDeniedException e) {
+            return false;
           }
         });
   }
@@ -681,11 +678,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
                 context.getSession().getUserName(),
                 new QualifiedObjectName(finalDatabase, tableName));
             return true;
-          } catch (final RuntimeException e) {
-            if (e.getCause() instanceof IoTDBException) {
-              return false;
-            }
-            throw e;
+          } catch (final AccessDeniedException e) {
+            return false;
           }
         };
     return node.isDetails()

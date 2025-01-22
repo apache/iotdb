@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -32,8 +32,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       return;
     }
     if (!AuthorityChecker.checkDBVisible(userName, databaseName)) {
-      throw new RuntimeException(
-          new IoTDBException("NO PERMISSION", TSStatusCode.NO_PERMISSION.getStatusCode()));
+      throw new AccessDeniedException("DATABASE " + databaseName);
     }
   }
 
@@ -50,7 +49,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
             privilege.getPrivilegeType(),
             databaseName);
     if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException(new IoTDBException(result.getMessage(), result.getCode()));
+      throw new AccessDeniedException(result.getMessage());
     }
   }
 
@@ -67,7 +66,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
             privilege.getPrivilegeType(),
             databaseName);
     if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException(new IoTDBException(result.getMessage(), result.getCode()));
+      throw new AccessDeniedException(result.getMessage());
     }
   }
 
@@ -88,7 +87,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
             tableName.getDatabaseName(),
             tableName.getObjectName());
     if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException(new IoTDBException(result.getMessage(), result.getCode()));
+      throw new AccessDeniedException(result.getMessage());
     }
   }
 
@@ -109,7 +108,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
             tableName.getDatabaseName(),
             tableName.getObjectName());
     if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException(new IoTDBException(result.getMessage(), result.getCode()));
+      throw new AccessDeniedException(result.getMessage());
     }
   }
 
@@ -120,8 +119,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
     }
     if (!AuthorityChecker.checkTableVisible(
         userName, tableName.getDatabaseName(), tableName.getObjectName())) {
-      throw new RuntimeException(
-          new IoTDBException("NO PERMISSION", TSStatusCode.NO_PERMISSION.getStatusCode()));
+      throw new AccessDeniedException("TABLE " + tableName);
     }
   }
 
@@ -135,7 +133,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
             AuthorityChecker.checkSystemPermission(userName, privilege.getPrivilegeType()),
             privilege.getPrivilegeType());
     if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException(new IoTDBException(result.getMessage(), result.getCode()));
+      throw new AccessDeniedException(result.getMessage());
     }
   }
 
@@ -150,7 +148,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
                 userName, privilege.getPrivilegeType()),
             privilege.getPrivilegeType());
     if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException(new IoTDBException(result.getMessage(), result.getCode()));
+      throw new AccessDeniedException(result.getMessage());
     }
   }
 
@@ -165,7 +163,7 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
                 userName, privilege.getPrivilegeType()),
             privilege.getPrivilegeType());
     if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException(new IoTDBException(result.getMessage(), result.getCode()));
+      throw new AccessDeniedException(result.getMessage());
     }
   }
 }

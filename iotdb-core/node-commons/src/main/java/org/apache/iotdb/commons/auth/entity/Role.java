@@ -122,7 +122,7 @@ public class Role {
         objectName, k -> new DatabasePrivilege(objectName));
   }
 
-  public List<TPathPrivilege> getPathPrivilegeInfo() {
+  public List<TPathPrivilege> getTreePrivilegeInfo() {
     List<TPathPrivilege> privilegeList = new ArrayList<>();
     for (PathPrivilege pathPrivilege : pathPrivilegeList) {
       TPathPrivilege pathPriv = new TPathPrivilege();
@@ -134,7 +134,7 @@ public class Role {
     return privilegeList;
   }
 
-  public void loadPathPrivilegeInfo(List<TPathPrivilege> pathPrivilegeInfo)
+  public void loadTreePrivilegeInfo(List<TPathPrivilege> pathPrivilegeInfo)
       throws MetadataException {
     for (TPathPrivilege tPathPrivilege : pathPrivilegeInfo) {
       PathPrivilege pathPri = new PathPrivilege();
@@ -145,7 +145,7 @@ public class Role {
     }
   }
 
-  public Set<TDBPrivilege> getRelationalPrivilegeInfo() {
+  public Set<TDBPrivilege> getDatabaseAndTablePrivilegeInfo() {
     Set<TDBPrivilege> privileges = new HashSet<>();
     for (DatabasePrivilege databasePrivilege : objectPrivilegeMap.values()) {
       TDBPrivilege tdbPrivilege = new TDBPrivilege();
@@ -168,7 +168,7 @@ public class Role {
     return privileges;
   }
 
-  public void loadRelationalPrivilegeInfo(Map<String, TDBPrivilege> info) {
+  public void loadDatabaseAndTablePrivilegeInfo(Map<String, TDBPrivilege> info) {
     for (TDBPrivilege tdbPrivilege : info.values()) {
       DatabasePrivilege databasePrivilege = new DatabasePrivilege(tdbPrivilege.getDatabaseName());
       for (Integer privId : tdbPrivilege.getPrivileges()) {
@@ -215,7 +215,7 @@ public class Role {
         roleResp.setAnyScopeSet(getPrivilegeIntSet(anyScopePrivilegeSet));
         roleResp.setAnyScopeGrantSet(getPrivilegeIntSet(anyScopePrivilegeGrantOptSet));
         roleResp.setPrivilegeList(new ArrayList<>());
-        Set<TDBPrivilege> tdbPrivileges = getRelationalPrivilegeInfo();
+        Set<TDBPrivilege> tdbPrivileges = getDatabaseAndTablePrivilegeInfo();
         roleResp.setDbPrivilegeMap(new HashMap<>());
         for (TDBPrivilege tdbPrivilege : tdbPrivileges) {
           roleResp.putToDbPrivilegeMap(tdbPrivilege.getDatabaseName(), tdbPrivilege);
@@ -226,7 +226,7 @@ public class Role {
         roleResp.setSysPriSetGrantOpt(getPrivilegeIntSet(sysPriGrantOpt));
         roleResp.setAnyScopeSet(new HashSet<>());
         roleResp.setAnyScopeGrantSet(new HashSet<>());
-        roleResp.setPrivilegeList(getPathPrivilegeInfo());
+        roleResp.setPrivilegeList(getTreePrivilegeInfo());
         roleResp.setDbPrivilegeMap(new HashMap<>());
         break;
       case ALL:
@@ -234,8 +234,8 @@ public class Role {
         roleResp.setSysPriSetGrantOpt(getPrivilegeIntSet(sysPriGrantOpt));
         roleResp.setAnyScopeSet(getPrivilegeIntSet(anyScopePrivilegeSet));
         roleResp.setAnyScopeGrantSet(getPrivilegeIntSet(anyScopePrivilegeGrantOptSet));
-        roleResp.setPrivilegeList(getPathPrivilegeInfo());
-        Set<TDBPrivilege> tdbPrivileges1 = getRelationalPrivilegeInfo();
+        roleResp.setPrivilegeList(getTreePrivilegeInfo());
+        Set<TDBPrivilege> tdbPrivileges1 = getDatabaseAndTablePrivilegeInfo();
         roleResp.setDbPrivilegeMap(new HashMap<>());
         for (TDBPrivilege tdbPrivilege : tdbPrivileges1) {
           roleResp.putToDbPrivilegeMap(tdbPrivilege.getDatabaseName(), tdbPrivilege);

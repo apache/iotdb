@@ -596,7 +596,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         tPermissionInfoResp.getUserInfo().getPermissionInfo().getPrivilegeList();
     user.setName(tPermissionInfoResp.getUserInfo().getPermissionInfo().getName());
     user.setPassword(tPermissionInfoResp.getUserInfo().getPassword());
-    user.loadRelationalPrivilegeInfo(
+    user.loadDatabaseAndTablePrivilegeInfo(
         tPermissionInfoResp.getUserInfo().getPermissionInfo().getDbPrivilegeMap());
     user.setAnyScopePrivilegeSetInt(
         tPermissionInfoResp.getUserInfo().getPermissionInfo().getAnyScopeSet());
@@ -609,7 +609,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     user.setSysPriGrantOptInt(
         tPermissionInfoResp.getUserInfo().getPermissionInfo().getSysPriSetGrantOpt());
     try {
-      user.loadPathPrivilegeInfo(privilegeList);
+      user.loadTreePrivilegeInfo(privilegeList);
     } catch (MetadataException e) {
       LOGGER.error("cache user's path privileges error", e);
     }
@@ -625,13 +625,14 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   public Role cacheRole(String roleName, TPermissionInfoResp tPermissionInfoResp) {
     TRoleResp resp = tPermissionInfoResp.getRoleInfo().get(roleName);
     Role role = new Role(resp.getName());
-
-    role.loadRelationalPrivilegeInfo(resp.getDbPrivilegeMap());
+    role.setAnyScopePrivilegeSetInt(resp.getAnyScopeSet());
+    role.setAnyScopePrivilegeGrantOptSetInt(resp.getAnyScopeGrantSet());
+    role.loadDatabaseAndTablePrivilegeInfo(resp.getDbPrivilegeMap());
     role.setSysPriGrantOptInt(
         tPermissionInfoResp.getRoleInfo().get(roleName).getSysPriSetGrantOpt());
     role.setSysPrivilegeSetInt(tPermissionInfoResp.getRoleInfo().get(roleName).getSysPriSet());
     try {
-      role.loadPathPrivilegeInfo(resp.getPrivilegeList());
+      role.loadTreePrivilegeInfo(resp.getPrivilegeList());
     } catch (MetadataException e) {
       LOGGER.error("cache role's path privileges error", e);
     }
