@@ -31,11 +31,12 @@ import static org.apache.iotdb.db.query.eBUG.Tool.triArea;
 public class eBUG {
     public static List<Point> findEliminated(Polyline lineToSimplify, int[] recentEliminated,
                                              int pa_idx, int pi_idx, int pb_idx) {
-        // TODO 复杂度分析
-        //  从最近淘汰的e个点里寻找位于pa~pb之间的：e
-        //  把上一步找到的点和pa pi pb一起按照时间戳递增排序：记c=b-a。如果e<c，那么eloge，否则c
-        //  后面鞋带公式计算面积：min(e+3,c)
+        //  复杂度分析 记c=b-a。
+        //  如果e<c，那么从最近淘汰的e个点里寻找位于pa~pb之间的，找到的点和pa pi pb一起按照时间戳递增排序，后面鞋带公式计算面积：O(e+eloge)
+        //  否则e>=c，直接取T[a:b]，已经排序号了，后面鞋带公式计算面积：O(c)
+
         // 性质：最近淘汰的那一个点一定是位于pa~pb之间，因为正是这个点的淘汰才使得pi的significance要更新！
+
         // pi: the point whose significance needs updating
         // pa: left adjacent non-eliminated point of pi
         // pb: right adjacent non-eliminated point of pi
@@ -80,7 +81,7 @@ public class eBUG {
         }
 
         // 按照时间戳递增排序，这是为了后面计算total areal displacement需要
-        res.sort(Comparator.comparingDouble(p -> p.x)); // 按时间戳排序 TODO 这样的话时间复杂度要变成e*log(e)了吧？
+        res.sort(Comparator.comparingDouble(p -> p.x)); // 按时间戳排序 这样的话时间复杂度变成e*log(e)
 
         return res;
     }
@@ -91,9 +92,8 @@ public class eBUG {
         }
 
         List<Point> results = lineToSimplify.getVertices(); // 浅复制
-//        results.addAll(lineToSimplify.getVertices()); // TODO debug
 
-        // TODO 需要一个东西来记录最近淘汰的点依次是谁
+        // 用循环数组来记录最近淘汰的点
         int[] recentEliminated = new int[e]; // init 0 points to the first point, skipped in findEliminated
         int recentEliminatedIdx = 0;  // index in the array, circulate
 
@@ -265,7 +265,7 @@ public class eBUG {
         Polyline polyline = new Polyline();
         List<Polyline> polylineList = new ArrayList<>();
         Random rand = new Random(1);
-        int n = 100_0000;
+        int n = 1000_0000;
 
         int p = 10;
         for (int i = 0; i < n; i += p) {
@@ -299,10 +299,10 @@ public class eBUG {
         // 计算运行时间
 //        int eParam = 10;
         try (PrintWriter writer = new PrintWriter(new File("exp.csv"))) {
-            int[] eParamList = {0, 1, 100, 500, 1000, 5000, 10000, 50000, 10_0000, 30_0000, 50_0000, 60_0000,
-                    70_0000, 80_0000, 90_0000, 100_0000, 150_0000, 200_0000, 250_0000, 300_0000};
-//            for (int eParam = 0; eParam < 2 * n; eParam += 1000) {
-            for (int eParam : eParamList) {
+//            int[] eParamList = {0, 1, 100, 500, 1000, 5000, 10000, 50000, 10_0000, 30_0000, 50_0000, 60_0000,
+//                    70_0000, 80_0000, 90_0000, 100_0000, 150_0000, 200_0000, 250_0000, 300_0000};
+            for (int eParam = 0; eParam < n*1.5; eParam += 2_0000) {
+//            for (int eParam : eParamList) {
                 long startTime = System.currentTimeMillis();
                 List<Point> results = buildEffectiveArea(polyline, eParam, false);
                 // 输出结果
