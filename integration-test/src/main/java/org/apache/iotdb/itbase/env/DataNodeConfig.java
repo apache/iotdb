@@ -31,4 +31,6 @@ public interface DataNodeConfig {
 
   DataNodeConfig setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
       long loadTsFileAnalyzeSchemaMemorySizeInBytes);
+
+  DataNodeConfig setCompactionScheduleInterval(long compactionScheduleInterval);
 }
