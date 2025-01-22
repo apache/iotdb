@@ -363,4 +363,40 @@ public class DeleteDataNode extends AbstractDeleteDataNode {
                               .collect(Collectors.toList())));
     }
   }
+
+  @Override
+  public SearchNode merge(List<SearchNode> searchNodes) {
+    List<DeleteDataNode> deleteDataNodes =
+        searchNodes.stream()
+            .map(searchNode -> (DeleteDataNode) searchNode)
+            .collect(Collectors.toList());
+    int size = deleteDataNodes.size();
+    if (size == 0) {
+      throw new IllegalArgumentException("deleteDataNodes is empty");
+    }
+    DeleteDataNode firstOne = deleteDataNodes.get(0);
+    if (size == 1) {
+      return firstOne;
+    }
+    if (!deleteDataNodes.stream()
+        .allMatch(
+            deleteDataNode ->
+                firstOne.getDeleteStartTime() == deleteDataNode.getDeleteStartTime()
+                    && firstOne.getDeleteEndTime() == deleteDataNode.getDeleteEndTime())) {
+      throw new IllegalArgumentException(
+          "DeleteDataNodes which start time or end time are not same cannot be merged");
+    }
+    List<MeasurementPath> pathList =
+        deleteDataNodes.stream()
+            .flatMap(deleteDataNode -> deleteDataNode.getPathList().stream())
+            // Some time the deleteDataNode list contains a path for multiple times, so use
+            // distinct() to clear them
+            .distinct()
+            .collect(Collectors.toList());
+    return new DeleteDataNode(
+        firstOne.getPlanNodeId(),
+        pathList,
+        firstOne.getDeleteStartTime(),
+        firstOne.getDeleteEndTime());
+  }
 }
