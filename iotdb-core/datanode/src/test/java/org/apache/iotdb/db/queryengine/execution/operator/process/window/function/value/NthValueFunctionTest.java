@@ -50,7 +50,7 @@ public class NthValueFunctionTest {
   public void testNthValueFunctionIgnoreNull() {
     int[] expected = {-1, -1, 2, -1, 3, 3, 4, 5, 5, 6, -1, -1, -1, -1, -1, -1};
 
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(inputs);
     NthValueFunction function = new NthValueFunction(3, 0, true);
     FrameInfo frameInfo =
         new FrameInfo(
@@ -86,7 +86,7 @@ public class NthValueFunctionTest {
   public void testNthValueFunctionNotIgnoreNull() {
     int[] expected = {-1, -1, -1, 1, 2, -1, 3, 4, -1, 5, 6, -1, -1, -1, -1, -1};
 
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(inputs);
     NthValueFunction function = new NthValueFunction(3, 0, false);
     FrameInfo frameInfo =
         new FrameInfo(
@@ -120,7 +120,7 @@ public class NthValueFunctionTest {
 
   @Test
   public void testNthValueFunctionNotIgnoreNullOutOfBounds() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(inputs);
     NthValueFunction function = new NthValueFunction(10, 0, false);
     FrameInfo frameInfo =
         new FrameInfo(

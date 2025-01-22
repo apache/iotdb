@@ -50,7 +50,7 @@ public class FirstValueFunctionTest {
   public void testFirstValueFunctionIgnoreNull() {
     int[] expected = {0, 0, 0, 1, 1, 1, 2, 3, 3, 4, 5, 5, 6, -1, -1, -1};
 
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(inputs);
     FirstValueFunction function = new FirstValueFunction(0, true);
     FrameInfo frameInfo =
         new FrameInfo(
@@ -86,7 +86,7 @@ public class FirstValueFunctionTest {
   public void testFirstValueFunctionNotIgnoreNull() {
     int[] expected = {0, 0, 0, -1, -1, 1, 2, -1, 3, 4, -1, 5, 6, -1, -1, -1};
 
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(inputs);
     FirstValueFunction function = new FirstValueFunction(0, false);
     FrameInfo frameInfo =
         new FrameInfo(

@@ -10,7 +10,7 @@ public abstract class RankWindowFunction implements WindowFunction {
 
   @Override
   public void reset() {
-    currentPeerGroupStart = 0;
+    currentPeerGroupStart = -1;
   }
 
   @Override

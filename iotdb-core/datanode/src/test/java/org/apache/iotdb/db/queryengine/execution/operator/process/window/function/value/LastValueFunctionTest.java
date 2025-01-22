@@ -50,7 +50,7 @@ public class LastValueFunctionTest {
   public void testLastValueFunctionIgnoreNull() {
     int[] expected = {0, 1, 2, 2, 3, 4, 4, 5, 6, 6, 6, 6, 6, -1, -1, -1};
 
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(inputs);
     LastValueFunction function = new LastValueFunction(0, true);
     FrameInfo frameInfo =
         new FrameInfo(
@@ -86,7 +86,7 @@ public class LastValueFunctionTest {
   public void testLastValueFunctionNotIgnoreNull() {
     int[] expected = {-1, 1, 2, -1, 3, 4, -1, 5, 6, -1, -1, -1, -1, -1, -1, -1};
 
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(inputs);
     LastValueFunction function = new LastValueFunction(0, false);
     FrameInfo frameInfo =
         new FrameInfo(

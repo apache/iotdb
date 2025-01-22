@@ -49,7 +49,7 @@ public class LeadFunctionTest {
   public void testLeadFunctionIgnoreNullWithoutDefault() {
     int[] expected = {2, 2, 2, 3, 4, 4, 5, 6, 6, -1, -1, -1, -1, -1, -1, -1};
 
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(inputs);
     LeadFunction function = new LeadFunction(0, 2, null, true);
     PartitionExecutor partitionExecutor =
         FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function);
@@ -78,7 +78,7 @@ public class LeadFunctionTest {
   public void testLeadFunctionIgnoreNullWithDefault() {
     int[] expected = {2, 2, 2, 3, 4, 4, 5, 6, 6, 10, 10, 10, 10, 10, 10, 10};
 
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(inputs);
     LeadFunction function = new LeadFunction(0, 2, 10, true);
     PartitionExecutor partitionExecutor =
         FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function);
@@ -103,7 +103,7 @@ public class LeadFunctionTest {
   public void testLeadFunctionNotIgnoreNullWithoutDefault() {
     int[] expected = {-1, 1, 2, -1, 3, 4, -1, 5, 6, -1, -1, -1, -1, -1, -1, -1};
 
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(inputs);
     LeadFunction function = new LeadFunction(0, 2, null, false);
     PartitionExecutor partitionExecutor =
         FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function);
@@ -132,7 +132,7 @@ public class LeadFunctionTest {
   public void testLeadFunctionNotIgnoreNullWithDefault() {
     int[] expected = {-1, 1, 2, -1, 3, 4, -1, 5, 6, -1, -1, -1, -1, -1, 10, 10};
 
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(inputs);
     LeadFunction function = new LeadFunction(0, 2, 10, false);
     PartitionExecutor partitionExecutor =
         FunctionTestUtils.createPartitionExecutor(tsBlock, inputDataTypes, function);
