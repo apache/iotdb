@@ -28,9 +28,12 @@ import static org.apache.iotdb.db.query.eBUG.Tool.triArea;
 
 
 public class eBUG_tmp {
-    public static List<Point> findEliminated(Polyline lineToSimplify, TimestampPriorityQueue recentEliminatedOrdered,
+    public static List<Point> findEliminated(Polyline lineToSimplify, int[] recentEliminated,
                                              int pa_idx, int pi_idx, int pb_idx) {
         // TODO 复杂度分析
+        //  从最近淘汰的e个点里寻找位于pa~pb之间的：e
+        //  把上一步找到的点和pa pi pb一起按照时间戳递增排序：记c=b-a。如果e<c，那么eloge，否则c
+        //  后面鞋带公式计算面积：min(e+3,c)
         // 性质：最近淘汰的那一个点一定是位于pa~pb之间，因为正是这个点的淘汰才使得pi的significance要更新！
         // pi: the point whose significance needs updating
         // pa: left adjacent non-eliminated point of pi
@@ -52,7 +55,7 @@ public class eBUG_tmp {
 //            return res; // pa pi pb已经按照时间戳递增
 //        }
 
-        if (recentEliminatedOrdered.size() >= (pb_idx - pa_idx - 2)) { // e >= the total number of eliminated points in this region
+        if (recentEliminated.length >= (pb_idx - pa_idx - 2)) { // e >= the total number of eliminated points in this region
 //            System.out.println("[c=(b-a-2)]<=e, use T directly"); // worst case下, k=c
             res = lineToSimplify.getVertices().subList(pa_idx, pb_idx + 1); // 左闭右开
             return res; // 已经按照时间戳递增
@@ -61,26 +64,23 @@ public class eBUG_tmp {
         // 从最近淘汰的e个点里寻找位于pa~pb之间的点，找到的有可能小于e个点
 //        System.out.println("k>=[c=(b-a-2)]>e, search among e");
         res.add(pa);
+        res.add(pi);
+        res.add(pb);
 
         // 包括了c>e=0的情况
-        boolean addPi = false;
-        for (Point p : recentEliminatedOrdered.getQueue()) { // 已经按时间戳递增排序，为了后面计算total areal displacement需要
-            if (p.x <= pa.x) {
-                continue;
-            }
-            if (p.x >= pb.x) {
+        for (int idx : recentEliminated) { // e points
+            if (idx == 0) { // init, not filled by real eliminated points yet
                 break;
             }
-            if (p.x > pi.x && !addPi) {
-                res.add(pi);
-                addPi = true;
+            Point p = lineToSimplify.get(idx);
+            if (p.x > pa.x && p.x < pb.x) {
+                res.add(p);
             }
-            res.add(p);
         }
-        if (!addPi) { // may happen when no eliminated points found above
-            res.add(pi);
-        }
-        res.add(pb);
+
+        // 按照时间戳递增排序，这是为了后面计算total areal displacement需要
+        res.sort(Comparator.comparingDouble(p -> p.x)); // 按时间戳排序 TODO 这样的话时间复杂度要变成e*log(e)了吧？
+
         return res;
     }
 
@@ -93,9 +93,8 @@ public class eBUG_tmp {
 //        results.addAll(lineToSimplify.getVertices()); // TODO debug
 
         // TODO 需要一个东西来记录最近淘汰的点依次是谁
-//        int[] recentEliminated = new int[e]; // init 0 points to the first point, skipped in findEliminated
-//        int recentEliminatedIdx = 0;  // index in the array, circulate
-        TimestampPriorityQueue recentEliminatedOrdered = new TimestampPriorityQueue(e);
+        int[] recentEliminated = new int[e]; // init 0 points to the first point, skipped in findEliminated
+        int recentEliminatedIdx = 0;  // index in the array, circulate
 
         int total = lineToSimplify.size();
         if (total < 3) {
@@ -143,12 +142,11 @@ public class eBUG_tmp {
                 System.out.println("(1) eliminate " + lineToSimplify.get(tri.indices[1]));
             }
             if (e > 0) { // otherwise e=0
-//                recentEliminated[recentEliminatedIdx] = tri.indices[1];
-//                recentEliminatedIdx = (recentEliminatedIdx + 1) % e; // 0~e-1 circulate
-                recentEliminatedOrdered.insert(lineToSimplify.get(tri.indices[1]));
+                recentEliminated[recentEliminatedIdx] = tri.indices[1];
+                recentEliminatedIdx = (recentEliminatedIdx + 1) % e; // 0~e-1 circulate
             }
             if (debug) {
-                System.out.println("the e most recently eliminated points:" + recentEliminatedOrdered);
+                System.out.println("the e most recently eliminated points:" + Arrays.toString(recentEliminated));
             }
 
             // 更新当前点的重要性（z 轴存储effective area,这是一个单调增的指标）
@@ -177,7 +175,7 @@ public class eBUG_tmp {
                 tri.prev.indices[2] = tri.indices[2];
 
                 // e parameter
-                List<Point> pointsForSig = findEliminated(lineToSimplify, recentEliminatedOrdered,
+                List<Point> pointsForSig = findEliminated(lineToSimplify, recentEliminated,
                         tri.prev.indices[0],
                         tri.prev.indices[1],
                         tri.prev.indices[2]); // TODO complexity ?
@@ -226,7 +224,7 @@ public class eBUG_tmp {
                 tri.next.indices[0] = tri.indices[0];
 
                 // e parameter
-                List<Point> pointsForSig = findEliminated(lineToSimplify, recentEliminatedOrdered,
+                List<Point> pointsForSig = findEliminated(lineToSimplify, recentEliminated,
                         tri.next.indices[0],
                         tri.next.indices[1],
                         tri.next.indices[2]); // TODO complexity
@@ -266,7 +264,6 @@ public class eBUG_tmp {
         Polyline polyline = new Polyline();
         List<Polyline> polylineList = new ArrayList<>();
         Random rand = new Random(1);
-//        int n = 1000_0000;
         int n = 10000;
 
         int p = 10;
@@ -282,29 +279,31 @@ public class eBUG_tmp {
             polylineList.add(polylineBatch);
         }
 
-        try (FileWriter writer = new FileWriter("raw.csv")) {
-            // 写入CSV头部
-            writer.append("x,y,z\n");
-
-            // 写入每个点的数据
-            for (int i = 0; i < polyline.size(); i++) {
-                Point point = polyline.get(i);
-                writer.append(point.x + "," + point.y + "," + point.z + "\n");
-            }
-            System.out.println("Data has been written");
-        } catch (IOException e) {
-            System.out.println("Error writing to CSV file: " + e.getMessage());
-        }
+//        try (FileWriter writer = new FileWriter("raw.csv")) {
+//            // 写入CSV头部
+//            writer.append("x,y,z\n");
+//
+//            // 写入每个点的数据
+//            for (int i = 0; i < polyline.size(); i++) {
+//                Point point = polyline.get(i);
+//                writer.append(point.x + "," + point.y + "," + point.z + "\n");
+//            }
+//            System.out.println("Data has been written");
+//        } catch (IOException e) {
+//            System.out.println("Error writing to CSV file: " + e.getMessage());
+//        }
 
         System.out.println("---------------------------------");
 //        List<Point> results = new ArrayList<>();
         // 计算运行时间
-        int eParam = 0;
+//        int eParam = 10;
+//            for (int eParam = 0; eParam < 2 * n; eParam += 1000) {
+        int eParam = 22;
         long startTime = System.currentTimeMillis();
         List<Point> results = buildEffectiveArea(polyline, eParam, false);
         // 输出结果
         long endTime = System.currentTimeMillis();
-        System.out.println("Time taken to reduce points: " + (endTime - startTime) + "ms");
+        System.out.println("n=" + n + ", e=" + eParam + ", Time taken to reduce points: " + (endTime - startTime) + "ms");
         System.out.println(results.size());
 
         if (results.size() <= 100) {
@@ -315,7 +314,7 @@ public class eBUG_tmp {
             }
         }
 
-        try (FileWriter writer = new FileWriter("fast.csv")) {
+        try (FileWriter writer = new FileWriter("fast2.csv")) {
             // 写入CSV头部
             writer.append("x,y,z\n");
 
