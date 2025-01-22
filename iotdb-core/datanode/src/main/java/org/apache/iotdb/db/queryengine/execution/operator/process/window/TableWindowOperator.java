@@ -300,7 +300,9 @@ public class TableWindowOperator implements ProcessOperator {
     while (!cachedPartitionExecutors.isEmpty()) {
       PartitionExecutor partitionExecutor = cachedPartitionExecutors.getFirst();
 
-      while (System.nanoTime() - startTime < maxRuntime && !tsBlockBuilder.isFull() && partitionExecutor.hasNext()) {
+      while (System.nanoTime() - startTime < maxRuntime
+          && !tsBlockBuilder.isFull()
+          && partitionExecutor.hasNext()) {
         partitionExecutor.processNextRow(tsBlockBuilder);
       }
 

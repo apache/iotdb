@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function.value;
 
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -37,11 +36,7 @@ public class NthValueFunction extends ValueWindowFunction {
 
   @Override
   public void transform(
-      Partition partition,
-      ColumnBuilder builder,
-      int index,
-      int frameStart,
-      int frameEnd) {
+      Partition partition, ColumnBuilder builder, int index, int frameStart, int frameEnd) {
     // Empty frame
     if (frameStart < 0) {
       builder.appendNull();

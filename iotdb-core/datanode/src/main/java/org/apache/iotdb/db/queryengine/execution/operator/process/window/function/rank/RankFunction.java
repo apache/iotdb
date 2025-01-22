@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.function.rank;
 
-import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -40,7 +39,12 @@ public class RankFunction extends RankWindowFunction {
   }
 
   @Override
-  public void transform(Partition partition, ColumnBuilder builder, int index, boolean isNewPeerGroup, int peerGroupCount) {
+  public void transform(
+      Partition partition,
+      ColumnBuilder builder,
+      int index,
+      boolean isNewPeerGroup,
+      int peerGroupCount) {
     if (isNewPeerGroup) {
       rank += count;
       count = 1;

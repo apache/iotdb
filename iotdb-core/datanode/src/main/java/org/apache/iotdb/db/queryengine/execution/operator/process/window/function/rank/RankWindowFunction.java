@@ -2,6 +2,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.window.functi
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
+
 import org.apache.tsfile.block.column.ColumnBuilder;
 
 public abstract class RankWindowFunction implements WindowFunction {
@@ -32,7 +33,12 @@ public abstract class RankWindowFunction implements WindowFunction {
     transform(partition, builder, index, isNewPeerGroup, peerGroupCount);
   }
 
-  public abstract void transform(Partition partition, ColumnBuilder builder, int index, boolean isNewPeerGroup, int peerGroupCount);
+  public abstract void transform(
+      Partition partition,
+      ColumnBuilder builder,
+      int index,
+      boolean isNewPeerGroup,
+      int peerGroupCount);
 
   @Override
   public boolean needFrame() {
