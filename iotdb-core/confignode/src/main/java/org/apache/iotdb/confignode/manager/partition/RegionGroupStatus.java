@@ -27,7 +27,11 @@ public enum RegionGroupStatus {
    * For strong consistency algorithms, the RegionGroup is considered as Available when the number
    * of Regions in the Running status is greater than half. For weak consistency algorithms, the
    * RegionGroup is considered as Available when the number of Regions in the Running status is
-   * greater than or equal to 1.
+   * greater than or equal to 1. To avoid the impact of Removing and Adding region status on region
+   * group status evaluation, this status, which only occurs during region migration and
+   * reconstruction, can be excluded. The denominator uses the number of regions excluding Removing
+   * and Adding status, while the numerator uses regions in the Running status, ensuring high
+   * availability evaluation remains unaffected.
    */
   Available("Available", 2),
 

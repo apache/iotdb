@@ -48,7 +48,6 @@ import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatisti
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionStatistics;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
-import org.apache.iotdb.consensus.ConsensusFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -170,13 +169,7 @@ public class LoadCache {
             regionReplicaSets.forEach(
                 regionReplicaSet -> {
                   TConsensusGroupId regionGroupId = regionReplicaSet.getRegionId();
-                  boolean isStrongConsistency =
-                      (TConsensusGroupType.SchemaRegion.equals(regionGroupId.getType())
-                              && CONF.getSchemaRegionConsensusProtocolClass()
-                                  .equals(ConsensusFactory.RATIS_CONSENSUS))
-                          || (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
-                              && CONF.getDataRegionConsensusProtocolClass()
-                                  .equals(ConsensusFactory.RATIS_CONSENSUS));
+                  boolean isStrongConsistency = CONF.getRegionGroupConsistency(regionGroupId);
                   regionGroupCacheMap.put(
                       regionGroupId,
                       new RegionGroupCache(
@@ -291,13 +284,7 @@ public class LoadCache {
    */
   public void createRegionGroupHeartbeatCache(
       String database, TConsensusGroupId regionGroupId, Set<Integer> dataNodeIds) {
-    boolean isStrongConsistency =
-        (TConsensusGroupType.SchemaRegion.equals(regionGroupId.getType())
-                && CONF.getSchemaRegionConsensusProtocolClass()
-                    .equals(ConsensusFactory.RATIS_CONSENSUS))
-            || (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
-                && CONF.getDataRegionConsensusProtocolClass()
-                    .equals(ConsensusFactory.RATIS_CONSENSUS));
+    boolean isStrongConsistency = CONF.getRegionGroupConsistency(regionGroupId);
     regionGroupCacheMap.put(
         regionGroupId, new RegionGroupCache(database, dataNodeIds, isStrongConsistency));
     consensusGroupCacheMap.put(regionGroupId, new ConsensusGroupCache());
