@@ -98,7 +98,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[2])
-        .set(config.getCoordinatorMemoryManager().getTotalMemorySizeInBytes());
+        .set(config.getOperatorsMemoryManager().getTotalMemorySizeInBytes());
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
