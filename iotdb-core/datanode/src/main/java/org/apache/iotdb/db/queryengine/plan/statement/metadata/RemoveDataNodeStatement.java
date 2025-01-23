@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.statement.metadata.region;
+package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -30,25 +30,21 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
-public class RemoveRegionStatement extends Statement implements IConfigStatement {
+public class RemoveDataNodeStatement extends Statement implements IConfigStatement {
 
-  private final int regionId;
-  private final int dataNodeId;
+  final Set<Integer> nodeIds;
 
-  public RemoveRegionStatement(int regionId, int dataNodeId) {
+  public RemoveDataNodeStatement(List<Integer> dataNodeIDs) {
     super();
-    this.regionId = regionId;
-    this.dataNodeId = dataNodeId;
+    this.nodeIds = new HashSet<>(dataNodeIDs);
   }
 
-  public int getRegionId() {
-    return regionId;
-  }
-
-  public int getDataNodeId() {
-    return dataNodeId;
+  public Set<Integer> getNodeIds() {
+    return nodeIds;
   }
 
   @Override
@@ -63,7 +59,7 @@ public class RemoveRegionStatement extends Statement implements IConfigStatement
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitRemoveRegion(this, context);
+    return visitor.visitRemoveDataNode(this, context);
   }
 
   @Override
