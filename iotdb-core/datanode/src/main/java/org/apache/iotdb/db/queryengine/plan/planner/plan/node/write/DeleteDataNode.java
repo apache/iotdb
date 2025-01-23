@@ -346,7 +346,7 @@ public class DeleteDataNode extends SearchNode implements WALEntryValue {
       throw new IllegalArgumentException(
           "DeleteDataNodes which start time or end time are not same cannot be merged");
     }
-    List<MeasurementPath> pathList =
+    List<PartialPath> pathList =
         deleteDataNodes.stream()
             .flatMap(deleteDataNode -> deleteDataNode.getPathList().stream())
             // Some time the deleteDataNode list contains a path for multiple times, so use

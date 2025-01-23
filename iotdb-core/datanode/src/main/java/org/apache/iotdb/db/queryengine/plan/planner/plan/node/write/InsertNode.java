@@ -43,6 +43,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -98,7 +99,7 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
             .collect(Collectors.toList());
     InsertNode result = mergeInsertNode(insertNodes);
     result.setSearchIndex(insertNodes.get(0).getSearchIndex());
-    result.setTargetPath(insertNodes.get(0).getTargetPath());
+    result.setDevicePath(insertNodes.get(0).getDevicePath());
     return result;
   }
 

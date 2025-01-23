@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 
 import java.util.List;
 
-public abstract class SearchNode extends WritePlanNode implements ComparableConsensusRequest {
+public abstract class SearchNode extends WritePlanNode {
 
   /** this insert node doesn't need to participate in iot consensus */
   public static final long NO_CONSENSUS_INDEX = ConsensusReqReader.DEFAULT_SEARCH_INDEX;
