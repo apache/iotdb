@@ -52,12 +52,6 @@ public class eBUG {
 //        cnt += 1;
 //        System.out.println(cnt); // 3<=cnt<=e+3
 
-//        for (int i = pa_idx; i <= pb_idx; i++) { // 左闭右闭
-//            Point p = lineToSimplify.get(i);
-//            if (!p.eliminated) {
-//                res.add(p);
-//            }
-//        }
         return res;
     }
 
@@ -67,10 +61,6 @@ public class eBUG {
         }
 
         List<Point> results = lineToSimplify.getVertices(); // 浅复制
-
-        // 用循环数组来记录最近淘汰的点
-//        int[] recentEliminated = new int[e]; // init 0 points to the first point, skipped in findEliminated
-//        int recentEliminatedIdx = 0;  // index in the array, circulate
 
         // 存储的是点的引用，这样可以修改原来序列里点的淘汰状态
         // 存储的是距离当前最新状态的滞后的尚未施加、待施加的e个淘汰点
@@ -85,10 +75,8 @@ public class eBUG {
         Triangle[] triangles = new Triangle[nTriangles];
 
         // 创建所有三角形并计算初始面积
-//        lineToSimplify.get(0).eliminated = false; // 初始化点的状态 for eBUG usage
         lineToSimplify.get(0).prev = null;
         lineToSimplify.get(0).next = lineToSimplify.get(1);
-//        lineToSimplify.get(total - 1).eliminated = false; // 初始化点的状态 for eBUG usage
         lineToSimplify.get(total - 1).next = null;
         lineToSimplify.get(total - 1).prev = lineToSimplify.get(total - 2);
         for (int i = 1; i < total - 1; i++) {
@@ -97,7 +85,6 @@ public class eBUG {
             triangles[i - 1] = new Triangle(index1, index2, index3, area);
 
             // 初始化点的状态 for eBUG usage
-//            lineToSimplify.get(i).eliminated = false;
             lineToSimplify.get(i).prev = lineToSimplify.get(i - 1);
             lineToSimplify.get(i).next = lineToSimplify.get(i + 1);
         }

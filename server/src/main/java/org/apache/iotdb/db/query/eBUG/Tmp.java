@@ -8,6 +8,7 @@ import java.util.PriorityQueue;
 import java.util.Random;
 
 public class Tmp {
+    // 用于debug为什么n>2kw的耗时增大明显
     public static void main(String[] args) {
         int seed = 10;
         Random rand = new Random(seed);

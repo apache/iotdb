@@ -9,10 +9,11 @@ import java.util.Random;
 import static org.apache.iotdb.db.query.eBUG.eBUG.buildEffectiveArea;
 
 public class Test1 {
+    // 用于验证Java eBUG实现和python版本(e=0/1)结果的一致性
     public static void main(String[] args) {
         Polyline polyline = new Polyline();
         List<Polyline> polylineList = new ArrayList<>();
-        Random rand = new Random(1);
+        Random rand = new Random(2);
         int n = 10000;
 
         int p = 10;
@@ -43,7 +44,7 @@ public class Test1 {
         }
 
         System.out.println("---------------------------------");
-        int eParam = 1000000;
+        int eParam = 0;
         long startTime = System.currentTimeMillis();
         List<Point> results = buildEffectiveArea(polyline, eParam, false);
         // 输出结果
