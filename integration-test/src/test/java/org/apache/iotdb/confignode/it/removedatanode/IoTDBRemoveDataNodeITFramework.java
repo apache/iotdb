@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.exception.InconsistentDataException;
+import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -57,7 +58,7 @@ import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
 public class IoTDBRemoveDataNodeITFramework {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBRemoveDataNodeITFramework.class);
-  private static final String INSERTION1 =
+  private static final String TREE_MODEL_INSERTION =
       "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(100, 1, 2)";
 
   private static final String SHOW_REGIONS = "show regions";
@@ -90,7 +91,8 @@ public class IoTDBRemoveDataNodeITFramework {
       final int dataNodeNum,
       final int removeDataNodeNum,
       final int dataRegionPerDataNode,
-      final boolean rejoinRemovedDataNode)
+      final boolean rejoinRemovedDataNode,
+      final SQLModel model)
       throws Exception {
     testRemoveDataNode(
         dataReplicateFactor,
@@ -100,7 +102,8 @@ public class IoTDBRemoveDataNodeITFramework {
         removeDataNodeNum,
         dataRegionPerDataNode,
         true,
-        rejoinRemovedDataNode);
+        rejoinRemovedDataNode,
+        model);
   }
 
   public void failTest(
@@ -110,7 +113,8 @@ public class IoTDBRemoveDataNodeITFramework {
       final int dataNodeNum,
       final int removeDataNodeNum,
       final int dataRegionPerDataNode,
-      final boolean rejoinRemovedDataNode)
+      final boolean rejoinRemovedDataNode,
+      final SQLModel model)
       throws Exception {
     testRemoveDataNode(
         dataReplicateFactor,
@@ -120,7 +124,8 @@ public class IoTDBRemoveDataNodeITFramework {
         removeDataNodeNum,
         dataRegionPerDataNode,
         false,
-        rejoinRemovedDataNode);
+        rejoinRemovedDataNode,
+        model);
   }
 
   public void testRemoveDataNode(
@@ -131,7 +136,8 @@ public class IoTDBRemoveDataNodeITFramework {
       final int removeDataNodeNum,
       final int dataRegionPerDataNode,
       final boolean expectRemoveSuccess,
-      final boolean rejoinRemovedDataNode)
+      final boolean rejoinRemovedDataNode,
+      final SQLModel model)
       throws Exception {
     // Set up the environment
     EnvFactory.getEnv()
@@ -148,8 +154,8 @@ public class IoTDBRemoveDataNodeITFramework {
         SyncConfigNodeIServiceClient client =
             (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
-      // Insert data
-      statement.execute(INSERTION1);
+      // Insert data in tree model
+      statement.execute(TREE_MODEL_INSERTION);
 
       Map<Integer, Set<Integer>> regionMap = getDataRegionMap(statement);
       regionMap.forEach(
@@ -187,21 +193,39 @@ public class IoTDBRemoveDataNodeITFramework {
               .map(TDataNodeConfiguration::getLocation)
               .filter(location -> removeDataNodes.contains(location.getDataNodeId()))
               .collect(Collectors.toList());
-      TDataNodeRemoveReq removeReq = new TDataNodeRemoveReq(removeDataNodeLocations);
+      if (SQLModel.NOT_USE_SQL.equals(model)) {
+        TDataNodeRemoveReq removeReq = new TDataNodeRemoveReq(removeDataNodeLocations);
 
-      // Remove data nodes
-      TDataNodeRemoveResp removeResp = clientRef.get().removeDataNode(removeReq);
-      LOGGER.info("Submit Remove DataNodes result {} ", removeResp);
-      if (removeResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        if (expectRemoveSuccess) {
-          LOGGER.error("Submit Remove DataNodes fail");
-          Assert.fail();
-        } else {
-          LOGGER.info("Submit Remove DataNodes fail, as expected");
-          return;
+        // Remove data nodes
+        TDataNodeRemoveResp removeResp = clientRef.get().removeDataNode(removeReq);
+        LOGGER.info("Submit Remove DataNodes result {} ", removeResp);
+        if (removeResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          if (expectRemoveSuccess) {
+            LOGGER.error("Submit Remove DataNodes fail");
+            Assert.fail();
+          } else {
+            LOGGER.info("Submit Remove DataNodes fail, as expected.");
+            return;
+          }
         }
+        LOGGER.info("Submit Remove DataNodes request: {}", removeReq);
+
+      } else {
+        String removeDataNodeSQL = generateRemoveString(removeDataNodes);
+        LOGGER.info("Remove DataNodes SQL: {}", removeDataNodeSQL);
+        try {
+          statement.execute(removeDataNodeSQL);
+        } catch (IoTDBSQLException e) {
+          if (expectRemoveSuccess) {
+            LOGGER.error("Remove DataNodes SQL execute fail: {}", e.getMessage());
+            Assert.fail();
+          } else {
+            LOGGER.info("Submit Remove DataNodes fail, as expected");
+            return;
+          }
+        }
+        LOGGER.info("Remove DataNodes SQL submit successfully.");
       }
-      LOGGER.info("Submit Remove DataNodes request: {}", removeReq);
 
       // Wait until success
       boolean removeSuccess = false;
@@ -362,5 +386,17 @@ public class IoTDBRemoveDataNodeITFramework {
               }
               LOGGER.info("Node {} restarted.", nodeWrapper.getId());
             });
+  }
+
+  public static String generateRemoveString(Set<Integer> dataNodes) {
+    StringBuilder sb = new StringBuilder("remove datanode ");
+
+    for (Integer node : dataNodes) {
+      sb.append(node).append(", ");
+    }
+
+    sb.setLength(sb.length() - 2);
+
+    return sb.toString();
   }
 }
