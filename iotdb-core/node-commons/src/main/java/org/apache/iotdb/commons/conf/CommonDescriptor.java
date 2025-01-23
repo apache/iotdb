@@ -104,6 +104,11 @@ public class CommonDescriptor {
     }
     config.setTierTTLInMs(tierTTL);
 
+    config.setTTLCheckInterval(
+        Long.parseLong(
+            properties.getProperty(
+                "ttl_check_interval", Long.toString(config.getTTLCheckInterval()))));
+
     config.setSyncDir(properties.getProperty("dn_sync_dir", config.getSyncDir()).trim());
 
     config.setWalDirs(

@@ -76,4 +76,11 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
         String.valueOf(loadTsFileAnalyzeSchemaMemorySizeInBytes));
     return this;
   }
+
+  @Override
+  public DataNodeConfig setCompactionScheduleInterval(long compactionScheduleInterval) {
+    properties.setProperty(
+        "compaction_schedule_interval_in_ms", String.valueOf(compactionScheduleInterval));
+    return this;
+  }
 }

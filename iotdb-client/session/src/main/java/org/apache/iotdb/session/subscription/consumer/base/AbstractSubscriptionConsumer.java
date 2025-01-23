@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.consumer;
+package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.SessionConfig;
@@ -39,6 +39,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
+import org.apache.iotdb.session.subscription.consumer.AsyncCommitCallback;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
 import org.apache.iotdb.session.subscription.util.CollectionUtils;
@@ -47,7 +48,6 @@ import org.apache.iotdb.session.subscription.util.PollTimer;
 import org.apache.iotdb.session.subscription.util.RandomStringGenerator;
 import org.apache.iotdb.session.util.SessionUtils;
 
-import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,9 +90,9 @@ import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRes
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.TERMINATION;
 import static org.apache.iotdb.session.subscription.util.SetPartitioner.partition;
 
-abstract class SubscriptionConsumer implements AutoCloseable {
+abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSubscriptionConsumer.class);
 
   private static final long SLEEP_MS = 100L;
   private static final long SLEEP_DELTA_MS = 50L;
@@ -107,7 +107,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   private final long heartbeatIntervalMs;
   private final long endpointsSyncIntervalMs;
 
-  private final SubscriptionProviders providers;
+  private final AbstractSubscriptionProviders providers;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
   // This variable indicates whether the consumer has ever been closed.
@@ -141,7 +141,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// ctor ///////////////////////////////
 
-  protected SubscriptionConsumer(final Builder builder) {
+  protected AbstractSubscriptionConsumer(final AbstractSubscriptionConsumerBuilder builder) {
     final Set<TEndPoint> initialEndpoints = new HashSet<>();
     // From org.apache.iotdb.session.Session.getNodeUrls
     // Priority is given to `host:port` over `nodeUrls`.
@@ -160,7 +160,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     } else {
       initialEndpoints.addAll(SessionUtils.parseSeedNodeUrls(builder.nodeUrls));
     }
-    this.providers = new SubscriptionProviders(initialEndpoints);
+    this.providers = new AbstractSubscriptionProviders(initialEndpoints);
 
     this.username = builder.username;
     this.password = builder.password;
@@ -178,7 +178,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     this.maxPollParallelism = builder.maxPollParallelism;
   }
 
-  protected SubscriptionConsumer(final Builder builder, final Properties properties) {
+  protected AbstractSubscriptionConsumer(
+      final AbstractSubscriptionConsumerBuilder builder, final Properties properties) {
     this(
         builder
             .host(
@@ -250,7 +251,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  public synchronized void open() throws SubscriptionException {
+  protected synchronized void open() throws SubscriptionException {
     checkIfHasBeenClosed();
 
     if (!isClosed.get()) {
@@ -298,15 +299,15 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// subscribe & unsubscribe ///////////////////////////////
 
-  public void subscribe(final String topicName) throws SubscriptionException {
+  protected void subscribe(final String topicName) throws SubscriptionException {
     subscribe(Collections.singleton(topicName));
   }
 
-  public void subscribe(final String... topicNames) throws SubscriptionException {
+  protected void subscribe(final String... topicNames) throws SubscriptionException {
     subscribe(new HashSet<>(Arrays.asList(topicNames)));
   }
 
-  public void subscribe(final Set<String> topicNames) throws SubscriptionException {
+  protected void subscribe(final Set<String> topicNames) throws SubscriptionException {
     // parse topic names from external source
     subscribe(topicNames, true);
   }
@@ -330,15 +331,15 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  public void unsubscribe(final String topicName) throws SubscriptionException {
+  protected void unsubscribe(final String topicName) throws SubscriptionException {
     unsubscribe(Collections.singleton(topicName));
   }
 
-  public void unsubscribe(final String... topicNames) throws SubscriptionException {
+  protected void unsubscribe(final String... topicNames) throws SubscriptionException {
     unsubscribe(new HashSet<>(Arrays.asList(topicNames)));
   }
 
-  public void unsubscribe(final Set<String> topicNames) throws SubscriptionException {
+  protected void unsubscribe(final Set<String> topicNames) throws SubscriptionException {
     // parse topic names from external source
     unsubscribe(topicNames, true);
   }
@@ -364,10 +365,18 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// subscription provider ///////////////////////////////
 
-  SubscriptionProvider constructProviderAndHandshake(final TEndPoint endPoint)
+  protected abstract AbstractSubscriptionProvider constructSubscriptionProvider(
+      final TEndPoint endPoint,
+      final String username,
+      final String password,
+      final String consumerId,
+      final String consumerGroupId,
+      final int thriftMaxFrameSize);
+
+  AbstractSubscriptionProvider constructProviderAndHandshake(final TEndPoint endPoint)
       throws SubscriptionException {
-    final SubscriptionProvider provider =
-        new SubscriptionProvider(
+    final AbstractSubscriptionProvider provider =
+        constructSubscriptionProvider(
             endPoint,
             this.username,
             this.password,
@@ -1020,7 +1029,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       final Set<String> topicNames, final long timeoutMs) throws SubscriptionException {
     providers.acquireReadLock();
     try {
-      final SubscriptionProvider provider = providers.getNextAvailableProvider();
+      final AbstractSubscriptionProvider provider = providers.getNextAvailableProvider();
       if (Objects.isNull(provider) || !provider.isAvailable()) {
         if (isClosed()) {
           return Collections.emptyList();
@@ -1047,7 +1056,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     final int dataNodeId = commitContext.getDataNodeId();
     providers.acquireReadLock();
     try {
-      final SubscriptionProvider provider = providers.getProvider(dataNodeId);
+      final AbstractSubscriptionProvider provider = providers.getProvider(dataNodeId);
       if (Objects.isNull(provider) || !provider.isAvailable()) {
         if (isClosed()) {
           return Collections.emptyList();
@@ -1074,7 +1083,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     final int dataNodeId = commitContext.getDataNodeId();
     providers.acquireReadLock();
     try {
-      final SubscriptionProvider provider = providers.getProvider(dataNodeId);
+      final AbstractSubscriptionProvider provider = providers.getProvider(dataNodeId);
       if (Objects.isNull(provider) || !provider.isAvailable()) {
         if (isClosed()) {
           return Collections.emptyList();
@@ -1158,7 +1167,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       throws SubscriptionException {
     providers.acquireReadLock();
     try {
-      final SubscriptionProvider provider = providers.getProvider(dataNodeId);
+      final AbstractSubscriptionProvider provider = providers.getProvider(dataNodeId);
       if (Objects.isNull(provider) || !provider.isAvailable()) {
         if (isClosed()) {
           return;
@@ -1269,14 +1278,14 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   /////////////////////////////// redirection ///////////////////////////////
 
   private void subscribeWithRedirection(final Set<String> topicNames) throws SubscriptionException {
-    final List<SubscriptionProvider> providers = this.providers.getAllAvailableProviders();
+    final List<AbstractSubscriptionProvider> providers = this.providers.getAllAvailableProviders();
     if (providers.isEmpty()) {
       throw new SubscriptionConnectionException(
           String.format(
               "Cluster has no available subscription providers when %s subscribe topic %s",
               this, topicNames));
     }
-    for (final SubscriptionProvider provider : providers) {
+    for (final AbstractSubscriptionProvider provider : providers) {
       try {
         subscribedTopics = provider.subscribe(topicNames);
         return;
@@ -1304,14 +1313,14 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   private void unsubscribeWithRedirection(final Set<String> topicNames)
       throws SubscriptionException {
-    final List<SubscriptionProvider> providers = this.providers.getAllAvailableProviders();
+    final List<AbstractSubscriptionProvider> providers = this.providers.getAllAvailableProviders();
     if (providers.isEmpty()) {
       throw new SubscriptionConnectionException(
           String.format(
               "Cluster has no available subscription providers when %s unsubscribe topic %s",
               this, topicNames));
     }
-    for (final SubscriptionProvider provider : providers) {
+    for (final AbstractSubscriptionProvider provider : providers) {
       try {
         subscribedTopics = provider.unsubscribe(topicNames);
         return;
@@ -1338,13 +1347,13 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   Map<Integer, TEndPoint> fetchAllEndPointsWithRedirection() throws SubscriptionException {
-    final List<SubscriptionProvider> providers = this.providers.getAllAvailableProviders();
+    final List<AbstractSubscriptionProvider> providers = this.providers.getAllAvailableProviders();
     if (providers.isEmpty()) {
       throw new SubscriptionConnectionException(
           String.format(
               "Cluster has no available subscription providers when %s fetch all endpoints", this));
     }
-    for (final SubscriptionProvider provider : providers) {
+    for (final AbstractSubscriptionProvider provider : providers) {
       try {
         return provider.getSessionConnection().fetchAllEndPoints();
       } catch (final Exception e) {
@@ -1361,111 +1370,6 @@ abstract class SubscriptionConsumer implements AutoCloseable {
             this, providers);
     LOGGER.warn(errorMessage);
     throw new SubscriptionRuntimeCriticalException(errorMessage);
-  }
-
-  /////////////////////////////// builder ///////////////////////////////
-
-  public abstract static class Builder {
-
-    protected String host;
-    protected Integer port;
-    protected List<String> nodeUrls;
-
-    protected String username = SessionConfig.DEFAULT_USER;
-    protected String password = SessionConfig.DEFAULT_PASSWORD;
-
-    protected String consumerId;
-    protected String consumerGroupId;
-
-    protected long heartbeatIntervalMs = ConsumerConstant.HEARTBEAT_INTERVAL_MS_DEFAULT_VALUE;
-    protected long endpointsSyncIntervalMs =
-        ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE;
-
-    protected String fileSaveDir = ConsumerConstant.FILE_SAVE_DIR_DEFAULT_VALUE;
-    protected boolean fileSaveFsync = ConsumerConstant.FILE_SAVE_FSYNC_DEFAULT_VALUE;
-
-    protected int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
-    protected int maxPollParallelism = ConsumerConstant.MAX_POLL_PARALLELISM_DEFAULT_VALUE;
-
-    public Builder host(final String host) {
-      this.host = host;
-      return this;
-    }
-
-    public Builder port(final int port) {
-      this.port = port;
-      return this;
-    }
-
-    public Builder nodeUrls(final List<String> nodeUrls) {
-      this.nodeUrls = nodeUrls;
-      return this;
-    }
-
-    public Builder username(final String username) {
-      this.username = username;
-      return this;
-    }
-
-    public Builder password(final String password) {
-      this.password = password;
-      return this;
-    }
-
-    public Builder consumerId(@Nullable final String consumerId) {
-      if (Objects.isNull(consumerId)) {
-        return this;
-      }
-      this.consumerId = IdentifierUtils.checkAndParseIdentifier(consumerId);
-      return this;
-    }
-
-    public Builder consumerGroupId(@Nullable final String consumerGroupId) {
-      if (Objects.isNull(consumerGroupId)) {
-        return this;
-      }
-      this.consumerGroupId = IdentifierUtils.checkAndParseIdentifier(consumerGroupId);
-      return this;
-    }
-
-    public Builder heartbeatIntervalMs(final long heartbeatIntervalMs) {
-      this.heartbeatIntervalMs =
-          Math.max(heartbeatIntervalMs, ConsumerConstant.HEARTBEAT_INTERVAL_MS_MIN_VALUE);
-      return this;
-    }
-
-    public Builder endpointsSyncIntervalMs(final long endpointsSyncIntervalMs) {
-      this.endpointsSyncIntervalMs =
-          Math.max(endpointsSyncIntervalMs, ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_MIN_VALUE);
-      return this;
-    }
-
-    public Builder fileSaveDir(final String fileSaveDir) {
-      this.fileSaveDir = fileSaveDir;
-      return this;
-    }
-
-    public Builder fileSaveFsync(final boolean fileSaveFsync) {
-      this.fileSaveFsync = fileSaveFsync;
-      return this;
-    }
-
-    public Builder thriftMaxFrameSize(final int thriftMaxFrameSize) {
-      this.thriftMaxFrameSize = thriftMaxFrameSize;
-      return this;
-    }
-
-    public Builder maxPollParallelism(final int maxPollParallelism) {
-      // Here the minimum value of max poll parallelism is set to 1 instead of 0, in order to use a
-      // single thread to execute poll whenever there are idle resources available, thereby
-      // achieving strict timeout.
-      this.maxPollParallelism = Math.max(maxPollParallelism, 1);
-      return this;
-    }
-
-    public abstract SubscriptionPullConsumer buildPullConsumer();
-
-    public abstract SubscriptionPushConsumer buildPushConsumer();
   }
 
   /////////////////////////////// stringify ///////////////////////////////

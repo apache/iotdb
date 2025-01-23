@@ -740,11 +740,6 @@ public class IoTDBDescriptor {
                 "inner_compaction_task_selection_mods_file_threshold",
                 Long.toString(conf.getInnerCompactionTaskSelectionModsFileThreshold()))));
 
-    conf.setTtlCheckInterval(
-        Long.parseLong(
-            properties.getProperty(
-                "ttl_check_interval", Long.toString(conf.getTTlCheckInterval()))));
-
     conf.setMaxExpiredTime(
         Long.parseLong(
             properties.getProperty("max_expired_time", Long.toString(conf.getMaxExpiredTime()))));
@@ -1431,6 +1426,21 @@ public class IoTDBDescriptor {
                 ConfigurationFileUtils.getConfigurationDefaultValue("inner_unseq_selector"))));
     configModified |=
         innerUnsequenceCompactionSelector != conf.getInnerUnsequenceCompactionSelector();
+
+    conf.setInnerSeqCompactionPerformer(
+        InnerSeqCompactionPerformer.getInnerSeqCompactionPerformer(
+            properties.getProperty(
+                "inner_seq_performer", conf.getInnerSeqCompactionPerformer().toString())));
+
+    conf.setInnerUnseqCompactionPerformer(
+        InnerUnseqCompactionPerformer.getInnerUnseqCompactionPerformer(
+            properties.getProperty(
+                "inner_unseq_performer", conf.getInnerUnseqCompactionPerformer().toString())));
+
+    conf.setCrossCompactionPerformer(
+        CrossCompactionPerformer.getCrossCompactionPerformer(
+            properties.getProperty(
+                "cross_performer", conf.getCrossCompactionPerformer().toString())));
 
     // update inner_compaction_total_file_size_threshold
     long innerCompactionFileSizeThresholdInByte =

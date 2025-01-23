@@ -72,6 +72,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
@@ -407,6 +408,7 @@ public class Coordinator {
         || statement instanceof StartRepairData
         || statement instanceof StopRepairData
         || statement instanceof PipeStatement
+        || statement instanceof RemoveDataNode
         || statement instanceof SubscriptionStatement
         || statement instanceof ShowCurrentSqlDialect
         || statement instanceof ShowCurrentUser

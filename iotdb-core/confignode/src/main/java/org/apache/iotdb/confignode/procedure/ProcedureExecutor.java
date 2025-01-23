@@ -278,7 +278,7 @@ public class ProcedureExecutor<Env> {
         new CompletedProcedureRecycler(store, completed, cleanTimeInterval, cleanEvictTTL));
   }
 
-  private void addInternalProcedure(InternalProcedure interalProcedure) {
+  public void addInternalProcedure(InternalProcedure interalProcedure) {
     if (interalProcedure == null) {
       return;
     }

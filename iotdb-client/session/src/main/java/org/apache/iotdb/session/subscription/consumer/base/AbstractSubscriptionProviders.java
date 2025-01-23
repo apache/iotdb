@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.consumer;
+package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -37,11 +37,11 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
-final class SubscriptionProviders {
+final class AbstractSubscriptionProviders {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionProviders.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSubscriptionProviders.class);
 
-  private final SortedMap<Integer, SubscriptionProvider> subscriptionProviders =
+  private final SortedMap<Integer, AbstractSubscriptionProvider> subscriptionProviders =
       new ConcurrentSkipListMap<>();
   private int nextDataNodeId = -1;
 
@@ -49,7 +49,7 @@ final class SubscriptionProviders {
 
   private final Set<TEndPoint> initialEndpoints;
 
-  SubscriptionProviders(final Set<TEndPoint> initialEndpoints) {
+  AbstractSubscriptionProviders(final Set<TEndPoint> initialEndpoints) {
     this.initialEndpoints = initialEndpoints;
   }
 
@@ -74,12 +74,12 @@ final class SubscriptionProviders {
   /////////////////////////////// CRUD ///////////////////////////////
 
   /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
-  void openProviders(final SubscriptionConsumer consumer) throws SubscriptionException {
+  void openProviders(final AbstractSubscriptionConsumer consumer) throws SubscriptionException {
     // close stale providers
     closeProviders();
 
     for (final TEndPoint endPoint : initialEndpoints) {
-      final SubscriptionProvider defaultProvider;
+      final AbstractSubscriptionProvider defaultProvider;
       final int defaultDataNodeId;
 
       try {
@@ -104,7 +104,7 @@ final class SubscriptionProviders {
           continue;
         }
 
-        final SubscriptionProvider provider;
+        final AbstractSubscriptionProvider provider;
         try {
           provider = consumer.constructProviderAndHandshake(entry.getValue());
         } catch (final Exception e) {
@@ -130,7 +130,7 @@ final class SubscriptionProviders {
 
   /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
   void closeProviders() {
-    for (final SubscriptionProvider provider : getAllProviders()) {
+    for (final AbstractSubscriptionProvider provider : getAllProviders()) {
       try {
         provider.close();
       } catch (final Exception e) {
@@ -141,7 +141,7 @@ final class SubscriptionProviders {
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
-  void addProvider(final int dataNodeId, final SubscriptionProvider provider) {
+  void addProvider(final int dataNodeId, final AbstractSubscriptionProvider provider) {
     // the subscription provider is opened
     LOGGER.info("add new subscription provider {}", provider);
     subscriptionProviders.put(dataNodeId, provider);
@@ -153,7 +153,7 @@ final class SubscriptionProviders {
     if (!containsProvider(dataNodeId)) {
       return;
     }
-    final SubscriptionProvider provider = subscriptionProviders.get(dataNodeId);
+    final AbstractSubscriptionProvider provider = subscriptionProviders.get(dataNodeId);
     try {
       provider.close();
     } finally {
@@ -168,18 +168,19 @@ final class SubscriptionProviders {
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  List<SubscriptionProvider> getAllProviders() {
+  List<AbstractSubscriptionProvider> getAllProviders() {
     return new ArrayList<>(subscriptionProviders.values());
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  SubscriptionProvider getProvider(final int dataNodeId) {
+  AbstractSubscriptionProvider getProvider(final int dataNodeId) {
     return containsProvider(dataNodeId) ? subscriptionProviders.get(dataNodeId) : null;
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
   boolean hasNoAvailableProviders() {
-    return subscriptionProviders.values().stream().noneMatch(SubscriptionProvider::isAvailable);
+    return subscriptionProviders.values().stream()
+        .noneMatch(AbstractSubscriptionProvider::isAvailable);
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
@@ -188,27 +189,27 @@ final class SubscriptionProviders {
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  List<SubscriptionProvider> getAllAvailableProviders() {
+  List<AbstractSubscriptionProvider> getAllAvailableProviders() {
     return subscriptionProviders.values().stream()
-        .filter(SubscriptionProvider::isAvailable)
+        .filter(AbstractSubscriptionProvider::isAvailable)
         .collect(Collectors.toList());
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
   void updateNextDataNodeId() {
-    final SortedMap<Integer, SubscriptionProvider> subProviders =
+    final SortedMap<Integer, AbstractSubscriptionProvider> subProviders =
         subscriptionProviders.tailMap(nextDataNodeId + 1);
     nextDataNodeId =
         subProviders.isEmpty() ? subscriptionProviders.firstKey() : subProviders.firstKey();
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  SubscriptionProvider getNextAvailableProvider() {
+  AbstractSubscriptionProvider getNextAvailableProvider() {
     if (hasNoAvailableProviders()) {
       return null;
     }
 
-    SubscriptionProvider provider;
+    AbstractSubscriptionProvider provider;
     provider = getProvider(nextDataNodeId);
     while (Objects.isNull(provider) || !provider.isAvailable()) {
       updateNextDataNodeId();
@@ -221,7 +222,7 @@ final class SubscriptionProviders {
 
   /////////////////////////////// heartbeat ///////////////////////////////
 
-  void heartbeat(final SubscriptionConsumer consumer) {
+  void heartbeat(final AbstractSubscriptionConsumer consumer) {
     if (consumer.isClosed()) {
       return;
     }
@@ -234,8 +235,8 @@ final class SubscriptionProviders {
     }
   }
 
-  private void heartbeatInternal(final SubscriptionConsumer consumer) {
-    for (final SubscriptionProvider provider : getAllProviders()) {
+  private void heartbeatInternal(final AbstractSubscriptionConsumer consumer) {
+    for (final AbstractSubscriptionProvider provider : getAllProviders()) {
       try {
         consumer.subscribedTopics = provider.heartbeat();
         provider.setAvailable();
@@ -251,7 +252,7 @@ final class SubscriptionProviders {
 
   /////////////////////////////// sync endpoints ///////////////////////////////
 
-  void sync(final SubscriptionConsumer consumer) {
+  void sync(final AbstractSubscriptionConsumer consumer) {
     if (consumer.isClosed()) {
       return;
     }
@@ -264,7 +265,7 @@ final class SubscriptionProviders {
     }
   }
 
-  private void syncInternal(final SubscriptionConsumer consumer) {
+  private void syncInternal(final AbstractSubscriptionConsumer consumer) {
     if (hasNoAvailableProviders()) {
       try {
         openProviders(consumer);
@@ -284,11 +285,11 @@ final class SubscriptionProviders {
 
     // add new providers or handshake existing providers
     for (final Map.Entry<Integer, TEndPoint> entry : allEndPoints.entrySet()) {
-      final SubscriptionProvider provider = getProvider(entry.getKey());
+      final AbstractSubscriptionProvider provider = getProvider(entry.getKey());
       if (Objects.isNull(provider)) {
         // new provider
         final TEndPoint endPoint = entry.getValue();
-        final SubscriptionProvider newProvider;
+        final AbstractSubscriptionProvider newProvider;
         try {
           newProvider = consumer.constructProviderAndHandshake(endPoint);
         } catch (final Exception e) {
@@ -324,7 +325,7 @@ final class SubscriptionProviders {
     }
 
     // close and remove stale providers
-    for (final SubscriptionProvider provider : getAllProviders()) {
+    for (final AbstractSubscriptionProvider provider : getAllProviders()) {
       final int dataNodeId = provider.getDataNodeId();
       if (!allEndPoints.containsKey(dataNodeId)) {
         try {
@@ -343,7 +344,8 @@ final class SubscriptionProviders {
   public String toString() {
     final StringBuilder sb = new StringBuilder();
     sb.append("SubscriptionProviders{");
-    for (final Map.Entry<Integer, SubscriptionProvider> entry : subscriptionProviders.entrySet()) {
+    for (final Map.Entry<Integer, AbstractSubscriptionProvider> entry :
+        subscriptionProviders.entrySet()) {
       sb.append(entry.getValue().toString()).append(", ");
     }
     if (!subscriptionProviders.isEmpty()) {
