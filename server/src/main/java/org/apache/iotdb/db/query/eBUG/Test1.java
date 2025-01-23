@@ -3,6 +3,7 @@ package org.apache.iotdb.db.query.eBUG;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 
@@ -13,8 +14,9 @@ public class Test1 {
     public static void main(String[] args) {
         Polyline polyline = new Polyline();
         List<Polyline> polylineList = new ArrayList<>();
-        Random rand = new Random(3);
+        Random rand = new Random(10);
         int n = 10000;
+        int eParam = 0;
 
         int p = 10;
         for (int i = 0; i < n; i += p) {
@@ -44,13 +46,17 @@ public class Test1 {
         }
 
         System.out.println("---------------------------------");
-        int eParam = 1;
         long startTime = System.currentTimeMillis();
+        // 注意现在返回的结果是按照Sig递增也就是bottom-up淘汰的顺序排列的，而不是按照时间戳递增排列
         List<Point> results = buildEffectiveArea(polyline, eParam, false);
         // 输出结果
         long endTime = System.currentTimeMillis();
         System.out.println("n=" + n + ", e=" + eParam + ", Time taken to reduce points: " + (endTime - startTime) + "ms");
         System.out.println(results.size());
+
+        // 注意现在返回的结果是按照Sig递增也就是bottom-up淘汰的顺序排列的，而不是按照时间戳递增排列
+        // 按照时间戳递增排序整理:
+        results.sort(Comparator.comparingDouble(point -> point.x));
 
         if (results.size() <= 100) {
             System.out.println("+++++++++++++++++++");

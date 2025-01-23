@@ -66,12 +66,17 @@ public class eBUG {
         }
 
         if (m > 2) {
-            System.out.println("online sampling mode, returning " + m + " sampled points");
+            System.out.println("online sampling mode, " +
+                    "returning " + m + " sampled points sorted by time in ascending order");
         } else {
-            System.out.println("offline precomputation mode, returning each point with dominated significance");
+            System.out.println("offline precomputation mode, " +
+                    "returning each point sorted by dominated significance (DS) in ascending order");
         }
 
-        List<Point> results = lineToSimplify.getVertices(); // 浅复制
+//        List<Point> results = lineToSimplify.getVertices(); // 浅复制
+        // TODO 预计算结果改成按照bottom-up逐点淘汰顺序（DS递增）排列而不是按照时间戳，这样省去在线时对DS排序的过程
+        //    add的是Point引用，所以没有多用一倍的空间
+        List<Point> resultsBottomUpEliminated = new ArrayList<>();
 
         // 存储的是点的引用，这样可以修改原来序列里点的淘汰状态
         // 存储的是距离当前最新状态的滞后的尚未施加、待施加的e个淘汰点
@@ -79,7 +84,7 @@ public class eBUG {
 
         int total = lineToSimplify.size();
         if (total < 3) {
-            return results; // 不足 3 个点无法形成三角形
+            return lineToSimplify.getVertices(); // 不足 3 个点无法形成三角形
         }
 
         int nTriangles = total - 2;
@@ -155,7 +160,9 @@ public class eBUG {
             if (tri.area > previousEA) {
                 previousEA = tri.area;
             }
-            results.get(tri.indices[1]).z = previousEA; // dominated significance
+//            results.get(tri.indices[1]).z = previousEA; // dominated significance
+            lineToSimplify.get(tri.indices[1]).z = previousEA; // dominated significance
+            resultsBottomUpEliminated.add(lineToSimplify.get(tri.indices[1])); // TODO add的是Point引用，所以没有多用一倍的空间
             if (debug) {
                 System.out.println(Arrays.toString(tri.indices) + ", Dominated Sig=" + previousEA);
             }
@@ -270,13 +277,17 @@ public class eBUG {
             Point start = lineToSimplify.get(0);
             Point end = lineToSimplify.get(lineToSimplify.size() - 1);
             while (start != end) { // Point类里增加prev&next指针，这样T'_max{0,k-e}里点的连接关系就有了，这样从Pa开始沿着指针，遍历点数一定不超过e+3
-                onlineSampled.add(start);
+                onlineSampled.add(start); // 注意未淘汰的点的Dominated significance尚未赋值，还都是infinity
                 start = start.next; // when e=0, only traversing three points pa pi pb
             }
             onlineSampled.add(end);
             return onlineSampled;
         } else { // offline precomputation mode, for precomputing the dominated significance of each point
-            return results; // 注意这就是lineToSimplify.getVertices()
+//            return results; // 注意这就是lineToSimplify.getVertices()
+            // TODO
+            resultsBottomUpEliminated.add(lineToSimplify.get(0)); // 全局首点
+            resultsBottomUpEliminated.add(lineToSimplify.get(lineToSimplify.size() - 1)); // 全局尾点
+            return resultsBottomUpEliminated;
         }
     }
 
