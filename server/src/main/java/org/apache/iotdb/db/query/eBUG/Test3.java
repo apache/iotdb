@@ -9,14 +9,14 @@ import java.util.Random;
 
 import static org.apache.iotdb.db.query.eBUG.eBUG.buildEffectiveArea;
 
-public class Test1 {
+public class Test3 {
   // 用于验证Java eBUG实现和python版本(e=0/1)结果的一致性
   public static void main(String[] args) {
     Polyline polyline = new Polyline();
     List<Polyline> polylineList = new ArrayList<>();
     Random rand = new Random(10);
     int n = 10000;
-    int eParam = 1;
+    int eParam = 0;
 
     int p = 10;
     for (int i = 0; i < n; i += p) {
