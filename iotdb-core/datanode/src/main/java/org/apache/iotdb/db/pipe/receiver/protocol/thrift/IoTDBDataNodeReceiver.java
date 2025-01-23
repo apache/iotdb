@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferSliceReqHandler;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
@@ -176,7 +177,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
-  private static final long LOGIN_INVALID_INTERVAL = 300000;
+  private static final long LOGIN_INVALID_INTERVAL =
+      PipeConfig.getInstance().getPipeReceiverLoginInvalidInterval();
   private long lastSuccessfulLoginTime = Long.MIN_VALUE;
 
   static {
@@ -497,7 +499,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
     if (clientSession == null
         || !clientSession.isLogin()
-        || lastSuccessfulLoginTime < System.currentTimeMillis() - LOGIN_INVALID_INTERVAL) {
+        || (LOGIN_INVALID_INTERVAL > 0
+            && lastSuccessfulLoginTime < System.currentTimeMillis() - LOGIN_INVALID_INTERVAL)) {
       final TSStatus status =
           SESSION_MANAGER.login(
               SESSION_MANAGER.getCurrSession(),
@@ -820,7 +823,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
     if (clientSession == null
         || !clientSession.isLogin()
-        || lastSuccessfulLoginTime < System.currentTimeMillis() - LOGIN_INVALID_INTERVAL) {
+        || (LOGIN_INVALID_INTERVAL > 0
+            && lastSuccessfulLoginTime < System.currentTimeMillis() - LOGIN_INVALID_INTERVAL)) {
       permissionCheckStatus = login();
       if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return permissionCheckStatus;
@@ -1004,7 +1008,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       if (clientSession == null
           || !clientSession.isLogin()
-          || lastSuccessfulLoginTime < System.currentTimeMillis() - LOGIN_INVALID_INTERVAL) {
+          || (LOGIN_INVALID_INTERVAL > 0
+              && lastSuccessfulLoginTime < System.currentTimeMillis() - LOGIN_INVALID_INTERVAL)) {
         final TSStatus result = login();
         if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return result;

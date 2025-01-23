@@ -474,6 +474,12 @@ public class CommonDescriptor {
                 "pipe_air_gap_receiver_port",
                 Integer.toString(config.getPipeAirGapReceiverPort()))));
 
+    config.setPipeReceiverLoginInvalidInterval(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_receiver_login_invalid_interval",
+                Long.toString(config.getPipeReceiverLoginInvalidInterval()))));
+
     config.setPipeMaxAllowedHistoricalTsFilePerDataRegion(
         Integer.parseInt(
             properties.getProperty(
