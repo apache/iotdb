@@ -1148,7 +1148,6 @@ tvlist_sort_algorithm=TIM
 # Datatype: int
 tvlist_sort_threshold=0
 
-# When the average point number of timeseries in memtable exceeds this, the memtable is flushed to disk. The default threshold is 100000.
 # The target point nums in one chunk in flushing and compaction.
 # If the point number of a timeseries in memtable exceeds this, the data will be flushed to multiple chunks.
 # effectiveMode: restart
