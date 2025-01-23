@@ -56,8 +56,19 @@ public class eBUG {
     }
 
     public static List<Point> buildEffectiveArea(Polyline lineToSimplify, int e, boolean debug) {
+        // precomputation mode
+        return buildEffectiveArea(lineToSimplify, e, debug, 0);
+    }
+
+    public static List<Point> buildEffectiveArea(Polyline lineToSimplify, int e, boolean debug, int m) {
         if (e < 0) {
             throw new IllegalArgumentException("Parameter e must be non-negative.");
+        }
+
+        if (m > 2) {
+            System.out.println("online sampling mode, returning " + m + " sampled points");
+        } else {
+            System.out.println("offline precomputation mode, returning each point with dominated significance");
         }
 
         List<Point> results = lineToSimplify.getVertices(); // 浅复制
@@ -100,7 +111,13 @@ public class eBUG {
         Collections.addAll(triangleHeap, triangles); // complexity TODO O(n) or O(nlogn)?
 
         double previousEA = -1;
-        while (!triangleHeap.isEmpty()) {
+//        while (!triangleHeap.isEmpty()) { // TODO 注意triangleHeap里装的是non-terminal point对应的三角形
+        // TODO 在线采样m个点，也就是说最后留下m-2个non-terminal point
+        //      注意：triangleHeap里装的包括了标记删除的点！所以triangleHeap.size()不是真正的留下的未被淘汰点数！
+        //      因此需要用fakeCnt来统计heap里的非真实点数，这样triangleHeap.size()-fakeCnt就是真正的留下的未被淘汰点数
+        int remainNonTerminalPoint = Math.max(0, m - 2);
+        int fakeCnt = 0;
+        while (triangleHeap.size() - fakeCnt > remainNonTerminalPoint) {
             // 注意peek只需要直接访问该位置的元素，不涉及任何重排或堆化操作
             // 而poll是删除堆顶元素，需要重新堆化以维护堆的性质，复杂度是O(logk),k是当前堆的大小
             Triangle tri = triangleHeap.poll(); // O(logn)
@@ -108,6 +125,7 @@ public class eBUG {
             // 如果该三角形已经被删除，跳过. Avoid using heap.remove(x) as it is O(n) complexity
             // 而且除了heap里，已经没有其他节点会和它关联了，所有的connections关系已经迁移到新的角色替代节点上
             if (tri.isDeleted) {
+                fakeCnt--; // 取出了一个被标记删除点
                 if (debug) {
                     System.out.println(">>>bottom-up, remaining " + triangleHeap.size() + " triangles (including those marked for removal)");
                 }
@@ -185,6 +203,7 @@ public class eBUG {
                 // 在 Java 的 PriorityQueue 中，修改元素的属性不会自动更新堆的顺序
                 // 所以必须通过add来显式重新插入修改后的元素
                 triangleHeap.add(tri.prev); // O(logn) 注意加入的是一个新的对象isDeleted=false
+                fakeCnt++; // 表示heap里多了一个被标记删除的假点
             }
 
             if (tri.next != null) {
@@ -232,12 +251,33 @@ public class eBUG {
                 // 在 Java 的 PriorityQueue 中，修改元素的属性不会自动更新堆的顺序
                 // 所以必须通过add 来显式重新插入修改后的元素
                 triangleHeap.add(tri.next); // 注意加入的是一个新的对象isDeleted=false
+                fakeCnt++; // 表示heap里多了一个被标记删除的假点
             }
             if (debug) {
                 System.out.println(">>>bottom-up, remaining " + triangleHeap.size() + " triangles (including those marked for removal)");
             }
         }
-        return results; // 注意这就是lineToSimplify.getVertices()
+
+        if (m > 2) { // online sampling mode
+            // 把滞后的淘汰点施加上去，然后返回在线采样结果（也就是返回剩余未被淘汰的点）
+            for (Point p : laggedEliminatedPoints) {
+                p.markEliminated();
+                if (debug) {
+                    System.out.println("apply lagged elimination of " + p);
+                }
+            }
+            List<Point> onlineSampled = new ArrayList<>();
+            Point start = lineToSimplify.get(0);
+            Point end = lineToSimplify.get(lineToSimplify.size() - 1);
+            while (start != end) { // Point类里增加prev&next指针，这样T'_max{0,k-e}里点的连接关系就有了，这样从Pa开始沿着指针，遍历点数一定不超过e+3
+                onlineSampled.add(start);
+                start = start.next; // when e=0, only traversing three points pa pi pb
+            }
+            onlineSampled.add(end);
+            return onlineSampled;
+        } else { // offline precomputation mode, for precomputing the dominated significance of each point
+            return results; // 注意这就是lineToSimplify.getVertices()
+        }
     }
 
     public static void main(String[] args) {
@@ -262,7 +302,7 @@ public class eBUG {
                     }
 
                     long startTime = System.currentTimeMillis();
-                    List<Point> results = buildEffectiveArea(polyline, eParam, false);
+                    List<Point> results = buildEffectiveArea(polyline, eParam, false, 0);
                     long endTime = System.currentTimeMillis();
 
                     System.out.println("n=" + n + ", e=" + eParam + ", Time taken to reduce points: " + (endTime - startTime) + "ms");

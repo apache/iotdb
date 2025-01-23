@@ -13,7 +13,7 @@ public class Test1 {
     public static void main(String[] args) {
         Polyline polyline = new Polyline();
         List<Polyline> polylineList = new ArrayList<>();
-        Random rand = new Random(2);
+        Random rand = new Random(3);
         int n = 10000;
 
         int p = 10;
@@ -44,7 +44,7 @@ public class Test1 {
         }
 
         System.out.println("---------------------------------");
-        int eParam = 0;
+        int eParam = 1;
         long startTime = System.currentTimeMillis();
         List<Point> results = buildEffectiveArea(polyline, eParam, false);
         // 输出结果
