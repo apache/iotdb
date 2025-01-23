@@ -50,7 +50,7 @@ public class PartitionTableAutoCleaner<Env> extends InternalProcedure<Env> {
 
   @Override
   protected void periodicExecute(Env env) {
-    List<String> databases = configManager.getClusterSchemaManager().getDatabaseNames(null);
+    List<String> databases = configManager.getClusterSchemaManager().getDatabaseNames();
     Map<String, Long> databaseTTLMap =
         configManager.getClusterSchemaManager().getTTLInfoForUpgrading();
     for (String database : databases) {
