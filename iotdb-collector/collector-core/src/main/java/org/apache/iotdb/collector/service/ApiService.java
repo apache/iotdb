@@ -19,10 +19,9 @@
 
 package org.apache.iotdb.collector.service;
 
+import org.apache.iotdb.collector.api.filter.ApiOriginFilter;
 import org.apache.iotdb.collector.config.CollectorConfig;
 import org.apache.iotdb.collector.config.CollectorDescriptor;
-import org.apache.iotdb.collector.protocol.rest.filter.ApiOriginFilter;
-import org.apache.iotdb.commons.service.ServiceType;
 
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
@@ -35,17 +34,16 @@ import javax.servlet.DispatcherType;
 
 import java.util.EnumSet;
 
-public class CollectorRestService implements IService {
+public class ApiService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(CollectorRestService.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ApiService.class);
 
   private static final CollectorConfig CONFIG = CollectorDescriptor.getInstance().getConfig();
 
   private static Server server;
 
-  private CollectorRestService() {}
+  private ApiService() {}
 
-  @Override
   public void start() {
     startNonSSL(CONFIG.getRestServicePort());
   }
@@ -65,7 +63,7 @@ public class CollectorRestService implements IService {
     holder.setInitOrder(1);
     holder.setInitParameter(
         "jersey.config.server.provider.packages",
-        "io.swagger.jaxrs.listing, io.swagger.sample.resource, org.apache.iotdb.collector.protocol.rest");
+        "io.swagger.jaxrs.listing, io.swagger.sample.resource, org.apache.iotdb.collector.api");
     holder.setInitParameter(
         "jersey.config.server.provider.classnames",
         "org.glassfish.jersey.media.multipart.MultiPartFeature");
@@ -78,36 +76,19 @@ public class CollectorRestService implements IService {
     try {
       server.start();
     } catch (final Exception e) {
-      LOGGER.warn("CollectorRestService failed to start: {}", e.getMessage());
+      LOGGER.warn("ApiService failed to start: {}", e.getMessage());
       server.destroy();
     }
-    LOGGER.info("start CollectorRestService successfully");
+    LOGGER.info("start ApiService successfully");
   }
 
-  @Override
   public void stop() {
     try {
       server.stop();
     } catch (final Exception e) {
-      LOGGER.warn("CollectorRestService failed to stop: {}", e.getMessage());
+      LOGGER.warn("ApiService failed to stop: {}", e.getMessage());
     } finally {
       server.destroy();
     }
-  }
-
-  @Override
-  public ServiceType getID() {
-    return ServiceType.REST_SERVICE;
-  }
-
-  public static CollectorRestService getInstance() {
-    return CollectorRestServiceHolder.INSTANCE;
-  }
-
-  private static class CollectorRestServiceHolder {
-
-    private static final CollectorRestService INSTANCE = new CollectorRestService();
-
-    private CollectorRestServiceHolder() {}
   }
 }

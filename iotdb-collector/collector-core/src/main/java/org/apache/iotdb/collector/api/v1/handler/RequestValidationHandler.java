@@ -16,6 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.collector.service;
 
-public interface CollectorMBean {}
+package org.apache.iotdb.collector.api.v1.handler;
+
+import org.apache.iotdb.collector.api.v1.model.CreatePipeRequest;
+import org.apache.iotdb.collector.api.v1.model.StopPipeRequest;
+
+import java.util.Objects;
+
+public class RequestValidationHandler {
+  private RequestValidationHandler() {}
+
+  public static void validateCreateRequest(final CreatePipeRequest createPipeRequest) {
+    Objects.requireNonNull(createPipeRequest.getTaskId(), "taskId cannot be null");
+  }
+
+  public static void validateStopRequest(final StopPipeRequest stopPipeRequest) {
+    Objects.requireNonNull(stopPipeRequest.getTaskId(), "taskId cannot be null");
+  }
+}

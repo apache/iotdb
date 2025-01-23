@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.collector.protocol.rest.filter;
+package org.apache.iotdb.collector.api.filter;
 
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;

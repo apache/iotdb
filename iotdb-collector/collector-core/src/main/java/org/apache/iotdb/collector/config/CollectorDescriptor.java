@@ -37,7 +37,7 @@ public class CollectorDescriptor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CollectorDescriptor.class);
 
-  private static final String CONFIG_FILE_NAME = "iotdb-collector-system.properties";
+  private static final String CONFIG_FILE_NAME = "application.properties";
   private static final CollectorConfig CONFIG = new CollectorConfig();
 
   private CollectorDescriptor() {

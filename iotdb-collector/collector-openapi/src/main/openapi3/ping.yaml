@@ -19,7 +19,7 @@
 
 openapi: 3.0.0
 info:
-  title: iotdb_collector_rest_common
+  title: ping
   description: IoTDB Rest API for Collector
   license:
     name: Apache 2.0

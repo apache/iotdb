@@ -15,11 +15,11 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.collector.protocol.rest.impl;
+package org.apache.iotdb.collector.api.impl;
 
-import org.apache.iotdb.collector.protocol.rest.NotFoundException;
-import org.apache.iotdb.collector.protocol.rest.PingApiService;
-import org.apache.iotdb.collector.protocol.rest.v1.model.ExecutionStatus;
+import org.apache.iotdb.collector.api.NotFoundException;
+import org.apache.iotdb.collector.api.PingApiService;
+import org.apache.iotdb.collector.api.v1.model.ExecutionStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import javax.ws.rs.core.Response;

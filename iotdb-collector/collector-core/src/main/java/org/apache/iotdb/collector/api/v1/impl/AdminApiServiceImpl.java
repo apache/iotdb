@@ -17,17 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.collector.protocol.rest.v1.impl;
+package org.apache.iotdb.collector.api.v1.impl;
 
 import org.apache.iotdb.collector.agent.CollectorAgent;
-import org.apache.iotdb.collector.protocol.rest.v1.AdminApiService;
-import org.apache.iotdb.collector.protocol.rest.v1.NotFoundException;
-import org.apache.iotdb.collector.protocol.rest.v1.handler.RequestValidationHandler;
-import org.apache.iotdb.collector.protocol.rest.v1.model.AlterPipeRequest;
-import org.apache.iotdb.collector.protocol.rest.v1.model.CreatePipeRequest;
-import org.apache.iotdb.collector.protocol.rest.v1.model.DropPipeRequest;
-import org.apache.iotdb.collector.protocol.rest.v1.model.StartPipeRequest;
-import org.apache.iotdb.collector.protocol.rest.v1.model.StopPipeRequest;
+import org.apache.iotdb.collector.api.v1.AdminApiService;
+import org.apache.iotdb.collector.api.v1.NotFoundException;
+import org.apache.iotdb.collector.api.v1.handler.RequestValidationHandler;
+import org.apache.iotdb.collector.api.v1.model.AlterPipeRequest;
+import org.apache.iotdb.collector.api.v1.model.CreatePipeRequest;
+import org.apache.iotdb.collector.api.v1.model.DropPipeRequest;
+import org.apache.iotdb.collector.api.v1.model.StartPipeRequest;
+import org.apache.iotdb.collector.api.v1.model.StopPipeRequest;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

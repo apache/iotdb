@@ -23,7 +23,7 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.apache.iotdb</groupId>
-        <artifactId>iotdb-collector</artifactId>
+        <artifactId>iotdb-application</artifactId>
         <version>2.0.0-SNAPSHOT</version>
     </parent>
     <artifactId>collector-openapi</artifactId>
@@ -89,20 +89,20 @@
                         </goals>
                         <phase>generate-sources</phase>
                         <configuration>
-                            <inputSpec>${project.basedir}/src/main/openapi3/iotdb_collector_rest_common.yaml</inputSpec>
+                            <inputSpec>${project.basedir}/src/main/openapi3/ping.yaml</inputSpec>
                             <output>${project.build.directory}/generated-sources/java</output>
-                            <apiPackage>org.apache.iotdb.collector.protocol.rest</apiPackage>
-                            <modelPackage>org.apache.iotdb.collector.protocol.rest.model</modelPackage>
-                            <invokerPackage>org.apache.iotdb.collector.protocol.rest.invoker</invokerPackage>
+                            <apiPackage>org.apache.iotdb.application.protocol.rest</apiPackage>
+                            <modelPackage>org.apache.iotdb.application.protocol.rest.model</modelPackage>
+                            <invokerPackage>org.apache.iotdb.application.protocol.rest.invoker</invokerPackage>
                             <generatorName>jaxrs-jersey</generatorName>
                             <groupId>org.apache.iotdb.</groupId>
-                            <artifactId>iotdb-collector-rest-service</artifactId>
+                            <artifactId>iotdb-application-rest-service</artifactId>
                             <artifactVersion>${project.version}</artifactVersion>
                             <addCompileSourceRoot>true</addCompileSourceRoot>
                             <configOptions>
                                 <licenseName>Apache License 2.0</licenseName>
                                 <groupId>org.apache.iotdb</groupId>
-                                <artifactId>iotdb-collector-rest-service</artifactId>
+                                <artifactId>iotdb-application-rest-service</artifactId>
                                 <artifactVersion>${project.version}</artifactVersion>
                                 <dateLibrary>java8</dateLibrary>
                                 <useGzipFeature>true</useGzipFeature>
@@ -118,18 +118,18 @@
                         <configuration>
                             <inputSpec>${project.basedir}/src/main/openapi3/iotdb_collector_rest_v1.yaml</inputSpec>
                             <output>${project.build.directory}/generated-sources/java</output>
-                            <apiPackage>org.apache.iotdb.collector.protocol.rest.v1</apiPackage>
-                            <modelPackage>org.apache.iotdb.collector.protocol.rest.v1.model</modelPackage>
-                            <invokerPackage>org.apache.iotdb.collector.protocol.rest.v1.invoker</invokerPackage>
+                            <apiPackage>org.apache.iotdb.application.protocol.rest.v1</apiPackage>
+                            <modelPackage>org.apache.iotdb.application.protocol.rest.v1.model</modelPackage>
+                            <invokerPackage>org.apache.iotdb.application.protocol.rest.v1.invoker</invokerPackage>
                             <generatorName>jaxrs-jersey</generatorName>
                             <groupId>org.apache.iotdb</groupId>
-                            <artifactId>iotdb-collector-rest-service</artifactId>
+                            <artifactId>iotdb-application-rest-service</artifactId>
                             <artifactVersion>${project.version}</artifactVersion>
                             <addCompileSourceRoot>true</addCompileSourceRoot>
                             <configOptions>
                                 <licenseName>Apache License 2.0</licenseName>
                                 <groupId>org.apache.iotdb</groupId>
-                                <artifactId>iotdb-collector-rest-service</artifactId>
+                                <artifactId>iotdb-application-rest-service</artifactId>
                                 <artifactVersion>${project.version}</artifactVersion>
                                 <dateLibrary>java8</dateLibrary>
                                 <useGzipFeature>true</useGzipFeature>
