@@ -218,8 +218,6 @@ public class TopicMeta {
     connectorAttributes.put(PipeConnectorConstant.SINK_TOPIC_KEY, topicName);
     connectorAttributes.put(PipeConnectorConstant.SINK_CONSUMER_GROUP_KEY, consumerGroupId);
     connectorAttributes.putAll(config.getAttributesWithSinkFormat());
-    // TODO: define and expose this topic config
-    connectorAttributes.put(PipeConnectorConstant.SINK_REALTIME_FIRST_KEY, "false");
     // backdoor configs
     connectorAttributes.putAll(config.getAttributesWithSinkPrefix());
     return connectorAttributes;
