@@ -23,7 +23,7 @@ import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 
-import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode.NO_CONSENSUS_INDEX;
+import java.util.List;
 
 public abstract class SearchNode extends WritePlanNode {
 
@@ -48,4 +48,6 @@ public abstract class SearchNode extends WritePlanNode {
   public void setSearchIndex(long searchIndex) {
     this.searchIndex = searchIndex;
   }
+
+  public abstract SearchNode merge(List<SearchNode> searchNodes);
 }
