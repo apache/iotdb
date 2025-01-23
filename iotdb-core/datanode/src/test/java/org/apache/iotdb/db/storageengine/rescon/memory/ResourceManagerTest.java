@@ -83,7 +83,7 @@ public class ResourceManagerTest {
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
-    prevTimeIndexMemoryThreshold = CONFIG.getAllocateMemoryForTimeIndex();
+    prevTimeIndexMemoryThreshold = CONFIG.getTimeIndexMemoryManager().getTotalMemorySizeInBytes();
     timeIndexLevel = CONFIG.getTimeIndexLevel();
     prepareSeries();
   }

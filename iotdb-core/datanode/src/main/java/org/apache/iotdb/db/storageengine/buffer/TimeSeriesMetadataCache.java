@@ -68,7 +68,7 @@ public class TimeSeriesMetadataCache {
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE =
-      config.getAllocateMemoryForTimeSeriesMetaDataCache();
+      config.getTimeSeriesMetaDataCacheMemoryManager().getTotalMemorySizeInBytes();
   private static final boolean CACHE_ENABLE = config.isMetaDataCacheEnable();
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =

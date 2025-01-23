@@ -152,7 +152,9 @@ public class IoTDBConfig {
   /** Memory manager for the write process */
   private MemoryManager storageEngineMemoryManager;
 
-  /** Memory allocated for the read process */
+  /** Memory manager for the read process */
+  private MemoryManager queryEngineMemoryManager;
+
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
 
   /** Memory manager for the mtree */
@@ -591,29 +593,30 @@ public class IoTDBConfig {
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
 
-  /** Memory allocated for bloomFilter cache in read process */
-  private long allocateMemoryForBloomFilterCache = allocateMemoryForRead / 1001;
+  /** Memory manager for bloomFilter cache in read process */
+  private MemoryManager bloomFilterCacheMemoryManager;
 
-  /** Memory allocated for timeSeriesMetaData cache in read process */
-  private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead * 200 / 1001;
+  /** Memory manager for timeSeriesMetaData cache in read process */
+  private MemoryManager timeSeriesMetaDataCacheMemoryManager;
 
-  /** Memory allocated for chunk cache in read process */
-  private long allocateMemoryForChunkCache = allocateMemoryForRead * 100 / 1001;
+  /** Memory manager for chunk cache in read process */
+  private MemoryManager chunkCacheMemoryManager;
 
-  /** Memory allocated for operators */
-  private long allocateMemoryForCoordinator = allocateMemoryForRead * 50 / 1001;
+  /** Memory manager for coordinator */
+  private MemoryManager coordinatorMemoryManager;
 
-  /** Memory allocated for operators */
-  private long allocateMemoryForOperators = allocateMemoryForRead * 200 / 1001;
+  /** Memory manager for operators */
+  private MemoryManager operatorsMemoryManager;
 
-  /** Memory allocated for operators */
-  private long allocateMemoryForDataExchange = allocateMemoryForRead * 200 / 1001;
+  /** Memory manager for operators */
+  private MemoryManager dataExchangeMemoryManager;
 
   /** Max bytes of each FragmentInstance for DataExchange */
-  private long maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
+  private long maxBytesPerFragmentInstance =
+      Runtime.getRuntime().maxMemory() * 3 / 10 * 200 / 1001 / queryThreadCount;
 
-  /** Memory allocated proportion for timeIndex */
-  private long allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
+  /** Memory manager proportion for timeIndex */
+  private MemoryManager timeIndexMemoryManager;
 
   /** Memory manager for time partition info */
   private MemoryManager timePartitionInfoMemoryManager;
@@ -1782,7 +1785,8 @@ public class IoTDBConfig {
       queryThreadCount = Runtime.getRuntime().availableProcessors();
     }
     this.queryThreadCount = queryThreadCount;
-    this.maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
+    this.maxBytesPerFragmentInstance =
+        dataExchangeMemoryManager.getTotalMemorySizeInBytes() / queryThreadCount;
   }
 
   public void setDegreeOfParallelism(int degreeOfParallelism) {
@@ -2107,6 +2111,14 @@ public class IoTDBConfig {
     return storageEngineMemoryManager;
   }
 
+  public MemoryManager getQueryEngineMemoryManager() {
+    return queryEngineMemoryManager;
+  }
+
+  public void setQueryEngineMemoryManager(MemoryManager queryEngineMemoryManager) {
+    this.queryEngineMemoryManager = queryEngineMemoryManager;
+  }
+
   public MemoryManager getSchemaEngineMemoryManager() {
     return schemaEngineMemoryManager;
   }
@@ -2121,23 +2133,6 @@ public class IoTDBConfig {
 
   public void setConsensusMemoryManager(MemoryManager consensusMemoryManager) {
     ConsensusMemoryManager = consensusMemoryManager;
-  }
-
-  public long getAllocateMemoryForRead() {
-    return allocateMemoryForRead;
-  }
-
-  void setAllocateMemoryForRead(long allocateMemoryForRead) {
-    this.allocateMemoryForRead = allocateMemoryForRead;
-
-    this.allocateMemoryForBloomFilterCache = allocateMemoryForRead / 1001;
-    this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead * 200 / 1001;
-    this.allocateMemoryForChunkCache = allocateMemoryForRead * 100 / 1001;
-    this.allocateMemoryForCoordinator = allocateMemoryForRead * 50 / 1001;
-    this.allocateMemoryForOperators = allocateMemoryForRead * 200 / 1001;
-    this.allocateMemoryForDataExchange = allocateMemoryForRead * 200 / 1001;
-    this.maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
-    this.allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
   }
 
   public MemoryManager getPipeMemoryManager() {
@@ -2325,62 +2320,61 @@ public class IoTDBConfig {
     this.metaDataCacheEnable = metaDataCacheEnable;
   }
 
-  public long getAllocateMemoryForBloomFilterCache() {
-    return allocateMemoryForBloomFilterCache;
+  public MemoryManager getBloomFilterCacheMemoryManager() {
+    return bloomFilterCacheMemoryManager;
   }
 
-  public void setAllocateMemoryForBloomFilterCache(long allocateMemoryForBloomFilterCache) {
-    this.allocateMemoryForBloomFilterCache = allocateMemoryForBloomFilterCache;
+  public void setBloomFilterCacheMemoryManager(MemoryManager bloomFilterCacheMemoryManager) {
+    this.bloomFilterCacheMemoryManager = bloomFilterCacheMemoryManager;
   }
 
-  public long getAllocateMemoryForTimeSeriesMetaDataCache() {
-    return allocateMemoryForTimeSeriesMetaDataCache;
+  public MemoryManager getTimeSeriesMetaDataCacheMemoryManager() {
+    return timeSeriesMetaDataCacheMemoryManager;
   }
 
-  public void setAllocateMemoryForTimeSeriesMetaDataCache(
-      long allocateMemoryForTimeSeriesMetaDataCache) {
-    this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForTimeSeriesMetaDataCache;
+  public void setTimeSeriesMetaDataCacheMemoryManager(
+      MemoryManager timeSeriesMetaDataCacheMemoryManager) {
+    this.timeSeriesMetaDataCacheMemoryManager = timeSeriesMetaDataCacheMemoryManager;
   }
 
-  public long getAllocateMemoryForChunkCache() {
-    return allocateMemoryForChunkCache;
+  public MemoryManager getChunkCacheMemoryManager() {
+    return chunkCacheMemoryManager;
   }
 
-  public void setAllocateMemoryForChunkCache(long allocateMemoryForChunkCache) {
-    this.allocateMemoryForChunkCache = allocateMemoryForChunkCache;
+  public void setChunkCacheMemoryManager(MemoryManager chunkCacheMemoryManager) {
+    this.chunkCacheMemoryManager = chunkCacheMemoryManager;
   }
 
-  public long getAllocateMemoryForCoordinator() {
-    return allocateMemoryForCoordinator;
+  public MemoryManager getCoordinatorMemoryManager() {
+    return coordinatorMemoryManager;
   }
 
-  public void setAllocateMemoryForCoordinator(long allocateMemoryForCoordinator) {
-    this.allocateMemoryForCoordinator = allocateMemoryForCoordinator;
+  public void setCoordinatorMemoryManager(MemoryManager coordinatorMemoryManager) {
+    this.coordinatorMemoryManager = coordinatorMemoryManager;
   }
 
-  public long getAllocateMemoryForOperators() {
-    return allocateMemoryForOperators;
+  public MemoryManager getOperatorsMemoryManager() {
+    return operatorsMemoryManager;
   }
 
-  public void setAllocateMemoryForOperators(long allocateMemoryForOperators) {
-    this.allocateMemoryForOperators = allocateMemoryForOperators;
+  public void setOperatorsMemoryManager(MemoryManager operatorsMemoryManager) {
+    this.operatorsMemoryManager = operatorsMemoryManager;
   }
 
-  public long getAllocateMemoryForDataExchange() {
-    return allocateMemoryForDataExchange;
+  public MemoryManager getDataExchangeMemoryManager() {
+    return dataExchangeMemoryManager;
   }
 
-  public void setAllocateMemoryForDataExchange(long allocateMemoryForDataExchange) {
-    this.allocateMemoryForDataExchange = allocateMemoryForDataExchange;
-    this.maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
+  public void setDataExchangeMemoryManager(MemoryManager dataExchangeMemoryManager) {
+    this.dataExchangeMemoryManager = dataExchangeMemoryManager;
   }
 
-  public long getAllocateMemoryForTimeIndex() {
-    return allocateMemoryForTimeIndex;
+  public MemoryManager getTimeIndexMemoryManager() {
+    return timeIndexMemoryManager;
   }
 
-  public void setAllocateMemoryForTimeIndex(long allocateMemoryForTimeIndex) {
-    this.allocateMemoryForTimeIndex = allocateMemoryForTimeIndex;
+  public void setTimeIndexMemoryManager(MemoryManager timeIndexMemoryManager) {
+    this.timeIndexMemoryManager = timeIndexMemoryManager;
   }
 
   public MemoryManager getTimePartitionInfoMemoryManager() {

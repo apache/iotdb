@@ -49,7 +49,7 @@ public class BloomFilterCache {
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_BLOOM_FILTER_CACHE =
-      CONFIG.getAllocateMemoryForBloomFilterCache();
+      CONFIG.getBloomFilterCacheMemoryManager().getTotalMemorySizeInBytes();
   private static final boolean CACHE_ENABLE = CONFIG.isMetaDataCacheEnable();
   private final AtomicLong entryAverageSize = new AtomicLong(0);
 

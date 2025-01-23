@@ -61,7 +61,7 @@ public class ChunkCache {
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_CHUNK_CACHE =
-      CONFIG.getAllocateMemoryForChunkCache();
+      CONFIG.getChunkCacheMemoryManager().getTotalMemorySizeInBytes();
   private static final boolean CACHE_ENABLE = CONFIG.isMetaDataCacheEnable();
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =

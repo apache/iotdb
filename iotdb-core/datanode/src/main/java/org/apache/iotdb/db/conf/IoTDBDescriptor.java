@@ -2180,6 +2180,7 @@ public class IoTDBDescriptor {
     }
 
     long storageEngineMemorySize = Runtime.getRuntime().maxMemory() * 3 / 10;
+    long queryEngineMemorySize = Runtime.getRuntime().maxMemory() * 3 / 10;
     long schemaEngineMemorySize = Runtime.getRuntime().maxMemory() / 10;
     long consensusMemorySize = Runtime.getRuntime().maxMemory() / 10;
     long pipeMemorySize = Runtime.getRuntime().maxMemory() / 10;
@@ -2194,8 +2195,8 @@ public class IoTDBDescriptor {
       if (proportionSum != 0) {
         storageEngineMemorySize =
             maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum;
-        conf.setAllocateMemoryForRead(
-            maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+        queryEngineMemorySize =
+            maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum;
         schemaEngineMemorySize =
             maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum;
         consensusMemorySize =
@@ -2208,7 +2209,7 @@ public class IoTDBDescriptor {
           pipeMemorySize =
               (maxMemoryAvailable
                       - (conf.getStorageEngineMemoryManager().getTotalMemorySizeInBytes()
-                          + conf.getAllocateMemoryForRead()
+                          + conf.getQueryEngineMemoryManager().getTotalMemorySizeInBytes()
                           + conf.getSchemaEngineMemoryManager().getTotalMemorySizeInBytes()
                           + conf.getConsensusMemoryManager().getTotalMemorySizeInBytes()))
                   / 2;
@@ -2219,6 +2220,10 @@ public class IoTDBDescriptor {
     MemoryManager storageEngineMemoryManager =
         globalMemoryManager.createMemoryManager("StorageEngine", storageEngineMemorySize);
     conf.setStorageEngineMemoryManager(storageEngineMemoryManager);
+    // query engine memory manager
+    MemoryManager queryEngineMemoryManager =
+        globalMemoryManager.createMemoryManager("QueryEngine", queryEngineMemorySize);
+    conf.setQueryEngineMemoryManager(queryEngineMemoryManager);
     // schema engine memory manager
     MemoryManager schemaEngineMemoryManager =
         globalMemoryManager.createMemoryManager("SchemaEngine", schemaEngineMemorySize);
@@ -2232,7 +2237,9 @@ public class IoTDBDescriptor {
         globalMemoryManager.createMemoryManager("Pipe", pipeMemorySize);
     conf.setPipeMemoryManager(pipeMemoryManager);
 
-    LOGGER.info("initial allocateMemoryForRead = {}", conf.getAllocateMemoryForRead());
+    LOGGER.info(
+        "initial allocateMemoryForRead = {}",
+        conf.getQueryEngineMemoryManager().getTotalMemorySizeInBytes());
     LOGGER.info(
         "initial allocateMemoryForWrite = {}",
         conf.getStorageEngineMemoryManager().getTotalMemorySizeInBytes());
@@ -2248,63 +2255,7 @@ public class IoTDBDescriptor {
 
     initSchemaMemoryAllocate(schemaEngineMemoryManager, properties);
     initStorageEngineAllocate(storageEngineMemoryManager, properties);
-
-    conf.setEnableQueryMemoryEstimation(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_query_memory_estimation",
-                Boolean.toString(conf.isEnableQueryMemoryEstimation()))));
-
-    String queryMemoryAllocateProportion =
-        properties.getProperty("chunk_timeseriesmeta_free_memory_proportion");
-    if (queryMemoryAllocateProportion != null) {
-      String[] proportions = queryMemoryAllocateProportion.split(":");
-      int proportionSum = 0;
-      for (String proportion : proportions) {
-        proportionSum += Integer.parseInt(proportion.trim());
-      }
-      long maxMemoryAvailable = conf.getAllocateMemoryForRead();
-      if (proportionSum != 0) {
-        try {
-          conf.setAllocateMemoryForBloomFilterCache(
-              maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
-          conf.setAllocateMemoryForChunkCache(
-              maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
-          conf.setAllocateMemoryForTimeSeriesMetaDataCache(
-              maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
-          conf.setAllocateMemoryForCoordinator(
-              maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum);
-          conf.setAllocateMemoryForOperators(
-              maxMemoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum);
-          conf.setAllocateMemoryForDataExchange(
-              maxMemoryAvailable * Integer.parseInt(proportions[5].trim()) / proportionSum);
-          conf.setAllocateMemoryForTimeIndex(
-              maxMemoryAvailable * Integer.parseInt(proportions[6].trim()) / proportionSum);
-        } catch (Exception e) {
-          throw new RuntimeException(
-              "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
-                  + " should be an integer, which is "
-                  + queryMemoryAllocateProportion,
-              e);
-        }
-      }
-    }
-
-    // metadata cache is disabled, we need to move all their allocated memory to other parts
-    if (!conf.isMetaDataCacheEnable()) {
-      long sum =
-          conf.getAllocateMemoryForBloomFilterCache()
-              + conf.getAllocateMemoryForChunkCache()
-              + conf.getAllocateMemoryForTimeSeriesMetaDataCache();
-      conf.setAllocateMemoryForBloomFilterCache(0);
-      conf.setAllocateMemoryForChunkCache(0);
-      conf.setAllocateMemoryForTimeSeriesMetaDataCache(0);
-      long partForDataExchange = sum / 2;
-      long partForOperators = sum - partForDataExchange;
-      conf.setAllocateMemoryForDataExchange(
-          conf.getAllocateMemoryForDataExchange() + partForDataExchange);
-      conf.setAllocateMemoryForOperators(conf.getAllocateMemoryForOperators() + partForOperators);
-    }
+    initQueryEngineMemoryAllocate(queryEngineMemoryManager, properties);
   }
 
   @SuppressWarnings("java:S3518")
@@ -2418,6 +2369,106 @@ public class IoTDBDescriptor {
     LOGGER.info(
         "allocateMemoryForPartitionCache = {}",
         conf.getPartitionCacheMemoryManager().getTotalMemorySizeInBytes());
+  }
+
+  @SuppressWarnings("squid:S3518")
+  private void initQueryEngineMemoryAllocate(
+      MemoryManager queryEngineMemoryManager, TrimProperties properties) {
+    conf.setEnableQueryMemoryEstimation(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_query_memory_estimation",
+                Boolean.toString(conf.isEnableQueryMemoryEstimation()))));
+
+    String queryMemoryAllocateProportion =
+        properties.getProperty("chunk_timeseriesmeta_free_memory_proportion");
+    long maxMemoryAvailable = queryEngineMemoryManager.getTotalMemorySizeInBytes();
+
+    long bloomFilterCacheMemorySize = maxMemoryAvailable / 1001;
+    long chunkCacheMemorySize = maxMemoryAvailable * 100 / 1001;
+    long timeSeriesMetaDataCacheMemorySize = maxMemoryAvailable * 200 / 1001;
+    long coordinatorMemorySize = maxMemoryAvailable * 50 / 1001;
+    long operatorsMemorySize = maxMemoryAvailable * 200 / 1001;
+    long dataExchangeMemorySize = maxMemoryAvailable * 200 / 1001;
+    long timeIndexMemorySize = maxMemoryAvailable * 200 / 1001;
+    if (queryMemoryAllocateProportion != null) {
+      String[] proportions = queryMemoryAllocateProportion.split(":");
+      int proportionSum = 0;
+      for (String proportion : proportions) {
+        proportionSum += Integer.parseInt(proportion.trim());
+      }
+      if (proportionSum != 0) {
+        try {
+          bloomFilterCacheMemorySize =
+              maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum;
+          chunkCacheMemorySize =
+              maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum;
+          timeSeriesMetaDataCacheMemorySize =
+              maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum;
+          coordinatorMemorySize =
+              maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum;
+          operatorsMemorySize =
+              maxMemoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum;
+          dataExchangeMemorySize =
+              maxMemoryAvailable * Integer.parseInt(proportions[5].trim()) / proportionSum;
+          timeIndexMemorySize =
+              maxMemoryAvailable * Integer.parseInt(proportions[6].trim()) / proportionSum;
+        } catch (Exception e) {
+          throw new RuntimeException(
+              "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
+                  + " should be an integer, which is "
+                  + queryMemoryAllocateProportion,
+              e);
+        }
+      }
+    }
+
+    // metadata cache is disabled, we need to move all their allocated memory to other parts
+    if (!conf.isMetaDataCacheEnable()) {
+      long sum =
+          conf.getBloomFilterCacheMemoryManager().getTotalMemorySizeInBytes()
+              + conf.getChunkCacheMemoryManager().getTotalMemorySizeInBytes()
+              + conf.getTimeSeriesMetaDataCacheMemoryManager().getTotalMemorySizeInBytes();
+      bloomFilterCacheMemorySize = 0;
+      chunkCacheMemorySize = 0;
+      timeSeriesMetaDataCacheMemorySize = 0;
+      long partForDataExchange = sum / 2;
+      long partForOperators = sum - partForDataExchange;
+      dataExchangeMemorySize += partForDataExchange;
+      operatorsMemorySize += partForOperators;
+    }
+    // set max bytes per fragment instance
+    conf.setMaxBytesPerFragmentInstance(dataExchangeMemorySize / conf.getQueryThreadCount());
+
+    MemoryManager bloomFilterCacheMemoryManager =
+        queryEngineMemoryManager.createMemoryManager(
+            "BloomFilterCache", bloomFilterCacheMemorySize);
+    conf.setBloomFilterCacheMemoryManager(bloomFilterCacheMemoryManager);
+
+    MemoryManager chunkCacheMemoryManager =
+        queryEngineMemoryManager.createMemoryManager("ChunkCache", chunkCacheMemorySize);
+    conf.setChunkCacheMemoryManager(chunkCacheMemoryManager);
+
+    MemoryManager timeSeriesMetaDataCacheMemoryManager =
+        queryEngineMemoryManager.createMemoryManager(
+            "TimeSeriesMetaDataCache", timeSeriesMetaDataCacheMemorySize);
+    conf.setTimeSeriesMetaDataCacheMemoryManager(timeSeriesMetaDataCacheMemoryManager);
+
+    MemoryManager coordinatorMemoryManager =
+        queryEngineMemoryManager.createMemoryManager("Coordinator", coordinatorMemorySize);
+    conf.setCoordinatorMemoryManager(coordinatorMemoryManager);
+
+    MemoryManager operatorsMemoryManager =
+        queryEngineMemoryManager.createMemoryManager("Operators", operatorsMemorySize);
+    conf.setOperatorsMemoryManager(operatorsMemoryManager);
+
+    MemoryManager dataExchangeMemoryManager =
+        queryEngineMemoryManager.createMemoryManager("DataExchange", dataExchangeMemorySize);
+    conf.setDataExchangeMemoryManager(dataExchangeMemoryManager);
+
+    MemoryManager timeIndexMemoryManager =
+        queryEngineMemoryManager.createMemoryManager("TimeIndex", timeIndexMemorySize);
+    conf.setTimeIndexMemoryManager(timeIndexMemoryManager);
   }
 
   private void loadLoadTsFileProps(TrimProperties properties) {
@@ -2564,7 +2615,7 @@ public class IoTDBDescriptor {
           (float)
               Math.min(
                   Float.parseFloat(memoryBudgetInMb.trim()),
-                  0.2 * conf.getAllocateMemoryForRead()));
+                  0.2 * conf.getQueryEngineMemoryManager().getTotalMemorySizeInBytes()));
     }
 
     String readerTransformerCollectorMemoryProportion =

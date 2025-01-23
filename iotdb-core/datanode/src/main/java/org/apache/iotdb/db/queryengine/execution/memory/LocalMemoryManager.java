@@ -33,7 +33,10 @@ public class LocalMemoryManager {
     queryPool =
         new MemoryPool(
             "read",
-            IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForDataExchange(),
+            IoTDBDescriptor.getInstance()
+                .getConfig()
+                .getDataExchangeMemoryManager()
+                .getTotalMemorySizeInBytes(),
             IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance());
   }
 

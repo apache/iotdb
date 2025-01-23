@@ -54,7 +54,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[1])
-        .set(config.getAllocateMemoryForRead());
+        .set(config.getQueryEngineMemoryManager().getTotalMemorySizeInBytes());
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
@@ -65,7 +65,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[2])
-        .set(config.getAllocateMemoryForBloomFilterCache());
+        .set(config.getBloomFilterCacheMemoryManager().getTotalMemorySizeInBytes());
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
@@ -76,7 +76,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[2])
-        .set(config.getAllocateMemoryForChunkCache());
+        .set(config.getChunkCacheMemoryManager().getTotalMemorySizeInBytes());
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
@@ -87,7 +87,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[2])
-        .set(config.getAllocateMemoryForTimeSeriesMetaDataCache());
+        .set(config.getTimeSeriesMetaDataCacheMemoryManager().getTotalMemorySizeInBytes());
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
@@ -98,7 +98,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[2])
-        .set(config.getAllocateMemoryForOperators());
+        .set(config.getCoordinatorMemoryManager().getTotalMemorySizeInBytes());
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
@@ -109,7 +109,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[2])
-        .set(config.getAllocateMemoryForDataExchange());
+        .set(config.getDataExchangeMemoryManager().getTotalMemorySizeInBytes());
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
@@ -120,7 +120,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[2])
-        .set(config.getAllocateMemoryForTimeIndex());
+        .set(config.getTimeIndexMemoryManager().getTotalMemorySizeInBytes());
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
@@ -131,7 +131,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[2])
-        .set(config.getAllocateMemoryForCoordinator());
+        .set(config.getCoordinatorMemoryManager().getTotalMemorySizeInBytes());
   }
 
   @Override
