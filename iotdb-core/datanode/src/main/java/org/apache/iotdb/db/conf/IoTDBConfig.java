@@ -1048,7 +1048,7 @@ public class IoTDBConfig {
   private int driverTaskExecutionTimeSliceInMs = 200;
 
   /** Maximum size of wal buffer used in IoTConsensus. Unit: byte */
-  private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
+  private long throttleThreshold = 200 * 1024 * 1024 * 1024L;
 
   /** Maximum wait time of write cache in IoTConsensus. Unit: ms */
   private long cacheWindowTimeInMs = 10 * 1000L;
@@ -1128,7 +1128,7 @@ public class IoTDBConfig {
   private int maxSizePerBatch = 16 * 1024 * 1024;
   private int maxPendingBatchesNum = 5;
   private double maxMemoryRatioForQueue = 0.6;
-  private long regionMigrationSpeedLimitBytesPerSecond = 32 * 1024 * 1024L;
+  private long regionMigrationSpeedLimitBytesPerSecond = 48 * 1024 * 1024L;
 
   // PipeConsensus Config
   private int pipeConsensusPipelineSize = 5;
