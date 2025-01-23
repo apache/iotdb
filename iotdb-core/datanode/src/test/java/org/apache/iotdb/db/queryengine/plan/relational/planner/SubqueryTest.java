@@ -344,11 +344,10 @@ public class SubqueryTest {
     *   └──OutputNode
     *           └──ProjectNode
     *             └──FilterNode
-    *               └──ProjectNode
-    *                  └──JoinNode
-    *                     |──TableScanNode
-    *                     ├──AggregationNode
-    *                     │   └──TableScanNode
+    *                └──JoinNode
+    *                   |──TableScanNode
+    *                   ├──AggregationNode
+    *                      └──TableScanNode
 
     */
     assertPlan(
@@ -356,29 +355,26 @@ public class SubqueryTest {
         output(
             project(
                 anyTree(
-                    project(
-                        join(
-                            JoinNode.JoinType.INNER,
-                            builder ->
-                                builder
-                                    .left(tableScan1)
-                                    .right(
-                                        aggregation(
-                                            singleGroupingSet(),
-                                            ImmutableMap.of(
-                                                Optional.of("min"),
-                                                aggregationFunction(
-                                                    "min", ImmutableList.of("s1_7")),
-                                                Optional.of("count_all"),
-                                                aggregationFunction(
-                                                    "count_all", ImmutableList.of("s1_7")),
-                                                Optional.of("count_non_null"),
-                                                aggregationFunction(
-                                                    "count", ImmutableList.of("s1_7"))),
-                                            Collections.emptyList(),
-                                            Optional.empty(),
-                                            SINGLE,
-                                            tableScan2))))))));
+                    join(
+                        JoinNode.JoinType.INNER,
+                        builder ->
+                            builder
+                                .left(tableScan1)
+                                .right(
+                                    aggregation(
+                                        singleGroupingSet(),
+                                        ImmutableMap.of(
+                                            Optional.of("min"),
+                                            aggregationFunction("min", ImmutableList.of("s1_7")),
+                                            Optional.of("count_all"),
+                                            aggregationFunction(
+                                                "count_all", ImmutableList.of("s1_7")),
+                                            Optional.of("count_non_null"),
+                                            aggregationFunction("count", ImmutableList.of("s1_7"))),
+                                        Collections.emptyList(),
+                                        Optional.empty(),
+                                        SINGLE,
+                                        tableScan2)))))));
 
     // Verify DistributionPlan
     assertPlan(
@@ -386,47 +382,45 @@ public class SubqueryTest {
         output(
             project(
                 anyTree(
-                    project(
-                        join(
-                            JoinNode.JoinType.INNER,
-                            builder ->
-                                builder
-                                    .left(collect(exchange(), tableScan1, exchange()))
-                                    .right(
-                                        aggregation(
-                                            singleGroupingSet(),
-                                            ImmutableMap.of(
-                                                Optional.of("min"),
-                                                aggregationFunction(
-                                                    "min", ImmutableList.of("min_9")),
-                                                Optional.of("count_all"),
-                                                aggregationFunction(
-                                                    "count_all", ImmutableList.of("count_all_10")),
-                                                Optional.of("count_non_null"),
-                                                aggregationFunction(
-                                                    "count", ImmutableList.of("count"))),
-                                            Collections.emptyList(),
-                                            Optional.empty(),
-                                            FINAL,
-                                            collect(
-                                                exchange(),
-                                                aggregation(
-                                                    singleGroupingSet(),
-                                                    ImmutableMap.of(
-                                                        Optional.of("min_9"),
-                                                        aggregationFunction(
-                                                            "min", ImmutableList.of("s1_6")),
-                                                        Optional.of("count_all_10"),
-                                                        aggregationFunction(
-                                                            "count_all", ImmutableList.of("s1_6")),
-                                                        Optional.of("count"),
-                                                        aggregationFunction(
-                                                            "count", ImmutableList.of("s1_6"))),
-                                                    Collections.emptyList(),
-                                                    Optional.empty(),
-                                                    PARTIAL,
-                                                    tableScan3),
-                                                exchange())))))))));
+                    join(
+                        JoinNode.JoinType.INNER,
+                        builder ->
+                            builder
+                                .left(collect(exchange(), tableScan1, exchange()))
+                                .right(
+                                    aggregation(
+                                        singleGroupingSet(),
+                                        ImmutableMap.of(
+                                            Optional.of("min"),
+                                            aggregationFunction("min", ImmutableList.of("min_9")),
+                                            Optional.of("count_all"),
+                                            aggregationFunction(
+                                                "count_all", ImmutableList.of("count_all_10")),
+                                            Optional.of("count_non_null"),
+                                            aggregationFunction(
+                                                "count", ImmutableList.of("count"))),
+                                        Collections.emptyList(),
+                                        Optional.empty(),
+                                        FINAL,
+                                        collect(
+                                            exchange(),
+                                            aggregation(
+                                                singleGroupingSet(),
+                                                ImmutableMap.of(
+                                                    Optional.of("min_9"),
+                                                    aggregationFunction(
+                                                        "min", ImmutableList.of("s1_6")),
+                                                    Optional.of("count_all_10"),
+                                                    aggregationFunction(
+                                                        "count_all", ImmutableList.of("s1_6")),
+                                                    Optional.of("count"),
+                                                    aggregationFunction(
+                                                        "count", ImmutableList.of("s1_6"))),
+                                                Collections.emptyList(),
+                                                Optional.empty(),
+                                                PARTIAL,
+                                                tableScan3),
+                                            exchange()))))))));
 
     assertPlan(planTester.getFragmentPlan(1), tableScan1);
 
@@ -519,19 +513,16 @@ public class SubqueryTest {
     *   └──OutputNode
     *           └──ProjectNode
     *             └──FilterNode
-    *               └──ProjectNode
-    *                  └──SemiJoinNode
-    *                      |──SortNode
-    *                      |   └──TableScanNode
-    *                      ├──SortNode
-    *                      │   └──TableScanNode
+    *                └──SemiJoinNode
+    *                    |──SortNode
+    *                    |   └──TableScanNode
+    *                    ├──SortNode
+    *                    │   └──TableScanNode
 
     */
     assertPlan(
         logicalQueryPlan,
         output(
-            project(
-                anyTree(
-                    project(semiJoin("s1", "s1_6", "expr", sort(tableScan1), sort(tableScan2)))))));
+            project(anyTree(semiJoin("s1", "s1_6", "expr", sort(tableScan1), sort(tableScan2))))));
   }
 }
