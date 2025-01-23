@@ -336,13 +336,18 @@ public class ModificationFile implements AutoCloseable {
   }
 
   public void remove() throws IOException {
-    close();
-    FileUtils.deleteFileOrDirectory(file);
-    if (fileExists) {
-      updateModFileMetric(-1, -getFileLength());
+    lock.writeLock().lock();
+    try {
+      close();
+      FileUtils.deleteFileOrDirectory(file);
+      if (fileExists) {
+        updateModFileMetric(-1, -getFileLength());
+      }
+      fileExists = false;
+      removed = true;
+    } finally {
+    	lock.writeLock().unlock();
     }
-    fileExists = false;
-    removed = true;
   }
 
   public static ModificationFile getExclusiveMods(TsFileResource tsFileResource) {
