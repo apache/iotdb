@@ -217,6 +217,10 @@ DATABASES
     : D A T A B A S E S
     ;
 
+DATANODE
+    : D A T A N O D E
+    ;
+
 DATANODEID
     : D A T A N O D E I D
     ;
