@@ -128,6 +128,17 @@ public class TTLManager {
     return ttlInfo.getTTLCount();
   }
 
+  /**
+   * Get the maximum ttl of the subtree of the corresponding database.
+   *
+   * @param database the path of the database.
+   * @return the maximum ttl of the subtree of the corresponding database. return NULL_TTL if the
+   *     TTL is not set or the database does not exist.
+   */
+  public long getDatabaseMaxTTL(String database) {
+    return ttlInfo.getDatabaseMaxTTL(database);
+  }
+
   /** Only used for upgrading from old database-level ttl to device-level ttl. */
   public void setTTL(Map<String, Long> databaseTTLMap) throws IllegalPathException {
     ttlInfo.setTTL(databaseTTLMap);

@@ -133,6 +133,9 @@ public class CommonConfig {
   /** The maximum number of TTL rules stored in the system, the default is 1000. */
   private int ttlRuleCapacity = 1000;
 
+  /** The interval of ttl check task in each database. The unit is ms. Default is 2 hours. */
+  private long ttlCheckInterval = 7_200_000L;
+
   /** Thrift socket and connection timeout between data node and config node. */
   private int cnConnectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(60);
 
@@ -502,6 +505,14 @@ public class CommonConfig {
 
   public void setTTlRuleCapacity(int ttlRuleCapacity) {
     this.ttlRuleCapacity = ttlRuleCapacity;
+  }
+
+  public long getTTLCheckInterval() {
+    return ttlCheckInterval;
+  }
+
+  public void setTTLCheckInterval(long ttlCheckInterval) {
+    this.ttlCheckInterval = ttlCheckInterval;
   }
 
   public int getCnConnectionTimeoutInMS() {

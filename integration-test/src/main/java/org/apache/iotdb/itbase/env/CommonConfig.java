@@ -80,6 +80,8 @@ public interface CommonConfig {
 
   CommonConfig setTimePartitionInterval(long timePartitionInterval);
 
+  CommonConfig setTTLCheckInterval(long ttlCheckInterval);
+
   CommonConfig setTimePartitionOrigin(long timePartitionOrigin);
 
   CommonConfig setTimestampPrecision(String timestampPrecision);
@@ -113,6 +115,8 @@ public interface CommonConfig {
   CommonConfig setDataRatisTriggerSnapshotThreshold(long threshold);
 
   CommonConfig setSeriesSlotNum(int seriesSlotNum);
+
+  CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass);
 
   CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate);
 
