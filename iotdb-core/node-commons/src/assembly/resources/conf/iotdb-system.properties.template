@@ -1142,6 +1142,12 @@ unseq_memtable_flush_check_interval_in_ms=30000
 # effectiveMode: restart
 tvlist_sort_algorithm=TIM
 
+# When point number in the working TVList exceeds this, it is sorted and handover in writable memtable
+# default 0 means it does not handover working tvlist
+# effectiveMode: hot_reload
+# Datatype: int
+tvlist_sort_threshold=0
+
 # The target point nums in one chunk in flushing and compaction.
 # If the point number of a timeseries in memtable exceeds this, the data will be flushed to multiple chunks.
 # effectiveMode: restart
