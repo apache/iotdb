@@ -80,6 +80,7 @@ public enum ConfigPhysicalPlanType {
   CreateDataPartition((short) 404),
   GetOrCreateDataPartition((short) 405),
   GetNodePathsPartition((short) 406),
+  AutoCleanPartitionTable((short) 407),
 
   /** Procedure. */
   UpdateProcedure((short) 500),

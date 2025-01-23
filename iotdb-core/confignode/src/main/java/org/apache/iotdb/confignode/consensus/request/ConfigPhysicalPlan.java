@@ -54,6 +54,7 @@ import org.apache.iotdb.confignode.consensus.request.write.model.DropModelInNode
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.AutoCleanPartitionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
@@ -231,6 +232,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case CreateDataPartition:
           plan = new CreateDataPartitionPlan();
+          break;
+        case AutoCleanPartitionTable:
+          plan = new AutoCleanPartitionTablePlan();
           break;
         case DeleteProcedure:
           plan = new DeleteProcedurePlan();

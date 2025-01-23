@@ -49,6 +49,7 @@ import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProce
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
+import org.apache.iotdb.confignode.procedure.PartitionTableAutoCleaner;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.ProcedureMetrics;
@@ -168,6 +169,8 @@ public class ProcedureManager {
   private final long planSizeLimit;
   private ProcedureMetrics procedureMetrics;
 
+  private final PartitionTableAutoCleaner partitionTableCleaner;
+
   public ProcedureManager(ConfigManager configManager, ProcedureInfo procedureInfo) {
     this.configManager = configManager;
     this.scheduler = new SimpleProcedureScheduler();
@@ -180,6 +183,7 @@ public class ProcedureManager {
                 .getConfigNodeRatisConsensusLogAppenderBufferSize()
             - IoTDBConstant.RAFT_LOG_BASIC_SIZE;
     this.procedureMetrics = new ProcedureMetrics(this);
+    this.partitionTableCleaner = new PartitionTableAutoCleaner<>(configManager);
   }
 
   public void startExecutor() {
@@ -189,6 +193,7 @@ public class ProcedureManager {
       executor.startCompletedCleaner(
           CONFIG_NODE_CONFIG.getProcedureCompletedCleanInterval(),
           CONFIG_NODE_CONFIG.getProcedureCompletedEvictTTL());
+      executor.addInternalProcedure(partitionTableCleaner);
       store.start();
       LOGGER.info("ProcedureManager is started successfully.");
     }
@@ -202,6 +207,7 @@ public class ProcedureManager {
         store.stop();
         LOGGER.info("ProcedureManager is stopped successfully.");
       }
+      executor.removeInternalProcedure(partitionTableCleaner);
     }
   }
 
