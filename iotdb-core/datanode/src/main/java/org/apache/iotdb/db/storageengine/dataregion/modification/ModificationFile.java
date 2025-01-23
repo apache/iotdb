@@ -346,7 +346,7 @@ public class ModificationFile implements AutoCloseable {
       fileExists = false;
       removed = true;
     } finally {
-    	lock.writeLock().unlock();
+      lock.writeLock().unlock();
     }
   }
 
