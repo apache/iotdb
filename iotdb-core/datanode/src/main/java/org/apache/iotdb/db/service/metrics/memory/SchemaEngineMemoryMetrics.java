@@ -49,7 +49,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[1])
-        .set(config.getAllocateMemoryForSchema());
+        .set(config.getSchemaEngineMemoryManager().getTotalMemorySizeInBytes());
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
@@ -60,7 +60,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[2])
-        .set(config.getAllocateMemoryForSchemaRegion());
+        .set(config.getSchemaRegionMemoryManager().getTotalMemorySizeInBytes());
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
@@ -71,7 +71,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[2])
-        .set(config.getAllocateMemoryForSchemaCache());
+        .set(config.getSchemaCacheMemoryManager().getTotalMemorySizeInBytes());
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
@@ -82,7 +82,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[2])
-        .set(config.getAllocateMemoryForPartitionCache());
+        .set(config.getPartitionCacheMemoryManager().getTotalMemorySizeInBytes());
   }
 
   @Override

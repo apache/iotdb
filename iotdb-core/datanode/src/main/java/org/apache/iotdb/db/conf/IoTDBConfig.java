@@ -155,8 +155,8 @@ public class IoTDBConfig {
   /** Memory allocated for the read process */
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
 
-  /** Memory allocated for the mtree */
-  private long allocateMemoryForSchema = Runtime.getRuntime().maxMemory() / 10;
+  /** Memory manager for the mtree */
+  private MemoryManager schemaEngineMemoryManager;
 
   /** Memory manager for the consensus layer */
   private MemoryManager ConsensusMemoryManager;
@@ -1032,16 +1032,14 @@ public class IoTDBConfig {
   /** ThreadPool size for write operation in coordinator */
   private int coordinatorWriteExecutorSize = 50;
 
-  private int[] schemaMemoryProportion = new int[] {5, 4, 1};
+  /** Memory manager for schemaRegion */
+  private MemoryManager schemaRegionMemoryManager;
 
-  /** Memory allocated for schemaRegion */
-  private long allocateMemoryForSchemaRegion = allocateMemoryForSchema * 5 / 10;
-
-  /** Memory allocated for SchemaCache */
-  private long allocateMemoryForSchemaCache = allocateMemoryForSchema * 4 / 10;
+  /** Memory manager for SchemaCache */
+  private MemoryManager SchemaCacheMemoryManager;
 
   /** Memory allocated for PartitionCache */
-  private long allocateMemoryForPartitionCache = allocateMemoryForSchema / 10;
+  private MemoryManager PartitionCacheMemoryManager;
 
   /** Policy of DataNodeSchemaCache eviction */
   private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
@@ -2109,16 +2107,12 @@ public class IoTDBConfig {
     return storageEngineMemoryManager;
   }
 
-  public long getAllocateMemoryForSchema() {
-    return allocateMemoryForSchema;
+  public MemoryManager getSchemaEngineMemoryManager() {
+    return schemaEngineMemoryManager;
   }
 
-  public void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
-    this.allocateMemoryForSchema = allocateMemoryForSchema;
-
-    this.allocateMemoryForSchemaRegion = allocateMemoryForSchema * 5 / 10;
-    this.allocateMemoryForSchemaCache = allocateMemoryForSchema * 4 / 10;
-    this.allocateMemoryForPartitionCache = allocateMemoryForSchema / 10;
+  public void setSchemaEngineMemoryManager(MemoryManager schemaEngineMemoryManager) {
+    this.schemaEngineMemoryManager = schemaEngineMemoryManager;
   }
 
   public MemoryManager getConsensusMemoryManager() {
@@ -3448,36 +3442,28 @@ public class IoTDBConfig {
     return new TEndPoint(rpcAddress, rpcPort);
   }
 
-  public int[] getSchemaMemoryProportion() {
-    return schemaMemoryProportion;
+  public MemoryManager getSchemaRegionMemoryManager() {
+    return schemaRegionMemoryManager;
   }
 
-  public void setSchemaMemoryProportion(int[] schemaMemoryProportion) {
-    this.schemaMemoryProportion = schemaMemoryProportion;
+  public void setSchemaRegionMemoryManager(MemoryManager schemaRegionMemoryManager) {
+    this.schemaRegionMemoryManager = schemaRegionMemoryManager;
   }
 
-  public long getAllocateMemoryForSchemaRegion() {
-    return allocateMemoryForSchemaRegion;
+  public MemoryManager getSchemaCacheMemoryManager() {
+    return SchemaCacheMemoryManager;
   }
 
-  public void setAllocateMemoryForSchemaRegion(long allocateMemoryForSchemaRegion) {
-    this.allocateMemoryForSchemaRegion = allocateMemoryForSchemaRegion;
+  public void setSchemaCacheMemoryManager(MemoryManager schemaCacheMemoryManager) {
+    SchemaCacheMemoryManager = schemaCacheMemoryManager;
   }
 
-  public long getAllocateMemoryForSchemaCache() {
-    return allocateMemoryForSchemaCache;
+  public MemoryManager getPartitionCacheMemoryManager() {
+    return PartitionCacheMemoryManager;
   }
 
-  public void setAllocateMemoryForSchemaCache(long allocateMemoryForSchemaCache) {
-    this.allocateMemoryForSchemaCache = allocateMemoryForSchemaCache;
-  }
-
-  public long getAllocateMemoryForPartitionCache() {
-    return allocateMemoryForPartitionCache;
-  }
-
-  public void setAllocateMemoryForPartitionCache(long allocateMemoryForPartitionCache) {
-    this.allocateMemoryForPartitionCache = allocateMemoryForPartitionCache;
+  public void setPartitionCacheMemoryManager(MemoryManager partitionCacheMemoryManager) {
+    PartitionCacheMemoryManager = partitionCacheMemoryManager;
   }
 
   public String getDataNodeSchemaCacheEvictionPolicy() {

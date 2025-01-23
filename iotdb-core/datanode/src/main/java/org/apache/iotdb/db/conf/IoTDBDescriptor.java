@@ -2180,6 +2180,7 @@ public class IoTDBDescriptor {
     }
 
     long storageEngineMemorySize = Runtime.getRuntime().maxMemory() * 3 / 10;
+    long schemaEngineMemorySize = Runtime.getRuntime().maxMemory() / 10;
     long consensusMemorySize = Runtime.getRuntime().maxMemory() / 10;
     long pipeMemorySize = Runtime.getRuntime().maxMemory() / 10;
     if (memoryAllocateProportion != null) {
@@ -2195,8 +2196,8 @@ public class IoTDBDescriptor {
             maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum;
         conf.setAllocateMemoryForRead(
             maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
-        conf.setAllocateMemoryForSchema(
-            maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+        schemaEngineMemorySize =
+            maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum;
         consensusMemorySize =
             maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum;
         // if pipe proportion is set, use it, otherwise use the default value
@@ -2208,18 +2209,25 @@ public class IoTDBDescriptor {
               (maxMemoryAvailable
                       - (conf.getStorageEngineMemoryManager().getTotalMemorySizeInBytes()
                           + conf.getAllocateMemoryForRead()
-                          + conf.getAllocateMemoryForSchema()
+                          + conf.getSchemaEngineMemoryManager().getTotalMemorySizeInBytes()
                           + conf.getConsensusMemoryManager().getTotalMemorySizeInBytes()))
                   / 2;
         }
       }
     }
+    // storage engine memory manager
     MemoryManager storageEngineMemoryManager =
         globalMemoryManager.createMemoryManager("StorageEngine", storageEngineMemorySize);
     conf.setStorageEngineMemoryManager(storageEngineMemoryManager);
+    // schema engine memory manager
+    MemoryManager schemaEngineMemoryManager =
+        globalMemoryManager.createMemoryManager("SchemaEngine", schemaEngineMemorySize);
+    conf.setSchemaEngineMemoryManager(schemaEngineMemoryManager);
+    // consensus layer memory manager
     MemoryManager consensusMemoryManager =
         globalMemoryManager.createMemoryManager("Consensus", consensusMemorySize);
     conf.setConsensusMemoryManager(consensusMemoryManager);
+    // pipe memory manager
     MemoryManager pipeMemoryManager =
         globalMemoryManager.createMemoryManager("Pipe", pipeMemorySize);
     conf.setPipeMemoryManager(pipeMemoryManager);
@@ -2228,7 +2236,9 @@ public class IoTDBDescriptor {
     LOGGER.info(
         "initial allocateMemoryForWrite = {}",
         conf.getStorageEngineMemoryManager().getTotalMemorySizeInBytes());
-    LOGGER.info("initial allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
+    LOGGER.info(
+        "initial allocateMemoryForSchema = {}",
+        conf.getSchemaEngineMemoryManager().getTotalMemorySizeInBytes());
     LOGGER.info(
         "initial allocateMemoryForConsensus = {}",
         conf.getConsensusMemoryManager().getTotalMemorySizeInBytes());
@@ -2236,7 +2246,7 @@ public class IoTDBDescriptor {
         "initial allocateMemoryForPipe = {}",
         conf.getPipeMemoryManager().getTotalMemorySizeInBytes());
 
-    initSchemaMemoryAllocate(properties);
+    initSchemaMemoryAllocate(schemaEngineMemoryManager, properties);
     initStorageEngineAllocate(storageEngineMemoryManager, properties);
 
     conf.setEnableQueryMemoryEstimation(
@@ -2358,10 +2368,14 @@ public class IoTDBDescriptor {
   }
 
   @SuppressWarnings("squid:S3518")
-  private void initSchemaMemoryAllocate(TrimProperties properties) {
-    long schemaMemoryTotal = conf.getAllocateMemoryForSchema();
-
-    String schemaMemoryPortionInput = properties.getProperty("schema_memory_proportion");
+  private void initSchemaMemoryAllocate(
+      MemoryManager schemaEngineMemoryManager, TrimProperties properties) {
+    long schemaMemoryTotal = schemaEngineMemoryManager.getTotalMemorySizeInBytes();
+    int[] schemaMemoryProportion = new int[] {5, 4, 1};
+    String schemaMemoryPortionInput =
+        properties.getProperty(
+            "schema_memory_proportion",
+            properties.getProperty("schema_memory_allocate_proportion"));
     if (schemaMemoryPortionInput != null) {
       String[] proportions = schemaMemoryPortionInput.split(":");
       int loadedProportionSum = 0;
@@ -2370,50 +2384,40 @@ public class IoTDBDescriptor {
       }
 
       if (loadedProportionSum != 0) {
-        conf.setSchemaMemoryProportion(
-            new int[] {
-              Integer.parseInt(proportions[0].trim()),
-              Integer.parseInt(proportions[1].trim()),
-              Integer.parseInt(proportions[2].trim())
-            });
-      }
-
-    } else {
-      schemaMemoryPortionInput = properties.getProperty("schema_memory_allocate_proportion");
-      if (schemaMemoryPortionInput != null) {
-        String[] proportions = schemaMemoryPortionInput.split(":");
-        int loadedProportionSum = 0;
-        for (String proportion : proportions) {
-          loadedProportionSum += Integer.parseInt(proportion.trim());
-        }
-
-        if (loadedProportionSum != 0) {
-          conf.setSchemaMemoryProportion(
-              new int[] {
-                Integer.parseInt(proportions[0].trim()),
-                Integer.parseInt(proportions[1].trim()) + Integer.parseInt(proportions[3].trim()),
-                Integer.parseInt(proportions[2].trim())
-              });
+        for (int i = 0; i < schemaMemoryProportion.length; i++) {
+          schemaMemoryProportion[i] = Integer.parseInt(proportions[i].trim());
         }
       }
     }
 
     int proportionSum = 0;
-    for (int proportion : conf.getSchemaMemoryProportion()) {
+    for (int proportion : schemaMemoryProportion) {
       proportionSum += proportion;
     }
 
-    conf.setAllocateMemoryForSchemaRegion(
-        schemaMemoryTotal * conf.getSchemaMemoryProportion()[0] / proportionSum);
-    LOGGER.info("allocateMemoryForSchemaRegion = {}", conf.getAllocateMemoryForSchemaRegion());
+    MemoryManager schemaRegionMemoryManager =
+        schemaEngineMemoryManager.createMemoryManager(
+            "SchemaRegion", schemaMemoryTotal * schemaMemoryProportion[0] / proportionSum);
+    conf.setSchemaRegionMemoryManager(schemaRegionMemoryManager);
+    LOGGER.info(
+        "allocateMemoryForSchemaRegion = {}",
+        conf.getSchemaRegionMemoryManager().getTotalMemorySizeInBytes());
 
-    conf.setAllocateMemoryForSchemaCache(
-        schemaMemoryTotal * conf.getSchemaMemoryProportion()[1] / proportionSum);
-    LOGGER.info("allocateMemoryForSchemaCache = {}", conf.getAllocateMemoryForSchemaCache());
+    MemoryManager schemaCacheMemoryManager =
+        schemaEngineMemoryManager.createMemoryManager(
+            "SchemaCache", schemaMemoryTotal * schemaMemoryProportion[1] / proportionSum);
+    conf.setSchemaCacheMemoryManager(schemaCacheMemoryManager);
+    LOGGER.info(
+        "allocateMemoryForSchemaCache = {}",
+        conf.getSchemaCacheMemoryManager().getTotalMemorySizeInBytes());
 
-    conf.setAllocateMemoryForPartitionCache(
-        schemaMemoryTotal * conf.getSchemaMemoryProportion()[2] / proportionSum);
-    LOGGER.info("allocateMemoryForPartitionCache = {}", conf.getAllocateMemoryForPartitionCache());
+    MemoryManager partitionCacheMemoryManager =
+        schemaEngineMemoryManager.createMemoryManager(
+            "PartitionCache", schemaMemoryTotal * schemaMemoryProportion[2] / proportionSum);
+    conf.setPartitionCacheMemoryManager(partitionCacheMemoryManager);
+    LOGGER.info(
+        "allocateMemoryForPartitionCache = {}",
+        conf.getPartitionCacheMemoryManager().getTotalMemorySizeInBytes());
   }
 
   private void loadLoadTsFileProps(TrimProperties properties) {
@@ -2871,6 +2875,7 @@ public class IoTDBDescriptor {
     long newSize =
         storageEngineMemoryManager.getTotalMemorySizeInBytes()
             + consensusMemoryManager.getTotalMemorySizeInBytes();
+    globalMemoryManager.removeChild("StorageEngine");
     storageEngineMemoryManager.clear();
     // @Spricoder to find a better way
     consensusMemoryManager.resize(0);

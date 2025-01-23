@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
+import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
@@ -144,15 +145,24 @@ public class TableDeviceSchemaCacheTest {
     DataNodeTableCache.getInstance().preUpdateTable(database1, testTable2);
     DataNodeTableCache.getInstance().commitUpdateTable(database1, table2);
 
-    originMemConfig = config.getAllocateMemoryForSchemaCache();
-    config.setAllocateMemoryForSchemaCache(1300L);
+    originMemConfig = config.getSchemaCacheMemoryManager().getTotalMemorySizeInBytes();
+    changeSchemaCacheMemorySize(1300L);
   }
 
   @AfterClass
   public static void clearEnvironment() {
     DataNodeTableCache.getInstance().invalid(database1);
     DataNodeTableCache.getInstance().invalid(database2);
-    config.setAllocateMemoryForSchemaCache(originMemConfig);
+    changeSchemaCacheMemorySize(originMemConfig);
+  }
+
+  private static void changeSchemaCacheMemorySize(long size) {
+    MemoryManager memoryManager = config.getSchemaEngineMemoryManager();
+    MemoryManager schemaCacheMemoryManager = config.getSchemaCacheMemoryManager();
+    schemaCacheMemoryManager.clear();
+    memoryManager.removeChild("schemaCache");
+    schemaCacheMemoryManager = memoryManager.createMemoryManager("schemaCache", size);
+    config.setSchemaCacheMemoryManager(schemaCacheMemoryManager);
   }
 
   @After

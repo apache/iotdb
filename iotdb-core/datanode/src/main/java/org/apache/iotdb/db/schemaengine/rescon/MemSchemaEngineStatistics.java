@@ -37,7 +37,10 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
   // Total size of schema region
   private final long memoryCapacity =
-      IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion();
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .getSchemaRegionMemoryManager()
+          .getTotalMemorySizeInBytes();
   private final ClusterTemplateManager clusterTemplateManager =
       ClusterTemplateManager.getInstance();
 
