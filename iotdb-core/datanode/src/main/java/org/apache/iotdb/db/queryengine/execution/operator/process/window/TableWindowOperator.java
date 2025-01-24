@@ -45,7 +45,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
-import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.CURRENT_USED_MEMORY;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.MAX_RESERVED_MEMORY;
 
 public class TableWindowOperator implements ProcessOperator {
@@ -386,7 +385,8 @@ public class TableWindowOperator implements ProcessOperator {
   @Override
   public long calculateMaxPeekMemory() {
     long maxPeekMemoryFromInput = inputOperator.calculateMaxPeekMemoryWithCounter();
-    long maxPeekMemoryFromCurrent = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+    long maxPeekMemoryFromCurrent =
+        TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
     return Math.max(maxPeekMemoryFromInput, maxPeekMemoryFromCurrent)
         + inputOperator.calculateRetainedSizeAfterCallingNext();
   }
