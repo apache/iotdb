@@ -32,8 +32,8 @@ import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.session.subscription.SubscriptionSession;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 import org.apache.iotdb.subscription.it.AbstractSubscriptionIT;
@@ -98,7 +98,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
 
     // Create topic
     final String topicName = "topic1";
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       session.createTopic(topicName);
     } catch (final Exception e) {
@@ -107,11 +107,11 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
     }
 
     // Subscription
-    final SubscriptionPullConsumer consumer1;
-    final SubscriptionPullConsumer consumer2;
+    final SubscriptionTreePullConsumer consumer1;
+    final SubscriptionTreePullConsumer consumer2;
     try {
       consumer1 =
-          new SubscriptionPullConsumer.Builder()
+          new SubscriptionTreePullConsumer.Builder()
               .host(host)
               .port(port)
               .consumerId("c1")
@@ -124,7 +124,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
       consumer1.subscribe(topicName);
 
       consumer2 =
-          new SubscriptionPullConsumer.Builder()
+          new SubscriptionTreePullConsumer.Builder()
               .host(host)
               .port(port)
               .consumerId("c2")
@@ -185,7 +185,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
     threads.add(
         new Thread(
             () -> {
-              try (final SubscriptionPullConsumer consumerRef1 = consumer1) {
+              try (final SubscriptionTreePullConsumer consumerRef1 = consumer1) {
                 while (!isClosed.get()) {
                   LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   final List<SubscriptionMessage> messages;
@@ -219,7 +219,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
     threads.add(
         new Thread(
             () -> {
-              try (final SubscriptionPullConsumer consumerRef2 = consumer2) {
+              try (final SubscriptionTreePullConsumer consumerRef2 = consumer2) {
                 while (!isClosed.get()) {
                   LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   final List<SubscriptionMessage> messages;
@@ -277,7 +277,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
 
     // Create topic
     final String topicName = "topic2";
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       session.createTopic(topicName);
     } catch (final Exception e) {
@@ -286,10 +286,10 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
     }
 
     // Subscription
-    final SubscriptionPullConsumer consumer;
+    final SubscriptionTreePullConsumer consumer;
     try {
       consumer =
-          new SubscriptionPullConsumer.Builder()
+          new SubscriptionTreePullConsumer.Builder()
               .host(host)
               .port(port)
               .consumerId("c1")
@@ -336,7 +336,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
     final Thread thread =
         new Thread(
             () -> {
-              try (final SubscriptionPullConsumer consumerRef = consumer) {
+              try (final SubscriptionTreePullConsumer consumerRef = consumer) {
                 while (!isClosed.get()) {
                   LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   final List<SubscriptionMessage> messages;
@@ -415,7 +415,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
 
     // Create topic
     final String topicName = "topic3";
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       session.createTopic(topicName);
     } catch (final Exception e) {
@@ -424,10 +424,10 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
     }
 
     // Subscription
-    final SubscriptionPullConsumer consumer;
+    final SubscriptionTreePullConsumer consumer;
     try {
       consumer =
-          new SubscriptionPullConsumer.Builder()
+          new SubscriptionTreePullConsumer.Builder()
               .host(host)
               .port(port)
               .consumerId("c1")
@@ -463,7 +463,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
     final Thread thread =
         new Thread(
             () -> {
-              try (final SubscriptionPullConsumer consumerRef = consumer) {
+              try (final SubscriptionTreePullConsumer consumerRef = consumer) {
                 while (!isClosed.get()) {
                   LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   final List<SubscriptionMessage> messages;

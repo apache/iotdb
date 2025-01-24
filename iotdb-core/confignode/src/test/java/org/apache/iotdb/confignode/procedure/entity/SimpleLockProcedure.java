@@ -49,11 +49,6 @@ public class SimpleLockProcedure extends Procedure<TestProcEnv> {
   protected void rollback(TestProcEnv testProcEnv) throws IOException, InterruptedException {}
 
   @Override
-  protected boolean abort(TestProcEnv testProcEnv) {
-    return false;
-  }
-
-  @Override
   protected ProcedureLockState acquireLock(TestProcEnv testProcEnv) {
     if (testProcEnv.getEnvLock().tryLock()) {
       testProcEnv.lockAcquireSeq.append(procName);

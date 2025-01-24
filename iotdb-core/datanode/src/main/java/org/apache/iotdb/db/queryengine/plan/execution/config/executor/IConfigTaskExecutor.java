@@ -51,7 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.MigrateRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
@@ -67,6 +67,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePlug
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ExtendRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
@@ -251,6 +255,15 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> migrateRegion(MigrateRegionStatement migrateRegionStatement);
 
+  SettableFuture<ConfigTaskResult> reconstructRegion(
+      ReconstructRegionStatement reconstructRegionStatement);
+
+  SettableFuture<ConfigTaskResult> extendRegion(ExtendRegionStatement extendRegionStatement);
+
+  SettableFuture<ConfigTaskResult> removeRegion(RemoveRegionStatement removeRegionStatement);
+
+  SettableFuture<ConfigTaskResult> removeDataNode(RemoveDataNodeStatement removeDataNodeStatement);
+
   SettableFuture<ConfigTaskResult> createContinuousQuery(
       CreateContinuousQueryStatement createContinuousQueryStatement, MPPQueryContext context);
 
@@ -306,7 +319,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> describeTable(
       final String database, final String tableName, final boolean isDetails);
 
-  SettableFuture<ConfigTaskResult> showTables(final String database, final boolean isDetails);
+  SettableFuture<ConfigTaskResult> showTables(
+      final String database, final Predicate<String> canSeenDB, final boolean isDetails);
 
   TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
 

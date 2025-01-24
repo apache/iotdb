@@ -373,6 +373,10 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitRemoveDataNode(RemoveDataNode node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitDescribeTable(DescribeTable node, C context) {
     return visitStatement(node, context);
   }
@@ -418,6 +422,14 @@ public abstract class AstVisitor<R, C> {
   }
 
   protected R visitSetConfiguration(SetConfiguration node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitStartRepairData(StartRepairData node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitStopRepairData(StopRepairData node, C context) {
     return visitStatement(node, context);
   }
 

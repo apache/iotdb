@@ -72,7 +72,7 @@ public class DataRegionStateMachineTest {
             false);
     list.add(node);
     DataRegionStateMachine fakeStateMachine = new DataRegionStateMachine(null);
-    InsertNode mergedNode = fakeStateMachine.mergeInsertNodes(list);
+    InsertNode mergedNode = list.get(0).mergeInsertNode(list);
     Assert.assertTrue(mergedNode instanceof InsertRowsNode);
   }
 
@@ -116,7 +116,7 @@ public class DataRegionStateMachineTest {
     DataRegionStateMachine fakeStateMachine = new DataRegionStateMachine(null);
     list.add(insertRowsNode);
     list.add(insertRowsNode);
-    InsertNode mergedNode = fakeStateMachine.mergeInsertNodes(list);
+    InsertNode mergedNode = list.get(0).mergeInsertNode(list);
     Assert.assertTrue(mergedNode instanceof InsertRowsNode);
   }
 }

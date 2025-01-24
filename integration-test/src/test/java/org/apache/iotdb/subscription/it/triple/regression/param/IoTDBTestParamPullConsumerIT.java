@@ -27,7 +27,7 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionExcepti
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionIdentifierSemanticException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
@@ -60,7 +60,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegressionMisc.class})
 public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegressionIT {
-  private static SubscriptionPullConsumer consumer;
+  private static SubscriptionTreePullConsumer consumer;
   private static final String topicName = "TestParamPullConsumerTopic1";
   private static final String database = "root.TestParamPullConsumer";
   private static final String device = database + ".d_0";
@@ -77,7 +77,7 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
   public void setUp() throws Exception {
     super.setUp();
     consumer =
-        new SubscriptionPullConsumer.Builder()
+        new SubscriptionTreePullConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("consumer_id_1")
@@ -129,7 +129,7 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
     session_src.insertTablet(tablet);
   }
 
-  private void run_single(SubscriptionPullConsumer consumer, int index)
+  private void run_single(SubscriptionTreePullConsumer consumer, int index)
       throws TException,
           IoTDBConnectionException,
           IOException,
@@ -160,8 +160,8 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
           IOException,
           StatementExecutionException,
           InterruptedException {
-    SubscriptionPullConsumer consumer1 =
-        new SubscriptionPullConsumer.Builder()
+    SubscriptionTreePullConsumer consumer1 =
+        new SubscriptionTreePullConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("consumer_id_1")
@@ -178,8 +178,8 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
           IOException,
           StatementExecutionException,
           InterruptedException {
-    SubscriptionPullConsumer consumer1 =
-        new SubscriptionPullConsumer.Builder()
+    SubscriptionTreePullConsumer consumer1 =
+        new SubscriptionTreePullConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerGroupId("TestParamPullConsumer_group_id_1")
@@ -196,8 +196,8 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
           IOException,
           StatementExecutionException,
           InterruptedException {
-    SubscriptionPullConsumer consumer1 =
-        new SubscriptionPullConsumer.Builder()
+    SubscriptionTreePullConsumer consumer1 =
+        new SubscriptionTreePullConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .autoCommit(true)
@@ -213,8 +213,8 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
           IOException,
           StatementExecutionException,
           InterruptedException {
-    SubscriptionPullConsumer consumer1 =
-        new SubscriptionPullConsumer.Builder()
+    SubscriptionTreePullConsumer consumer1 =
+        new SubscriptionTreePullConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("consumer_id_1")
@@ -226,24 +226,24 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
 
   @Test
   public void testDuplicateConsumerId() {
-    SubscriptionPullConsumer consumer =
-        new SubscriptionPullConsumer.Builder()
+    SubscriptionTreePullConsumer consumer =
+        new SubscriptionTreePullConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("testDuplicateConsumerId")
             .consumerGroupId("TestParamPullConsumer_1")
             .autoCommitIntervalMs(-1)
             .buildPullConsumer();
-    SubscriptionPullConsumer consumer2 =
-        new SubscriptionPullConsumer.Builder()
+    SubscriptionTreePullConsumer consumer2 =
+        new SubscriptionTreePullConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("testDuplicateConsumerId")
             .consumerGroupId("TestParamPullConsumer_2")
             .autoCommitIntervalMs(-1)
             .buildPullConsumer();
-    SubscriptionPullConsumer consumer3 =
-        new SubscriptionPullConsumer.Builder()
+    SubscriptionTreePullConsumer consumer3 =
+        new SubscriptionTreePullConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("testDuplicateConsumerId")
@@ -265,8 +265,8 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
           IOException,
           StatementExecutionException,
           InterruptedException {
-    SubscriptionPullConsumer consumer1 =
-        new SubscriptionPullConsumer.Builder()
+    SubscriptionTreePullConsumer consumer1 =
+        new SubscriptionTreePullConsumer.Builder()
             .nodeUrls(Collections.singletonList(SRC_HOST + ":" + SRC_PORT))
             .consumerId("testNodeUrls")
             .consumerGroupId("TestParamPullConsumer")
@@ -277,19 +277,19 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
 
   @Test(expected = NullPointerException.class)
   public void testCreateConsumer_null() {
-    new SubscriptionPullConsumer(null).open();
+    new SubscriptionTreePullConsumer(null).open();
   }
 
   @Test(
       expected =
           SubscriptionConnectionException.class) // connect to TEndPoint(ip:localhost, port:6667)
   public void testCreateConsumer_empty() {
-    new SubscriptionPullConsumer(new Properties()).open();
+    new SubscriptionTreePullConsumer(new Properties()).open();
   }
 
   @Test(expected = SubscriptionConnectionException.class)
   public void testCreateConsumer_empty2() {
-    new SubscriptionPullConsumer.Builder().buildPullConsumer().open();
+    new SubscriptionTreePullConsumer.Builder().buildPullConsumer().open();
   }
 
   @Test(expected = SubscriptionIdentifierSemanticException.class)
@@ -309,8 +309,8 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
 
   @Test
   public void testSubscribe_dup() {
-    SubscriptionPullConsumer consumer1 =
-        new SubscriptionPullConsumer.Builder()
+    SubscriptionTreePullConsumer consumer1 =
+        new SubscriptionTreePullConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("testSubscribe_dup")
@@ -339,8 +339,8 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
 
   @Test
   public void testUnSubscribe_dup() {
-    SubscriptionPullConsumer consumer1 =
-        new SubscriptionPullConsumer.Builder()
+    SubscriptionTreePullConsumer consumer1 =
+        new SubscriptionTreePullConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("testUnSubscribe_dup")
@@ -357,8 +357,8 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
   public void testUnSubscribe_notSubs()
       throws StatementExecutionException, IoTDBConnectionException {
     subs.createTopic("t");
-    SubscriptionPullConsumer consumer1 =
-        new SubscriptionPullConsumer.Builder()
+    SubscriptionTreePullConsumer consumer1 =
+        new SubscriptionTreePullConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("testUnSubscribe_notSubs")
@@ -373,8 +373,8 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
 
   @Test(expected = SubscriptionException.class)
   public void testSubscribe_AfterClose() {
-    SubscriptionPullConsumer consumer1 =
-        new SubscriptionPullConsumer.Builder()
+    SubscriptionTreePullConsumer consumer1 =
+        new SubscriptionTreePullConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("testSubscribe_AfterClose")
@@ -388,8 +388,8 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
 
   @Test(expected = SubscriptionException.class)
   public void testUnSubscribe_AfterClose() {
-    SubscriptionPullConsumer consumer1 =
-        new SubscriptionPullConsumer.Builder()
+    SubscriptionTreePullConsumer consumer1 =
+        new SubscriptionTreePullConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("testUnSubscribe_AfterClose")
@@ -403,7 +403,7 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
   @Test(expected = SubscriptionConnectionException.class)
   public void testNoUser() {
     String userName = "user01";
-    new SubscriptionPullConsumer.Builder()
+    new SubscriptionTreePullConsumer.Builder()
         .host(SRC_HOST)
         .username(userName)
         .buildPullConsumer()
@@ -413,8 +413,8 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
   @Test(expected = SubscriptionConnectionException.class)
   public void testErrorPasswd() {
     String userName = "user02";
-    SubscriptionPullConsumer consumer1 =
-        new SubscriptionPullConsumer.Builder()
+    SubscriptionTreePullConsumer consumer1 =
+        new SubscriptionTreePullConsumer.Builder()
             .host(SRC_HOST)
             .username(userName)
             .buildPullConsumer();
@@ -430,8 +430,11 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
           IOException {
     String t1 = "tsTopic";
     createTopic_s(t1, database + ".d_0.s_0", null, null, true);
-    try (SubscriptionPullConsumer consumer1 =
-        new SubscriptionPullConsumer.Builder().host(SRC_HOST).port(SRC_PORT).buildPullConsumer()) {
+    try (SubscriptionTreePullConsumer consumer1 =
+        new SubscriptionTreePullConsumer.Builder()
+            .host(SRC_HOST)
+            .port(SRC_PORT)
+            .buildPullConsumer()) {
       consumer1.open();
       consumer1.subscribe(t1);
       session_src.executeNonQueryStatement(
@@ -459,8 +462,11 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
     String t1 = "tsTopicNormal";
     String device = database + ".d_1";
     createTopic_s(t1, device + ".s_0", null, null, true);
-    try (SubscriptionPullConsumer consumer1 =
-        new SubscriptionPullConsumer.Builder().host(SRC_HOST).port(SRC_PORT).buildPullConsumer()) {
+    try (SubscriptionTreePullConsumer consumer1 =
+        new SubscriptionTreePullConsumer.Builder()
+            .host(SRC_HOST)
+            .port(SRC_PORT)
+            .buildPullConsumer()) {
       consumer1.open();
       consumer1.subscribe(t1);
       session_src.executeNonQueryStatement(
@@ -501,8 +507,11 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
     String t1 = "DeviceTopic";
     String device = database + ".d2";
     createTopic_s(t1, device + ".**", null, null, true);
-    try (SubscriptionPullConsumer consumer1 =
-        new SubscriptionPullConsumer.Builder().host(SRC_HOST).port(SRC_PORT).buildPullConsumer()) {
+    try (SubscriptionTreePullConsumer consumer1 =
+        new SubscriptionTreePullConsumer.Builder()
+            .host(SRC_HOST)
+            .port(SRC_PORT)
+            .buildPullConsumer()) {
       consumer1.open();
       consumer1.subscribe(t1);
       session_src.executeNonQueryStatement(

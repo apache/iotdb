@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.consumer;
+package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -50,8 +50,9 @@ import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribeResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
-import org.apache.iotdb.session.subscription.SubscriptionSession;
+import org.apache.iotdb.session.AbstractSessionBuilder;
 import org.apache.iotdb.session.subscription.SubscriptionSessionConnection;
+import org.apache.iotdb.session.subscription.SubscriptionSessionWrapper;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -64,9 +65,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-final class SubscriptionProvider extends SubscriptionSession {
+public abstract class AbstractSubscriptionProvider {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionProvider.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSubscriptionProvider.class);
 
   private static final String STATUS_FORMATTER = "Status code is [%s], status message is [%s].";
   private static final String INTERNAL_ERROR_FORMATTER =
@@ -75,6 +76,8 @@ final class SubscriptionProvider extends SubscriptionSession {
       "A timeout has occurred in procedures related to the pipe within the subscription procedure. "
           + "Please manually check the subscription correctness later. "
           + STATUS_FORMATTER;
+
+  private final SubscriptionSessionWrapper session;
 
   private String consumerId;
   private String consumerGroupId;
@@ -85,18 +88,31 @@ final class SubscriptionProvider extends SubscriptionSession {
   private final TEndPoint endPoint;
   private int dataNodeId;
 
-  SubscriptionProvider(
+  protected abstract AbstractSessionBuilder constructSubscriptionSessionBuilder(
+      final String host,
+      final int port,
+      final String username,
+      final String password,
+      final int thriftMaxFrameSize);
+
+  protected AbstractSubscriptionProvider(
       final TEndPoint endPoint,
       final String username,
       final String password,
       final String consumerId,
       final String consumerGroupId,
       final int thriftMaxFrameSize) {
-    super(endPoint.ip, endPoint.port, username, password, thriftMaxFrameSize);
-
+    this.session =
+        new SubscriptionSessionWrapper(
+            constructSubscriptionSessionBuilder(
+                endPoint.ip, endPoint.port, username, password, thriftMaxFrameSize));
     this.endPoint = endPoint;
     this.consumerId = consumerId;
     this.consumerGroupId = consumerGroupId;
+  }
+
+  SubscriptionSessionConnection getSessionConnection() {
+    return session.getSessionConnection();
   }
 
   boolean isAvailable() {
@@ -127,10 +143,6 @@ final class SubscriptionProvider extends SubscriptionSession {
     return endPoint;
   }
 
-  SubscriptionSessionConnection getSessionConnection() {
-    return (SubscriptionSessionConnection) defaultSessionConnection;
-  }
-
   /////////////////////////////// open & close ///////////////////////////////
 
   synchronized void handshake() throws SubscriptionException, IoTDBConnectionException {
@@ -138,7 +150,7 @@ final class SubscriptionProvider extends SubscriptionSession {
       return;
     }
 
-    super.open(); // throw IoTDBConnectionException
+    session.open(); // throw IoTDBConnectionException
 
     // TODO: pass the complete consumer parameter configuration to the server
     final Map<String, String> consumerAttributes = new HashMap<>();
@@ -185,8 +197,7 @@ final class SubscriptionProvider extends SubscriptionSession {
     return PipeSubscribeHandshakeResp.fromTPipeSubscribeResp(resp);
   }
 
-  @Override
-  public synchronized void close() throws SubscriptionException, IoTDBConnectionException {
+  synchronized void close() throws SubscriptionException, IoTDBConnectionException {
     if (isClosed.get()) {
       return;
     }
@@ -194,7 +205,7 @@ final class SubscriptionProvider extends SubscriptionSession {
     try {
       closeInternal(); // throw SubscriptionException
     } finally {
-      super.close(); // throw IoTDBConnectionException
+      session.close(); // throw IoTDBConnectionException
       setUnavailable();
       isClosed.set(true);
     }
@@ -306,7 +317,7 @@ final class SubscriptionProvider extends SubscriptionSession {
             SubscriptionPollRequestType.POLL.getType(),
             new PollPayload(topicNames),
             timeoutMs,
-            thriftMaxFrameSize));
+            session.getThriftMaxFrameSize()));
   }
 
   List<SubscriptionPollResponse> pollFile(
@@ -317,7 +328,7 @@ final class SubscriptionProvider extends SubscriptionSession {
             SubscriptionPollRequestType.POLL_FILE.getType(),
             new PollFilePayload(commitContext, writingOffset),
             timeoutMs,
-            thriftMaxFrameSize));
+            session.getThriftMaxFrameSize()));
   }
 
   List<SubscriptionPollResponse> pollTablets(
@@ -328,7 +339,7 @@ final class SubscriptionProvider extends SubscriptionSession {
             SubscriptionPollRequestType.POLL_TABLETS.getType(),
             new PollTabletsPayload(commitContext, offset),
             timeoutMs,
-            thriftMaxFrameSize));
+            session.getThriftMaxFrameSize()));
   }
 
   List<SubscriptionPollResponse> poll(final SubscriptionPollRequest pollMessage)

@@ -181,6 +181,9 @@ public class SettleSelectorImpl implements ISettleSelector {
 
   private FileDirtyInfo selectFileBaseOnModSize(TsFileResource resource) {
     long totalModSize = resource.getTotalModSizeInByte();
+    if (totalModSize <= 0) {
+      return new FileDirtyInfo(DirtyStatus.NOT_SATISFIED);
+    }
     return totalModSize > config.getInnerCompactionTaskSelectionModsFileThreshold()
             || !CompactionUtils.isDiskHasSpace(
                 config.getInnerCompactionTaskSelectionDiskRedundancy())

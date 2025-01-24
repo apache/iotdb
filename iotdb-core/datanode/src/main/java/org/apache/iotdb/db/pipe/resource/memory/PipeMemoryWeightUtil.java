@@ -251,4 +251,52 @@ public class PipeMemoryWeightUtil {
 
     return totalSizeInBytes;
   }
+
+  public static int calculateBatchDataRamBytesUsed(BatchData batchData) {
+    int totalSizeInBytes = 0;
+
+    // timestamp
+    totalSizeInBytes += 8;
+
+    // values
+    final TSDataType type = batchData.getDataType();
+    if (type != null) {
+      if (type == TSDataType.VECTOR && batchData.getVector() != null) {
+        for (int i = 0; i < batchData.getVector().length; ++i) {
+          final TsPrimitiveType primitiveType = batchData.getVector()[i];
+          if (primitiveType == null || primitiveType.getDataType() == null) {
+            continue;
+          }
+          // consider variable references (plus 8) and memory alignment (round up to 8)
+          totalSizeInBytes += roundUpToMultiple(primitiveType.getSize() + 8, 8);
+        }
+      } else {
+        if (type.isBinary()) {
+          final Binary binary = batchData.getBinary();
+          // refer to org.apache.tsfile.utils.TsPrimitiveType.TsBinary.getSize
+          totalSizeInBytes +=
+              roundUpToMultiple((binary == null ? 8 : binary.getLength() + 8) + 8, 8);
+        } else {
+          totalSizeInBytes += roundUpToMultiple(TsPrimitiveType.getByType(type).getSize() + 8, 8);
+        }
+      }
+    }
+
+    return batchData.length() * totalSizeInBytes;
+  }
+
+  /**
+   * Rounds up the given integer num to the nearest multiple of n.
+   *
+   * @param num The integer to be rounded up.
+   * @param n The specified multiple.
+   * @return The nearest multiple of n greater than or equal to num.
+   */
+  private static int roundUpToMultiple(int num, int n) {
+    if (n == 0) {
+      throw new IllegalArgumentException("The multiple n must be greater than 0");
+    }
+    // Calculate the rounded up value to the nearest multiple of n
+    return ((num + n - 1) / n) * n;
+  }
 }

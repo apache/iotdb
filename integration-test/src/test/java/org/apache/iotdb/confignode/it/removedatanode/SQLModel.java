@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.subscription.event;
+package org.apache.iotdb.confignode.it.removedatanode;
 
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+public enum SQLModel {
+  NOT_USE_SQL,
 
-@FunctionalInterface
-public interface SubscriptionCommitContextSupplier {
+  TREE_MODEL_SQL,
 
-  SubscriptionCommitContext get();
+  TABLE_MODEL_SQL,
 }
