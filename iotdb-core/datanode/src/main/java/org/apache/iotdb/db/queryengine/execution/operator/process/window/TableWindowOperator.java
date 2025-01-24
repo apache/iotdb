@@ -46,6 +46,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.CURRENT_USED_MEMORY;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.MAX_RESERVED_MEMORY;
 
 public class TableWindowOperator implements ProcessOperator {
   private static final long INSTANCE_SIZE =
@@ -76,8 +77,9 @@ public class TableWindowOperator implements ProcessOperator {
   private LinkedList<PartitionExecutor> cachedPartitionExecutors;
 
   // Misc
-  long totalMemorySize;
-  long maxRuntime;
+  private long totalMemorySize;
+  private long maxUsedMemory;
+  private final long maxRuntime;
 
   public TableWindowOperator(
       OperatorContext operatorContext,
@@ -120,6 +122,7 @@ public class TableWindowOperator implements ProcessOperator {
     this.startIndexInFirstBlock = -1;
     this.maxRuntime = this.operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     this.totalMemorySize = 0;
+    this.maxUsedMemory = 0;
     this.memoryReservationManager =
         operatorContext
             .getDriverContext()
@@ -327,7 +330,7 @@ public class TableWindowOperator implements ProcessOperator {
   }
 
   private List<Column> extractPartitionColumns(TsBlock tsBlock) {
-    List<Column> partitionColumns = new ArrayList<>();
+    List<Column> partitionColumns = new ArrayList<>(partitionChannels.size());
     for (int channel : partitionChannels) {
       Column partitionColumn = tsBlock.getColumn(channel);
       partitionColumns.add(partitionColumn);
@@ -368,25 +371,22 @@ public class TableWindowOperator implements ProcessOperator {
     long reserved = tsBlock.getTotalInstanceSize();
     memoryReservationManager.reserveMemoryCumulatively(reserved);
     totalMemorySize += reserved;
-    operatorContext.recordSpecifiedInfo(CURRENT_USED_MEMORY, Long.toString(totalMemorySize));
+    maxUsedMemory = Math.max(maxUsedMemory, totalMemorySize);
+    operatorContext.recordSpecifiedInfo(MAX_RESERVED_MEMORY, Long.toString(maxUsedMemory));
   }
 
   private void releaseAllCachedTsBlockMemory() {
     long released = cachedTsBlocks.stream().mapToInt(TsBlock::getTotalInstanceSize).sum();
     memoryReservationManager.releaseMemoryCumulatively(released);
     totalMemorySize -= released;
-    operatorContext.recordSpecifiedInfo(CURRENT_USED_MEMORY, Long.toString(totalMemorySize));
+    // No need to update maxUsedMemory
+    operatorContext.recordSpecifiedInfo(MAX_RESERVED_MEMORY, Long.toString(maxUsedMemory));
   }
 
   @Override
   public long calculateMaxPeekMemory() {
     long maxPeekMemoryFromInput = inputOperator.calculateMaxPeekMemoryWithCounter();
-    // PartitionExecutor only hold reference to TsBlock
-    // So only cached TsBlocks are considered
-    long maxPeekMemoryFromCurrent =
-        (long) cachedTsBlocks.size()
-                * TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes()
-            + TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+    long maxPeekMemoryFromCurrent = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
     return Math.max(maxPeekMemoryFromInput, maxPeekMemoryFromCurrent)
         + inputOperator.calculateRetainedSizeAfterCallingNext();
   }
@@ -398,9 +398,7 @@ public class TableWindowOperator implements ProcessOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return inputOperator.calculateRetainedSizeAfterCallingNext()
-        + (long) cachedTsBlocks.size()
-            * TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+    return inputOperator.calculateRetainedSizeAfterCallingNext();
   }
 
   @Override
