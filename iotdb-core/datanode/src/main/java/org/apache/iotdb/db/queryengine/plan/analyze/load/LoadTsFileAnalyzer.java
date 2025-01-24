@@ -73,8 +73,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.validateDatabaseName;
 
 public class LoadTsFileAnalyzer implements AutoCloseable {
@@ -103,7 +105,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private final int databaseLevel;
 
-  private final String database;
+  private String databaseForTableData;
 
   final MPPQueryContext context;
 
@@ -124,7 +126,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.isConvertOnTypeMismatch = loadTsFileStatement.isConvertOnTypeMismatch();
     this.isAutoCreateDatabase = loadTsFileStatement.isAutoCreateDatabase();
     this.databaseLevel = loadTsFileStatement.getDatabaseLevel();
-    this.database = loadTsFileStatement.getDatabase();
+    this.databaseForTableData = loadTsFileStatement.getDatabase();
 
     this.loadTsFileTableStatement = null;
     this.isTableModelStatement = false;
@@ -143,7 +145,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.isConvertOnTypeMismatch = loadTsFileTableStatement.isConvertOnTypeMismatch();
     this.isAutoCreateDatabase = loadTsFileTableStatement.isAutoCreateDatabase();
     this.databaseLevel = loadTsFileTableStatement.getDatabaseLevel();
-    this.database = loadTsFileTableStatement.getDatabase();
+    this.databaseForTableData = loadTsFileTableStatement.getDatabase();
 
     this.loadTsFileTreeStatement = null;
     this.isTableModelStatement = true;
@@ -305,9 +307,26 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         }
       } else {
         // Table-model file
-        autoCreateTableDatabaseIfAbsent(database);
 
-        getOrCreateTableSchemaCache().setDatabase(database);
+        if (Objects.isNull(databaseForTableData)) {
+          // If database is not specified, use the database from current session.
+          // If still not specified, throw an exception.
+          final Optional<String> dbName = context.getDatabaseName();
+          if (dbName.isPresent()) {
+            databaseForTableData = dbName.get();
+            if (isTableModelStatement) {
+              loadTsFileTableStatement.setDatabase(dbName.get());
+            } else {
+              loadTsFileTreeStatement.setDatabase(dbName.get());
+            }
+          } else {
+            throw new SemanticException(DATABASE_NOT_SPECIFIED);
+          }
+        }
+
+        autoCreateTableDatabaseIfAbsent(databaseForTableData);
+
+        getOrCreateTableSchemaCache().setDatabase(databaseForTableData);
         getOrCreateTableSchemaCache().setCurrentModificationsAndTimeIndex(tsFileResource, reader);
 
         for (Map.Entry<String, org.apache.tsfile.file.metadata.TableSchema> name2Schema :
