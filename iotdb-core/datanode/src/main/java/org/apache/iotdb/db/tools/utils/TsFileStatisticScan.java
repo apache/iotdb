@@ -18,6 +18,12 @@
  */
 package org.apache.iotdb.db.tools.utils;
 
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.enums.TSDataType;
@@ -27,7 +33,9 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.BatchData;
+import org.apache.tsfile.read.reader.page.AlignedPageReader;
 import org.apache.tsfile.read.reader.page.PageReader;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.File;
@@ -36,6 +44,7 @@ import java.nio.ByteBuffer;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.tsfile.utils.TsPrimitiveType;
 
 public class TsFileStatisticScan extends TsFileSequenceScan {
 
@@ -44,6 +53,7 @@ public class TsFileStatisticScan extends TsFileSequenceScan {
   private final Map<TSDataType, Long> dataTypeSizeMap = new EnumMap<>(TSDataType.class);
   private final Map<TSDataType, Long> dataTypePointMap = new EnumMap<>(TSDataType.class);
   private final Map<TSDataType, Long> dataTypeChunkMap = new EnumMap<>(TSDataType.class);
+  private final List<Integer> distinctBinaryValueNumInChunks = new LinkedList<>();
   // the number of Int64 chunks that can be represented by Int32
   private int overPrecisedInt64ChunkNum;
   // the number of Int64 chunks that cannot be represented by Int32
@@ -54,6 +64,9 @@ public class TsFileStatisticScan extends TsFileSequenceScan {
   private int largeRangeInt64ChunkNum;
   private boolean currChunkJustPrecised;
   private boolean currChunkLargeRange;
+  private Set<Binary> distinctBinarySet = new HashSet<>();
+  private PageHeader currTimePageHeader;
+  private ByteBuffer currTimePageBuffer;
 
   public static void main(String[] args) {
     TsFileStatisticScan t = new TsFileStatisticScan();
@@ -80,12 +93,14 @@ public class TsFileStatisticScan extends TsFileSequenceScan {
     System.out.println("data type -> size: " + dataTypeSizeMap);
     System.out.println("data type -> point count: " + dataTypePointMap);
     System.out.println("data type -> chunk count: " + dataTypeChunkMap);
+    System.out.println("average distinct binary value num: " + distinctBinaryValueNumInChunks.stream().mapToInt(i -> i).average().orElse(0.0));
   }
 
   @Override
   protected void onChunk(PageVisitor pageVisitor) throws IOException {
     currChunkJustPrecised = false;
     currChunkLargeRange = false;
+
     super.onChunk(pageVisitor);
     if (!isTimeChunk) {
       seriesDataTypeMap.computeIfAbsent(currTimeseriesID, cid -> currChunkHeader.getDataType());
@@ -110,12 +125,19 @@ public class TsFileStatisticScan extends TsFileSequenceScan {
       } else {
         smallRangeInt64ChunkNum++;
       }
+    } else if (currChunkHeader.getDataType() == TSDataType.TEXT
+        || currChunkHeader.getDataType() == TSDataType.STRING) {
+      distinctBinaryValueNumInChunks.add(distinctBinarySet.size());
+      distinctBinarySet.clear();
     }
   }
 
   @Override
   protected void onTimePage(PageHeader pageHeader, ByteBuffer pageData, ChunkHeader chunkHeader)
-      throws IOException {}
+      throws IOException {
+    currTimePageHeader = pageHeader;
+    currTimePageBuffer = pageData;
+  }
 
   @Override
   protected void onValuePage(PageHeader pageHeader, ByteBuffer pageData, ChunkHeader chunkHeader)
@@ -130,6 +152,20 @@ public class TsFileStatisticScan extends TsFileSequenceScan {
       }
       if (maxValue - minValue > Integer.MAX_VALUE) {
         currChunkLargeRange = true;
+      }
+    } else if (dataType == TSDataType.TEXT || dataType == TSDataType.STRING) {
+      AlignedPageReader pageReader = new AlignedPageReader(currTimePageHeader, currTimePageBuffer,
+          Decoder.getDecoderByType(TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()), TSDataType.INT64),
+          Collections.singletonList(pageHeader), Collections.singletonList(pageData),
+          Collections.singletonList(dataType), Collections.singletonList(
+          Decoder.getDecoderByType(chunkHeader.getEncodingType(), dataType)), null);
+      BatchData batchData = pageReader.getAllSatisfiedPageData();
+      while (batchData.hasCurrent()) {
+        TsPrimitiveType[] vector = batchData.getVector();
+        if (vector[0] != null) {
+          distinctBinarySet.add(vector[0].getBinary());
+        }
+        batchData.next();
       }
     }
     dataTypePointMap.compute(
@@ -154,6 +190,21 @@ public class TsFileStatisticScan extends TsFileSequenceScan {
         }
         if (maxValue - minValue > Integer.MAX_VALUE) {
           currChunkLargeRange = true;
+        }
+      } else if (dataType == TSDataType.TEXT || dataType == TSDataType.STRING) {
+        PageReader pageReader =
+            new PageReader(
+                pageHeader,
+                pageData,
+                chunkHeader.getDataType(),
+                Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType()),
+                Decoder.getDecoderByType(
+                    TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+                    TSDataType.INT64));
+        BatchData allSatisfiedPageData = pageReader.getAllSatisfiedPageData(true);
+        while (allSatisfiedPageData.hasCurrent()) {
+          distinctBinarySet.add(allSatisfiedPageData.getBinary());
+          allSatisfiedPageData.next();
         }
       }
       dataTypePointMap.compute(
@@ -184,6 +235,8 @@ public class TsFileStatisticScan extends TsFileSequenceScan {
           }
           minLongValue = Math.min(minLongValue, val);
           maxLongValue = Math.max(maxLongValue, val);
+        } else if (dataType == TSDataType.TEXT || dataType == TSDataType.STRING) {
+          distinctBinarySet.add(allSatisfiedPageData.getBinary());
         }
         cnt++;
         allSatisfiedPageData.next();
