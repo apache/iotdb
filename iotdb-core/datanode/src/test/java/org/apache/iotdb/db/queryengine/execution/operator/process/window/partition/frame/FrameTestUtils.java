@@ -29,7 +29,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -116,9 +115,7 @@ public class FrameTestUtils {
     Frame frame;
     switch (frameInfo.getFrameType()) {
       case RANGE:
-        frame =
-            new RangeFrame(
-                partition, frameInfo, sortedColumns, peerGroupComparator);
+        frame = new RangeFrame(partition, frameInfo, sortedColumns, peerGroupComparator);
         break;
       case ROWS:
         frame = new RowsFrame(partition, frameInfo, partitionStart, partitionEnd);

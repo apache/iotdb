@@ -108,9 +108,7 @@ public final class PartitionExecutor {
         FrameInfo frameInfo = frameInfoList.get(i);
         switch (frameInfo.getFrameType()) {
           case RANGE:
-            frame =
-                new RangeFrame(
-                    partition, frameInfo, sortedColumns, peerGroupComparator);
+            frame = new RangeFrame(partition, frameInfo, sortedColumns, peerGroupComparator);
             break;
           case ROWS:
             frame = new RowsFrame(partition, frameInfo, partitionStart, partitionEnd);
@@ -163,7 +161,11 @@ public final class PartitionExecutor {
 
       Range frameRange =
           windowFunction.needFrame()
-              ? frame.getRange(index, currentGroupIndex, peerGroupStart - partitionStart, peerGroupEnd - partitionStart)
+              ? frame.getRange(
+                  index,
+                  currentGroupIndex,
+                  peerGroupStart - partitionStart,
+                  peerGroupEnd - partitionStart)
               : new Range(-1, -1);
       windowFunction.transform(
           partition,
@@ -187,7 +189,8 @@ public final class PartitionExecutor {
     // Find end of peer group
     peerGroupEnd = peerGroupStart + 1;
     while (peerGroupEnd < partitionEnd
-        && peerGroupComparator.equalColumnLists(sortedColumns, peerGroupStart - partitionStart, peerGroupEnd - partitionStart)) {
+        && peerGroupComparator.equalColumnLists(
+            sortedColumns, peerGroupStart - partitionStart, peerGroupEnd - partitionStart)) {
       peerGroupEnd++;
     }
   }

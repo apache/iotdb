@@ -44,7 +44,8 @@ public class TableWindowOperatorTestUtils {
   }
 
   public static TsBlock createIntsTsBlockWithoutNulls(int[] inputs, int offset) {
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Arrays.asList(TSDataType.INT32, TSDataType.INT32));
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(Arrays.asList(TSDataType.INT32, TSDataType.INT32));
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
     for (int input : inputs) {
       columnBuilders[0].writeInt(input);
@@ -56,8 +57,10 @@ public class TableWindowOperatorTestUtils {
         new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, tsBlockBuilder.getPositionCount()));
   }
 
-  public static TsBlock createIntsTsBlockWithoutNulls(int[] inputs, int startOffset, int endOffset) {
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Arrays.asList(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32));
+  public static TsBlock createIntsTsBlockWithoutNulls(
+      int[] inputs, int startOffset, int endOffset) {
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(Arrays.asList(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32));
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
     for (int input : inputs) {
       columnBuilders[0].writeInt(input);
@@ -88,7 +91,8 @@ public class TableWindowOperatorTestUtils {
   }
 
   public static TsBlock createIntsTsBlockWithNulls(int[] inputs, int offset) {
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Arrays.asList(TSDataType.INT32, TSDataType.INT32));
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(Arrays.asList(TSDataType.INT32, TSDataType.INT32));
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
     for (int input : inputs) {
       if (input >= 0) {
@@ -106,7 +110,8 @@ public class TableWindowOperatorTestUtils {
   }
 
   public static TsBlock createIntsTsBlockWithNulls(int[] inputs, int startOffset, int endOffset) {
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Arrays.asList(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32));
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(Arrays.asList(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32));
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
     for (int input : inputs) {
       if (input >= 0) {

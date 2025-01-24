@@ -78,12 +78,8 @@ public class RangeFrame implements Frame {
       if (currentPosition == 0
           || !peerGroupComparator.equal(column, currentPosition - 1, currentPosition)) {
         // New peer group
-        int frameStart =
-            frameInfo.getStartType() == CURRENT_ROW ? peerGroupStart : 0;
-        int frameEnd =
-            frameInfo.getEndType() == CURRENT_ROW
-                ? peerGroupEnd - 1
-                : partitionSize - 1;
+        int frameStart = frameInfo.getStartType() == CURRENT_ROW ? peerGroupStart : 0;
+        int frameEnd = frameInfo.getEndType() == CURRENT_ROW ? peerGroupEnd - 1 : partitionSize - 1;
 
         recentRange = new Range(frameStart, frameEnd);
       }
@@ -98,9 +94,7 @@ public class RangeFrame implements Frame {
       recentRange =
           new Range(
               frameInfo.getStartType() == UNBOUNDED_PRECEDING ? 0 : peerGroupStart,
-              frameInfo.getEndType() == UNBOUNDED_FOLLOWING
-                  ? partitionSize - 1
-                  : peerGroupEnd - 1);
+              frameInfo.getEndType() == UNBOUNDED_FOLLOWING ? partitionSize - 1 : peerGroupEnd - 1);
       return recentRange;
     }
 
@@ -145,8 +139,7 @@ public class RangeFrame implements Frame {
     }
 
     if (frameEnd < frameStart || frameEnd < 0 || frameStart >= partitionSize) {
-      recentRange =
-          new Range(Math.min(partitionSize - 1, frameStart), Math.max(0, frameEnd));
+      recentRange = new Range(Math.min(partitionSize - 1, frameStart), Math.max(0, frameEnd));
       return new Range(-1, -1);
     }
 
@@ -217,9 +210,7 @@ public class RangeFrame implements Frame {
       int recentStart = recentRange.getStart();
 
       // Leave section of leading nulls
-      if (recentStart == 0
-          && frameInfo.getSortOrder().isNullsFirst()
-          && column.isNull(0)) {
+      if (recentStart == 0 && frameInfo.getSortOrder().isNullsFirst() && column.isNull(0)) {
         // Then the frame starts with current row
         recentStart = index;
       }
@@ -269,7 +260,8 @@ public class RangeFrame implements Frame {
   // And stop right there
   private int getAscFrameStartFollowing(int currentIndex, int recentIndex) {
     while (recentIndex < partitionSize && !column.isNull(recentIndex)) {
-      if (compareInAscFrameStartFollowing(currentIndex, recentIndex, frameInfo.getStartOffsetChannel())) {
+      if (compareInAscFrameStartFollowing(
+          currentIndex, recentIndex, frameInfo.getStartOffsetChannel())) {
         return recentIndex;
       }
       recentIndex++;
@@ -313,7 +305,8 @@ public class RangeFrame implements Frame {
   // And return its previous index
   private int getAscFrameEndFollowing(int currentIndex, int recentIndex) {
     while (recentIndex < partitionSize && !column.isNull(recentIndex)) {
-      if (compareInAscFrameEndFollowing(currentIndex, recentIndex, frameInfo.getEndOffsetChannel())) {
+      if (compareInAscFrameEndFollowing(
+          currentIndex, recentIndex, frameInfo.getEndOffsetChannel())) {
         return recentIndex - 1;
       }
       recentIndex++;
@@ -357,7 +350,8 @@ public class RangeFrame implements Frame {
   // And stop right there
   private int getAscFrameStartPreceding(int currentIndex, int recentIndex) {
     while (recentIndex < currentIndex) {
-      if (compareInAscFrameStartPreceding(currentIndex, recentIndex, frameInfo.getStartOffsetChannel())) {
+      if (compareInAscFrameStartPreceding(
+          currentIndex, recentIndex, frameInfo.getStartOffsetChannel())) {
         return recentIndex;
       }
       recentIndex++;
@@ -401,7 +395,8 @@ public class RangeFrame implements Frame {
   // And return its previous index
   private int getAscFrameEndPreceding(int currentIndex, int recentIndex) {
     while (recentIndex < partitionSize) {
-      if (compareInAscFrameEndPreceding(currentIndex, recentIndex, frameInfo.getEndOffsetChannel())) {
+      if (compareInAscFrameEndPreceding(
+          currentIndex, recentIndex, frameInfo.getEndOffsetChannel())) {
         return recentIndex - 1;
       }
       recentIndex++;
@@ -445,7 +440,8 @@ public class RangeFrame implements Frame {
   // And stop right there
   private int getDescFrameStartFollowing(int currentIndex, int recentIndex) {
     while (recentIndex < partitionSize && !column.isNull(recentIndex)) {
-      if (compareInDescFrameStartFollowing(currentIndex, recentIndex, frameInfo.getStartOffsetChannel())) {
+      if (compareInDescFrameStartFollowing(
+          currentIndex, recentIndex, frameInfo.getStartOffsetChannel())) {
         return recentIndex;
       }
       recentIndex++;
@@ -489,7 +485,8 @@ public class RangeFrame implements Frame {
   // And return its previous index
   private int getDescFrameEndFollowing(int currentIndex, int recentIndex) {
     while (recentIndex < partitionSize && !column.isNull(recentIndex)) {
-      if (compareInDescFrameEndFollowing(currentIndex, recentIndex, frameInfo.getEndOffsetChannel())) {
+      if (compareInDescFrameEndFollowing(
+          currentIndex, recentIndex, frameInfo.getEndOffsetChannel())) {
         return recentIndex - 1;
       }
       recentIndex++;
@@ -533,7 +530,8 @@ public class RangeFrame implements Frame {
   // And stop right there
   private int getDescFrameStartPreceding(int currentIndex, int recentIndex) {
     while (recentIndex < currentIndex) {
-      if (compareInDescFrameStartPreceding(currentIndex, recentIndex, frameInfo.getStartOffsetChannel())) {
+      if (compareInDescFrameStartPreceding(
+          currentIndex, recentIndex, frameInfo.getStartOffsetChannel())) {
         return recentIndex;
       }
       recentIndex++;
@@ -577,7 +575,8 @@ public class RangeFrame implements Frame {
   // And return its previous index
   private int getDescFrameEndPreceding(int currentIndex, int recentIndex) {
     while (recentIndex < partitionSize) {
-      if (compareInDescFrameEndPreceding(currentIndex, recentIndex, frameInfo.getEndOffsetChannel())) {
+      if (compareInDescFrameEndPreceding(
+          currentIndex, recentIndex, frameInfo.getEndOffsetChannel())) {
         return recentIndex - 1;
       }
       recentIndex++;

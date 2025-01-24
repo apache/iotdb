@@ -50,7 +50,10 @@ public class FrameInfo {
   }
 
   public FrameInfo(
-      FrameType frameType, FrameBoundType startType, int startOffsetChannel, FrameBoundType endType) {
+      FrameType frameType,
+      FrameBoundType startType,
+      int startOffsetChannel,
+      FrameBoundType endType) {
     this(frameType, startType, startOffsetChannel, endType, -1);
   }
 
@@ -85,7 +88,14 @@ public class FrameInfo {
       int startOffsetChannel,
       FrameBoundType endType,
       int endOffsetChannel) {
-    this(frameType, startType, startOffsetChannel, endType, endOffsetChannel, -1, SortOrder.ASC_NULLS_FIRST);
+    this(
+        frameType,
+        startType,
+        startOffsetChannel,
+        endType,
+        endOffsetChannel,
+        -1,
+        SortOrder.ASC_NULLS_FIRST);
   }
 
   public FrameInfo(

@@ -25,8 +25,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.C
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
 
-import com.google.common.collect.ImmutableList;
-
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;

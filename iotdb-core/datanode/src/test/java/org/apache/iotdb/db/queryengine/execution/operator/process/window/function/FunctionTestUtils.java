@@ -81,7 +81,14 @@ public class FunctionTestUtils {
     }
 
     return new PartitionExecutor(
-        tsBlocks, dataTypes, startIndex, endIndex, outputChannels, windowFunctions, frameInfoList, sortChannels);
+        tsBlocks,
+        dataTypes,
+        startIndex,
+        endIndex,
+        outputChannels,
+        windowFunctions,
+        frameInfoList,
+        sortChannels);
   }
 
   // Assume input TsBlock has only one column
