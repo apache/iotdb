@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.audit.AuditLogOperation;
 import org.apache.iotdb.db.audit.AuditLogStorage;
@@ -1834,7 +1833,6 @@ public class IoTDBConfig {
     return maxBytesPerFragmentInstance;
   }
 
-  @TestOnly
   public void setMaxBytesPerFragmentInstance(long maxBytesPerFragmentInstance) {
     this.maxBytesPerFragmentInstance = maxBytesPerFragmentInstance;
   }
