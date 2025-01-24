@@ -19,29 +19,22 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.io;
 
-import org.apache.iotdb.db.service.metrics.CompactionMetrics;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionIoDataType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 
 import org.apache.tsfile.file.IMetadataIndexEntry;
 import org.apache.tsfile.file.header.ChunkHeader;
-import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.tsfile.read.TsFileSequenceReader;
-import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.LongConsumer;
 
 /**
  * This class extends the TsFileSequenceReader class to read and manage TsFile with a focus on
@@ -49,14 +42,6 @@ import java.util.function.LongConsumer;
  * data read and distinguishing between aligned and not aligned series during compaction.
  */
 public class CompactionTsFileReader extends TsFileSequenceReader {
-
-  private long metadataOffset = 0;
-
-  /** The type of compaction running. */
-  CompactionType compactionType;
-
-  /** A flag that indicates if an aligned series is being read. */
-  private volatile boolean readingAlignedSeries = false;
 
   /**
    * Constructs a new instance of CompactionTsFileReader.
@@ -67,53 +52,25 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
    */
   public CompactionTsFileReader(String file, CompactionType compactionType) throws IOException {
     super(file);
-    this.tsFileInput = new CompactionTsFileInput(tsFileInput);
-    this.compactionType = compactionType;
-    this.metadataOffset = readFileMetadata().getMetaOffset();
-  }
-
-  @Override
-  protected ByteBuffer readData(long position, int totalSize, LongConsumer ioSizeRecorder)
-      throws IOException {
-    acquireReadDataSizeWithCompactionReadRateLimiter(totalSize);
-    ByteBuffer buffer = super.readData(position, totalSize, ioSizeRecorder);
-    if (position >= metadataOffset) {
-      CompactionMetrics.getInstance()
-          .recordReadInfo(compactionType, CompactionIoDataType.METADATA, totalSize);
-    } else {
-      CompactionMetrics.getInstance()
-          .recordReadInfo(
-              compactionType,
-              readingAlignedSeries
-                  ? CompactionIoDataType.ALIGNED
-                  : CompactionIoDataType.NOT_ALIGNED,
-              totalSize);
-    }
-    return buffer;
+    CompactionTsFileInput compactionTsFileInput =
+        new CompactionTsFileInput(compactionType, tsFileInput);
+    this.tsFileInput = compactionTsFileInput;
+    compactionTsFileInput.setMetadataOffset(readFileMetadata().getMetaOffset());
   }
 
   /** Marks the start of reading an aligned series. */
   public void markStartOfAlignedSeries() {
-    readingAlignedSeries = true;
+    ((CompactionTsFileInput) tsFileInput).markStartOfAlignedSeries();
   }
 
   /** Marks the end of reading an aligned series. */
   public void markEndOfAlignedSeries() {
-    readingAlignedSeries = false;
-  }
-
-  @Override
-  public Chunk readMemChunk(ChunkMetadata metaData) throws IOException {
-    return super.readMemChunk(metaData);
+    ((CompactionTsFileInput) tsFileInput).markEndOfAlignedSeries();
   }
 
   @SuppressWarnings("java:S2177")
   public ChunkHeader readChunkHeader(long position) throws IOException {
     return ChunkHeader.deserializeFrom(tsFileInput, position);
-  }
-
-  public InputStream wrapAsInputStream() throws IOException {
-    return this.tsFileInput.wrapAsInputStream();
   }
 
   public Map<String, Pair<TimeseriesMetadata, Pair<Long, Long>>>
@@ -184,11 +141,6 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
       }
     }
     return timeseriesMetadataOffsetMap;
-  }
-
-  private void acquireReadDataSizeWithCompactionReadRateLimiter(int readDataSize) {
-    CompactionTaskManager.getInstance().getCompactionReadOperationRateLimiter().acquire(1);
-    CompactionTaskManager.getInstance().getCompactionReadRateLimiter().acquire(readDataSize);
   }
 
   @Override
