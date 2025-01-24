@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.db.tools.utils;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.enums.TSDataType;
@@ -37,14 +31,19 @@ import org.apache.tsfile.read.reader.page.AlignedPageReader;
 import org.apache.tsfile.read.reader.page.PageReader;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.TsPrimitiveType;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
-import org.apache.tsfile.utils.TsPrimitiveType;
+import java.util.Set;
 
 public class TsFileStatisticScan extends TsFileSequenceScan {
 
@@ -93,7 +92,9 @@ public class TsFileStatisticScan extends TsFileSequenceScan {
     System.out.println("data type -> size: " + dataTypeSizeMap);
     System.out.println("data type -> point count: " + dataTypePointMap);
     System.out.println("data type -> chunk count: " + dataTypeChunkMap);
-    System.out.println("average distinct binary value num: " + distinctBinaryValueNumInChunks.stream().mapToInt(i -> i).average().orElse(0.0));
+    System.out.println(
+        "average distinct binary value num: "
+            + distinctBinaryValueNumInChunks.stream().mapToInt(i -> i).average().orElse(0.0));
   }
 
   @Override
@@ -154,11 +155,19 @@ public class TsFileStatisticScan extends TsFileSequenceScan {
         currChunkLargeRange = true;
       }
     } else if (dataType == TSDataType.TEXT || dataType == TSDataType.STRING) {
-      AlignedPageReader pageReader = new AlignedPageReader(currTimePageHeader, currTimePageBuffer,
-          Decoder.getDecoderByType(TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()), TSDataType.INT64),
-          Collections.singletonList(pageHeader), Collections.singletonList(pageData),
-          Collections.singletonList(dataType), Collections.singletonList(
-          Decoder.getDecoderByType(chunkHeader.getEncodingType(), dataType)), null);
+      AlignedPageReader pageReader =
+          new AlignedPageReader(
+              currTimePageHeader,
+              currTimePageBuffer,
+              Decoder.getDecoderByType(
+                  TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+                  TSDataType.INT64),
+              Collections.singletonList(pageHeader),
+              Collections.singletonList(pageData),
+              Collections.singletonList(dataType),
+              Collections.singletonList(
+                  Decoder.getDecoderByType(chunkHeader.getEncodingType(), dataType)),
+              null);
       BatchData batchData = pageReader.getAllSatisfiedPageData();
       while (batchData.hasCurrent()) {
         TsPrimitiveType[] vector = batchData.getVector();
