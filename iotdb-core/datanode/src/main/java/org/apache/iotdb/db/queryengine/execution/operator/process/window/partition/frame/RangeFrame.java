@@ -41,8 +41,6 @@ public class RangeFrame implements Frame {
   private final ColumnList column;
   private final TSDataType dataType;
 
-  private final int partitionStart;
-  private final int partitionEnd;
   private final int partitionSize;
   private final RowComparator peerGroupComparator;
   private Range recentRange;
@@ -50,19 +48,15 @@ public class RangeFrame implements Frame {
   public RangeFrame(
       Partition partition,
       FrameInfo frameInfo,
-      int partitionStart,
-      int partitionEnd,
-      List<ColumnList> columns,
+      List<ColumnList> sortedColumns,
       RowComparator comparator) {
     this.partition = partition;
     this.frameInfo = frameInfo;
     // Only one sort key is allowed in range frame
-    checkArgument(columns.size() == 1);
-    this.column = columns.get(0);
+    checkArgument(sortedColumns.size() == 1);
+    this.column = sortedColumns.get(0);
     this.dataType = column.getDataType();
-    this.partitionStart = partitionStart;
-    this.partitionEnd = partitionEnd;
-    this.partitionSize = partitionEnd - partitionStart;
+    this.partitionSize = partition.getPositionCount();
     this.peerGroupComparator = comparator;
     this.recentRange = new Range(0, 0);
   }
@@ -73,7 +67,7 @@ public class RangeFrame implements Frame {
     // Full partition
     if (frameInfo.getStartType() == UNBOUNDED_PRECEDING
         && frameInfo.getEndType() == UNBOUNDED_FOLLOWING) {
-      return new Range(0, partitionEnd - partitionStart - 1);
+      return new Range(0, partitionSize - 1);
     }
 
     // Peer group
@@ -85,11 +79,11 @@ public class RangeFrame implements Frame {
           || !peerGroupComparator.equal(column, currentPosition - 1, currentPosition)) {
         // New peer group
         int frameStart =
-            frameInfo.getStartType() == CURRENT_ROW ? (peerGroupStart - partitionStart) : 0;
+            frameInfo.getStartType() == CURRENT_ROW ? peerGroupStart : 0;
         int frameEnd =
             frameInfo.getEndType() == CURRENT_ROW
-                ? (peerGroupEnd - partitionStart - 1)
-                : (partitionEnd - partitionStart - 1);
+                ? peerGroupEnd - 1
+                : partitionSize - 1;
 
         recentRange = new Range(frameStart, frameEnd);
       }
@@ -103,10 +97,10 @@ public class RangeFrame implements Frame {
     if (column.isNull(currentPosition)) {
       recentRange =
           new Range(
-              frameInfo.getStartType() == UNBOUNDED_PRECEDING ? 0 : peerGroupStart - partitionStart,
+              frameInfo.getStartType() == UNBOUNDED_PRECEDING ? 0 : peerGroupStart,
               frameInfo.getEndType() == UNBOUNDED_FOLLOWING
-                  ? partitionEnd - partitionStart - 1
-                  : peerGroupEnd - partitionStart - 1);
+                  ? partitionSize - 1
+                  : peerGroupEnd - 1);
       return recentRange;
     }
 
@@ -121,7 +115,7 @@ public class RangeFrame implements Frame {
         frameStart = getPrecedingOffset(currentPosition, peerGroupStart, peerGroupEnd, true);
         break;
       case CURRENT_ROW:
-        frameStart = peerGroupStart - partitionStart;
+        frameStart = peerGroupStart;
         break;
       case FOLLOWING:
         frameStart = getFollowingOffset(currentPosition, peerGroupStart, peerGroupEnd, true);
@@ -137,13 +131,13 @@ public class RangeFrame implements Frame {
         frameEnd = getPrecedingOffset(currentPosition, peerGroupStart, peerGroupEnd, false);
         break;
       case CURRENT_ROW:
-        frameEnd = peerGroupEnd - partitionStart - 1;
+        frameEnd = peerGroupEnd - 1;
         break;
       case FOLLOWING:
         frameEnd = getFollowingOffset(currentPosition, peerGroupStart, peerGroupEnd, false);
         break;
       case UNBOUNDED_FOLLOWING:
-        frameEnd = partitionEnd - partitionStart - 1;
+        frameEnd = partitionSize - 1;
         break;
       default:
         // UNBOUND_PRECEDING is not allowed in frame start
@@ -152,7 +146,7 @@ public class RangeFrame implements Frame {
 
     if (frameEnd < frameStart || frameEnd < 0 || frameStart >= partitionSize) {
       recentRange =
-          new Range(Math.min(partitionEnd - partitionStart - 1, frameStart), Math.max(0, frameEnd));
+          new Range(Math.min(partitionSize - 1, frameStart), Math.max(0, frameEnd));
       return new Range(-1, -1);
     }
 
@@ -171,13 +165,13 @@ public class RangeFrame implements Frame {
         return peerGroupStart;
       }
 
-      int recentStart = recentRange.getStart() + partitionStart;
+      int recentStart = recentRange.getStart();
 
       // Recent start from NULL
       // Which means current row is the first non-null row
       if (frameInfo.getSortOrder().isNullsFirst() && column.isNull(recentStart)) {
         // Then the frame starts with current row
-        return index - partitionStart;
+        return index;
       }
 
       if (frameInfo.getSortOrder().isAscending()) {
@@ -192,11 +186,11 @@ public class RangeFrame implements Frame {
         return peerGroupEnd;
       }
 
-      int recentEnd = recentRange.getEnd() + partitionStart;
+      int recentEnd = recentRange.getEnd();
 
       // Leave section of leading nulls
       if (frameInfo.getSortOrder().isNullsFirst()) {
-        while (recentEnd < partitionEnd && column.isNull(recentEnd)) {
+        while (recentEnd < partitionSize && column.isNull(recentEnd)) {
           recentEnd++;
         }
       }
@@ -207,7 +201,6 @@ public class RangeFrame implements Frame {
         offset = getDescFrameEndPreceding(index, recentEnd);
       }
     }
-    offset -= partitionStart;
 
     return offset;
   }
@@ -221,14 +214,14 @@ public class RangeFrame implements Frame {
         return peerGroupStart;
       }
 
-      int recentStart = recentRange.getStart() + partitionStart;
+      int recentStart = recentRange.getStart();
 
       // Leave section of leading nulls
-      if (recentStart == partitionStart
+      if (recentStart == 0
           && frameInfo.getSortOrder().isNullsFirst()
-          && column.isNull(partitionStart)) {
+          && column.isNull(0)) {
         // Then the frame starts with current row
-        recentStart = index - partitionStart;
+        recentStart = index;
       }
 
       // Leave section of tailing nulls
@@ -237,7 +230,7 @@ public class RangeFrame implements Frame {
           recentStart--;
         }
         if (recentStart < 0) {
-          return recentStart - partitionStart;
+          return recentStart;
         }
       }
 
@@ -253,12 +246,12 @@ public class RangeFrame implements Frame {
         return peerGroupEnd;
       }
 
-      int recentEnd = recentRange.getEnd() + partitionStart;
+      int recentEnd = recentRange.getEnd();
 
       // Leave section of leading nulls
       if (frameInfo.getSortOrder().isNullsFirst() && column.isNull(recentEnd)) {
         // Then the frame starts with current row
-        recentEnd = index - partitionStart;
+        recentEnd = index;
       }
 
       if (frameInfo.getSortOrder().isAscending()) {
@@ -267,7 +260,6 @@ public class RangeFrame implements Frame {
         offset = getDescFrameEndFollowing(index, recentEnd);
       }
     }
-    offset -= partitionStart;
 
     return offset;
   }
@@ -276,7 +268,7 @@ public class RangeFrame implements Frame {
   // follow >= current + offset
   // And stop right there
   private int getAscFrameStartFollowing(int currentIndex, int recentIndex) {
-    while (recentIndex < partitionEnd && !column.isNull(recentIndex)) {
+    while (recentIndex < partitionSize && !column.isNull(recentIndex)) {
       if (compareInAscFrameStartFollowing(currentIndex, recentIndex, frameInfo.getStartOffsetChannel())) {
         return recentIndex;
       }
@@ -320,7 +312,7 @@ public class RangeFrame implements Frame {
   // follow > current + offset
   // And return its previous index
   private int getAscFrameEndFollowing(int currentIndex, int recentIndex) {
-    while (recentIndex < partitionEnd && !column.isNull(recentIndex)) {
+    while (recentIndex < partitionSize && !column.isNull(recentIndex)) {
       if (compareInAscFrameEndFollowing(currentIndex, recentIndex, frameInfo.getEndOffsetChannel())) {
         return recentIndex - 1;
       }
@@ -408,7 +400,7 @@ public class RangeFrame implements Frame {
   // precede > current - offset
   // And return its previous index
   private int getAscFrameEndPreceding(int currentIndex, int recentIndex) {
-    while (recentIndex < partitionEnd) {
+    while (recentIndex < partitionSize) {
       if (compareInAscFrameEndPreceding(currentIndex, recentIndex, frameInfo.getEndOffsetChannel())) {
         return recentIndex - 1;
       }
@@ -452,7 +444,7 @@ public class RangeFrame implements Frame {
   // follow <= current - offset
   // And stop right there
   private int getDescFrameStartFollowing(int currentIndex, int recentIndex) {
-    while (recentIndex < partitionEnd && !column.isNull(recentIndex)) {
+    while (recentIndex < partitionSize && !column.isNull(recentIndex)) {
       if (compareInDescFrameStartFollowing(currentIndex, recentIndex, frameInfo.getStartOffsetChannel())) {
         return recentIndex;
       }
@@ -496,7 +488,7 @@ public class RangeFrame implements Frame {
   // follow < current - offset
   // And return its previous index
   private int getDescFrameEndFollowing(int currentIndex, int recentIndex) {
-    while (recentIndex < partitionEnd && !column.isNull(recentIndex)) {
+    while (recentIndex < partitionSize && !column.isNull(recentIndex)) {
       if (compareInDescFrameEndFollowing(currentIndex, recentIndex, frameInfo.getEndOffsetChannel())) {
         return recentIndex - 1;
       }
@@ -584,7 +576,7 @@ public class RangeFrame implements Frame {
   // precede < current + offset
   // And return its previous index
   private int getDescFrameEndPreceding(int currentIndex, int recentIndex) {
-    while (recentIndex < partitionEnd) {
+    while (recentIndex < partitionSize) {
       if (compareInDescFrameEndPreceding(currentIndex, recentIndex, frameInfo.getEndOffsetChannel())) {
         return recentIndex - 1;
       }

@@ -86,16 +86,7 @@ public final class PartitionExecutor {
       sortDataTypes.add(dataType);
     }
     peerGroupComparator = new RowComparator(sortDataTypes);
-    sortedColumns = new ArrayList<>();
-    for (int channel : sortChannels) {
-      List<Column> sortedColumnList = new ArrayList<>();
-      for (TsBlock tsBlock : tsBlocks) {
-        Column sortedColumn = tsBlock.getColumn(channel);
-        sortedColumnList.add(sortedColumn);
-      }
-      ColumnList columnList = new ColumnList(sortedColumnList);
-      sortedColumns.add(columnList);
-    }
+    sortedColumns = partition.getSortedColumnList(sortChannels);
 
     // Reset functions for new partition
     for (WindowFunction windowFunction : windowFunctions) {
@@ -119,7 +110,7 @@ public final class PartitionExecutor {
           case RANGE:
             frame =
                 new RangeFrame(
-                    partition, frameInfo, partitionStart, partitionEnd, sortedColumns, peerGroupComparator);
+                    partition, frameInfo, sortedColumns, peerGroupComparator);
             break;
           case ROWS:
             frame = new RowsFrame(partition, frameInfo, partitionStart, partitionEnd);
@@ -129,8 +120,6 @@ public final class PartitionExecutor {
                 new GroupsFrame(
                     partition,
                     frameInfo,
-                    partitionStart,
-                    partitionEnd,
                     sortedColumns,
                     peerGroupComparator,
                     peerGroupEnd - partitionStart - 1);
@@ -174,7 +163,7 @@ public final class PartitionExecutor {
 
       Range frameRange =
           windowFunction.needFrame()
-              ? frame.getRange(currentPosition, currentGroupIndex, peerGroupStart, peerGroupEnd)
+              ? frame.getRange(index, currentGroupIndex, peerGroupStart - partitionStart, peerGroupEnd - partitionStart)
               : new Range(-1, -1);
       windowFunction.transform(
           partition,
@@ -198,7 +187,7 @@ public final class PartitionExecutor {
     // Find end of peer group
     peerGroupEnd = peerGroupStart + 1;
     while (peerGroupEnd < partitionEnd
-        && peerGroupComparator.equalColumnLists(sortedColumns, peerGroupStart, peerGroupEnd)) {
+        && peerGroupComparator.equalColumnLists(sortedColumns, peerGroupStart - partitionStart, peerGroupEnd - partitionStart)) {
       peerGroupEnd++;
     }
   }

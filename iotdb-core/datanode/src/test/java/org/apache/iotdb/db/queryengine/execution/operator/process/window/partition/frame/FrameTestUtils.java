@@ -29,6 +29,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -51,7 +52,7 @@ public class FrameTestUtils {
 
   public FrameTestUtils(TsBlock tsBlock, TSDataType inputDataType, FrameInfo frameInfo) {
     this.partition = tsBlockToPartition(tsBlock);
-    this.sortedColumns = tsBlockToColumnLists(tsBlock);
+    this.sortedColumns = this.partition.getSortedColumnList(Collections.singletonList(0));
     this.partitionStart = 0;
     this.partitionEnd = tsBlock.getPositionCount();
 
@@ -117,7 +118,7 @@ public class FrameTestUtils {
       case RANGE:
         frame =
             new RangeFrame(
-                partition, frameInfo, partitionStart, partitionEnd, sortedColumns, peerGroupComparator);
+                partition, frameInfo, sortedColumns, peerGroupComparator);
         break;
       case ROWS:
         frame = new RowsFrame(partition, frameInfo, partitionStart, partitionEnd);
@@ -127,8 +128,6 @@ public class FrameTestUtils {
             new GroupsFrame(
                 partition,
                 frameInfo,
-                partitionStart,
-                partitionEnd,
                 sortedColumns,
                 peerGroupComparator,
                 peerGroupEnd - partitionStart - 1);

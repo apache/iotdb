@@ -70,7 +70,7 @@ public class RangeFrameTest {
 
   @Test
   public void testUnboundPrecedingAndPrecedingAscNullsLast() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsLast);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsLast, 1);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
@@ -97,7 +97,7 @@ public class RangeFrameTest {
 
   @Test
   public void testUnboundPrecedingAndPrecedingDescNullsFirst() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsFirst);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsFirst, 1);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
@@ -124,7 +124,7 @@ public class RangeFrameTest {
 
   @Test
   public void testUnboundPrecedingAndPrecedingDescNullsLast() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsLast);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsLast, 1);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
@@ -175,7 +175,7 @@ public class RangeFrameTest {
 
   @Test
   public void testUnboundPrecedingAndFollowingAscNullsFirst() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsFirst);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsFirst, 1);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
@@ -202,7 +202,7 @@ public class RangeFrameTest {
 
   @Test
   public void testUnboundPrecedingAndFollowingAscNullsLast() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsLast);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsLast, 1);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
@@ -229,7 +229,7 @@ public class RangeFrameTest {
 
   @Test
   public void testUnboundPrecedingAndFollowingDescNullsFirst() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsFirst);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsFirst, 1);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
@@ -256,7 +256,7 @@ public class RangeFrameTest {
 
   @Test
   public void testUnboundPrecedingAndFollowingDescNullsLast() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsLast);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsLast, 1);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
@@ -307,14 +307,14 @@ public class RangeFrameTest {
 
   @Test
   public void testPrecedingAndPrecedingAscNullsFirst() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsFirst);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsFirst, 2, 1);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.PRECEDING,
-            2,
-            FrameInfo.FrameBoundType.PRECEDING,
             1,
+            FrameInfo.FrameBoundType.PRECEDING,
+            2,
             0,
             SortOrder.ASC_NULLS_FIRST);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
@@ -335,14 +335,14 @@ public class RangeFrameTest {
 
   @Test
   public void testPrecedingAndPrecedingAscNullsLast() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsLast);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsLast, 2, 1);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.PRECEDING,
-            2,
-            FrameInfo.FrameBoundType.PRECEDING,
             1,
+            FrameInfo.FrameBoundType.PRECEDING,
+            2,
             0,
             SortOrder.ASC_NULLS_LAST);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
@@ -363,14 +363,14 @@ public class RangeFrameTest {
 
   @Test
   public void testPrecedingAndPrecedingDescNullsFirst() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsFirst);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsFirst, 2, 1);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.PRECEDING,
-            2,
-            FrameInfo.FrameBoundType.PRECEDING,
             1,
+            FrameInfo.FrameBoundType.PRECEDING,
+            2,
             0,
             SortOrder.DESC_NULLS_FIRST);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
@@ -391,14 +391,14 @@ public class RangeFrameTest {
 
   @Test
   public void testPrecedingAndPrecedingDescNullsLast() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsLast);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsLast, 2, 1);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.PRECEDING,
-            2,
-            FrameInfo.FrameBoundType.PRECEDING,
             1,
+            FrameInfo.FrameBoundType.PRECEDING,
+            2,
             0,
             SortOrder.DESC_NULLS_LAST);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
@@ -419,12 +419,12 @@ public class RangeFrameTest {
 
   @Test
   public void testPrecedingAndCurrentRowAscNullsFirst() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsFirst);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsFirst, 2);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.PRECEDING,
-            2,
+            1,
             FrameInfo.FrameBoundType.CURRENT_ROW,
             0,
             SortOrder.ASC_NULLS_FIRST);
@@ -446,12 +446,12 @@ public class RangeFrameTest {
 
   @Test
   public void testPrecedingAndCurrentRowAscNullsLast() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsLast);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsLast, 2);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.PRECEDING,
-            2,
+            1,
             FrameInfo.FrameBoundType.CURRENT_ROW,
             0,
             SortOrder.ASC_NULLS_LAST);
@@ -473,12 +473,12 @@ public class RangeFrameTest {
 
   @Test
   public void testPrecedingAndCurrentRowDescNullsFirst() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsFirst);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsFirst, 2);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.PRECEDING,
-            2,
+            1,
             FrameInfo.FrameBoundType.CURRENT_ROW,
             0,
             SortOrder.DESC_NULLS_FIRST);
@@ -500,12 +500,12 @@ public class RangeFrameTest {
 
   @Test
   public void testPrecedingAndCurrentRowDescNullsLast() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsLast);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsLast, 2);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.PRECEDING,
-            2,
+            1,
             FrameInfo.FrameBoundType.CURRENT_ROW,
             0,
             SortOrder.DESC_NULLS_LAST);
@@ -527,14 +527,14 @@ public class RangeFrameTest {
 
   @Test
   public void testPrecedingAndFollowingAscNullsFirst() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsFirst);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsFirst, 1, 1);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.PRECEDING,
             1,
             FrameInfo.FrameBoundType.FOLLOWING,
-            1,
+            2,
             0,
             SortOrder.ASC_NULLS_FIRST);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
@@ -555,14 +555,14 @@ public class RangeFrameTest {
 
   @Test
   public void testPrecedingAndFollowingAscNullsLast() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsLast);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsLast, 1, 1);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.PRECEDING,
             1,
             FrameInfo.FrameBoundType.FOLLOWING,
-            1,
+            2,
             0,
             SortOrder.ASC_NULLS_LAST);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
@@ -583,14 +583,14 @@ public class RangeFrameTest {
 
   @Test
   public void testPrecedingAndFollowingDescNullsFirst() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsFirst);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsFirst, 1, 1);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.PRECEDING,
             1,
             FrameInfo.FrameBoundType.FOLLOWING,
-            1,
+            2,
             0,
             SortOrder.DESC_NULLS_FIRST);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
@@ -611,14 +611,14 @@ public class RangeFrameTest {
 
   @Test
   public void testPrecedingAndFollowingDescNullsLast() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsLast);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsLast, 1, 1);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.PRECEDING,
             1,
             FrameInfo.FrameBoundType.FOLLOWING,
-            1,
+            2,
             0,
             SortOrder.DESC_NULLS_LAST);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
@@ -639,12 +639,12 @@ public class RangeFrameTest {
 
   @Test
   public void testPrecedingAndUnboundFollowingAscNullsFirst() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsFirst);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsFirst, 2);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.PRECEDING,
-            2,
+            1,
             FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING,
             0,
             SortOrder.ASC_NULLS_FIRST);
@@ -666,12 +666,12 @@ public class RangeFrameTest {
 
   @Test
   public void testPrecedingAndUnboundFollowingAscNullsLast() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsLast);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsLast, 2);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.PRECEDING,
-            2,
+            1,
             FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING,
             0,
             SortOrder.ASC_NULLS_LAST);
@@ -693,12 +693,12 @@ public class RangeFrameTest {
 
   @Test
   public void testPrecedingAndUnboundFollowingDescNullsFirst() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsFirst);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsFirst, 2);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.PRECEDING,
-            2,
+            1,
             FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING,
             0,
             SortOrder.DESC_NULLS_FIRST);
@@ -720,12 +720,12 @@ public class RangeFrameTest {
 
   @Test
   public void testPrecedingAndUnboundFollowingDescNullsLast() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsLast);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsLast, 2);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.PRECEDING,
-            2,
+            1,
             FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING,
             0,
             SortOrder.DESC_NULLS_LAST);
@@ -771,13 +771,13 @@ public class RangeFrameTest {
 
   @Test
   public void testCurrentRowAndFollowingAscNullsFirst() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsFirst);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsFirst, 2);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.CURRENT_ROW,
             FrameInfo.FrameBoundType.FOLLOWING,
-            2,
+            1,
             0,
             SortOrder.ASC_NULLS_FIRST);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
@@ -798,13 +798,13 @@ public class RangeFrameTest {
 
   @Test
   public void testCurrentRowAndFollowingAscNullsLast() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsLast);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsLast, 2);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.CURRENT_ROW,
             FrameInfo.FrameBoundType.FOLLOWING,
-            2,
+            1,
             0,
             SortOrder.ASC_NULLS_LAST);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
@@ -825,13 +825,13 @@ public class RangeFrameTest {
 
   @Test
   public void testCurrentRowAndFollowingDescNullsFirst() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsFirst);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsFirst, 2);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.CURRENT_ROW,
             FrameInfo.FrameBoundType.FOLLOWING,
-            2,
+            1,
             0,
             SortOrder.DESC_NULLS_FIRST);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
@@ -852,13 +852,13 @@ public class RangeFrameTest {
 
   @Test
   public void testCurrentRowAndFollowingDescNullsLast() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsLast);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsLast, 2);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.CURRENT_ROW,
             FrameInfo.FrameBoundType.FOLLOWING,
-            2,
+            1,
             0,
             SortOrder.DESC_NULLS_LAST);
     FrameTestUtils utils = new FrameTestUtils(tsBlock, dataType, frameInfo);
@@ -903,7 +903,7 @@ public class RangeFrameTest {
 
   @Test
   public void testFollowingAndFollowingAscNullsFirst() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsFirst);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsFirst, 1, 2);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
@@ -931,7 +931,7 @@ public class RangeFrameTest {
 
   @Test
   public void testFollowingAndFollowingAscNullsLast() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsLast);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsLast, 1, 2);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
@@ -959,7 +959,7 @@ public class RangeFrameTest {
 
   @Test
   public void testFollowingAndFollowingDescNullsFirst() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsFirst);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsFirst, 1, 2);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
@@ -987,7 +987,7 @@ public class RangeFrameTest {
 
   @Test
   public void testFollowingAndFollowingDescNullsLast() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsLast);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsLast, 1, 2);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
@@ -1015,12 +1015,12 @@ public class RangeFrameTest {
 
   @Test
   public void testFollowingAndUnboundFollowingAscNullsFirst() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsFirst);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsFirst, 2);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.FOLLOWING,
-            2,
+            1,
             FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING,
             0,
             SortOrder.ASC_NULLS_FIRST);
@@ -1043,12 +1043,12 @@ public class RangeFrameTest {
 
   @Test
   public void testFollowingAndUnboundFollowingAscNullsLast() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsLast);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsLast, 2);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.FOLLOWING,
-            2,
+            1,
             FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING,
             0,
             SortOrder.ASC_NULLS_LAST);
@@ -1071,12 +1071,12 @@ public class RangeFrameTest {
 
   @Test
   public void testFollowingAndUnboundFollowingDescNullsFirst() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsFirst);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsFirst, 2);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.FOLLOWING,
-            2,
+            1,
             FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING,
             0,
             SortOrder.DESC_NULLS_FIRST);
@@ -1099,12 +1099,12 @@ public class RangeFrameTest {
 
   @Test
   public void testFollowingAndUnboundFollowingDescNullsLast() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsLast);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(descNullsLast, 2);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
             FrameInfo.FrameBoundType.FOLLOWING,
-            2,
+            1,
             FrameInfo.FrameBoundType.UNBOUNDED_FOLLOWING,
             0,
             SortOrder.DESC_NULLS_LAST);
