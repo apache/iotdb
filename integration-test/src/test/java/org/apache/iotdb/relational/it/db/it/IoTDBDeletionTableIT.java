@@ -363,7 +363,7 @@ public class IoTDBDeletionTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
       statement.executeQuery(
-          "SELECT last(time), last_by(s0,time), last_by(s1,time), last_by(s2,time), last_by(s3,time), last_by(s4,time) FROM vehicle4 where device_id = 'd0'");
+          "SELECT last(time), last_by(s0,time), last_by(s1,time), last_by(s2,time), last_by(s3,time), last_by(s4,time) FROM vehicle4 where deviceId = 'd0'");
 
       // [1, 400] -> [1, 299]
       statement.execute("DELETE FROM vehicle4 WHERE time >= 300");
