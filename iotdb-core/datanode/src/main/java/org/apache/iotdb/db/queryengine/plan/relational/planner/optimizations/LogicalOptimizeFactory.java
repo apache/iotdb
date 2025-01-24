@@ -236,7 +236,7 @@ public class LogicalOptimizeFactory {
         new IterativeOptimizer(
             plannerContext, ruleStats, ImmutableSet.of(new PruneDistinctAggregation())),
         simplifyOptimizer,
-        new PushPredicateIntoTableScan(),
+        new PushPredicateIntoTableScan(plannerContext, typeAnalyzer),
         // Currently, Distinct is not supported, so we cant use this rule for now.
         //        new IterativeOptimizer(
         //            plannerContext,

@@ -285,6 +285,25 @@ public class TableDeviceSchemaCache {
   }
 
   /**
+   * Get the last {@link TimeValuePair}s of given measurements, the measurements shall never be
+   * "time".
+   *
+   * @param database the device's database, without "root", {@code null} for tree model
+   * @param deviceId {@link IDeviceID}
+   * @param measurements the measurements to get
+   * @return {@code null} iff cache miss, {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR} iff
+   *     cache hit but result is {@code null}, and the result value otherwise.
+   */
+  public TimeValuePair[] getLastEntries(
+      final @Nullable String database, final IDeviceID deviceId, final String[] measurements) {
+    final TableDeviceCacheEntry entry =
+        dualKeyCache.get(new TableId(database, deviceId.getTableName()), deviceId);
+    return Objects.nonNull(entry)
+        ? Arrays.stream(measurements).map(entry::getTimeValuePair).toArray(TimeValuePair[]::new)
+        : null;
+  }
+
+  /**
    * Get the last value of measurements last by a target measurement. If the caller wants to last by
    * time or get the time last by another source measurement, the measurement shall be "" to
    * indicate the time column.
