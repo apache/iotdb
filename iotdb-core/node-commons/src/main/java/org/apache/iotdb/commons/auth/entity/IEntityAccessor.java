@@ -59,7 +59,7 @@ public interface IEntityAccessor extends SnapshotProcessor {
    */
   List<String> listAllEntities();
 
-  /** Delete entries' folders. */
+  /** Delete entities' folders. */
   void cleanEntityFolder();
 
   /** Re-initialize this object. */
