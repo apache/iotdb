@@ -17,10 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.consumer;
+package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.session.subscription.consumer.AckStrategy;
+import org.apache.iotdb.session.subscription.consumer.ConsumeListener;
+import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.util.CollectionUtils;
 
@@ -36,8 +40,8 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * The {@link SubscriptionPushConsumer} corresponds to the push consumption mode in the message
- * queue.
+ * The {@link AbstractSubscriptionPushConsumer} corresponds to the push consumption mode in the
+ * message queue.
  *
  * <p>User code is triggered by newly arrived data events and only needs to pre-configure message
  * acknowledgment strategy ({@link #ackStrategy}) and consumption handling logic ({@link
@@ -45,9 +49,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * <p>User code does not need to manually commit the consumption progress.
  */
-public class SubscriptionPushConsumer extends SubscriptionConsumer {
+public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscriptionConsumer {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPushConsumer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionTreePushConsumer.class);
 
   private final AckStrategy ackStrategy;
   private final ConsumeListener consumeListener;
@@ -58,7 +62,8 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
-  protected SubscriptionPushConsumer(final Builder builder) {
+  protected AbstractSubscriptionPushConsumer(
+      final AbstractSubscriptionPushConsumerBuilder builder) {
     super(builder);
 
     this.ackStrategy = builder.ackStrategy;
@@ -68,7 +73,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     this.autoPollTimeoutMs = builder.autoPollTimeoutMs;
   }
 
-  public SubscriptionPushConsumer(final Properties config) {
+  public AbstractSubscriptionPushConsumer(final Properties config) {
     this(
         config,
         (AckStrategy)
@@ -87,14 +92,14 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
                 ConsumerConstant.AUTO_POLL_TIMEOUT_MS_DEFAULT_VALUE));
   }
 
-  private SubscriptionPushConsumer(
+  protected AbstractSubscriptionPushConsumer(
       final Properties config,
       final AckStrategy ackStrategy,
       final ConsumeListener consumeListener,
       final long autoPollIntervalMs,
       final long autoPollTimeoutMs) {
     super(
-        new Builder()
+        new AbstractSubscriptionPushConsumerBuilder()
             .ackStrategy(ackStrategy)
             .consumeListener(consumeListener)
             .autoPollIntervalMs(autoPollIntervalMs)
@@ -112,7 +117,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
   /////////////////////////////// open & close ///////////////////////////////
 
-  public synchronized void open() throws SubscriptionException {
+  protected synchronized void open() throws SubscriptionException {
     if (!isClosed.get()) {
       return;
     }
@@ -214,128 +219,6 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
       } catch (final Exception e) {
         LOGGER.warn("something unexpected happened when auto poll messages...", e);
       }
-    }
-  }
-
-  /////////////////////////////// builder ///////////////////////////////
-
-  public static class Builder extends SubscriptionConsumer.Builder {
-
-    private AckStrategy ackStrategy = AckStrategy.defaultValue();
-    private ConsumeListener consumeListener = message -> ConsumeResult.SUCCESS;
-
-    private long autoPollIntervalMs = ConsumerConstant.AUTO_POLL_INTERVAL_MS_DEFAULT_VALUE;
-    private long autoPollTimeoutMs = ConsumerConstant.AUTO_POLL_TIMEOUT_MS_DEFAULT_VALUE;
-
-    @Override
-    public Builder host(final String host) {
-      super.host(host);
-      return this;
-    }
-
-    @Override
-    public Builder port(final int port) {
-      super.port(port);
-      return this;
-    }
-
-    @Override
-    public Builder nodeUrls(final List<String> nodeUrls) {
-      super.nodeUrls(nodeUrls);
-      return this;
-    }
-
-    @Override
-    public Builder username(final String username) {
-      super.username(username);
-      return this;
-    }
-
-    @Override
-    public Builder password(final String password) {
-      super.password(password);
-      return this;
-    }
-
-    @Override
-    public Builder consumerId(final String consumerId) {
-      super.consumerId(consumerId);
-      return this;
-    }
-
-    @Override
-    public Builder consumerGroupId(final String consumerGroupId) {
-      super.consumerGroupId(consumerGroupId);
-      return this;
-    }
-
-    @Override
-    public Builder heartbeatIntervalMs(final long heartbeatIntervalMs) {
-      super.heartbeatIntervalMs(heartbeatIntervalMs);
-      return this;
-    }
-
-    @Override
-    public Builder endpointsSyncIntervalMs(final long endpointsSyncIntervalMs) {
-      super.endpointsSyncIntervalMs(endpointsSyncIntervalMs);
-      return this;
-    }
-
-    @Override
-    public Builder fileSaveDir(final String fileSaveDir) {
-      super.fileSaveDir(fileSaveDir);
-      return this;
-    }
-
-    @Override
-    public Builder fileSaveFsync(final boolean fileSaveFsync) {
-      super.fileSaveFsync(fileSaveFsync);
-      return this;
-    }
-
-    @Override
-    public Builder thriftMaxFrameSize(final int thriftMaxFrameSize) {
-      super.thriftMaxFrameSize(thriftMaxFrameSize);
-      return this;
-    }
-
-    @Override
-    public Builder maxPollParallelism(final int maxPollParallelism) {
-      super.maxPollParallelism(maxPollParallelism);
-      return this;
-    }
-
-    public Builder ackStrategy(final AckStrategy ackStrategy) {
-      this.ackStrategy = ackStrategy;
-      return this;
-    }
-
-    public Builder consumeListener(final ConsumeListener consumeListener) {
-      this.consumeListener = consumeListener;
-      return this;
-    }
-
-    public Builder autoPollIntervalMs(final long autoPollIntervalMs) {
-      // avoid interval less than or equal to zero
-      this.autoPollIntervalMs = Math.max(autoPollIntervalMs, 1);
-      return this;
-    }
-
-    public Builder autoPollTimeoutMs(final long autoPollTimeoutMs) {
-      this.autoPollTimeoutMs =
-          Math.max(autoPollTimeoutMs, ConsumerConstant.AUTO_POLL_TIMEOUT_MS_MIN_VALUE);
-      return this;
-    }
-
-    @Override
-    public SubscriptionPullConsumer buildPullConsumer() {
-      throw new SubscriptionException(
-          "SubscriptionPushConsumer.Builder do not support build pull consumer.");
-    }
-
-    @Override
-    public SubscriptionPushConsumer buildPushConsumer() {
-      return new SubscriptionPushConsumer(this);
     }
   }
 

@@ -125,10 +125,9 @@ public final class Patterns {
     return typeOf(LimitNode.class);
   }
 
-  /*public static Pattern<MarkDistinctNode> markDistinct()
-  {
-      return typeOf(MarkDistinctNode.class);
-  }*/
+  public static Pattern<MarkDistinctNode> markDistinct() {
+    return typeOf(MarkDistinctNode.class);
+  }
 
   public static Pattern<OutputNode> output() {
     return typeOf(OutputNode.class);

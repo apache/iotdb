@@ -23,7 +23,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionMisc;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
@@ -54,7 +54,7 @@ public class IoTDBTestTopicNameIT extends AbstractSubscriptionRegressionIT {
   private String pattern = device + ".s_0";
   private String topicName = "`1-group.1-consumer.ts.topic`";
   private List<IMeasurementSchema> schemaList = new ArrayList<>();
-  private SubscriptionPullConsumer consumer;
+  private SubscriptionTreePullConsumer consumer;
 
   @Override
   @Before

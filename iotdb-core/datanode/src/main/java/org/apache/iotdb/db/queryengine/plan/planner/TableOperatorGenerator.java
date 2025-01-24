@@ -82,6 +82,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.Abst
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DefaultAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.LastQueryAggTableScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MarkDistinctOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortFullOuterJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortInnerJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortLeftJoinOperator;
@@ -142,6 +143,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationS
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
@@ -1816,12 +1818,17 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             timeColumnName,
             aggregation.isDistinct());
 
+    OptionalInt maskChannel = OptionalInt.empty();
+    if (aggregation.hasMask()) {
+      maskChannel = OptionalInt.of(childLayout.get(aggregation.getMask().get()));
+    }
+
     return new TableAggregator(
         accumulator,
         step,
         getTSDataType(typeProvider.getTableModelType(symbol)),
         argumentChannels,
-        OptionalInt.empty());
+        maskChannel);
   }
 
   private Operator planGroupByAggregation(
@@ -1992,12 +1999,17 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             true,
             aggregation.isDistinct());
 
+    OptionalInt maskChannel = OptionalInt.empty();
+    if (aggregation.hasMask()) {
+      maskChannel = OptionalInt.of(childLayout.get(aggregation.getMask().get()));
+    }
+
     return new GroupedAggregator(
         accumulator,
         step,
         getTSDataType(typeProvider.getTableModelType(symbol)),
         argumentChannels,
-        OptionalInt.empty());
+        maskChannel);
   }
 
   @Override
@@ -2469,5 +2481,30 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     }
 
     return true;
+  }
+
+  @Override
+  public Operator visitMarkDistinct(MarkDistinctNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                ExplainAnalyzeOperator.class.getSimpleName());
+
+    TypeProvider typeProvider = context.getTypeProvider();
+    Map<Symbol, Integer> childLayout =
+        makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
+
+    return new MarkDistinctOperator(
+        operatorContext,
+        child,
+        node.getChild().getOutputSymbols().stream()
+            .map(typeProvider::getTableModelType)
+            .collect(Collectors.toList()),
+        node.getDistinctSymbols().stream().map(childLayout::get).collect(Collectors.toList()),
+        Optional.empty());
   }
 }

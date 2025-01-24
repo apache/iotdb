@@ -90,6 +90,7 @@ import org.apache.iotdb.confignode.consensus.request.write.model.DropModelInNode
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.AutoCleanPartitionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
@@ -442,6 +443,8 @@ public class ConfigPlanExecutor {
         return partitionInfo.createSchemaPartition((CreateSchemaPartitionPlan) physicalPlan);
       case CreateDataPartition:
         return partitionInfo.createDataPartition((CreateDataPartitionPlan) physicalPlan);
+      case AutoCleanPartitionTable:
+        return partitionInfo.autoCleanPartitionTable((AutoCleanPartitionTablePlan) physicalPlan);
       case UpdateProcedure:
         return procedureInfo.updateProcedure((UpdateProcedurePlan) physicalPlan);
       case DeleteProcedure:

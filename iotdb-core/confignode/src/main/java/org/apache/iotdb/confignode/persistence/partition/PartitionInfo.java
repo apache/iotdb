@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDataba
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.AutoCleanPartitionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
@@ -498,6 +499,24 @@ public class PartitionInfo implements SnapshotProcessor {
               }
             });
 
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  /**
+   * Remove PartitionTable where the TimeSlot is expired.
+   *
+   * @param plan Including TTL and current TimeSlot
+   */
+  public TSStatus autoCleanPartitionTable(AutoCleanPartitionTablePlan plan) {
+    plan.getDatabaseTTLMap()
+        .forEach(
+            (database, ttl) -> {
+              if (isDatabaseExisted(database) && 0 < ttl && ttl < Long.MAX_VALUE) {
+                databasePartitionTables
+                    .get(database)
+                    .autoCleanPartitionTable(ttl, plan.getCurrentTimeSlot());
+              }
+            });
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

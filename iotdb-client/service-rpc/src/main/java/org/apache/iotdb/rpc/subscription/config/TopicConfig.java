@@ -167,6 +167,17 @@ public class TopicConfig extends PipeParameters {
     }
   }
 
+  public Map<String, String> getAttributesWithSourcePrefix() {
+    final Map<String, String> attributesWithProcessorPrefix = new HashMap<>();
+    attributes.forEach(
+        (key, value) -> {
+          if (key.toLowerCase().startsWith("source")) {
+            attributesWithProcessorPrefix.put(key, value);
+          }
+        });
+    return attributesWithProcessorPrefix;
+  }
+
   /////////////////////////////// processor attributes mapping ///////////////////////////////
 
   public Map<String, String> getAttributesWithProcessorPrefix() {
@@ -184,5 +195,16 @@ public class TopicConfig extends PipeParameters {
 
   public Map<String, String> getAttributesWithSinkFormat() {
     return SINK_HYBRID_FORMAT_CONFIG; // default to hybrid
+  }
+
+  public Map<String, String> getAttributesWithSinkPrefix() {
+    final Map<String, String> attributesWithProcessorPrefix = new HashMap<>();
+    attributes.forEach(
+        (key, value) -> {
+          if (key.toLowerCase().startsWith("sink")) {
+            attributesWithProcessorPrefix.put(key, value);
+          }
+        });
+    return attributesWithProcessorPrefix;
   }
 }

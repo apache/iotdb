@@ -312,8 +312,49 @@ public abstract class AbstractCastFunctionColumnTransformer extends UnaryColumnT
     }
   }
 
-  protected void cast(ColumnBuilder columnBuilder, Binary value) {
+  protected void castString(ColumnBuilder columnBuilder, Binary value) {
     String stringValue = value.getStringValue(TSFileConfig.STRING_CHARSET);
+    try {
+      switch (returnType.getTypeEnum()) {
+        case INT32:
+          returnType.writeInt(columnBuilder, Integer.parseInt(stringValue));
+          break;
+        case DATE:
+          returnType.writeInt(columnBuilder, DateUtils.parseDateExpressionToInt(stringValue));
+          break;
+        case INT64:
+          returnType.writeLong(columnBuilder, Long.parseLong(stringValue));
+          break;
+        case TIMESTAMP:
+          returnType.writeLong(
+              columnBuilder, DateTimeUtils.convertDatetimeStrToLong(stringValue, zoneId));
+          break;
+        case FLOAT:
+          returnType.writeFloat(columnBuilder, CastFunctionHelper.castTextToFloat(stringValue));
+          break;
+        case DOUBLE:
+          returnType.writeDouble(columnBuilder, CastFunctionHelper.castTextToDouble(stringValue));
+          break;
+        case BOOLEAN:
+          returnType.writeBoolean(columnBuilder, CastFunctionHelper.castTextToBoolean(stringValue));
+          break;
+        case TEXT:
+        case STRING:
+        case BLOB:
+          returnType.writeBinary(columnBuilder, value);
+          break;
+        default:
+          throw new UnsupportedOperationException(
+              String.format(ERROR_MSG, returnType.getTypeEnum()));
+      }
+    } catch (DateTimeParseException | NumberFormatException e) {
+      throw new SemanticException(
+          String.format("Cannot cast %s to %s type", stringValue, returnType.getDisplayName()));
+    }
+  }
+
+  protected void castBlob(ColumnBuilder columnBuilder, Binary value) {
+    String stringValue = BytesUtils.parseBlobByteArrayToString(value.getValues());
     try {
       switch (returnType.getTypeEnum()) {
         case INT32:
