@@ -17,16 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.tablemodel;
+package org.apache.iotdb.pipe.it.treemodel;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
 
-public abstract class AbstractPipeTableModelTestIT {
+import java.io.File;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+
+public abstract class AbstractPipeDualManualIT {
 
   protected BaseEnv senderEnv;
   protected BaseEnv receiverEnv;
@@ -46,13 +54,13 @@ public abstract class AbstractPipeTableModelTestIT {
     senderEnv
         .getConfig()
         .getCommonConfig()
-        .setAutoCreateSchemaEnabled(true)
+        .setAutoCreateSchemaEnabled(false)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     receiverEnv
         .getConfig()
         .getCommonConfig()
-        .setAutoCreateSchemaEnabled(true)
+        .setAutoCreateSchemaEnabled(false)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
 
@@ -65,5 +73,45 @@ public abstract class AbstractPipeTableModelTestIT {
   public final void tearDown() {
     senderEnv.cleanClusterEnvironment();
     receiverEnv.cleanClusterEnvironment();
+  }
+
+  protected static void awaitUntilFlush(BaseEnv env) {
+    Awaitility.await()
+        .atMost(1, TimeUnit.MINUTES)
+        .pollDelay(2, TimeUnit.SECONDS)
+        .pollInterval(2, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              if (!TestUtils.tryExecuteNonQueryWithRetry(env, "flush")) {
+                return false;
+              }
+              return env.getDataNodeWrapperList().stream()
+                  .anyMatch(
+                      wrapper -> {
+                        int fileNum = 0;
+                        File sequence = new File(buildDataPath(wrapper, true));
+                        File unsequence = new File(buildDataPath(wrapper, false));
+                        if (sequence.exists() && sequence.listFiles() != null) {
+                          fileNum += Objects.requireNonNull(sequence.listFiles()).length;
+                        }
+                        if (unsequence.exists() && unsequence.listFiles() != null) {
+                          fileNum += Objects.requireNonNull(unsequence.listFiles()).length;
+                        }
+                        return fileNum > 0;
+                      });
+            });
+  }
+
+  private static String buildDataPath(DataNodeWrapper wrapper, boolean isSequence) {
+    String nodePath = wrapper.getNodePath();
+    return nodePath
+        + File.separator
+        + IoTDBConstant.DATA_FOLDER_NAME
+        + File.separator
+        + "datanode"
+        + File.separator
+        + IoTDBConstant.DATA_FOLDER_NAME
+        + File.separator
+        + (isSequence ? IoTDBConstant.SEQUENCE_FOLDER_NAME : IoTDBConstant.UNSEQUENCE_FOLDER_NAME);
   }
 }
