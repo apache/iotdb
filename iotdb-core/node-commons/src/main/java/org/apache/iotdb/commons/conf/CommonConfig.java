@@ -984,8 +984,7 @@ public class CommonConfig {
   }
 
   public void setPipeReceiverLoginInvalidInterval(long pipeReceiverLoginInvalidInterval) {
-    this.pipeReceiverLoginInvalidInterval =
-        pipeReceiverLoginInvalidInterval > 0 ? pipeReceiverLoginInvalidInterval : 0;
+    this.pipeReceiverLoginInvalidInterval = pipeReceiverLoginInvalidInterval;
   }
 
   public long getPipeReceiverLoginInvalidInterval() {
