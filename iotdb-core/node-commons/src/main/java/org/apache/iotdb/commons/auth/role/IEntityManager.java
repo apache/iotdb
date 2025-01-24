@@ -31,25 +31,17 @@ public interface IEntityManager extends SnapshotProcessor {
   /**
    * Get an entity object.
    *
-   * @param entityName The name of the role.
-   * @return A role object whose name is entityName or null if such role does not exist.
-   * @throws AuthException if exception is raised while getting the role.
+   * @param entityName The name of the entity.
+   * @return An entity object whose name is entityName or null if such entity does not exist.
+   * @throws AuthException if exception is raised while getting the entity.
    */
   Role getEntity(String entityName) throws AuthException;
 
   /**
-   * Create a role/user with given entityName. New roles/users will only be granted no privileges.
-   *
-   * @param entityName is not null or empty
-   * @return True if the role is successfully created, false when the role already exists.
-   */
-  boolean createRole(String entityName);
-
-  /**
    * Delete an entity.
    *
-   * @param entityName the name of the user/role.
-   * @return boolean, true means we have the role in entityManager.
+   * @param entityName the name of the entity.
+   * @return boolean, true means we have the entity in entityManager.
    */
   boolean deleteEntity(String entityName);
 
@@ -58,7 +50,7 @@ public interface IEntityManager extends SnapshotProcessor {
    *
    * @param entityName The name of the entity to which the privilege should be added.
    * @param privilegeUnion The privilege will be granted to entity.
-   * @throws AuthException If the role does not exist or the privilege or the path is illegal.
+   * @throws AuthException If the entity does not exist or the privilege or the path is illegal.
    */
   void grantPrivilegeToEntity(String entityName, PrivilegeUnion privilegeUnion)
       throws AuthException;
@@ -68,7 +60,7 @@ public interface IEntityManager extends SnapshotProcessor {
    *
    * @param entityName The name of the entity from which the privilege should be removed.
    * @param privilegeUnion The privilege will be granted to entity.
-   * @throws AuthException If the role does not exist or the privilege or the path is illegal.
+   * @throws AuthException If the entity does not exist or the privilege or the path is illegal.
    */
   void revokePrivilegeFromEntity(String entityName, PrivilegeUnion privilegeUnion)
       throws AuthException;
@@ -77,9 +69,9 @@ public interface IEntityManager extends SnapshotProcessor {
   void reset() throws AuthException;
 
   /**
-   * List all users/roles.
+   * List all entities.
    *
-   * @return A list that contains names of all roles.
+   * @return A list that contains names of all entities.
    */
-  List<String> listAllEntries();
+  List<String> listAllEntities();
 }

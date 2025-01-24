@@ -222,7 +222,7 @@ public abstract class BasicRoleManager implements IEntityManager, SnapshotProces
     }
   }
 
-  public List<String> listAllEntries() {
+  public List<String> listAllEntities() {
 
     List<String> rtlist = new ArrayList<>();
     entityMap.forEach((name, item) -> rtlist.add(name));

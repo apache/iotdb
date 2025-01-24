@@ -53,7 +53,7 @@ public interface IEntityAccessor extends SnapshotProcessor {
   boolean deleteEntity(String entityName) throws IOException;
 
   /**
-   * List all users existing in the database.
+   * List all entities existing in the database.
    *
    * @return A list that contains names of all users.
    */

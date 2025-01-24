@@ -136,7 +136,7 @@ public class LocalFileRoleManagerTest {
     assertTrue(caught);
 
     // list roles
-    List<String> roleNames = manager.listAllEntries();
+    List<String> roleNames = manager.listAllEntities();
     roleNames.sort(null);
     for (int i = 0; i < roles.length - 1; i++) {
       assertEquals(roles[i].getName(), roleNames.get(i));

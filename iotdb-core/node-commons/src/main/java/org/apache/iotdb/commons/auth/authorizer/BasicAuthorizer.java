@@ -176,7 +176,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           TSStatusCode.ROLE_NOT_EXIST, String.format("Role %s does not exist", roleName));
     } else {
       // proceed to revoke the role in all users
-      List<String> users = userManager.listAllEntries();
+      List<String> users = userManager.listAllEntities();
       for (String user : users) {
         try {
           userManager.revokeRoleFromUser(roleName, user);
@@ -390,12 +390,12 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public List<String> listAllUsers() {
-    return userManager.listAllEntries();
+    return userManager.listAllEntities();
   }
 
   @Override
   public List<String> listAllRoles() {
-    return roleManager.listAllEntries();
+    return roleManager.listAllEntities();
   }
 
   @Override

@@ -137,11 +137,11 @@ public class LocalFileUserAccessor extends LocalFileRoleAccessor {
    */
   @Override
   public User loadEntity(String entityName) throws IOException {
-    File entryFile = checkFileAvailable(entityName, "");
-    if (entryFile == null) {
+    File entityFile = checkFileAvailable(entityName, "");
+    if (entityFile == null) {
       return null;
     }
-    FileInputStream inputStream = new FileInputStream(entryFile);
+    FileInputStream inputStream = new FileInputStream(entityFile);
     try (DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
       boolean fromOldVersion = false;

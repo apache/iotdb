@@ -74,7 +74,7 @@ public interface IAuthorizer extends SnapshotProcessor {
   /**
    * Revoke a privilege from a user.
    *
-   * @param userName The username of the user from which the privilege should be removed.
+   * @param userName The name of the user from which the privilege should be removed.
    * @param union A combination of user permissions, scope, and tags
    * @throws AuthException If the user does not exist or the privilege or the seriesPath is illegal
    *     or if the permission does not exist.

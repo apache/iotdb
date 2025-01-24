@@ -69,13 +69,13 @@ public class LocalFileRoleAccessorTest {
         PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.a.b.c" + j));
         pathPrivilege.grantPrivilege(PrivilegeType.values()[j], true);
         roles[i].getPathPrivilegeList().add(pathPrivilege);
-        roles[i].grantSysPrivilege(PrivilegeType.values()[i + 4], false);
-        roles[i].grantDBPrivilege("testdb", PrivilegeType.CREATE, false);
-        roles[i].grantTBPrivilege("testdb", "table", PrivilegeType.ALTER, true);
-        roles[i].grantAnyScopePrivilege(PrivilegeType.INSERT, true);
-        if (i % 2 != 0) {
-          roles[i].grantSysPrivilegeGrantOption(PrivilegeType.values()[i + 4]);
-        }
+      }
+      roles[i].grantSysPrivilege(PrivilegeType.values()[i + 4], false);
+      roles[i].grantDBPrivilege("testdb", PrivilegeType.CREATE, false);
+      roles[i].grantTBPrivilege("testdb", "table", PrivilegeType.ALTER, true);
+      roles[i].grantAnyScopePrivilege(PrivilegeType.INSERT, true);
+      if (i % 2 != 0) {
+        roles[i].grantSysPrivilegeGrantOption(PrivilegeType.values()[i + 4]);
       }
     }
 

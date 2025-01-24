@@ -220,10 +220,6 @@ public class AuthorInfo implements SnapshotProcessor {
               authorizer.grantPrivilegeToUser(userName, new PrivilegeUnion(priv, grantOpt));
               continue;
             }
-            if (priv.isRelationalPrivilege()) {
-              authorizer.grantPrivilegeToUser(userName, new PrivilegeUnion(priv, grantOpt, true));
-              continue;
-            }
             for (PartialPath path : nodeNameList) {
               authorizer.grantPrivilegeToUser(userName, new PrivilegeUnion(path, priv, grantOpt));
             }
