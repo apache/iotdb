@@ -39,6 +39,8 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
       "StorageEngine-Write-Memtable-DevicePathCache";
   private static final String STORAGE_ENGINE_WRITE_MEMTABLE_BUFFERED_ARRAYS =
       "StorageEngine-Write-Memtable-BufferedArrays";
+  private static final String STORAGE_ENGINE_WRITE_MEMTABLE_WAL_BUFFER_QUEUE =
+      "StorageEngine-Write-Memtable-WalBufferQueue";
   private static final String STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO =
       "StorageEngine-Write-TimePartitionInfo";
   private static final String STORAGE_ENGINE_COMPACTION = "StorageEngine-Compaction";
@@ -128,6 +130,17 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[4])
         .set(config.getBufferedArraysMemoryManager().getTotalMemorySizeInBytes());
+    metricService
+        .getOrCreateGauge(
+            Metric.MEMORY_THRESHOLD_SIZE.toString(),
+            MetricLevel.NORMAL,
+            Tag.NAME.toString(),
+            STORAGE_ENGINE_WRITE_MEMTABLE_WAL_BUFFER_QUEUE,
+            Tag.TYPE.toString(),
+            GlobalMemoryMetrics.ON_HEAP,
+            Tag.LEVEL.toString(),
+            GlobalMemoryMetrics.LEVELS[4])
+        .set(config.getWalBufferQueueManager().getTotalMemorySizeInBytes());
   }
 
   @Override
@@ -166,7 +179,9 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
                     Tag.LEVEL.toString(),
                     GlobalMemoryMetrics.LEVELS[3]));
     Arrays.asList(
-            STORAGE_ENGINE_WRITE_MEMTABLE_CACHE, STORAGE_ENGINE_WRITE_MEMTABLE_BUFFERED_ARRAYS)
+            STORAGE_ENGINE_WRITE_MEMTABLE_CACHE,
+            STORAGE_ENGINE_WRITE_MEMTABLE_BUFFERED_ARRAYS,
+            STORAGE_ENGINE_WRITE_MEMTABLE_WAL_BUFFER_QUEUE)
         .forEach(
             name ->
                 metricService.remove(
