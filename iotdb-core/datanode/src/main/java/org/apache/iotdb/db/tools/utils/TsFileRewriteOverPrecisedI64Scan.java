@@ -75,6 +75,7 @@ public class TsFileRewriteOverPrecisedI64Scan extends TsFileSequenceScan {
 
   @Override
   protected void onFileEnd() throws IOException {
+    writer.endChunkGroup();
     writer.endFile();
   }
 
