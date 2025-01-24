@@ -160,7 +160,7 @@ public class TableDeviceLastCache {
         "",
         (time, tvPair) ->
             tvPair.getTimestamp() < finalLastTime
-                ? new TimeValuePair(finalLastTime, null)
+                ? new TimeValuePair(finalLastTime, EMPTY_PRIMITIVE_TYPE)
                 : tvPair);
     return diff.get();
   }

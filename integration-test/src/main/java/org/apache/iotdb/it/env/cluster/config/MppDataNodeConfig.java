@@ -78,9 +78,9 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   }
 
   @Override
-  public DataNodeConfig setCompactionScheduleIntervalInMs(int compactionScheduleIntervalInMs) {
+  public DataNodeConfig setCompactionScheduleInterval(long compactionScheduleInterval) {
     properties.setProperty(
-        "compaction_schedule_interval_in_ms", String.valueOf(compactionScheduleIntervalInMs));
+        "compaction_schedule_interval_in_ms", String.valueOf(compactionScheduleInterval));
     return this;
   }
 }

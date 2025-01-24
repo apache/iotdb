@@ -312,6 +312,21 @@ struct TMigrateRegionReq {
     3: required i32 toId
 }
 
+struct TReconstructRegionReq {
+    1: required list<i32> regionIds
+    2: required i32 dataNodeId
+}
+
+struct TExtendRegionReq {
+    1: required i32 regionId
+    2: required i32 dataNodeId
+}
+
+struct TRemoveRegionReq {
+    1: required i32 regionId
+    2: required i32 dataNodeId
+}
+
 // Authorize
 struct TAuthorizerReq {
   1: required i32 authorType
@@ -706,12 +721,17 @@ struct TCreatePipePluginReq {
 struct TDropPipePluginReq {
   1: required string pluginName
   2: optional bool ifExistsCondition
+  3: optional bool isTableModel
 }
 
 // Get PipePlugin table from config node
 struct TGetPipePluginTableResp {
   1: required common.TSStatus status
   2: required list<binary> allPipePluginMeta
+}
+
+struct TShowPipePluginReq {
+  1: optional bool isTableModel
 }
 
 // Pipe
@@ -1524,6 +1544,11 @@ service IConfigNodeRPCService {
   TGetPipePluginTableResp getPipePluginTable();
 
   /**
+   * Return the pipe plugin table
+   */
+  TGetPipePluginTableResp getPipePluginTableExtended(TShowPipePluginReq req);
+
+  /**
    * Return the pipe plugin jar list of the plugin name list
    */
   TGetJarInListResp getPipePluginJar(TGetJarInListReq req)
@@ -1576,6 +1601,12 @@ service IConfigNodeRPCService {
 
   /** Migrate a region replica from one dataNode to another */
   common.TSStatus migrateRegion(TMigrateRegionReq req)
+
+  common.TSStatus reconstructRegion(TReconstructRegionReq req)
+
+  common.TSStatus extendRegion(TExtendRegionReq req)
+
+  common.TSStatus removeRegion(TRemoveRegionReq req)
 
   /** Kill query */
   common.TSStatus killQuery(string queryId, i32 dataNodeId)

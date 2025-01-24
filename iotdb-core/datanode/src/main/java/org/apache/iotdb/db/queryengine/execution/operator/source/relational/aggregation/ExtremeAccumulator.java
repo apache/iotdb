@@ -51,19 +51,19 @@ public class ExtremeAccumulator implements TableAccumulator {
   }
 
   @Override
-  public void addInput(Column[] arguments) {
+  public void addInput(Column[] arguments, AggregationMask mask) {
     switch (seriesDataType) {
       case INT32:
-        addIntInput(arguments[0]);
+        addIntInput(arguments[0], mask);
         return;
       case INT64:
-        addLongInput(arguments[0]);
+        addLongInput(arguments[0], mask);
         return;
       case FLOAT:
-        addFloatInput(arguments[0]);
+        addFloatInput(arguments[0], mask);
         return;
       case DOUBLE:
-        addDoubleInput(arguments[0]);
+        addDoubleInput(arguments[0], mask);
         return;
       case TEXT:
       case STRING:
@@ -220,10 +220,23 @@ public class ExtremeAccumulator implements TableAccumulator {
     return false;
   }
 
-  private void addIntInput(Column column) {
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      if (!column.isNull(i)) {
-        updateIntResult(column.getInt(i));
+  private void addIntInput(Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < column.getPositionCount(); i++) {
+        if (!column.isNull(i)) {
+          updateIntResult(column.getInt(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          updateIntResult(column.getInt(position));
+        }
       }
     }
   }
@@ -241,10 +254,23 @@ public class ExtremeAccumulator implements TableAccumulator {
     }
   }
 
-  private void addLongInput(Column column) {
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      if (!column.isNull(i)) {
-        updateLongResult(column.getLong(i));
+  private void addLongInput(Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < column.getPositionCount(); i++) {
+        if (!column.isNull(i)) {
+          updateLongResult(column.getLong(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          updateLongResult(column.getLong(position));
+        }
       }
     }
   }
@@ -262,10 +288,23 @@ public class ExtremeAccumulator implements TableAccumulator {
     }
   }
 
-  private void addFloatInput(Column column) {
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      if (!column.isNull(i)) {
-        updateFloatResult(column.getFloat(i));
+  private void addFloatInput(Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < column.getPositionCount(); i++) {
+        if (!column.isNull(i)) {
+          updateFloatResult(column.getFloat(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          updateFloatResult(column.getFloat(position));
+        }
       }
     }
   }
@@ -283,10 +322,23 @@ public class ExtremeAccumulator implements TableAccumulator {
     }
   }
 
-  private void addDoubleInput(Column column) {
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      if (!column.isNull(i)) {
-        updateDoubleResult(column.getDouble(i));
+  private void addDoubleInput(Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < column.getPositionCount(); i++) {
+        if (!column.isNull(i)) {
+          updateDoubleResult(column.getDouble(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          updateDoubleResult(column.getDouble(position));
+        }
       }
     }
   }

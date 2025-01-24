@@ -27,9 +27,9 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
-import org.apache.iotdb.session.subscription.SubscriptionSession;
+import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 
@@ -85,7 +85,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
   private final String sql4 = "select count(s_0) from " + databasePrefix + "4.d_0";
 
   private final List<IMeasurementSchema> schemaList = new ArrayList<>(2);
-  private final List<SubscriptionPushConsumer> consumers = new ArrayList<>(10);
+  private final List<SubscriptionTreePushConsumer> consumers = new ArrayList<>(10);
 
   private void createTopic(
       final String topicName,
@@ -95,7 +95,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
       final boolean isTsFile) {
     final String host = sender.getIP();
     final int port = Integer.parseInt(sender.getPort());
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       final Properties properties = new Properties();
       if (path != null) {
@@ -191,7 +191,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
   private void preparePushConsumers() {
     // create consumers
     consumers.add(
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(sender.getIP())
             .port(Integer.parseInt(sender.getPort()))
             .consumerId("consumer_id_0")
@@ -218,7 +218,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                 })
             .buildPushConsumer());
     consumers.add(
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(sender.getIP())
             .port(Integer.parseInt(sender.getPort()))
             .consumerId("consumer_id_1")
@@ -245,7 +245,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                 })
             .buildPushConsumer());
     consumers.add(
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(sender.getIP())
             .port(Integer.parseInt(sender.getPort()))
             .consumerId("consumer_id_2")
@@ -264,7 +264,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                 })
             .buildPushConsumer());
     consumers.add(
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(sender.getIP())
             .port(Integer.parseInt(sender.getPort()))
             .consumerId("consumer_id_3")
@@ -283,7 +283,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                 })
             .buildPushConsumer());
     consumers.add(
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(sender.getIP())
             .port(Integer.parseInt(sender.getPort()))
             .consumerId("consumer_id_4")
@@ -302,7 +302,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                 })
             .buildPushConsumer());
     consumers.add(
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(sender.getIP())
             .port(Integer.parseInt(sender.getPort()))
             .consumerId("consumer_id_5")
@@ -321,7 +321,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                 })
             .buildPushConsumer());
     consumers.add(
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(sender.getIP())
             .port(Integer.parseInt(sender.getPort()))
             .consumerId("consumer_id_6")
@@ -340,7 +340,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                 })
             .buildPushConsumer());
     consumers.add(
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(sender.getIP())
             .port(Integer.parseInt(sender.getPort()))
             .consumerId("consumer_id_7")
@@ -382,7 +382,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                 })
             .buildPushConsumer());
     consumers.add(
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(sender.getIP())
             .port(Integer.parseInt(sender.getPort()))
             .consumerId("consumer_id_8")
@@ -407,7 +407,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                 })
             .buildPushConsumer());
     consumers.add(
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(sender.getIP())
             .port(Integer.parseInt(sender.getPort()))
             .consumerId("consumer_id_9")
@@ -450,7 +450,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
             .buildPushConsumer());
 
     // open consumers
-    for (final SubscriptionPushConsumer consumer : consumers) {
+    for (final SubscriptionTreePushConsumer consumer : consumers) {
       consumer.open();
     }
 
@@ -507,7 +507,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
     LOGGER.info("rowCount6 = {}", rowCount6.get());
 
     // close consumers
-    for (final SubscriptionPushConsumer consumer : consumers) {
+    for (final SubscriptionTreePushConsumer consumer : consumers) {
       try {
         consumer.close();
       } catch (final Exception ignored) {

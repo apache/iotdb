@@ -36,21 +36,25 @@ import static java.util.Objects.requireNonNull;
 
 public class Delete extends Statement {
 
-  private final Table table;
-  @Nullable private final Expression where;
+  private Table table;
+  @Nullable private Expression where;
 
-  // generated after analysis
+  // generated after analysis or pipe transfer
   private List<TableDeletionEntry> tableDeletionEntries;
   private String databaseName;
   private Collection<TRegionReplicaSet> replicaSets;
 
-  public Delete(NodeLocation location, Table table) {
+  public Delete() {
+    super(null);
+  }
+
+  public Delete(final NodeLocation location, final Table table) {
     super(requireNonNull(location, "location is null"));
     this.table = requireNonNull(table, "table is null");
     this.where = null;
   }
 
-  public Delete(NodeLocation location, Table table, Expression where) {
+  public Delete(final NodeLocation location, final Table table, final Expression where) {
     super(requireNonNull(location, "location is null"));
     this.table = requireNonNull(table, "table is null");
     this.where = requireNonNull(where, "where is null");
@@ -65,13 +69,13 @@ public class Delete extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitDelete(this, context);
   }
 
   @Override
   public List<Node> getChildren() {
-    ImmutableList.Builder<Node> nodes = ImmutableList.builder();
+    final ImmutableList.Builder<Node> nodes = ImmutableList.builder();
     nodes.add(table);
     if (where != null) {
       nodes.add(where);
@@ -85,14 +89,14 @@ public class Delete extends Statement {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if ((obj == null) || (getClass() != obj.getClass())) {
       return false;
     }
-    Delete o = (Delete) obj;
+    final Delete o = (Delete) obj;
     return Objects.equals(table, o.table) && Objects.equals(where, o.where);
   }
 
@@ -105,7 +109,7 @@ public class Delete extends Statement {
     return tableDeletionEntries;
   }
 
-  public void setTableDeletionEntries(List<TableDeletionEntry> tableDeletionEntries) {
+  public void setTableDeletionEntries(final List<TableDeletionEntry> tableDeletionEntries) {
     this.tableDeletionEntries = tableDeletionEntries;
   }
 
@@ -113,7 +117,7 @@ public class Delete extends Statement {
     return databaseName;
   }
 
-  public void setDatabaseName(String databaseName) {
+  public void setDatabaseName(final String databaseName) {
     this.databaseName = databaseName;
   }
 
@@ -121,7 +125,7 @@ public class Delete extends Statement {
     return replicaSets;
   }
 
-  public void setReplicaSets(Collection<TRegionReplicaSet> replicaSets) {
+  public void setReplicaSets(final Collection<TRegionReplicaSet> replicaSets) {
     this.replicaSets = replicaSets;
   }
 }

@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.procedure.impl.sync;
 
 import org.apache.iotdb.commons.sync.PipeInfo;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
@@ -55,11 +54,6 @@ public class StartPipeProcedure extends AbstractOperatePipeProcedure {
     this();
     this.pipeName = pipeInfo.getPipeName();
     this.pipeInfo = pipeInfo;
-  }
-
-  @Override
-  protected boolean abort(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    return false;
   }
 
   @Override

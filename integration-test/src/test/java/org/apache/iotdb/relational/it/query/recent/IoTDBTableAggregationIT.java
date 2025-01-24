@@ -4065,19 +4065,19 @@ public class IoTDBTableAggregationIT {
         DATABASE_NAME);
     tableAssertTestFail(
         "select first() from table1",
-        "701: Aggregate functions [first] should only have two arguments",
+        "701: Aggregate functions [first] should only have one or two arguments",
         DATABASE_NAME);
     tableAssertTestFail(
         "select first_by() from table1",
-        "701: Aggregate functions [first_by] should only have three arguments",
+        "701: Aggregate functions [first_by] should only have two or three arguments",
         DATABASE_NAME);
     tableAssertTestFail(
         "select last() from table1",
-        "701: Aggregate functions [last] should only have two arguments",
+        "701: Aggregate functions [last] should only have one or two arguments",
         DATABASE_NAME);
     tableAssertTestFail(
         "select last_by() from table1",
-        "701: Aggregate functions [last_by] should only have three arguments",
+        "701: Aggregate functions [last_by] should only have two or three arguments",
         DATABASE_NAME);
   }
 
@@ -4212,6 +4212,891 @@ public class IoTDBTableAggregationIT {
     tableAssertTestFail(
         "select distinct s1 from table1 order by s2",
         "701: For SELECT DISTINCT, ORDER BY expressions must appear in select list",
+        DATABASE_NAME);
+  }
+
+  // ==================================================================
+  // ================== Agg-Function Distinct Test ====================
+  // ==================================================================
+  @Test
+  public void countDistinctTest() {
+    // test MarkDistinct
+    String[] expectedHeader =
+        new String[] {
+          "_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
+          "_col10", "_col11", "_col12", "_col13"
+        };
+    String[] retArray =
+        new String[] {
+          "2,2,4,16,5,5,5,5,2,24,32,5,10,1,",
+        };
+    // global Aggregation
+    tableResultSetEqualTest(
+        "select count(distinct province), count(distinct city), count(distinct region), count(distinct device_id), count(distinct s1), count(distinct s2), count(distinct s3), count(distinct s4), count(distinct s5), count(distinct s6), count(distinct s7), count(distinct s8), count(distinct s9), count(distinct s10) from table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "province",
+          "city",
+          "region",
+          "_col3",
+          "_col4",
+          "_col5",
+          "_col6",
+          "_col7",
+          "_col8",
+          "_col9",
+          "_col10",
+          "_col11",
+          "_col12"
+        };
+    retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,5,5,5,5,2,6,8,5,10,1,",
+          "beijing,beijing,haidian,5,5,5,5,2,6,8,5,10,1,",
+          "shanghai,shanghai,huangpu,5,5,5,5,2,6,8,5,10,1,",
+          "shanghai,shanghai,pudong,5,5,5,5,2,6,8,5,10,1,"
+        };
+    // group by Aggregation
+    tableResultSetEqualTest(
+        "select province,city,region, count(distinct s1), count(distinct s2), count(distinct s3), count(distinct s4), count(distinct s5), count(distinct s6), count(distinct s7), count(distinct s8), count(distinct s9), count(distinct s10) from table1 group by 1,2,3 order by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // test GroupByDistinctAccumulator
+    expectedHeader =
+        new String[] {
+          "region", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
+          "_col10"
+        };
+    retArray =
+        new String[] {
+          "chaoyang,5,5,5,5,2,6,8,5,10,1,",
+          "haidian,5,5,5,5,2,6,8,5,10,1,",
+          "huangpu,5,5,5,5,2,6,8,5,10,1,",
+          "pudong,5,5,5,5,2,6,8,5,10,1,"
+        };
+    tableResultSetEqualTest(
+        "select region, count(distinct s1), count(distinct s2), count(distinct s3), count(distinct s4), count(distinct s5), count(distinct s6), count(distinct s7), count(distinct s8), count(distinct s9), count(distinct s10) from table1 group by 1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void countIfDistinctTest() {
+    // test MarkDistinct
+    String[] expectedHeader =
+        new String[] {
+          "_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
+          "_col10", "_col11", "_col12", "_col13"
+        };
+    String[] retArray =
+        new String[] {
+          "1,1,1,1,0,1,1,1,1,1,1,1,1,1,",
+        };
+    // global Aggregation
+    tableResultSetEqualTest(
+        "select count_if(distinct province = 'shanghai'), count_if(distinct city = 'shanghai'), count_if(distinct region= 'huangpu'), count_if(distinct device_id = 'd03'), count_if(distinct s1 < 0), count_if(distinct s2 is not null), count_if(distinct s3 is not null), count_if(distinct s4 is not null), count_if(distinct s5 is not null), count_if(distinct s6 is not null), count_if(distinct s7 is not null), count_if(distinct s8 is not null), count_if(distinct s9 is not null), count_if(distinct s10 is not null) from table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "province",
+          "city",
+          "region",
+          "_col3",
+          "_col4",
+          "_col5",
+          "_col6",
+          "_col7",
+          "_col8",
+          "_col9",
+          "_col10",
+          "_col11",
+          "_col12"
+        };
+    retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,0,1,1,1,1,1,1,1,1,1,",
+          "beijing,beijing,haidian,0,1,1,1,1,1,1,1,1,1,",
+          "shanghai,shanghai,huangpu,0,1,1,1,1,1,1,1,1,1,",
+          "shanghai,shanghai,pudong,0,1,1,1,1,1,1,1,1,1,"
+        };
+    // group by Aggregation
+    tableResultSetEqualTest(
+        "select province,city,region, count_if(distinct s1 < 0), count_if(distinct s2 is not null), count_if(distinct s3 is not null), count_if(distinct s4 is not null), count_if(distinct s5 is not null), count_if(distinct s6 is not null), count_if(distinct s7 is not null), count_if(distinct s8 is not null), count_if(distinct s9 is not null), count_if(distinct s10 is not null) "
+            + "from table1 group by 1,2,3 order by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // test GroupByDistinctAccumulator
+    expectedHeader =
+        new String[] {
+          "region", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
+          "_col10"
+        };
+    retArray =
+        new String[] {
+          "chaoyang,0,1,1,1,1,1,1,1,1,1,",
+          "haidian,0,1,1,1,1,1,1,1,1,1,",
+          "huangpu,0,1,1,1,1,1,1,1,1,1,",
+          "pudong,0,1,1,1,1,1,1,1,1,1,"
+        };
+    tableResultSetEqualTest(
+        "select region, count_if(distinct s1 < 0), count_if(distinct s2 is not null), count_if(distinct s3 is not null), count_if(distinct s4 is not null), count_if(distinct s5 is not null), count_if(distinct s6 is not null), count_if(distinct s7 is not null), count_if(distinct s8 is not null), count_if(distinct s9 is not null), count_if(distinct s10 is not null) "
+            + "from table1 group by 1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void avgDistinctTest() {
+    // test MarkDistinct
+    String[] expectedHeader = new String[] {"_col0", "_col1", "_col2", "_col3"};
+    String[] retArray =
+        new String[] {
+          "40.4,40400.0,39.4,42.4,",
+        };
+    // global Aggregation
+    tableResultSetEqualTest(
+        "select avg(distinct s1), avg(distinct s2), avg(distinct s3), avg(distinct s4) from table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {"province", "city", "region", "_col3", "_col4", "_col5", "_col6"};
+    retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,40.4,40400.0,39.4,42.4,",
+          "beijing,beijing,haidian,40.4,40400.0,39.4,42.4,",
+          "shanghai,shanghai,huangpu,40.4,40400.0,39.4,42.4,",
+          "shanghai,shanghai,pudong,40.4,40400.0,39.4,42.4,"
+        };
+    // group by Aggregation
+    tableResultSetEqualTest(
+        "select province,city,region, avg(distinct s1), avg(distinct s2), avg(distinct s3), avg(distinct s4) from table1 group by 1,2,3 order by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // test GroupByDistinctAccumulator
+    expectedHeader = new String[] {"region", "_col1", "_col2", "_col3", "_col4"};
+    retArray =
+        new String[] {
+          "chaoyang,40.4,40400.0,39.4,42.4,",
+          "haidian,40.4,40400.0,39.4,42.4,",
+          "huangpu,40.4,40400.0,39.4,42.4,",
+          "pudong,40.4,40400.0,39.4,42.4,"
+        };
+    tableResultSetEqualTest(
+        "select region, avg(distinct s1), avg(distinct s2), avg(distinct s3), avg(distinct s4) from table1 group by 1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void sumDistinctTest() {
+    // test MarkDistinct
+    String[] expectedHeader = new String[] {"_col0", "_col1", "_col2", "_col3"};
+    String[] retArray =
+        new String[] {
+          "202.0,202000.0,197.0,212.0,",
+        };
+    // global Aggregation
+    tableResultSetEqualTest(
+        "select sum(distinct s1), sum(distinct s2), sum(distinct s3), sum(distinct s4) from table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {"province", "city", "region", "_col3", "_col4", "_col5", "_col6"};
+    retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,202.0,202000.0,197.0,212.0,",
+          "beijing,beijing,haidian,202.0,202000.0,197.0,212.0,",
+          "shanghai,shanghai,huangpu,202.0,202000.0,197.0,212.0,",
+          "shanghai,shanghai,pudong,202.0,202000.0,197.0,212.0,"
+        };
+    // group by Aggregation
+    tableResultSetEqualTest(
+        "select province,city,region, sum(distinct s1), sum(distinct s2), sum(distinct s3), sum(distinct s4) from table1 group by 1,2,3 order by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // test GroupByDistinctAccumulator
+    expectedHeader = new String[] {"region", "_col1", "_col2", "_col3", "_col4"};
+    retArray =
+        new String[] {
+          "chaoyang,202.0,202000.0,197.0,212.0,",
+          "haidian,202.0,202000.0,197.0,212.0,",
+          "huangpu,202.0,202000.0,197.0,212.0,",
+          "pudong,202.0,202000.0,197.0,212.0,"
+        };
+    tableResultSetEqualTest(
+        "select region, sum(distinct s1), sum(distinct s2), sum(distinct s3), sum(distinct s4) from table1 group by 1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void minDistinctTest() {
+    // test MarkDistinct
+    String[] expectedHeader =
+        new String[] {
+          "_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
+          "_col10", "_col11", "_col12", "_col13"
+        };
+    String[] retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,d01,30,31000,30.0,35.0,false,beijing_chaoyang_red_A_d09_30,beijing_chaoyang_red_A_d09_35,0xcafebabe30,2024-09-24T06:15:30.000Z,2024-09-24,",
+        };
+    // global Aggregation
+    tableResultSetEqualTest(
+        "select min(distinct province), min(distinct city), min(distinct region), min(distinct device_id), min(distinct s1), min(distinct s2), min(distinct s3), min(distinct s4), min(distinct s5), min(distinct s6), min(distinct s7), min(distinct s8), min(distinct s9), min(distinct s10) from table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "province",
+          "city",
+          "region",
+          "_col3",
+          "_col4",
+          "_col5",
+          "_col6",
+          "_col7",
+          "_col8",
+          "_col9",
+          "_col10",
+          "_col11",
+          "_col12",
+          "_col13"
+        };
+    retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,d09,30,31000,30.0,35.0,false,beijing_chaoyang_red_A_d09_30,beijing_chaoyang_red_A_d09_35,0xcafebabe30,2024-09-24T06:15:30.000Z,2024-09-24,",
+          "beijing,beijing,haidian,d13,30,31000,30.0,35.0,false,beijing_haidian_red_A_d13_30,beijing_haidian_red_A_d13_35,0xcafebabe30,2024-09-24T06:15:30.000Z,2024-09-24,",
+          "shanghai,shanghai,huangpu,d01,30,31000,30.0,35.0,false,shanghai_huangpu_red_A_d01_30,shanghai_huangpu_red_A_d01_35,0xcafebabe30,2024-09-24T06:15:30.000Z,2024-09-24,",
+          "shanghai,shanghai,pudong,d05,30,31000,30.0,35.0,false,shanghai_pudong_red_A_d05_30,shanghai_pudong_red_A_d05_35,0xcafebabe30,2024-09-24T06:15:30.000Z,2024-09-24,"
+        };
+    // group by Aggregation
+    tableResultSetEqualTest(
+        "select province,city,region, min(distinct device_id), min(distinct s1), min(distinct s2), min(distinct s3), min(distinct s4), min(distinct s5), min(distinct s6), min(distinct s7), min(distinct s8), min(distinct s9), min(distinct s10)  from table1 group by 1,2,3 order by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // test GroupByDistinctAccumulator
+    expectedHeader =
+        new String[] {
+          "region", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
+          "_col10", "_col11"
+        };
+    retArray =
+        new String[] {
+          "chaoyang,d09,30,31000,30.0,35.0,false,beijing_chaoyang_red_A_d09_30,beijing_chaoyang_red_A_d09_35,0xcafebabe30,2024-09-24T06:15:30.000Z,2024-09-24,",
+          "haidian,d13,30,31000,30.0,35.0,false,beijing_haidian_red_A_d13_30,beijing_haidian_red_A_d13_35,0xcafebabe30,2024-09-24T06:15:30.000Z,2024-09-24,",
+          "huangpu,d01,30,31000,30.0,35.0,false,shanghai_huangpu_red_A_d01_30,shanghai_huangpu_red_A_d01_35,0xcafebabe30,2024-09-24T06:15:30.000Z,2024-09-24,",
+          "pudong,d05,30,31000,30.0,35.0,false,shanghai_pudong_red_A_d05_30,shanghai_pudong_red_A_d05_35,0xcafebabe30,2024-09-24T06:15:30.000Z,2024-09-24,"
+        };
+    tableResultSetEqualTest(
+        "select region, min(distinct device_id), min(distinct s1), min(distinct s2), min(distinct s3), min(distinct s4), min(distinct s5), min(distinct s6), min(distinct s7), min(distinct s8), min(distinct s9), min(distinct s10)  from table1 group by 1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void minByDistinctTest() {
+    // test MarkDistinct
+    String[] expectedHeader =
+        new String[] {"_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7"};
+    String[] retArray =
+        new String[] {
+          "2024-09-24T06:15:36.000Z,2024-09-24T06:15:31.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:36.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:31.000Z,2024-09-24T06:15:36.000Z,",
+        };
+    tableResultSetEqualTest(
+        "select min_by(distinct time, s1), min_by(distinct time, s2), min_by(distinct time, s3), min_by(distinct time, s4), min_by(distinct time, s5), min_by(distinct time, s6), min_by(distinct time, s9), min_by(distinct time, s10) "
+            + "from table1 where device_id='d11'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "device_id", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8"
+        };
+    retArray =
+        new String[] {
+          "d03,2024-09-24T06:15:36.000Z,2024-09-24T06:15:31.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:36.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:31.000Z,2024-09-24T06:15:36.000Z,",
+          "d11,2024-09-24T06:15:36.000Z,2024-09-24T06:15:31.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:36.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:31.000Z,2024-09-24T06:15:36.000Z,"
+        };
+
+    // test GroupByDistinctAccumulator
+    tableResultSetEqualTest(
+        "select device_id, min_by(distinct time, s1), min_by(distinct time, s2), min_by(distinct time, s3), min_by(distinct time, s4), min_by(distinct time, s5), min_by(distinct time, s6), min_by(distinct time, s9), min_by(distinct time, s10) "
+            + "from table1 where device_id='d11' or device_id='d03' group by 1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void maxDistinctTest() {
+    // test MarkDistinct
+    String[] expectedHeader =
+        new String[] {
+          "_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
+          "_col10", "_col11", "_col12", "_col13"
+        };
+    String[] retArray =
+        new String[] {
+          "shanghai,shanghai,pudong,d16,55,50000,51.0,55.0,true,shanghai_pudong_yellow_B_d08_55,shanghai_pudong_yellow_B_d08_30,0xcafebabe55,2024-09-24T06:15:55.000Z,2024-09-24,",
+        };
+    // global Aggregation
+    tableResultSetEqualTest(
+        "select max(distinct province), max(distinct city), max(distinct region), max(distinct device_id), max(distinct s1), max(distinct s2), max(distinct s3), max(distinct s4), max(distinct s5), max(distinct s6), max(distinct s7), max(distinct s8), max(distinct s9), max(distinct s10) from table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "province",
+          "city",
+          "region",
+          "_col3",
+          "_col4",
+          "_col5",
+          "_col6",
+          "_col7",
+          "_col8",
+          "_col9",
+          "_col10",
+          "_col11",
+          "_col12",
+          "_col13"
+        };
+    retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,d12,55,50000,51.0,55.0,true,beijing_chaoyang_yellow_B_d12_55,beijing_chaoyang_yellow_B_d12_30,0xcafebabe55,2024-09-24T06:15:55.000Z,2024-09-24,",
+          "beijing,beijing,haidian,d16,55,50000,51.0,55.0,true,beijing_haidian_yellow_B_d16_55,beijing_haidian_yellow_B_d16_30,0xcafebabe55,2024-09-24T06:15:55.000Z,2024-09-24,",
+          "shanghai,shanghai,huangpu,d04,55,50000,51.0,55.0,true,shanghai_huangpu_yellow_B_d04_55,shanghai_huangpu_yellow_B_d04_30,0xcafebabe55,2024-09-24T06:15:55.000Z,2024-09-24,",
+          "shanghai,shanghai,pudong,d08,55,50000,51.0,55.0,true,shanghai_pudong_yellow_B_d08_55,shanghai_pudong_yellow_B_d08_30,0xcafebabe55,2024-09-24T06:15:55.000Z,2024-09-24,"
+        };
+    // group by Aggregation
+    tableResultSetEqualTest(
+        "select province,city,region,max(distinct device_id), max(distinct s1), max(distinct s2), max(distinct s3), max(distinct s4), max(distinct s5), max(distinct s6), max(distinct s7), max(distinct s8), max(distinct s9), max(distinct s10)  from table1 group by 1,2,3 order by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // test GroupByDistinctAccumulator
+    expectedHeader =
+        new String[] {
+          "region", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
+          "_col10", "_col11"
+        };
+    retArray =
+        new String[] {
+          "chaoyang,d12,55,50000,51.0,55.0,true,beijing_chaoyang_yellow_B_d12_55,beijing_chaoyang_yellow_B_d12_30,0xcafebabe55,2024-09-24T06:15:55.000Z,2024-09-24,",
+          "haidian,d16,55,50000,51.0,55.0,true,beijing_haidian_yellow_B_d16_55,beijing_haidian_yellow_B_d16_30,0xcafebabe55,2024-09-24T06:15:55.000Z,2024-09-24,",
+          "huangpu,d04,55,50000,51.0,55.0,true,shanghai_huangpu_yellow_B_d04_55,shanghai_huangpu_yellow_B_d04_30,0xcafebabe55,2024-09-24T06:15:55.000Z,2024-09-24,",
+          "pudong,d08,55,50000,51.0,55.0,true,shanghai_pudong_yellow_B_d08_55,shanghai_pudong_yellow_B_d08_30,0xcafebabe55,2024-09-24T06:15:55.000Z,2024-09-24,"
+        };
+    tableResultSetEqualTest(
+        "select region,max(distinct device_id), max(distinct s1), max(distinct s2), max(distinct s3), max(distinct s4), max(distinct s5), max(distinct s6), max(distinct s7), max(distinct s8), max(distinct s9), max(distinct s10) from table1 group by 1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void maxByDistinctTest() {
+    // test MarkDistinct
+    String[] expectedHeader =
+        new String[] {"_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7"};
+    String[] retArray =
+        new String[] {
+          "2024-09-24T06:15:41.000Z,2024-09-24T06:15:46.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:46.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:36.000Z,",
+        };
+    tableResultSetEqualTest(
+        "select max_by(distinct time, s1), max_by(distinct time, s2), max_by(distinct time, s3), max_by(distinct time, s4), max_by(distinct time, s5), max_by(distinct time, s6), max_by(distinct time, s9), max_by(distinct time, s10) "
+            + "from table1 where device_id='d11'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "device_id", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8"
+        };
+    retArray =
+        new String[] {
+          "d03,2024-09-24T06:15:41.000Z,2024-09-24T06:15:46.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:46.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:36.000Z,",
+          "d11,2024-09-24T06:15:41.000Z,2024-09-24T06:15:46.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:46.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:36.000Z,"
+        };
+
+    // test GroupByDistinctAccumulator
+    tableResultSetEqualTest(
+        "select device_id, max_by(distinct time, s1), max_by(distinct time, s2), max_by(distinct time, s3), max_by(distinct time, s4), max_by(distinct time, s5), max_by(distinct time, s6), max_by(distinct time, s9), max_by(distinct time, s10) "
+            + "from table1 where device_id='d11' or device_id='d03' group by 1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void firstDistinctTest() {
+    // test MarkDistinct
+    String[] expectedHeader =
+        new String[] {
+          "_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9"
+        };
+    String[] retArray =
+        new String[] {
+          "36,31000,41.0,36.0,false,beijing_chaoyang_yellow_A_d11_41,beijing_chaoyang_yellow_A_d11_36,0xcafebabe31,2024-09-24T06:15:31.000Z,2024-09-24,",
+        };
+    // global Aggregation
+    tableResultSetEqualTest(
+        "select first(distinct s1), first(distinct s2), first(distinct s3), first(distinct s4), first(distinct s5), first(distinct s6), first(distinct s7), first(distinct s8), first(distinct s9), first(distinct s10) "
+            + "from table1 where device_id='d11'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "province",
+          "city",
+          "region",
+          "_col3",
+          "_col4",
+          "_col5",
+          "_col6",
+          "_col7",
+          "_col8",
+          "_col9",
+          "_col10",
+          "_col11",
+          "_col12"
+        };
+    retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,36,31000,41.0,36.0,false,beijing_chaoyang_yellow_A_d11_41,beijing_chaoyang_yellow_A_d11_36,0xcafebabe31,2024-09-24T06:15:31.000Z,2024-09-24,",
+          "shanghai,shanghai,huangpu,36,31000,41.0,36.0,false,shanghai_huangpu_yellow_A_d03_41,shanghai_huangpu_yellow_A_d03_36,0xcafebabe31,2024-09-24T06:15:31.000Z,2024-09-24,"
+        };
+    // group by Aggregation
+    tableResultSetEqualTest(
+        "select province,city,region, first(distinct s1), first(distinct s2), first(distinct s3), first(distinct s4), first(distinct s5), first(distinct s6), first(distinct s7), first(distinct s8), first(distinct s9), first(distinct s10) "
+            + "from table1 where device_id='d11' or device_id='d03' group by 1,2,3 order by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // test GroupByDistinctAccumulator
+    expectedHeader =
+        new String[] {
+          "region", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
+          "_col10"
+        };
+    retArray =
+        new String[] {
+          "chaoyang,36,31000,41.0,36.0,false,beijing_chaoyang_yellow_A_d11_41,beijing_chaoyang_yellow_A_d11_36,0xcafebabe31,2024-09-24T06:15:31.000Z,2024-09-24,",
+          "huangpu,36,31000,41.0,36.0,false,shanghai_huangpu_yellow_A_d03_41,shanghai_huangpu_yellow_A_d03_36,0xcafebabe31,2024-09-24T06:15:31.000Z,2024-09-24,"
+        };
+    tableResultSetEqualTest(
+        "select region, first(distinct s1), first(distinct s2), first(distinct s3), first(distinct s4), first(distinct s5), first(distinct s6), first(distinct s7), first(distinct s8), first(distinct s9), first(distinct s10) "
+            + "from table1 where device_id='d11' or device_id='d03' group by 1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void firstByDistinctTest() {
+    // test MarkDistinct
+    String[] expectedHeader =
+        new String[] {
+          "_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9"
+        };
+    String[] retArray =
+        new String[] {
+          "2024-09-24T06:15:36.000Z,2024-09-24T06:15:31.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:36.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:36.000Z,2024-09-24T06:15:31.000Z,2024-09-24T06:15:31.000Z,2024-09-24T06:15:36.000Z,",
+        };
+    // global Aggregation
+    tableResultSetEqualTest(
+        "select first_by(distinct time, s1), first_by(distinct time, s2), first_by(distinct time, s3), first_by(distinct time, s4), first_by(distinct time, s5), first_by(distinct time, s6), first_by(distinct time, s7), first_by(distinct time, s8), first_by(distinct time, s9), first_by(distinct time, s10) "
+            + "from table1 where device_id='d11'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "province",
+          "city",
+          "region",
+          "_col3",
+          "_col4",
+          "_col5",
+          "_col6",
+          "_col7",
+          "_col8",
+          "_col9",
+          "_col10",
+          "_col11",
+          "_col12"
+        };
+    retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,2024-09-24T06:15:36.000Z,2024-09-24T06:15:31.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:36.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:36.000Z,2024-09-24T06:15:31.000Z,2024-09-24T06:15:31.000Z,2024-09-24T06:15:36.000Z,",
+          "shanghai,shanghai,huangpu,2024-09-24T06:15:36.000Z,2024-09-24T06:15:31.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:36.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:36.000Z,2024-09-24T06:15:31.000Z,2024-09-24T06:15:31.000Z,2024-09-24T06:15:36.000Z,",
+        };
+    // group by Aggregation
+    tableResultSetEqualTest(
+        "select province,city,region, first_by(distinct time, s1), first_by(distinct time, s2), first_by(distinct time, s3), first_by(distinct time, s4), first_by(distinct time, s5), first_by(distinct time, s6), first_by(distinct time, s7), first_by(distinct time, s8), first_by(distinct time, s9), first_by(distinct time, s10) "
+            + "from table1 where device_id='d11' or device_id='d03' group by 1,2,3 order by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // test GroupByDistinctAccumulator
+    expectedHeader =
+        new String[] {
+          "region", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
+          "_col10"
+        };
+    retArray =
+        new String[] {
+          "chaoyang,2024-09-24T06:15:36.000Z,2024-09-24T06:15:31.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:36.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:36.000Z,2024-09-24T06:15:31.000Z,2024-09-24T06:15:31.000Z,2024-09-24T06:15:36.000Z,",
+          "huangpu,2024-09-24T06:15:36.000Z,2024-09-24T06:15:31.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:36.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:36.000Z,2024-09-24T06:15:31.000Z,2024-09-24T06:15:31.000Z,2024-09-24T06:15:36.000Z,",
+        };
+    tableResultSetEqualTest(
+        "select region, first_by(distinct time, s1), first_by(distinct time, s2), first_by(distinct time, s3), first_by(distinct time, s4), first_by(distinct time, s5), first_by(distinct time, s6), first_by(distinct time, s7), first_by(distinct time, s8), first_by(distinct time, s9), first_by(distinct time, s10) "
+            + "from table1 where device_id='d11' or device_id='d03' group by 1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void lastDistinctTest() {
+    // test MarkDistinct
+    String[] expectedHeader =
+        new String[] {
+          "_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9"
+        };
+    String[] retArray =
+        new String[] {
+          "41,46000,51.0,46.0,false,beijing_chaoyang_yellow_A_d11_51,beijing_chaoyang_yellow_A_d11_46,0xcafebabe41,2024-09-24T06:15:51.000Z,2024-09-24,",
+        };
+    // global Aggregation
+    tableResultSetEqualTest(
+        "select last(distinct s1), last(distinct s2), last(distinct s3), last(distinct s4), last(distinct s5), last(distinct s6), last(distinct s7), last(distinct s8), last(distinct s9), last(distinct s10) "
+            + "from table1 where device_id='d11'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "province",
+          "city",
+          "region",
+          "_col3",
+          "_col4",
+          "_col5",
+          "_col6",
+          "_col7",
+          "_col8",
+          "_col9",
+          "_col10",
+          "_col11",
+          "_col12"
+        };
+    retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,41,46000,51.0,46.0,false,beijing_chaoyang_yellow_A_d11_51,beijing_chaoyang_yellow_A_d11_46,0xcafebabe41,2024-09-24T06:15:51.000Z,2024-09-24,",
+          "shanghai,shanghai,huangpu,41,46000,51.0,46.0,false,shanghai_huangpu_yellow_A_d03_51,shanghai_huangpu_yellow_A_d03_46,0xcafebabe41,2024-09-24T06:15:51.000Z,2024-09-24,"
+        };
+    // group by Aggregation
+    tableResultSetEqualTest(
+        "select province,city,region, last(distinct s1), last(distinct s2), last(distinct s3), last(distinct s4), last(distinct s5), last(distinct s6), last(distinct s7), last(distinct s8), last(distinct s9), last(distinct s10) "
+            + "from table1 where device_id='d11' or device_id='d03' group by 1,2,3 order by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // test GroupByDistinctAccumulator
+    expectedHeader =
+        new String[] {
+          "region", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
+          "_col10"
+        };
+    retArray =
+        new String[] {
+          "chaoyang,41,46000,51.0,46.0,false,beijing_chaoyang_yellow_A_d11_51,beijing_chaoyang_yellow_A_d11_46,0xcafebabe41,2024-09-24T06:15:51.000Z,2024-09-24,",
+          "huangpu,41,46000,51.0,46.0,false,shanghai_huangpu_yellow_A_d03_51,shanghai_huangpu_yellow_A_d03_46,0xcafebabe41,2024-09-24T06:15:51.000Z,2024-09-24,"
+        };
+    tableResultSetEqualTest(
+        "select region, last(distinct s1), last(distinct s2), last(distinct s3), last(distinct s4), last(distinct s5), last(distinct s6), last(distinct s7), last(distinct s8), last(distinct s9), last(distinct s10) "
+            + "from table1 where device_id='d11' or device_id='d03' group by 1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void lastByDistinctTest() {
+    // test MarkDistinct
+    String[] expectedHeader =
+        new String[] {
+          "_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9"
+        };
+    String[] retArray =
+        new String[] {
+          "2024-09-24T06:15:41.000Z,2024-09-24T06:15:46.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:46.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:46.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:36.000Z,",
+        };
+    // global Aggregation
+    tableResultSetEqualTest(
+        "select last_by(distinct time, s1), last_by(distinct time, s2), last_by(distinct time, s3), last_by(distinct time, s4), last_by(distinct time, s5), last_by(distinct time, s6), last_by(distinct time, s7), last_by(distinct time, s8), last_by(distinct time, s9), last_by(distinct time, s10) "
+            + "from table1 where device_id='d11'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "province",
+          "city",
+          "region",
+          "_col3",
+          "_col4",
+          "_col5",
+          "_col6",
+          "_col7",
+          "_col8",
+          "_col9",
+          "_col10",
+          "_col11",
+          "_col12"
+        };
+    retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,2024-09-24T06:15:41.000Z,2024-09-24T06:15:46.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:46.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:46.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:36.000Z,",
+          "shanghai,shanghai,huangpu,2024-09-24T06:15:41.000Z,2024-09-24T06:15:46.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:46.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:46.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:36.000Z,",
+        };
+    // group by Aggregation
+    tableResultSetEqualTest(
+        "select province,city,region, last_by(distinct time, s1), last_by(distinct time, s2), last_by(distinct time, s3), last_by(distinct time, s4), last_by(distinct time, s5), last_by(distinct time, s6), last_by(distinct time, s7), last_by(distinct time, s8), last_by(distinct time, s9), first_by(distinct time, s10) "
+            + "from table1 where device_id='d11' or device_id='d03' group by 1,2,3 order by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // test GroupByDistinctAccumulator
+    expectedHeader =
+        new String[] {
+          "region", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
+          "_col10"
+        };
+    retArray =
+        new String[] {
+          "chaoyang,2024-09-24T06:15:41.000Z,2024-09-24T06:15:46.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:46.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:46.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:36.000Z,",
+          "huangpu,2024-09-24T06:15:41.000Z,2024-09-24T06:15:46.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:46.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:46.000Z,2024-09-24T06:15:41.000Z,2024-09-24T06:15:51.000Z,2024-09-24T06:15:36.000Z,",
+        };
+    tableResultSetEqualTest(
+        "select region, last_by(distinct time, s1), last_by(distinct time, s2), last_by(distinct time, s3), last_by(distinct time, s4), last_by(distinct time, s5), last_by(distinct time, s6), last_by(distinct time, s7), last_by(distinct time, s8), last_by(distinct time, s9), first_by(distinct time, s10) "
+            + "from table1 where device_id='d11' or device_id='d03' group by 1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void extremeDistinctTest() {
+    // test MarkDistinct
+    String[] expectedHeader = new String[] {"_col0", "_col1", "_col2", "_col3"};
+    String[] retArray =
+        new String[] {
+          "55,50000,51.0,55.0,",
+        };
+    // global Aggregation
+    tableResultSetEqualTest(
+        "select extreme(distinct s1), extreme(distinct s2), extreme(distinct s3), extreme(distinct s4) from table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {"province", "city", "region", "_col3", "_col4", "_col5", "_col6"};
+    retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,55,50000,51.0,55.0,",
+          "beijing,beijing,haidian,55,50000,51.0,55.0,",
+          "shanghai,shanghai,huangpu,55,50000,51.0,55.0,",
+          "shanghai,shanghai,pudong,55,50000,51.0,55.0,"
+        };
+    // group by Aggregation
+    tableResultSetEqualTest(
+        "select province,city,region, extreme(distinct s1), extreme(distinct s2), extreme(distinct s3), extreme(distinct s4) from table1 group by 1,2,3 order by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // test GroupByDistinctAccumulator
+    expectedHeader = new String[] {"region", "_col1", "_col2", "_col3", "_col4"};
+    retArray =
+        new String[] {
+          "chaoyang,55,50000,51.0,55.0,",
+          "haidian,55,50000,51.0,55.0,",
+          "huangpu,55,50000,51.0,55.0,",
+          "pudong,55,50000,51.0,55.0,"
+        };
+    tableResultSetEqualTest(
+        "select region, extreme(distinct s1), extreme(distinct s2), extreme(distinct s3), extreme(distinct s4) from table1 group by 1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void varianceDistinctTest() {
+    // The addInput logic of all variance functions are the same, so test any one function is ok.
+    String[] expectedHeader = new String[] {"_col0", "_col1", "_col2", "_col3"};
+    String[] retArray =
+        new String[] {
+          "68.2,4.824E7,49.0,54.6,",
+        };
+    tableResultSetEqualTest(
+        "select round(VAR_POP(distinct s1),1), round(VAR_POP(distinct s2),1), round(VAR_POP(distinct s3),1), round(VAR_POP(distinct s4),1) from table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {"province", "city", "region", "_col3", "_col4", "_col5", "_col6"};
+    retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,68.2,4.824E7,49.0,54.6,",
+          "beijing,beijing,haidian,68.2,4.824E7,49.0,54.6,",
+          "shanghai,shanghai,huangpu,68.2,4.824E7,49.0,54.6,",
+          "shanghai,shanghai,pudong,68.2,4.824E7,49.0,54.6,"
+        };
+    tableResultSetEqualTest(
+        "select province,city,region, round(VAR_POP(distinct s1),1), round(VAR_POP(distinct s2),1), round(VAR_POP(distinct s3),1), round(VAR_POP(distinct s4),1) from table1 group by 1,2,3 order by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // test GroupByDistinctAccumulator
+    expectedHeader = new String[] {"region", "_col1", "_col2", "_col3", "_col4"};
+    retArray =
+        new String[] {
+          "chaoyang,68.2,4.824E7,49.0,54.6,",
+          "haidian,68.2,4.824E7,49.0,54.6,",
+          "huangpu,68.2,4.824E7,49.0,54.6,",
+          "pudong,68.2,4.824E7,49.0,54.6,"
+        };
+    tableResultSetEqualTest(
+        "select region, round(VAR_POP(distinct s1),1), round(VAR_POP(distinct s2),1), round(VAR_POP(distinct s3),1), round(VAR_POP(distinct s4),1) from table1 group by 1 order by 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void mixedTest() {
+    String[] expectedHeader = new String[] {"_col0", "_col1"};
+    String[] retArray =
+        new String[] {
+          "32,5,",
+        };
+
+    tableResultSetEqualTest(
+        "select count(s1), count(distinct s1) from table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"province", "city", "region", "device_id", "_col4", "_col5"};
+    retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,d09,3,3,",
+          "beijing,beijing,chaoyang,d10,2,2,",
+          "beijing,beijing,chaoyang,d11,2,2,",
+          "beijing,beijing,chaoyang,d12,1,1,",
+          "beijing,beijing,haidian,d13,3,3,",
+          "beijing,beijing,haidian,d14,2,2,",
+          "beijing,beijing,haidian,d15,2,2,",
+          "beijing,beijing,haidian,d16,1,1,",
+          "shanghai,shanghai,huangpu,d01,3,3,",
+          "shanghai,shanghai,huangpu,d02,2,2,",
+          "shanghai,shanghai,huangpu,d03,2,2,",
+          "shanghai,shanghai,huangpu,d04,1,1,",
+          "shanghai,shanghai,pudong,d05,3,3,",
+          "shanghai,shanghai,pudong,d06,2,2,",
+          "shanghai,shanghai,pudong,d07,2,2,",
+          "shanghai,shanghai,pudong,d08,1,1,",
+        };
+    tableResultSetEqualTest(
+        "select province,city,region,device_id,count(s1), count(distinct s1) from table1 group by 1,2,3,4 order by 1,2,3,4",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void singleInputDistinctAggregationTest() {
+    String[] expectedHeader = new String[] {"_col0", "_col1"};
+    String[] retArray =
+        new String[] {
+          "5,40.4,",
+        };
+
+    tableResultSetEqualTest(
+        "select count(distinct s1), avg(distinct s1) from table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"province", "city", "region", "_col3", "_col4"};
+    retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,5,40.4,",
+          "beijing,beijing,haidian,5,40.4,",
+          "shanghai,shanghai,huangpu,5,40.4,",
+          "shanghai,shanghai,pudong,5,40.4,"
+        };
+    tableResultSetEqualTest(
+        "select province,city,region,count(distinct s1), avg(distinct s1) from table1 group by 1,2,3 order by 1,2,3",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void exceptionTest2() {
+    tableAssertTestFail(
+        "select count(distinct *) from table1",
+        "mismatched input '*'. Expecting: <expression>",
         DATABASE_NAME);
   }
 }

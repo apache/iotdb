@@ -62,6 +62,7 @@ import org.apache.iotdb.commons.sync.TsFilePipeInfo;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFType;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
@@ -85,10 +86,13 @@ import org.apache.iotdb.confignode.consensus.request.write.function.DropTableMod
 import org.apache.iotdb.confignode.consensus.request.write.function.DropTreeModelFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.UpdateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.AutoCleanPartitionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
@@ -177,6 +181,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -441,6 +446,22 @@ public class ConfigPhysicalPlanSerDeTest {
     req0.setAssignedDataPartition(assignedDataPartition);
     CreateDataPartitionPlan req1 =
         (CreateDataPartitionPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0, req1);
+  }
+
+  @Test
+  public void AutoCleanPartitionTablePlan() throws IOException {
+    Map<String, Long> databaseTTLMap = new TreeMap<>();
+    databaseTTLMap.put("root.db1", -1L); // NULL_TTL
+    databaseTTLMap.put("root.db2", 3600L * 1000 * 24); // 1d_TTL
+    databaseTTLMap.put("root.db3", 3600L * 1000 * 24 * 30); // 1m_TTL
+    TTimePartitionSlot currentTimeSlot =
+        new TTimePartitionSlot(TimePartitionUtils.getTimePartitionSlot(System.currentTimeMillis()));
+    AutoCleanPartitionTablePlan req0 =
+        new AutoCleanPartitionTablePlan(databaseTTLMap, currentTimeSlot);
+    AutoCleanPartitionTablePlan req1 =
+        (AutoCleanPartitionTablePlan)
+            ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
@@ -1679,6 +1700,44 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(
         pipeDeactivateTemplatePlan,
         ConfigPhysicalPlan.Factory.create(pipeDeactivateTemplatePlan.serializeToByteBuffer()));
+  }
+
+  @Test
+  public void pipeCreateTablePlanTest() throws IOException {
+    final TsTable table = new TsTable("table1");
+    table.addColumnSchema(new TagColumnSchema("Id", TSDataType.STRING));
+    table.addColumnSchema(new AttributeColumnSchema("Attr", TSDataType.STRING));
+    table.addColumnSchema(
+        new FieldColumnSchema(
+            "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
+    final PipeCreateTablePlan pipeCreateTablePlan0 =
+        new PipeCreateTablePlan("root.database1", table);
+    final PipeCreateTablePlan pipeCreateTablePlan1 =
+        (PipeCreateTablePlan)
+            ConfigPhysicalPlan.Factory.create(pipeCreateTablePlan0.serializeToByteBuffer());
+
+    Assert.assertEquals(pipeCreateTablePlan0.getDatabase(), pipeCreateTablePlan1.getDatabase());
+    Assert.assertEquals(
+        pipeCreateTablePlan0.getTable().getTableName(),
+        pipeCreateTablePlan1.getTable().getTableName());
+    Assert.assertEquals(
+        pipeCreateTablePlan0.getTable().getColumnNum(),
+        pipeCreateTablePlan1.getTable().getColumnNum());
+    Assert.assertEquals(
+        pipeCreateTablePlan0.getTable().getIdNums(), pipeCreateTablePlan1.getTable().getIdNums());
+  }
+
+  @Test
+  public void pipeDeleteDevicesPlanTest() throws IOException {
+    final PipeDeleteDevicesPlan originalPlan =
+        new PipeDeleteDevicesPlan(
+            "root.database1",
+            "table1",
+            new byte[] {0, 1, 2},
+            new byte[] {0, 1, 2},
+            new byte[] {0, 1, 2});
+    Assert.assertEquals(
+        originalPlan, ConfigPhysicalPlan.Factory.create(originalPlan.serializeToByteBuffer()));
   }
 
   @Test

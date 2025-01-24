@@ -1214,7 +1214,7 @@ enable_auto_repair_compaction=true
 cross_selector=rewrite
 
 # the compaction performer of cross space compaction task
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Options: read_point, fast
 cross_performer=fast
 
@@ -1224,7 +1224,7 @@ cross_performer=fast
 inner_seq_selector=size_tiered_multi_target
 
 # the performer of inner sequence space compaction task
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Options: read_chunk, fast
 inner_seq_performer=read_chunk
 
@@ -1234,7 +1234,7 @@ inner_seq_performer=read_chunk
 inner_unseq_selector=size_tiered_multi_target
 
 # the performer of inner unsequence space compaction task
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Options: read_point, fast
 inner_unseq_performer=fast
 

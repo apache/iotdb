@@ -52,8 +52,8 @@ public class AlterTableColumnDataTypeProcedure
   private String columnName;
   private TSDataType dataType;
 
-  public AlterTableColumnDataTypeProcedure() {
-    super();
+  public AlterTableColumnDataTypeProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   public AlterTableColumnDataTypeProcedure(
@@ -61,8 +61,9 @@ public class AlterTableColumnDataTypeProcedure
       final String tableName,
       final String queryId,
       final String columnName,
-      final TSDataType dataType) {
-    super(database, tableName, queryId);
+      final TSDataType dataType,
+      final boolean isGeneratedByPipe) {
+    super(database, tableName, queryId, isGeneratedByPipe);
     this.columnName = columnName;
     this.dataType = dataType;
   }

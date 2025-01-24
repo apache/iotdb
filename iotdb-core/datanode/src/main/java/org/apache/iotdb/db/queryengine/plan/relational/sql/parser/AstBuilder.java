@@ -125,6 +125,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QueryBody;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
@@ -160,8 +161,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
@@ -183,6 +186,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
@@ -222,6 +227,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
@@ -1157,6 +1163,16 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitRemoveDataNodeStatement(RelationalSqlParser.RemoveDataNodeStatementContext ctx) {
+    List<Integer> nodeIds =
+        ctx.INTEGER_VALUE().stream()
+            .map(TerminalNode::getText)
+            .map(Integer::valueOf)
+            .collect(Collectors.toList());
+    return new RemoveDataNode(nodeIds);
+  }
+
+  @Override
   public Node visitFlushStatement(final RelationalSqlParser.FlushStatementContext ctx) {
     final FlushStatement flushStatement = new FlushStatement(StatementType.FLUSH);
     List<String> storageGroups = null;
@@ -1196,11 +1212,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         Objects.isNull(ctx.localOrClusterMode())
             || Objects.nonNull(ctx.localOrClusterMode().CLUSTER()),
         options);
-  }
-
-  @Override
-  public Node visitRepairDataStatement(RelationalSqlParser.RepairDataStatementContext ctx) {
-    return super.visitRepairDataStatement(ctx);
   }
 
   @Override
@@ -1312,6 +1323,23 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     setConfigurationStatement.setNodeId(nodeId);
     setConfigurationStatement.setConfigItems(configItems);
     return new SetConfiguration(setConfigurationStatement, null);
+  }
+
+  @Override
+  public Node visitStartRepairDataStatement(
+      RelationalSqlParser.StartRepairDataStatementContext ctx) {
+    StartRepairDataStatement startRepairDataStatement =
+        new StartRepairDataStatement(StatementType.START_REPAIR_DATA);
+    startRepairDataStatement.setOnCluster(ctx.localOrClusterMode().LOCAL() == null);
+    return new StartRepairData(startRepairDataStatement, null);
+  }
+
+  @Override
+  public Node visitStopRepairDataStatement(RelationalSqlParser.StopRepairDataStatementContext ctx) {
+    StopRepairDataStatement stopRepairDataStatement =
+        new StopRepairDataStatement(StatementType.STOP_REPAIR_DATA);
+    stopRepairDataStatement.setOnCluster(ctx.localOrClusterMode().LOCAL() == null);
+    return new StopRepairData(stopRepairDataStatement, null);
   }
 
   @Override

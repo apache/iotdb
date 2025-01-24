@@ -71,7 +71,7 @@ public class IoTDBAlterColumnTypeIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getDataNodeConfig().setCompactionScheduleIntervalInMs(1000);
+    EnvFactory.getEnv().getConfig().getDataNodeConfig().setCompactionScheduleInterval(1000);
     EnvFactory.getEnv().initClusterEnvironment();
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS test");

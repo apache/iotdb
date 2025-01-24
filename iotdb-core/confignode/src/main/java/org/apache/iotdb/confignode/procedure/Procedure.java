@@ -70,20 +70,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
 
   private int[] stackIndexes = null;
 
-  private boolean persist = true;
-
-  public boolean needPersistance() {
-    return this.persist;
-  }
-
-  public void resetPersistance() {
-    this.persist = true;
-  }
-
-  public final void skipPersistance() {
-    this.persist = false;
-  }
-
   public final boolean hasLock() {
     return locked;
   }
@@ -118,17 +104,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    */
   protected abstract void rollback(Env env)
       throws IOException, InterruptedException, ProcedureException;
-
-  /**
-   * The abort() call is asynchronous and each procedure must decide how to deal with it, if they
-   * want to be abortable. The simplest implementation is to have an AtomicBoolean set in the
-   * abort() method and then the execute() will check if the abort flag is set or not. abort() may
-   * be called multiple times from the client, so the implementation must be idempotent.
-   *
-   * <p>NOTE: abort() is not like Thread.interrupt(). It is just a notification that allows the
-   * procedure implementor abort.
-   */
-  protected abstract boolean abort(Env env);
 
   public void serialize(DataOutputStream stream) throws IOException {
     // procid
@@ -263,28 +238,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     return clazz;
   }
 
-  public static Procedure<?> newInstance(ByteBuffer byteBuffer) {
-    Class<?> procedureClass = deserializeTypeInfo(byteBuffer);
-    Procedure<?> procedure;
-    try {
-      procedure = (Procedure<?>) procedureClass.newInstance();
-    } catch (InstantiationException | IllegalAccessException e) {
-      throw new RuntimeException("Instantiation failed", e);
-    }
-    return procedure;
-  }
-
-  /**
-   * The {@link #doAcquireLock(Object, IProcedureStore)} will be split into two steps, first, it
-   * will call us to determine whether we need to wait for initialization, second, it will call
-   * {@link #acquireLock(Object)} to actually handle the lock for this procedure.
-   *
-   * @return true means we need to wait until the environment has been initialized, otherwise true.
-   */
-  protected boolean waitInitialized(Env env) {
-    return false;
-  }
-
   /**
    * Acquire a lock, user should override it if necessary.
    *
@@ -312,34 +265,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    */
   protected boolean holdLock(Env env) {
     return false;
-  }
-
-  /**
-   * Called before the procedure is recovered and added into the queue.
-   *
-   * @param env environment
-   */
-  protected final void beforeRecover(Env env) {
-    // no op
-  }
-
-  /**
-   * Called when the procedure is recovered and added into the queue.
-   *
-   * @param env environment
-   */
-  protected final void afterRecover(Env env) {
-    // no op
-  }
-
-  /**
-   * Called when the procedure is completed (success or rollback). The procedure may use this method
-   * to clean up in-memory states. This operation will not be retried on failure.
-   *
-   * @param env environment
-   */
-  protected void completionCleanup(Env env) {
-    // no op
   }
 
   /**
@@ -393,9 +318,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    * @return ProcedureLockState
    */
   public final ProcedureLockState doAcquireLock(Env env, IProcedureStore store) {
-    if (waitInitialized(env)) {
-      return ProcedureLockState.LOCK_EVENT_WAIT;
-    }
     if (lockedWhenLoading) {
       lockedWhenLoading = false;
       locked = true;

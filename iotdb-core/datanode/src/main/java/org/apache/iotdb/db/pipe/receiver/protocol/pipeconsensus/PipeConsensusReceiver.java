@@ -1458,6 +1458,8 @@ public class PipeConsensusReceiver {
             if (resp != null
                 && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               onSuccess(tCommitId, isTransferTsFileSeal);
+              // signal all other reqs to accelerate dispatch process.
+              condition.signalAll();
             }
             return resp;
           }

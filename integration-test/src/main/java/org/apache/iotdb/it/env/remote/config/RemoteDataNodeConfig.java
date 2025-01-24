@@ -45,7 +45,7 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   }
 
   @Override
-  public DataNodeConfig setCompactionScheduleIntervalInMs(int compactionScheduleIntervalInMs) {
+  public DataNodeConfig setCompactionScheduleInterval(long compactionScheduleInterval) {
     return this;
   }
 }
