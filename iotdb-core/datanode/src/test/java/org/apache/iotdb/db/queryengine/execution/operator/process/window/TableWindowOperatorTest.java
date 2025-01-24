@@ -43,6 +43,7 @@ import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -293,6 +294,10 @@ public class TableWindowOperatorTest {
         Arrays.asList(TSDataType.TIMESTAMP, TSDataType.TEXT, TSDataType.INT32);
     List<TSDataType> outputDataTypes =
         Arrays.asList(TSDataType.TIMESTAMP, TSDataType.TEXT, TSDataType.INT32, TSDataType.INT64);
+    ArrayList<Integer> outputChannels = new ArrayList<>();
+    for (int i = 0; i < inputDataTypes.size(); i++) {
+      outputChannels.add(i);
+    }
     WindowFunction windowFunction = new RankFunction();
     FrameInfo frameInfo =
         new FrameInfo(
@@ -306,6 +311,7 @@ public class TableWindowOperatorTest {
         childOperator,
         inputDataTypes,
         outputDataTypes,
+        outputChannels,
         Collections.singletonList(windowFunction),
         Collections.singletonList(frameInfo),
         Collections.singletonList(1),

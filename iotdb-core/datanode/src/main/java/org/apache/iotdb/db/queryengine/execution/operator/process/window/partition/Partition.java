@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.partition;
 
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.ColumnList;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -79,6 +81,60 @@ public class Partition {
     }
 
     return allColumns;
+  }
+
+  public boolean getBoolean(int channel, int rowIndex) {
+    PartitionIndex partitionIndex = getPartitionIndex(rowIndex);
+    int tsBlockIndex = partitionIndex.getTsBlockIndex();
+    int offsetInTsBlock = partitionIndex.getOffsetInTsBlock();
+
+    TsBlock tsBlock = tsBlocks.get(tsBlockIndex);
+    return tsBlock.getColumn(channel).getBoolean(offsetInTsBlock);
+  }
+
+  public int getInt(int channel, int rowIndex) {
+    PartitionIndex partitionIndex = getPartitionIndex(rowIndex);
+    int tsBlockIndex = partitionIndex.getTsBlockIndex();
+    int offsetInTsBlock = partitionIndex.getOffsetInTsBlock();
+
+    TsBlock tsBlock = tsBlocks.get(tsBlockIndex);
+    return tsBlock.getColumn(channel).getInt(offsetInTsBlock);
+  }
+
+  public long getLong(int channel, int rowIndex) {
+    PartitionIndex partitionIndex = getPartitionIndex(rowIndex);
+    int tsBlockIndex = partitionIndex.getTsBlockIndex();
+    int offsetInTsBlock = partitionIndex.getOffsetInTsBlock();
+
+    TsBlock tsBlock = tsBlocks.get(tsBlockIndex);
+    return tsBlock.getColumn(channel).getLong(offsetInTsBlock);
+  }
+
+  public float getFloat(int channel, int rowIndex) {
+    PartitionIndex partitionIndex = getPartitionIndex(rowIndex);
+    int tsBlockIndex = partitionIndex.getTsBlockIndex();
+    int offsetInTsBlock = partitionIndex.getOffsetInTsBlock();
+
+    TsBlock tsBlock = tsBlocks.get(tsBlockIndex);
+    return tsBlock.getColumn(channel).getFloat(offsetInTsBlock);
+  }
+
+  public double getDouble(int channel, int rowIndex) {
+    PartitionIndex partitionIndex = getPartitionIndex(rowIndex);
+    int tsBlockIndex = partitionIndex.getTsBlockIndex();
+    int offsetInTsBlock = partitionIndex.getOffsetInTsBlock();
+
+    TsBlock tsBlock = tsBlocks.get(tsBlockIndex);
+    return tsBlock.getColumn(channel).getDouble(offsetInTsBlock);
+  }
+
+  public Binary getBinary(int channel, int rowIndex) {
+    PartitionIndex partitionIndex = getPartitionIndex(rowIndex);
+    int tsBlockIndex = partitionIndex.getTsBlockIndex();
+    int offsetInTsBlock = partitionIndex.getOffsetInTsBlock();
+
+    TsBlock tsBlock = tsBlocks.get(tsBlockIndex);
+    return tsBlock.getColumn(channel).getBinary(offsetInTsBlock);
   }
 
   public boolean isNull(int channel, int rowIndex) {
@@ -151,5 +207,19 @@ public class Partition {
       // Unlikely
       throw new IndexOutOfBoundsException("Index out of Partition's bounds!");
     }
+  }
+
+  public List<ColumnList> getSortedColumnList(List<Integer> sortedChannels) {
+    List<ColumnList> columnLists = new ArrayList<>();
+
+    for (Integer sortedChannel : sortedChannels) {
+      List<Column> columns = new ArrayList<>();
+      for (TsBlock tsBlock : tsBlocks) {
+        columns.add(tsBlock.getColumn(sortedChannel));
+      }
+      columnLists.add(new ColumnList(columns));
+    }
+
+    return columnLists;
   }
 }

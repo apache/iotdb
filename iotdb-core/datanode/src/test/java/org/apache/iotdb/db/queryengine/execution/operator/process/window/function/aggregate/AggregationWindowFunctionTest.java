@@ -84,7 +84,7 @@ public class AggregationWindowFunctionTest {
     List<TSDataType> outputDataTypes = Arrays.asList(TSDataType.INT32, TSDataType.INT32);
     int[] expected = {0, 0, 0, 1, 2, 3, 4, 5, 6, 7};
 
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs, 2, 2);
     AggregationWindowFunction function =
         FunctionTestUtils.createAggregationWindowFunction(
             TAggregationType.MIN, TSDataType.INT32, TSDataType.INT32, true);
@@ -92,7 +92,7 @@ public class AggregationWindowFunctionTest {
         new FrameInfo(
             FrameInfo.FrameType.ROWS,
             FrameInfo.FrameBoundType.PRECEDING,
-            2,
+            1,
             FrameInfo.FrameBoundType.FOLLOWING,
             2);
     PartitionExecutor partitionExecutor =
@@ -120,7 +120,7 @@ public class AggregationWindowFunctionTest {
     List<TSDataType> outputDataTypes = Arrays.asList(TSDataType.INT32, TSDataType.DOUBLE);
     double[] expected = {3, 6, 10, 15, 20, 25, 30, 35, 30, 24};
 
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithoutNulls(inputs, 2, 2);
     AggregationWindowFunction function =
         FunctionTestUtils.createAggregationWindowFunction(
             TAggregationType.SUM, TSDataType.INT32, TSDataType.DOUBLE, true);
@@ -128,7 +128,7 @@ public class AggregationWindowFunctionTest {
         new FrameInfo(
             FrameInfo.FrameType.ROWS,
             FrameInfo.FrameBoundType.PRECEDING,
-            2,
+            1,
             FrameInfo.FrameBoundType.FOLLOWING,
             2);
     PartitionExecutor partitionExecutor =

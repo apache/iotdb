@@ -51,6 +51,8 @@ public final class PartitionExecutor {
   private int peerGroupStart;
   private int peerGroupEnd;
 
+  private final List<Integer> outputChannels;
+
   private int currentGroupIndex = -1;
   private int currentPosition;
 
@@ -63,6 +65,7 @@ public final class PartitionExecutor {
       List<TSDataType> dataTypes,
       int startIndexInFirstBlock,
       int endIndexInLastBlock,
+      List<Integer> outputChannels,
       List<WindowFunction> windowFunctions,
       List<FrameInfo> frameInfoList,
       List<Integer> sortChannels) {
@@ -73,6 +76,8 @@ public final class PartitionExecutor {
     // Window functions and frames
     this.windowFunctions = ImmutableList.copyOf(windowFunctions);
     this.frames = new ArrayList<>();
+
+    this.outputChannels = ImmutableList.copyOf(outputChannels);
 
     // Prepare for peer group comparing
     List<TSDataType> sortDataTypes = new ArrayList<>();
@@ -114,14 +119,15 @@ public final class PartitionExecutor {
           case RANGE:
             frame =
                 new RangeFrame(
-                    frameInfo, partitionStart, partitionEnd, sortedColumns, peerGroupComparator);
+                    partition, frameInfo, partitionStart, partitionEnd, sortedColumns, peerGroupComparator);
             break;
           case ROWS:
-            frame = new RowsFrame(frameInfo, partitionStart, partitionEnd);
+            frame = new RowsFrame(partition, frameInfo, partitionStart, partitionEnd);
             break;
           case GROUPS:
             frame =
                 new GroupsFrame(
+                    partition,
                     frameInfo,
                     partitionStart,
                     partitionEnd,
@@ -150,11 +156,12 @@ public final class PartitionExecutor {
     int offsetInTsBlock = partitionIndex.getOffsetInTsBlock();
     TsBlock tsBlock = partition.getTsBlock(tsBlockIndex);
 
-    int count = partition.getValueColumnCount();
-    for (int i = 0; i < count; i++) {
-      Column column = tsBlock.getColumn(i);
+    int channel = 0;
+    for (int i = 0; i < outputChannels.size(); i++) {
+      Column column = tsBlock.getColumn(outputChannels.get(i));
       ColumnBuilder columnBuilder = builder.getColumnBuilder(i);
       columnBuilder.write(column, offsetInTsBlock);
+      channel++;
     }
 
     if (needPeerGroup && currentPosition == peerGroupEnd) {
@@ -171,14 +178,14 @@ public final class PartitionExecutor {
               : new Range(-1, -1);
       windowFunction.transform(
           partition,
-          builder.getColumnBuilder(count),
+          builder.getColumnBuilder(channel),
           currentPosition - partitionStart,
           frameRange.getStart(),
           frameRange.getEnd(),
           peerGroupStart - partitionStart,
           peerGroupEnd - partitionStart - 1);
 
-      count++;
+      channel++;
     }
 
     currentPosition++;

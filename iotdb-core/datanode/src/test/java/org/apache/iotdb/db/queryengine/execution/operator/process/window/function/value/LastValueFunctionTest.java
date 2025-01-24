@@ -50,13 +50,13 @@ public class LastValueFunctionTest {
   public void testLastValueFunctionIgnoreNull() {
     int[] expected = {0, 1, 2, 2, 3, 4, 4, 5, 6, 6, 6, 6, 6, -1, -1, -1};
 
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(inputs, 2, 2);
     LastValueFunction function = new LastValueFunction(0, true);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.ROWS,
             FrameInfo.FrameBoundType.PRECEDING,
-            2,
+            1,
             FrameInfo.FrameBoundType.FOLLOWING,
             2);
     PartitionExecutor partitionExecutor =
@@ -86,13 +86,13 @@ public class LastValueFunctionTest {
   public void testLastValueFunctionNotIgnoreNull() {
     int[] expected = {-1, 1, 2, -1, 3, 4, -1, 5, 6, -1, -1, -1, -1, -1, -1, -1};
 
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(inputs);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(inputs, 2, 2);
     LastValueFunction function = new LastValueFunction(0, false);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.ROWS,
             FrameInfo.FrameBoundType.PRECEDING,
-            2,
+            1,
             FrameInfo.FrameBoundType.FOLLOWING,
             2);
     PartitionExecutor partitionExecutor =

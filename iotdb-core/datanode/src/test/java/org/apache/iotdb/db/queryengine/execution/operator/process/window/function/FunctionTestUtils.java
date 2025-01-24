@@ -74,8 +74,14 @@ public class FunctionTestUtils {
     List<WindowFunction> windowFunctions = Collections.singletonList(windowFunction);
     List<FrameInfo> frameInfoList = Collections.singletonList(frameInfo);
 
+    // Output channels are contiguous
+    ArrayList<Integer> outputChannels = new ArrayList<>();
+    for (int i = 0; i < dataTypes.size(); i++) {
+      outputChannels.add(i);
+    }
+
     return new PartitionExecutor(
-        tsBlocks, dataTypes, startIndex, endIndex, windowFunctions, frameInfoList, sortChannels);
+        tsBlocks, dataTypes, startIndex, endIndex, outputChannels, windowFunctions, frameInfoList, sortChannels);
   }
 
   // Assume input TsBlock has only one column

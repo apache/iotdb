@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.ColumnList;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
@@ -35,6 +36,7 @@ import static org.apache.iotdb.db.queryengine.execution.operator.process.window.
 import static org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo.FrameBoundType.UNBOUNDED_PRECEDING;
 
 public class RangeFrame implements Frame {
+  private final Partition partition;
   private final FrameInfo frameInfo;
   private final ColumnList column;
   private final TSDataType dataType;
@@ -46,11 +48,13 @@ public class RangeFrame implements Frame {
   private Range recentRange;
 
   public RangeFrame(
+      Partition partition,
       FrameInfo frameInfo,
       int partitionStart,
       int partitionEnd,
       List<ColumnList> columns,
       RowComparator comparator) {
+    this.partition = partition;
     this.frameInfo = frameInfo;
     // Only one sort key is allowed in range frame
     checkArgument(columns.size() == 1);
@@ -167,7 +171,6 @@ public class RangeFrame implements Frame {
         return peerGroupStart;
       }
 
-      double offsetStart = frameInfo.getStartOffset();
       int recentStart = recentRange.getStart() + partitionStart;
 
       // Recent start from NULL
@@ -178,9 +181,9 @@ public class RangeFrame implements Frame {
       }
 
       if (frameInfo.getSortOrder().isAscending()) {
-        offset = getAscFrameStartPreceding(index, recentStart, offsetStart);
+        offset = getAscFrameStartPreceding(index, recentStart);
       } else {
-        offset = getDescFrameStartPreceding(index, recentStart, offsetStart);
+        offset = getDescFrameStartPreceding(index, recentStart);
       }
     } else {
       if (!dataType.isNumeric()
@@ -189,7 +192,6 @@ public class RangeFrame implements Frame {
         return peerGroupEnd;
       }
 
-      double offsetEnd = frameInfo.getEndOffset();
       int recentEnd = recentRange.getEnd() + partitionStart;
 
       // Leave section of leading nulls
@@ -200,9 +202,9 @@ public class RangeFrame implements Frame {
       }
 
       if (frameInfo.getSortOrder().isAscending()) {
-        offset = getAscFrameEndPreceding(index, recentEnd, offsetEnd);
+        offset = getAscFrameEndPreceding(index, recentEnd);
       } else {
-        offset = getDescFrameEndPreceding(index, recentEnd, offsetEnd);
+        offset = getDescFrameEndPreceding(index, recentEnd);
       }
     }
     offset -= partitionStart;
@@ -219,7 +221,6 @@ public class RangeFrame implements Frame {
         return peerGroupStart;
       }
 
-      double offsetStart = frameInfo.getStartOffset();
       int recentStart = recentRange.getStart() + partitionStart;
 
       // Leave section of leading nulls
@@ -241,9 +242,9 @@ public class RangeFrame implements Frame {
       }
 
       if (frameInfo.getSortOrder().isAscending()) {
-        offset = getAscFrameStartFollowing(index, recentStart, offsetStart);
+        offset = getAscFrameStartFollowing(index, recentStart);
       } else {
-        offset = getDescFrameStartFollowing(index, recentStart, offsetStart);
+        offset = getDescFrameStartFollowing(index, recentStart);
       }
     } else {
       if (!dataType.isNumeric()
@@ -252,7 +253,6 @@ public class RangeFrame implements Frame {
         return peerGroupEnd;
       }
 
-      double offsetEnd = frameInfo.getEndOffset();
       int recentEnd = recentRange.getEnd() + partitionStart;
 
       // Leave section of leading nulls
@@ -262,9 +262,9 @@ public class RangeFrame implements Frame {
       }
 
       if (frameInfo.getSortOrder().isAscending()) {
-        offset = getAscFrameEndFollowing(index, recentEnd, offsetEnd);
+        offset = getAscFrameEndFollowing(index, recentEnd);
       } else {
-        offset = getDescFrameEndFollowing(index, recentEnd, offsetEnd);
+        offset = getDescFrameEndFollowing(index, recentEnd);
       }
     }
     offset -= partitionStart;
@@ -275,86 +275,229 @@ public class RangeFrame implements Frame {
   // Find first row which satisfy:
   // follow >= current + offset
   // And stop right there
-  private int getAscFrameStartFollowing(int currentIndex, int recentIndex, double offset) {
+  private int getAscFrameStartFollowing(int currentIndex, int recentIndex) {
     while (recentIndex < partitionEnd && !column.isNull(recentIndex)) {
-      double current = getColumnValueAsDouble(column, currentIndex);
-      double follow = getColumnValueAsDouble(column, recentIndex);
-      if (follow >= current + offset) {
+      if (compareInAscFrameStartFollowing(currentIndex, recentIndex, frameInfo.getStartOffsetChannel())) {
         return recentIndex;
       }
       recentIndex++;
     }
     return recentIndex;
+  }
+
+  private boolean compareInAscFrameStartFollowing(int currentIndex, int recentIndex, int channel) {
+    checkArgument(!partition.isNull(channel, currentIndex));
+    switch (column.getDataType()) {
+      case INT32:
+      case DATE:
+        int currentInt = column.getInt(currentIndex);
+        int followInt = column.getInt(recentIndex);
+        int deltaInt = partition.getInt(channel, currentIndex);
+        return followInt >= currentInt + deltaInt;
+      case INT64:
+      case TIMESTAMP:
+        long currentLong = column.getLong(currentIndex);
+        long followLong = column.getLong(recentIndex);
+        long deltaLong = partition.getLong(channel, currentIndex);
+        return followLong >= currentLong + deltaLong;
+      case FLOAT:
+        float currentFloat = column.getFloat(currentIndex);
+        float followFloat = column.getFloat(recentIndex);
+        float deltaFloat = partition.getFloat(channel, currentIndex);
+        return followFloat >= currentFloat + deltaFloat;
+      case DOUBLE:
+        double currentDouble = column.getDouble(currentIndex);
+        double followDouble = column.getDouble(recentIndex);
+        double deltaDouble = partition.getDouble(channel, currentIndex);
+        return followDouble >= currentDouble + deltaDouble;
+      default:
+        // Unreachable
+        throw new UnSupportedDataTypeException("Unsupported data type: " + column.getDataType());
+    }
   }
 
   // Find first row which satisfy:
   // follow > current + offset
   // And return its previous index
-  private int getAscFrameEndFollowing(int currentIndex, int recentIndex, double offset) {
+  private int getAscFrameEndFollowing(int currentIndex, int recentIndex) {
     while (recentIndex < partitionEnd && !column.isNull(recentIndex)) {
-      double current = getColumnValueAsDouble(column, currentIndex);
-      double follow = getColumnValueAsDouble(column, recentIndex);
-      if (follow > current + offset) {
+      if (compareInAscFrameEndFollowing(currentIndex, recentIndex, frameInfo.getEndOffsetChannel())) {
         return recentIndex - 1;
       }
       recentIndex++;
     }
     return recentIndex - 1;
+  }
+
+  private boolean compareInAscFrameEndFollowing(int currentIndex, int recentIndex, int channel) {
+    checkArgument(!partition.isNull(channel, currentIndex));
+    switch (column.getDataType()) {
+      case INT32:
+      case DATE:
+        int currentInt = column.getInt(currentIndex);
+        int followInt = column.getInt(recentIndex);
+        int deltaInt = partition.getInt(channel, currentIndex);
+        return followInt > currentInt + deltaInt;
+      case INT64:
+      case TIMESTAMP:
+        long currentLong = column.getLong(currentIndex);
+        long followLong = column.getLong(recentIndex);
+        long deltaLong = partition.getLong(channel, currentIndex);
+        return followLong > currentLong + deltaLong;
+      case FLOAT:
+        float currentFloat = column.getFloat(currentIndex);
+        float followFloat = column.getFloat(recentIndex);
+        float deltaFloat = partition.getFloat(channel, currentIndex);
+        return followFloat > currentFloat + deltaFloat;
+      case DOUBLE:
+        double currentDouble = column.getDouble(currentIndex);
+        double followDouble = column.getDouble(recentIndex);
+        double deltaDouble = partition.getDouble(channel, currentIndex);
+        return followDouble > currentDouble + deltaDouble;
+      default:
+        // Unreachable
+        throw new UnSupportedDataTypeException("Unsupported data type: " + column.getDataType());
+    }
   }
 
   // Find first row which satisfy:
   // precede >= current - offset
   // And stop right there
-  private int getAscFrameStartPreceding(int currentIndex, int recentIndex, double offset) {
+  private int getAscFrameStartPreceding(int currentIndex, int recentIndex) {
     while (recentIndex < currentIndex) {
-      double current = getColumnValueAsDouble(column, currentIndex);
-      double precede = getColumnValueAsDouble(column, recentIndex);
-      if (precede >= current - offset) {
+      if (compareInAscFrameStartPreceding(currentIndex, recentIndex, frameInfo.getStartOffsetChannel())) {
         return recentIndex;
       }
       recentIndex++;
     }
     return recentIndex;
+  }
+
+  private boolean compareInAscFrameStartPreceding(int currentIndex, int recentIndex, int channel) {
+    checkArgument(!partition.isNull(channel, currentIndex));
+    switch (column.getDataType()) {
+      case INT32:
+      case DATE:
+        int currentInt = column.getInt(currentIndex);
+        int precedeInt = column.getInt(recentIndex);
+        int deltaInt = partition.getInt(channel, currentIndex);
+        return precedeInt >= currentInt - deltaInt;
+      case INT64:
+      case TIMESTAMP:
+        long currentLong = column.getLong(currentIndex);
+        long precedeLong = column.getLong(recentIndex);
+        long deltaLong = partition.getLong(channel, currentIndex);
+        return precedeLong >= currentLong - deltaLong;
+      case FLOAT:
+        float currentFloat = column.getFloat(currentIndex);
+        float precedeFollow = column.getFloat(recentIndex);
+        float deltaFloat = partition.getFloat(channel, currentIndex);
+        return precedeFollow >= currentFloat - deltaFloat;
+      case DOUBLE:
+        double currentDouble = column.getDouble(currentIndex);
+        double precedeDouble = column.getDouble(recentIndex);
+        double deltaDouble = partition.getDouble(channel, currentIndex);
+        return precedeDouble >= currentDouble - deltaDouble;
+      default:
+        // Unreachable
+        throw new UnSupportedDataTypeException("Unsupported data type: " + column.getDataType());
+    }
   }
 
   // Find first row which satisfy:
   // precede > current - offset
   // And return its previous index
-  private int getAscFrameEndPreceding(int currentIndex, int recentIndex, double offset) {
+  private int getAscFrameEndPreceding(int currentIndex, int recentIndex) {
     while (recentIndex < partitionEnd) {
-      double current = getColumnValueAsDouble(column, currentIndex);
-      double precede = getColumnValueAsDouble(column, recentIndex);
-      if (precede > current - offset) {
+      if (compareInAscFrameEndPreceding(currentIndex, recentIndex, frameInfo.getEndOffsetChannel())) {
         return recentIndex - 1;
       }
       recentIndex++;
     }
     return recentIndex - 1;
+  }
+
+  private boolean compareInAscFrameEndPreceding(int currentIndex, int recentIndex, int channel) {
+    checkArgument(!partition.isNull(channel, currentIndex));
+    switch (column.getDataType()) {
+      case INT32:
+      case DATE:
+        int currentInt = column.getInt(currentIndex);
+        int precedeInt = column.getInt(recentIndex);
+        int deltaInt = partition.getInt(channel, currentIndex);
+        return precedeInt > currentInt - deltaInt;
+      case INT64:
+      case TIMESTAMP:
+        long currentLong = column.getLong(currentIndex);
+        long precedeLong = column.getLong(recentIndex);
+        long deltaLong = partition.getLong(channel, currentIndex);
+        return precedeLong > currentLong - deltaLong;
+      case FLOAT:
+        float currentFloat = column.getFloat(currentIndex);
+        float precedeFollow = column.getFloat(recentIndex);
+        float deltaFloat = partition.getFloat(channel, currentIndex);
+        return precedeFollow > currentFloat - deltaFloat;
+      case DOUBLE:
+        double currentDouble = column.getDouble(currentIndex);
+        double precedeDouble = column.getDouble(recentIndex);
+        double deltaDouble = partition.getDouble(channel, currentIndex);
+        return precedeDouble > currentDouble - deltaDouble;
+      default:
+        // Unreachable
+        throw new UnSupportedDataTypeException("Unsupported data type: " + column.getDataType());
+    }
   }
 
   // Find first row which satisfy:
   // follow <= current - offset
   // And stop right there
-  private int getDescFrameStartFollowing(int currentIndex, int recentIndex, double offset) {
+  private int getDescFrameStartFollowing(int currentIndex, int recentIndex) {
     while (recentIndex < partitionEnd && !column.isNull(recentIndex)) {
-      double current = getColumnValueAsDouble(column, currentIndex);
-      double follow = getColumnValueAsDouble(column, recentIndex);
-      if (follow <= current - offset) {
+      if (compareInDescFrameStartFollowing(currentIndex, recentIndex, frameInfo.getStartOffsetChannel())) {
         return recentIndex;
       }
       recentIndex++;
     }
     return recentIndex;
+  }
+
+  private boolean compareInDescFrameStartFollowing(int currentIndex, int recentIndex, int channel) {
+    checkArgument(!partition.isNull(channel, currentIndex));
+    switch (column.getDataType()) {
+      case INT32:
+      case DATE:
+        int currentInt = column.getInt(currentIndex);
+        int followInt = column.getInt(recentIndex);
+        int deltaInt = partition.getInt(channel, currentIndex);
+        return followInt <= currentInt - deltaInt;
+      case INT64:
+      case TIMESTAMP:
+        long currentLong = column.getLong(currentIndex);
+        long followLong = column.getLong(recentIndex);
+        long deltaLong = partition.getLong(channel, currentIndex);
+        return followLong <= currentLong - deltaLong;
+      case FLOAT:
+        float currentFloat = column.getFloat(currentIndex);
+        float followFloat = column.getFloat(recentIndex);
+        float deltaFloat = partition.getFloat(channel, currentIndex);
+        return followFloat <= currentFloat - deltaFloat;
+      case DOUBLE:
+        double currentDouble = column.getDouble(currentIndex);
+        double followDouble = column.getDouble(recentIndex);
+        double deltaDouble = partition.getDouble(channel, currentIndex);
+        return followDouble <= currentDouble - deltaDouble;
+      default:
+        // Unreachable
+        throw new UnSupportedDataTypeException("Unsupported data type: " + column.getDataType());
+    }
   }
 
   // Find first row which satisfy:
   // follow < current - offset
   // And return its previous index
-  private int getDescFrameEndFollowing(int currentIndex, int recentIndex, double offset) {
+  private int getDescFrameEndFollowing(int currentIndex, int recentIndex) {
     while (recentIndex < partitionEnd && !column.isNull(recentIndex)) {
-      double current = getColumnValueAsDouble(column, currentIndex);
-      double follow = getColumnValueAsDouble(column, recentIndex);
-      if (follow < current - offset) {
+      if (compareInDescFrameEndFollowing(currentIndex, recentIndex, frameInfo.getEndOffsetChannel())) {
         return recentIndex - 1;
       }
       recentIndex++;
@@ -362,14 +505,43 @@ public class RangeFrame implements Frame {
     return recentIndex - 1;
   }
 
+  private boolean compareInDescFrameEndFollowing(int currentIndex, int recentIndex, int channel) {
+    checkArgument(!partition.isNull(channel, currentIndex));
+    switch (column.getDataType()) {
+      case INT32:
+      case DATE:
+        int currentInt = column.getInt(currentIndex);
+        int followInt = column.getInt(recentIndex);
+        int deltaInt = partition.getInt(channel, currentIndex);
+        return followInt < currentInt - deltaInt;
+      case INT64:
+      case TIMESTAMP:
+        long currentLong = column.getLong(currentIndex);
+        long followLong = column.getLong(recentIndex);
+        long deltaLong = partition.getLong(channel, currentIndex);
+        return followLong < currentLong - deltaLong;
+      case FLOAT:
+        float currentFloat = column.getFloat(currentIndex);
+        float followFloat = column.getFloat(recentIndex);
+        float deltaFloat = partition.getFloat(channel, currentIndex);
+        return followFloat < currentFloat - deltaFloat;
+      case DOUBLE:
+        double currentDouble = column.getDouble(currentIndex);
+        double followDouble = column.getDouble(recentIndex);
+        double deltaDouble = partition.getDouble(channel, currentIndex);
+        return followDouble < currentDouble - deltaDouble;
+      default:
+        // Unreachable
+        throw new UnSupportedDataTypeException("Unsupported data type: " + column.getDataType());
+    }
+  }
+
   // Find first row which satisfy:
   // precede <= current + offset
   // And stop right there
-  private int getDescFrameStartPreceding(int currentIndex, int recentIndex, double offset) {
+  private int getDescFrameStartPreceding(int currentIndex, int recentIndex) {
     while (recentIndex < currentIndex) {
-      double current = getColumnValueAsDouble(column, currentIndex);
-      double precede = getColumnValueAsDouble(column, recentIndex);
-      if (precede <= current + offset) {
+      if (compareInDescFrameStartPreceding(currentIndex, recentIndex, frameInfo.getStartOffsetChannel())) {
         return recentIndex;
       }
       recentIndex++;
@@ -377,14 +549,43 @@ public class RangeFrame implements Frame {
     return recentIndex;
   }
 
+  private boolean compareInDescFrameStartPreceding(int currentIndex, int recentIndex, int channel) {
+    checkArgument(!partition.isNull(channel, currentIndex));
+    switch (column.getDataType()) {
+      case INT32:
+      case DATE:
+        int currentInt = column.getInt(currentIndex);
+        int precedeInt = column.getInt(recentIndex);
+        int deltaInt = partition.getInt(channel, currentIndex);
+        return precedeInt <= currentInt + deltaInt;
+      case INT64:
+      case TIMESTAMP:
+        long currentLong = column.getLong(currentIndex);
+        long precedeLong = column.getLong(recentIndex);
+        long deltaLong = partition.getLong(channel, currentIndex);
+        return precedeLong <= currentLong + deltaLong;
+      case FLOAT:
+        float currentFloat = column.getFloat(currentIndex);
+        float precedeFollow = column.getFloat(recentIndex);
+        float deltaFloat = partition.getFloat(channel, currentIndex);
+        return precedeFollow <= currentFloat + deltaFloat;
+      case DOUBLE:
+        double currentDouble = column.getDouble(currentIndex);
+        double precedeDouble = column.getDouble(recentIndex);
+        double deltaDouble = partition.getDouble(channel, currentIndex);
+        return precedeDouble <= currentDouble + deltaDouble;
+      default:
+        // Unreachable
+        throw new UnSupportedDataTypeException("Unsupported data type: " + column.getDataType());
+    }
+  }
+
   // Find first row which satisfy:
   // precede < current + offset
   // And return its previous index
-  private int getDescFrameEndPreceding(int currentIndex, int recentIndex, double offset) {
+  private int getDescFrameEndPreceding(int currentIndex, int recentIndex) {
     while (recentIndex < partitionEnd) {
-      double current = getColumnValueAsDouble(column, currentIndex);
-      double precede = getColumnValueAsDouble(column, recentIndex);
-      if (precede < current + offset) {
+      if (compareInDescFrameEndPreceding(currentIndex, recentIndex, frameInfo.getEndOffsetChannel())) {
         return recentIndex - 1;
       }
       recentIndex++;
@@ -392,18 +593,31 @@ public class RangeFrame implements Frame {
     return recentIndex - 1;
   }
 
-  private double getColumnValueAsDouble(ColumnList column, int index) {
+  private boolean compareInDescFrameEndPreceding(int currentIndex, int recentIndex, int channel) {
+    checkArgument(!partition.isNull(channel, currentIndex));
     switch (column.getDataType()) {
       case INT32:
       case DATE:
-        return column.getInt(index);
+        int currentInt = column.getInt(currentIndex);
+        int precedeInt = column.getInt(recentIndex);
+        int deltaInt = partition.getInt(channel, currentIndex);
+        return precedeInt < currentInt + deltaInt;
       case INT64:
       case TIMESTAMP:
-        return column.getLong(index);
+        long currentLong = column.getLong(currentIndex);
+        long precedeLong = column.getLong(recentIndex);
+        long deltaLong = partition.getLong(channel, currentIndex);
+        return precedeLong < currentLong + deltaLong;
       case FLOAT:
-        return column.getFloat(index);
+        float currentFloat = column.getFloat(currentIndex);
+        float precedeFollow = column.getFloat(recentIndex);
+        float deltaFloat = partition.getFloat(channel, currentIndex);
+        return precedeFollow < currentFloat + deltaFloat;
       case DOUBLE:
-        return column.getDouble(index);
+        double currentDouble = column.getDouble(currentIndex);
+        double precedeDouble = column.getDouble(recentIndex);
+        double deltaDouble = partition.getDouble(channel, currentIndex);
+        return precedeDouble < currentDouble + deltaDouble;
       default:
         // Unreachable
         throw new UnSupportedDataTypeException("Unsupported data type: " + column.getDataType());

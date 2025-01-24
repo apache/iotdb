@@ -20,18 +20,21 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class RowsFrame implements Frame {
+  private final Partition partition;
   private final FrameInfo frameInfo;
   private final int partitionStart;
   private final int partitionSize;
 
-  public RowsFrame(FrameInfo frameInfo, int partitionStart, int partitionEnd) {
+  public RowsFrame(Partition partition, FrameInfo frameInfo, int partitionStart, int partitionEnd) {
     checkArgument(frameInfo.getFrameType() == FrameInfo.FrameType.ROWS);
 
+    this.partition = partition;
     this.frameInfo = frameInfo;
     this.partitionStart = partitionStart;
     this.partitionSize = partitionEnd - partitionStart;
@@ -49,14 +52,14 @@ public class RowsFrame implements Frame {
         frameStart = 0;
         break;
       case PRECEDING:
-        offset = (int) frameInfo.getStartOffset();
+        offset = (int) getOffset(frameInfo.getStartOffsetChannel(), currentPosition);
         frameStart = posInPartition - offset;
         break;
       case CURRENT_ROW:
         frameStart = posInPartition;
         break;
       case FOLLOWING:
-        offset = (int) frameInfo.getStartOffset();
+        offset = (int) getOffset(frameInfo.getStartOffsetChannel(), currentPosition);
         frameStart = posInPartition + offset;
         break;
       default:
@@ -67,14 +70,14 @@ public class RowsFrame implements Frame {
     int frameEnd;
     switch (frameInfo.getEndType()) {
       case PRECEDING:
-        offset = (int) frameInfo.getEndOffset();
+        offset = (int) getOffset(frameInfo.getEndOffsetChannel(), currentPosition);
         frameEnd = posInPartition - offset;
         break;
       case CURRENT_ROW:
         frameEnd = posInPartition;
         break;
       case FOLLOWING:
-        offset = (int) frameInfo.getEndOffset();
+        offset = (int) getOffset(frameInfo.getEndOffsetChannel(), currentPosition);
         frameEnd = posInPartition + offset;
         break;
       case UNBOUNDED_FOLLOWING:
@@ -93,5 +96,13 @@ public class RowsFrame implements Frame {
     frameStart = Math.max(frameStart, 0);
     frameEnd = Math.min(frameEnd, partitionSize - 1);
     return new Range(frameStart, frameEnd);
+  }
+
+  public long getOffset(int channel, int index) {
+    checkArgument(!partition.isNull(channel, index));
+    long offset = partition.getLong(channel, index);
+
+    checkArgument(offset >= 0);
+    return offset;
   }
 }

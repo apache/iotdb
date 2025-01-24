@@ -55,6 +55,7 @@ public class TableWindowOperator implements ProcessOperator {
   private final OperatorContext operatorContext;
   private final Operator inputOperator;
   private final List<TSDataType> inputDataTypes;
+  private final List<Integer> outputChannels;
   private final TsBlockBuilder tsBlockBuilder;
   private final MemoryReservationManager memoryReservationManager;
 
@@ -83,6 +84,7 @@ public class TableWindowOperator implements ProcessOperator {
       Operator inputOperator,
       List<TSDataType> inputDataTypes,
       List<TSDataType> outputDataTypes,
+      List<Integer> outputChannels,
       List<WindowFunction> windowFunctions,
       List<FrameInfo> frameInfoList,
       List<Integer> partitionChannels,
@@ -91,6 +93,7 @@ public class TableWindowOperator implements ProcessOperator {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.inputDataTypes = ImmutableList.copyOf(inputDataTypes);
+    this.outputChannels = ImmutableList.copyOf(outputChannels);
     this.tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
 
     // Basic information part
@@ -170,6 +173,7 @@ public class TableWindowOperator implements ProcessOperator {
               inputDataTypes,
               startIndexInFirstBlock,
               endIndexOfLastTsBlock,
+              outputChannels,
               windowFunctions,
               frameInfoList,
               sortChannels);
@@ -224,6 +228,7 @@ public class TableWindowOperator implements ProcessOperator {
                 inputDataTypes,
                 startIndexInFirstBlock,
                 endIndexOfLastTsBlock,
+                outputChannels,
                 windowFunctions,
                 frameInfoList,
                 sortChannels);
@@ -256,6 +261,7 @@ public class TableWindowOperator implements ProcessOperator {
                   inputDataTypes,
                   partitionStartInCurrentBlock,
                   partitionEndInCurrentBlock,
+                  outputChannels,
                   windowFunctions,
                   frameInfoList,
                   sortChannels);
@@ -269,6 +275,7 @@ public class TableWindowOperator implements ProcessOperator {
                   inputDataTypes,
                   startIndexInFirstBlock,
                   partitionEndInCurrentBlock,
+                  outputChannels,
                   windowFunctions,
                   frameInfoList,
                   sortChannels);

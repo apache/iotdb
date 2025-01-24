@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.ColumnList;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
@@ -28,7 +29,10 @@ import com.google.common.collect.ImmutableList;
 
 import java.util.List;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 public class GroupsFrame implements Frame {
+  private final Partition partition;
   private final FrameInfo frameInfo;
   private final int partitionStart;
   private final int partitionEnd;
@@ -43,12 +47,14 @@ public class GroupsFrame implements Frame {
   private boolean frameStartFollowingReachEnd = false;
 
   public GroupsFrame(
+      Partition partition,
       FrameInfo frameInfo,
       int partitionStart,
       int partitionEnd,
       List<ColumnList> columns,
       RowComparator peerGroupComparator,
       int initialEnd) {
+    this.partition = partition;
     this.frameInfo = frameInfo;
     this.partitionStart = partitionStart;
     this.partitionEnd = partitionEnd;
@@ -70,13 +76,13 @@ public class GroupsFrame implements Frame {
         frameStart = 0;
         break;
       case PRECEDING:
-        frameStart = getStartPrecedingOffset(currentGroup);
+        frameStart = getStartPrecedingOffset(currentPosition, currentGroup);
         break;
       case CURRENT_ROW:
         frameStart = peerGroupStart - partitionStart;
         break;
       case FOLLOWING:
-        frameStart = getStartFollowingOffset(currentGroup);
+        frameStart = getStartFollowingOffset(currentPosition, currentGroup);
         break;
       default:
         // UNBOUND_FOLLOWING is not allowed in frame start
@@ -86,13 +92,13 @@ public class GroupsFrame implements Frame {
     int frameEnd;
     switch (frameInfo.getEndType()) {
       case PRECEDING:
-        frameEnd = getEndPrecedingOffset(currentGroup);
+        frameEnd = getEndPrecedingOffset(currentPosition, currentGroup);
         break;
       case CURRENT_ROW:
         frameEnd = peerGroupEnd - partitionStart - 1;
         break;
       case FOLLOWING:
-        frameEnd = getEndFollowingOffset(currentGroup);
+        frameEnd = getEndFollowingOffset(currentPosition, currentGroup);
         break;
       case UNBOUNDED_FOLLOWING:
         frameEnd = partitionEnd - partitionStart - 1;
@@ -113,9 +119,9 @@ public class GroupsFrame implements Frame {
     return recentRange;
   }
 
-  private int getStartPrecedingOffset(int currentGroup) {
+  private int getStartPrecedingOffset(int currentPosition, int currentGroup) {
     int start = recentRange.getStart() + partitionStart;
-    int offset = (int) frameInfo.getStartOffset();
+    int offset = (int) getOffset(frameInfo.getStartOffsetChannel(), currentPosition);
 
     // We may encounter empty frame
     if (currentGroup - offset < 0) {
@@ -136,9 +142,9 @@ public class GroupsFrame implements Frame {
     return start - partitionStart;
   }
 
-  private int getEndPrecedingOffset(int currentGroup) {
+  private int getEndPrecedingOffset(int currentPosition, int currentGroup) {
     int end = recentRange.getEnd() + partitionStart;
-    int offset = (int) frameInfo.getEndOffset();
+    int offset = (int) getOffset(frameInfo.getEndOffsetChannel(), currentPosition);
 
     // We may encounter empty frame
     if (currentGroup - offset < 0) {
@@ -159,7 +165,7 @@ public class GroupsFrame implements Frame {
     return end - partitionStart;
   }
 
-  private int getStartFollowingOffset(int currentGroup) {
+  private int getStartFollowingOffset(int currentPosition, int currentGroup) {
     // Shortcut if we have reached last peer group already
     if (frameStartFollowingReachEnd) {
       return partitionEnd;
@@ -167,7 +173,7 @@ public class GroupsFrame implements Frame {
 
     int start = recentRange.getStart() + partitionStart;
 
-    int offset = (int) frameInfo.getStartOffset();
+    int offset = (int) getOffset(frameInfo.getStartOffsetChannel(), currentPosition);
     if (currentGroup + offset > recentStartPeerGroup) {
       int count = currentGroup + offset - recentStartPeerGroup;
       for (int i = 0; i < count; i++) {
@@ -190,14 +196,14 @@ public class GroupsFrame implements Frame {
     return start - partitionStart;
   }
 
-  private int getEndFollowingOffset(int currentGroup) {
+  private int getEndFollowingOffset(int currentPosition, int currentGroup) {
     int end = recentRange.getEnd() + partitionStart;
     // Shortcut if we have reached partition end already
     if (end == partitionEnd - 1) {
       return end;
     }
 
-    int offset = (int) frameInfo.getEndOffset();
+    int offset = (int) getOffset(frameInfo.getEndOffsetChannel(), currentPosition);
     if (currentGroup + offset > recentEndPeerGroup) {
       int count = currentGroup + offset - recentEndPeerGroup;
       for (int i = 0; i < count; i++) {
@@ -228,5 +234,13 @@ public class GroupsFrame implements Frame {
       currentPosition++;
     }
     return currentPosition;
+  }
+
+  public long getOffset(int channel, int index) {
+    checkArgument(partition.isNull(channel, index));
+    long offset = partition.getLong(channel, index);
+
+    checkArgument(offset >= 0);
+    return offset;
   }
 }

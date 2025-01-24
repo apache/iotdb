@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame;
 
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.ColumnList;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.Range;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
@@ -32,6 +33,7 @@ import java.util.Collections;
 import java.util.List;
 
 public class FrameTestUtils {
+  private final Partition partition;
   private final List<ColumnList> sortedColumns;
 
   private final int partitionStart;
@@ -48,6 +50,7 @@ public class FrameTestUtils {
   private final List<Integer> frameEnds;
 
   public FrameTestUtils(TsBlock tsBlock, TSDataType inputDataType, FrameInfo frameInfo) {
+    this.partition = tsBlockToPartition(tsBlock);
     this.sortedColumns = tsBlockToColumnLists(tsBlock);
     this.partitionStart = 0;
     this.partitionEnd = tsBlock.getPositionCount();
@@ -92,6 +95,10 @@ public class FrameTestUtils {
     }
   }
 
+  private Partition tsBlockToPartition(TsBlock tsBlock) {
+    return new Partition(Collections.singletonList(tsBlock), 0, tsBlock.getPositionCount());
+  }
+
   private List<ColumnList> tsBlockToColumnLists(TsBlock tsBlock) {
     Column[] allColumns = tsBlock.getValueColumns();
 
@@ -110,14 +117,15 @@ public class FrameTestUtils {
       case RANGE:
         frame =
             new RangeFrame(
-                frameInfo, partitionStart, partitionEnd, sortedColumns, peerGroupComparator);
+                partition, frameInfo, partitionStart, partitionEnd, sortedColumns, peerGroupComparator);
         break;
       case ROWS:
-        frame = new RowsFrame(frameInfo, partitionStart, partitionEnd);
+        frame = new RowsFrame(partition, frameInfo, partitionStart, partitionEnd);
         break;
       case GROUPS:
         frame =
             new GroupsFrame(
+                partition,
                 frameInfo,
                 partitionStart,
                 partitionEnd,

@@ -43,7 +43,7 @@ public class RangeFrameTest {
 
   @Test
   public void testUnboundPrecedingAndPrecedingAscNullsFirst() {
-    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsFirst);
+    TsBlock tsBlock = TableWindowOperatorTestUtils.createIntsTsBlockWithNulls(ascNullsFirst, 1);
     FrameInfo frameInfo =
         new FrameInfo(
             FrameInfo.FrameType.RANGE,
