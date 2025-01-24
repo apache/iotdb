@@ -241,7 +241,9 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     int len = nodes.length;
     String[] newNodes = Arrays.copyOf(nodes, nodes.length + 1);
     newNodes[len] = measurement;
-    return new MeasurementPath(newNodes);
+    MeasurementPath measurementPath = new MeasurementPath(newNodes);
+    measurementPath.device = this.device;
+    return measurementPath;
   }
 
   /**
@@ -1066,6 +1068,10 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   protected IDeviceID toDeviceID(String[] nodes) {
     String tableName;
     int segmentCnt = nodes.length;
+    // not a tree id, no need to generate dummy table
+    if (nodes.length > 0 && !Objects.equals(nodes[0], PATH_ROOT)) {
+      return Factory.DEFAULT_FACTORY.create(nodes);
+    }
     // assuming DEFAULT_SEGMENT_NUM_FOR_TABLE_NAME = 3
     String[] segments;
     if (segmentCnt <= 1) {

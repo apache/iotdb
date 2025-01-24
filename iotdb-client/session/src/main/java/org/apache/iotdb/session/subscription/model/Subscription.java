@@ -25,7 +25,8 @@ public class Subscription {
   private final String consumerGroupId;
   private final String consumerIds;
 
-  public Subscription(String topicName, String consumerGroupId, String consumerIds) {
+  public Subscription(
+      final String topicName, final String consumerGroupId, final String consumerIds) {
     this.topicName = topicName;
     this.consumerGroupId = consumerGroupId;
     this.consumerIds = consumerIds;

@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.FunctionType;
 import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
@@ -80,6 +82,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
@@ -221,6 +225,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
@@ -316,6 +321,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -2794,6 +2800,70 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } catch (Exception e) {
       future.setException(e);
     }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> removeDataNode(
+      final RemoveDataNodeStatement removeDataNodeStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      Set<Integer> nodeIds = removeDataNodeStatement.getNodeIds();
+
+      Set<Integer> validNodeIds =
+          configNodeClient.getDataNodeConfiguration(-1).getDataNodeConfigurationMap().keySet();
+
+      Set<Integer> invalidNodeIds = new HashSet<>(nodeIds);
+      invalidNodeIds.removeAll(validNodeIds);
+
+      if (!invalidNodeIds.isEmpty()) {
+        LOGGER.info("Cannot remove invalid nodeIds:{}", invalidNodeIds);
+        nodeIds.removeAll(invalidNodeIds);
+      }
+
+      LOGGER.info("Starting to remove DataNode with nodeIds: {}", nodeIds);
+
+      final Set<Integer> finalNodeIds = nodeIds;
+      List<TDataNodeLocation> removeDataNodeLocations =
+          configNodeClient
+              .getDataNodeConfiguration(-1)
+              .getDataNodeConfigurationMap()
+              .values()
+              .stream()
+              .map(TDataNodeConfiguration::getLocation)
+              .filter(location -> finalNodeIds.contains(location.getDataNodeId()))
+              .collect(Collectors.toList());
+
+      List<String> simplifiedLocations = new ArrayList<>();
+      for (TDataNodeLocation dataNodeLocation : removeDataNodeLocations) {
+        simplifiedLocations.add(
+            dataNodeLocation.getDataNodeId()
+                + "@"
+                + dataNodeLocation.getInternalEndPoint().getIp());
+      }
+
+      LOGGER.info("Start to remove datanode, removed DataNodes endpoint: {}", simplifiedLocations);
+      TDataNodeRemoveReq removeReq = new TDataNodeRemoveReq(removeDataNodeLocations);
+      TDataNodeRemoveResp removeResp = configNodeClient.removeDataNode(removeReq);
+      LOGGER.info("Submit Remove DataNodes result {} ", removeResp);
+      if (removeResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(
+            new IoTDBException(
+                removeResp.getStatus().toString(), removeResp.getStatus().getCode()));
+        return future;
+      } else {
+        LOGGER.info(
+            "Submit remove-datanode request successfully, but the process may fail. "
+                + "more details are shown in the logs of confignode-leader and removed-datanode, "
+                + "and after the process of removing datanode ends successfully, "
+                + "you are supposed to delete directory and data of the removed-datanode manually");
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (Exception e) {
+      future.setException(e);
+    }
+
     return future;
   }
 

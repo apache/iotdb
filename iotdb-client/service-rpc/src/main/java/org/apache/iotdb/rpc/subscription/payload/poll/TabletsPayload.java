@@ -35,9 +35,14 @@ public class TabletsPayload implements SubscriptionPollPayload {
   private transient List<Tablet> tablets = new ArrayList<>();
 
   /**
-   * The field to be filled in the next {@link PollTabletsPayload} request. If negative, it
-   * indicates all tablets have been fetched, and -nextOffset represents the total number of
-   * tablets.
+   * The field to be filled in the next {@link PollTabletsPayload} request.
+   *
+   * <ul>
+   *   <li>If nextOffset is 1, it indicates that the current payload is the first payload (its
+   *       tablets are empty) and the fetching should continue.
+   *   <li>If nextOffset is negative, it indicates all tablets have been fetched, and -nextOffset
+   *       represents the total number of tablets.
+   * </ul>
    */
   private transient int nextOffset;
 

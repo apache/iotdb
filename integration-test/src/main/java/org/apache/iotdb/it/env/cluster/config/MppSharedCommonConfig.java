@@ -259,6 +259,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setTTLCheckInterval(long ttlCheckInterval) {
+    cnConfig.setTTLCheckInterval(ttlCheckInterval);
+    dnConfig.setTTLCheckInterval(ttlCheckInterval);
+    return this;
+  }
+
+  @Override
   public CommonConfig setTimePartitionOrigin(long timePartitionOrigin) {
     cnConfig.setTimePartitionOrigin(timePartitionOrigin);
     dnConfig.setTimePartitionOrigin(timePartitionOrigin);
@@ -379,6 +386,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
     cnConfig.setSeriesSlotNum(seriesSlotNum);
     dnConfig.setSeriesSlotNum(seriesSlotNum);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
+    cnConfig.setSeriesPartitionExecutorClass(seriesPartitionExecutorClass);
+    dnConfig.setSeriesPartitionExecutorClass(seriesPartitionExecutorClass);
     return this;
   }
 
