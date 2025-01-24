@@ -44,9 +44,8 @@ public class DataRegionInfo {
           (IoTDBDescriptor.getInstance().getConfig().getWriteMemoryVariationReportProportion()
               * IoTDBDescriptor.getInstance()
                   .getConfig()
-                  .getStorageEngineMemoryManager()
-                  .getTotalMemorySizeInBytes()
-              * IoTDBDescriptor.getInstance().getConfig().getWriteProportionForMemtable());
+                  .getMemtableMemoryManager()
+                  .getTotalMemorySizeInBytes());
 
   private final AtomicLong lastReportedSize = new AtomicLong();
 

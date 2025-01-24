@@ -38,11 +38,7 @@ public class DataNodeDevicePathCache {
   private DataNodeDevicePathCache() {
     devicePathCache =
         Caffeine.newBuilder()
-            .maximumWeight(
-                (long)
-                    (config.getStorageEngineMemoryManager().getTotalMemorySizeInBytes()
-                        * config.getWriteProportionForMemtable()
-                        * config.getDevicePathCacheProportion()))
+            .maximumWeight(config.getDevicePathCacheMemoryManager().getTotalMemorySizeInBytes())
             .weigher(
                 (Weigher<String, PartialPath>) (key, val) -> (PartialPath.estimateSize(val) + 32))
             .build();

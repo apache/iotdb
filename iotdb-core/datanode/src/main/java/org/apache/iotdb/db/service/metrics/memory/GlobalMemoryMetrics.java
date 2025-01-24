@@ -66,7 +66,7 @@ public class GlobalMemoryMetrics implements IMetricSet {
             OFF_HEAP,
             Tag.LEVEL.toString(),
             LEVELS[0])
-        .set(config.getMaxOffHeapMemoryBytes());
+        .set(config.getOffHeapMemoryManager().getTotalMemorySizeInBytes());
     StorageEngineMemoryMetrics.getInstance().bindTo(metricService);
     QueryEngineMemoryMetrics.getInstance().bindTo(metricService);
     SchemaEngineMemoryMetrics.getInstance().bindTo(metricService);
@@ -82,7 +82,7 @@ public class GlobalMemoryMetrics implements IMetricSet {
             OFF_HEAP,
             Tag.LEVEL.toString(),
             LEVELS[1])
-        .set(systemInfo.getTotalDirectBufferMemorySizeLimit());
+        .set(config.getDirectBufferMemoryManager().getTotalMemorySizeInBytes());
   }
 
   @Override

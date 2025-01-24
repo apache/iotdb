@@ -169,28 +169,40 @@ public class IoTDBConfig {
   /** Ratio of memory allocated for buffered arrays */
   private double bufferedArraysMemoryProportion = 0.6;
 
+  /** The memory manager for buffered arrays */
+  private MemoryManager bufferedArraysMemoryManager;
+
   /** Flush proportion for system */
   private double flushProportion = 0.4;
 
   /** Reject proportion for system */
   private double rejectProportion = 0.8;
 
-  /** The proportion of write memory for memtable */
-  private double writeProportionForMemtable = 0.76;
+  /** The memory manager for memtable */
+  private MemoryManager memtableMemoryManager;
 
-  /** The proportion of write memory for compaction */
-  private double compactionProportion = 0.2;
+  /** The memory Manager for write */
+  private MemoryManager writeMemoryManager;
+
+  /** The Memory Manager for compaction */
+  private MemoryManager compactionMemoryManager;
 
   /** The proportion of memtable memory for WAL queue */
   private double walBufferQueueProportion = 0.1;
 
+  /** The memory manager of memtable memory for WAL queue */
+  private MemoryManager walBufferQueueManager;
+
   /** The proportion of memtable memory for device path cache */
   private double devicePathCacheProportion = 0.05;
+
+  /** The memory manager of memtable memory for device path cache */
+  private MemoryManager devicePathCacheMemoryManager;
 
   /**
    * If memory cost of data region increased more than proportion of {@linkplain
    * IoTDBConfig#getStorageEngineMemoryManager()} *{@linkplain
-   * IoTDBConfig#getWriteProportionForMemtable()}, report to system.
+   * IoTDBConfig#getMemtableMemoryManager()}, report to system.
    */
   private double writeMemoryVariationReportProportion = 0.001;
 
@@ -200,8 +212,11 @@ public class IoTDBConfig {
   /** When inserting rejected exceeds this, throw an exception. Unit: millisecond */
   private int maxWaitingTimeWhenInsertBlockedInMs = 10000;
 
-  /** off heap memory bytes from env */
-  private long maxOffHeapMemoryBytes = 0;
+  /** The memory manager of off heap */
+  private MemoryManager offHeapMemoryManager;
+
+  /** The memory manager of direct Buffer */
+  private MemoryManager directBufferMemoryManager;
 
   // region Write Ahead Log Configuration
   /** Write mode of wal */
@@ -2079,6 +2094,14 @@ public class IoTDBConfig {
     this.bufferedArraysMemoryProportion = bufferedArraysMemoryProportion;
   }
 
+  public MemoryManager getBufferedArraysMemoryManager() {
+    return bufferedArraysMemoryManager;
+  }
+
+  public void setBufferedArraysMemoryManager(MemoryManager bufferedArraysMemoryManager) {
+    this.bufferedArraysMemoryManager = bufferedArraysMemoryManager;
+  }
+
   public double getFlushProportion() {
     return flushProportion;
   }
@@ -2769,12 +2792,20 @@ public class IoTDBConfig {
     this.maxWaitingTimeWhenInsertBlockedInMs = maxWaitingTimeWhenInsertBlocked;
   }
 
-  public void setMaxOffHeapMemoryBytes(long maxOffHeapMemoryBytes) {
-    this.maxOffHeapMemoryBytes = maxOffHeapMemoryBytes;
+  public MemoryManager getOffHeapMemoryManager() {
+    return offHeapMemoryManager;
   }
 
-  public long getMaxOffHeapMemoryBytes() {
-    return maxOffHeapMemoryBytes;
+  public void setOffHeapMemoryManager(MemoryManager offHeapMemoryManager) {
+    this.offHeapMemoryManager = offHeapMemoryManager;
+  }
+
+  public MemoryManager getDirectBufferMemoryManager() {
+    return directBufferMemoryManager;
+  }
+
+  public void setDirectBufferMemoryManager(MemoryManager directBufferMemoryManager) {
+    this.directBufferMemoryManager = directBufferMemoryManager;
   }
 
   public long getSlowQueryThreshold() {
@@ -3541,16 +3572,28 @@ public class IoTDBConfig {
     this.driverTaskExecutionTimeSliceInMs = driverTaskExecutionTimeSliceInMs;
   }
 
-  public double getWriteProportionForMemtable() {
-    return writeProportionForMemtable;
+  public MemoryManager getMemtableMemoryManager() {
+    return memtableMemoryManager;
   }
 
-  public void setWriteProportionForMemtable(double writeProportionForMemtable) {
-    this.writeProportionForMemtable = writeProportionForMemtable;
+  public void setMemtableMemoryManager(MemoryManager memtableMemoryManager) {
+    this.memtableMemoryManager = memtableMemoryManager;
   }
 
-  public double getCompactionProportion() {
-    return compactionProportion;
+  public MemoryManager getWriteMemoryManager() {
+    return writeMemoryManager;
+  }
+
+  public void setWriteMemoryManager(MemoryManager writeMemoryManager) {
+    this.writeMemoryManager = writeMemoryManager;
+  }
+
+  public MemoryManager getCompactionMemoryManager() {
+    return compactionMemoryManager;
+  }
+
+  public void setCompactionMemoryManager(MemoryManager compactionMemoryManager) {
+    this.compactionMemoryManager = compactionMemoryManager;
   }
 
   public double getWalBufferQueueProportion() {
@@ -3561,12 +3604,28 @@ public class IoTDBConfig {
     this.walBufferQueueProportion = walBufferQueueProportion;
   }
 
+  public MemoryManager getWalBufferQueueManager() {
+    return walBufferQueueManager;
+  }
+
+  public void setWalBufferQueueManager(MemoryManager walBufferQueueManager) {
+    this.walBufferQueueManager = walBufferQueueManager;
+  }
+
   public double getDevicePathCacheProportion() {
     return devicePathCacheProportion;
   }
 
   public void setDevicePathCacheProportion(double devicePathCacheProportion) {
     this.devicePathCacheProportion = devicePathCacheProportion;
+  }
+
+  public MemoryManager getDevicePathCacheMemoryManager() {
+    return devicePathCacheMemoryManager;
+  }
+
+  public void setDevicePathCacheMemoryManager(MemoryManager devicePathCacheMemoryManager) {
+    this.devicePathCacheMemoryManager = devicePathCacheMemoryManager;
   }
 
   public static String getEnvironmentVariables() {
@@ -3585,10 +3644,6 @@ public class IoTDBConfig {
         + "="
         + System.getProperty(IoTDBConstant.IOTDB_DATA_HOME, "null")
         + ";";
-  }
-
-  public void setCompactionProportion(double compactionProportion) {
-    this.compactionProportion = compactionProportion;
   }
 
   public long getThrottleThreshold() {

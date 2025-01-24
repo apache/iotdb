@@ -51,9 +51,7 @@ public class PrimitiveArrayManager {
 
   /** threshold total size of arrays for all data types */
   private static final double POOLED_ARRAYS_MEMORY_THRESHOLD =
-      CONFIG.getStorageEngineMemoryManager().getTotalMemorySizeInBytes()
-          * CONFIG.getBufferedArraysMemoryProportion()
-          / AMPLIFICATION_FACTOR;
+      CONFIG.getBufferedArraysMemoryManager().getTotalMemorySizeInBytes() / AMPLIFICATION_FACTOR;
 
   /** TSDataType#serialize() -> ArrayDeque<Array>, VECTOR and UNKNOWN are ignored */
   private static final ArrayDeque[] POOLED_ARRAYS = new ArrayDeque[TSDataType.values().length];

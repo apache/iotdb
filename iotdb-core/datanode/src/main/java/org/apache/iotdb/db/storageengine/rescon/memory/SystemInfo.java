@@ -393,27 +393,11 @@ public class SystemInfo {
   }
 
   public void allocateWriteMemory() {
-    // when we can't get the OffHeapMemory variable from environment, it will be 0
-    // and the limit should not be effective
+    memorySizeForMemtable = config.getMemtableMemoryManager().getTotalMemorySizeInBytes();
+    memorySizeForCompaction = config.getCompactionMemoryManager().getTotalMemorySizeInBytes();
+    memorySizeForWalBufferQueue = config.getWalBufferQueueManager().getTotalMemorySizeInBytes();
     totalDirectBufferMemorySizeLimit =
-        config.getMaxOffHeapMemoryBytes() == 0
-            ? Long.MAX_VALUE
-            : (long)
-                (config.getMaxOffHeapMemoryBytes()
-                    * config.getMaxDirectBufferOffHeapMemorySizeProportion());
-    memorySizeForMemtable =
-        (long)
-            (config.getStorageEngineMemoryManager().getTotalMemorySizeInBytes()
-                * config.getWriteProportionForMemtable());
-    memorySizeForCompaction =
-        (long)
-            (config.getStorageEngineMemoryManager().getTotalMemorySizeInBytes()
-                * config.getCompactionProportion());
-    memorySizeForWalBufferQueue =
-        (long)
-            (config.getStorageEngineMemoryManager().getTotalMemorySizeInBytes()
-                * config.getWriteProportionForMemtable()
-                * config.getWalBufferQueueProportion());
+        config.getDirectBufferMemoryManager().getTotalMemorySizeInBytes();
     FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
     REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
     WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);

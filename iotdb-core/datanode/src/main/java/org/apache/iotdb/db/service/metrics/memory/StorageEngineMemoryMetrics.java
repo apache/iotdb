@@ -57,13 +57,8 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[1])
-        .set(storageEngineSize);
+        .set(config.getStorageEngineMemoryManager().getTotalMemorySizeInBytes());
     // The memory of storage engine divided into Write and Compaction
-    long writeSize =
-        (long)
-            (config.getStorageEngineMemoryManager().getTotalMemorySizeInBytes()
-                * (1 - config.getCompactionProportion()));
-    long compactionSize = storageEngineSize - writeSize;
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
@@ -74,7 +69,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[2])
-        .set(writeSize);
+        .set(config.getWriteMemoryManager().getTotalMemorySizeInBytes());
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
@@ -85,14 +80,8 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[2])
-        .set(compactionSize);
+        .set(config.getCompactionMemoryManager().getTotalMemorySizeInBytes());
     // The write memory of storage engine divided into MemTable and TimePartitionInfo
-    long memtableSize =
-        (long)
-            (config.getStorageEngineMemoryManager().getTotalMemorySizeInBytes()
-                * config.getWriteProportionForMemtable());
-    long timePartitionInfoSize =
-        config.getTimePartitionInfoMemoryManager().getTotalMemorySizeInBytes();
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
@@ -103,7 +92,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[3])
-        .set(memtableSize);
+        .set(config.getMemtableMemoryManager().getTotalMemorySizeInBytes());
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
@@ -114,18 +103,9 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[3])
-        .set(timePartitionInfoSize);
+        .set(config.getTimePartitionInfoMemoryManager().getTotalMemorySizeInBytes());
     // The memtable memory of storage engine contain DataNodeDevicePathCache (NOTICE: This part of
     // memory is not divided)
-    long dataNodeDevicePathCacheSize =
-        (long)
-            (config.getStorageEngineMemoryManager().getTotalMemorySizeInBytes()
-                * config.getWriteProportionForMemtable()
-                * config.getDevicePathCacheProportion());
-    long bufferedArraySize =
-        (long)
-            (config.getStorageEngineMemoryManager().getTotalMemorySizeInBytes()
-                * config.getBufferedArraysMemoryProportion());
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
@@ -136,7 +116,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[4])
-        .set(dataNodeDevicePathCacheSize);
+        .set(config.getDevicePathCacheMemoryManager().getTotalMemorySizeInBytes());
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
@@ -147,7 +127,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[4])
-        .set(bufferedArraySize);
+        .set(config.getBufferedArraysMemoryManager().getTotalMemorySizeInBytes());
   }
 
   @Override

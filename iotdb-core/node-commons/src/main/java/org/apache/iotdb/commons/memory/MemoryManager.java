@@ -33,7 +33,7 @@ public class MemoryManager {
 
   // TODO @spricoder: make it configurable
   /** Whether memory management is enabled */
-  private static final boolean ENABLED = false;
+  private final boolean enable;
 
   /** Max retry times for memory allocation */
   private static final int MEMORY_ALLOCATE_MAX_RETRIES = 3;
@@ -67,10 +67,20 @@ public class MemoryManager {
     this.name = name;
     this.parentMemoryManager = parentMemoryManager;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
+    this.enable = false;
   }
 
-  public MemoryManager createMemoryManager(String name, long totalMemorySizeInBytes) {
-    MemoryManager result = new MemoryManager(name, this, totalMemorySizeInBytes);
+  private MemoryManager(
+      String name, MemoryManager parentMemoryManager, long totalMemorySizeInBytes, boolean enable) {
+    this.name = name;
+    this.parentMemoryManager = parentMemoryManager;
+    this.totalMemorySizeInBytes = totalMemorySizeInBytes;
+    this.enable = enable;
+  }
+
+  public MemoryManager createMemoryManager(
+      String name, long totalMemorySizeInBytes, boolean enable) {
+    MemoryManager result = new MemoryManager(name, this, totalMemorySizeInBytes, enable);
     return childrens.compute(
         name,
         (managerName, manager) -> {
@@ -86,9 +96,13 @@ public class MemoryManager {
         });
   }
 
+  public MemoryManager createMemoryManager(String name, long totalMemorySizeInBytes) {
+    return createMemoryManager(name, totalMemorySizeInBytes, false);
+  }
+
   /** Try to force allocate memory block with specified size in bytes. */
   public MemoryBlock forceAllocate(String name, long sizeInBytes, MemoryBlockType type) {
-    if (!ENABLED) {
+    if (!enable) {
       return new MemoryBlock(name, this, sizeInBytes, type);
     }
     for (int i = 0; i < MEMORY_ALLOCATE_MAX_RETRIES; i++) {
@@ -122,7 +136,7 @@ public class MemoryManager {
     if (usedThreshold < 0.0f || usedThreshold > 1.0f) {
       return null;
     }
-    if (!ENABLED) {
+    if (!enable) {
       return new MemoryBlock(name, this, sizeInBytes);
     }
     if (totalMemorySizeInBytes - allocatedMemorySizeInBytes >= sizeInBytes
@@ -149,7 +163,7 @@ public class MemoryManager {
       long sizeInBytes,
       LongUnaryOperator customAllocateStrategy,
       MemoryBlockType type) {
-    if (!ENABLED) {
+    if (!enable) {
       return new MemoryBlock(name, this, sizeInBytes);
     }
 
@@ -199,7 +213,7 @@ public class MemoryManager {
 
   /** Release memory block. */
   public synchronized void release(IMemoryBlock block) {
-    if (!ENABLED || block == null || block.isReleased()) {
+    if (!enable || block == null || block.isReleased()) {
       return;
     }
     releaseWithOutNotify(block);
@@ -207,7 +221,7 @@ public class MemoryManager {
   }
 
   public synchronized void releaseWithOutNotify(IMemoryBlock block) {
-    if (!ENABLED || block == null || block.isReleased()) {
+    if (!enable || block == null || block.isReleased()) {
       return;
     }
 

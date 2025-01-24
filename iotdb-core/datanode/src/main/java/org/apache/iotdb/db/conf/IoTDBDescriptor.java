@@ -410,9 +410,6 @@ public class IoTDBDescriptor {
                 "max_waiting_time_when_insert_blocked",
                 Integer.toString(conf.getMaxWaitingTimeWhenInsertBlocked()))));
 
-    String offHeapMemoryStr = System.getProperty("OFF_HEAP_MEMORY");
-    conf.setMaxOffHeapMemoryBytes(MemUtils.strToBytesCnt(offHeapMemoryStr));
-
     conf.setIoTaskQueueSizeForFlushing(
         Integer.parseInt(
             properties.getProperty(
@@ -2167,6 +2164,7 @@ public class IoTDBDescriptor {
   }
 
   private void initMemoryAllocate(TrimProperties properties) {
+    // on heap memory
     String memoryAllocateProportion = properties.getProperty("datanode_memory_proportion", null);
     // Get global memory manager here
     if (memoryAllocateProportion == null) {
@@ -2256,6 +2254,24 @@ public class IoTDBDescriptor {
     initSchemaMemoryAllocate(schemaEngineMemoryManager, properties);
     initStorageEngineAllocate(storageEngineMemoryManager, properties);
     initQueryEngineMemoryAllocate(queryEngineMemoryManager, properties);
+
+    String offHeapMemoryStr = System.getProperty("OFF_HEAP_MEMORY");
+    MemoryManager offHeapMemoryManager =
+        globalMemoryManager.createMemoryManager(
+            "OffHeap", MemUtils.strToBytesCnt(offHeapMemoryStr), false);
+    conf.setOffHeapMemoryManager(offHeapMemoryManager);
+
+    // when we can't get the OffHeapMemory variable from environment, it will be 0
+    // and the limit should not be effective
+    long totalDirectBufferMemorySizeLimit =
+        offHeapMemoryManager.getTotalMemorySizeInBytes() == 0
+            ? Long.MAX_VALUE
+            : (long)
+                (offHeapMemoryManager.getTotalMemorySizeInBytes()
+                    * conf.getMaxDirectBufferOffHeapMemorySizeProportion());
+    MemoryManager directBufferMemoryManager =
+        offHeapMemoryManager.createMemoryManager("DirectBuffer", totalDirectBufferMemorySizeLimit);
+    conf.setDirectBufferMemoryManager(directBufferMemoryManager);
   }
 
   @SuppressWarnings("java:S3518")
@@ -2264,7 +2280,10 @@ public class IoTDBDescriptor {
     long storageMemoryTotal = storageEngineMemoryManager.getTotalMemorySizeInBytes();
     String valueOfStorageEngineMemoryProportion =
         properties.getProperty("storage_engine_memory_proportion");
-    long timePartitionInfoMemorySize = storageMemoryTotal * 8 / 10 / 20;
+    long writeMemorySize = storageMemoryTotal * 8 / 10;
+    long compactionMemorySize = storageMemoryTotal * 2 / 10;
+    long memtableMemorySize = writeMemorySize * 19 / 20;
+    long timePartitionInfoMemorySize = writeMemorySize / 20;
     if (valueOfStorageEngineMemoryProportion != null) {
       String[] storageProportionArray = valueOfStorageEngineMemoryProportion.split(":");
       int storageEngineMemoryProportion = 0;
@@ -2277,9 +2296,14 @@ public class IoTDBDescriptor {
         }
         storageEngineMemoryProportion += proportionValue;
       }
-      conf.setCompactionProportion(
-          (double) Integer.parseInt(storageProportionArray[1].trim())
-              / (double) storageEngineMemoryProportion);
+      writeMemorySize =
+          storageMemoryTotal
+              * Integer.parseInt(storageProportionArray[0].trim())
+              / storageEngineMemoryProportion;
+      compactionMemorySize =
+          storageMemoryTotal
+              * Integer.parseInt(storageProportionArray[1].trim())
+              / storageEngineMemoryProportion;
 
       String valueOfWriteMemoryProportion = properties.getProperty("write_memory_proportion");
       if (valueOfWriteMemoryProportion != null) {
@@ -2295,27 +2319,44 @@ public class IoTDBDescriptor {
           }
         }
 
-        double writeAllProportionOfStorageEngineMemory =
-            (double) Integer.parseInt(storageProportionArray[0].trim())
-                / storageEngineMemoryProportion;
-        double memTableProportion =
-            (double) Integer.parseInt(writeProportionArray[0].trim()) / writeMemoryProportion;
-        double timePartitionInfoProportion =
-            (double) Integer.parseInt(writeProportionArray[1].trim()) / writeMemoryProportion;
-        // writeProportionForMemtable = 8/10 * 19/20 = 0.76 default
-        conf.setWriteProportionForMemtable(
-            writeAllProportionOfStorageEngineMemory * memTableProportion);
-
-        // allocateMemoryForTimePartitionInfo = storageMemoryTotal * 8/10 * 1/20 default
+        memtableMemorySize =
+            writeMemorySize
+                * Integer.parseInt(writeProportionArray[0].trim())
+                / writeMemoryProportion;
         timePartitionInfoMemorySize =
-            (long)
-                ((writeAllProportionOfStorageEngineMemory * timePartitionInfoProportion)
-                    * storageMemoryTotal);
+            writeMemorySize
+                * Integer.parseInt(writeProportionArray[1].trim())
+                / writeMemoryProportion;
       }
     }
-    conf.setTimePartitionInfoMemoryManager(
-        storageEngineMemoryManager.createMemoryManager(
-            "TimePartitionInfo", timePartitionInfoMemorySize));
+    MemoryManager writeMemoryManager =
+        storageEngineMemoryManager.createMemoryManager("Write", writeMemorySize);
+    conf.setWriteMemoryManager(writeMemoryManager);
+    MemoryManager compactionMemoryManager =
+        storageEngineMemoryManager.createMemoryManager("Compaction", compactionMemorySize);
+    conf.setCompactionMemoryManager(compactionMemoryManager);
+    MemoryManager memtableMemoryManager =
+        writeMemoryManager.createMemoryManager("Memtable", memtableMemorySize);
+    conf.setMemtableMemoryManager(memtableMemoryManager);
+    MemoryManager timePartitionMemoryManager =
+        writeMemoryManager.createMemoryManager("TimePartitionInfo", timePartitionInfoMemorySize);
+    conf.setTimePartitionInfoMemoryManager(timePartitionMemoryManager);
+    long devicePathCacheMemorySize =
+        (long) (memtableMemorySize * conf.getDevicePathCacheProportion());
+    MemoryManager devicePathCacheMemoryManager =
+        memtableMemoryManager.createMemoryManager("DevicePathCache", devicePathCacheMemorySize);
+    conf.setDevicePathCacheMemoryManager(devicePathCacheMemoryManager);
+    // TODO @spricoder check why this memory calculate by storage engine memory
+    long bufferedArraysMemorySize =
+        (long) (storageMemoryTotal * conf.getBufferedArraysMemoryProportion());
+    MemoryManager bufferedArraysMemoryManager =
+        memtableMemoryManager.createMemoryManager("BufferedArray", bufferedArraysMemorySize);
+    conf.setBufferedArraysMemoryManager(bufferedArraysMemoryManager);
+    long walBufferQueueMemorySize =
+        (long) (memtableMemorySize * conf.getWalBufferQueueProportion());
+    MemoryManager walBufferQueueMemoryManager =
+        memtableMemoryManager.createMemoryManager("WalBufferQueue", walBufferQueueMemorySize);
+    conf.setWalBufferQueueManager(walBufferQueueMemoryManager);
   }
 
   @SuppressWarnings("squid:S3518")
