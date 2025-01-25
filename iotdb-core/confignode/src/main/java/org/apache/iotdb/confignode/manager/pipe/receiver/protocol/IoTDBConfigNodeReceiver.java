@@ -682,6 +682,9 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ByteBuffer.wrap(((PipeDeleteDevicesPlan) plan).getModBytes())),
                 true)
             .getStatus();
+      case CreateUser:
+      case CreateUserWithRawPassword:
+      case CreateRole:
       case DropUser:
       case DropRole:
       case GrantRole:
@@ -692,10 +695,34 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RevokeRoleFromUser:
       case UpdateUser:
         return configManager.getPermissionManager().operatePermission((AuthorPlan) plan, true);
+      case RCreateUser:
+      case RCreateRole:
+      case RDropUser:
+      case RDropRole:
+      case RGrantRoleAll:
+      case RGrantUserAll:
+      case RRevokeRoleAll:
+      case RRevokeUserAll:
+      case RGrantRoleAny:
+      case RGrantUserAny:
+      case RRevokeUserAny:
+      case RRevokeRoleAny:
+      case RGrantRoleDBPriv:
+      case RGrantUserDBPriv:
+      case RRevokeRoleDBPriv:
+      case RRevokeUserDBPriv:
+      case RGrantRoleTBPriv:
+      case RGrantUserTBPriv:
+      case RRevokeRoleTBPriv:
+      case RRevokeUserTBPriv:
+      case RGrantRoleSysPri:
+      case RGrantUserSysPri:
+      case RRevokeRoleSysPri:
+      case RRevokeUserSysPri:
+      case RGrantUserRole:
+      case RRevokeUserRole:
+        return configManager.getPermissionManager().operatePermission((AuthorPlan) plan, true);
       case CreateSchemaTemplate:
-      case CreateUser:
-      case CreateRole:
-      case CreateUserWithRawPassword:
       default:
         return configManager.getConsensusManager().write(new PipeEnrichedPlan(plan));
     }
