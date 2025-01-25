@@ -166,28 +166,28 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitGrantUser(
       final AuthorTreePlan grantUserPlan, final IoTDBTreePattern pattern) {
-    return visitTreeAuthorTreePlan(grantUserPlan, pattern);
+    return visitTreeAuthorPlan(grantUserPlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRevokeUser(
       final AuthorTreePlan revokeUserPlan, final IoTDBTreePattern pattern) {
-    return visitTreeAuthorTreePlan(revokeUserPlan, pattern);
+    return visitTreeAuthorPlan(revokeUserPlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitGrantRole(
       final AuthorTreePlan revokeUserPlan, final IoTDBTreePattern pattern) {
-    return visitTreeAuthorTreePlan(revokeUserPlan, pattern);
+    return visitTreeAuthorPlan(revokeUserPlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRevokeRole(
       final AuthorTreePlan revokeUserPlan, final IoTDBTreePattern pattern) {
-    return visitTreeAuthorTreePlan(revokeUserPlan, pattern);
+    return visitTreeAuthorPlan(revokeUserPlan, pattern);
   }
 
-  private Optional<ConfigPhysicalPlan> visitTreeAuthorTreePlan(
+  private Optional<ConfigPhysicalPlan> visitTreeAuthorPlan(
       final AuthorTreePlan pathRelatedAuthorTreePlan, final IoTDBTreePattern pattern) {
     final List<PartialPath> intersectedPaths =
         pathRelatedAuthorTreePlan.getNodeNameList().stream()
