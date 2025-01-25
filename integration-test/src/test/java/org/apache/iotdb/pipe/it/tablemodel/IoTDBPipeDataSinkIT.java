@@ -766,6 +766,10 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
           receiverEnv, "select * from root.**", "Time,", Collections.emptySet());
 
       TableModelUtils.createDataBaseAndTable(receiverEnv, "test", "test");
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          receiverEnv, "create timeSeries root.vehicle.d0.s1 int32")) {
+        return;
+      }
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
