@@ -25,6 +25,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.Map;
 
 public class TagColumnSchema extends TsTableColumnSchema {
@@ -54,5 +55,10 @@ public class TagColumnSchema extends TsTableColumnSchema {
     TSDataType dataType = ReadWriteIOUtils.readDataType(buffer);
     Map<String, String> props = ReadWriteIOUtils.readMap(buffer);
     return new TagColumnSchema(columnName, dataType, props);
+  }
+
+  @Override
+  public TsTableColumnSchema copy() {
+    return new TagColumnSchema(columnName, dataType, props == null ? null : new HashMap<>(props));
   }
 }

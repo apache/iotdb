@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.Map;
 
 public class FieldColumnSchema extends TsTableColumnSchema {
@@ -108,5 +109,11 @@ public class FieldColumnSchema extends TsTableColumnSchema {
     final CompressionType compressor = ReadWriteIOUtils.readCompressionType(buffer);
     final Map<String, String> props = ReadWriteIOUtils.readMap(buffer);
     return new FieldColumnSchema(columnName, dataType, encoding, compressor, props);
+  }
+
+  @Override
+  public TsTableColumnSchema copy() {
+    return new FieldColumnSchema(
+        columnName, dataType, encoding, compressor, props == null ? null : new HashMap<>(props));
   }
 }

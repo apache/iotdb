@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
+import org.apache.iotdb.db.utils.CommonUtils;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -33,6 +35,8 @@ import org.apache.tsfile.read.filter.factory.FilterFactory;
 import org.apache.tsfile.read.reader.IPageReader;
 import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.TsPrimitiveType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -96,9 +100,13 @@ public class MemAlignedPageReader implements IPageReader {
 
     // build value column
     buildValueColumns(satisfyInfo, readEndIndex);
-
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("[memAlignedPageReader] TsBlock:{}", CommonUtils.toString(tsBlock));
+    }
     return builder.build();
   }
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(MemAlignedPageReader.class);
 
   private boolean[] buildSatisfyInfoArray() {
     if (recordFilter == null || recordFilter.allSatisfy(this)) {

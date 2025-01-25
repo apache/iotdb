@@ -48,6 +48,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.TVLIST_SORT_ALGORITHM;
@@ -112,25 +113,39 @@ public abstract class AlignedTVList extends TVList {
     }
   }
 
+  private List<Object> convertToType(TSDataType to, TSDataType from, List<Object> originalValues) {
+    if (!to.isCompatible(from)) {
+      return null;
+    }
+    return originalValues.stream().map(o -> to.castFromArray(from, o)).collect(Collectors.toList());
+  }
+
   @Override
   public TVList getTvListByColumnIndex(
-      List<Integer> columnIndex, List<TSDataType> dataTypeList, boolean ignoreAllNullRows) {
+      List<Integer> columnIndexList, List<TSDataType> dataTypeList, boolean ignoreAllNullRows) {
     List<List<Object>> values = new ArrayList<>();
     List<List<BitMap>> bitMaps = null;
-    for (int i = 0; i < columnIndex.size(); i++) {
+    for (int i = 0; i < columnIndexList.size(); i++) {
       // columnIndex == -1 means querying a non-exist column, add null column here
-      if (columnIndex.get(i) == -1) {
+      Integer columnIndex = columnIndexList.get(i);
+      if (columnIndex == -1) {
         values.add(null);
       } else {
-        values.add(this.values.get(columnIndex.get(i)));
-        if (this.bitMaps != null && this.bitMaps.get(columnIndex.get(i)) != null) {
+        List<Object> column = this.values.get(columnIndex);
+        if (dataTypeList.get(i) == this.dataTypes.get(columnIndex)) {
+          values.add(column);
+        } else {
+          values.add(convertToType(dataTypeList.get(i), this.dataTypes.get(columnIndex), column));
+        }
+
+        if (this.bitMaps != null && this.bitMaps.get(columnIndex) != null) {
           if (bitMaps == null) {
-            bitMaps = new ArrayList<>(columnIndex.size());
-            for (int j = 0; j < columnIndex.size(); j++) {
+            bitMaps = new ArrayList<>(columnIndexList.size());
+            for (int j = 0; j < columnIndexList.size(); j++) {
               bitMaps.add(null);
             }
           }
-          bitMaps.set(i, this.bitMaps.get(columnIndex.get(i)));
+          bitMaps.set(i, this.bitMaps.get(columnIndex));
         }
       }
     }
