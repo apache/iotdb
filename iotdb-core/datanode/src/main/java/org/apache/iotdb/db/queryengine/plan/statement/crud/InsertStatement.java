@@ -65,7 +65,7 @@ public class InsertStatement extends Statement {
     List<PartialPath> checkedPaths = getPaths();
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkFullPathListPermission(
-            userName, checkedPaths, PrivilegeType.WRITE_DATA.ordinal()),
+            userName, checkedPaths, PrivilegeType.WRITE_DATA),
         checkedPaths,
         PrivilegeType.WRITE_DATA);
   }

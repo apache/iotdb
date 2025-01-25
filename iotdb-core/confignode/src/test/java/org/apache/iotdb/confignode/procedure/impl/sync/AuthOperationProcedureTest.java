@@ -23,9 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -37,6 +39,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
 import static org.junit.Assert.fail;
@@ -69,7 +72,7 @@ public class AuthOperationProcedureTest {
       for (int i = begin; i <= end; i++) {
         final AuthOperationProcedure proc =
             new AuthOperationProcedure(
-                new AuthorPlan(
+                new AuthorTreePlan(
                     ConfigPhysicalPlanType.values()[i],
                     "user1",
                     "role1",
@@ -78,6 +81,38 @@ public class AuthOperationProcedureTest {
                     Collections.singleton(1),
                     false,
                     Collections.singletonList(new PartialPath("root.t1"))),
+                datanodes,
+                false);
+        proc.serialize(outputStream);
+        final ByteBuffer buffer =
+            ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+
+        final AuthOperationProcedure proc2 =
+            (AuthOperationProcedure) ProcedureFactory.getInstance().create(buffer);
+        Assert.assertEquals(proc, proc2);
+        buffer.clear();
+        byteArrayOutputStream.reset();
+      }
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+
+    try {
+      final int begin = ConfigPhysicalPlanType.RCreateUser.ordinal();
+      final int end = ConfigPhysicalPlanType.RRevokeRoleSysPri.ordinal();
+      for (int i = begin; i <= end; i++) {
+        final AuthOperationProcedure proc =
+            new AuthOperationProcedure(
+                new AuthorRelationalPlan(
+                    ConfigPhysicalPlanType.values()[i],
+                    "user1",
+                    "role1",
+                    "database",
+                    "table",
+                    new HashSet<>(PrivilegeType.CREATE.ordinal(), PrivilegeType.SELECT.ordinal()),
+                    false,
+                    "password"),
                 datanodes,
                 false);
         proc.serialize(outputStream);

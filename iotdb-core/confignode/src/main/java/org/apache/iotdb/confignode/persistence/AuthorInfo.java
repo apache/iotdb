@@ -24,8 +24,11 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer;
+import org.apache.iotdb.commons.auth.entity.ModelType;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
-import org.apache.iotdb.commons.auth.entity.PriPrivilegeType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeModelType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -38,11 +41,11 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorReadPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
-import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
@@ -60,12 +63,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import static org.apache.iotdb.commons.auth.entity.PrivilegeType.isPathRelevant;
 
 public class AuthorInfo implements SnapshotProcessor {
 
@@ -75,8 +77,6 @@ public class AuthorInfo implements SnapshotProcessor {
   private static final String NO_USER_MSG = "No such user : ";
 
   private IAuthorizer authorizer;
-
-  private boolean hasPrePriv = true;
 
   public AuthorInfo() {
     try {
@@ -98,10 +98,10 @@ public class AuthorInfo implements SnapshotProcessor {
         // Bring this user's permission information back to the datanode for caching
         if (authorizer instanceof OpenIdAuthorizer) {
           username = ((OpenIdAuthorizer) authorizer).getIoTDBUserName(username);
-          result = getUserPermissionInfo(username);
+          result = getUserPermissionInfo(username, ModelType.ALL);
           result.getUserInfo().setIsOpenIdUser(true);
         } else {
-          result = getUserPermissionInfo(username);
+          result = getUserPermissionInfo(username, ModelType.ALL);
         }
 
         result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully"));
@@ -121,63 +121,58 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  // if All paths fail, return No permission
-  // if some paths fail, return SUCCESS and failed index list
-  // if all path success, return success and empty index list
-  public TPermissionInfoResp checkUserPrivileges(
-      String username, List<PartialPath> paths, int permission) {
-    boolean status = true;
+  public TPermissionInfoResp checkUserPrivileges(String username, PrivilegeUnion union) {
+    boolean status;
     TPermissionInfoResp result = new TPermissionInfoResp();
     List<Integer> failedList = new ArrayList<>();
     try {
-      if (paths.isEmpty()) {
-        status = authorizer.checkUserPrivileges(username, null, permission);
-      } else {
+      if (union.getModelType() == PrivilegeModelType.TREE) {
+        List<? extends PartialPath> list = union.getPaths();
         int pos = 0;
-        for (PartialPath path : paths) {
-          if (!checkOnePath(username, path, permission)) {
+        for (PartialPath path : list) {
+          if (!authorizer.checkUserPrivileges(
+              username,
+              new PrivilegeUnion(path, union.getPrivilegeType(), union.isGrantOption()))) {
             failedList.add(pos);
           }
           pos++;
         }
-        if (failedList.size() == paths.size()) {
-          status = false;
+        if (union.isGrantOption()) {
+          // all path should have grant option.
+          status = failedList.isEmpty();
+        } else {
+          status = failedList.size() != list.size();
         }
+      } else {
+        status = authorizer.checkUserPrivileges(username, union);
       }
     } catch (AuthException e) {
       status = false;
     }
-    if (status) {
-      try {
-        // Bring this user's permission information back to the datanode for caching
-        result = getUserPermissionInfo(username);
-        result.setFailPos(failedList);
-        result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-      } catch (AuthException e) {
-        result.setStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
-      }
-    } else {
-      result = AuthUtils.generateEmptyPermissionInfoResp();
+
+    try {
+      result = getUserPermissionInfo(username, ModelType.ALL);
       result.setFailPos(failedList);
-      result.setStatus(RpcUtils.getStatus(TSStatusCode.NO_PERMISSION));
+      if (status) {
+        result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        result.setStatus(RpcUtils.getStatus(TSStatusCode.NO_PERMISSION));
+      }
+    } catch (AuthException e) {
+      result.setStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
     }
     return result;
   }
 
-  private boolean checkOnePath(String username, PartialPath path, int permission)
-      throws AuthException {
-    try {
-      if (authorizer.checkUserPrivileges(username, path, permission)) {
-        return true;
-      }
-    } catch (AuthException e) {
-      LOGGER.error("Error occurs when checking the seriesPath {} for user {}", path, username, e);
-      throw new AuthException(e.getCode(), e);
+  public TSStatus authorNonQuery(AuthorPlan authorPlan) {
+    if (authorPlan instanceof AuthorTreePlan) {
+      return authorNonQuery((AuthorTreePlan) authorPlan);
+    } else {
+      return authorNonQuery((AuthorRelationalPlan) authorPlan);
     }
-    return false;
   }
 
-  public TSStatus authorNonQuery(AuthorPlan authorPlan) {
+  public TSStatus authorNonQuery(AuthorTreePlan authorPlan) {
     ConfigPhysicalPlanType authorType = authorPlan.getAuthorType();
     String userName = authorPlan.getUserName();
     String roleName = authorPlan.getRoleName();
@@ -186,38 +181,10 @@ public class AuthorInfo implements SnapshotProcessor {
     Set<Integer> permissions = authorPlan.getPermissions();
     boolean grantOpt = authorPlan.getGrantOpt();
     List<PartialPath> nodeNameList = authorPlan.getNodeNameList();
-    // We will process the new version permissions after handling all the old version permissions.
-    // We assume that:
-    // 1. the permission logs generated by new version will always come after the old permissions.
-    // 2. two types of permission logs will not be mixed.
-    // When we begin to handle the new version's permissions, we need to check whether the old
-    // permissions have
-    // been processed before. The encoding and meaning of these old permissions have changed
-    // significantly.
-    if (authorType.ordinal() >= ConfigPhysicalPlanType.CreateUserDep.ordinal()
-        && authorType.ordinal() <= ConfigPhysicalPlanType.UpdateUserDep.ordinal()) {
-      // if meet old version's permissions, we will set pre version tag.
-      authorizer.setUserForPreVersion(true);
-      authorizer.setRoleForPreVersion(true);
-    } else {
-      if (hasPrePriv) {
-        // when we refresh our preversion's information？
-        // 1. before raftlog redoing finish.（ALL author plans in raftlog are pre version)
-        // 2. refresh during raftlog. (pre version mixed with new version)
-        authorizer.checkUserPathPrivilege();
-        hasPrePriv = false;
-      }
-    }
     try {
       switch (authorType) {
-        case UpdateUserDep:
         case UpdateUser:
           authorizer.updateUserPassword(userName, newPassword);
-          break;
-        case CreateUserDep:
-          AuthUtils.validatePasswordPre(password);
-          AuthUtils.validateUsernamePre(userName);
-          authorizer.createUserWithoutCheck(userName, password);
           break;
         case CreateUser:
           authorizer.createUser(userName, password);
@@ -225,83 +192,68 @@ public class AuthorInfo implements SnapshotProcessor {
         case CreateUserWithRawPassword:
           authorizer.createUserWithRawPassword(userName, password);
           break;
-        case CreateRoleDep:
-          AuthUtils.validateRolenamePre(roleName);
-          authorizer.createRole(roleName);
-          break;
         case CreateRole:
-          AuthUtils.validateRolename(roleName);
           authorizer.createRole(roleName);
           break;
-        case DropUserDep:
         case DropUser:
           authorizer.deleteUser(userName);
           break;
-        case DropRoleDep:
         case DropRole:
           authorizer.deleteRole(roleName);
           break;
-        case GrantRoleDep:
-          grantPrivilegeForPreVersion(false, roleName, permissions, nodeNameList);
-          break;
         case GrantRole:
           for (int permission : permissions) {
-            if (!isPathRelevant(permission)) {
-              authorizer.grantPrivilegeToRole(roleName, null, permission, grantOpt);
+            PrivilegeType priv = PrivilegeType.values()[permission];
+            if (priv.isSystemPrivilege()) {
+              authorizer.grantPrivilegeToRole(roleName, new PrivilegeUnion(priv, grantOpt));
               continue;
             }
             for (PartialPath path : nodeNameList) {
-              authorizer.grantPrivilegeToRole(roleName, path, permission, grantOpt);
+              authorizer.grantPrivilegeToRole(roleName, new PrivilegeUnion(path, priv, grantOpt));
             }
           }
-          break;
-        case GrantUserDep:
-          grantPrivilegeForPreVersion(true, userName, permissions, nodeNameList);
           break;
         case GrantUser:
           for (int permission : permissions) {
-            if (!isPathRelevant(permission)) {
-              authorizer.grantPrivilegeToUser(userName, null, permission, grantOpt);
+            PrivilegeType priv = PrivilegeType.values()[permission];
+            if (priv.isSystemPrivilege()) {
+              authorizer.grantPrivilegeToUser(userName, new PrivilegeUnion(priv, grantOpt));
               continue;
             }
             for (PartialPath path : nodeNameList) {
-              authorizer.grantPrivilegeToUser(userName, path, permission, grantOpt);
+              authorizer.grantPrivilegeToUser(userName, new PrivilegeUnion(path, priv, grantOpt));
             }
           }
           break;
-        case GrantRoleToUserDep:
         case GrantRoleToUser:
           authorizer.grantRoleToUser(roleName, userName);
           break;
-        case RevokeUserDep:
-          revokePrivilegeForPreVersion(true, userName, permissions, nodeNameList);
-          break;
         case RevokeUser:
           for (int permission : permissions) {
-            if (!isPathRelevant(permission)) {
-              authorizer.revokePrivilegeFromUser(userName, null, permission);
+            PrivilegeType priv = PrivilegeType.values()[permission];
+            if (priv.isSystemPrivilege()) {
+              authorizer.revokePrivilegeFromUser(userName, new PrivilegeUnion(priv, grantOpt));
               continue;
             }
             for (PartialPath path : nodeNameList) {
-              authorizer.revokePrivilegeFromUser(userName, path, permission);
+              authorizer.revokePrivilegeFromUser(
+                  userName, new PrivilegeUnion(path, priv, grantOpt));
             }
           }
-          break;
-        case RevokeRoleDep:
-          revokePrivilegeForPreVersion(false, roleName, permissions, nodeNameList);
           break;
         case RevokeRole:
           for (int permission : permissions) {
-            if (!isPathRelevant(permission)) {
-              authorizer.revokePrivilegeFromRole(roleName, null, permission);
+            PrivilegeType priv = PrivilegeType.values()[permission];
+            if (priv.isSystemPrivilege()) {
+              authorizer.revokePrivilegeFromRole(roleName, new PrivilegeUnion(priv, grantOpt));
               continue;
             }
             for (PartialPath path : nodeNameList) {
-              authorizer.revokePrivilegeFromRole(roleName, path, permission);
+              authorizer.revokePrivilegeFromRole(
+                  roleName, new PrivilegeUnion(path, priv, grantOpt));
             }
           }
           break;
-        case RevokeRoleFromUserDep:
         case RevokeRoleFromUser:
           authorizer.revokeRoleFromUser(roleName, userName);
           break;
@@ -312,14 +264,195 @@ public class AuthorInfo implements SnapshotProcessor {
       }
     } catch (AuthException e) {
       return RpcUtils.getStatus(e.getCode(), e.getMessage());
-    } finally {
-      authorizer.setUserForPreVersion(false);
-      authorizer.setRoleForPreVersion(false);
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
-  public PermissionInfoResp executeListUsers(final AuthorReadPlan plan) throws AuthException {
+  public TSStatus authorNonQuery(AuthorRelationalPlan authorPlan) {
+    ConfigPhysicalPlanType authorType = authorPlan.getAuthorType();
+    String userName = authorPlan.getUserName();
+    String roleName = authorPlan.getRoleName();
+    String database = authorPlan.getDatabaseName();
+    String table = authorPlan.getTableName();
+    boolean grantOpt = authorPlan.getGrantOpt();
+    Set<Integer> permissions = authorPlan.getPermissions();
+    Set<PrivilegeType> privileges = new HashSet<>();
+    if (authorType.ordinal() >= ConfigPhysicalPlanType.RGrantUserAny.ordinal()
+        && authorType.ordinal() <= ConfigPhysicalPlanType.RRevokeRoleSysPri.ordinal()) {
+      for (int permission : permissions) {
+        privileges.add(PrivilegeType.values()[permission]);
+      }
+    }
+
+    try {
+      switch (authorType) {
+        case RCreateUser:
+          authorizer.createUser(userName, authorPlan.getPassword());
+          break;
+        case RCreateRole:
+          authorizer.createRole(roleName);
+          break;
+        case RUpdateUser:
+          authorizer.updateUserPassword(userName, authorPlan.getPassword());
+          break;
+        case RDropRole:
+          authorizer.deleteRole(roleName);
+          break;
+        case RDropUser:
+          authorizer.deleteUser(userName);
+          break;
+        case RGrantUserRole:
+          authorizer.grantRoleToUser(roleName, userName);
+          break;
+        case RRevokeUserRole:
+          authorizer.revokeRoleFromUser(roleName, userName);
+          break;
+        case RGrantUserAny:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.grantPrivilegeToUser(
+                userName, new PrivilegeUnion(privilege, grantOpt, true));
+          }
+          break;
+        case RGrantRoleAny:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.grantPrivilegeToRole(
+                roleName, new PrivilegeUnion(privilege, grantOpt, true));
+          }
+          break;
+        case RGrantUserAll:
+          for (PrivilegeType privilege : PrivilegeType.values()) {
+            if (privilege.forRelationalSys()) {
+              authorizer.grantPrivilegeToUser(userName, new PrivilegeUnion(privilege, grantOpt));
+            }
+            if (privilege.isRelationalPrivilege()) {
+              authorizer.grantPrivilegeToUser(
+                  userName, new PrivilegeUnion(privilege, grantOpt, true));
+            }
+          }
+          break;
+        case RGrantRoleAll:
+          for (PrivilegeType privilege : PrivilegeType.values()) {
+            if (privilege.forRelationalSys()) {
+              authorizer.grantPrivilegeToRole(roleName, new PrivilegeUnion(privilege, grantOpt));
+            }
+            if (privilege.isRelationalPrivilege()) {
+              authorizer.grantPrivilegeToRole(
+                  roleName, new PrivilegeUnion(privilege, grantOpt, true));
+            }
+          }
+          break;
+        case RGrantUserDBPriv:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.grantPrivilegeToUser(
+                userName, new PrivilegeUnion(database, privilege, grantOpt));
+          }
+          break;
+        case RGrantUserTBPriv:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.grantPrivilegeToUser(
+                userName, new PrivilegeUnion(database, table, privilege, grantOpt));
+          }
+          break;
+        case RGrantRoleDBPriv:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.grantPrivilegeToRole(
+                roleName, new PrivilegeUnion(database, privilege, grantOpt));
+          }
+          break;
+        case RGrantRoleTBPriv:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.grantPrivilegeToRole(
+                roleName, new PrivilegeUnion(database, table, privilege, grantOpt));
+          }
+          break;
+        case RRevokeUserAny:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.revokePrivilegeFromUser(
+                userName, new PrivilegeUnion(privilege, grantOpt, true));
+          }
+          break;
+        case RRevokeRoleAny:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.revokePrivilegeFromRole(
+                roleName, new PrivilegeUnion(privilege, grantOpt, true));
+          }
+          break;
+        case RRevokeUserAll:
+          for (PrivilegeType privilege : PrivilegeType.values()) {
+            if (privilege.forRelationalSys()) {
+              authorizer.revokePrivilegeFromUser(userName, new PrivilegeUnion(privilege, grantOpt));
+            }
+            if (privilege.isRelationalPrivilege()) {
+              authorizer.revokePrivilegeFromUser(
+                  userName, new PrivilegeUnion(privilege, grantOpt, true));
+            }
+          }
+          break;
+        case RRevokeRoleAll:
+          for (PrivilegeType privilege : PrivilegeType.values()) {
+            if (privilege.forRelationalSys()) {
+              authorizer.revokePrivilegeFromRole(roleName, new PrivilegeUnion(privilege, grantOpt));
+            }
+            if (privilege.isRelationalPrivilege()) {
+              authorizer.revokePrivilegeFromRole(
+                  roleName, new PrivilegeUnion(privilege, grantOpt, true));
+            }
+          }
+          break;
+        case RRevokeUserDBPriv:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.revokePrivilegeFromUser(
+                userName, new PrivilegeUnion(database, privilege, grantOpt));
+          }
+          break;
+        case RRevokeUserTBPriv:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.revokePrivilegeFromUser(
+                userName, new PrivilegeUnion(database, table, privilege, grantOpt));
+          }
+          break;
+        case RRevokeRoleDBPriv:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.revokePrivilegeFromRole(
+                roleName, new PrivilegeUnion(database, privilege, grantOpt));
+          }
+          break;
+        case RRevokeRoleTBPriv:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.revokePrivilegeFromRole(
+                roleName, new PrivilegeUnion(database, table, privilege, grantOpt));
+          }
+          break;
+        case RGrantUserSysPri:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.grantPrivilegeToUser(userName, new PrivilegeUnion(privilege, grantOpt));
+          }
+          break;
+        case RGrantRoleSysPri:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.grantPrivilegeToRole(roleName, new PrivilegeUnion(privilege, grantOpt));
+          }
+          break;
+        case RRevokeUserSysPri:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.revokePrivilegeFromUser(userName, new PrivilegeUnion(privilege, grantOpt));
+          }
+          break;
+        case RRevokeRoleSysPri:
+          for (PrivilegeType privilege : privileges) {
+            authorizer.revokePrivilegeFromRole(roleName, new PrivilegeUnion(privilege, grantOpt));
+          }
+          break;
+        default:
+          throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, "not support");
+      }
+    } catch (AuthException e) {
+      return RpcUtils.getStatus(e.getCode(), e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public PermissionInfoResp executeListUsers(final AuthorPlan plan) throws AuthException {
     final PermissionInfoResp result = new PermissionInfoResp();
     final List<String> userList = authorizer.listAllUsers();
     if (!plan.getRoleName().isEmpty()) {
@@ -344,7 +477,7 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  public PermissionInfoResp executeListRoles(final AuthorReadPlan plan) throws AuthException {
+  public PermissionInfoResp executeListRoles(final AuthorPlan plan) throws AuthException {
     final PermissionInfoResp result = new PermissionInfoResp();
     final List<String> permissionInfo = new ArrayList<>();
     final List<String> roleList = new ArrayList<>();
@@ -358,7 +491,7 @@ public class AuthorInfo implements SnapshotProcessor {
         result.setMemberInfo(permissionInfo);
         return result;
       }
-      roleList.addAll(user.getRoleList());
+      roleList.addAll(user.getRoleSet());
     }
     result.setTag(ColumnHeaderConstant.ROLE);
     result.setMemberInfo(roleList);
@@ -366,8 +499,8 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  public PermissionInfoResp executeListRolePrivileges(final AuthorReadPlan plan)
-      throws AuthException {
+  public PermissionInfoResp executeListRolePrivileges(final AuthorPlan plan) throws AuthException {
+    boolean isTreePlan = plan instanceof AuthorTreePlan;
     final PermissionInfoResp result = new PermissionInfoResp();
     final List<String> permissionInfo = new ArrayList<>();
     final Role role = authorizer.getRole(plan.getRoleName());
@@ -378,20 +511,8 @@ public class AuthorInfo implements SnapshotProcessor {
       return result;
     }
     final TPermissionInfoResp resp = new TPermissionInfoResp();
-    final TRoleResp roleResp = new TRoleResp();
-    roleResp.setRoleName(role.getName());
-    final List<TPathPrivilege> pathList = new ArrayList<>();
-    for (final PathPrivilege path : role.getPathPrivilegeList()) {
-      final TPathPrivilege pathPri = new TPathPrivilege();
-      pathPri.setPriGrantOpt(path.getGrantOpt());
-      pathPri.setPriSet(path.getPrivileges());
-      pathPri.setPath(path.getPath().toString());
-      pathList.add(pathPri);
-    }
-    roleResp.setPrivilegeList(pathList);
-    roleResp.setSysPriSet(role.getSysPrivilege());
-    roleResp.setSysPriSetGrantOpt(role.getSysPriGrantOpt());
-    final Map<String, TRoleResp> roleInfo = new HashMap<>();
+    final TRoleResp roleResp = role.getRoleInfo(isTreePlan ? ModelType.TREE : ModelType.RELATIONAL);
+    Map<String, TRoleResp> roleInfo = new HashMap<>();
     roleInfo.put(role.getName(), roleResp);
     resp.setRoleInfo(roleInfo);
     resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
@@ -402,16 +523,18 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  public PermissionInfoResp executeListUserPrivileges(final AuthorReadPlan plan)
-      throws AuthException {
+  public PermissionInfoResp executeListUserPrivileges(final AuthorPlan plan) throws AuthException {
     final PermissionInfoResp result = new PermissionInfoResp();
+    boolean isTreePlan = plan instanceof AuthorTreePlan;
     final User user = authorizer.getUser(plan.getUserName());
     if (user == null) {
       result.setStatus(
           RpcUtils.getStatus(TSStatusCode.USER_NOT_EXIST, NO_USER_MSG + plan.getUserName()));
       return result;
     }
-    final TPermissionInfoResp resp = getUserPermissionInfo(plan.getUserName());
+    final TPermissionInfoResp resp =
+        getUserPermissionInfo(
+            plan.getUserName(), isTreePlan ? ModelType.TREE : ModelType.RELATIONAL);
     resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setTag(ColumnHeaderConstant.PRIVILEGES);
     result.setPermissionInfoResp(resp);
@@ -419,10 +542,11 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  public TAuthizedPatternTreeResp generateAuthizedPTree(String username, int permission)
+  public TAuthizedPatternTreeResp generateAuthorizedPTree(String username, int permission)
       throws AuthException {
     TAuthizedPatternTreeResp resp = new TAuthizedPatternTreeResp();
     User user = authorizer.getUser(username);
+    PrivilegeType type = PrivilegeType.values()[permission];
     PathPatternTree pPtree = new PathPatternTree();
     if (user == null) {
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.USER_NOT_EXIST, NO_USER_MSG + username));
@@ -431,15 +555,15 @@ public class AuthorInfo implements SnapshotProcessor {
       return resp;
     }
     for (PathPrivilege path : user.getPathPrivilegeList()) {
-      if (path.checkPrivilege(permission)) {
+      if (path.checkPrivilege(type)) {
         pPtree.appendPathPattern(path.getPath());
       }
     }
-    for (String rolename : user.getRoleList()) {
+    for (String rolename : user.getRoleSet()) {
       Role role = authorizer.getRole(rolename);
       if (role != null) {
         for (PathPrivilege path : role.getPathPrivilegeList()) {
-          if (path.checkPrivilege(permission)) {
+          if (path.checkPrivilege(type)) {
             pPtree.appendPathPattern(path.getPath());
           }
         }
@@ -460,69 +584,7 @@ public class AuthorInfo implements SnapshotProcessor {
       return resp;
     }
     resp.setPathPatternTree(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-    resp.setPermissionInfo(getUserPermissionInfo(username));
-    return resp;
-  }
-
-  public TPermissionInfoResp checkUserPrivilegeGrantOpt(
-      String username, List<PartialPath> paths, int permission) throws AuthException {
-    User user = authorizer.getUser(username);
-    TPermissionInfoResp resp = new TPermissionInfoResp();
-    boolean status = false;
-    if (user == null) {
-      resp.setStatus(RpcUtils.getStatus(TSStatusCode.USER_NOT_EXIST, NO_USER_MSG + username));
-      return resp;
-    }
-    try {
-      if (isPathRelevant(permission)) {
-        for (PartialPath path : paths) {
-          if (user.checkPathPrivilegeGrantOpt(path, permission)) {
-            status = true;
-            continue;
-          }
-          if (!status) {
-            for (String roleName : user.getRoleList()) {
-              Role role = authorizer.getRole(roleName);
-              if (role.checkPathPrivilegeGrantOpt(path, permission)) {
-                status = true;
-                break;
-              }
-            }
-          }
-          if (!status) {
-            break;
-          }
-        }
-      } else {
-        if (user.checkSysPriGrantOpt(permission)) {
-          status = true;
-        }
-        if (!status) {
-          for (String roleName : user.getRoleList()) {
-            Role role = authorizer.getRole(roleName);
-            if (role.checkSysPriGrantOpt(permission)) {
-              status = true;
-              break;
-            }
-          }
-        }
-      }
-    } catch (AuthException e) {
-      status = false;
-    }
-    if (status) {
-      try {
-        // Bring this user's permission information back to the datanode for caching
-        resp = getUserPermissionInfo(username);
-        resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-      } catch (AuthException e) {
-        resp.setStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
-      }
-    } else {
-      resp = AuthUtils.generateEmptyPermissionInfoResp();
-      resp.setStatus(RpcUtils.getStatus(TSStatusCode.NO_PERMISSION));
-    }
-
+    resp.setPermissionInfo(getUserPermissionInfo(username, ModelType.ALL));
     return resp;
   }
 
@@ -534,8 +596,8 @@ public class AuthorInfo implements SnapshotProcessor {
       throw new AuthException(
           TSStatusCode.USER_NOT_EXIST, String.format("No such user : %s", username));
     }
-    result = getUserPermissionInfo(username);
-    if (user.getRoleList().contains(rolename)) {
+    result = getUserPermissionInfo(username, ModelType.ALL);
+    if (user.getRoleSet().contains(rolename)) {
       result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     } else {
       result.setStatus(RpcUtils.getStatus(TSStatusCode.USER_NOT_HAS_ROLE));
@@ -571,95 +633,26 @@ public class AuthorInfo implements SnapshotProcessor {
    *
    * @param username The username of the user that needs to be cached
    */
-  public TPermissionInfoResp getUserPermissionInfo(String username) throws AuthException {
+  public TPermissionInfoResp getUserPermissionInfo(String username, ModelType type)
+      throws AuthException {
     TPermissionInfoResp result = new TPermissionInfoResp();
-    TUserResp tUserResp = new TUserResp();
-    Map<String, TRoleResp> tRoleRespMap = new HashMap();
-    List<TPathPrivilege> userPrivilegeList = new ArrayList<>();
-
-    // User permission information
     User user = authorizer.getUser(username);
-    if (user.getPathPrivilegeList() != null) {
-      for (PathPrivilege pathPrivilege : user.getPathPrivilegeList()) {
-        TPathPrivilege path = new TPathPrivilege();
-        path.setPath(pathPrivilege.getPath().getFullPath());
-        path.setPriSet(pathPrivilege.getPrivileges());
-        path.setPriGrantOpt(pathPrivilege.getGrantOpt());
-        userPrivilegeList.add(path);
-      }
+    if (user == null) {
+      return AuthUtils.generateEmptyPermissionInfoResp();
     }
-    tUserResp.setUsername(user.getName());
-    tUserResp.setPassword(user.getPassword());
-    tUserResp.setPrivilegeList(userPrivilegeList);
-    tUserResp.setRoleList(user.getRoleList());
-    tUserResp.setSysPriSet(user.getSysPrivilege());
-    tUserResp.setSysPriSetGrantOpt(user.getSysPriGrantOpt());
-
+    TUserResp tUserResp = user.getUserInfo(type);
     // Permission information for roles owned by users
-    if (user.getRoleList() != null) {
-      for (String roleName : user.getRoleList()) {
+    if (!user.getRoleSet().isEmpty()) {
+      for (String roleName : user.getRoleSet()) {
         Role role = authorizer.getRole(roleName);
-        List<TPathPrivilege> rolePrivilegeList = new ArrayList<>();
-        for (PathPrivilege pathPrivilege : role.getPathPrivilegeList()) {
-          TPathPrivilege path = new TPathPrivilege();
-          path.setPath(pathPrivilege.getPath().getFullPath());
-          path.setPriSet(pathPrivilege.getPrivileges());
-          path.setPriGrantOpt(pathPrivilege.getGrantOpt());
-          rolePrivilegeList.add(path);
-        }
-        tRoleRespMap.put(
-            roleName,
-            new TRoleResp(
-                roleName, rolePrivilegeList, role.getSysPrivilege(), role.getSysPriGrantOpt()));
+        TRoleResp roleResp = role.getRoleInfo(type);
+        result.putToRoleInfo(roleName, roleResp);
       }
+    } else {
+      result.setRoleInfo(new HashMap<>());
     }
     result.setUserInfo(tUserResp);
-    result.setRoleInfo(tRoleRespMap);
     result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     return result;
-  }
-
-  public void checkUserPathPrivilege() {
-    authorizer.checkUserPathPrivilege();
-  }
-
-  private void grantPrivilegeForPreVersion(
-      boolean isUser, String name, Set<Integer> permissions, List<PartialPath> nodeNameList)
-      throws AuthException {
-    for (int permission : permissions) {
-      PriPrivilegeType type = PriPrivilegeType.values()[permission];
-      if (type.isAccept()) {
-        if (isUser) {
-          for (PartialPath path : nodeNameList) {
-            authorizer.grantPrivilegeToUser(name, path, permission, false);
-          }
-        } else {
-          for (PartialPath path : nodeNameList) {
-            authorizer.grantPrivilegeToRole(name, path, permission, false);
-          }
-        }
-      }
-    }
-  }
-
-  private void revokePrivilegeForPreVersion(
-      boolean isUser, String name, Set<Integer> permissions, List<PartialPath> nodeNameList)
-      throws AuthException {
-    for (int permission : permissions) {
-      PriPrivilegeType type = PriPrivilegeType.values()[permission];
-      if (type.isAccept()) {
-        if (!type.isAccept()) {
-          if (isUser) {
-            for (PartialPath path : nodeNameList) {
-              authorizer.revokePrivilegeFromUser(name, path, permission);
-            }
-          } else {
-            for (PartialPath path : nodeNameList) {
-              authorizer.revokePrivilegeFromRole(name, path, permission);
-            }
-          }
-        }
-      }
-    }
   }
 }

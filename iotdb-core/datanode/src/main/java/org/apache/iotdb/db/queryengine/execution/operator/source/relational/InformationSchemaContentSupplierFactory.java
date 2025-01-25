@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -48,7 +49,6 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
 
-import java.security.AccessControlException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
@@ -341,8 +341,11 @@ public class InformationSchemaContentSupplierFactory {
   private static boolean canShowDB(final String userName, final String dbName) {
     try {
       Coordinator.getInstance().getAccessControl().checkCanShowOrUseDatabase(userName, dbName);
-    } catch (final AccessControlException e) {
-      return false;
+    } catch (final RuntimeException e) {
+      if (e.getCause() instanceof IoTDBException) {
+        return false;
+      }
+      throw e;
     }
     return true;
   }

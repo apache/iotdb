@@ -632,4 +632,8 @@ public abstract class AstVisitor<R, C> {
   protected R visitKillQuery(KillQuery node, C context) {
     return visitStatement(node, context);
   }
+
+  protected R visitRelationalAuthorPlan(RelationalAuthorStatement node, C context) {
+    return visitStatement(node, context);
+  }
 }

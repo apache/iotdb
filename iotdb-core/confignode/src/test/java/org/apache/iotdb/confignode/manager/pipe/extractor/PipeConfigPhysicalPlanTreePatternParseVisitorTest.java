@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
@@ -219,10 +219,10 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitorTest {
   public void testGrantUser() throws IllegalPathException {
     Assert.assertEquals(
         Collections.singletonList(new PartialPath("root.db.device.**")),
-        ((AuthorPlan)
+        ((AuthorTreePlan)
                 IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
                     .visitGrantUser(
-                        new AuthorPlan(
+                        new AuthorTreePlan(
                             ConfigPhysicalPlanType.GrantUser,
                             "tempUser",
                             "",
@@ -241,10 +241,10 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitorTest {
   public void testRevokeUser() throws IllegalPathException {
     Assert.assertEquals(
         Collections.singletonList(new PartialPath("root.db.device.**")),
-        ((AuthorPlan)
+        ((AuthorTreePlan)
                 IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
                     .visitRevokeUser(
-                        new AuthorPlan(
+                        new AuthorTreePlan(
                             ConfigPhysicalPlanType.RevokeUser,
                             "tempUser",
                             "",
@@ -263,10 +263,10 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitorTest {
   public void testGrantRole() throws IllegalPathException {
     Assert.assertEquals(
         Collections.singletonList(new PartialPath("root.db.device.**")),
-        ((AuthorPlan)
+        ((AuthorTreePlan)
                 IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
                     .visitGrantRole(
-                        new AuthorPlan(
+                        new AuthorTreePlan(
                             ConfigPhysicalPlanType.GrantRole,
                             "",
                             "tempRole",
@@ -285,10 +285,10 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitorTest {
   public void testRevokeRole() throws IllegalPathException {
     Assert.assertEquals(
         Collections.singletonList(new PartialPath("root.db.device.**")),
-        ((AuthorPlan)
+        ((AuthorTreePlan)
                 IoTDBConfigRegionExtractor.TREE_PATTERN_PARSE_VISITOR
                     .visitRevokeRole(
-                        new AuthorPlan(
+                        new AuthorTreePlan(
                             ConfigPhysicalPlanType.RevokeRole,
                             "",
                             "tempRole",
