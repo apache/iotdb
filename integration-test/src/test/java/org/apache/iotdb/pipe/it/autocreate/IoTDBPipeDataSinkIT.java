@@ -459,7 +459,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
     testLoadTsFileWithoutVerify("async");
   }
 
-  @Test
   private void testLoadTsFileWithoutVerify(final String loadTsFileStrategy) throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
@@ -481,7 +480,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.realtime.mode", "forced-log");
+      extractorAttributes.put("extractor.realtime.mode", "batch");
 
       connectorAttributes.put("sink", "iotdb-thrift-sink");
       connectorAttributes.put("sink.batch.enable", "false");
