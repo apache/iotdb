@@ -317,6 +317,35 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         return configManager
             .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.USE_TRIGGER))
             .getStatus();
+      case PipeCreateTable:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new PrivilegeUnion(
+                    ((PipeCreateTablePlan) plan).getDatabase(),
+                    ((PipeCreateTablePlan) plan).getTable().getTableName(),
+                    PrivilegeType.CREATE))
+            .getStatus();
+      case AddTableColumn:
+      case SetTableProperties:
+      case CommitDeleteColumn:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new PrivilegeUnion(
+                    ((PipeCreateTablePlan) plan).getDatabase(),
+                    ((PipeCreateTablePlan) plan).getTable().getTableName(),
+                    PrivilegeType.ALTER))
+            .getStatus();
+      case CommitDeleteTable:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new PrivilegeUnion(
+                    ((PipeCreateTablePlan) plan).getDatabase(),
+                    ((PipeCreateTablePlan) plan).getTable().getTableName(),
+                    PrivilegeType.DROP))
+            .getStatus();
       case GrantRole:
       case GrantUser:
       case RevokeUser:
