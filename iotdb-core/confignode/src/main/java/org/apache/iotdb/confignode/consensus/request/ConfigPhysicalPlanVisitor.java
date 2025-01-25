@@ -129,7 +129,7 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
       case RRevokeRoleAll:
         return visitRRevokeRoleAll((AuthorRelationalPlan) plan, context);
       case RRevokeUserDBPriv:
-        return visitRRevokeUserDBPrivilegePlan((AuthorRelationalPlan) plan, context);
+        return visitRRevokeUserDBPrivilege((AuthorRelationalPlan) plan, context);
       case RRevokeUserTBPriv:
         return visitRRevokeUserTBPrivilege((AuthorRelationalPlan) plan, context);
       case RRevokeRoleDBPriv:
@@ -224,47 +224,47 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
     return visitPlan(createUserPlan, context);
   }
 
-  public R visitCreateRawUser(final AuthorPlan createRawUserPlan, final C context) {
+  public R visitCreateRawUser(final AuthorTreePlan createRawUserPlan, final C context) {
     return visitPlan(createRawUserPlan, context);
   }
 
-  public R visitUpdateUser(final AuthorPlan updateUserPlan, final C context) {
+  public R visitUpdateUser(final AuthorTreePlan updateUserPlan, final C context) {
     return visitPlan(updateUserPlan, context);
   }
 
-  public R visitDropUser(final AuthorPlan dropUserPlan, final C context) {
+  public R visitDropUser(final AuthorTreePlan dropUserPlan, final C context) {
     return visitPlan(dropUserPlan, context);
   }
 
-  public R visitGrantUser(final AuthorPlan grantUserPlan, final C context) {
+  public R visitGrantUser(final AuthorTreePlan grantUserPlan, final C context) {
     return visitPlan(grantUserPlan, context);
   }
 
-  public R visitRevokeUser(final AuthorPlan revokeUserPlan, final C context) {
+  public R visitRevokeUser(final AuthorTreePlan revokeUserPlan, final C context) {
     return visitPlan(revokeUserPlan, context);
   }
 
-  public R visitCreateRole(final AuthorPlan createRolePlan, final C context) {
+  public R visitCreateRole(final AuthorTreePlan createRolePlan, final C context) {
     return visitPlan(createRolePlan, context);
   }
 
-  public R visitDropRole(final AuthorPlan dropRolePlan, final C context) {
+  public R visitDropRole(final AuthorTreePlan dropRolePlan, final C context) {
     return visitPlan(dropRolePlan, context);
   }
 
-  public R visitGrantRole(final AuthorPlan grantRolePlan, final C context) {
+  public R visitGrantRole(final AuthorTreePlan grantRolePlan, final C context) {
     return visitPlan(grantRolePlan, context);
   }
 
-  public R visitRevokeRole(final AuthorPlan revokeRolePlan, final C context) {
+  public R visitRevokeRole(final AuthorTreePlan revokeRolePlan, final C context) {
     return visitPlan(revokeRolePlan, context);
   }
 
-  public R visitGrantRoleToUser(final AuthorPlan grantRoleToUserPlan, final C context) {
+  public R visitGrantRoleToUser(final AuthorTreePlan grantRoleToUserPlan, final C context) {
     return visitPlan(grantRoleToUserPlan, context);
   }
 
-  public R visitRevokeRoleFromUser(final AuthorPlan revokeRoleFromUserPlan, final C context) {
+  public R visitRevokeRoleFromUser(final AuthorTreePlan revokeRoleFromUserPlan, final C context) {
     return visitPlan(revokeRoleFromUserPlan, context);
   }
 
@@ -344,7 +344,7 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
     return visitPlan(rRevokeRoleAllPlan, context);
   }
 
-  public R visitRRevokeUserDBPrivilegePlan(
+  public R visitRRevokeUserDBPrivilege(
       final AuthorRelationalPlan rRevokeUserDBPrivilegePlan, final C context) {
     return visitPlan(rRevokeUserDBPrivilegePlan, context);
   }
