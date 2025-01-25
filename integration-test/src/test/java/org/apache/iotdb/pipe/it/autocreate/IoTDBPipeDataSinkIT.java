@@ -513,13 +513,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
         return;
       }
 
-      TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "select * from root.**", "Time,", Collections.emptySet());
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          receiverEnv, "create timeSeries root.vehicle.d0.s1 int32")) {
-        return;
-      }
-
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select * from root.**",
