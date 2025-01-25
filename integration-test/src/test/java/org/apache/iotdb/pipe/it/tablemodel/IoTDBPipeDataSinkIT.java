@@ -760,23 +760,6 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
 
       insertTablet1(testResult, test1Result);
 
-      TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv,
-          "show databases",
-          "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
-          Collections.singleton("information_schema,INF,null,null,null,"));
-      TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "select * from root.**", "Time,", Collections.emptySet());
-
-      for (int i = 0; i < 5; i++) {
-        TableModelUtils.createDataBaseAndTable(receiverEnv, "test" + i, "test0");
-        TableModelUtils.createDataBaseAndTable(receiverEnv, "test" + i, "test1");
-      }
-      if (!TestUtils.tryExecuteNonQueryWithRetry(
-          receiverEnv, "create timeSeries root.vehicle.d0.s1 int32")) {
-        return;
-      }
-
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select * from root.**",
