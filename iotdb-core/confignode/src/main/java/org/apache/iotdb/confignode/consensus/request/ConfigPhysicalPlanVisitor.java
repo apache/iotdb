@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSch
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
+import sun.awt.IconInfo;
 
 public abstract class ConfigPhysicalPlanVisitor<R, C> {
   public R process(final ConfigPhysicalPlan plan, final C context) {
@@ -88,6 +89,46 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
         return visitGrantRoleToUser((AuthorPlan) plan, context);
       case RevokeRoleFromUser:
         return visitRevokeRoleFromUser((AuthorPlan) plan, context);
+      case RCreateUser:
+        return visitRCreateUser((AuthorPlan) plan, context);
+      case RCreateRole:
+        return visitRCreateRole((AuthorPlan) plan, context);
+      case RUpdateUser:
+        return visitRUpdateUser((AuthorPlan) plan, context);
+      case RDropUser:
+        return visitRDropUserPlan((AuthorPlan) plan, context);
+      case RDropRole:
+        return visitRDropRolePlan((AuthorPlan) plan, context);
+      case RGrantUserRole:
+        return visitRGrantUserRole((AuthorPlan) plan, context);
+      case RRevokeUserRole:
+        return visitRRevokeUserRole((AuthorPlan) plan, context);
+      case RGrantUserAny:
+        return visitRGrantUserAny((AuthorPlan) plan, context);
+      case RGrantRoleAny:
+        return visitRGrantRoleAny((AuthorPlan) plan, context);
+      case RGrantUserAll:
+        return visitRGrantUserAll((AuthorPlan) plan, context);
+      case RGrantRoleAll:
+        return visitRGrantRoleAll((AuthorPlan) plan, context);
+      case RGrantUserDBPriv:
+        return visitRGrantUserDB((AuthorPlan) plan, context);
+      case RGrantUserTBPriv:
+        return visitRGrantUserTB((AuthorPlan) plan, context);
+      case RGrantRoleDBPriv:
+      case RGrantRoleTBPriv:
+      case RRevokeUserAny:
+      case RRevokeRoleAny:
+      case RRevokeUserAll:
+      case RRevokeRoleAll:
+      case RRevokeUserDBPriv:
+      case RRevokeUserTBPriv:
+      case RRevokeRoleDBPriv:
+      case RRevokeRoleTBPriv:
+      case RGrantUserSysPri:
+      case RGrantRoleSysPri:
+      case RRevokeUserSysPri:
+      case RRevokeRoleSysPri:
       case SetTTL:
         return visitTTL((SetTTLPlan) plan, context);
       case PipeCreateTable:
@@ -206,6 +247,94 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
 
   public R visitGrantRoleToUser(final AuthorPlan grantRoleToUserPlan, final C context) {
     return visitPlan(grantRoleToUserPlan, context);
+  }
+
+  public R visitRCreateUser(final AuthorPlan rCreateUserPlan, final C context) {
+    return visitPlan(rCreateUserPlan, context);
+  }
+
+  public R visitRCreateRole(final AuthorPlan rCreateRolePlan, final C context) {
+    return visitPlan(rCreateRolePlan, context);
+  }
+
+  public R visitRUpdateUser(final AuthorPlan rUpdateUserPlan, final C context) {
+    return visitPlan(rUpdateUserPlan, context);
+  }
+
+  public R visitRDropUserPlan(final AuthorPlan rDropUserPlan, final C context) {
+    return visitPlan(rDropUserPlan, context);
+  }
+
+  public R visitRDropRolePlan(final AuthorPlan rDropRolePlan, final C context) {
+    return visitPlan(rDropRolePlan, context);
+  }
+
+  public R visitRGrantUserRole(final AuthorPlan rGrantUserRolePlan, final C context) {
+    return visitPlan(rGrantUserRolePlan, context);
+  }
+
+  public R visitRRevokeUserRole(final AuthorPlan rRevokeUserRolePlan, final C context) {
+    return visitPlan(rRevokeUserRolePlan, context);
+  }
+
+  public R visitRGrantUserAny(final AuthorPlan rGrantUserAnyPlan, final C context) {
+    return visitPlan(rGrantUserAnyPlan, context);
+  }
+
+  public R visitRGrantRoleAny(final AuthorPlan rGrantRoleAnyPlan, final C context) {
+    return visitPlan(rGrantRoleAnyPlan, context);
+  }
+
+  public R visitRGrantUserAll(final AuthorPlan rGrantUserAllPlan, final C context) {
+    return visitPlan(rGrantUserAllPlan, context);
+  }
+
+  public R visitRGrantRoleAll(final AuthorPlan rGrantRoleAllPlan, final C context) {
+    return visitPlan(rGrantRoleAllPlan, context);
+  }
+
+  public R visitRGrantUserDB(final AuthorPlan rGrantUserDBPlan, final C context) {
+    return visitPlan(rGrantUserDBPlan, context);
+  }
+
+  public R visitRGrantUserTB(final AuthorPlan rGrantUserTBPlan, final C context) {
+    return visitPlan(rGrantUserTBPlan, context);
+  }
+
+  public R visitRGrantRoleDB(final AuthorPlan rGrantRoleDBPlan, final C context) {
+    return visitPlan(rGrantRoleDBPlan, context);
+  }
+
+  public R visitRevokeRoleFromUser(final AuthorPlan revokeRoleFromUserPlan, final C context) {
+    return visitPlan(revokeRoleFromUserPlan, context);
+  }
+
+  public R visitRevokeRoleFromUser(final AuthorPlan revokeRoleFromUserPlan, final C context) {
+    return visitPlan(revokeRoleFromUserPlan, context);
+  }
+
+  public R visitRevokeRoleFromUser(final AuthorPlan revokeRoleFromUserPlan, final C context) {
+    return visitPlan(revokeRoleFromUserPlan, context);
+  }
+
+  public R visitRevokeRoleFromUser(final AuthorPlan revokeRoleFromUserPlan, final C context) {
+    return visitPlan(revokeRoleFromUserPlan, context);
+  }
+
+  public R visitRevokeRoleFromUser(final AuthorPlan revokeRoleFromUserPlan, final C context) {
+    return visitPlan(revokeRoleFromUserPlan, context);
+  }
+
+  public R visitRevokeRoleFromUser(final AuthorPlan revokeRoleFromUserPlan, final C context) {
+    return visitPlan(revokeRoleFromUserPlan, context);
+  }
+
+  public R visitRevokeRoleFromUser(final AuthorPlan revokeRoleFromUserPlan, final C context) {
+    return visitPlan(revokeRoleFromUserPlan, context);
+  }
+
+  public R visitRevokeRoleFromUser(final AuthorPlan revokeRoleFromUserPlan, final C context) {
+    return visitPlan(revokeRoleFromUserPlan, context);
   }
 
   public R visitRevokeRoleFromUser(final AuthorPlan revokeRoleFromUserPlan, final C context) {
