@@ -713,7 +713,10 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
         return;
       }
 
-      TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+      for (int i = 0; i < 5; i++) {
+        TableModelUtils.createDataBaseAndTable(senderEnv, "test" + i, "test0");
+        TableModelUtils.createDataBaseAndTable(senderEnv, "test" + i, "test1");
+      }
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -765,7 +768,10 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv, "select * from root.**", "Time,", Collections.emptySet());
 
-      TableModelUtils.createDataBaseAndTable(receiverEnv, "test", "test");
+      for (int i = 0; i < 5; i++) {
+        TableModelUtils.createDataBaseAndTable(receiverEnv, "test" + i, "test0");
+        TableModelUtils.createDataBaseAndTable(receiverEnv, "test" + i, "test1");
+      }
       if (!TestUtils.tryExecuteNonQueryWithRetry(
           receiverEnv, "create timeSeries root.vehicle.d0.s1 int32")) {
         return;
