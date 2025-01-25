@@ -60,6 +60,9 @@ public class ImportTsFile extends AbstractTsFileTool {
   private static final String THREAD_NUM_ARGS = "tn";
   private static final String THREAD_NUM_NAME = "thread_num";
 
+  protected static final String VERIFY_ARGS = "v";
+  protected static final String VERIFY_NAME = "verify";
+
   private static final IoTPrinter IOT_PRINTER = new IoTPrinter(System.out);
 
   private static final String TS_FILE_CLI_PREFIX = "ImportTsFile";
@@ -80,7 +83,7 @@ public class ImportTsFile extends AbstractTsFileTool {
   private static int threadNum = 8;
 
   private static boolean isRemoteLoad = true;
-
+  protected static boolean verify = true;
   private static SessionPool sessionPool;
 
   private static void createOptions() {
@@ -299,6 +302,11 @@ public class ImportTsFile extends AbstractTsFileTool {
     if (commandLine.getOptionValue(TIMESTAMP_PRECISION_ARGS) != null) {
       timestampPrecision = commandLine.getOptionValue(TIMESTAMP_PRECISION_ARGS);
     }
+
+    verify =
+        null != commandLine.getOptionValue(VERIFY_ARGS)
+            ? Boolean.parseBoolean(commandLine.getOptionValue(VERIFY_ARGS))
+            : verify;
   }
 
   public static boolean isFileStoreEquals(String pathString, File dir) {
@@ -387,12 +395,14 @@ public class ImportTsFile extends AbstractTsFileTool {
     }
 
     ImportTsFileLocally.setSessionPool(sessionPool);
+    ImportTsFileLocally.setVerify(verify);
 
     // ImportTsFileRemotely
     ImportTsFileRemotely.setHost(host);
     ImportTsFileRemotely.setPort(port);
     ImportTsFileRemotely.setUsername(username);
     ImportTsFileRemotely.setPassword(password);
+    ImportTsFileRemotely.setValidateTsFile(verify);
 
     // ImportTsFileBase
     ImportTsFileBase.setSuccessAndFailDirAndOperation(

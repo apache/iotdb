@@ -83,6 +83,10 @@ public class PipeConnectorConstant {
   public static final String SINK_IOTDB_PASSWORD_KEY = "sink.password";
   public static final String CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE = "root";
 
+  public static final String CONNECTOR_TS_FILE_VALIDATION_KEY = "connector.tsfile.validation";
+  public static final String SINK_TS_FILE_VALIDATION_KEY = "sink.tsfile.validation";
+  public static final boolean CONNECTOR_TS_FILE_VALIDATION_DEFAULT_VALUE = true;
+
   public static final String CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY =
       "connector.exception.data.convert-on-type-mismatch";
   public static final String SINK_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY =

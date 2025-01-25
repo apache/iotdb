@@ -73,6 +73,7 @@ public class ActiveLoadTsFileLoader {
   private final AtomicReference<WrappedThreadPoolExecutor> activeLoadExecutor =
       new AtomicReference<>();
   private final AtomicReference<String> failDir = new AtomicReference<>();
+  private final boolean isVerify = IOTDB_CONFIG.isLoadActiveListeningVerifyEnable();
 
   public int getCurrentAllowedPendingSize() {
     return MAX_PENDING_SIZE - pendingQueue.size();
@@ -198,7 +199,7 @@ public class ActiveLoadTsFileLoader {
     final LoadTsFileStatement statement = new LoadTsFileStatement(filePair.getLeft());
     statement.setDeleteAfterLoad(true);
     statement.setConvertOnTypeMismatch(true);
-    statement.setVerifySchema(true);
+    statement.setVerifySchema(isVerify);
     statement.setAutoCreateDatabase(false);
     return executeStatement(filePair.getRight() ? new PipeEnrichedStatement(statement) : statement);
   }
