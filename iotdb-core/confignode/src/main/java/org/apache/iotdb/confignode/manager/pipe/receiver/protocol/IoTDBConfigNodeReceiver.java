@@ -407,6 +407,45 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
           }
         }
         return StatusUtils.OK;
+      case RGrantUserDBPriv:
+      case RGrantRoleDBPriv:
+      case RRevokeUserDBPriv:
+      case RRevokeRoleDBPriv:
+        for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
+          final TSStatus status =
+              configManager
+                  .checkUserPrivileges(
+                      username,
+                      new PrivilegeUnion(
+                          ((AuthorRelationalPlan) plan).getDatabaseName(),
+                          PrivilegeType.values()[permission],
+                          true))
+                  .getStatus();
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return status;
+          }
+        }
+        return StatusUtils.OK;
+      case RGrantUserTBPriv:
+      case RGrantRoleTBPriv:
+      case RRevokeUserTBPriv:
+      case RRevokeRoleTBPriv:
+        for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
+          final TSStatus status =
+              configManager
+                  .checkUserPrivileges(
+                      username,
+                      new PrivilegeUnion(
+                          ((AuthorRelationalPlan) plan).getDatabaseName(),
+                          ((AuthorRelationalPlan) plan).getTableName(),
+                          PrivilegeType.values()[permission],
+                          true))
+                  .getStatus();
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return status;
+          }
+        }
+        return StatusUtils.OK;
       case UpdateUser:
       case RUpdateUser:
         return ((AuthorPlan) plan).getUserName().equals(username)
