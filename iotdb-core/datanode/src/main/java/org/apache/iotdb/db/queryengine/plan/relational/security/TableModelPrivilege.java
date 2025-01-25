@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+
 public enum TableModelPrivilege {
   // global privilege
   MANAGE_USER,
@@ -31,5 +33,55 @@ public enum TableModelPrivilege {
   ALTER,
   SELECT,
   INSERT,
-  DELETE,
+  DELETE;
+
+  PrivilegeType getPrivilegeType() {
+    switch (this) {
+      case MANAGE_ROLE:
+        return PrivilegeType.MANAGE_ROLE;
+      case MANAGE_USER:
+        return PrivilegeType.MANAGE_USER;
+      case MAINTAIN:
+        return PrivilegeType.MAINTAIN;
+      case CREATE:
+        return PrivilegeType.CREATE;
+      case DROP:
+        return PrivilegeType.DROP;
+      case ALTER:
+        return PrivilegeType.ALTER;
+      case SELECT:
+        return PrivilegeType.SELECT;
+      case INSERT:
+        return PrivilegeType.INSERT;
+      case DELETE:
+        return PrivilegeType.DELETE;
+      default:
+        throw new IllegalStateException("Unexpected value:" + this);
+    }
+  }
+
+  public static TableModelPrivilege getTableModelType(PrivilegeType privilegeType) {
+    switch (privilegeType) {
+      case MANAGE_ROLE:
+        return TableModelPrivilege.MANAGE_ROLE;
+      case MANAGE_USER:
+        return TableModelPrivilege.MANAGE_USER;
+      case MAINTAIN:
+        return TableModelPrivilege.MAINTAIN;
+      case CREATE:
+        return TableModelPrivilege.CREATE;
+      case DROP:
+        return TableModelPrivilege.DROP;
+      case ALTER:
+        return TableModelPrivilege.ALTER;
+      case SELECT:
+        return TableModelPrivilege.SELECT;
+      case INSERT:
+        return TableModelPrivilege.INSERT;
+      case DELETE:
+        return TableModelPrivilege.DELETE;
+      default:
+        throw new IllegalStateException("Unexpected value:" + privilegeType);
+    }
+  }
 }

@@ -357,6 +357,28 @@ public class IoTDBDeletionTableIT {
   }
 
   @Test
+  public void testSuccessfullyInvalidateCache() throws SQLException {
+    prepareData(4, 1);
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.executeQuery(
+          "SELECT last(time), last_by(s0,time), last_by(s1,time), last_by(s2,time), last_by(s3,time), last_by(s4,time) FROM vehicle4 where deviceId = 'd0'");
+
+      // [1, 400] -> [1, 299]
+      statement.execute("DELETE FROM vehicle4 WHERE time >= 300");
+      try (ResultSet set = statement.executeQuery("SELECT s0 FROM vehicle4")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(299, cnt);
+      }
+    }
+    cleanData(4);
+  }
+
+  @Test
   public void testFullDeleteWithoutWhereClause() throws SQLException {
     prepareData(5, 1);
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);

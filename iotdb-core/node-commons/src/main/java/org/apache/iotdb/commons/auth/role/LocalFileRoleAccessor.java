@@ -18,17 +18,19 @@
  */
 package org.apache.iotdb.commons.auth.role;
 
+import org.apache.iotdb.commons.auth.entity.DatabasePrivilege;
+import org.apache.iotdb.commons.auth.entity.IEntityAccessor;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.IOUtils;
-import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.apache.thrift.TException;
-import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,28 +42,29 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 /**
  * This class store role info in a separate sequential file and every role will have one role file.
- * Role file schema: rolename-length int32| rolename-bytes-utf8| system-perivileges int32|
+ * Role file schema: roleName-length int32| roleName-bytes-utf8| system-privileges int32|
  * path[1]-length int32| path[1]-bytes-utf8 | privilege-int32| path[2]-length int32|
  * path[2]-bytes-utf8 | privilege-int32| path[3]-length int32| path[3]-bytes-utf8 | privilege-int32|
  * .....
  *
  * <p>system-privileges is an int32 mask code. Low 16 bits for privileges and high 16 bits mark that
- * whether the corresponding position 's privilege has grant option.So we can use a int32 to mark 16
- * kinds of privileges. Here are the permissions corresponding to the bit location identifier：
+ * whether the corresponding position 's privilege has grant option.So we can use an int32 to mark
+ * 16 kinds of privileges. Here are the permissions corresponding to the bit location identifier：
  * Manage_database : 0 MANAGE_USER : 1 MANAGE_ROLE : 2 USE_TRIGGER : 3 USE_UDF : 4 USE_CQ : 5
- * USE_PIPE : 6 EXTEDN_TEMPLATE : 7 AUDIT : 8 MAINTAIN : 9 |0000-0000-0000-0001|0000-0000-0000-0001|
+ * USE_PIPE : 6 EXTEND_TEMPLATE : 7 AUDIT : 8 MAINTAIN : 9 |0000-0000-0000-0001|0000-0000-0000-0001|
  * means this role has Manage_database's privilege and be able to grant it to others.
  *
- * <p>path-privileges is a pair contains paths and privileges mask. Path privilege is a int32 mask
+ * <p>path-privileges is a pair contains paths and privileges mask. Path privilege is an int32 mask
  * code which has the same structure as system-privileges. For path privilege, the low 16 bits stand
  * for four privileges, they are: READ_DATA : 0 WRITE_DATA : 1 READ_SCHEMA : 2 WRITE_SCHEMA : 3 And
  * the high 16 bits stand for grant option.
@@ -73,67 +76,146 @@ import java.util.UUID;
  * All user/role file store in config node's user/role folder. when our system start, we load all
  * user/role from folder. If we did some alter query, we just store raft log.
  */
-public class LocalFileRoleAccessor implements IRoleAccessor {
+public class LocalFileRoleAccessor implements IEntityAccessor {
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalFileRoleAccessor.class);
-  private static final String TEMP_SUFFIX = ".temp";
-  private static final String STRING_ENCODING = "utf-8";
-  private static final String ROLE_SNAPSHOT_FILE_NAME = "system" + File.separator + "roles";
+  protected static final String TEMP_SUFFIX = ".temp";
+  protected static final String STRING_ENCODING = "utf-8";
+  protected final String entityDirPath;
 
-  private final String roleDirPath;
+  // It might be a good idea to use a Version number to control upgrade compatibility.
+  // Now it's version 1
+  protected static final int VERSION = 1;
 
   /**
    * Reused buffer for primitive types encoding/decoding, which aim to reduce memory fragments. Use
    * ThreadLocal for thread safety.
    */
-  private final ThreadLocal<ByteBuffer> encodingBufferLocal = new ThreadLocal<>();
+  protected final ThreadLocal<ByteBuffer> encodingBufferLocal = new ThreadLocal<>();
 
-  private final ThreadLocal<byte[]> strBufferLocal = new ThreadLocal<>();
+  protected final ThreadLocal<byte[]> strBufferLocal = new ThreadLocal<>();
 
   public LocalFileRoleAccessor(String roleDirPath) {
-    this.roleDirPath = roleDirPath;
+    this.entityDirPath = roleDirPath;
   }
 
-  /**
-   * @return role struct
-   * @throws IOException
-   */
-  @Override
-  public Role loadRole(String rolename) throws IOException {
-    File roleProfile =
+  protected String getEntitySnapshotFileName() {
+    return "system" + File.separator + "roles";
+  }
+
+  protected void saveEntityVersion(BufferedOutputStream outputStream) throws IOException {
+    IOUtils.writeInt(outputStream, VERSION, encodingBufferLocal);
+  }
+
+  protected void saveEntityName(BufferedOutputStream outputStream, Role role) throws IOException {
+    IOUtils.writeString(outputStream, role.getName(), STRING_ENCODING, encodingBufferLocal);
+  }
+
+  protected void savePrivileges(BufferedOutputStream outputStream, Role role) throws IOException {
+    IOUtils.writeInt(outputStream, role.getAllSysPrivileges(), encodingBufferLocal);
+    int privilegeNum = role.getPathPrivilegeList().size();
+    IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
+    for (int i = 0; i < privilegeNum; i++) {
+      PathPrivilege pathPrivilege = role.getPathPrivilegeList().get(i);
+      IOUtils.writePathPrivilege(outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
+    }
+    IOUtils.writeInt(outputStream, role.getAnyScopePrivileges(), encodingBufferLocal);
+    privilegeNum = role.getDBScopePrivilegeMap().size();
+    IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
+    for (Map.Entry<String, DatabasePrivilege> objectPrivilegeMap :
+        role.getDBScopePrivilegeMap().entrySet()) {
+      IOUtils.writeObjectPrivilege(
+          outputStream, objectPrivilegeMap.getValue(), STRING_ENCODING, encodingBufferLocal);
+    }
+  }
+
+  protected void loadPrivileges(DataInputStream dataInputStream, Role role)
+      throws IOException, IllegalPathException {
+    role.setSysPrivilegesWithMask(dataInputStream.readInt());
+    int num = ReadWriteIOUtils.readInt(dataInputStream);
+    List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
+    for (int i = 0; i < num; i++) {
+      pathPrivilegeList.add(
+          IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
+    }
+    role.setPrivilegeList(pathPrivilegeList);
+    role.setAnyScopePrivilegeSetWithMask(ReadWriteIOUtils.readInt(dataInputStream));
+    Map<String, DatabasePrivilege> objectPrivilegeMap = new HashMap<>();
+    num = ReadWriteIOUtils.readInt(dataInputStream);
+    for (int i = 0; i < num; i++) {
+      DatabasePrivilege databasePrivilege =
+          IOUtils.readRelationalPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal);
+      objectPrivilegeMap.put(databasePrivilege.getDatabaseName(), databasePrivilege);
+    }
+    role.setObjectPrivilegeMap(objectPrivilegeMap);
+  }
+
+  protected void saveRoles(Role role) throws IOException {
+    // Just used in LocalFileUserAccessor.java.
+    // Do nothing.
+  }
+
+  protected File checkFileAvailable(String entityName, String suffix) {
+    File userProfile =
         SystemFileFactory.INSTANCE.getFile(
-            roleDirPath + File.separator + rolename + IoTDBConstant.PROFILE_SUFFIX);
-    if (!roleProfile.exists() || !roleProfile.isFile()) {
-      // System may crush before a newer file is written, so search for back-up file.
-      File backProfile =
+            entityDirPath + File.separator + entityName + suffix + IoTDBConstant.PROFILE_SUFFIX);
+    if (!userProfile.exists() || !userProfile.isFile()) {
+      // System may crush before a newer file is renamed.
+      File newProfile =
           SystemFileFactory.INSTANCE.getFile(
-              roleDirPath + File.separator + rolename + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
-      if (backProfile.exists() && backProfile.isFile()) {
-        roleProfile = backProfile;
+              entityDirPath
+                  + File.separator
+                  + entityName
+                  + suffix
+                  + IoTDBConstant.PROFILE_SUFFIX
+                  + TEMP_SUFFIX);
+      if (newProfile.exists() && newProfile.isFile()) {
+        if (!newProfile.renameTo(userProfile)) {
+          LOGGER.error("New profile renaming not succeed.");
+        }
+        userProfile = newProfile;
       } else {
         return null;
       }
     }
-    FileInputStream inputStream = new FileInputStream(roleProfile);
+    return userProfile;
+  }
+
+  @Override
+  public Role loadEntity(String entityName) throws IOException {
+    File entityFile = checkFileAvailable(entityName, "");
+    if (entityFile == null) {
+      return null;
+    }
+
+    FileInputStream inputStream = new FileInputStream(entityFile);
     try (DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
-      Role role = new Role();
-      Pair<String, Boolean> result =
-          IOUtils.readAuthString(dataInputStream, STRING_ENCODING, strBufferLocal);
-      role.setName(result.getLeft());
-      boolean oldVersion = result.getRight();
-      if (oldVersion) {
-        IOUtils.loadRolePrivilege(role, dataInputStream, STRING_ENCODING, strBufferLocal);
-        return role;
-      } else {
-        role.setSysPrivilegeSet(dataInputStream.readInt());
+      boolean fromOldVersion = false;
+      int tag = dataInputStream.readInt();
+      if (tag < 0) {
+        fromOldVersion = true;
+      }
+
+      if (fromOldVersion) {
+        String name =
+            IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal, -1 * tag);
+        Role role = new Role(name);
+        role.setSysPrivilegesWithMask(dataInputStream.readInt());
         List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
         for (int i = 0; dataInputStream.available() != 0; i++) {
           pathPrivilegeList.add(
-              IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal, false));
+              IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
         }
         role.setPrivilegeList(pathPrivilegeList);
         return role;
+      } else {
+        assert tag == VERSION;
+        entityName = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+        Role role = new Role(entityName);
+        loadPrivileges(dataInputStream, role);
+        return role;
       }
+
     } catch (Exception e) {
       throw new IOException(e);
     } finally {
@@ -142,36 +224,28 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
   }
 
   @Override
-  public void saveRole(Role role) throws IOException {
+  public void saveEntity(Role entity) throws IOException {
     File roleProfile =
         SystemFileFactory.INSTANCE.getFile(
-            roleDirPath
+            entityDirPath
                 + File.separator
-                + role.getName()
+                + entity.getName()
                 + IoTDBConstant.PROFILE_SUFFIX
                 + TEMP_SUFFIX);
-    File roleDir = new File(roleDirPath);
+    File roleDir = new File(entityDirPath);
     if (!roleDir.exists() && !roleDir.mkdirs()) {
-      LOGGER.error("Failed to create role dir {}", roleDirPath);
+      LOGGER.error("Failed to create role dir {}", entityDirPath);
     }
 
     try (FileOutputStream fileOutputStream = new FileOutputStream(roleProfile);
         BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
-      byte[] strBuffer = role.getName().getBytes(STRING_ENCODING);
-      IOUtils.writeInt(outputStream, -1 * strBuffer.length, encodingBufferLocal);
-      outputStream.write(strBuffer);
-      IOUtils.writeInt(outputStream, role.getAllSysPrivileges(), encodingBufferLocal);
-      int privilegeNum = role.getPathPrivilegeList().size();
-      for (int i = 0; i < privilegeNum; i++) {
-        PathPrivilege pathPrivilege = role.getPathPrivilegeList().get(i);
-        IOUtils.writePathPrivilege(
-            outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
-      }
-      // handle outputstream's exception in saveRole locally.
+      saveEntityVersion(outputStream);
+      saveEntityName(outputStream, entity);
+      savePrivileges(outputStream, entity);
       outputStream.flush();
       fileOutputStream.getFD().sync();
     } catch (Exception e) {
-      LOGGER.warn("meet error when save role: {}", role.getName());
+      LOGGER.warn("meet error when save role: {}", entity.getName());
       throw new IOException(e);
     } finally {
       encodingBufferLocal.remove();
@@ -179,35 +253,44 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
 
     File oldFile =
         SystemFileFactory.INSTANCE.getFile(
-            roleDirPath + File.separator + role.getName() + IoTDBConstant.PROFILE_SUFFIX);
+            entityDirPath + File.separator + entity.getName() + IoTDBConstant.PROFILE_SUFFIX);
     IOUtils.replaceFile(roleProfile, oldFile);
+    saveRoles(entity);
   }
 
   @Override
-  public boolean deleteRole(String rolename) throws IOException {
+  public boolean deleteEntity(String entityName) throws IOException {
     File roleProfile =
         SystemFileFactory.INSTANCE.getFile(
-            roleDirPath + File.separator + rolename + IoTDBConstant.PROFILE_SUFFIX);
+            entityDirPath + File.separator + entityName + IoTDBConstant.PROFILE_SUFFIX);
     File backFile =
         SystemFileFactory.INSTANCE.getFile(
-            roleDirPath + File.separator + rolename + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
+            entityDirPath
+                + File.separator
+                + entityName
+                + IoTDBConstant.PROFILE_SUFFIX
+                + TEMP_SUFFIX);
     if (!roleProfile.exists() && !backFile.exists()) {
       return false;
     }
     if ((roleProfile.exists() && !roleProfile.delete())
         || (backFile.exists() && !backFile.delete())) {
-      throw new IOException(String.format("Cannot delete role file of %s", rolename));
+      throw new IOException(String.format("Cannot delete role file of %s", entityName));
     }
     return true;
   }
 
   @Override
-  public List<String> listAllRoles() {
-    File roleDir = SystemFileFactory.INSTANCE.getFile(roleDirPath);
+  public List<String> listAllEntities() {
+    File roleDir = SystemFileFactory.INSTANCE.getFile(entityDirPath);
     String[] names =
         roleDir.list(
             (dir, name) ->
                 name.endsWith(IoTDBConstant.PROFILE_SUFFIX) || name.endsWith(TEMP_SUFFIX));
+    return getEntityStrings(names);
+  }
+
+  public static List<String> getEntityStrings(String[] names) {
     List<String> retList = new ArrayList<>();
     if (names != null) {
       // in very rare situations, normal file and backup file may exist at the same time
@@ -224,12 +307,12 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
     SystemFileFactory systemFileFactory = SystemFileFactory.INSTANCE;
-    File roleFolder = systemFileFactory.getFile(roleDirPath);
-    File roleSnapshotDir = systemFileFactory.getFile(snapshotDir, ROLE_SNAPSHOT_FILE_NAME);
+    File roleFolder = systemFileFactory.getFile(entityDirPath);
+    File roleSnapshotDir = systemFileFactory.getFile(snapshotDir, getEntitySnapshotFileName());
     File roleTmpSnapshotDir =
         systemFileFactory.getFile(roleSnapshotDir.getAbsolutePath() + "-" + UUID.randomUUID());
 
-    boolean result = true;
+    boolean result;
     try {
       result = FileUtils.copyDir(roleFolder, roleTmpSnapshotDir);
       result &= roleTmpSnapshotDir.renameTo(roleSnapshotDir);
@@ -244,10 +327,10 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
   @Override
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
     SystemFileFactory systemFileFactory = SystemFileFactory.INSTANCE;
-    File roleFolder = systemFileFactory.getFile(roleDirPath);
+    File roleFolder = systemFileFactory.getFile(entityDirPath);
     File roleTmpFolder =
         systemFileFactory.getFile(roleFolder.getAbsolutePath() + "-" + UUID.randomUUID());
-    File roleSnapshotDir = systemFileFactory.getFile(snapshotDir, ROLE_SNAPSHOT_FILE_NAME);
+    File roleSnapshotDir = systemFileFactory.getFile(snapshotDir, getEntitySnapshotFileName());
     if (roleSnapshotDir.exists()) {
       try {
         org.apache.commons.io.FileUtils.moveDirectory(roleFolder, roleTmpFolder);
@@ -267,15 +350,15 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
 
   @Override
   public void reset() {
-    checkOldRoleDir(SystemFileFactory.INSTANCE.getFile(roleDirPath));
-    if (SystemFileFactory.INSTANCE.getFile(roleDirPath).mkdirs()) {
-      LOGGER.info("role info dir {} is created", roleDirPath);
-    } else if (!SystemFileFactory.INSTANCE.getFile(roleDirPath).exists()) {
-      LOGGER.error("role info dir {} can not be created", roleDirPath);
+    checkOldEntityDir(SystemFileFactory.INSTANCE.getFile(entityDirPath));
+    if (SystemFileFactory.INSTANCE.getFile(entityDirPath).mkdirs()) {
+      LOGGER.info("role info dir {} is created", entityDirPath);
+    } else if (!SystemFileFactory.INSTANCE.getFile(entityDirPath).exists()) {
+      LOGGER.error("role info dir {} can not be created", entityDirPath);
     }
   }
 
-  private void checkOldRoleDir(File newDir) {
+  private void checkOldEntityDir(File newDir) {
     File oldDir = new File(CommonDescriptor.getInstance().getConfig().getOldRoleFolder());
     if (oldDir.exists()) {
       if (!FileUtils.moveFileSafe(oldDir, newDir)) {
@@ -285,8 +368,8 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
   }
 
   @Override
-  public void cleanRoleFolder() {
-    File[] files = SystemFileFactory.INSTANCE.getFile(roleDirPath).listFiles();
+  public void cleanEntityFolder() {
+    File[] files = SystemFileFactory.INSTANCE.getFile(entityDirPath).listFiles();
     if (files != null) {
       for (File file : files) {
         FileUtils.deleteFileIfExist(file);
@@ -294,52 +377,5 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
     } else {
       LOGGER.warn("Role folder not exists");
     }
-  }
-
-  @TestOnly
-  public void saveRoleOldVer(Role role) throws IOException {
-    File roleProfile =
-        SystemFileFactory.INSTANCE.getFile(
-            roleDirPath
-                + File.separator
-                + role.getName()
-                + IoTDBConstant.PROFILE_SUFFIX
-                + TEMP_SUFFIX);
-    File roleDir = new File(roleDirPath);
-    if (!roleDir.exists()) {
-      if (!roleDir.mkdirs()) {
-        LOGGER.error("Failed to create role dir {}", roleDirPath);
-      }
-    }
-    try (BufferedOutputStream outputStream =
-        new BufferedOutputStream(Files.newOutputStream(roleProfile.toPath()))) {
-      try {
-        IOUtils.writeString(outputStream, role.getName(), STRING_ENCODING, encodingBufferLocal);
-        int privilegeNum = role.getPathPrivilegeList().size();
-        IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
-        for (int i = 0; i < privilegeNum; i++) {
-          PathPrivilege pathPrivilege = role.getPathPrivilegeList().get(i);
-          IOUtils.writeString(
-              outputStream,
-              pathPrivilege.getPath().getFullPath(),
-              STRING_ENCODING,
-              encodingBufferLocal);
-          IOUtils.writeInt(outputStream, pathPrivilege.getPrivileges().size(), encodingBufferLocal);
-          for (Integer item : pathPrivilege.getPrivileges()) {
-            IOUtils.writeInt(outputStream, item, encodingBufferLocal);
-          }
-        }
-        outputStream.flush();
-      } catch (Exception e) {
-        throw new IOException(e);
-      }
-    } finally {
-      encodingBufferLocal.remove();
-    }
-
-    File oldFile =
-        SystemFileFactory.INSTANCE.getFile(
-            roleDirPath + File.separator + role.getName() + IoTDBConstant.PROFILE_SUFFIX);
-    IOUtils.replaceFile(roleProfile, oldFile);
   }
 }

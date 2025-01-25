@@ -2491,7 +2491,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       if ("ALL".equalsIgnoreCase(privilege)
           || (!"READ".equalsIgnoreCase(privilege)
               && !"WRITE".equalsIgnoreCase(privilege)
-              && !PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant())) {
+              && !PrivilegeType.valueOf(privilege.toUpperCase()).isPathPrivilege())) {
         hasSystemPri = true;
         errorPrivilegeName = privilege.toUpperCase();
         break;

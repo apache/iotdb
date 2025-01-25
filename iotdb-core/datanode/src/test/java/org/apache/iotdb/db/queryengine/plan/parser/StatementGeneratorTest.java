@@ -718,12 +718,15 @@ public class StatementGeneratorTest {
 
     // 1. check simple privilege grant to user/role with/without grant option.
     for (PrivilegeType privilege : PrivilegeType.values()) {
+      if (privilege.isRelationalPrivilege()) {
+        continue;
+      }
       testGrant.checkParser(privilege.toString(), name, true, path, true);
       testGrant.checkParser(privilege.toString(), name, true, path, false);
       testGrant.checkParser(privilege.toString(), name, false, path, true);
       testGrant.checkParser(privilege.toString(), name, false, path, false);
       // 2. if grant stmt has system privilege, path should be root.**
-      if (!privilege.isPathRelevant()) {
+      if (!privilege.isPathPrivilege()) {
         assertThrows(
             SemanticException.class,
             () ->
@@ -753,11 +756,14 @@ public class StatementGeneratorTest {
 
     // 3. check simple privilege revoke from user/role on simple path
     for (PrivilegeType type : PrivilegeType.values()) {
+      if (type.isRelationalPrivilege()) {
+        continue;
+      }
       testRevoke.checkParser(type.toString(), name, true, path, false);
       testRevoke.checkParser(type.toString(), name, false, path, false);
 
       // 4. check system privilege revoke from user on wrong paths.
-      if (!type.isPathRelevant()) {
+      if (!type.isPathPrivilege()) {
         assertThrows(
             SemanticException.class,
             () ->
@@ -781,6 +787,9 @@ public class StatementGeneratorTest {
     }
 
     for (PrivilegeType type : PrivilegeType.values()) {
+      if (type.isRelationalPrivilege()) {
+        continue;
+      }
       {
         AuthorStatement stmt =
             createAuthDclStmt(
