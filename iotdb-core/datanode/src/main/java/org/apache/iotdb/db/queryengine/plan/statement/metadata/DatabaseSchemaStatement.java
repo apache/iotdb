@@ -149,7 +149,7 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_DATABASE.ordinal()),
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_DATABASE),
         PrivilegeType.MANAGE_DATABASE);
   }
 

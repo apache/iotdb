@@ -81,7 +81,7 @@ public class CreateFunctionStatement extends Statement implements IConfigStateme
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_UDF.ordinal()),
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_UDF),
         PrivilegeType.USE_UDF);
   }
 }

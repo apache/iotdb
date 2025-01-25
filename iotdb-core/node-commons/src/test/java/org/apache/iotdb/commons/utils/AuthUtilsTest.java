@@ -63,49 +63,45 @@ public class AuthUtilsTest {
   public void authUtilsTest_PrivilegeGrantRevokeCheck() throws IllegalPathException {
     PartialPath path = new PartialPath(new String("root.t1"));
     PathPrivilege pathWithPri = new PathPrivilege(path);
-    pathWithPri.grantPrivilege(PrivilegeType.READ_SCHEMA.ordinal(), false);
-    pathWithPri.grantPrivilege(PrivilegeType.READ_DATA.ordinal(), false);
+    pathWithPri.grantPrivilege(PrivilegeType.READ_SCHEMA, false);
+    pathWithPri.grantPrivilege(PrivilegeType.READ_DATA, false);
 
     PartialPath path2 = new PartialPath(new String("root.t2"));
     PathPrivilege pathWithPri2 = new PathPrivilege(path2);
-    pathWithPri2.grantPrivilege(PrivilegeType.WRITE_SCHEMA.ordinal(), false);
+    pathWithPri2.grantPrivilege(PrivilegeType.WRITE_SCHEMA, false);
 
     PartialPath path3 = new PartialPath(new String("root.**"));
     PathPrivilege pathWithPri3 = new PathPrivilege(path3);
-    pathWithPri3.grantPrivilege(PrivilegeType.READ_DATA.ordinal(), false);
+    pathWithPri3.grantPrivilege(PrivilegeType.READ_DATA, false);
 
     /** root.t1 : read schema, read data; root.t2 : write schema; root.** : read data */
     // Privilege list is empty.
-    Assert.assertFalse(
-        AuthUtils.checkPathPrivilege(path2, PrivilegeType.READ_SCHEMA.ordinal(), null));
+    Assert.assertFalse(AuthUtils.checkPathPrivilege(path2, PrivilegeType.READ_SCHEMA, null));
 
     List<PathPrivilege> privilegeList = new ArrayList<>();
     privilegeList.add(pathWithPri);
     privilegeList.add(pathWithPri2);
     privilegeList.add(pathWithPri3);
     Assert.assertTrue(
-        AuthUtils.checkPathPrivilege(path2, PrivilegeType.READ_SCHEMA.ordinal(), privilegeList));
-    Assert.assertTrue(
-        AuthUtils.checkPathPrivilege(path, PrivilegeType.READ_SCHEMA.ordinal(), privilegeList));
+        AuthUtils.checkPathPrivilege(path2, PrivilegeType.READ_SCHEMA, privilegeList));
+    Assert.assertTrue(AuthUtils.checkPathPrivilege(path, PrivilegeType.READ_SCHEMA, privilegeList));
 
-    pathWithPri.revokePrivilege(PrivilegeType.READ_SCHEMA.ordinal());
+    pathWithPri.revokePrivilege(PrivilegeType.READ_SCHEMA);
     /** root.t1 : read data; root.t2 : write schema ; root.** : read data */
     Assert.assertFalse(
-        AuthUtils.checkPathPrivilege(path, PrivilegeType.READ_SCHEMA.ordinal(), privilegeList));
-    Assert.assertTrue(
-        AuthUtils.checkPathPrivilege(path, PrivilegeType.READ_DATA.ordinal(), privilegeList));
+        AuthUtils.checkPathPrivilege(path, PrivilegeType.READ_SCHEMA, privilegeList));
+    Assert.assertTrue(AuthUtils.checkPathPrivilege(path, PrivilegeType.READ_DATA, privilegeList));
 
     // root.t2 have read data privilege because root.**
-    Assert.assertTrue(
-        AuthUtils.checkPathPrivilege(path2, PrivilegeType.READ_DATA.ordinal(), privilegeList));
+    Assert.assertTrue(AuthUtils.checkPathPrivilege(path2, PrivilegeType.READ_DATA, privilegeList));
     Assert.assertFalse(
-        AuthUtils.hasPrivilegeToReovke(path2, PrivilegeType.READ_DATA.ordinal(), privilegeList));
+        AuthUtils.hasPrivilegeToRevoke(path2, PrivilegeType.READ_DATA, privilegeList));
 
     Assert.assertEquals(AuthUtils.getPrivileges(path, privilegeList).size(), 1);
     Assert.assertEquals(AuthUtils.getPrivileges(path, null).size(), 0);
-    pathWithPri.grantPrivilege(PrivilegeType.WRITE_DATA.ordinal(), false);
+    pathWithPri.grantPrivilege(PrivilegeType.WRITE_DATA, false);
     Assert.assertTrue(
-        AuthUtils.getPrivileges(path, privilegeList).contains(PrivilegeType.WRITE_DATA.ordinal()));
+        AuthUtils.getPrivileges(path, privilegeList).contains(PrivilegeType.WRITE_DATA));
   }
 
   @Test
@@ -113,32 +109,32 @@ public class AuthUtilsTest {
     List<PathPrivilege> privs = new ArrayList<>();
     PartialPath path1 = new PartialPath("root.t1");
 
-    AuthUtils.addPrivilege(path1, PrivilegeType.READ_SCHEMA.ordinal(), privs, false);
-    AuthUtils.addPrivilege(path1, PrivilegeType.READ_DATA.ordinal(), privs, false);
-    AuthUtils.addPrivilege(path1, PrivilegeType.WRITE_SCHEMA.ordinal(), privs, true);
+    AuthUtils.addPrivilege(path1, PrivilegeType.READ_SCHEMA, privs, false);
+    AuthUtils.addPrivilege(path1, PrivilegeType.READ_DATA, privs, false);
+    AuthUtils.addPrivilege(path1, PrivilegeType.WRITE_SCHEMA, privs, true);
 
     Assert.assertEquals(privs.size(), 1);
-    Assert.assertEquals(privs.get(0).getPrivileges().size(), 3);
+    Assert.assertEquals(privs.get(0).getPrivilegeIntSet().size(), 3);
     Assert.assertEquals(privs.get(0).getGrantOpt().size(), 1);
 
     PartialPath path2 = new PartialPath("root.t2");
-    AuthUtils.addPrivilege(path2, PrivilegeType.READ_SCHEMA.ordinal(), privs, false);
+    AuthUtils.addPrivilege(path2, PrivilegeType.READ_SCHEMA, privs, false);
 
     Assert.assertEquals(privs.size(), 2);
 
-    AuthUtils.removePrivilege(path2, PrivilegeType.READ_SCHEMA.ordinal(), privs);
+    AuthUtils.removePrivilege(path2, PrivilegeType.READ_SCHEMA, privs);
     Assert.assertEquals(privs.size(), 1);
 
     // if we revoke privileges on root.**, privileges on root.t1 and root.t2 will also be removed.
     PartialPath rootPath = new PartialPath("root.**");
-    AuthUtils.removePrivilege(rootPath, PrivilegeType.READ_DATA.ordinal(), privs);
-    Assert.assertEquals(privs.get(0).getPrivileges().size(), 2);
-    Assert.assertFalse(privs.get(0).getPrivileges().contains(PrivilegeType.READ_DATA.ordinal()));
+    AuthUtils.removePrivilege(rootPath, PrivilegeType.READ_DATA, privs);
+    Assert.assertEquals(2, privs.get(0).getPrivilegeIntSet().size());
+    Assert.assertFalse(privs.get(0).getPrivileges().contains(PrivilegeType.READ_DATA));
 
-    AuthUtils.addPrivilege(path2, PrivilegeType.WRITE_SCHEMA.ordinal(), privs, true);
-    AuthUtils.removePrivilege(rootPath, PrivilegeType.WRITE_SCHEMA.ordinal(), privs);
-    Assert.assertEquals(privs.size(), 1);
-    Assert.assertEquals(privs.get(0).getPrivileges().size(), 1);
+    AuthUtils.addPrivilege(path2, PrivilegeType.WRITE_SCHEMA, privs, true);
+    AuthUtils.removePrivilege(rootPath, PrivilegeType.WRITE_SCHEMA, privs);
+    Assert.assertEquals(1, privs.size());
+    Assert.assertEquals(1, privs.get(0).getPrivilegeIntSet().size());
   }
 
   @Test
@@ -187,17 +183,5 @@ public class AuthUtilsTest {
     Assert.assertThrows(
         AuthException.class,
         () -> AuthUtils.validatePatternPath(new PartialPath(new String("*a.data.t1.**.**"))));
-  }
-
-  @Test
-  public void authUtilsTest_ConvertPattern() throws IllegalPathException {
-    PartialPath path = AuthUtils.convertPatternPath(new PartialPath("root.*.t1.t2"));
-    Assert.assertTrue(path.equals(new PartialPath("root.**")));
-    path = AuthUtils.convertPatternPath(new PartialPath("root.*t1.t1.t2"));
-    Assert.assertTrue(path.equals(new PartialPath("root.**")));
-    path = AuthUtils.convertPatternPath(new PartialPath("root.*"));
-    Assert.assertTrue(path.equals(new PartialPath("root.**")));
-    path = AuthUtils.convertPatternPath(new PartialPath("root.t2.*.t1.**"));
-    Assert.assertTrue(path.equals(new PartialPath("root.t2.**")));
   }
 }
