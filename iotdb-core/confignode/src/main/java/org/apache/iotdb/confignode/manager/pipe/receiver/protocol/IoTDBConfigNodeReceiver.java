@@ -694,7 +694,6 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RevokeRole:
       case RevokeRoleFromUser:
       case UpdateUser:
-        return configManager.getPermissionManager().operatePermission((AuthorPlan) plan, true);
       case RCreateUser:
       case RCreateRole:
       case RDropUser:
