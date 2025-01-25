@@ -21,18 +21,18 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
-import org.apache.iotdb.commons.auth.entity.PriPrivilegeType;
+import org.apache.iotdb.commons.auth.entity.ModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorReadPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
-import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -49,10 +49,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.db.utils.constant.TestConstant.BASE_OUTPUT_PATH;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class AuthorInfoTest {
 
@@ -93,7 +94,7 @@ public class AuthorInfoTest {
   }
 
   @Test
-  public void permissionTest() throws TException, AuthException, IllegalPathException {
+  public void permissionTest() throws AuthException, IllegalPathException {
 
     TSStatus status;
 
@@ -107,8 +108,6 @@ public class AuthorInfoTest {
     roleList.add("role1");
 
     AuthorPlan authorPlan;
-    AuthorReadPlan authorReadPlan;
-    TCheckUserPrivilegesReq checkUserPrivilegesReq;
 
     Set<Integer> privilegeList = new HashSet<>();
     privilegeList.add(PrivilegeType.READ_DATA.ordinal());
@@ -119,18 +118,12 @@ public class AuthorInfoTest {
     Set<Integer> revokePrivilege = new HashSet<>();
     revokePrivilege.add(PrivilegeType.READ_DATA.ordinal());
 
-    List<String> privilege = new ArrayList<>();
-    privilege.add("root.** : MANAGE_USER");
-
-    List<PartialPath> paths = new ArrayList<>();
-    paths.add(new PartialPath("root.ln"));
-
     cleanUserAndRole();
 
     // create user
     {
       authorPlan =
-          new AuthorPlan(
+          new AuthorTreePlan(
               ConfigPhysicalPlanType.CreateUser,
               "user0",
               "",
@@ -141,22 +134,22 @@ public class AuthorInfoTest {
               new ArrayList<>());
       status = authorInfo.authorNonQuery(authorPlan);
       Assert.assertNull(status.getMessage());
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       authorPlan.setUserName("user1");
       status = authorInfo.authorNonQuery(authorPlan);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
 
     // check user privileges
     status =
         authorInfo
-            .checkUserPrivileges("user0", paths, PrivilegeType.MANAGE_USER.ordinal())
+            .checkUserPrivileges("user0", new PrivilegeUnion(PrivilegeType.MANAGE_USER))
             .getStatus();
-    Assert.assertEquals(TSStatusCode.NO_PERMISSION.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.NO_PERMISSION.getStatusCode(), status.getCode());
 
     // drop user
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.DropUser,
             "user1",
             "",
@@ -166,11 +159,11 @@ public class AuthorInfoTest {
             false,
             new ArrayList<>());
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // list user
-    authorReadPlan =
-        new AuthorReadPlan(
+    authorPlan =
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListUser,
             "",
             "",
@@ -179,15 +172,15 @@ public class AuthorInfoTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    PermissionInfoResp permissionInfoResp = authorInfo.executeListUsers(authorReadPlan);
+    PermissionInfoResp permissionInfoResp = authorInfo.executeListUsers(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     userList.remove("user1");
-    Assert.assertEquals(userList, permissionInfoResp.getMemberList());
+    assertEquals(userList, permissionInfoResp.getMemberList());
 
     // create role
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.CreateRole,
             "",
             "role0",
@@ -197,14 +190,14 @@ public class AuthorInfoTest {
             false,
             new ArrayList<>());
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     authorPlan.setRoleName("role1");
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // drop role
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.DropRole,
             "",
             "role1",
@@ -214,11 +207,11 @@ public class AuthorInfoTest {
             false,
             new ArrayList<>());
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // list role
-    authorReadPlan =
-        new AuthorReadPlan(
+    authorPlan =
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListRole,
             "",
             "",
@@ -227,15 +220,15 @@ public class AuthorInfoTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    permissionInfoResp = authorInfo.executeListRoles(authorReadPlan);
+    permissionInfoResp = authorInfo.executeListRoles(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     roleList.remove("role1");
-    Assert.assertEquals(roleList, permissionInfoResp.getMemberList());
+    assertEquals(roleList, permissionInfoResp.getMemberList());
 
     // alter user
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.UpdateUser,
             "user0",
             "",
@@ -245,13 +238,13 @@ public class AuthorInfoTest {
             false,
             new ArrayList<>());
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // grant user path privilege
     List<PartialPath> nodeNameList = new ArrayList<>();
     nodeNameList.add(new PartialPath("root.ln.**"));
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.GrantUser,
             "user0",
             "",
@@ -261,36 +254,36 @@ public class AuthorInfoTest {
             false,
             nodeNameList);
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    Assert.assertEquals(
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorInfo
-            .checkUserPrivileges("user0", nodeNameList, PrivilegeType.READ_DATA.ordinal())
+            .checkUserPrivileges("user0", new PrivilegeUnion(nodeNameList, PrivilegeType.READ_DATA))
             .getStatus()
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            .getCode());
 
     // grant user system privilege
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.GrantUser, "user0", "", "", "", sysPriList, false, null);
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    Assert.assertEquals(
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorInfo
-            .checkUserPrivileges("user0", new ArrayList<>(), PrivilegeType.MANAGE_ROLE.ordinal())
+            .checkUserPrivileges("user0", new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
             .getStatus()
-            .getCode(),
-        TSStatusCode.SUCCESS_STATUS.getStatusCode());
+            .getCode());
     // check user privileges
     status =
         authorInfo
-            .checkUserPrivileges("user0", new ArrayList<>(), PrivilegeType.MANAGE_ROLE.ordinal())
+            .checkUserPrivileges("user0", new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
             .getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // grant role
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.GrantRole,
             "",
             "role0",
@@ -300,11 +293,11 @@ public class AuthorInfoTest {
             false,
             nodeNameList);
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // grant role to user
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.GrantRoleToUser,
             "user0",
             "role0",
@@ -314,11 +307,11 @@ public class AuthorInfoTest {
             false,
             new ArrayList<>());
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // revoke user
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.RevokeUser,
             "user0",
             "",
@@ -328,11 +321,11 @@ public class AuthorInfoTest {
             false,
             nodeNameList);
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // revoke role
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.RevokeRole,
             "",
             "role0",
@@ -342,11 +335,11 @@ public class AuthorInfoTest {
             false,
             nodeNameList);
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // list privileges user
-    authorReadPlan =
-        new AuthorReadPlan(
+    authorPlan =
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListUserPrivilege,
             "user0",
             "",
@@ -355,15 +348,16 @@ public class AuthorInfoTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    permissionInfoResp = authorInfo.executeListUserPrivileges(authorReadPlan);
+    permissionInfoResp = authorInfo.executeListUserPrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    Assert.assertEquals(
-        authorInfo.getUserPermissionInfo("user0"), permissionInfoResp.getPermissionInfoResp());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(
+        authorInfo.getUserPermissionInfo("user0", ModelType.ALL),
+        permissionInfoResp.getPermissionInfoResp());
 
     // list privileges role
-    authorReadPlan =
-        new AuthorReadPlan(
+    authorPlan =
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListRolePrivilege,
             "",
             "role0",
@@ -372,13 +366,13 @@ public class AuthorInfoTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    permissionInfoResp = authorInfo.executeListRolePrivileges(authorReadPlan);
+    permissionInfoResp = authorInfo.executeListRolePrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // list all role of user
-    authorReadPlan =
-        new AuthorReadPlan(
+    authorPlan =
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListRole,
             "user0",
             "",
@@ -387,15 +381,15 @@ public class AuthorInfoTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    permissionInfoResp = authorInfo.executeListRoles(authorReadPlan);
+    permissionInfoResp = authorInfo.executeListRoles(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     roleList.remove("role1");
-    Assert.assertEquals(roleList, permissionInfoResp.getMemberList());
+    assertEquals(roleList, permissionInfoResp.getMemberList());
 
     // list all user of role
-    authorReadPlan =
-        new AuthorReadPlan(
+    authorPlan =
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListUser,
             "",
             "role0",
@@ -404,16 +398,16 @@ public class AuthorInfoTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    permissionInfoResp = authorInfo.executeListUsers(authorReadPlan);
+    permissionInfoResp = authorInfo.executeListUsers(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     userList.remove("user1");
     userList.remove("root");
-    Assert.assertEquals(userList, permissionInfoResp.getMemberList());
+    assertEquals(userList, permissionInfoResp.getMemberList());
 
     // revoke role from user
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.RevokeRoleFromUser,
             "user0",
             "role0",
@@ -423,18 +417,15 @@ public class AuthorInfoTest {
             false,
             new ArrayList<>());
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
   }
 
-  private void cleanUserAndRole() throws TException, AuthException {
+  private void cleanUserAndRole() throws AuthException {
     TSStatus status;
 
-    AuthorPlan authorPlan;
-    AuthorReadPlan authorReadPlan;
-
     // clean user
-    authorReadPlan =
-        new AuthorReadPlan(
+    AuthorPlan authorPlan =
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListUser,
             "",
             "",
@@ -443,15 +434,15 @@ public class AuthorInfoTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    PermissionInfoResp permissionInfoResp = authorInfo.executeListUsers(authorReadPlan);
+    PermissionInfoResp permissionInfoResp = authorInfo.executeListUsers(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     List<String> allUsers = permissionInfoResp.getMemberList();
     for (String user : allUsers) {
       if (!user.equals("root")) {
         authorPlan =
-            new AuthorPlan(
+            new AuthorTreePlan(
                 ConfigPhysicalPlanType.DropUser,
                 user,
                 "",
@@ -461,13 +452,13 @@ public class AuthorInfoTest {
                 false,
                 new ArrayList<>());
         status = authorInfo.authorNonQuery(authorPlan);
-        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+        assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       }
     }
 
     // clean role
-    authorReadPlan =
-        new AuthorReadPlan(
+    authorPlan =
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListRole,
             "",
             "",
@@ -476,14 +467,14 @@ public class AuthorInfoTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    permissionInfoResp = authorInfo.executeListRoles(authorReadPlan);
+    permissionInfoResp = authorInfo.executeListRoles(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     List<String> roleList = permissionInfoResp.getMemberList();
     for (String roleN : roleList) {
       authorPlan =
-          new AuthorPlan(
+          new AuthorTreePlan(
               ConfigPhysicalPlanType.DropRole,
               "",
               roleN,
@@ -493,7 +484,7 @@ public class AuthorInfoTest {
               false,
               new ArrayList<>());
       status = authorInfo.authorNonQuery(authorPlan);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
   }
 
@@ -501,18 +492,18 @@ public class AuthorInfoTest {
   public void takeSnapshot() throws TException, IOException, AuthException {
     cleanUserAndRole();
     // create role
-    AuthorPlan createRoleReq = new AuthorPlan(ConfigPhysicalPlanType.CreateRole);
+    AuthorPlan createRoleReq = new AuthorTreePlan(ConfigPhysicalPlanType.CreateRole);
     createRoleReq.setRoleName("testRole");
     TSStatus status = authorInfo.authorNonQuery(createRoleReq);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    AuthorPlan createUserReq = new AuthorPlan(ConfigPhysicalPlanType.CreateUser);
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    AuthorPlan createUserReq = new AuthorTreePlan(ConfigPhysicalPlanType.CreateUser);
     createUserReq.setUserName("testUser");
     createUserReq.setPassword("testPassword");
     status = authorInfo.authorNonQuery(createUserReq);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-    AuthorReadPlan listUserPlan =
-        new AuthorReadPlan(
+    AuthorPlan listUserPlan =
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListUser,
             "",
             "",
@@ -521,8 +512,8 @@ public class AuthorInfoTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    AuthorReadPlan listRolePlan =
-        new AuthorReadPlan(
+    AuthorPlan listRolePlan =
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListRole,
             "",
             "",
@@ -531,41 +522,24 @@ public class AuthorInfoTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    Assert.assertEquals(1, authorInfo.executeListRoles(listRolePlan).getMemberList().size());
-    Assert.assertEquals(2, authorInfo.executeListUsers(listUserPlan).getMemberList().size());
-    Assert.assertTrue(authorInfo.processTakeSnapshot(snapshotDir));
+    assertEquals(1, authorInfo.executeListRoles(listRolePlan).getMemberList().size());
+    assertEquals(2, authorInfo.executeListUsers(listUserPlan).getMemberList().size());
+    assertTrue(authorInfo.processTakeSnapshot(snapshotDir));
     authorInfo.clear();
     authorInfo.processLoadSnapshot(snapshotDir);
-    Assert.assertEquals(1, authorInfo.executeListRoles(listRolePlan).getMemberList().size());
-    Assert.assertEquals(2, authorInfo.executeListUsers(listUserPlan).getMemberList().size());
+    assertEquals(1, authorInfo.executeListRoles(listRolePlan).getMemberList().size());
+    assertEquals(2, authorInfo.executeListUsers(listUserPlan).getMemberList().size());
   }
 
   @Test
-  public void testMultPathsPermission() throws TException, AuthException, IllegalPathException {
+  public void testMultiPathsPermission() throws AuthException, IllegalPathException {
     TSStatus status;
 
     AuthorPlan authorPlan;
-    AuthorReadPlan authorReadPlan;
 
     Set<Integer> privilegeList = new HashSet<>();
     privilegeList.add(PrivilegeType.WRITE_DATA.ordinal());
     privilegeList.add(PrivilegeType.READ_DATA.ordinal());
-
-    Map<String, List<String>> permissionInfo;
-    List<String> userPrivilege = new ArrayList<>();
-    userPrivilege.add("root.sg.** : READ_DATA WRITE_DATA");
-    userPrivilege.add("root.ln.** : READ_DATA WRITE_DATA");
-    Collections.sort(userPrivilege);
-
-    List<String> rolePrivilege = new ArrayList<>();
-    rolePrivilege.add("root.abc.** : READ_DATA WRITE_DATA");
-    rolePrivilege.add("root.role_1.** : READ_DATA WRITE_DATA");
-    Collections.sort(rolePrivilege);
-
-    List<String> allPrivilege = new ArrayList<>();
-    allPrivilege.addAll(userPrivilege);
-    allPrivilege.addAll(rolePrivilege);
-    Collections.sort(allPrivilege);
 
     List<PartialPath> userPaths = new ArrayList<>();
     userPaths.add(new PartialPath("root.ln.**"));
@@ -579,7 +553,7 @@ public class AuthorInfoTest {
 
     // create user
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.CreateUser,
             "user0",
             "",
@@ -590,11 +564,11 @@ public class AuthorInfoTest {
             new ArrayList<>());
     status = authorInfo.authorNonQuery(authorPlan);
     Assert.assertNull(status.getMessage());
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // create role
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.CreateRole,
             "",
             "role0",
@@ -604,32 +578,32 @@ public class AuthorInfoTest {
             false,
             new ArrayList<>());
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // grant user
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.GrantUser, "user0", "", "", "", privilegeList, false, userPaths);
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // check user privileges
     status =
         authorInfo
-            .checkUserPrivileges("user0", userPaths, PrivilegeType.WRITE_DATA.ordinal())
+            .checkUserPrivileges("user0", new PrivilegeUnion(userPaths, PrivilegeType.WRITE_DATA))
             .getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // grant role
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.GrantRole, "", "role0", "", "", privilegeList, false, rolePaths);
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // grant role to user
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.GrantRoleToUser,
             "user0",
             "role0",
@@ -639,11 +613,11 @@ public class AuthorInfoTest {
             false,
             new ArrayList<>());
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // list privileges user
-    authorReadPlan =
-        new AuthorReadPlan(
+    authorPlan =
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListUserPrivilege,
             "user0",
             "",
@@ -653,13 +627,13 @@ public class AuthorInfoTest {
             false,
             new ArrayList<>());
     PermissionInfoResp permissionInfoResp;
-    permissionInfoResp = authorInfo.executeListUserPrivileges(authorReadPlan);
+    permissionInfoResp = authorInfo.executeListUserPrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // list privileges role
-    authorReadPlan =
-        new AuthorReadPlan(
+    authorPlan =
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListRolePrivilege,
             "",
             "role0",
@@ -668,372 +642,17 @@ public class AuthorInfoTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    permissionInfoResp = authorInfo.executeListRolePrivileges(authorReadPlan);
+    permissionInfoResp = authorInfo.executeListRolePrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
   }
 
   @Test
-  public void testDepAuthorPlan() throws TException, AuthException, IllegalPathException {
-
-    AuthorPlan authorPlan;
-    TSStatus status;
-    cleanUserAndRole();
-
-    /*--TEST FOR USER CREATE 、UPDATE AND DROP -*/
-    // this operation will success for pre version.
-    {
-      authorPlan =
-          new AuthorPlan(
-              ConfigPhysicalPlanType.CreateUserDep,
-              "user1",
-              "",
-              "password1",
-              "",
-              new HashSet<>(),
-              false,
-              new ArrayList<>());
-      status = authorInfo.authorNonQuery(authorPlan);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
-      // this operation will success for pre version. --length~(32,64)
-      authorPlan =
-          new AuthorPlan(
-              ConfigPhysicalPlanType.CreateUserDep,
-              "user1234567user1234567user1234567user1234567",
-              "",
-              "password1",
-              "",
-              new HashSet<>(),
-              false,
-              new ArrayList<>());
-      status = authorInfo.authorNonQuery(authorPlan);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
-      // this operation will fail for pre version. --length > 64
-      authorPlan =
-          new AuthorPlan(
-              ConfigPhysicalPlanType.CreateUserDep,
-              "user1234567user1234567user1234567user1234567user1234567user1234567user1234567user1234567",
-              "",
-              "password1",
-              "",
-              new HashSet<>(),
-              false,
-              new ArrayList<>());
-      status = authorInfo.authorNonQuery(authorPlan);
-      Assert.assertEquals(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), status.getCode());
-
-      // this operation will fail for pre version. -- contain &%*@
-      authorPlan =
-          new AuthorPlan(
-              ConfigPhysicalPlanType.CreateUserDep,
-              "user1*&%",
-              "",
-              "password1",
-              "",
-              new HashSet<>(),
-              false,
-              new ArrayList<>());
-      status = authorInfo.authorNonQuery(authorPlan);
-      Assert.assertEquals(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), status.getCode());
-
-      // root, user1, user1234567user1234567user1234567user1234567
-      Assert.assertEquals(
-          3,
-          authorInfo
-              .executeListUsers(
-                  new AuthorReadPlan(
-                      ConfigPhysicalPlanType.ListUser,
-                      "",
-                      "",
-                      "",
-                      "",
-                      new HashSet<>(),
-                      false,
-                      new ArrayList<>()))
-              .getMemberList()
-              .size());
-
-      authorPlan =
-          new AuthorPlan(
-              ConfigPhysicalPlanType.DropUserDep,
-              "user1234567user1234567user1234567user1234567",
-              "",
-              "",
-              "",
-              new HashSet<>(),
-              false,
-              new ArrayList<>());
-      status = authorInfo.authorNonQuery(authorPlan);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
-      Assert.assertEquals(
-          2,
-          authorInfo
-              .executeListUsers(
-                  new AuthorReadPlan(
-                      ConfigPhysicalPlanType.ListUserDep,
-                      "",
-                      "",
-                      "",
-                      "",
-                      new HashSet<>(),
-                      false,
-                      new ArrayList<>()))
-              .getMemberList()
-              .size());
-
-      // for pre version, password with &% will meet error.
-      authorPlan =
-          new AuthorPlan(
-              ConfigPhysicalPlanType.UpdateUserDep,
-              "user1",
-              "",
-              "password*&S",
-              "",
-              new HashSet<>(),
-              false,
-              new ArrayList<>());
-      status = authorInfo.authorNonQuery(authorPlan);
-      Assert.assertEquals(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), status.getCode());
-
-      /*--TEST FOR ROLE CREATE AND DROP -*/
-      authorPlan =
-          new AuthorPlan(
-              ConfigPhysicalPlanType.CreateRoleDep,
-              "",
-              "role1",
-              "",
-              "",
-              new HashSet<>(),
-              false,
-              new ArrayList<>());
-      status = authorInfo.authorNonQuery(authorPlan);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
-      // name longer than 32, It's ok.
-      authorPlan =
-          new AuthorPlan(
-              ConfigPhysicalPlanType.CreateRoleDep,
-              "",
-              "role1234567role1234567role1234567role1234567",
-              "",
-              "",
-              new HashSet<>(),
-              false,
-              new ArrayList<>());
-      status = authorInfo.authorNonQuery(authorPlan);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
-      // contain wrong character, error.
-      authorPlan =
-          new AuthorPlan(
-              ConfigPhysicalPlanType.CreateRoleDep,
-              "",
-              "role1234567role1%%234567role1234567role1234567",
-              "",
-              "",
-              new HashSet<>(),
-              false,
-              new ArrayList<>());
-      status = authorInfo.authorNonQuery(authorPlan);
-      Assert.assertEquals(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), status.getCode());
-
-      authorPlan =
-          new AuthorPlan(
-              ConfigPhysicalPlanType.DropRoleDep,
-              "",
-              "role1234567role1234567role1234567role1234567",
-              "",
-              "",
-              new HashSet<>(),
-              false,
-              new ArrayList<>());
-      status = authorInfo.authorNonQuery(authorPlan);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
-      Assert.assertEquals(
-          1,
-          authorInfo
-              .executeListRoles(
-                  new AuthorReadPlan(
-                      ConfigPhysicalPlanType.ListRoleDep,
-                      "",
-                      "",
-                      "",
-                      "",
-                      new HashSet<>(),
-                      false,
-                      new ArrayList<>()))
-              .getMemberList()
-              .size());
-    }
-    // NOW WE HAVE USER：user1， root; ROLE: role1
-
-    for (PriPrivilegeType item : PriPrivilegeType.values()) {
-      /*-- TEST IGNORE PRIVILEGES --*/
-      if (!item.isAccept()) {
-        // for user to grant
-        authorPlan =
-            new AuthorPlan(
-                ConfigPhysicalPlanType.GrantUserDep,
-                "user1",
-                "",
-                "",
-                "",
-                Collections.singleton(item.ordinal()),
-                false,
-                Collections.singletonList(new PartialPath("root.**")));
-        status = authorInfo.authorNonQuery(authorPlan);
-        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-        Assert.assertEquals(
-            0, BasicAuthorizer.getInstance().getUser("user1").getPathPrivilegeList().size());
-        Assert.assertEquals(
-            0, BasicAuthorizer.getInstance().getUser("user1").getSysPrivilege().size());
-
-        // for role to grant
-        authorPlan =
-            new AuthorPlan(
-                ConfigPhysicalPlanType.GrantRoleDep,
-                "",
-                "role1",
-                "",
-                "",
-                Collections.singleton(item.ordinal()),
-                false,
-                Collections.singletonList(new PartialPath("root.**")));
-        status = authorInfo.authorNonQuery(authorPlan);
-        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-        Assert.assertEquals(
-            0, BasicAuthorizer.getInstance().getRole("role1").getPathPrivilegeList().size());
-        Assert.assertEquals(
-            0, BasicAuthorizer.getInstance().getRole("role1").getSysPrivilege().size());
-
-        // for user to revoke
-        authorPlan =
-            new AuthorPlan(
-                ConfigPhysicalPlanType.RevokeUserDep,
-                "user1",
-                "",
-                "",
-                "",
-                Collections.singleton(item.ordinal()),
-                false,
-                Collections.singletonList(new PartialPath("root.**")));
-        status = authorInfo.authorNonQuery(authorPlan);
-        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-        Assert.assertEquals(
-            0, BasicAuthorizer.getInstance().getUser("user1").getPathPrivilegeList().size());
-        Assert.assertEquals(
-            0, BasicAuthorizer.getInstance().getUser("user1").getSysPrivilege().size());
-
-        // for role to revoke
-        authorPlan =
-            new AuthorPlan(
-                ConfigPhysicalPlanType.RevokeRoleDep,
-                "",
-                "role1",
-                "",
-                "",
-                Collections.singleton(item.ordinal()),
-                false,
-                Collections.singletonList(new PartialPath("root.**")));
-        status = authorInfo.authorNonQuery(authorPlan);
-        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-        Assert.assertEquals(
-            0, BasicAuthorizer.getInstance().getRole("role1").getPathPrivilegeList().size());
-        Assert.assertEquals(
-            0, BasicAuthorizer.getInstance().getRole("role1").getSysPrivilege().size());
-
-      } else {
-        if (item == PriPrivilegeType.ALL) {
-          continue;
-        }
-        if (item.isPrePathRelevant()) {
-          authorPlan =
-              new AuthorPlan(
-                  ConfigPhysicalPlanType.GrantUserDep,
-                  "user1",
-                  "",
-                  "",
-                  "",
-                  Collections.singleton(item.ordinal()),
-                  false,
-                  Collections.singletonList(new PartialPath("root.t1.*.t2")));
-          status = authorInfo.authorNonQuery(authorPlan);
-          Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-          Assert.assertEquals(
-              1,
-              BasicAuthorizer.getInstance()
-                  .getUser("user1")
-                  .getPathPrivileges(new PartialPath("root.t1.*.t2"))
-                  .size());
-          authorInfo.checkUserPathPrivilege();
-          PartialPath path1 = AuthUtils.convertPatternPath(new PartialPath("root.t1.*.t2"));
-          for (PrivilegeType pri : item.getSubPri()) {
-            if (pri.isPathRelevant()) {
-              Assert.assertTrue(
-                  BasicAuthorizer.getInstance()
-                      .getUser("user1")
-                      .checkPathPrivilege(path1, pri.ordinal()));
-              BasicAuthorizer.getInstance()
-                  .getUser("user1")
-                  .removePathPrivilege(path1, pri.ordinal());
-            } else {
-              Assert.assertTrue(
-                  BasicAuthorizer.getInstance().getUser("user1").checkSysPrivilege(pri.ordinal()));
-              BasicAuthorizer.getInstance().getUser("user1").removeSysPrivilege(pri.ordinal());
-            }
-          }
-        } else {
-          authorPlan =
-              new AuthorPlan(
-                  ConfigPhysicalPlanType.GrantUserDep,
-                  "user1",
-                  "",
-                  "",
-                  "",
-                  Collections.singleton(item.ordinal()),
-                  false,
-                  Collections.singletonList(new PartialPath("root.**")));
-
-          status = authorInfo.authorNonQuery(authorPlan);
-          Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-          authorInfo.checkUserPathPrivilege();
-          Assert.assertTrue(
-              BasicAuthorizer.getInstance()
-                  .getUser("user1")
-                  .getSysPrivilege()
-                  .containsAll(item.getSubSysPriOrd()));
-
-          for (PrivilegeType pri : item.getSubPri()) {
-            authorPlan =
-                new AuthorPlan(
-                    ConfigPhysicalPlanType.RevokeUser,
-                    "user1",
-                    "",
-                    "",
-                    "",
-                    Collections.singleton(pri.ordinal()),
-                    false,
-                    Collections.emptyList());
-            status = authorInfo.authorNonQuery(authorPlan);
-            Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-            Assert.assertEquals(
-                0, BasicAuthorizer.getInstance().getUser("user1").getSysPrivilege().size());
-          }
-        }
-      }
-    }
-  }
-
-  @Test
-  public void createUserWithRawPassword() throws AuthException {
+  public void createUserWithRawPassword() {
     TSStatus status;
     AuthorPlan authorPlan;
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.CreateUserWithRawPassword,
             "testuser",
             "",
@@ -1043,8 +662,300 @@ public class AuthorInfoTest {
             false,
             new ArrayList<>());
     status = authorInfo.authorNonQuery(authorPlan);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     TPermissionInfoResp result = authorInfo.login("testuser", "password");
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.getStatus().getCode());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.getStatus().getCode());
+  }
+
+  private void checkAuthorNonQueryReturn(AuthorPlan plan) {
+    TSStatus status = authorInfo.authorNonQuery(plan);
+    Assert.assertNull(status.getMessage());
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+  }
+
+  @Test
+  public void relationalPermissionTest() throws AuthException {
+    cleanUserAndRole();
+    TSStatus status;
+
+    // create user
+    AuthorPlan plan =
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RCreateUser,
+            "user",
+            "",
+            "",
+            "",
+            Collections.emptySet(),
+            false,
+            "password");
+
+    checkAuthorNonQueryReturn(plan);
+
+    // check user permission
+    status =
+        authorInfo
+            .checkUserPrivileges("user", new PrivilegeUnion(PrivilegeType.MANAGE_USER))
+            .getStatus();
+    assertEquals(TSStatusCode.NO_PERMISSION.getStatusCode(), status.getCode());
+
+    plan =
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RDropUser,
+            "user",
+            "",
+            "",
+            "",
+            Collections.emptySet(),
+            false,
+            "");
+    checkAuthorNonQueryReturn(plan);
+
+    // list user
+    plan =
+        new AuthorTreePlan(
+            ConfigPhysicalPlanType.ListUser,
+            "",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            false,
+            new ArrayList<>());
+    PermissionInfoResp permissionInfoResp = authorInfo.executeListUsers(plan);
+    status = permissionInfoResp.getStatus();
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    assertEquals(1, permissionInfoResp.getMemberList().size()); // Only root
+
+    // create role
+    plan =
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RCreateRole,
+            "",
+            "role",
+            "",
+            "",
+            Collections.emptySet(),
+            false,
+            "");
+
+    checkAuthorNonQueryReturn(plan);
+
+    // create user
+    plan =
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RCreateUser,
+            "user",
+            "",
+            "",
+            "",
+            Collections.emptySet(),
+            false,
+            "password");
+
+    checkAuthorNonQueryReturn(plan);
+    checkAuthorNonQueryReturn(
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RGrantUserRole,
+            "user",
+            "role",
+            "",
+            "",
+            Collections.emptySet(),
+            false,
+            ""));
+
+    // grant privileges
+    checkAuthorNonQueryReturn(
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RGrantUserSysPri,
+            "user",
+            "",
+            "",
+            "",
+            PrivilegeType.MAINTAIN.ordinal(),
+            false));
+
+    checkAuthorNonQueryReturn(
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RGrantUserSysPri,
+            "user",
+            "",
+            "",
+            "",
+            PrivilegeType.MANAGE_USER.ordinal(),
+            true));
+
+    checkAuthorNonQueryReturn(
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RGrantUserAny,
+            "user",
+            "",
+            "",
+            "",
+            PrivilegeType.DELETE.ordinal(),
+            false));
+
+    checkAuthorNonQueryReturn(
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RGrantUserDBPriv,
+            "user",
+            "",
+            "testdb",
+            "",
+            PrivilegeType.SELECT.ordinal(),
+            false));
+    checkAuthorNonQueryReturn(
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RGrantUserDBPriv,
+            "user",
+            "",
+            "testdb2",
+            "",
+            PrivilegeType.INSERT.ordinal(),
+            false));
+
+    checkAuthorNonQueryReturn(
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RGrantUserTBPriv,
+            "user",
+            "",
+            "testdb",
+            "table",
+            PrivilegeType.CREATE.ordinal(),
+            false));
+    checkAuthorNonQueryReturn(
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RGrantUserTBPriv,
+            "user",
+            "",
+            "testdb",
+            "table2",
+            PrivilegeType.DELETE.ordinal(),
+            true));
+
+    checkAuthorNonQueryReturn(
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RGrantRoleSysPri,
+            "",
+            "role",
+            "",
+            "",
+            PrivilegeType.MANAGE_ROLE.ordinal(),
+            false));
+    checkAuthorNonQueryReturn(
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RGrantRoleTBPriv,
+            "",
+            "role",
+            "database",
+            "table",
+            PrivilegeType.ALTER.ordinal(),
+            false));
+
+    // privileges status:
+    // user <-- role
+    // user
+    // SYS: MAINTAIN, MANAGE_USER(with grant option)
+    // ANY: DELETE
+    // DB: testdb.*       SELECT
+    //     testdb2.*      INSERT
+    // TB: testdb.table   CREATE
+    //     testdb.table2  DELETE(with grant option)
+
+    // role
+    // SYS: MANAGE_ROLE
+    // TB:  database.table ALTER
+
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorInfo.checkRoleOfUser("user", "role").getStatus().getCode());
+    assertEquals(
+        TSStatusCode.USER_NOT_HAS_ROLE.getStatusCode(),
+        authorInfo.checkRoleOfUser("user", "role2").getStatus().getCode());
+    // check visible
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorInfo
+            .checkUserPrivileges("user", new PrivilegeUnion("testdb", null))
+            .getStatus()
+            .getCode());
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorInfo
+            .checkUserPrivileges("user", new PrivilegeUnion("database", null))
+            .getStatus()
+            .getCode());
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorInfo
+            .checkUserPrivileges("user", new PrivilegeUnion("database", "table", null))
+            .getStatus()
+            .getCode());
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorInfo
+            .checkUserPrivileges("user", new PrivilegeUnion("database", "table2", null))
+            .getStatus()
+            .getCode());
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorInfo
+            .checkUserPrivileges("user", new PrivilegeUnion("database2", "table2", null))
+            .getStatus()
+            .getCode());
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorInfo
+            .checkUserPrivileges("user", new PrivilegeUnion("testdb", PrivilegeType.SELECT))
+            .getStatus()
+            .getCode());
+
+    assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        authorInfo
+            .checkUserPrivileges(
+                "user", new PrivilegeUnion("testdb", "testtb", PrivilegeType.INSERT))
+            .getStatus()
+            .getCode());
+
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorInfo
+            .checkUserPrivileges(
+                "user", new PrivilegeUnion("testdb", "table", PrivilegeType.CREATE))
+            .getStatus()
+            .getCode());
+
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorInfo
+            .checkUserPrivileges("user", new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
+            .getStatus()
+            .getCode());
+
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorInfo
+            .checkUserPrivileges(
+                "user", new PrivilegeUnion("database", "table", PrivilegeType.ALTER))
+            .getStatus()
+            .getCode());
+
+    assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        authorInfo
+            .checkUserPrivileges(
+                "user", new PrivilegeUnion("testdb", "table2", PrivilegeType.DELETE, true))
+            .getStatus()
+            .getCode());
+
+    assertEquals(
+        TSStatusCode.NO_PERMISSION.getStatusCode(),
+        authorInfo
+            .checkUserPrivileges(
+                "user", new PrivilegeUnion("database", "table", PrivilegeType.ALTER, true))
+            .getStatus()
+            .getCode());
   }
 }

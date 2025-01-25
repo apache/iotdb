@@ -56,7 +56,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Dis
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.LogicalOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterColumnDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
@@ -73,6 +74,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
@@ -182,7 +184,7 @@ public class Coordinator {
                 new PlannerContext(
                     LocalExecutionPlanner.getInstance().metadata, new InternalTypeManager()))
             .getPlanOptimizers();
-    this.accessControl = new AllowAllAccessControl();
+    this.accessControl = new AccessControlImpl(new ITableAuthCheckerImpl());
     this.dataNodeLocationSupplier = DataNodeLocationSupplierFactory.getSupplier();
   }
 
@@ -422,7 +424,8 @@ public class Coordinator {
         || statement instanceof KillQuery
         || statement instanceof CreateFunction
         || statement instanceof DropFunction
-        || statement instanceof ShowFunctions) {
+        || statement instanceof ShowFunctions
+        || statement instanceof RelationalAuthorStatement) {
       return new ConfigExecution(
           queryContext,
           null,

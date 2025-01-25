@@ -19,12 +19,13 @@
 package org.apache.iotdb.commons.auth.role;
 
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.PriPrivilegeType;
+import org.apache.iotdb.commons.auth.entity.IEntityAccessor;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.concurrent.HashLock;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.AuthUtils;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -35,7 +36,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 
 /**
  * This class reads roles from local files through LocalFileRoleAccessor and manages them in a hash
@@ -43,189 +43,190 @@ import java.util.Map.Entry;
  * information from filesystem. Access filesystem only happens at starting、taking snapshot、 loading
  * snapshot.
  */
-public abstract class BasicRoleManager implements IRoleManager {
+public abstract class BasicRoleManager implements IEntityManager, SnapshotProcessor {
 
-  protected Map<String, Role> roleMap;
-  protected IRoleAccessor accessor;
+  protected Map<String, Role> entityMap;
+  protected IEntityAccessor accessor;
+
   protected HashLock lock;
-  private boolean preVersion = false;
-
   private static final Logger LOGGER = LoggerFactory.getLogger(BasicRoleManager.class);
 
-  BasicRoleManager(LocalFileRoleAccessor accessor) {
-    this.roleMap = new HashMap<>();
+  protected TSStatusCode getEntityNotExistErrorCode() {
+    return TSStatusCode.ROLE_NOT_EXIST;
+  }
+
+  protected String getNoSuchEntityError() {
+    return "No such role %s";
+  }
+
+  protected BasicRoleManager() {
+    this.entityMap = new HashMap<>();
+    this.lock = new HashLock();
+  }
+
+  protected BasicRoleManager(IEntityAccessor accessor) {
+    this.entityMap = new HashMap<>();
     this.accessor = accessor;
     this.lock = new HashLock();
     this.accessor.reset();
   }
 
-  @Override
-  public Role getRole(String rolename) {
-    lock.readLock(rolename);
-    Role role = roleMap.get(rolename);
-    lock.readUnlock(rolename);
+  public Role getEntity(String entityName) {
+    lock.readLock(entityName);
+    Role role = entityMap.get(entityName);
+    lock.readUnlock(entityName);
     return role;
   }
 
-  @Override
-  public boolean createRole(String rolename) throws AuthException {
-
-    Role role = getRole(rolename);
+  public boolean createRole(String entityName) {
+    Role role = getEntity(entityName);
     if (role != null) {
       return false;
     }
-    lock.writeLock(rolename);
-    role = new Role(rolename);
-    roleMap.put(rolename, role);
-    lock.writeUnlock(rolename);
+    lock.writeLock(entityName);
+    role = new Role(entityName);
+    entityMap.put(entityName, role);
+    lock.writeUnlock(entityName);
     return true;
   }
 
-  @Override
-  public boolean deleteRole(String rolename) {
-    lock.writeLock(rolename);
-    try {
-      return roleMap.remove(rolename) != null;
-    } finally {
-      lock.writeUnlock(rolename);
-    }
+  public boolean deleteEntity(String entityName) {
+    lock.writeLock(entityName);
+    boolean result = entityMap.remove(entityName) != null;
+    lock.writeUnlock(entityName);
+    return result;
   }
 
-  @Override
-  public void grantPrivilegeToRole(
-      String rolename, PartialPath path, int privilegeId, boolean grantOpt) throws AuthException {
-    lock.writeLock(rolename);
-    try {
-      Role role = getRole(rolename);
-      if (role == null) {
-        throw new AuthException(
-            TSStatusCode.ROLE_NOT_EXIST, String.format("No such role %s", rolename));
-      }
-
-      // Pre version's operation:
-      // all privileges are stored in path privileges.
-      // global privileges will come with root.**
-      // need to handle privileges ALL there.
-      if (preVersion) {
-        AuthUtils.validatePath(path);
-        if (privilegeId == PriPrivilegeType.ALL.ordinal()) {
-          for (PriPrivilegeType type : PriPrivilegeType.values()) {
-            role.addPathPrivilege(path, type.ordinal(), false);
-          }
-        } else {
-          role.addPathPrivilege(path, privilegeId, false);
-        }
-        // mark that the user has pre Version's privilege.
-        if (role.getServiceReady()) {
-          role.setServiceReady(false);
-        }
-        return;
-      }
-
-      if (path != null) {
-        AuthUtils.validatePatternPath(path);
-        role.addPathPrivilege(path, privilegeId, grantOpt);
-      } else {
-        role.getSysPrivilege().add(privilegeId);
-        if (grantOpt) {
-          role.getSysPriGrantOpt().add(privilegeId);
-        }
-      }
-    } finally {
-      lock.writeUnlock(rolename);
-    }
-  }
-
-  @Override
-  public boolean revokePrivilegeFromRole(String rolename, PartialPath path, int privilegeId)
+  public void grantPrivilegeToEntity(String entityName, PrivilegeUnion privilegeUnion)
       throws AuthException {
-    lock.writeLock(rolename);
+    lock.writeLock(entityName);
     try {
-      Role role = getRole(rolename);
+      Role role = getEntity(entityName);
       if (role == null) {
         throw new AuthException(
-            TSStatusCode.ROLE_NOT_EXIST, String.format("No such role %s", rolename));
-      }
-      if (preVersion) {
-        if (!AuthUtils.hasPrivilege(path, privilegeId, role.getPathPrivilegeList())) {
-          return false;
-        }
-        AuthUtils.removePrivilegePre(path, privilegeId, role.getPathPrivilegeList());
-        return true;
+            getEntityNotExistErrorCode(), String.format(getNoSuchEntityError(), entityName));
       }
 
-      if (!role.hasPrivilegeToRevoke(path, privilegeId)) {
-        return false;
+      switch (privilegeUnion.getModelType()) {
+        case TREE:
+          AuthUtils.validatePatternPath(privilegeUnion.getPath());
+          role.grantPathPrivilege(
+              privilegeUnion.getPath(),
+              privilegeUnion.getPrivilegeType(),
+              privilegeUnion.isGrantOption());
+          break;
+        case SYSTEM:
+          PrivilegeType type = privilegeUnion.getPrivilegeType();
+          role.grantSysPrivilege(type, privilegeUnion.isGrantOption());
+          break;
+        case RELATIONAL:
+          if (privilegeUnion.isForAny()) {
+            role.grantAnyScopePrivilege(
+                privilegeUnion.getPrivilegeType(), privilegeUnion.isGrantOption());
+            break;
+          }
+          if (privilegeUnion.getDBName() != null && privilegeUnion.getTbName() == null) {
+            role.grantDBPrivilege(
+                privilegeUnion.getDBName(),
+                privilegeUnion.getPrivilegeType(),
+                privilegeUnion.isGrantOption());
+          } else if (privilegeUnion.getDBName() != null && privilegeUnion.getTbName() != null) {
+            role.grantTBPrivilege(
+                privilegeUnion.getDBName(),
+                privilegeUnion.getTbName(),
+                privilegeUnion.getPrivilegeType(),
+                privilegeUnion.isGrantOption());
+          }
+          break;
+        default:
+          LOGGER.warn("Not support model type {}", privilegeUnion.getModelType());
       }
-      if (path != null) {
-        AuthUtils.validatePatternPath(path);
-        role.removePathPrivilege(path, privilegeId);
-      } else {
-        role.getSysPrivilege().remove(privilegeId);
-        role.getSysPriGrantOpt().remove(privilegeId);
-      }
-      return true;
     } finally {
-      lock.writeUnlock(rolename);
+      lock.writeUnlock(entityName);
     }
   }
 
   @Override
+  public void revokePrivilegeFromEntity(String entityName, PrivilegeUnion privilegeUnion)
+      throws AuthException {
+    lock.writeLock(entityName);
+    PrivilegeType privilegeType = privilegeUnion.getPrivilegeType();
+    boolean isGrantOption = privilegeUnion.isGrantOption();
+    boolean isAnyScope = privilegeUnion.isForAny();
+    String dbName = privilegeUnion.getDBName();
+    String tbName = privilegeUnion.getTbName();
+    try {
+      Role role = getEntity(entityName);
+      if (role == null) {
+        throw new AuthException(
+            getEntityNotExistErrorCode(), String.format(getNoSuchEntityError(), entityName));
+      }
+      switch (privilegeUnion.getModelType()) {
+        case TREE:
+          if (isGrantOption) {
+            role.revokePathPrivilegeGrantOption(privilegeUnion.getPath(), privilegeType);
+            return;
+          }
+          role.revokePathPrivilege(privilegeUnion.getPath(), privilegeType);
+          return;
+        case RELATIONAL:
+          if (isAnyScope) {
+            if (isGrantOption) {
+              role.revokeAnyScopePrivilegeGrantOption(privilegeType);
+              return;
+            }
+            role.revokeAnyScopePrivilege(privilegeType);
+            return;
+          }
+          // for tb
+          if (privilegeUnion.getTbName() != null) {
+            if (isGrantOption) {
+              role.revokeTBPrivilegeGrantOption(dbName, tbName, privilegeType);
+              return;
+            }
+            role.revokeTBPrivilege(dbName, tbName, privilegeType);
+            // for db
+          } else {
+            if (isGrantOption) {
+              role.revokeDBPrivilegeGrantOption(dbName, privilegeType);
+              return;
+            }
+            role.revokeDBPrivilege(dbName, privilegeType);
+          }
+          return;
+        case SYSTEM:
+          if (isGrantOption) {
+            role.revokeSysPrivilegeGrantOption(privilegeType);
+            return;
+          }
+          role.revokeSysPrivilege(privilegeType);
+          return;
+        default:
+          LOGGER.warn("Not support model type {}", privilegeUnion.getModelType());
+      }
+    } finally {
+      lock.writeUnlock(entityName);
+    }
+  }
+
   public void reset() throws AuthException {
     accessor.reset();
-    roleMap.clear();
-    for (String roleName : accessor.listAllRoles()) {
+    entityMap.clear();
+    for (String entityName : accessor.listAllEntities()) {
       try {
-        roleMap.put(roleName, accessor.loadRole(roleName));
+        entityMap.put(entityName, accessor.loadEntity(entityName));
       } catch (IOException e) {
-        LOGGER.warn("Get exception when load role {}", roleName);
+        LOGGER.warn("Get exception when load role {}", entityName);
         throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
       }
     }
   }
 
-  @Override
-  public List<String> listAllRoles() {
+  public List<String> listAllEntities() {
 
     List<String> rtlist = new ArrayList<>();
-    roleMap.forEach((name, item) -> rtlist.add(name));
+    entityMap.forEach((name, item) -> rtlist.add(name));
     rtlist.sort(null);
     return rtlist;
-  }
-
-  @Override
-  public void replaceAllRoles(Map<String, Role> roles) throws AuthException {
-    synchronized (this) {
-      reset();
-      roleMap = roles;
-
-      for (Entry<String, Role> entry : roleMap.entrySet()) {
-        Role role = entry.getValue();
-        try {
-          accessor.saveRole(role);
-        } catch (IOException e) {
-          throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-        }
-      }
-    }
-  }
-
-  @Override
-  public void setPreVersion(boolean preVersion) {
-    this.preVersion = preVersion;
-  }
-
-  @Override
-  @TestOnly
-  public boolean preVersion() {
-    return this.preVersion;
-  }
-
-  @Override
-  public void checkAndRefreshPathPri() {
-    roleMap.forEach(
-        (rolename, user) -> {
-          AuthUtils.checkAndRefreshPri(user);
-        });
   }
 }
