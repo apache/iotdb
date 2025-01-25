@@ -264,6 +264,9 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public long getMaxTime() {
+    if (isEmpty()) {
+      return Long.MIN_VALUE;
+    }
     return list.getMaxTime();
   }
 
@@ -511,7 +514,11 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public boolean isEmpty() {
-    return list.rowCount() == 0 || measurementIndexMap.isEmpty();
+    return list.rowCount() == 0
+        || measurementIndexMap.isEmpty()
+        || (ignoreAllNullRows
+            && list.getAllValueColDeletedMap() != null
+            && list.getAllValueColDeletedMap().isAllMarked());
   }
 
   @Override
