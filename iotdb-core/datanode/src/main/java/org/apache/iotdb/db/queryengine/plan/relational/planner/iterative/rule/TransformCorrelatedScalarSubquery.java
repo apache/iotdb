@@ -32,7 +32,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinct
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Cardinality;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
@@ -53,6 +56,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizati
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toSqlType;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern.nonEmpty;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.FailFunctionColumnTransformer.FAIL_FUNCTION_NAME;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 
@@ -172,13 +176,12 @@ public class TransformCorrelatedScalarSubquery implements Rule<CorrelatedJoinNod
             new SimpleCaseExpression(
                 isDistinct.toSymbolReference(),
                 ImmutableList.of(new WhenClause(TRUE_LITERAL, TRUE_LITERAL)),
-                Optional.of(
-                    new Cast(
-                        failFunction(
-                            metadata,
-                            SUBQUERY_MULTIPLE_ROWS,
-                            "Scalar sub-query has returned multiple rows"),
-                        toSqlType(BOOLEAN)))));
+                new Cast(
+                    new FunctionCall(
+                        QualifiedName.of(FAIL_FUNCTION_NAME),
+                        ImmutableList.of(
+                            new StringLiteral("Scalar sub-query has returned multiple rows."))),
+                    toSqlType(BOOLEAN))));
 
     return Result.ofPlanNode(
         new ProjectNode(

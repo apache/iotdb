@@ -113,4 +113,10 @@ public class SubqueryDataSetUtils {
         "FLUSH",
         "CLEAR ATTRIBUTE CACHE",
       };
+
+    public static void main(String[] args) {
+      for(String sql :CREATE_SQLS){
+        System.out.println(sql+";");
+      }
+    }
 }
