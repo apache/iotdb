@@ -20,6 +20,8 @@
 package org.apache.iotdb.confignode.consensus.request;
 
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
@@ -65,83 +67,83 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
       case PipeDeactivateTemplate:
         return visitPipeDeactivateTemplate((PipeDeactivateTemplatePlan) plan, context);
       case CreateRole:
-        return visitCreateRole((AuthorPlan) plan, context);
+        return visitCreateRole((AuthorTreePlan) plan, context);
       case DropRole:
-        return visitDropRole((AuthorPlan) plan, context);
+        return visitDropRole((AuthorTreePlan) plan, context);
       case GrantRole:
-        return visitGrantRole((AuthorPlan) plan, context);
+        return visitGrantRole((AuthorTreePlan) plan, context);
       case RevokeRole:
-        return visitRevokeRole((AuthorPlan) plan, context);
+        return visitRevokeRole((AuthorTreePlan) plan, context);
       case CreateUser:
-        return visitCreateUser((AuthorPlan) plan, context);
+        return visitCreateUser((AuthorTreePlan) plan, context);
       case CreateUserWithRawPassword:
-        return visitCreateRawUser((AuthorPlan) plan, context);
+        return visitCreateRawUser((AuthorTreePlan) plan, context);
       case UpdateUser:
-        return visitUpdateUser((AuthorPlan) plan, context);
+        return visitUpdateUser((AuthorTreePlan) plan, context);
       case DropUser:
-        return visitDropUser((AuthorPlan) plan, context);
+        return visitDropUser((AuthorTreePlan) plan, context);
       case GrantUser:
-        return visitGrantUser((AuthorPlan) plan, context);
+        return visitGrantUser((AuthorTreePlan) plan, context);
       case RevokeUser:
-        return visitRevokeUser((AuthorPlan) plan, context);
+        return visitRevokeUser((AuthorTreePlan) plan, context);
       case GrantRoleToUser:
-        return visitGrantRoleToUser((AuthorPlan) plan, context);
+        return visitGrantRoleToUser((AuthorTreePlan) plan, context);
       case RevokeRoleFromUser:
-        return visitRevokeRoleFromUser((AuthorPlan) plan, context);
+        return visitRevokeRoleFromUser((AuthorTreePlan) plan, context);
       case RCreateUser:
-        return visitRCreateUser((AuthorPlan) plan, context);
+        return visitRCreateUser((AuthorRelationalPlan) plan, context);
       case RCreateRole:
-        return visitRCreateRole((AuthorPlan) plan, context);
+        return visitRCreateRole((AuthorRelationalPlan) plan, context);
       case RUpdateUser:
-        return visitRUpdateUser((AuthorPlan) plan, context);
+        return visitRUpdateUser((AuthorRelationalPlan) plan, context);
       case RDropUser:
-        return visitRDropUserPlan((AuthorPlan) plan, context);
+        return visitRDropUserPlan((AuthorRelationalPlan) plan, context);
       case RDropRole:
-        return visitRDropRolePlan((AuthorPlan) plan, context);
+        return visitRDropRolePlan((AuthorRelationalPlan) plan, context);
       case RGrantUserRole:
-        return visitRGrantUserRole((AuthorPlan) plan, context);
+        return visitRGrantUserRole((AuthorRelationalPlan) plan, context);
       case RRevokeUserRole:
-        return visitRRevokeUserRole((AuthorPlan) plan, context);
+        return visitRRevokeUserRole((AuthorRelationalPlan) plan, context);
       case RGrantUserAny:
-        return visitRGrantUserAny((AuthorPlan) plan, context);
+        return visitRGrantUserAny((AuthorRelationalPlan) plan, context);
       case RGrantRoleAny:
-        return visitRGrantRoleAny((AuthorPlan) plan, context);
+        return visitRGrantRoleAny((AuthorRelationalPlan) plan, context);
       case RGrantUserAll:
-        return visitRGrantUserAll((AuthorPlan) plan, context);
+        return visitRGrantUserAll((AuthorRelationalPlan) plan, context);
       case RGrantRoleAll:
-        return visitRGrantRoleAll((AuthorPlan) plan, context);
+        return visitRGrantRoleAll((AuthorRelationalPlan) plan, context);
       case RGrantUserDBPriv:
-        return visitRGrantUserDB((AuthorPlan) plan, context);
+        return visitRGrantUserDB((AuthorRelationalPlan) plan, context);
       case RGrantUserTBPriv:
-        return visitRGrantUserTB((AuthorPlan) plan, context);
+        return visitRGrantUserTB((AuthorRelationalPlan) plan, context);
       case RGrantRoleDBPriv:
-        return visitRGrantRoleDB((AuthorPlan) plan, context);
+        return visitRGrantRoleDB((AuthorRelationalPlan) plan, context);
       case RGrantRoleTBPriv:
-        return visitRGrantRoleTB((AuthorPlan) plan, context);
+        return visitRGrantRoleTB((AuthorRelationalPlan) plan, context);
       case RRevokeUserAny:
-        return visitRRevokeUserAny((AuthorPlan) plan, context);
+        return visitRRevokeUserAny((AuthorRelationalPlan) plan, context);
       case RRevokeRoleAny:
-        return visitRRevokeRoleAny((AuthorPlan) plan, context);
+        return visitRRevokeRoleAny((AuthorRelationalPlan) plan, context);
       case RRevokeUserAll:
-        return visitRRevokeUserAll((AuthorPlan) plan, context);
+        return visitRRevokeUserAll((AuthorRelationalPlan) plan, context);
       case RRevokeRoleAll:
-        return visitRRevokeRoleAll((AuthorPlan) plan, context);
+        return visitRRevokeRoleAll((AuthorRelationalPlan) plan, context);
       case RRevokeUserDBPriv:
-        return visitRRevokeUserDBPrivilegePlan((AuthorPlan) plan, context);
+        return visitRRevokeUserDBPrivilegePlan((AuthorRelationalPlan) plan, context);
       case RRevokeUserTBPriv:
-        return visitRRevokeUserTBPrivilege((AuthorPlan) plan, context);
+        return visitRRevokeUserTBPrivilege((AuthorRelationalPlan) plan, context);
       case RRevokeRoleDBPriv:
-        return visitRRevokeRoleDBPrivilege((AuthorPlan) plan, context);
+        return visitRRevokeRoleDBPrivilege((AuthorRelationalPlan) plan, context);
       case RRevokeRoleTBPriv:
-        return visitRRevokeRoleTBPrivilege((AuthorPlan) plan, context);
+        return visitRRevokeRoleTBPrivilege((AuthorRelationalPlan) plan, context);
       case RGrantUserSysPri:
-        return visitRGrantUserSysPrivilege((AuthorPlan) plan, context);
+        return visitRGrantUserSysPrivilege((AuthorRelationalPlan) plan, context);
       case RGrantRoleSysPri:
-        return visitRGrantRoleSysPrivilege((AuthorPlan) plan, context);
+        return visitRGrantRoleSysPrivilege((AuthorRelationalPlan) plan, context);
       case RRevokeUserSysPri:
-        return visitRRevokeUserSysPrivilege((AuthorPlan) plan, context);
+        return visitRRevokeUserSysPrivilege((AuthorRelationalPlan) plan, context);
       case RRevokeRoleSysPri:
-        return visitRRevokeRoleSysPrivilege((AuthorPlan) plan, context);
+        return visitRRevokeRoleSysPrivilege((AuthorRelationalPlan) plan, context);
       case SetTTL:
         return visitTTL((SetTTLPlan) plan, context);
       case PipeCreateTable:
@@ -218,7 +220,7 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
     return visitPlan(pipeDeactivateTemplatePlan, context);
   }
 
-  public R visitCreateUser(final AuthorPlan createUserPlan, final C context) {
+  public R visitCreateUser(final AuthorTreePlan createUserPlan, final C context) {
     return visitPlan(createUserPlan, context);
   }
 
