@@ -35,7 +35,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
   private static final String STORAGE_ENGINE = "StorageEngine";
   private static final String STORAGE_ENGINE_WRITE = "StorageEngine-Write";
   private static final String STORAGE_ENGINE_WRITE_MEMTABLE = "StorageEngine-Write-Memtable";
-  private static final String STORAGE_ENGINE_WRITE_MEMTABLE_CACHE =
+  private static final String STORAGE_ENGINE_WRITE_MEMTABLE_DEVICE_PATH_CACHE =
       "StorageEngine-Write-Memtable-DevicePathCache";
   private static final String STORAGE_ENGINE_WRITE_MEMTABLE_BUFFERED_ARRAYS =
       "StorageEngine-Write-Memtable-BufferedArrays";
@@ -113,7 +113,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
-            STORAGE_ENGINE_WRITE_MEMTABLE_CACHE,
+            STORAGE_ENGINE_WRITE_MEMTABLE_DEVICE_PATH_CACHE,
             Tag.TYPE.toString(),
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
@@ -179,7 +179,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
                     Tag.LEVEL.toString(),
                     GlobalMemoryMetrics.LEVELS[3]));
     Arrays.asList(
-            STORAGE_ENGINE_WRITE_MEMTABLE_CACHE,
+            STORAGE_ENGINE_WRITE_MEMTABLE_DEVICE_PATH_CACHE,
             STORAGE_ENGINE_WRITE_MEMTABLE_BUFFERED_ARRAYS,
             STORAGE_ENGINE_WRITE_MEMTABLE_WAL_BUFFER_QUEUE)
         .forEach(

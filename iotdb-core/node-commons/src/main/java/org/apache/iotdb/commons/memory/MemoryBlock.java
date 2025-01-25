@@ -56,14 +56,14 @@ public class MemoryBlock extends IMemoryBlock {
     return "IoTDBMemoryBlock{"
         + "name="
         + name
+        + ", isReleased="
+        + isReleased
         + ", memoryBlockType="
         + memoryBlockType
         + ", maxMemorySizeInByte="
         + maxMemorySizeInByte
         + ", memoryUsageInBytes="
         + memoryUsageInBytes
-        + ", isReleased="
-        + isReleased
         + '}';
   }
 

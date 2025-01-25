@@ -2216,23 +2216,23 @@ public class IoTDBDescriptor {
     }
     // storage engine memory manager
     MemoryManager storageEngineMemoryManager =
-        globalMemoryManager.createMemoryManager("StorageEngine", storageEngineMemorySize);
+        globalMemoryManager.getOrCreateMemoryManager("StorageEngine", storageEngineMemorySize);
     conf.setStorageEngineMemoryManager(storageEngineMemoryManager);
     // query engine memory manager
     MemoryManager queryEngineMemoryManager =
-        globalMemoryManager.createMemoryManager("QueryEngine", queryEngineMemorySize);
+        globalMemoryManager.getOrCreateMemoryManager("QueryEngine", queryEngineMemorySize);
     conf.setQueryEngineMemoryManager(queryEngineMemoryManager);
     // schema engine memory manager
     MemoryManager schemaEngineMemoryManager =
-        globalMemoryManager.createMemoryManager("SchemaEngine", schemaEngineMemorySize);
+        globalMemoryManager.getOrCreateMemoryManager("SchemaEngine", schemaEngineMemorySize);
     conf.setSchemaEngineMemoryManager(schemaEngineMemoryManager);
     // consensus layer memory manager
     MemoryManager consensusMemoryManager =
-        globalMemoryManager.createMemoryManager("Consensus", consensusMemorySize);
+        globalMemoryManager.getOrCreateMemoryManager("Consensus", consensusMemorySize);
     conf.setConsensusMemoryManager(consensusMemoryManager);
     // pipe memory manager
     MemoryManager pipeMemoryManager =
-        globalMemoryManager.createMemoryManager("Pipe", pipeMemorySize);
+        globalMemoryManager.getOrCreateMemoryManager("Pipe", pipeMemorySize);
     conf.setPipeMemoryManager(pipeMemoryManager);
 
     LOGGER.info(
@@ -2257,7 +2257,7 @@ public class IoTDBDescriptor {
 
     String offHeapMemoryStr = System.getProperty("OFF_HEAP_MEMORY");
     MemoryManager offHeapMemoryManager =
-        globalMemoryManager.createMemoryManager(
+        globalMemoryManager.gerOrCreateMemoryManager(
             "OffHeap", MemUtils.strToBytesCnt(offHeapMemoryStr), false);
     conf.setOffHeapMemoryManager(offHeapMemoryManager);
 
@@ -2270,7 +2270,8 @@ public class IoTDBDescriptor {
                 (offHeapMemoryManager.getTotalMemorySizeInBytes()
                     * conf.getMaxDirectBufferOffHeapMemorySizeProportion());
     MemoryManager directBufferMemoryManager =
-        offHeapMemoryManager.createMemoryManager("DirectBuffer", totalDirectBufferMemorySizeLimit);
+        offHeapMemoryManager.getOrCreateMemoryManager(
+            "DirectBuffer", totalDirectBufferMemorySizeLimit);
     conf.setDirectBufferMemoryManager(directBufferMemoryManager);
   }
 
@@ -2330,32 +2331,34 @@ public class IoTDBDescriptor {
       }
     }
     MemoryManager writeMemoryManager =
-        storageEngineMemoryManager.createMemoryManager("Write", writeMemorySize);
+        storageEngineMemoryManager.getOrCreateMemoryManager("Write", writeMemorySize);
     conf.setWriteMemoryManager(writeMemoryManager);
     MemoryManager compactionMemoryManager =
-        storageEngineMemoryManager.createMemoryManager("Compaction", compactionMemorySize);
+        storageEngineMemoryManager.getOrCreateMemoryManager("Compaction", compactionMemorySize);
     conf.setCompactionMemoryManager(compactionMemoryManager);
     MemoryManager memtableMemoryManager =
-        writeMemoryManager.createMemoryManager("Memtable", memtableMemorySize);
+        writeMemoryManager.getOrCreateMemoryManager("Memtable", memtableMemorySize);
     conf.setMemtableMemoryManager(memtableMemoryManager);
     MemoryManager timePartitionMemoryManager =
-        writeMemoryManager.createMemoryManager("TimePartitionInfo", timePartitionInfoMemorySize);
+        writeMemoryManager.getOrCreateMemoryManager(
+            "TimePartitionInfo", timePartitionInfoMemorySize);
     conf.setTimePartitionInfoMemoryManager(timePartitionMemoryManager);
     long devicePathCacheMemorySize =
         (long) (memtableMemorySize * conf.getDevicePathCacheProportion());
     MemoryManager devicePathCacheMemoryManager =
-        memtableMemoryManager.createMemoryManager("DevicePathCache", devicePathCacheMemorySize);
+        memtableMemoryManager.getOrCreateMemoryManager(
+            "DevicePathCache", devicePathCacheMemorySize);
     conf.setDevicePathCacheMemoryManager(devicePathCacheMemoryManager);
     // TODO @spricoder check why this memory calculate by storage engine memory
     long bufferedArraysMemorySize =
         (long) (storageMemoryTotal * conf.getBufferedArraysMemoryProportion());
     MemoryManager bufferedArraysMemoryManager =
-        memtableMemoryManager.createMemoryManager("BufferedArray", bufferedArraysMemorySize);
+        memtableMemoryManager.getOrCreateMemoryManager("BufferedArray", bufferedArraysMemorySize);
     conf.setBufferedArraysMemoryManager(bufferedArraysMemoryManager);
     long walBufferQueueMemorySize =
         (long) (memtableMemorySize * conf.getWalBufferQueueProportion());
     MemoryManager walBufferQueueMemoryManager =
-        memtableMemoryManager.createMemoryManager("WalBufferQueue", walBufferQueueMemorySize);
+        memtableMemoryManager.getOrCreateMemoryManager("WalBufferQueue", walBufferQueueMemorySize);
     conf.setWalBufferQueueManager(walBufferQueueMemoryManager);
   }
 
@@ -2388,7 +2391,7 @@ public class IoTDBDescriptor {
     }
 
     MemoryManager schemaRegionMemoryManager =
-        schemaEngineMemoryManager.createMemoryManager(
+        schemaEngineMemoryManager.getOrCreateMemoryManager(
             "SchemaRegion", schemaMemoryTotal * schemaMemoryProportion[0] / proportionSum);
     conf.setSchemaRegionMemoryManager(schemaRegionMemoryManager);
     LOGGER.info(
@@ -2396,7 +2399,7 @@ public class IoTDBDescriptor {
         conf.getSchemaRegionMemoryManager().getTotalMemorySizeInBytes());
 
     MemoryManager schemaCacheMemoryManager =
-        schemaEngineMemoryManager.createMemoryManager(
+        schemaEngineMemoryManager.getOrCreateMemoryManager(
             "SchemaCache", schemaMemoryTotal * schemaMemoryProportion[1] / proportionSum);
     conf.setSchemaCacheMemoryManager(schemaCacheMemoryManager);
     LOGGER.info(
@@ -2404,7 +2407,7 @@ public class IoTDBDescriptor {
         conf.getSchemaCacheMemoryManager().getTotalMemorySizeInBytes());
 
     MemoryManager partitionCacheMemoryManager =
-        schemaEngineMemoryManager.createMemoryManager(
+        schemaEngineMemoryManager.getOrCreateMemoryManager(
             "PartitionCache", schemaMemoryTotal * schemaMemoryProportion[2] / proportionSum);
     conf.setPartitionCacheMemoryManager(partitionCacheMemoryManager);
     LOGGER.info(
@@ -2482,33 +2485,33 @@ public class IoTDBDescriptor {
     conf.setMaxBytesPerFragmentInstance(dataExchangeMemorySize / conf.getQueryThreadCount());
 
     MemoryManager bloomFilterCacheMemoryManager =
-        queryEngineMemoryManager.createMemoryManager(
+        queryEngineMemoryManager.getOrCreateMemoryManager(
             "BloomFilterCache", bloomFilterCacheMemorySize);
     conf.setBloomFilterCacheMemoryManager(bloomFilterCacheMemoryManager);
 
     MemoryManager chunkCacheMemoryManager =
-        queryEngineMemoryManager.createMemoryManager("ChunkCache", chunkCacheMemorySize);
+        queryEngineMemoryManager.getOrCreateMemoryManager("ChunkCache", chunkCacheMemorySize);
     conf.setChunkCacheMemoryManager(chunkCacheMemoryManager);
 
     MemoryManager timeSeriesMetaDataCacheMemoryManager =
-        queryEngineMemoryManager.createMemoryManager(
+        queryEngineMemoryManager.getOrCreateMemoryManager(
             "TimeSeriesMetaDataCache", timeSeriesMetaDataCacheMemorySize);
     conf.setTimeSeriesMetaDataCacheMemoryManager(timeSeriesMetaDataCacheMemoryManager);
 
     MemoryManager coordinatorMemoryManager =
-        queryEngineMemoryManager.createMemoryManager("Coordinator", coordinatorMemorySize);
+        queryEngineMemoryManager.getOrCreateMemoryManager("Coordinator", coordinatorMemorySize);
     conf.setCoordinatorMemoryManager(coordinatorMemoryManager);
 
     MemoryManager operatorsMemoryManager =
-        queryEngineMemoryManager.createMemoryManager("Operators", operatorsMemorySize);
+        queryEngineMemoryManager.getOrCreateMemoryManager("Operators", operatorsMemorySize);
     conf.setOperatorsMemoryManager(operatorsMemoryManager);
 
     MemoryManager dataExchangeMemoryManager =
-        queryEngineMemoryManager.createMemoryManager("DataExchange", dataExchangeMemorySize);
+        queryEngineMemoryManager.getOrCreateMemoryManager("DataExchange", dataExchangeMemorySize);
     conf.setDataExchangeMemoryManager(dataExchangeMemoryManager);
 
     MemoryManager timeIndexMemoryManager =
-        queryEngineMemoryManager.createMemoryManager("TimeIndex", timeIndexMemorySize);
+        queryEngineMemoryManager.getOrCreateMemoryManager("TimeIndex", timeIndexMemorySize);
     conf.setTimeIndexMemoryManager(timeIndexMemoryManager);
   }
 
@@ -2967,13 +2970,13 @@ public class IoTDBDescriptor {
     long newSize =
         storageEngineMemoryManager.getTotalMemorySizeInBytes()
             + consensusMemoryManager.getTotalMemorySizeInBytes();
-    globalMemoryManager.removeChild("StorageEngine");
-    storageEngineMemoryManager.clear();
+    globalMemoryManager.removeChildMemoryManager("StorageEngine");
+    storageEngineMemoryManager.clearAll();
     // @Spricoder to find a better way
-    consensusMemoryManager.resize(0);
+    consensusMemoryManager.setTotalMemorySizeInBytes(0);
     // then we need to allocate the memory to storage engine
     conf.setStorageEngineMemoryManager(
-        globalMemoryManager.createMemoryManager("StorageEngine", newSize));
+        globalMemoryManager.getOrCreateMemoryManager("StorageEngine", newSize));
     SystemInfo.getInstance().allocateWriteMemory();
   }
 

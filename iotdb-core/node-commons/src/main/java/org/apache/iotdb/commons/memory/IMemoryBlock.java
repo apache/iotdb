@@ -35,14 +35,14 @@ public abstract class IMemoryBlock implements AutoCloseable {
   /** The type of this memory block */
   protected MemoryBlockType memoryBlockType;
 
+  /** The flag that indicates whether this memory block is released */
+  protected volatile boolean isReleased = false;
+
   /** The maximum memory size in byte of this memory block */
   protected long maxMemorySizeInByte = 0;
 
   /** The memory usage in byte of this memory block */
   protected final AtomicLong memoryUsageInBytes = new AtomicLong(0);
-
-  /** The flag that indicates whether this memory block is released */
-  protected volatile boolean isReleased = false;
 
   /** Try to record memory managed by this memory block */
   public abstract void recordMemory(final long size);
