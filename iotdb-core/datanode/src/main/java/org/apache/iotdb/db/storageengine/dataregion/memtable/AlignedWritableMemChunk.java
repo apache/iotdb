@@ -514,11 +514,15 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public boolean isEmpty() {
-    return list.rowCount() == 0
-        || measurementIndexMap.isEmpty()
-        || (ignoreAllNullRows
-            && list.getAllValueColDeletedMap() != null
-            && list.getAllValueColDeletedMap().isAllMarked());
+    if (list.rowCount() == 0) {
+      return true;
+    }
+    if (ignoreAllNullRows) {
+      return measurementIndexMap.isEmpty()
+          || (list.getAllValueColDeletedMap() != null
+              && list.getAllValueColDeletedMap().isAllMarked());
+    }
+    return false;
   }
 
   @Override
