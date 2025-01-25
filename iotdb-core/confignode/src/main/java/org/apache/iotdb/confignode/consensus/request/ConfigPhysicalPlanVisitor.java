@@ -262,6 +262,10 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
     return visitPlan(grantRoleToUserPlan, context);
   }
 
+  public R visitRevokeRoleFromUser(final AuthorPlan revokeRoleFromUserPlan, final C context) {
+    return visitPlan(revokeRoleFromUserPlan, context);
+  }
+
   public R visitRCreateUser(final AuthorPlan rCreateUserPlan, final C context) {
     return visitPlan(rCreateUserPlan, context);
   }

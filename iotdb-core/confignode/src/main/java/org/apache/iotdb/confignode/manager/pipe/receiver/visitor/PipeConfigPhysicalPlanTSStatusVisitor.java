@@ -303,7 +303,8 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
   }
 
   @Override
-  public TSStatus visitRevokeRoleFromUser(final AuthorPlan plan, final TSStatus context) {
+  public TSStatus visitRevokeRoleFromUser(
+      final AuthorPlan revokeRoleFromUserPlan, final TSStatus context) {
     if (context.getCode() == TSStatusCode.USER_NOT_HAS_ROLE.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
@@ -311,7 +312,7 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
-    return super.visitRevokeRoleFromUser(plan, context);
+    return super.visitRevokeRoleFromUser(revokeRoleFromUserPlan, context);
   }
 
   @Override
