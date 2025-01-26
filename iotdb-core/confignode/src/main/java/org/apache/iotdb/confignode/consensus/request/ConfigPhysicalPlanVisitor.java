@@ -350,7 +350,7 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
   }
 
   public R visitRRevokeUserTBPrivilege(
-      final AuthorPlan rRevokeUserTBPrivilegePlan, final C context) {
+      final AuthorRelationalPlan rRevokeUserTBPrivilegePlan, final C context) {
     return visitPlan(rRevokeUserTBPrivilegePlan, context);
   }
 
