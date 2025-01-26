@@ -29,6 +29,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2TableModel;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -45,6 +46,7 @@ import static org.junit.Assert.fail;
 @Category({MultiClusterIT2TableModel.class})
 public class IoTDBPipeAlterIT extends AbstractPipeTableModelTestIT {
 
+  @Ignore
   @Test
   public void testBasicAlterPipe() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);

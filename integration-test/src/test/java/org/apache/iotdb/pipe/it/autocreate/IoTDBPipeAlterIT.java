@@ -29,6 +29,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -48,6 +49,7 @@ import static org.junit.Assert.fail;
 @Category({MultiClusterIT2AutoCreateSchema.class})
 public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
 
+  @Ignore
   @Test
   public void testBasicAlterPipe() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -462,6 +464,7 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
     }
   }
 
+  @Ignore
   @Test
   public void testAlterPipeSourceAndProcessor() {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);

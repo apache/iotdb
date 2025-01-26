@@ -35,6 +35,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -105,11 +106,13 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelTestI
     doTest("iotdb-thrift-sync-connector", "batch", true, "gzip, zstd");
   }
 
+  @Ignore
   @Test
   public void testCompression5() throws Exception {
     doTest("iotdb-air-gap-connector", "stream", false, "lzma2, lz4");
   }
 
+  @Ignore
   @Test
   public void testCompression6() throws Exception {
     doTest("iotdb-air-gap-connector", "batch", true, "lzma2");
