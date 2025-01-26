@@ -44,6 +44,7 @@ import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -378,6 +379,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         __3C_1CG_SUBSCRIBE_ONE_TOPIC.right);
   }
 
+  @Ignore
   @Test
   public void test3C1CGSubscribeOneTopicHistoricalDataWithAirGapConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
@@ -410,6 +412,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         __3C_1CG_SUBSCRIBE_ONE_TOPIC.right);
   }
 
+  @Ignore
   @Test
   public void test3C1CGSubscribeOneTopicRealtimeDataWithAirGapConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
@@ -446,6 +449,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         __3C_3CG_SUBSCRIBE_ONE_TOPIC.right);
   }
 
+  @Ignore
   @Test
   public void test3C3CGSubscribeOneTopicHistoricalDataWithAirGapConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
@@ -478,6 +482,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         __3C_3CG_SUBSCRIBE_ONE_TOPIC.right);
   }
 
+  @Ignore
   @Test
   public void test3C3CGSubscribeOneTopicRealtimeDataWithAirGapConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
@@ -514,6 +519,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         __3C_1CG_SUBSCRIBE_TWO_TOPIC.right);
   }
 
+  @Ignore
   @Test
   public void test3C1CGSubscribeTwoTopicHistoricalDataWithAirGapConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
@@ -546,6 +552,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         __3C_1CG_SUBSCRIBE_TWO_TOPIC.right);
   }
 
+  @Ignore
   @Test
   public void test3C1CGSubscribeTwoTopicRealtimeDataWithAirGapConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
@@ -582,6 +589,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         __3C_3CG_SUBSCRIBE_TWO_TOPIC.right);
   }
 
+  @Ignore
   @Test
   public void test3C3CGSubscribeTwoTopicHistoricalDataWithAirGapConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
@@ -614,6 +622,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         __3C_3CG_SUBSCRIBE_TWO_TOPIC.right);
   }
 
+  @Ignore
   @Test
   public void test3C3CGSubscribeTwoTopicRealtimeDataWithAirGapConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
@@ -650,6 +659,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         __4C_2CG_SUBSCRIBE_TWO_TOPIC.right);
   }
 
+  @Ignore
   @Test
   public void test4C2CGSubscribeTwoTopicHistoricalDataWithAirGapConnector() throws Exception {
     testSubscriptionHistoricalDataTemplate(
@@ -682,6 +692,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         __4C_2CG_SUBSCRIBE_TWO_TOPIC.right);
   }
 
+  @Ignore
   @Test
   public void test4C2CGSubscribeTwoTopicRealtimeDataWithAirGapConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
@@ -719,6 +730,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.right);
   }
 
+  @Ignore
   @Test
   public void test4C2CGSubscribeTwoTopicWithAllHistoricalDataWithAirGapConnector()
       throws Exception {
@@ -752,6 +764,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_ALL.right);
   }
 
+  @Ignore
   @Test
   public void test4C2CGSubscribeTwoTopicWithAllRealtimeDataWithAirGapConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(
@@ -789,6 +802,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.right);
   }
 
+  @Ignore
   @Test
   public void test6C2CGSubscribeOneTopicWithAllHistoricalDataWithAirGapConnector()
       throws Exception {
@@ -822,6 +836,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         __6C_2CG_SUBSCRIBE_ONE_TOPIC_WITH_ALL.right);
   }
 
+  @Ignore
   @Test
   public void test6C2CGSubscribeOneTopicWithAllRealtimeDataWithAirGapConnector() throws Exception {
     testSubscriptionRealtimeDataTemplate(

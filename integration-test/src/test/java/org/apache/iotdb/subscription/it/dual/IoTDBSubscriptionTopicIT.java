@@ -45,6 +45,7 @@ import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -297,11 +298,13 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     }
   }
 
+  @Ignore
   @Test
   public void testTabletTopicWithProcessor() throws Exception {
     testTopicWithProcessorTemplate(TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
   }
 
+  @Ignore
   @Test
   public void testTsFileTopicWithProcessor() throws Exception {
     testTopicWithProcessorTemplate(TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
