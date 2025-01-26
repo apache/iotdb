@@ -285,6 +285,7 @@ public class SRStatementGenerator implements Iterator<Statement>, Iterable<State
     @Override
     public List<Statement> visitMeasurementMNode(
         AbstractMeasurementMNode<?, ? extends IMNode<?>> node, PartialPath path) {
+      path = new MeasurementPath(path.getNodes());
       if (node.isLogicalView()) {
         List<Statement> statementList = new ArrayList<>();
         final CreateLogicalViewStatement stmt = new CreateLogicalViewStatement();
