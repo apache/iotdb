@@ -578,7 +578,16 @@ class RatisConsensus implements IConsensus {
 
     RaftPeer peerToAdd = Utils.fromPeerAndPriorityToRaftPeer(peer, DEFAULT_PRIORITY);
     // pre-condition: peer not in this group
-    if (group.getPeers().contains(peerToAdd)) {
+    if (group.getPeers().stream()
+        .anyMatch(
+            p ->
+                p.getId().equals(peerToAdd.getId())
+                    || p.getAddress().equals(peerToAdd.getAddress()))) {
+      logger.warn(
+          "{}: try to add a peer {} with conflicting id or address in {}",
+          this,
+          peerToAdd,
+          group.getPeers());
       throw new PeerAlreadyInConsensusGroupException(groupId, peer);
     }
 
