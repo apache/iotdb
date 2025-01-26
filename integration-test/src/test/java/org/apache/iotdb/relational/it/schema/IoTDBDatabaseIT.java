@@ -456,9 +456,9 @@ public class IoTDBDatabaseIT {
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute("create database test");
-      statement.execute("use test;");
-      statement.execute("create table table1(id1 tag, s1 string);");
-      statement.execute("insert into table1 values(0, 'd1', null), (1,'d1', 1);");
+      statement.execute("use test");
+      statement.execute("create table table1(id1 tag, s1 string)");
+      statement.execute("insert into table1 values(0, 'd1', null), (1,'d1', 1)");
     }
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
