@@ -198,8 +198,7 @@ public class ConfigRegionListeningFilter {
                   ConfigPhysicalPlanType.RGrantUserAll,
                   ConfigPhysicalPlanType.RGrantUserAny,
                   ConfigPhysicalPlanType.RGrantUserDBPriv,
-                  ConfigPhysicalPlanType.RGrantUserTBPriv,
-                  ConfigPhysicalPlanType.RGrantUserSysPri)));
+                  ConfigPhysicalPlanType.RGrantUserTBPriv)));
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.role.revoke.table"),
           Collections.unmodifiableList(
@@ -207,8 +206,7 @@ public class ConfigRegionListeningFilter {
                   ConfigPhysicalPlanType.RRevokeUserAll,
                   ConfigPhysicalPlanType.RRevokeUserAny,
                   ConfigPhysicalPlanType.RRevokeUserDBPriv,
-                  ConfigPhysicalPlanType.RRevokeUserTBPriv,
-                  ConfigPhysicalPlanType.RRevokeUserSysPri)));
+                  ConfigPhysicalPlanType.RRevokeUserTBPriv)));
     } catch (final IllegalPathException ignore) {
       // There won't be any exceptions here
     }
