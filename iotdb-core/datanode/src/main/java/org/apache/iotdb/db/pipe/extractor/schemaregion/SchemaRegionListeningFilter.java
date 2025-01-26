@@ -118,11 +118,11 @@ public class SchemaRegionListeningFilter {
     exclusionOptions.forEach(exclusion -> planTypes.removeAll(getOptionsByPrefix(exclusion)));
 
     if (!TreePattern.isTreeModelDataAllowToBeCaptured(parameters)) {
-      planTypes.removeAll(getOptionsByPrefix(treeOnlySyncPrefixes));
+      treeOnlySyncPrefixes.forEach(prefix -> planTypes.removeAll(getOptionsByPrefix(prefix)));
     }
 
     if (!TablePattern.isTableModelDataAllowToBeCaptured(parameters)) {
-      planTypes.removeAll(getOptionsByPrefix(tableOnlySyncPrefixes));
+      tableOnlySyncPrefixes.forEach(prefix -> planTypes.removeAll(getOptionsByPrefix(prefix)));
     }
     return planTypes;
   }

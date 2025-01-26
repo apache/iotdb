@@ -47,13 +47,7 @@ public class PipeInclusionOptions {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeInclusionOptions.class);
   public static final List<PartialPath> treeOnlySyncPrefixes =
-      Collections.unmodifiableList(
-          Arrays.asList(
-              new PartialPath(new String[] {"schema", "timeseries"}),
-              new PartialPath(new String[] {"auth", "role", "grant", "tree"}),
-              new PartialPath(new String[] {"auth", "role", "revoke", "tree"}),
-              new PartialPath(new String[] {"auth", "user", "grant", "tree"}),
-              new PartialPath(new String[] {"auth", "user", "revoke", "tree"})));
+      Collections.singletonList(new PartialPath(new String[] {"schema", "timeseries"}));
   public static final List<PartialPath> tableOnlySyncPrefixes =
       Collections.unmodifiableList(
           Arrays.asList(
