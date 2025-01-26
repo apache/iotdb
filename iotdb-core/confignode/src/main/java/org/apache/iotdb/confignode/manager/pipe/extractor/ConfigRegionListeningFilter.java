@@ -122,16 +122,41 @@ public class ConfigRegionListeningFilter {
 
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.role.create"),
-          Collections.singletonList(ConfigPhysicalPlanType.CreateRole));
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.CreateRole, ConfigPhysicalPlanType.RCreateRole)));
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.role.drop"),
-          Collections.singletonList(ConfigPhysicalPlanType.DropRole));
+          Collections.unmodifiableList(
+              Arrays.asList(ConfigPhysicalPlanType.DropRole, ConfigPhysicalPlanType.RDropRole)));
+
+      // Tree
       OPTION_PLAN_MAP.put(
-          new PartialPath("auth.role.grant"),
+          new PartialPath("auth.role.grant.tree"),
           Collections.singletonList(ConfigPhysicalPlanType.GrantRole));
       OPTION_PLAN_MAP.put(
-          new PartialPath("auth.role.revoke"),
+          new PartialPath("auth.role.revoke.tree"),
           Collections.singletonList(ConfigPhysicalPlanType.RevokeRole));
+
+      // Table
+      OPTION_PLAN_MAP.put(
+          new PartialPath("auth.role.grant.table"),
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.RGrantRoleAll,
+                  ConfigPhysicalPlanType.RGrantRoleAny,
+                  ConfigPhysicalPlanType.RGrantRoleDBPriv,
+                  ConfigPhysicalPlanType.RGrantRoleTBPriv,
+                  ConfigPhysicalPlanType.RGrantRoleSysPri)));
+      OPTION_PLAN_MAP.put(
+          new PartialPath("auth.role.revoke.table"),
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.RRevokeRoleAll,
+                  ConfigPhysicalPlanType.RRevokeRoleAny,
+                  ConfigPhysicalPlanType.RRevokeRoleDBPriv,
+                  ConfigPhysicalPlanType.RRevokeRoleTBPriv,
+                  ConfigPhysicalPlanType.RRevokeRoleSysPri)));
 
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.user.create"),
@@ -141,20 +166,53 @@ public class ConfigRegionListeningFilter {
                   ConfigPhysicalPlanType.CreateUserWithRawPassword)));
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.user.alter"),
-          Collections.singletonList(ConfigPhysicalPlanType.UpdateUser));
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.UpdateUser, ConfigPhysicalPlanType.RUpdateUser)));
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.user.drop"),
-          Collections.singletonList(ConfigPhysicalPlanType.DropUser));
+          Collections.unmodifiableList(
+              Arrays.asList(ConfigPhysicalPlanType.DropUser, ConfigPhysicalPlanType.RUpdateUser)));
+
+      // Tree
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.user.grant"),
           Collections.unmodifiableList(
               Arrays.asList(
-                  ConfigPhysicalPlanType.GrantUser, ConfigPhysicalPlanType.GrantRoleToUser)));
+                  ConfigPhysicalPlanType.GrantUser,
+                  ConfigPhysicalPlanType.GrantRoleToUser,
+                  ConfigPhysicalPlanType.RGrantUserRole)));
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.user.revoke"),
           Collections.unmodifiableList(
               Arrays.asList(
-                  ConfigPhysicalPlanType.RevokeUser, ConfigPhysicalPlanType.RevokeRoleFromUser)));
+                  ConfigPhysicalPlanType.RevokeUser,
+                  ConfigPhysicalPlanType.RevokeRoleFromUser,
+                  ConfigPhysicalPlanType.RRevokeUserRole)));
+
+      // Table
+      OPTION_PLAN_MAP.put(
+          new PartialPath("auth.role.grant.table"),
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.RGrantUserAll,
+                  ConfigPhysicalPlanType.RGrantUserAny,
+                  ConfigPhysicalPlanType.RGrantUserDBPriv,
+                  ConfigPhysicalPlanType.RGrantUserTBPriv,
+                  ConfigPhysicalPlanType.RGrantUserSysPri,
+                  ConfigPhysicalPlanType.GrantRoleToUser,
+                  ConfigPhysicalPlanType.RGrantUserRole)));
+      OPTION_PLAN_MAP.put(
+          new PartialPath("auth.role.revoke.table"),
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.RRevokeUserAll,
+                  ConfigPhysicalPlanType.RRevokeUserAny,
+                  ConfigPhysicalPlanType.RRevokeUserDBPriv,
+                  ConfigPhysicalPlanType.RRevokeUserTBPriv,
+                  ConfigPhysicalPlanType.RRevokeUserSysPri,
+                  ConfigPhysicalPlanType.RevokeRoleFromUser,
+                  ConfigPhysicalPlanType.RRevokeUserRole)));
     } catch (final IllegalPathException ignore) {
       // There won't be any exceptions here
     }
