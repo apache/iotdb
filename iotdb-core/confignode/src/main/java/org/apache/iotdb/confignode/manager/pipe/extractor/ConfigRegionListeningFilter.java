@@ -195,7 +195,6 @@ public class ConfigRegionListeningFilter {
           new PartialPath("auth.role.grant.table"),
           Collections.unmodifiableList(
               Arrays.asList(
-                  ConfigPhysicalPlanType.RGrantUserAll,
                   ConfigPhysicalPlanType.RGrantUserAny,
                   ConfigPhysicalPlanType.RGrantUserDBPriv,
                   ConfigPhysicalPlanType.RGrantUserTBPriv)));
@@ -203,7 +202,6 @@ public class ConfigRegionListeningFilter {
           new PartialPath("auth.role.revoke.table"),
           Collections.unmodifiableList(
               Arrays.asList(
-                  ConfigPhysicalPlanType.RRevokeUserAll,
                   ConfigPhysicalPlanType.RRevokeUserAny,
                   ConfigPhysicalPlanType.RRevokeUserDBPriv,
                   ConfigPhysicalPlanType.RRevokeUserTBPriv)));

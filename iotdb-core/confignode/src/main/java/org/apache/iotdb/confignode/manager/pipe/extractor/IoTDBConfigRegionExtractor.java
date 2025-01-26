@@ -64,6 +64,8 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
       new PipeConfigPhysicalPlanTablePatternParseVisitor();
   public static final PipeConfigPhysicalPlanTreeScopeParseVisitor TREE_SCOPE_PARSE_VISITOR =
       new PipeConfigPhysicalPlanTreeScopeParseVisitor();
+  public static final PipeConfigPhysicalPlanTableScopeParseVisitor TABLE_SCOPE_PARSE_VISITOR =
+      new PipeConfigPhysicalPlanTableScopeParseVisitor();
 
   private Set<ConfigPhysicalPlanType> listenedTypeSet = new HashSet<>();
 
@@ -159,6 +161,15 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
     }
     if (!treePattern.isTreeModelDataAllowedToBeCaptured() && result.isPresent()) {
       result = TREE_SCOPE_PARSE_VISITOR.process(result.get(), null);
+      if (!result.isPresent()) {
+        return result;
+      }
+    }
+    if (!tablePattern.isTableModelDataAllowedToBeCaptured() && result.isPresent()) {
+      result = TABLE_SCOPE_PARSE_VISITOR.process(result.get(), null);
+      if (!result.isPresent()) {
+        return result;
+      }
     }
     return result;
   }
