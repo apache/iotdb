@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -76,7 +77,7 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
       throws IOException {
     long t1 = System.nanoTime();
     try {
-      AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) chunkMetaData;
+      AbstractAlignedChunkMetadata alignedChunkMetadata = (AbstractAlignedChunkMetadata) chunkMetaData;
       ChunkMetadata timeChunkMetadata = (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
       Chunk timeChunk =
           ChunkCache.getInstance()
