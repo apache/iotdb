@@ -91,6 +91,8 @@ import static org.apache.tsfile.read.common.type.LongType.INT64;
  * </pre>
  *
  * <p>This must be run after aggregation decorrelation rules.
+ *
+ * <p>This rule is used to support non-aggregation scalar subquery.
  */
 public class TransformCorrelatedScalarSubquery implements Rule<CorrelatedJoinNode> {
   private static final Pattern<CorrelatedJoinNode> PATTERN =

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
 
+import org.apache.tsfile.read.common.block.column.NullColumn;
 import org.apache.tsfile.read.common.type.Type;
 
 /**
@@ -44,7 +45,14 @@ public class FailFunctionColumnTransformer extends ColumnTransformer {
 
   @Override
   public void evaluateWithSelection(boolean[] selection) {
-    throw new SemanticException(errorMsg);
+    // if there is true value in selection, throw exception
+    for (boolean b : selection) {
+      if (b) {
+        throw new SemanticException(errorMsg);
+      }
+    }
+    // Result of fail function should be ignored, we just fake the output here.
+    initializeColumnCache(new NullColumn(1));
   }
 
   @Override
