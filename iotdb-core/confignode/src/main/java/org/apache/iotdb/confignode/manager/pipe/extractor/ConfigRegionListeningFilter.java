@@ -41,8 +41,8 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.getExclusionString;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.getInclusionString;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.parseOptions;
-import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.tableOnlySyncPrefix;
-import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.treeOnlySyncPrefix;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.tableOnlySyncPrefixes;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.treeOnlySyncPrefixes;
 
 /**
  * {@link ConfigRegionListeningFilter} is to classify the {@link ConfigPhysicalPlan}s to help {@link
@@ -130,12 +130,12 @@ public class ConfigRegionListeningFilter {
           Collections.unmodifiableList(
               Arrays.asList(ConfigPhysicalPlanType.DropRole, ConfigPhysicalPlanType.RDropRole)));
 
-      // Tree
+      // Both
       OPTION_PLAN_MAP.put(
-          new PartialPath("auth.role.grant.tree"),
+          new PartialPath("auth.role.grant"),
           Collections.singletonList(ConfigPhysicalPlanType.GrantRole));
       OPTION_PLAN_MAP.put(
-          new PartialPath("auth.role.revoke.tree"),
+          new PartialPath("auth.role.revoke"),
           Collections.singletonList(ConfigPhysicalPlanType.RevokeRole));
 
       // Table
@@ -174,7 +174,7 @@ public class ConfigRegionListeningFilter {
           Collections.unmodifiableList(
               Arrays.asList(ConfigPhysicalPlanType.DropUser, ConfigPhysicalPlanType.RUpdateUser)));
 
-      // Tree
+      // Both
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.user.grant"),
           Collections.unmodifiableList(
@@ -199,9 +199,7 @@ public class ConfigRegionListeningFilter {
                   ConfigPhysicalPlanType.RGrantUserAny,
                   ConfigPhysicalPlanType.RGrantUserDBPriv,
                   ConfigPhysicalPlanType.RGrantUserTBPriv,
-                  ConfigPhysicalPlanType.RGrantUserSysPri,
-                  ConfigPhysicalPlanType.GrantRoleToUser,
-                  ConfigPhysicalPlanType.RGrantUserRole)));
+                  ConfigPhysicalPlanType.RGrantUserSysPri)));
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.role.revoke.table"),
           Collections.unmodifiableList(
@@ -210,9 +208,7 @@ public class ConfigRegionListeningFilter {
                   ConfigPhysicalPlanType.RRevokeUserAny,
                   ConfigPhysicalPlanType.RRevokeUserDBPriv,
                   ConfigPhysicalPlanType.RRevokeUserTBPriv,
-                  ConfigPhysicalPlanType.RRevokeUserSysPri,
-                  ConfigPhysicalPlanType.RevokeRoleFromUser,
-                  ConfigPhysicalPlanType.RRevokeUserRole)));
+                  ConfigPhysicalPlanType.RRevokeUserSysPri)));
     } catch (final IllegalPathException ignore) {
       // There won't be any exceptions here
     }
@@ -243,11 +239,11 @@ public class ConfigRegionListeningFilter {
     exclusionOptions.forEach(exclusion -> planTypes.removeAll(getOptionsByPrefix(exclusion)));
 
     if (!TreePattern.isTreeModelDataAllowToBeCaptured(parameters)) {
-      planTypes.removeAll(getOptionsByPrefix(treeOnlySyncPrefix));
+      treeOnlySyncPrefixes.forEach(prefix -> planTypes.removeAll(getOptionsByPrefix(prefix)));
     }
 
     if (!TablePattern.isTableModelDataAllowToBeCaptured(parameters)) {
-      planTypes.removeAll(getOptionsByPrefix(tableOnlySyncPrefix));
+      tableOnlySyncPrefixes.forEach(prefix -> planTypes.removeAll(getOptionsByPrefix(prefix)));
     }
 
     return planTypes;
