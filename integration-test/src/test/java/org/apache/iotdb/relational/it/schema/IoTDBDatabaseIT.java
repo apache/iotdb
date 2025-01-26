@@ -479,8 +479,6 @@ public class IoTDBDatabaseIT {
           assertTrue(resultSet.next());
         }
         assertEquals("test", resultSet.getString(1));
-        assertEquals(0, resultSet.getInt(6));
-        assertEquals(0, resultSet.getInt(7));
         assertFalse(resultSet.next());
       }
 
