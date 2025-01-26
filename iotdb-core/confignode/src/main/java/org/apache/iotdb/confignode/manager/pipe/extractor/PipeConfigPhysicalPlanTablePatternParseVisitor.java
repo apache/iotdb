@@ -19,12 +19,10 @@
 
 package org.apache.iotdb.confignode.manager.pipe.extractor;
 
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
@@ -35,8 +33,6 @@ import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColu
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 
 import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 public class PipeConfigPhysicalPlanTablePatternParseVisitor
     extends ConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, TablePattern> {
@@ -135,36 +131,5 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitor
       final String database, final String tableName, final TablePattern pattern) {
     return pattern.matchesDatabase(PathUtils.unQualifyDatabaseName(database))
         && pattern.matchesTable(tableName);
-  }
-
-  @Override
-  public Optional<ConfigPhysicalPlan> visitGrantRole(
-      final AuthorTreePlan grantRolePlan, final TablePattern context) {
-    return visitTreeAuthorPlan(grantRolePlan);
-  }
-
-  @Override
-  public Optional<ConfigPhysicalPlan> visitGrantUser(
-      final AuthorTreePlan grantUserPlan, final TablePattern context) {
-    return visitTreeAuthorPlan(grantUserPlan);
-  }
-
-  private Optional<ConfigPhysicalPlan> visitTreeAuthorPlan(final AuthorTreePlan authorTreePlan) {
-    final Set<Integer> permissions =
-        authorTreePlan.getPermissions().stream()
-            .filter(permission -> PrivilegeType.values()[permission].forRelationalSys())
-            .collect(Collectors.toSet());
-    return !permissions.isEmpty()
-        ? Optional.of(
-            new AuthorTreePlan(
-                authorTreePlan.getAuthorType(),
-                authorTreePlan.getUserName(),
-                authorTreePlan.getRoleName(),
-                authorTreePlan.getPassword(),
-                authorTreePlan.getNewPassword(),
-                permissions,
-                authorTreePlan.getGrantOpt(),
-                authorTreePlan.getNodeNameList()))
-        : Optional.empty();
   }
 }
