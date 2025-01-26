@@ -1,6 +1,5 @@
 package org.apache.iotdb.db.query.eBUG;
 
-import java.io.*;
 import java.util.*;
 
 
@@ -82,12 +81,7 @@ public class SWAB {
         }
 
         // 计算L2误差，注意归一化还原
-        return sumY2 * baseY * baseY
-                + k * k * sumX2 * baseX * baseX
-                + 2 * k * b * sumX * baseX
-                - 2 * b * sumY * baseY
-                - 2 * k * sumXY * baseX * baseY
-                + b * b * (rx - lx + 1);
+        return sumY2 * baseY * baseY + k * k * sumX2 * baseX * baseX + 2 * k * b * sumX * baseX - 2 * b * sumY * baseY - 2 * k * sumXY * baseX * baseY + b * b * (rx - lx + 1);
     }
 
     public static double myLA_withTimestamps(List<Point> points, int lx, int rx) {
@@ -110,8 +104,7 @@ public class SWAB {
         return tmp;
     }
 
-    public static List<Point> seg_bottomUp_maxerror_withTimestamps(
-            List<Point> points, double maxError, Object[] prefixSum, boolean debug) {
+    public static List<Point> seg_bottomUp_maxerror_withTimestamps(List<Point> points, double maxError, Object[] prefixSum, boolean debug) {
         int total = points.size();
         if (total < 3) {
             return points; // 不足 3 个点无法形成三角形
@@ -151,8 +144,7 @@ public class SWAB {
         }
 
         // 使用优先队列构建 minHeap
-        PriorityQueue<Triangle> triangleHeap =
-                new PriorityQueue<>(Comparator.comparingDouble(t -> t.area));
+        PriorityQueue<Triangle> triangleHeap = new PriorityQueue<>(Comparator.comparingDouble(t -> t.area));
         Collections.addAll(triangleHeap, triangles); // complexity TODO O(n) or O(nlogn)?
 
         int fakeCnt = 0;
@@ -166,10 +158,7 @@ public class SWAB {
             if (tri.isDeleted) {
                 fakeCnt--; // 取出了一个被标记删除点
                 if (debug) {
-                    System.out.println(
-                            ">>>bottom-up, remaining "
-                                    + triangleHeap.size()
-                                    + " triangles (including those marked for removal)");
+                    System.out.println(">>>bottom-up, remaining " + triangleHeap.size() + " triangles (including those marked for removal)");
                 }
                 continue;
             }
@@ -199,17 +188,13 @@ public class SWAB {
 
                 double mc;
                 if (prefixSum == null) {
-                    mc = myLA_withTimestamps(points,
-                            tri.prev.indices[0], tri.prev.indices[2]);
+                    mc = myLA_withTimestamps(points, tri.prev.indices[0], tri.prev.indices[2]);
                 } else {
-                    mc = myLA_withTimestamps(points,
-                            prefixSum, tri.prev.indices[0], tri.prev.indices[2]);
+                    mc = myLA_withTimestamps(points, prefixSum, tri.prev.indices[0], tri.prev.indices[2]);
                 }
                 tri.prev.area = mc;
                 if (debug) {
-                    System.out.println("(2) updating point on the left "
-                            + points.get(tri.prev.indices[1])
-                            + ", ranging [" + tri.prev.indices[0] + "," + tri.prev.indices[2] + "]");
+                    System.out.println("(2) updating point on the left " + points.get(tri.prev.indices[1]) + ", ranging [" + tri.prev.indices[0] + "," + tri.prev.indices[2] + "]");
                 }
 
                 // 重新加入堆
@@ -239,17 +224,13 @@ public class SWAB {
 
                 double mc;
                 if (prefixSum == null) {
-                    mc = myLA_withTimestamps(points,
-                            tri.next.indices[0], tri.next.indices[2]);
+                    mc = myLA_withTimestamps(points, tri.next.indices[0], tri.next.indices[2]);
                 } else {
-                    mc = myLA_withTimestamps(points,
-                            prefixSum, tri.next.indices[0], tri.next.indices[2]);
+                    mc = myLA_withTimestamps(points, prefixSum, tri.next.indices[0], tri.next.indices[2]);
                 }
                 tri.next.area = mc;
                 if (debug) {
-                    System.out.println("(3) updating point on the right "
-                            + points.get(tri.next.indices[1])
-                            + ", ranging [" + tri.next.indices[0] + "," + tri.next.indices[2] + "]");
+                    System.out.println("(3) updating point on the right " + points.get(tri.next.indices[1]) + ", ranging [" + tri.next.indices[0] + "," + tri.next.indices[2] + "]");
                 }
 
                 // 重新加入堆
@@ -259,10 +240,7 @@ public class SWAB {
                 fakeCnt++; // 表示heap里多了一个被标记删除的假点
             }
             if (debug) {
-                System.out.println(
-                        ">>>bottom-up, remaining "
-                                + triangleHeap.size()
-                                + " triangles (including those marked for removal)");
+                System.out.println(">>>bottom-up, remaining " + triangleHeap.size() + " triangles (including those marked for removal)");
             }
         }
 
@@ -294,8 +272,18 @@ public class SWAB {
         return i - 1; // 从0开始，并且是从0到i-1的左闭右闭
     }
 
-
     public static List<Point> swab_framework(List<Point> points, double maxError, int m, boolean debug) {
+        return swab_framework(points, maxError, m, null, debug);
+    }
+
+    public static List<Point> swab_framework(List<Point> points, double maxError, int m, Object[] prefixSum, boolean debug) {
+        if (debug) {
+            if (prefixSum != null) {
+                // deprecated
+                System.out.println("enable prefix sum for accelerating L2 error computation");
+            }
+        }
+
         // 在这里给Point添加全局排序idx, 用于全局定位
         for (int i = 0; i < points.size(); i++) {
             points.get(i).index = i;
@@ -307,139 +295,125 @@ public class SWAB {
         // m在这里的含义是分段数，虽然SWAB不能直接控制分段数，但是也需要这个参数来确定buffer大小
         int bs = (int) Math.floor((double) points.size() / m * 6);  // buffer size
         int lb = bs / 2, ub = bs * 2;
+        if (lb == 0) {
+            lb += 2; // lb最小为2，否则陷入循环，因为joint buffer里至少会留一个点
+            ub += 2;
+        }
         if (debug) {
             System.out.println("bs=" + bs + ", lb=" + lb + ", ub=" + ub);
         }
 
         int buffer_startIdx = 0; // 左闭
-        int buffer_endIdx = bs; // 右开。
-        // 注意虽然joint，但是buffer和remaining points是断开的
-        // buffer: [0:bs] 左闭右开
+        int buffer_endIdx = bs; // 右开
+        // 注意虽然joint，但是buffer和remaining points是buffer_endIdx处是不重叠的
+        // buffer: [0:bs) 左闭右开
         // remaining: [bs:] 左闭
 
-//        List<Point> w = points.subList(0, bs); // 浅复制 左闭右开
-//        List<Point> remaining_points = points.subList(bs, points.size()); // TODO
-
-        List<Point> segTs = new ArrayList<>(); // TODO
+        List<Point> segTs = new ArrayList<>();
         segTs.add(points.get(0)); //全局首点
 
-//        int base = 0; // global base
-//        if (debug) {
-//            System.out.println("base=" + base);
-//        }
         boolean needBottomUp = true; // false when only output, no input
-        int reuseIdx = 0; // TODO
-        List<Point> sampled = Collections.emptyList(); // TODO
+        int reuseIdx = 0; // 注意这里当needBottomUp=false的时候是直接取用上一轮的bottomup points但是base从reuseIdx开始
+        List<Point> sampled = Collections.emptyList();
         while (true) {
             if (debug) {
                 System.out.println("#####################################################");
-                System.out.println("buffer data=" + (buffer_endIdx - buffer_startIdx)
-                        + ", remaining data=" + (points.size() - buffer_endIdx));
+                System.out.println("buffer data: [" + buffer_startIdx + "," + buffer_endIdx + ")" + ", remaining data: [" + buffer_endIdx + "," + points.size() + ")");
                 System.out.println("reBottomUp:" + needBottomUp);
             }
 
             if (needBottomUp) {
-
                 if (debug) {
                     System.out.println(">>>>bottom up on the buffer");
                 }
-                reuseIdx = 0;
-                sampled = seg_bottomUp_maxerror_withTimestamps(
-                        points.subList(buffer_startIdx, buffer_endIdx),
-                        maxError, null, false);
-                // TODO prefix sum acc
+                reuseIdx = 0; // 重置
+                if (prefixSum == null) {
+                    sampled = seg_bottomUp_maxerror_withTimestamps(points.subList(buffer_startIdx, buffer_endIdx),
+                            maxError, null, false);
+                } else {
+                    // deprecated
+                    double[] prefixSumX = Arrays.copyOfRange((double[]) prefixSum[0], buffer_startIdx, buffer_endIdx);
+                    double[] prefixSumY = Arrays.copyOfRange((double[]) prefixSum[1], buffer_startIdx, buffer_endIdx);
+                    double[] prefixSumX2 = Arrays.copyOfRange((double[]) prefixSum[2], buffer_startIdx, buffer_endIdx);
+                    double[] prefixSumY2 = Arrays.copyOfRange((double[]) prefixSum[3], buffer_startIdx, buffer_endIdx);
+                    double[] prefixSumXY = Arrays.copyOfRange((double[]) prefixSum[4], buffer_startIdx, buffer_endIdx);
+                    if (buffer_startIdx > 0) {
+                        for (int i = 0; i < prefixSumX.length; i++) {
+                            prefixSumX[i] -= ((double[]) prefixSum[0])[buffer_startIdx - 1];
+                        }
+                        for (int i = 0; i < prefixSumY.length; i++) {
+                            prefixSumY[i] -= ((double[]) prefixSum[1])[buffer_startIdx - 1];
+                        }
+                        for (int i = 0; i < prefixSumX2.length; i++) {
+                            prefixSumX2[i] -= ((double[]) prefixSum[2])[buffer_startIdx - 1];
+                        }
+                        for (int i = 0; i < prefixSumY2.length; i++) {
+                            prefixSumY2[i] -= ((double[]) prefixSum[3])[buffer_startIdx - 1];
+                        }
+                        for (int i = 0; i < prefixSumXY.length; i++) {
+                            prefixSumXY[i] -= ((double[]) prefixSum[4])[buffer_startIdx - 1];
+                        }
+                    }
+                    Object[] prefixSumPart = new Object[]{prefixSumX, prefixSumY, prefixSumX2, prefixSumY2, prefixSumXY,
+                            prefixSum[5], prefixSum[6]};
+                    sampled = seg_bottomUp_maxerror_withTimestamps(points.subList(buffer_startIdx, buffer_endIdx),
+                            maxError, prefixSumPart, false);
+                    // TODO prefixsum加速 但是由于精度问题，再加上maxError控制，结果有时候不会完全相同
+                }
 
 
                 // TODO eBUG also
 //                sampled = eBUG.buildEffectiveArea(points.subList(buffer_startIdx, buffer_endIdx), 0, false, m);
             }
 
+            if (debug) {
+                System.out.println("number of bottomUp points=" + (sampled.size() - reuseIdx));
+                System.out.println("---------------------------------");
+            }
+
             if (sampled.size() - reuseIdx >= 2) { // 左边输出一个segment
                 if (debug) {
                     System.out.println(">>>>left output a segment:["
-                            + sampled.get(0 + reuseIdx).index + "," + sampled.get(1 + reuseIdx) + "]");
+                            + sampled.get(reuseIdx).index + "," + sampled.get(1 + reuseIdx).index + "]");
                 }
-//                Map<String, Integer> firstSegment = segment.get(0);
-//                firstSegment.put("lx", firstSegment.get("lx") + base);
-//                firstSegment.put("rx", firstSegment.get("rx") + base);
-//                sampled.get(1).index += base; // # note that no need to add base later for segment(1)
-                segTs.add(sampled.get(1 + reuseIdx));
-
-                buffer_startIdx = sampled.get(1 + reuseIdx).index;
-
-//                if (sampled.size() == 2) {
-//                    // 更新buffer w
-//                    buffer_startIdx = buffer_endIdx - 1; // 注意左开右闭
-////                    w = w.subList(w.size() - 1, w.size()); // last point in buffer for joint
-//
-//                    // 更新base
-//                    // NOTE python start from 0 not 1
-//                    // NOTE segment(0) rx already add base! i.e., segment(0) rx is already global position
-////                    base = sampled.get(1).index;
-//                } else {
-//                    // 更新buffer w
-//                    int out = sampled.get(1).index - sampled.get(0).index + 1;
-//
-//                    // 更新base
-//                    w = w.subList(out - 1, w.size()); // last point in buffer for joint
-//                    buffer_startIdx = sampled.get(1).index;
-////                    base = base + sampled.get(1).index; // 对于joint来说，这个既是第一段的结尾又是第二段的开始位置
-//                }
+                segTs.add(sampled.get(1 + reuseIdx)); // 分段右端点
+                buffer_startIdx = sampled.get(1 + reuseIdx).index; // buffer起点右移
             }
 
             if (debug) {
-                System.out.println("buffer data: [" + buffer_startIdx + "," + buffer_endIdx + "]");
+                System.out.println("buffer data: [" + buffer_startIdx + "," + buffer_endIdx + ")" + ", remaining data: [" + buffer_endIdx + "," + points.size() + ")");
                 System.out.println("---------------------------------");
             }
-            if (buffer_endIdx >= points.size()) { // TODO no more point added into buffer w
+
+            if (buffer_endIdx >= points.size()) { // no more point added into buffer w
                 if (debug) {
                     System.out.println(">>>>no more data remaining");
                 }
                 // Add remaining segments and break if no more input data
-                if (sampled.size() - reuseIdx > 2) {
-                    // 注意此时segment并没有把上面“左边输出一个segment”的第一个segment pop出去
-                    // 更新base
-                    // 这次不需要re-bottomUp了，所以回退到本次分段起点，这样后面的相对位置加上base才是绝对位置
-                    // NOTE segments does NOT have their index recalculated by bottom-up to start from 0,
-                    // therefore minus the previously added segment[1]["lx"]
-//                    base = base - sampled.get(1).index;
-                    for (int k = 2 + reuseIdx; k < sampled.size(); k++) {
-//                        Map<String, Integer> seg = segment.get(k);
-//                        seg.put("lx", seg.get("lx") + base);
-//                        seg.put("rx", seg.get("rx") + base);
-                        // 注意此时segment并没有把上面“左边输出一个segment”的第一个segment pop出去！
-                        // 所以要从第二个segment开始继续输出，同时注意python从0开始计数
-//                        sampled.get(k).index += base;
+                if (sampled.size() - reuseIdx > 2) { // more than one segment, 其中第一段segment已经在上面被记录了，但是没有被移出去
+                    if (debug) {
+                        System.out.println(">>>>so just left output all remaining segments");
+                    }
+                    for (int k = 2 + reuseIdx; k < sampled.size(); k++) { // 全局尾点就在这里输出
                         segTs.add(sampled.get(k));
+                        if (debug) {
+                            System.out.println("output: " + sampled.get(k));
+                        }
                     }
                 }
                 break;
             }
 
             if ((buffer_endIdx - buffer_startIdx) >= lb) {
-                // buffer w上面已经更新了，已经是去除了左边输出的第一个segment之后的剩余的点
                 if (debug) {
                     System.out.println(">>>>no need adding the sliding segment from right because len(w) >= lb");
                 }
                 needBottomUp = false;
 
-                // 更新base
-                // 这次不需要re-bottomUp了，所以回退到本次分段起点，这样后面的相对位置加上base才是绝对位置
-                // NOTE segments does NOT have their index recalculated by bottom-up to start from 0,
-                // therefore minus the previously added segment[1]["lx"]
-//                base = base - sampled.get(1).index;
-
-                // 注意此步骤不要在更新base之前执行！！！因为上面更新base时假设“左边输出一个segment”的第一个segment还没有pop
-                // 注意这里真的把上面“左边输出一个segment”的第一个segment pop出去了，
-                // 因为下一轮迭代要直接用剩余的segment
-//                segment.remove(0);  // Pop the first segment
-//                sampled.remove(0); // TODO 这个复杂度？
-                reuseIdx++; // TODO
+                reuseIdx++; // 这样简单，不需要sampled.remove(0)复杂度
                 if (debug) {
                     System.out.println("next iteration uses the remaining segment without re-bottomUp, reuseIdx=" + reuseIdx);
                 }
-
-                // # assume lb>1, at least two segments
             } else {
                 if (debug) {
                     System.out.println(">>>>adding the sliding segment from right because len(w) < lb");
@@ -449,88 +423,59 @@ public class SWAB {
                 while ((buffer_endIdx - buffer_startIdx) < lb && (points.size() - buffer_endIdx) > 0) {
                     // 从0开始，并且rx是从0开始的右闭 [0,rx]一共rx+1个点
                     List<Point> remaining_points = points.subList(buffer_endIdx, points.size());
-                    int rx = nextSlidingWindowWithTimestamps(remaining_points, maxError, null); // TODO prefixsum加速
+                    int rx;
+                    if (prefixSum == null) {
+                        rx = nextSlidingWindowWithTimestamps(remaining_points, maxError, null);
+                    } else {
+                        // deprecated
+                        double[] prefixSumX = Arrays.copyOfRange((double[]) prefixSum[0], buffer_endIdx, points.size());
+                        double[] prefixSumY = Arrays.copyOfRange((double[]) prefixSum[1], buffer_endIdx, points.size());
+                        double[] prefixSumX2 = Arrays.copyOfRange((double[]) prefixSum[2], buffer_endIdx, points.size());
+                        double[] prefixSumY2 = Arrays.copyOfRange((double[]) prefixSum[3], buffer_endIdx, points.size());
+                        double[] prefixSumXY = Arrays.copyOfRange((double[]) prefixSum[4], buffer_endIdx, points.size());
+                        if (buffer_endIdx > 0) {
+                            for (int i = 0; i < prefixSumX.length; i++) {
+                                prefixSumX[i] -= ((double[]) prefixSum[0])[buffer_endIdx - 1];
+                            }
+                            for (int i = 0; i < prefixSumY.length; i++) {
+                                prefixSumY[i] -= ((double[]) prefixSum[1])[buffer_endIdx - 1];
+                            }
+                            for (int i = 0; i < prefixSumX2.length; i++) {
+                                prefixSumX2[i] -= ((double[]) prefixSum[2])[buffer_endIdx - 1];
+                            }
+                            for (int i = 0; i < prefixSumY2.length; i++) {
+                                prefixSumY2[i] -= ((double[]) prefixSum[3])[buffer_endIdx - 1];
+                            }
+                            for (int i = 0; i < prefixSumXY.length; i++) {
+                                prefixSumXY[i] -= ((double[]) prefixSum[4])[buffer_endIdx - 1];
+                            }
+                        }
+                        Object[] prefixSumPart = new Object[]{prefixSumX, prefixSumY, prefixSumX2, prefixSumY2, prefixSumXY,
+                                prefixSum[5], prefixSum[6]};
+                        rx = nextSlidingWindowWithTimestamps(remaining_points, maxError, prefixSumPart);
+                        // TODO prefixsum加速 但是由于精度问题，再加上maxError控制，结果有时候不会完全相同
+                    }
                     if ((buffer_endIdx - buffer_startIdx) + (rx + 1) > ub) {
                         // # avoid more than ub
                         rx = ub - (buffer_endIdx - buffer_startIdx) - 1;
                     }
-                    buffer_endIdx += (rx + 1); // TODO
-//                    w.addAll(remaining_points.subList(0, rx + 1)); // TODO
-//                    remaining_points = remaining_points.subList(rx + 1, remaining_points.size());
+                    buffer_endIdx += (rx + 1); // buffer终点右移
                     if (debug) {
                         System.out.println("input len=" + (rx + 1));
                     }
                 }
-            }
 
-            if (debug) {
-                System.out.println("buffer data: [" + buffer_startIdx + "," + buffer_endIdx + "), "
-                        + "remaining data: [" + buffer_endIdx + "," + points.size() + ")");
-                if ((buffer_endIdx - buffer_startIdx) < lb) {
-                    System.out.println("warn less");
-                }
-                if ((buffer_endIdx - buffer_startIdx) > ub) {
-                    System.out.println("warn more");
+                if (debug) {
+                    System.out.println("buffer data: [" + buffer_startIdx + "," + buffer_endIdx + ")" + ", remaining data: [" + buffer_endIdx + "," + points.size() + ")");
+                    if ((buffer_endIdx - buffer_startIdx) < lb) {
+                        System.out.println("warn less");
+                    }
+                    if ((buffer_endIdx - buffer_startIdx) > ub) {
+                        System.out.println("warn more");
+                    }
                 }
             }
         }
         return segTs;
-    }
-
-    public static void main(String[] args) {
-        Random rand = new Random(10);
-        String input = "D:\\datasets\\regular\\tmp2.csv";
-        boolean hasHeader = false;
-        int timeIdx = 0;
-        int valueIdx = 1;
-        int N = 100;
-//        Polyline polyline = Tool.readFromFile(input, hasHeader, timeIdx, valueIdx, N);
-        Polyline polyline = new Polyline();
-        for (int i = 0; i < N; i += 1) {
-            double v = rand.nextInt(1000);
-            polyline.addVertex(new Point(i, v));
-        }
-        try (FileWriter writer = new FileWriter("raw.csv")) {
-            // 写入CSV头部
-            writer.append("x,y,z\n");
-
-            // 写入每个点的数据
-            for (int i = 0; i < polyline.size(); i++) {
-                Point point = polyline.get(i);
-                writer.append(point.x + "," + point.y + "," + point.z + "\n");
-            }
-            System.out.println(polyline.size() + " Data has been written");
-        } catch (IOException e) {
-            System.out.println("Error writing to CSV file: " + e.getMessage());
-        }
-
-        long startTime = System.currentTimeMillis();
-        Object[] prefixSum = prefixSum(polyline.getVertices());
-        long endTime = System.currentTimeMillis();
-        System.out.println("Time taken to precompute prefix sum: " + (endTime - startTime) + "ms");
-
-        double maxError = 1000000000;
-        int m = 10;
-
-        // 33s worst-case O(n2)因为没有prefix sum加速计算L2误差，但是实际达不到worst-case所以实际运行不会那么大耗时
-        startTime = System.currentTimeMillis();
-        List<Point> sampled = swab_framework(polyline.getVertices(), maxError, m, true);
-        endTime = System.currentTimeMillis();
-        System.out.println("Time taken: " + (endTime - startTime) + "ms");
-
-        for (Point p : sampled) {
-            System.out.println(p);
-        }
-        System.out.println(sampled.size());
-
-        try (PrintWriter writer = new PrintWriter(new File("output.csv"))) {
-            // 写入字符串
-            for (int i = 0; i < sampled.size(); i++) {
-                writer.println(sampled.get(i).x + "," + sampled.get(i).y);
-            }
-
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
     }
 }
