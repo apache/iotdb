@@ -358,9 +358,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final List<PartialPath> matchedPaths =
           mTree.getMatchedDatabases(patternPath, plan.getScope(), false);
       for (final PartialPath path : matchedPaths) {
-        schemaMap.put(
-            path.getFullPath(),
-            mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema());
+        final TDatabaseSchema schema =
+            mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema();
+        schemaMap.put(schema.getName(), schema);
       }
       result.setSchemaMap(schemaMap);
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
