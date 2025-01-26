@@ -15,7 +15,7 @@ public class Test1 {
     Polyline polyline = new Polyline();
     List<Polyline> polylineList = new ArrayList<>();
     Random rand = new Random(10);
-    int n = 10000;
+    int n = 20000;
     int eParam = 1;
 
     int p = 10;
