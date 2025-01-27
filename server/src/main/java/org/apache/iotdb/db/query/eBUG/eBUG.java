@@ -76,16 +76,18 @@ public class eBUG {
       throw new IllegalArgumentException("Parameter e must be non-negative.");
     }
 
-    if (m > 2) {
-      System.out.println(
-          "online sampling mode, "
-              + "returning "
-              + m
-              + " sampled points sorted by time in ascending order");
-    } else {
-      System.out.println(
-          "offline precomputation mode, "
-              + "returning each point sorted by dominated significance (DS) in ascending order");
+    if (debug) {
+      if (m > 2) {
+        System.out.println(
+            "online sampling mode, "
+                + "returning "
+                + m
+                + " sampled points sorted by time in ascending order");
+      } else {
+        System.out.println(
+            "offline precomputation mode, "
+                + "returning each point sorted by dominated significance (DS) in ascending order");
+      }
     }
 
     //        List<Point> results = lineToSimplify.getVertices(); // 浅复制
@@ -177,14 +179,16 @@ public class eBUG {
       }
 
       // 更新当前点的重要性（z 轴存储effective area,这是一个单调增的指标）
-      if (tri.area > previousEA) {
-        previousEA = tri.area;
-      }
-      //            results.get(tri.indices[1]).z = previousEA; // dominated significance
-      points.get(tri.indices[1]).z = previousEA; // dominated significance
-      resultsBottomUpEliminated.add(points.get(tri.indices[1])); // TODO add的是Point引用，所以没有多用一倍的空间
-      if (debug) {
-        System.out.println(Arrays.toString(tri.indices) + ", Dominated Sig=" + previousEA);
+      if (m <= 2) { // precomputation mode
+        if (tri.area > previousEA) {
+          previousEA = tri.area;
+        }
+        //            results.get(tri.indices[1]).z = previousEA; // dominated significance
+        points.get(tri.indices[1]).z = previousEA; // dominated significance
+        resultsBottomUpEliminated.add(points.get(tri.indices[1])); // TODO add的是Point引用，所以没有多用一倍的空间
+        if (debug) {
+          System.out.println(Arrays.toString(tri.indices) + ", Dominated Sig=" + previousEA);
+        }
       }
 
       // 更新相邻三角形
@@ -326,6 +330,8 @@ public class eBUG {
 
     if (m > 2) { // online sampling mode
       // 把滞后的淘汰点施加上去，然后返回在线采样结果（也就是返回剩余未被淘汰的点）
+      // 注意未淘汰的点的Dominated significance尚未赋值，还都是infinity
+      // 不过既然m>2在线采样模式，所以其实淘汰点的DS本身也没有记录
       for (Point p : laggedEliminatedPoints) {
         p.markEliminated();
         if (debug) {
@@ -337,7 +343,7 @@ public class eBUG {
       Point end = points.get(points.size() - 1);
       while (start
           != end) { // Point类里增加prev&next指针，这样T'_max{0,k-e}里点的连接关系就有了，这样从Pa开始沿着指针，遍历点数一定不超过e+3
-        onlineSampled.add(start); // 注意未淘汰的点的Dominated significance尚未赋值，还都是infinity
+        onlineSampled.add(start);
         start = start.next; // when e=0, only traversing three points pa pi pb
       }
       onlineSampled.add(end);

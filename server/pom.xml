@@ -281,13 +281,13 @@
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <configuration>
-                    <finalName>sample_fsw</finalName>
-                    <!--                    <finalName>sample_eBUG</finalName>-->
-                    <!--                    <finalName>sample_BUL2</finalName>-->
+                    <!--                    <finalName>sample_fsw</finalName>-->
+                    <finalName>sample_eBUG</finalName>
+                    <!--                                        <finalName>sample_BUL2</finalName>-->
                     <archive>
                         <manifest>
-                            <mainClass>org.apache.iotdb.db.query.eBUG.sample_FSW</mainClass>
-                            <!--                            <mainClass>org.apache.iotdb.db.query.eBUG.sample_eBUG</mainClass>-->
+                            <!--                            <mainClass>org.apache.iotdb.db.query.eBUG.sample_FSW</mainClass>-->
+                            <mainClass>org.apache.iotdb.db.query.eBUG.sample_eBUG</mainClass>
                             <!--                            <mainClass>org.apache.iotdb.db.query.eBUG.sample_bottomUpL2</mainClass>-->
                         </manifest>
                     </archive>
