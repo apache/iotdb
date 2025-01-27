@@ -49,7 +49,8 @@ public class sample_MinMax {
     List<Point> points = Tool.readFromFile(input, hasHeader, timeIdx, valueIdx, N);
 
     String outputFile =
-        generateOutputFileName(input, outDir, "-" + bucketType + "-n" + points.size() + "-m" + m);
+        generateOutputFileName(
+            input, outDir, "-MinMax-" + bucketType + "-n" + points.size() + "-m" + m);
     System.out.println("Output file: " + outputFile); // do not modify this hint string log
 
     // 采样
