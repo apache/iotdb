@@ -5,34 +5,34 @@ import java.util.List;
 
 public class Polyline {
 
-    private List<Point> vertices = new ArrayList<>();
+  private List<Point> vertices = new ArrayList<>();
 
-    public void addVertex(Point point) {
-        //        if (!vertices.isEmpty()) { //before adding this point
-        //            vertices.get(vertices.size() - 1).next = point;
-        //            point.prev = vertices.get(vertices.size() - 1);
-        //        }
-        vertices.add(point);
-    }
+  public void addVertex(Point point) {
+    //        if (!vertices.isEmpty()) { //before adding this point
+    //            vertices.get(vertices.size() - 1).next = point;
+    //            point.prev = vertices.get(vertices.size() - 1);
+    //        }
+    vertices.add(point);
+  }
 
-    public List<Point> getVertices() {
-        //        return new ArrayList<>(vertices);
-        return vertices;
-    }
+  public List<Point> getVertices() {
+    //        return new ArrayList<>(vertices);
+    return vertices;
+  }
 
-    public void setVertices(List<Point> points) {
-        this.vertices = points;
-    }
+  public void setVertices(List<Point> points) {
+    this.vertices = points;
+  }
 
-    public int size() {
-        return vertices.size();
-    }
+  public int size() {
+    return vertices.size();
+  }
 
-    public Point get(int index) {
-        return vertices.get(index);
-    }
+  public Point get(int index) {
+    return vertices.get(index);
+  }
 
-    public void clear() {
-        vertices.clear();
-    }
+  public void clear() {
+    vertices.clear();
+  }
 }
