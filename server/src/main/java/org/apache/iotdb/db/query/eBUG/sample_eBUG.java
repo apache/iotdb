@@ -65,7 +65,7 @@ public class sample_eBUG {
             + (endTime - startTime)
             + "ms");
 
-    // 输出结果到csv，按照z,x,y三列，因为results结果已经按照z（即DS）递增排序，对应bottom-up的淘汰顺序，越小代表越早被淘汰
+    // 输出结果到csv
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile))) {
       // 写入表头
       if (m <= 2) {
@@ -75,6 +75,7 @@ public class sample_eBUG {
         writer.newLine();
 
         // 写入数据行，按顺序 z, x, y
+        // 按照z,x,y三列，因为results结果已经按照z（即DS）递增排序，对应bottom-up的淘汰顺序，越小代表越早被淘汰
         for (Point point : results) {
           writer.write(point.z + "," + point.x + "," + point.y);
           writer.newLine();

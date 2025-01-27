@@ -206,6 +206,12 @@
             <artifactId>caffeine</artifactId>
             <version>2.9.1</version>
         </dependency>
+        <dependency>
+            <groupId>org.datanucleus</groupId>
+            <artifactId>datanucleus-core</artifactId>
+            <version>4.1.17</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
@@ -281,12 +287,14 @@
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <configuration>
-                    <finalName>sample_fsw</finalName>
+                    <finalName>sample_minmax</finalName>
+                    <!--                    <finalName>sample_fsw</finalName>-->
                     <!--                    <finalName>sample_eBUG</finalName>-->
                     <!--                    <finalName>sample_BUYdiff</finalName>-->
                     <archive>
                         <manifest>
-                            <mainClass>org.apache.iotdb.db.query.eBUG.sample_FSW</mainClass>
+                            <mainClass>org.apache.iotdb.db.query.eBUG.sample_MinMax</mainClass>
+                            <!--                            <mainClass>org.apache.iotdb.db.query.eBUG.sample_FSW</mainClass>-->
                             <!--                            <mainClass>org.apache.iotdb.db.query.eBUG.sample_eBUG</mainClass>-->
                             <!--                            <mainClass>org.apache.iotdb.db.query.eBUG.sample_bottomUpYdiff</mainClass>-->
                         </manifest>

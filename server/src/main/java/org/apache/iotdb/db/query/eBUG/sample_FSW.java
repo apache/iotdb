@@ -9,9 +9,6 @@ import static org.apache.iotdb.db.query.eBUG.Tool.generateOutputFileName;
 import static org.apache.iotdb.db.query.eBUG.Tool.getParam;
 
 public class sample_FSW {
-  // 输入一条时间序列 t,v
-  // 输出按照bottom-up淘汰顺序排列的dominated significance,t,v。
-  // 用于后期在线采样时选取倒数m个点（也就是DS最大的m个点，或者最晚淘汰的m个点）作为采样结果（选出之后要自行把这m个点重新按照时间戳x递增排列）
   public static void main(String[] args) throws IOException {
     if (args.length < 7) {
       System.out.println(
@@ -65,7 +62,6 @@ public class sample_FSW {
             + (endTime - startTime)
             + "ms");
 
-    // 输出结果到csv，按照z,x,y三列，因为results结果已经按照z（即DS）递增排序，对应bottom-up的淘汰顺序，越小代表越早被淘汰
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile))) {
       writer.write("x,y");
       writer.newLine();

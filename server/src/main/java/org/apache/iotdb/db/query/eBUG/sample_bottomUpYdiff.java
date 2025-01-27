@@ -70,7 +70,6 @@ public class sample_bottomUpYdiff {
             + (endTime - startTime)
             + "ms");
 
-    // 输出结果到csv，按照z,x,y三列，因为results结果已经按照z（即DS）递增排序，对应bottom-up的淘汰顺序，越小代表越早被淘汰
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile))) {
       writer.write("x,y");
       writer.newLine();
