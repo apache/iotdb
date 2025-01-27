@@ -99,7 +99,7 @@ public class Tool {
     boolean directMore = false;
 
     int iterNum = 0;
-    int maxIterNum = 50;
+    int maxIterNum = 100;
 
     // First binary search loop to find the initial range
     double base = 2;
