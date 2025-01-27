@@ -66,6 +66,10 @@ import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.util.CheckedSupplier;
 import org.apache.iotdb.session.util.SessionUtils;
 
+import org.apache.iotdb.session.util.retry.Handler;
+import org.apache.iotdb.session.util.retry.RetriableTask;
+import org.apache.iotdb.session.util.retry.Retry;
+import org.apache.iotdb.session.util.retry.RetryDecision;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -1477,6 +1481,40 @@ public class SessionConnection {
       }
     }
     return ret;
+  }
+
+  private <RETURN> RETURN doOperationWithUnifiedRetry(CheckedSupplier<RETURN, TException> supplier) throws IoTDBConnectionException, StatementExecutionException, Exception{
+    RetriableTask<RETURN> task = supplier::get;
+    Handler<RETURN> returnHandler = new Handler<RETURN>() {
+      Exception lastException = null;
+      @Override
+      public RetryDecision onExecutionResult(RETURN result) {
+        return Retry.NO_RETRY;
+      }
+
+      @Override
+      public RetryDecision onException(Exception exception) {
+        lastException = exception;
+        boolean tryReconnect = reconnect();
+        if (!tryReconnect) {
+          lastException = new IoTDBConnectionException(logForReconnectionFailure());
+        } else {
+          lastException = new IoTDBConnectionException(exception);
+        }
+        return Retry.NO_RETRY;
+      }
+
+      @Override
+      public RETURN onFinalResult(RETURN lastResult, Exception lastException) throws Exception {
+        if (lastResult != null) {
+          return lastResult;
+        } else {
+          throw lastException;
+        }
+      }
+    };
+
+    return Retry.execute(task, returnHandler);
   }
 
   public TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException {
