@@ -37,12 +37,16 @@ import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
+import org.apache.tsfile.file.metadata.TableDeviceChunkMetadata;
+import org.apache.tsfile.file.metadata.TableDeviceTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -108,7 +112,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
    * have chunkMetadata, but query will use these, so we need to generate it for them.
    */
   @Override
-  public AlignedTimeSeriesMetadata generateTimeSeriesMetadata(
+  public AbstractAlignedTimeSeriesMetadata generateTimeSeriesMetadata(
       List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList) {
     TimeseriesMetadata timeTimeSeriesMetadata = new TimeseriesMetadata();
     timeTimeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
@@ -131,8 +135,11 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
 
     boolean[] exist = new boolean[alignedFullPath.getSchemaList().size()];
     boolean modified = false;
+    boolean isTable = false;
     for (IChunkMetadata chunkMetadata : chunkMetadataList) {
-      AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) chunkMetadata;
+      AbstractAlignedChunkMetadata alignedChunkMetadata =
+          (AbstractAlignedChunkMetadata) chunkMetadata;
+      isTable = isTable || (alignedChunkMetadata instanceof TableDeviceChunkMetadata);
       modified = (modified || alignedChunkMetadata.isModified());
       timeStatistics.mergeStatistics(alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
       for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
@@ -149,8 +156,9 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
 
     for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
       if (!memChunk.isEmpty()) {
-        AlignedChunkMetadata alignedChunkMetadata =
-            (AlignedChunkMetadata) memChunk.getChunkMetaData();
+        AbstractAlignedChunkMetadata alignedChunkMetadata =
+            (AbstractAlignedChunkMetadata) memChunk.getChunkMetaData();
+        isTable = isTable || (alignedChunkMetadata instanceof TableDeviceChunkMetadata);
         timeStatistics.mergeStatistics(alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
         for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
           if (alignedChunkMetadata.getValueChunkMetadataList().get(i) != null) {
@@ -174,7 +182,9 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       }
     }
 
-    return new AlignedTimeSeriesMetadata(timeTimeSeriesMetadata, valueTimeSeriesMetadataList);
+    return isTable
+        ? new TableDeviceTimeSeriesMetadata(timeTimeSeriesMetadata, valueTimeSeriesMetadataList)
+        : new AlignedTimeSeriesMetadata(timeTimeSeriesMetadata, valueTimeSeriesMetadataList);
   }
 
   @Override
@@ -268,7 +278,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       QueryContext context,
       long timeLowerBound) {
 
-    List<AlignedChunkMetadata> chunkMetadataList = new ArrayList<>();
+    List<AbstractAlignedChunkMetadata> chunkMetadataList = new ArrayList<>();
     List<ChunkMetadata> timeChunkMetadataList =
         writer.getVisibleMetadataList(
             alignedFullPath.getDeviceId(), AlignedFullPath.VECTOR_PLACEHOLDER, TSDataType.VECTOR);
@@ -285,7 +295,10 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       // only need time column
       if (alignedFullPath.getMeasurementList().isEmpty()) {
         chunkMetadataList.add(
-            new AlignedChunkMetadata(timeChunkMetadataList.get(i), Collections.emptyList()));
+            context.isIgnoreAllNullRows()
+                ? new AlignedChunkMetadata(timeChunkMetadataList.get(i), Collections.emptyList())
+                : new TableDeviceChunkMetadata(
+                    timeChunkMetadataList.get(i), Collections.emptyList()));
       } else {
         List<IChunkMetadata> valueChunkMetadata = new ArrayList<>();
         // if all the sub sensors doesn't exist, it will be false
@@ -298,7 +311,9 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
         }
         if (!context.isIgnoreAllNullRows() || exits) {
           chunkMetadataList.add(
-              new AlignedChunkMetadata(timeChunkMetadataList.get(i), valueChunkMetadata));
+              context.isIgnoreAllNullRows()
+                  ? new AlignedChunkMetadata(timeChunkMetadataList.get(i), valueChunkMetadata)
+                  : new TableDeviceChunkMetadata(timeChunkMetadataList.get(i), valueChunkMetadata));
         }
       }
     }
