@@ -21,6 +21,11 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
+import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
+import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.FunctionNullability;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
@@ -33,6 +38,8 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -216,5 +223,17 @@ public class Util {
             Optional.empty(),
             node.getGroupIdSymbol()),
         rightResult);
+  }
+
+  public static ResolvedFunction getResolvedBuiltInAggregateFunction(
+      Metadata metadata, String functionName, List<Type> argumentTypes) {
+    // The same as the code in ExpressionAnalyzer
+    Type type = metadata.getFunctionReturnType(functionName, argumentTypes);
+    return new ResolvedFunction(
+        new BoundSignature(functionName.toLowerCase(Locale.ENGLISH), type, argumentTypes),
+        new FunctionId("noop"),
+        FunctionKind.AGGREGATE,
+        true,
+        FunctionNullability.getAggregationFunctionNullability(argumentTypes.size()));
   }
 }

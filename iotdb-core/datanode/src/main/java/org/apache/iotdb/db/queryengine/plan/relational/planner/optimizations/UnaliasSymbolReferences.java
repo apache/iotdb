@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
@@ -780,6 +781,18 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               newFilteringSourceJoinSymbol,
               newSemiJoinOutput),
           outputMapping);
+    }
+
+    @Override
+    public PlanAndMappings visitAssignUniqueId(AssignUniqueId node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+      Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      Symbol newUnique = mapper.map(node.getIdColumn());
+
+      return new PlanAndMappings(
+          new AssignUniqueId(node.getPlanNodeId(), rewrittenSource.getRoot(), newUnique), mapping);
     }
   }
 

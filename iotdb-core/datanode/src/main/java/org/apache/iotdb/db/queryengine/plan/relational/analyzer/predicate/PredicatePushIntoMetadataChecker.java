@@ -42,6 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
@@ -209,6 +210,9 @@ public class PredicatePushIntoMetadataChecker extends AstVisitor<Boolean, Void> 
 
   @Override
   protected Boolean visitNotExpression(final NotExpression node, final Void context) {
+    if (node.getValue() instanceof Literal) {
+      return Boolean.FALSE;
+    }
     return node.getValue().accept(this, context);
   }
 
@@ -219,8 +223,7 @@ public class PredicatePushIntoMetadataChecker extends AstVisitor<Boolean, Void> 
 
   @Override
   protected Boolean visitCoalesceExpression(final CoalesceExpression node, final Void context) {
-    return node.getChildren().stream()
-        .allMatch(expression -> ((Expression) expression).accept(this, context));
+    return Boolean.FALSE;
   }
 
   @Override
