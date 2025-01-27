@@ -19,6 +19,7 @@ public class DP { // Dynamic-Programming
     public static double[][] prepareCostTable(List<Point> points, ERROR errorType, boolean debug) {
         int N = points.size();
         double[][] dists = new double[N][N]; // 默认0，对角线元素已经都是0了
+        // 一个 double[47700][47700] 矩阵大约需要 16.94 GB 的内存。
 
         // 外层循环i：range长度=right boundary-left boundary
         // 内层循环j: 矩阵逐行
@@ -89,11 +90,17 @@ public class DP { // Dynamic-Programming
                     System.out.println(">>>分段数i+1" + (i + 1) + ",end pos j=" + j);
                 }
                 double[] choices = new double[j + 1]; // java从0开始
+                int bestIndex = -1;
+                double bestVal = Double.MAX_VALUE; // 越小越好
                 for (int xtmp = 0; xtmp < j + 1; xtmp++) {
                     if (errorType == ERROR.L_infy) {
                         choices[xtmp] = Math.max(kSegDist[i - 1][xtmp], dists[xtmp][j]);
                     } else {
                         choices[xtmp] = kSegDist[i - 1][xtmp] + dists[xtmp][j];
+                    }
+                    if (choices[xtmp] < bestVal) {
+                        bestVal = choices[xtmp];
+                        bestIndex = xtmp;
                     }
                 }
                 if (debug) {
@@ -112,12 +119,8 @@ public class DP { // Dynamic-Programming
                     }
                 }
 
-                int bestIndex = getIndexOfMin(choices);
-                double bestVal = choices[bestIndex];
-
                 // Store the sub-problem solution
                 kSegPath[i][j] = bestIndex;
-
                 kSegDist[i][j] = bestVal;
 
                 if (debug) {
@@ -162,23 +165,27 @@ public class DP { // Dynamic-Programming
         return sDs;
     }
 
-    // Helper method to get index of minimum value
-    private static int getIndexOfMin(double[] array) {
-        double minVal = array[0];
-        int minIndex = 0;
-        for (int i = 1; i < array.length; i++) {
-            if (array[i] < minVal) {
-                minVal = array[i];
-                minIndex = i;
-            }
-        }
-        return minIndex;
-    }
+//    // Helper method to get index of minimum value
+//    private static int getIndexOfMin(double[] array) {
+//        double minVal = array[0];
+//        int minIndex = 0;
+//        for (int i = 1; i < array.length; i++) {
+//            if (array[i] < minVal) {
+//                minVal = array[i];
+//                minIndex = i;
+//            }
+//        }
+//        return minIndex;
+//    }
 
     // Method to calculate joint segment error based on error type
     private static double joint_segment_error(List<Point> points, int lx, int rx, ERROR errorType) {
         // 默认joint=true, residual=true，即使用linear interpolation近似分段
         // lx~rx 左闭右闭
+        if (lx == rx) {
+            return 0;
+        }
+
         if (errorType != ERROR.area) {
             double x1 = points.get(lx).x;
             double y1 = points.get(lx).y;
@@ -240,14 +247,14 @@ public class DP { // Dynamic-Programming
         boolean hasHeader = true;
         int timeIdx = 0;
         int valueIdx = 1;
-        int N = -1;
-        List<Point> points = Tool.readFromFile(input, hasHeader, timeIdx, valueIdx, N);
-//        Polyline polyline = new Polyline();
-//        for (int i = 0; i < N; i += 1) {
-//            double v = rand.nextInt(1000);
-//            polyline.addVertex(new Point(i, v));
-//        }
-//        List<Point> points = polyline.getVertices();
+        int N = 100;
+//        List<Point> points = Tool.readFromFile(input, hasHeader, timeIdx, valueIdx, N);
+        Polyline polyline = new Polyline();
+        for (int i = 0; i < N; i += 1) {
+            double v = rand.nextInt(1000);
+            polyline.addVertex(new Point(i, v));
+        }
+        List<Point> points = polyline.getVertices();
         try (FileWriter writer = new FileWriter("raw.csv")) {
             // 写入CSV头部
             writer.append("x,y,z\n");
@@ -263,7 +270,7 @@ public class DP { // Dynamic-Programming
 
         long startTime = System.currentTimeMillis();
 //        double[][] ad2 = prepareKSegments(points, ERROR.L1, false);
-        int m = 4;
+        int m = 10;
         List<Point> sampled = dynamic_programming(points, m - 1, ERROR.area, false);
         long endTime = System.currentTimeMillis();
         System.out.println("Time taken: " + (endTime - startTime) + "ms");
