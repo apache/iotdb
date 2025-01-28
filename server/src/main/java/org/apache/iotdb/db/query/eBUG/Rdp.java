@@ -27,42 +27,6 @@ public class Rdp {
     return numerator / denominator;
   }
 
-  //  public static List<Point> reducePoints(List<Point> points, double epsilon, Object... kwargs) {
-  //    if (points == null || points.size() < 3) {
-  //      return points;
-  //    }
-  //
-  //    // 找到距离最远的点
-  //    double maxDistance = 0;
-  //    int index = 0;
-  //    Point start = points.get(0);
-  //    Point end = points.get(points.size() - 1);
-  //
-  //    for (int i = 1; i < points.size() - 1; i++) {
-  //      double distance = point_line_distance(points.get(i), start, end);
-  //      if (distance > maxDistance) {
-  //        maxDistance = distance;
-  //        index = i;
-  //      }
-  //    }
-  //
-  //    List<Point> result = new ArrayList<>();
-  //    if (maxDistance > epsilon) {
-  //      List<Point> firstPart = reducePoints(points.subList(0, index + 1), epsilon);
-  //      List<Point> secondPart = reducePoints(points.subList(index, points.size()), epsilon);
-  //
-  //      // 合并结果
-  //      result.addAll(firstPart.subList(0, firstPart.size() - 1)); // 避免重复添加中间点
-  //      result.addAll(secondPart);
-  //    } else {
-  //      // 如果最远距离小于阈值，则只保留起点和终点
-  //      result.add(start);
-  //      result.add(end);
-  //    }
-  //
-  //    return result;
-  //  }
-
   /**
    * 使用迭代实现 RDP 算法。避免递归深度过大。
    *
