@@ -41,8 +41,8 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.getExclusionString;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.getInclusionString;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.parseOptions;
-import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.tableOnlySyncPrefix;
-import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.treeOnlySyncPrefix;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.tableOnlySyncPrefixes;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.treeOnlySyncPrefixes;
 
 /**
  * {@link SchemaRegionListeningFilter} is to classify the {@link PlanNode}s to help {@link
@@ -118,11 +118,11 @@ public class SchemaRegionListeningFilter {
     exclusionOptions.forEach(exclusion -> planTypes.removeAll(getOptionsByPrefix(exclusion)));
 
     if (!TreePattern.isTreeModelDataAllowToBeCaptured(parameters)) {
-      planTypes.removeAll(getOptionsByPrefix(treeOnlySyncPrefix));
+      treeOnlySyncPrefixes.forEach(prefix -> planTypes.removeAll(getOptionsByPrefix(prefix)));
     }
 
     if (!TablePattern.isTableModelDataAllowToBeCaptured(parameters)) {
-      planTypes.removeAll(getOptionsByPrefix(tableOnlySyncPrefix));
+      tableOnlySyncPrefixes.forEach(prefix -> planTypes.removeAll(getOptionsByPrefix(prefix)));
     }
     return planTypes;
   }
