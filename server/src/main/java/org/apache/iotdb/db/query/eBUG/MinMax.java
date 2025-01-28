@@ -38,12 +38,14 @@ public class MinMax {
       Point p = points.get(i);
       while (i >= currentBucketEndIdx) {
         // record the results of the last bucket
-        if (minIdx < maxIdx) {
-          res.add(points.get(minIdx));
-          res.add(points.get(maxIdx));
-        } else {
-          res.add(points.get(maxIdx));
-          res.add(points.get(minIdx));
+        if (minIdx != -1) {
+          if (minIdx < maxIdx) {
+            res.add(points.get(minIdx));
+            res.add(points.get(maxIdx));
+          } else {
+            res.add(points.get(maxIdx));
+            res.add(points.get(minIdx));
+          }
         }
         if (debug) {
           System.out.println(
@@ -129,12 +131,14 @@ public class MinMax {
       Point p = points.get(i);
       while (p.x >= currentBucketEndTime) {
         // record the results of the last bucket
-        if (minIdx < maxIdx) {
-          res.add(points.get(minIdx));
-          res.add(points.get(maxIdx));
-        } else {
-          res.add(points.get(maxIdx));
-          res.add(points.get(minIdx));
+        if (minIdx != -1) {
+          if (minIdx < maxIdx) {
+            res.add(points.get(minIdx));
+            res.add(points.get(maxIdx));
+          } else {
+            res.add(points.get(maxIdx));
+            res.add(points.get(minIdx));
+          }
         }
         if (debug) {
           System.out.println(
