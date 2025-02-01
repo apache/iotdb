@@ -51,6 +51,7 @@ import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public abstract class LoadTsFileAnalyzer implements AutoCloseable {
 
@@ -73,6 +74,8 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
 
   protected final boolean isConvertOnTypeMismatch;
 
+  protected final int tabletConversionThreshold;
+
   protected final boolean isAutoCreateDatabase;
 
   protected final int databaseLevel;
@@ -92,6 +95,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     this.isVerifySchema = loadTsFileStatement.isVerifySchema();
     this.isDeleteAfterLoad = loadTsFileStatement.isDeleteAfterLoad();
     this.isConvertOnTypeMismatch = loadTsFileStatement.isConvertOnTypeMismatch();
+    this.tabletConversionThreshold = loadTsFileStatement.getTabletConversionThreshold();
     this.isAutoCreateDatabase = loadTsFileStatement.isAutoCreateDatabase();
     this.databaseLevel = loadTsFileStatement.getDatabaseLevel();
     this.database = loadTsFileStatement.getDatabase();
@@ -110,6 +114,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     this.isVerifySchema = true;
     this.isDeleteAfterLoad = loadTsFileTableStatement.isDeleteAfterLoad();
     this.isConvertOnTypeMismatch = loadTsFileTableStatement.isConvertOnTypeMismatch();
+    this.tabletConversionThreshold = loadTsFileTableStatement.getTabletConversionThreshold();
     this.isAutoCreateDatabase = loadTsFileTableStatement.isAutoCreateDatabase();
     this.databaseLevel = loadTsFileTableStatement.getDatabaseLevel();
     this.database = loadTsFileTableStatement.getDatabase();
@@ -123,7 +128,16 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   public abstract IAnalysis analyzeFileByFile(IAnalysis analysis);
 
   protected boolean doAnalyzeFileByFile(IAnalysis analysis) {
-    // analyze tsfile metadata file by file
+
+    // 1. check if half of the files' size is less than the threshold
+    if (shouldConvertToTablet()) {
+      LOGGER.info(
+          "Load: Most of the tsfile sizes are smaller than the threshold, start to convert them to Tablets.");
+      executeTabletConversion(analysis, null);
+      return false;
+    }
+
+    // 2. analyze tsfile metadata file by file
     for (int i = 0, tsfileNum = tsFiles.size(); i < tsfileNum; i++) {
       final File tsFile = tsFiles.get(i);
 
@@ -178,6 +192,19 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   protected abstract void analyzeSingleTsFile(final File tsFile)
       throws IOException, AuthException, LoadAnalyzeException;
 
+  private boolean shouldConvertToTablet() {
+    int tabletConversionThreshold =
+        isTableModelStatement
+            ? loadTsFileTableStatement.getTabletConversionThreshold()
+            : loadTsFileTreeStatement.getTabletConversionThreshold();
+    List<File> miniFiles =
+        tsFiles.stream()
+            .filter(tsFile -> tsFile.length() < tabletConversionThreshold)
+            .collect(Collectors.toList());
+
+    return miniFiles.size() >= tsFiles.size() / 2;
+  }
+
   protected void executeTabletConversion(final IAnalysis analysis, final LoadAnalyzeException e) {
     final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
         new LoadTsFileDataTypeConverter(isGeneratedByPipe);
@@ -195,7 +222,8 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
 
     if (status == null) {
       analysis.setFailStatus(
-          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
+          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
+              .setMessage(e == null ? "" : e.getMessage()));
     } else if (!loadTsFileDataTypeConverter.isSuccessful(status)) {
       analysis.setFailStatus(status);
     }
