@@ -198,6 +198,7 @@ public class SettleSelectorImpl implements ISettleSelector {
    *
    * @return dirty status means the status of current resource.
    */
+  @SuppressWarnings("OptionalGetWithoutIsPresent") // iterating the index, must present
   private FileDirtyInfo selectFileBaseOnDirtyData(TsFileResource resource) throws IOException {
 
     Collection<ModEntry> modifications = resource.getAllModEntries();
@@ -221,23 +222,30 @@ public class SettleSelectorImpl implements ISettleSelector {
         ttl = DataNodeTTLCache.getInstance().getTTLForTable(storageGroupName, tableName);
       }
       boolean hasSetTTL = ttl != Long.MAX_VALUE;
+
+      long endTime = timeIndex.getEndTime(device).get();
       boolean isDeleted =
           !timeIndex.isDeviceAlive(device, ttl)
               || isDeviceDeletedByMods(
-                  modifications,
-                  device,
-                  timeIndex.getStartTime(device),
-                  timeIndex.getEndTime(device));
-
+                  modifications, device, timeIndex.getStartTime(device).get(), endTime);
       if (hasSetTTL) {
         if (!isDeleted) {
           // For devices with TTL set, all data must expire in order to meet the conditions for
           // being selected.
           return new FileDirtyInfo(DirtyStatus.NOT_SATISFIED);
         }
-        long outdatedTimeDiff = currentTime - timeIndex.getEndTime(device);
-        hasExpiredTooLong =
-            hasExpiredTooLong || outdatedTimeDiff > Math.min(config.getMaxExpiredTime(), 3 * ttl);
+
+        if (currentTime > endTime) {
+          long outdatedTimeDiff = currentTime - endTime;
+          if (endTime < 0 && outdatedTimeDiff < currentTime) {
+            // overflow, like 100 - Long.MIN
+            outdatedTimeDiff = Long.MAX_VALUE;
+          }
+          long ttlThreshold = 3 * ttl > ttl ? ttl : Long.MAX_VALUE;
+          hasExpiredTooLong =
+              hasExpiredTooLong
+                  || outdatedTimeDiff > Math.min(config.getMaxExpiredTime(), ttlThreshold);
+        } // else hasExpiredTooLong unchanged
       }
 
       if (isDeleted) {
