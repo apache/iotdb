@@ -21,6 +21,8 @@ package org.apache.iotdb.db.storageengine.rescon.memory;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.memory.MemoryBlock;
+import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -40,7 +42,6 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -55,11 +56,10 @@ public class SystemInfo {
   private long memorySizeForMemtable;
   private long memorySizeForCompaction;
   private long memorySizeForWalBufferQueue;
-  private long totalDirectBufferMemorySizeLimit;
   private final Map<DataRegionInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
 
   private long flushingMemTablesCost = 0L;
-  private final AtomicLong directBufferMemoryCost = new AtomicLong(0);
+  private MemoryBlock directBufferMemoryBlock;
   private final AtomicLong compactionMemoryCost = new AtomicLong(0L);
   private final AtomicLong seqInnerSpaceCompactionMemoryCost = new AtomicLong(0L);
   private final AtomicLong unseqInnerSpaceCompactionMemoryCost = new AtomicLong(0L);
@@ -200,28 +200,19 @@ public class SystemInfo {
   }
 
   public boolean addDirectBufferMemoryCost(long size) {
-    AtomicBoolean result = new AtomicBoolean(false);
-    directBufferMemoryCost.updateAndGet(
-        memCost -> {
-          if (memCost + size > totalDirectBufferMemorySizeLimit) {
-            return memCost;
-          }
-          result.set(true);
-          return memCost + size;
-        });
-    return result.get();
+    return directBufferMemoryBlock.allocate(size);
   }
 
   public void decreaseDirectBufferMemoryCost(long size) {
-    directBufferMemoryCost.addAndGet(-size);
+    directBufferMemoryBlock.release(size);
   }
 
   public long getTotalDirectBufferMemorySizeLimit() {
-    return totalDirectBufferMemorySizeLimit;
+    return config.getDirectBufferMemoryManager().getTotalMemorySizeInBytes();
   }
 
   public long getDirectBufferMemoryCost() {
-    return directBufferMemoryCost.get();
+    return directBufferMemoryBlock.getMemoryUsageInBytes();
   }
 
   public boolean addCompactionFileNum(int fileNum, long timeOutInSecond)
@@ -398,6 +389,8 @@ public class SystemInfo {
     memorySizeForWalBufferQueue = config.getWalBufferQueueManager().getTotalMemorySizeInBytes();
     totalDirectBufferMemorySizeLimit =
         config.getDirectBufferMemoryManager().getTotalMemorySizeInBytes();
+    directBufferMemoryBlock =
+        config.getDirectBufferMemoryManager().forceAllocate("Total", MemoryBlockType.FUNCTION);
     FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
     REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
     WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);

@@ -44,8 +44,20 @@ public abstract class IMemoryBlock implements AutoCloseable {
   /** The memory usage in byte of this memory block */
   protected final AtomicLong memoryUsageInBytes = new AtomicLong(0);
 
-  /** Try to record memory managed by this memory block */
-  public abstract void recordMemory(final long size);
+  /**
+   * Allocate memory managed by this memory block
+   *
+   * @param sizeInByte the size of memory to be allocated, should positive
+   * @return
+   */
+  public abstract boolean allocate(final long sizeInByte);
+
+  /**
+   * Try to record memory managed by this memory block
+   *
+   * @param sizeInByte the size of memory to be released, should positive
+   */
+  public abstract void release(final long sizeInByte);
 
   /** Update maximum memory size in byte of this memory block */
   public void setMaxMemorySizeInByte(final long maxMemorySizeInByte) {

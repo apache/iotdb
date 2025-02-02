@@ -117,6 +117,16 @@ public class MemoryManager {
   }
 
   /**
+   * Try to force allocate memory block with total memory size in bytes
+   *
+   * @param name the name of memory block
+   * @param memoryBlockType the type of memory block
+   */
+  public MemoryBlock forceAllocate(String name, MemoryBlockType memoryBlockType) {
+    return forceAllocate(name, totalMemorySizeInBytes, memoryBlockType);
+  }
+
+  /**
    * Try to force allocate memory block with specified size in bytes when memory is sufficient.
    *
    * @param name the name of memory block

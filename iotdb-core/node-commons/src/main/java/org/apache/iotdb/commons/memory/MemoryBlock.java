@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MemoryBlock extends IMemoryBlock {
   private static final Logger LOGGER = LoggerFactory.getLogger(MemoryBlock.class);
@@ -47,8 +48,22 @@ public class MemoryBlock extends IMemoryBlock {
   }
 
   @Override
-  public void recordMemory(final long size) {
-    memoryUsageInBytes.addAndGet(size);
+  public boolean allocate(long sizeInByte) {
+    AtomicBoolean result = new AtomicBoolean(false);
+    memoryUsageInBytes.updateAndGet(
+        memCost -> {
+          if (memCost + sizeInByte > maxMemorySizeInByte) {
+            return memCost;
+          }
+          result.set(true);
+          return memCost + sizeInByte;
+        });
+    return result.get();
+  }
+
+  @Override
+  public void release(long sizeInByte) {
+    memoryUsageInBytes.addAndGet(-sizeInByte);
   }
 
   @Override
