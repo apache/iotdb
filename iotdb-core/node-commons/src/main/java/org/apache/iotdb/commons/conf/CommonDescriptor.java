@@ -545,6 +545,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_wal_pin_max_log_interval_rounds",
                 String.valueOf(config.getPipeWalPinMaxLogIntervalRounds()))));
+    config.setPipeDegradeLogIntervalRounds(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_degrade_log_interval_rounds",
+                String.valueOf(config.getPipeDegradeLogIntervalRounds()))));
 
     config.setPipeMemoryManagementEnabled(
         Boolean.parseBoolean(
