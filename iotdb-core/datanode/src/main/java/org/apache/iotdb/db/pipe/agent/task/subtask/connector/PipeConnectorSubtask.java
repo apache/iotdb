@@ -61,9 +61,9 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
   // when no event can be pulled.
   public static final PipeHeartbeatEvent CRON_HEARTBEAT_EVENT =
       new PipeHeartbeatEvent("cron", false);
-  private static final long CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_MILLISECONDS =
+  protected static final long CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_MILLISECONDS =
       PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds() * 1000;
-  private long lastHeartbeatEventInjectTime = System.currentTimeMillis();
+  protected long lastHeartbeatEventInjectTime = System.currentTimeMillis();
 
   public PipeConnectorSubtask(
       final String taskID,
@@ -167,7 +167,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     return true;
   }
 
-  private void transferHeartbeatEvent(final PipeHeartbeatEvent event) {
+  protected void transferHeartbeatEvent(final PipeHeartbeatEvent event) {
     try {
       outputPipeConnector.heartbeat();
       outputPipeConnector.transfer(event);

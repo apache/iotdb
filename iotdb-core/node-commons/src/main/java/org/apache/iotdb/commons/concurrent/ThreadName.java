@@ -132,10 +132,13 @@ public enum ThreadName {
   // -------------------------- Compute --------------------------
   PIPE_EXTRACTOR_DISRUPTOR("Pipe-Extractor-Disruptor"),
   PIPE_PROCESSOR_EXECUTOR_POOL("Pipe-Processor-Executor-Pool"),
+  PIPE_USER_DEFINED_PROCESSOR_EXECUTOR_POOL("Pipe-User-Defined-Processor-Executor-Pool"),
   PIPE_CONNECTOR_EXECUTOR_POOL("Pipe-Connector-Executor-Pool"),
+  PIPE_USER_DEFINED_CONNECTOR_EXECUTOR_POOL("Pipe-User-Defined-Connector-Executor-Pool"),
   PIPE_CONSENSUS_EXECUTOR_POOL("Pipe-Consensus-Executor-Pool"),
   PIPE_CONFIGNODE_EXECUTOR_POOL("Pipe-ConfigNode-Executor-Pool"),
   PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL("Pipe-SubTask-Callback-Executor-Pool"),
+  PIPE_SUBTASK_TIMEOUT_CHECK_EXECUTOR_POOL("Pipe-SubTask-Timeout-Check-Executor-Pool"),
   PIPE_RUNTIME_META_SYNCER("Pipe-Runtime-Meta-Syncer"),
   PIPE_RUNTIME_HEARTBEAT("Pipe-Runtime-Heartbeat"),
   PIPE_RUNTIME_PROCEDURE_SUBMITTER("Pipe-Runtime-Procedure-Submitter"),

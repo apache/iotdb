@@ -48,6 +48,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeProcessorSubtask extends PipeReportableSubtask {
@@ -58,13 +59,13 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       new AtomicReference<>();
 
   // Record these variables to provide corresponding value to tag key of monitoring metrics
-  private final String pipeName;
-  private final String pipeNameWithCreationTime; // cache for better performance
-  private final int regionId;
+  protected final String pipeName;
+  protected final String pipeNameWithCreationTime; // cache for better performance
+  protected final int regionId;
 
-  private final EventSupplier inputEventSupplier;
-  private final PipeProcessor pipeProcessor;
-  private final PipeEventCollector outputEventCollector;
+  protected final EventSupplier inputEventSupplier;
+  protected final PipeProcessor pipeProcessor;
+  protected final PipeEventCollector outputEventCollector;
 
   // This variable is used to distinguish between old and new subtasks before and after stuck
   // restart.
@@ -96,7 +97,9 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
   @Override
   public void bindExecutors(
       final ListeningExecutorService subtaskWorkerThreadPoolExecutor,
+      final ListeningExecutorService userDefineSubtaskWorkerThreadPoolExecutor,
       final ExecutorService ignored,
+      final ScheduledExecutorService timeoutExecutor,
       final PipeSubtaskScheduler subtaskScheduler) {
     this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
     this.subtaskScheduler = subtaskScheduler;
@@ -106,7 +109,8 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       synchronized (PipeProcessorSubtaskWorkerManager.class) {
         if (subtaskWorkerManager.get() == null) {
           subtaskWorkerManager.set(
-              new PipeProcessorSubtaskWorkerManager(subtaskWorkerThreadPoolExecutor));
+              new PipeProcessorSubtaskWorkerManager(
+                  subtaskWorkerThreadPoolExecutor, timeoutExecutor, false));
         }
       }
     }
@@ -295,5 +299,21 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
   @Override
   protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
     PipeDataNodeAgent.runtime().report(event, exception);
+  }
+
+  public long getStartRunningTime() {
+    return System.currentTimeMillis();
+  }
+
+  public boolean isScheduled() {
+    return true;
+  }
+
+  public void markTimeoutStatus(boolean isTimeOut) {
+    // do nothing
+  }
+
+  public boolean isTimeout() {
+    return false;
   }
 }
