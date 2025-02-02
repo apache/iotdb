@@ -532,4 +532,14 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     }
     return nullBitMaps[col].isMarked(row);
   }
+
+  @Override
+  protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
+    if (columns != null) {
+      columns = columnsToKeep.stream().map(i -> columns[i]).toArray();
+    }
+    if (nullBitMaps != null) {
+      nullBitMaps = columnsToKeep.stream().map(i -> nullBitMaps[i]).toArray(BitMap[]::new);
+    }
+  }
 }

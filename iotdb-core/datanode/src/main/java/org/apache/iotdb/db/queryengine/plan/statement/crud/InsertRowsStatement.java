@@ -35,6 +35,7 @@ import org.apache.tsfile.exception.NotImplementedException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -208,5 +209,15 @@ public class InsertRowsStatement extends InsertBaseStatement {
   @Override
   public Statement toRelationalStatement(MPPQueryContext context) {
     return new InsertRows(this, context);
+  }
+
+  @Override
+  public void removeAttributeColumns() {
+    subRemoveAttributeColumns(Collections.emptyList());
+  }
+
+  @Override
+  protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
+    insertRowStatementList.forEach(InsertBaseStatement::removeAttributeColumns);
   }
 }
