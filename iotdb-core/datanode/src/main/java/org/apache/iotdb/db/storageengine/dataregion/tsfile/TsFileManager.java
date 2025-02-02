@@ -21,12 +21,17 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.PartitionLevelModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -43,6 +48,8 @@ public class TsFileManager {
   private final String storageGroupName;
   private String dataRegionId;
   private final String dataRegionSysDir;
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileManager.class);
 
   /** Serialize queries, delete resource files, compaction cleanup files */
   private final ReadWriteLock resourceListLock = new ReentrantReadWriteLock();
@@ -351,7 +358,54 @@ public class TsFileManager {
     }
   }
 
-  public void getModFileManagement() {}
+  public ModFileManagement getModFileManagement(long timePartition) {
+    writeLock("getModFileManagement");
+    try {
+      return modFileManagementMap.computeIfAbsent(
+          timePartition, t -> new PartitionLevelModFileManager());
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  public void clearUnusedModFile() {
+    Set<Pair<Long, File>> partitionIdTsFileParentDirectories = new HashSet<>();
+    readLock();
+    try {
+      for (TsFileResourceList tsFileResourceList : sequenceFiles.values()) {
+        for (TsFileResource tsFileResource : tsFileResourceList) {
+          partitionIdTsFileParentDirectories.add(
+              new Pair<>(
+                  tsFileResource.getTimePartition(), tsFileResource.getTsFile().getParentFile()));
+        }
+      }
+      for (TsFileResourceList tsFileResourceList : unsequenceFiles.values()) {
+        for (TsFileResource tsFileResource : tsFileResourceList) {
+          partitionIdTsFileParentDirectories.add(
+              new Pair<>(
+                  tsFileResource.getTimePartition(), tsFileResource.getTsFile().getParentFile()));
+        }
+      }
+    } finally {
+      readUnlock();
+    }
+
+    for (Pair<Long, File> partitionIdTsFileParentDir : partitionIdTsFileParentDirectories) {
+      File[] modFiles =
+          partitionIdTsFileParentDir.right.listFiles(
+              f -> f.getName().endsWith(ModificationFile.FILE_SUFFIX));
+      if (modFiles == null) {
+        continue;
+      }
+      ModFileManagement modFileManagement = getModFileManagement(partitionIdTsFileParentDir.left);
+      for (File modFile : modFiles) {
+        if (modFileManagement.referenceCount(new ModificationFile(modFile, false)) == 0) {
+          boolean deleted = modFile.delete();
+          LOGGER.info("Unreferenced mod file {} removed: {}", modFile, deleted);
+        }
+      }
+    }
+  }
 
   public void readLock() {
     resourceListLock.readLock().lock();

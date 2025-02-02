@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.RepairUnsortedFileCompactionWriter;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -80,10 +81,16 @@ public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPe
     } else {
       targetFile.setTimeIndex(CompactionUtils.buildDeviceTimeIndex(seqSourceFile));
     }
-    if (seqSourceFile.anyModFileExists()) {
+    if (seqSourceFile.exclusiveModFileExists()) {
       Files.createLink(
-          seqSourceFile.getCompactionModFile().getFile().toPath(),
-          seqSourceFile.getExclusiveModFile().getFile().toPath());
+          ModificationFile.getExclusiveMods(targetFile.getTsFile()).toPath(),
+          ModificationFile.getExclusiveMods(seqSourceFile.getTsFile()).toPath());
+    }
+    if (seqSourceFile.sharedModFileExists()) {
+      // inherit the mod file
+      targetFile.getModFileManagement().addReference(targetFile, seqSourceFile.getSharedModFile());
+      targetFile.setSharedModFile(
+          seqSourceFile.getSharedModFile(), false, seqSourceFile.getSharedModFileOffset());
     }
   }
 

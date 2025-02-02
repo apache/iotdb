@@ -239,13 +239,20 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
       return false;
     }
     File sourceTsFile = sourceFileIdentifiers.get(0).getFileFromDataDirsIfAnyAdjuvantFileExists();
+    long partitionId = Long.parseLong(sourceFileIdentifiers.get(0).getTimePartitionId());
     if (sourceTsFile != null) {
       unseqFileToInsert = new TsFileResource(sourceTsFile);
+      unseqFileToInsert.setModFileManagement(tsFileManager.getModFileManagement(partitionId));
+      if (unseqFileToInsert.resourceFileExists()) {
+        unseqFileToInsert.deserialize();
+      }
       selectedUnseqFiles.add(unseqFileToInsert);
     }
     File targetTsFile = targetFileIdentifiers.get(0).getFileFromDataDirsIfAnyAdjuvantFileExists();
     if (targetTsFile != null) {
       targetFile = new TsFileResource(targetTsFile);
+      targetFile.setModFileManagement(tsFileManager.getModFileManagement(partitionId));
+      targetFile.deserialize();
     }
     return true;
   }
@@ -289,8 +296,8 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
         || !targetFile.tsFileExists()
         || !targetFile.resourceFileExists()
         || (unseqFileToInsert != null
-            && unseqFileToInsert.anyModFileExists()
-            && !targetFile.anyModFileExists())
+            && ((unseqFileToInsert.exclusiveModFileExists() && !targetFile.exclusiveModFileExists())
+                || (unseqFileToInsert.sharedModFileExists() && !targetFile.sharedModFileExists())))
         || failToPassValidation;
   }
 
