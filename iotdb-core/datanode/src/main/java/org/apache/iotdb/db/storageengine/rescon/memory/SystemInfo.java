@@ -387,8 +387,6 @@ public class SystemInfo {
     memorySizeForMemtable = config.getMemtableMemoryManager().getTotalMemorySizeInBytes();
     memorySizeForCompaction = config.getCompactionMemoryManager().getTotalMemorySizeInBytes();
     memorySizeForWalBufferQueue = config.getWalBufferQueueManager().getTotalMemorySizeInBytes();
-    totalDirectBufferMemorySizeLimit =
-        config.getDirectBufferMemoryManager().getTotalMemorySizeInBytes();
     directBufferMemoryBlock =
         config.getDirectBufferMemoryManager().forceAllocate("Total", MemoryBlockType.FUNCTION);
     FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
