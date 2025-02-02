@@ -105,7 +105,7 @@ public class TableDeviceSchemaCache {
         new DualKeyCacheBuilder<TableId, IDeviceID, TableDeviceCacheEntry>()
             .cacheEvictionPolicy(
                 DualKeyCachePolicy.valueOf(config.getDataNodeSchemaCacheEvictionPolicy()))
-            .memoryCapacity(config.getAllocateMemoryForSchemaCache())
+            .memoryCapacity(config.getSchemaCacheMemoryManager().getTotalMemorySizeInBytes())
             .firstKeySizeComputer(TableId::estimateSize)
             .secondKeySizeComputer(deviceID -> (int) deviceID.ramBytesUsed())
             .valueSizeComputer(TableDeviceCacheEntry::estimateSize)

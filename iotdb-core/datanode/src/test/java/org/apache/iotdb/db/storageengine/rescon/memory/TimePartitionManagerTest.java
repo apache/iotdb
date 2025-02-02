@@ -48,7 +48,8 @@ public class TimePartitionManagerTest {
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
-    prevTimePartitionInfoMemoryThreshold = CONFIG.getAllocateMemoryForTimePartitionInfo();
+    prevTimePartitionInfoMemoryThreshold =
+        CONFIG.getTimePartitionInfoMemoryManager().getTotalMemorySizeInBytes();
     timePartitionManager.setTimePartitionInfoMemoryThreshold(100L);
   }
 

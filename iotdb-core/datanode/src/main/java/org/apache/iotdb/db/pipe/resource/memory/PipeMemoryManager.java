@@ -47,7 +47,7 @@ public class PipeMemoryManager {
       PipeConfig.getInstance().getPipeMemoryAllocateRetryIntervalInMs();
 
   private static final long TOTAL_MEMORY_SIZE_IN_BYTES =
-      IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForPipe();
+      IoTDBDescriptor.getInstance().getConfig().getPipeMemoryManager().getTotalMemorySizeInBytes();
   private static final long MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES =
       PipeConfig.getInstance().getPipeMemoryAllocateMinSizeInBytes();
 
@@ -204,7 +204,7 @@ public class PipeMemoryManager {
 
   public synchronized void forceResize(PipeMemoryBlock block, long targetSize) {
     if (block == null || block.isReleased()) {
-      LOGGER.warn("forceResize: cannot resize a null or released memory block");
+      LOGGER.warn("forceResize: cannot setTotalMemorySizeInBytes a null or released memory block");
       return;
     }
 

@@ -28,9 +28,12 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-public class StreamEngineMemoryMetrics implements IMetricSet {
+import java.util.Collections;
+
+public class OffHeapMemoryMetrics implements IMetricSet {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final String STREAM_ENGINE = "StreamEngine";
+
+  private static final String DIRECT_BUFFER = "DirectBuffer";
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
@@ -39,35 +42,38 @@ public class StreamEngineMemoryMetrics implements IMetricSet {
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
-            STREAM_ENGINE,
+            DIRECT_BUFFER,
             Tag.TYPE.toString(),
-            GlobalMemoryMetrics.ON_HEAP,
+            GlobalMemoryMetrics.OFF_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[1])
-        .set(config.getPipeMemoryManager().getTotalMemorySizeInBytes());
+        .set(config.getDirectBufferMemoryManager().getTotalMemorySizeInBytes());
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    metricService.remove(
-        MetricType.GAUGE,
-        Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        Tag.NAME.toString(),
-        STREAM_ENGINE,
-        Tag.TYPE.toString(),
-        GlobalMemoryMetrics.ON_HEAP,
-        Tag.LEVEL.toString(),
-        GlobalMemoryMetrics.LEVELS[1]);
+    Collections.singletonList(DIRECT_BUFFER)
+        .forEach(
+            name ->
+                metricService.remove(
+                    MetricType.GAUGE,
+                    Metric.MEMORY_THRESHOLD_SIZE.toString(),
+                    Tag.NAME.toString(),
+                    name,
+                    Tag.TYPE.toString(),
+                    GlobalMemoryMetrics.OFF_HEAP,
+                    Tag.LEVEL.toString(),
+                    GlobalMemoryMetrics.LEVELS[1]));
   }
 
-  public static StreamEngineMemoryMetrics getInstance() {
-    return StreamEngineMemoryMetricsHolder.INSTANCE;
+  public static OffHeapMemoryMetrics getInstance() {
+    return OffHeapMemoryMetrics.OffHeapMemoryMetricsHolder.INSTANCE;
   }
 
-  private static class StreamEngineMemoryMetricsHolder {
+  private static class OffHeapMemoryMetricsHolder {
 
-    private static final StreamEngineMemoryMetrics INSTANCE = new StreamEngineMemoryMetrics();
+    private static final OffHeapMemoryMetrics INSTANCE = new OffHeapMemoryMetrics();
 
-    private StreamEngineMemoryMetricsHolder() {}
+    private OffHeapMemoryMetricsHolder() {}
   }
 }

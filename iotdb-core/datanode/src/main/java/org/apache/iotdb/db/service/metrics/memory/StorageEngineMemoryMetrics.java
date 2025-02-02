@@ -35,17 +35,19 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
   private static final String STORAGE_ENGINE = "StorageEngine";
   private static final String STORAGE_ENGINE_WRITE = "StorageEngine-Write";
   private static final String STORAGE_ENGINE_WRITE_MEMTABLE = "StorageEngine-Write-Memtable";
-  private static final String STORAGE_ENGINE_WRITE_MEMTABLE_CACHE =
+  private static final String STORAGE_ENGINE_WRITE_MEMTABLE_DEVICE_PATH_CACHE =
       "StorageEngine-Write-Memtable-DevicePathCache";
   private static final String STORAGE_ENGINE_WRITE_MEMTABLE_BUFFERED_ARRAYS =
       "StorageEngine-Write-Memtable-BufferedArrays";
+  private static final String STORAGE_ENGINE_WRITE_MEMTABLE_WAL_BUFFER_QUEUE =
+      "StorageEngine-Write-Memtable-WalBufferQueue";
   private static final String STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO =
       "StorageEngine-Write-TimePartitionInfo";
   private static final String STORAGE_ENGINE_COMPACTION = "StorageEngine-Compaction";
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    long storageEngineSize = config.getAllocateMemoryForStorageEngine();
+    long storageEngineSize = config.getStorageEngineMemoryManager().getTotalMemorySizeInBytes();
     // Total memory size of storage engine
     metricService
         .getOrCreateGauge(
@@ -57,12 +59,8 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[1])
-        .set(storageEngineSize);
+        .set(config.getStorageEngineMemoryManager().getTotalMemorySizeInBytes());
     // The memory of storage engine divided into Write and Compaction
-    long writeSize =
-        (long)
-            (config.getAllocateMemoryForStorageEngine() * (1 - config.getCompactionProportion()));
-    long compactionSize = storageEngineSize - writeSize;
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
@@ -73,7 +71,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[2])
-        .set(writeSize);
+        .set(config.getWriteMemoryManager().getTotalMemorySizeInBytes());
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
@@ -84,12 +82,8 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[2])
-        .set(compactionSize);
+        .set(config.getCompactionMemoryManager().getTotalMemorySizeInBytes());
     // The write memory of storage engine divided into MemTable and TimePartitionInfo
-    long memtableSize =
-        (long)
-            (config.getAllocateMemoryForStorageEngine() * config.getWriteProportionForMemtable());
-    long timePartitionInfoSize = config.getAllocateMemoryForTimePartitionInfo();
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
@@ -100,7 +94,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[3])
-        .set(memtableSize);
+        .set(config.getMemtableMemoryManager().getTotalMemorySizeInBytes());
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
@@ -111,29 +105,20 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[3])
-        .set(timePartitionInfoSize);
+        .set(config.getTimePartitionInfoMemoryManager().getTotalMemorySizeInBytes());
     // The memtable memory of storage engine contain DataNodeDevicePathCache (NOTICE: This part of
     // memory is not divided)
-    long dataNodeDevicePathCacheSize =
-        (long)
-            (config.getAllocateMemoryForStorageEngine()
-                * config.getWriteProportionForMemtable()
-                * config.getDevicePathCacheProportion());
-    long bufferedArraySize =
-        (long)
-            (config.getAllocateMemoryForStorageEngine()
-                * config.getBufferedArraysMemoryProportion());
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
             MetricLevel.NORMAL,
             Tag.NAME.toString(),
-            STORAGE_ENGINE_WRITE_MEMTABLE_CACHE,
+            STORAGE_ENGINE_WRITE_MEMTABLE_DEVICE_PATH_CACHE,
             Tag.TYPE.toString(),
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[4])
-        .set(dataNodeDevicePathCacheSize);
+        .set(config.getDevicePathCacheMemoryManager().getTotalMemorySizeInBytes());
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
@@ -144,7 +129,18 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
             GlobalMemoryMetrics.ON_HEAP,
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[4])
-        .set(bufferedArraySize);
+        .set(config.getBufferedArraysMemoryManager().getTotalMemorySizeInBytes());
+    metricService
+        .getOrCreateGauge(
+            Metric.MEMORY_THRESHOLD_SIZE.toString(),
+            MetricLevel.NORMAL,
+            Tag.NAME.toString(),
+            STORAGE_ENGINE_WRITE_MEMTABLE_WAL_BUFFER_QUEUE,
+            Tag.TYPE.toString(),
+            GlobalMemoryMetrics.ON_HEAP,
+            Tag.LEVEL.toString(),
+            GlobalMemoryMetrics.LEVELS[4])
+        .set(config.getWalBufferQueueManager().getTotalMemorySizeInBytes());
   }
 
   @Override
@@ -183,7 +179,9 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
                     Tag.LEVEL.toString(),
                     GlobalMemoryMetrics.LEVELS[3]));
     Arrays.asList(
-            STORAGE_ENGINE_WRITE_MEMTABLE_CACHE, STORAGE_ENGINE_WRITE_MEMTABLE_BUFFERED_ARRAYS)
+            STORAGE_ENGINE_WRITE_MEMTABLE_DEVICE_PATH_CACHE,
+            STORAGE_ENGINE_WRITE_MEMTABLE_BUFFERED_ARRAYS,
+            STORAGE_ENGINE_WRITE_MEMTABLE_WAL_BUFFER_QUEUE)
         .forEach(
             name ->
                 metricService.remove(
