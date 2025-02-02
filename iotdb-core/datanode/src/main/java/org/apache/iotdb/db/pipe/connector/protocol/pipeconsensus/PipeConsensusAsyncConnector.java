@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeConnector;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.consensus.pipe.metric.PipeConsensusSyncLagManager;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
@@ -135,7 +136,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
     // initialize metric components
     pipeConsensusConnectorMetrics = new PipeConsensusConnectorMetrics(this);
     PipeConsensusSyncLagManager.getInstance(getConsensusGroupIdStr())
-        .addConsensusPipeConnector(this);
+        .addConsensusPipeConnector(new ConsensusPipeName(consensusPipeName), this);
     MetricService.getInstance().addMetricSet(this.pipeConsensusConnectorMetrics);
 
     // In PipeConsensus, one pipeConsensusTask corresponds to a pipeConsensusConnector. Thus,
@@ -588,7 +589,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
     }
 
     PipeConsensusSyncLagManager.getInstance(getConsensusGroupIdStr())
-        .removeConsensusPipeConnector(this);
+        .removeConsensusPipeConnector(new ConsensusPipeName(consensusPipeName));
     MetricService.getInstance().removeMetricSet(this.pipeConsensusConnectorMetrics);
   }
 
@@ -600,6 +601,15 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
   public int getRetryBufferSize() {
     return retryEventQueue.size();
+  }
+
+  @Override
+  public int getConsensusPipeRestartTimes() {
+    return PipeEventCommitManager.getInstance()
+        .getGivenConsensusPipeRestartTimes(
+            consensusPipeName,
+            PipeDataNodeAgent.task().getPipeCreationTime(consensusPipeName),
+            consensusGroupId);
   }
 
   @Override
