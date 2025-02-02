@@ -64,8 +64,9 @@ public class TsFileSplitter {
 
   private final File tsFile;
   private final TsFileDataConsumer consumer;
-  private Map<Long, IChunkMetadata> offset2ChunkMetadata = new HashMap<>();
-  private List<ModEntry> deletions = new ArrayList<>();
+  private final boolean loadWithMods;
+  private final Map<Long, IChunkMetadata> offset2ChunkMetadata = new HashMap<>();
+  private final List<ModEntry> deletions = new ArrayList<>();
   private Map<Integer, List<AlignedChunkData>> pageIndex2ChunkData = new HashMap<>();
   private Map<Integer, long[]> pageIndex2Times = new HashMap<>();
   private boolean isTimeChunkNeedDecode = true;
@@ -82,16 +83,20 @@ public class TsFileSplitter {
   private List<Map<Integer, long[]>> pageIndex2TimesList = null;
   private List<Boolean> isTimeChunkNeedDecodeList = new ArrayList<>();
 
-  public TsFileSplitter(File tsFile, TsFileDataConsumer consumer) {
+  public TsFileSplitter(
+      final File tsFile, final TsFileDataConsumer consumer, final boolean loadWithMods) {
     this.tsFile = tsFile;
     this.consumer = consumer;
+    this.loadWithMods = loadWithMods;
   }
 
   @SuppressWarnings({"squid:S3776", "squid:S6541"})
   public void splitTsFileByDataPartition()
       throws IOException, LoadFileException, IllegalStateException {
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
-      getAllModification(deletions);
+    try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      if (loadWithMods) {
+        getAllModification(deletions);
+      }
 
       if (!checkMagic(reader)) {
         throw new TsFileRuntimeException(
@@ -401,43 +406,43 @@ public class TsFileSplitter {
   }
 
   private void getChunkMetadata(
-      TsFileSequenceReader reader, Map<Long, IChunkMetadata> offset2ChunkMetadata)
+      final TsFileSequenceReader reader, final Map<Long, IChunkMetadata> offset2ChunkMetadata)
       throws IOException {
-    Map<IDeviceID, List<TimeseriesMetadata>> device2Metadata =
+    final Map<IDeviceID, List<TimeseriesMetadata>> device2Metadata =
         reader.getAllTimeseriesMetadata(true);
-    for (Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
-      for (TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
-        for (IChunkMetadata chunkMetadata : timeseriesMetadata.getChunkMetadataList()) {
+    for (final Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
+      for (final TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
+        for (final IChunkMetadata chunkMetadata : timeseriesMetadata.getChunkMetadataList()) {
           offset2ChunkMetadata.put(chunkMetadata.getOffsetOfChunkHeader(), chunkMetadata);
         }
       }
     }
   }
 
-  private void handleModification(List<ModEntry> deletions) throws LoadFileException {
+  private void handleModification(final List<ModEntry> deletions) throws LoadFileException {
     for (final ModEntry mod : deletions) {
       consumer.apply(new DeletionData(mod));
     }
   }
 
   private void consumeAllAlignedChunkData(
-      long offset, Map<Integer, List<AlignedChunkData>> pageIndex2ChunkData)
+      final long offset, final Map<Integer, List<AlignedChunkData>> pageIndex2ChunkData)
       throws LoadFileException {
     if (pageIndex2ChunkData.isEmpty()) {
       return;
     }
 
-    Map<AlignedChunkData, BatchedAlignedValueChunkData> chunkDataMap = new HashMap<>();
-    for (Map.Entry<Integer, List<AlignedChunkData>> entry : pageIndex2ChunkData.entrySet()) {
-      List<AlignedChunkData> alignedChunkDataList = entry.getValue();
+    final Map<AlignedChunkData, BatchedAlignedValueChunkData> chunkDataMap = new HashMap<>();
+    for (final Map.Entry<Integer, List<AlignedChunkData>> entry : pageIndex2ChunkData.entrySet()) {
+      final List<AlignedChunkData> alignedChunkDataList = entry.getValue();
       for (int i = 0; i < alignedChunkDataList.size(); i++) {
-        AlignedChunkData oldChunkData = alignedChunkDataList.get(i);
-        BatchedAlignedValueChunkData chunkData =
+        final AlignedChunkData oldChunkData = alignedChunkDataList.get(i);
+        final BatchedAlignedValueChunkData chunkData =
             chunkDataMap.computeIfAbsent(oldChunkData, BatchedAlignedValueChunkData::new);
         alignedChunkDataList.set(i, chunkData);
       }
     }
-    for (AlignedChunkData chunkData : chunkDataMap.keySet()) {
+    for (final AlignedChunkData chunkData : chunkDataMap.keySet()) {
       if (Boolean.FALSE.equals(consumer.apply(chunkData))) {
         throw new IllegalStateException(
             String.format(
@@ -448,7 +453,8 @@ public class TsFileSplitter {
     this.pageIndex2ChunkData = new HashMap<>();
   }
 
-  private void consumeChunkData(String measurement, long offset, ChunkData chunkData)
+  private void consumeChunkData(
+      final String measurement, final long offset, final ChunkData chunkData)
       throws LoadFileException {
     if (Boolean.FALSE.equals(consumer.apply(chunkData))) {
       throw new IllegalStateException(
@@ -458,12 +464,12 @@ public class TsFileSplitter {
     }
   }
 
-  private boolean needDecodeChunk(IChunkMetadata chunkMetadata) {
+  private boolean needDecodeChunk(final IChunkMetadata chunkMetadata) {
     return !TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getStartTime())
         .equals(TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getEndTime()));
   }
 
-  private boolean needDecodePage(PageHeader pageHeader, IChunkMetadata chunkMetadata) {
+  private boolean needDecodePage(final PageHeader pageHeader, final IChunkMetadata chunkMetadata) {
     if (pageHeader.getStatistics() == null) {
       return !TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getStartTime())
           .equals(TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getEndTime()));
@@ -473,12 +479,12 @@ public class TsFileSplitter {
   }
 
   private Pair<long[], Object[]> decodePage(
-      boolean isAligned,
-      ByteBuffer pageData,
-      PageHeader pageHeader,
-      Decoder timeDecoder,
-      Decoder valueDecoder,
-      ChunkHeader chunkHeader)
+      final boolean isAligned,
+      final ByteBuffer pageData,
+      final PageHeader pageHeader,
+      final Decoder timeDecoder,
+      final Decoder valueDecoder,
+      final ChunkHeader chunkHeader)
       throws IOException {
     if (isAligned) {
       TimePageReader timePageReader = new TimePageReader(pageHeader, pageData, timeDecoder);
