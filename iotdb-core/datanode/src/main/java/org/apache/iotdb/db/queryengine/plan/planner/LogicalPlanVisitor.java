@@ -87,7 +87,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
-import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -517,8 +516,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       final LoadTsFileStatement loadTsFileStatement, final MPPQueryContext context) {
     final List<Boolean> isTableModel = new ArrayList<>();
     for (int i = 0; i < loadTsFileStatement.getResources().size(); i++) {
-      isTableModel.add(
-          loadTsFileStatement.getModel().equals(LoadTsFileConfigurator.MODEL_TABLE_VALUE));
+      isTableModel.add(loadTsFileStatement.getIsTableModel().get(i));
     }
     return new LoadTsFileNode(
         context.getQueryId().genPlanNodeId(),
