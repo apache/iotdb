@@ -2959,9 +2959,14 @@ public class Session implements ISession {
 
     TSInsertTabletReq request = new TSInsertTabletReq();
 
-    for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-      request.addToMeasurements(measurementSchema.getMeasurementName());
-      request.addToTypes(measurementSchema.getType().ordinal());
+    if (tablet.getSchemas().isEmpty()) {
+      request.measurements = Collections.emptyList();
+      request.types = Collections.emptyList();
+    } else {
+      for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+        request.addToMeasurements(measurementSchema.getMeasurementName());
+        request.addToTypes(measurementSchema.getType().ordinal());
+      }
     }
 
     request.setPrefixPath(tablet.getDeviceId());
