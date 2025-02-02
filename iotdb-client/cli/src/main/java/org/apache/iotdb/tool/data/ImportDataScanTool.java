@@ -56,8 +56,4 @@ public class ImportDataScanTool {
   public static void setSourceFullPath(final String sourceFullPath) {
     ImportDataScanTool.sourceFullPath = sourceFullPath;
   }
-
-  public static int getTsFileQueueSize() {
-    return ImportDataScanTool.dataQueue.size();
-  }
 }
