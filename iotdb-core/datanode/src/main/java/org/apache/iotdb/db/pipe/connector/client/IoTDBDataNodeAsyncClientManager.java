@@ -84,14 +84,16 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       final String username,
       final String password,
       final boolean shouldReceiverConvertOnTypeMismatch,
-      final String loadTsFileStrategy) {
+      final String loadTsFileStrategy,
+      final boolean validateTsFile) {
     super(
         endPoints,
         useLeaderCache,
         username,
         password,
         shouldReceiverConvertOnTypeMismatch,
-        loadTsFileStrategy);
+        loadTsFileStrategy,
+        validateTsFile);
 
     endPointSet = new HashSet<>(endPoints);
 
@@ -248,6 +250,9 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, loadTsFileStrategy);
       params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, username);
       params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, password);
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_VALIDATE_TSFILE,
+          Boolean.toString(validateTsFile));
 
       client.setTimeoutDynamically(PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs());
       client.pipeTransfer(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params), callback);

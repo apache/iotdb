@@ -42,6 +42,8 @@ public abstract class IoTDBClientManager {
   protected final String username;
   protected final String password;
 
+  protected final boolean validateTsFile;
+
   protected final boolean shouldReceiverConvertOnTypeMismatch;
   protected final String loadTsFileStrategy;
 
@@ -62,7 +64,8 @@ public abstract class IoTDBClientManager {
       final String username,
       final String password,
       final boolean shouldReceiverConvertOnTypeMismatch,
-      final String loadTsFileStrategy) {
+      final String loadTsFileStrategy,
+      final boolean validateTsFile) {
     this.endPointList = endPointList;
 
     this.useLeaderCache = useLeaderCache;
@@ -71,6 +74,7 @@ public abstract class IoTDBClientManager {
     this.password = password;
     this.shouldReceiverConvertOnTypeMismatch = shouldReceiverConvertOnTypeMismatch;
     this.loadTsFileStrategy = loadTsFileStrategy;
+    this.validateTsFile = validateTsFile;
   }
 
   public boolean supportModsIfIsDataNodeReceiver() {

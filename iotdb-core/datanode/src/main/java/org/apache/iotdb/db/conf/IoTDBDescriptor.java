@@ -2470,6 +2470,12 @@ public class IoTDBDescriptor {
     if (conf.getLoadActiveListeningMaxThreadNum() <= 0) {
       conf.setLoadActiveListeningMaxThreadNum(Runtime.getRuntime().availableProcessors());
     }
+
+    conf.setLoadActiveListeningVerifyEnable(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "load_active_listening_verify_enable",
+                Boolean.toString(conf.isLoadActiveListeningVerifyEnable()))));
   }
 
   private void loadLoadTsFileHotModifiedProp(TrimProperties properties) throws IOException {

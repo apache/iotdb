@@ -27,13 +27,15 @@ public class ImportTsFileLocally extends ImportTsFileBase implements Runnable {
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
 
   private static SessionPool sessionPool;
+  private static boolean verify;
 
   @Override
   public void loadTsFile() {
     String filePath;
     try {
       while ((filePath = ImportTsFileScanTool.pollFromQueue()) != null) {
-        final String sql = "load '" + filePath + "' onSuccess=none ";
+        final String sql =
+            "load '" + filePath + "' onSuccess=none " + (verify ? "" : "verify=false");
         try {
           sessionPool.executeNonQueryStatement(sql);
 
@@ -49,5 +51,9 @@ public class ImportTsFileLocally extends ImportTsFileBase implements Runnable {
 
   public static void setSessionPool(SessionPool sessionPool) {
     ImportTsFileLocally.sessionPool = sessionPool;
+  }
+
+  public static void setVerify(boolean verify) {
+    ImportTsFileLocally.verify = verify;
   }
 }
