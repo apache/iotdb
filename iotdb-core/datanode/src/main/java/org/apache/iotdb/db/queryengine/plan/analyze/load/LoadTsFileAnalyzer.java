@@ -202,7 +202,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
             .filter(tsFile -> tsFile.length() < tabletConversionThreshold)
             .collect(Collectors.toList());
 
-    return miniFiles.size() >= tsFiles.size() / 2;
+    return miniFiles.size() > tsFiles.size() / 2;
   }
 
   protected void executeTabletConversion(final IAnalysis analysis, final LoadAnalyzeException e) {
