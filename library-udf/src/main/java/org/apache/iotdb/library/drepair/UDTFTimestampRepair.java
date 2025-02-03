@@ -57,7 +57,7 @@ public class UDTFTimestampRepair implements UDTF {
     configurations
         .setAccessStrategy(new SlidingSizeWindowAccessStrategy(Integer.MAX_VALUE))
         .setOutputDataType(parameters.getDataType(0));
-    segmentation = parameters.getBooleanOrDefault("isSegment", false);
+    segmentation = parameters.getBooleanOrDefault("Segment", false);
     intervalMethod = parameters.getStringOrDefault("method", "Median");
     interval = parameters.getIntOrDefault("interval", 0);
     num_interval = parameters.getIntOrDefault("num_interval", 1);
