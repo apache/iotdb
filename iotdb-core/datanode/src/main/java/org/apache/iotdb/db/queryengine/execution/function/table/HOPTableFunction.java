@@ -37,6 +37,7 @@ import org.apache.iotdb.udf.api.type.Type;
 import org.apache.tsfile.block.column.ColumnBuilder;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;

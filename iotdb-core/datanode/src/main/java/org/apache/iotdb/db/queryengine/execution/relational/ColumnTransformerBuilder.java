@@ -157,8 +157,8 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Tr
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TrimColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TryCastFunctionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.UpperColumnTransformer;
-import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
-import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
+import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -493,7 +493,7 @@ public class ColumnTransformerBuilder
     return res;
   }
 
-  // currently, we only support Date and Timestamp
+  // currently, we only support Date/Timestamp/INT64
   // for Date, GenericLiteral.value is an int value
   // for Timestamp, GenericLiteral.value is a long value
   private static ConstantColumnTransformer getColumnTransformerForGenericLiteral(
@@ -505,6 +505,10 @@ public class ColumnTransformerBuilder
     } else if (TimestampType.TIMESTAMP.getTypeEnum().name().equals(literal.getType())) {
       return new ConstantColumnTransformer(
           TimestampType.TIMESTAMP,
+          new LongColumn(1, Optional.empty(), new long[] {Long.parseLong(literal.getValue())}));
+    } else if (INT64.getTypeEnum().name().equals(literal.getType())) {
+      return new ConstantColumnTransformer(
+          INT64,
           new LongColumn(1, Optional.empty(), new long[] {Long.parseLong(literal.getValue())}));
     } else {
       throw new SemanticException("Unsupported type in GenericLiteral: " + literal.getType());
@@ -1019,16 +1023,16 @@ public class ColumnTransformerBuilder
         ScalarFunction scalarFunction = TableUDFUtils.getScalarFunction(functionName);
         List<ColumnTransformer> childrenColumnTransformer =
             children.stream().map(child -> process(child, context)).collect(Collectors.toList());
-        FunctionParameters parameters =
-            new FunctionParameters(
+        FunctionArguments parameters =
+            new FunctionArguments(
                 childrenColumnTransformer.stream()
                     .map(i -> UDFDataTypeTransformer.transformReadTypeToUDFDataType(i.getType()))
                     .collect(Collectors.toList()),
                 Collections.emptyMap());
-        ScalarFunctionConfig config = new ScalarFunctionConfig();
-        scalarFunction.beforeStart(parameters, config);
+        ScalarFunctionAnalysis analysis = scalarFunction.analyze(parameters);
+        scalarFunction.beforeStart(parameters);
         Type returnType =
-            UDFDataTypeTransformer.transformUDFDataTypeToReadType(config.getOutputDataType());
+            UDFDataTypeTransformer.transformUDFDataTypeToReadType(analysis.getOutputDataType());
         return new UserDefineScalarFunctionTransformer(
             returnType, scalarFunction, childrenColumnTransformer);
       }

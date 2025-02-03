@@ -21,11 +21,11 @@ package org.apache.iotdb.db.schemaengine.table;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
-import org.apache.iotdb.db.exception.metadata.table.TableNotExistsException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
@@ -57,11 +57,16 @@ public class InformationSchemaUtils {
   }
 
   public static void buildDatabaseTsBlock(
-      final Predicate<String> canSeenDB, final TsBlockBuilder builder, final boolean details) {
+      final Predicate<String> canSeenDB,
+      final TsBlockBuilder builder,
+      final boolean details,
+      final boolean withTime) {
     if (!canSeenDB.test(INFORMATION_DATABASE)) {
       return;
     }
-    builder.getTimeColumnBuilder().writeLong(0L);
+    if (withTime) {
+      builder.getTimeColumnBuilder().writeLong(0L);
+    }
     builder
         .getColumnBuilder(0)
         .writeBinary(new Binary(INFORMATION_DATABASE, TSFileConfig.STRING_CHARSET));

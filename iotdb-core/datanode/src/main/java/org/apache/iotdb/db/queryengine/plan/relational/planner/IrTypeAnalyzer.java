@@ -54,6 +54,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
@@ -63,6 +64,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.DateType;
+import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
@@ -75,6 +77,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
@@ -337,7 +340,7 @@ public class IrTypeAnalyzer {
           && node.getParsedValue() <= Integer.MAX_VALUE) {
         return setExpressionType(node, INT32);
       }
-
+      // keep the original type
       return setExpressionType(node, INT64);
     }
 
@@ -358,6 +361,8 @@ public class IrTypeAnalyzer {
         type = DateType.DATE;
       } else if (TimestampType.TIMESTAMP.getTypeEnum().name().equals(node.getType())) {
         type = TimestampType.TIMESTAMP;
+      } else if (INT64.getTypeEnum().name().equals(node.getType())) {
+        type = INT64;
       } else {
         throw new SemanticException("Unsupported type in GenericLiteral: " + node.getType());
       }
@@ -414,6 +419,14 @@ public class IrTypeAnalyzer {
       setExpressionType(valueList, type);
 
       return setExpressionType(node, BOOLEAN);
+    }
+
+    @Override
+    protected Type visitRow(Row node, Context context) {
+      List<Type> types =
+          node.getItems().stream().map(child -> process(child, context)).collect(toImmutableList());
+
+      return setExpressionType(node, RowType.anonymous(types));
     }
 
     @Override

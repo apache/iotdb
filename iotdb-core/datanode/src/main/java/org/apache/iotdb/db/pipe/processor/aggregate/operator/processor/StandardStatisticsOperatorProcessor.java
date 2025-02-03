@@ -35,6 +35,7 @@ import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.sametype.numeric.IntegralPoweredSumOperator;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.specifictype.doubletype.FractionPoweredSumOperator;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.specifictype.integertype.CountOperator;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -42,6 +43,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Supplier;
 
+@TreeModel
 public class StandardStatisticsOperatorProcessor extends AbstractOperatorProcessor {
   @Override
   public Set<AggregatedResultOperator> getAggregatorOperatorSet() {

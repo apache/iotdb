@@ -37,7 +37,7 @@ public class RecordIterator implements Iterator<Record> {
   private final List<Column> childrenColumns;
   private final List<org.apache.tsfile.read.common.type.Type> dataTypes;
   private final int positionCount;
-  private int currentIndex;
+  protected int currentIndex;
 
   public RecordIterator(
       List<Column> childrenColumns,
@@ -52,6 +52,10 @@ public class RecordIterator implements Iterator<Record> {
     }
   }
 
+  protected int getCurrentIndex() {
+    return currentIndex++;
+  }
+
   @Override
   public boolean hasNext() {
     return currentIndex < positionCount;
@@ -59,8 +63,9 @@ public class RecordIterator implements Iterator<Record> {
 
   @Override
   public Record next() {
-    final int index = currentIndex++;
+    final int index = getCurrentIndex();
     return new Record() {
+
       @Override
       public int getInt(int columnIndex) {
         return childrenColumns.get(columnIndex).getInt(index);

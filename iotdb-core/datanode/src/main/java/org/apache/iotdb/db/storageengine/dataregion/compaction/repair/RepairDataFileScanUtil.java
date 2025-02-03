@@ -187,9 +187,8 @@ public class RepairDataFileScanUtil {
         new TimeRange(
             timeseriesMetadata.getStatistics().getStartTime(),
             timeseriesMetadata.getStatistics().getEndTime());
-    if (checkTsFileResource && !timeseriesTimeRange.equals(deviceTimeRangeInResource)) {
-      throw new CompactionStatisticsCheckFailedException(
-          device, deviceTimeRangeInResource, timeseriesTimeRange);
+    if (checkTsFileResource) {
+      compareDeviceTimeRange(device, deviceTimeRangeInResource, timeseriesTimeRange);
     }
 
     long actualTimeseriesStartTime = Long.MAX_VALUE;
@@ -283,10 +282,27 @@ public class RepairDataFileScanUtil {
     if (!checkTsFileResource || actualDeviceStartTime > actualDeviceEndTime) {
       return;
     }
-    TimeRange actualDeviceTimeRange = new TimeRange(actualDeviceStartTime, actualDeviceEndTime);
-    if (!actualDeviceTimeRange.equals(deviceTimeRangeInResource)) {
-      throw new CompactionStatisticsCheckFailedException(
-          device, deviceTimeRangeInResource, actualDeviceTimeRange);
+    compareDeviceTimeRange(
+        device,
+        deviceTimeRangeInResource,
+        new TimeRange(actualDeviceStartTime, actualDeviceEndTime));
+  }
+
+  private void compareDeviceTimeRange(
+      IDeviceID device, TimeRange deviceTimeRangeInResource, TimeRange actualDeviceTimeRange) {
+    long innerCompactionCount = resource.getTsFileID().getInnerCompactionCount();
+    if (innerCompactionCount == 0) {
+      // for the files generate by flush with deletions, the statistics may be larger than the
+      // actual
+      if (!deviceTimeRangeInResource.contains(actualDeviceTimeRange)) {
+        throw new CompactionStatisticsCheckFailedException(
+            device, deviceTimeRangeInResource, actualDeviceTimeRange);
+      }
+    } else {
+      if (!actualDeviceTimeRange.equals(deviceTimeRangeInResource)) {
+        throw new CompactionStatisticsCheckFailedException(
+            device, deviceTimeRangeInResource, actualDeviceTimeRange);
+      }
     }
   }
 

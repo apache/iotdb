@@ -66,9 +66,7 @@ public class ExcludeColumnFunction implements TableFunction {
       Optional<String> fieldName = tableArgument.getFieldNames().get(i);
       if (!fieldName.isPresent() || !fieldName.get().equalsIgnoreCase(excludeColumn)) {
         requiredColumns.add(i);
-        schemaBuilder.addField(
-            fieldName,
-            tableArgument.getFieldTypes().get(i));
+        schemaBuilder.addField(fieldName, tableArgument.getFieldTypes().get(i));
       }
     }
     return TableFunctionAnalysis.builder()
