@@ -10,8 +10,8 @@ import static org.apache.iotdb.db.query.eBUG.eBUG.buildEffectiveArea;
 
 public class sample_eBUG {
   // 输入一条时间序列 t,v
-  // 输出按照bottom-up淘汰顺序排列的dominated significance,t,v。
-  // 用于后期在线采样时选取倒数m个点（也就是DS最大的m个点，或者最晚淘汰的m个点）作为采样结果（选出之后要自行把这m个点重新按照时间戳x递增排列）
+  // 输出按照bottom-up淘汰顺序倒序排列的dominated significance,t,v。
+  // 用于后期在线采样时选取前m个点（也就是DS最大的m个点，或者最晚淘汰的m个点）作为采样结果（选出之后要自行把这m个点重新按照时间戳x递增排列）
   public static void main(String[] args) {
     if (args.length < 7) {
       System.out.println(
@@ -70,15 +70,18 @@ public class sample_eBUG {
       // 写入表头
       if (m <= 2) {
         System.out.println(
-            "precomputation mode, outputting (z,x,y) ordered by z in ascending order");
-        writer.write("z,x,y");
+            "precomputation mode, outputting (id,x,y,z) ordered by z in descending order");
+        writer.write("id,x,y,z");
         writer.newLine();
 
-        // 写入数据行，按顺序 z, x, y
-        // 按照z,x,y三列，因为results结果已经按照z（即DS）递增排序，对应bottom-up的淘汰顺序，越小代表越早被淘汰
+        // 写入数据行，
+        // 按照idx,x,y,z四列，results结果已经按照z（即DS）递减排序，对应bottom-up的淘汰顺序的倒序，越大代表越晚被淘汰
+        // idx是从1开始的顺序编号
+        int idx = 1;
         for (Point point : results) {
-          writer.write(point.z + "," + point.x + "," + point.y);
+          writer.write(idx + "," + point.x + "," + point.y + "," + point.z);
           writer.newLine();
+          idx++;
         }
       } else {
         System.out.println(
