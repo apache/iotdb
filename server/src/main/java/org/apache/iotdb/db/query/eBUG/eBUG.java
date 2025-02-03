@@ -353,6 +353,11 @@ public class eBUG {
       //            return results; // 注意这就是lineToSimplify.getVertices()
       resultsBottomUpEliminated.add(points.get(0)); // 全局首点
       resultsBottomUpEliminated.add(points.get(points.size() - 1)); // 全局尾点
+
+      // make them ordered by dominated sig in descending order (i.e., reverse of bottom-up
+      // elimination order)
+      Collections.reverse(resultsBottomUpEliminated); // O(n)
+
       return resultsBottomUpEliminated;
     }
   }
