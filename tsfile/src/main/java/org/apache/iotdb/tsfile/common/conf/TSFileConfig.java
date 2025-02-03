@@ -27,15 +27,15 @@ import java.nio.charset.Charset;
 /** TSFileConfig is a configure class. Every variables is public and has default value. */
 public class TSFileConfig implements Serializable {
 
-  private boolean writeConvexHull = true;
+  private boolean writeConvexHull = false;
 
   private boolean enableMinMaxLSM = false;
 
   private boolean useStatistics = true;
 
-  private boolean useTimeIndex = true;
+  private boolean useTimeIndex = false;
 
-  private boolean useValueIndex = true;
+  private boolean useValueIndex = false;
 
   private boolean useMad = false;
 
