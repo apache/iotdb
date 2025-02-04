@@ -21,6 +21,7 @@ package org.apache.iotdb.db.it.auth;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -155,6 +156,30 @@ public class IoTDBAuthIT {
         Assert.assertThrows(
             SQLException.class,
             () -> userStmt.execute("GRANT USER tempuser PRIVILEGES WRITE_SCHEMA ON root.a"));
+
+        adminStmt.execute("GRANT ALL ON root.** TO USER tempuser WITH GRANT OPTION");
+        userStmt.execute("CREATE USER testuser 'password'");
+        userStmt.execute("GRANT ALL ON root.** TO USER testuser WITH GRANT OPTION");
+        ResultSet dataSet = userStmt.executeQuery("LIST PRIVILEGES OF USER testuser");
+
+        Set<String> ansSet =
+            new HashSet<>(
+                Arrays.asList(
+                    ",,MANAGE_USER,true,",
+                    ",,MANAGE_ROLE,true,",
+                    ",,USE_TRIGGER,true,",
+                    ",,USE_UDF,true,",
+                    ",,USE_CQ,true,",
+                    ",,USE_PIPE,true,",
+                    ",,USE_MODEL,true,",
+                    ",,EXTEND_TEMPLATE,true,",
+                    ",,MANAGE_DATABASE,true,",
+                    ",,MAINTAIN,true,",
+                    ",root.**,READ_DATA,true,",
+                    ",root.**,WRITE_DATA,true,",
+                    ",root.**,READ_SCHEMA,true,",
+                    ",root.**,WRITE_SCHEMA,true,"));
+        TestUtils.assertResultSetEqual(dataSet, "Role,Scope,Privileges,GrantOption,", ansSet);
       }
     }
   }
