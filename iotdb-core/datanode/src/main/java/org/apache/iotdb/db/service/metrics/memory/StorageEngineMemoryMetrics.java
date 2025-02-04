@@ -90,7 +90,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
         config.getCompactionMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
-        STORAGE_ENGINE,
+        STORAGE_ENGINE_COMPACTION,
         Tag.TYPE.toString(),
         GlobalMemoryMetrics.ON_HEAP,
         Tag.LEVEL.toString(),
