@@ -74,7 +74,6 @@ public class MemoryBlock extends IMemoryBlock {
       Thread.sleep(TimeUnit.MILLISECONDS.toMillis(timeInterval));
       originSize = memoryUsageInBytes.get();
     }
-    LOGGER.error(this.toString());
     return true;
   }
 
