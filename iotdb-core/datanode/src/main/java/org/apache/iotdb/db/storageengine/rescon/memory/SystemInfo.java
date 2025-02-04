@@ -460,7 +460,7 @@ public class SystemInfo {
   }
 
   public synchronized void applyTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
-    if (!memtableMemoryBlock.allocate(estimatedTemporaryMemSize)) {
+    if (memtableMemoryBlock.allocate(estimatedTemporaryMemSize)) {
       logger.error(
           String.format(
               "Failed to allocate %d bytes memory for flush, "
