@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.service.metrics.memory;
 
+import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -48,22 +49,43 @@ public class OffHeapMemoryMetrics implements IMetricSet {
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[1])
         .set(config.getDirectBufferMemoryManager().getTotalMemorySizeInBytes());
+    metricService.createAutoGauge(
+        Metric.MEMORY_ACTUAL_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getDirectBufferMemoryManager(),
+        MemoryManager::getUsedMemorySizeInBytes,
+        Tag.NAME.toString(),
+        DIRECT_BUFFER,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.OFF_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[1]);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     Collections.singletonList(DIRECT_BUFFER)
         .forEach(
-            name ->
-                metricService.remove(
-                    MetricType.GAUGE,
-                    Metric.MEMORY_THRESHOLD_SIZE.toString(),
-                    Tag.NAME.toString(),
-                    name,
-                    Tag.TYPE.toString(),
-                    GlobalMemoryMetrics.OFF_HEAP,
-                    Tag.LEVEL.toString(),
-                    GlobalMemoryMetrics.LEVELS[1]));
+            name -> {
+              metricService.remove(
+                  MetricType.GAUGE,
+                  Metric.MEMORY_THRESHOLD_SIZE.toString(),
+                  Tag.NAME.toString(),
+                  name,
+                  Tag.TYPE.toString(),
+                  GlobalMemoryMetrics.OFF_HEAP,
+                  Tag.LEVEL.toString(),
+                  GlobalMemoryMetrics.LEVELS[1]);
+              metricService.remove(
+                  MetricType.AUTO_GAUGE,
+                  Metric.MEMORY_ACTUAL_SIZE.toString(),
+                  Tag.NAME.toString(),
+                  name,
+                  Tag.TYPE.toString(),
+                  GlobalMemoryMetrics.OFF_HEAP,
+                  Tag.LEVEL.toString(),
+                  GlobalMemoryMetrics.LEVELS[1]);
+            });
   }
 
   public static OffHeapMemoryMetrics getInstance() {

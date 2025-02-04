@@ -70,6 +70,11 @@ public abstract class IMemoryBlock implements AutoCloseable {
    */
   public abstract void release(final long sizeInByte);
 
+  /**
+   * Try to set memory usage in byte of this memory block (for test only)
+   *
+   * @param memoryUsageInBytes the memory usage in byte to be set
+   */
   @TestOnly
   public abstract void setMemoryUsageInBytes(final long memoryUsageInBytes);
 

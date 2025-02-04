@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.service.metrics.memory;
 
+import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -83,6 +84,17 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[2])
         .set(config.getCompactionMemoryManager().getTotalMemorySizeInBytes());
+    metricService.createAutoGauge(
+        Metric.MEMORY_ACTUAL_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getCompactionMemoryManager(),
+        MemoryManager::getUsedMemorySizeInBytes,
+        Tag.NAME.toString(),
+        STORAGE_ENGINE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[1]);
     // The write memory of storage engine divided into MemTable and TimePartitionInfo
     metricService
         .getOrCreateGauge(
@@ -156,16 +168,26 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[1]);
     Arrays.asList(STORAGE_ENGINE_WRITE, STORAGE_ENGINE_COMPACTION)
         .forEach(
-            name ->
-                metricService.remove(
-                    MetricType.GAUGE,
-                    Metric.MEMORY_THRESHOLD_SIZE.toString(),
-                    Tag.NAME.toString(),
-                    name,
-                    Tag.TYPE.toString(),
-                    GlobalMemoryMetrics.ON_HEAP,
-                    Tag.LEVEL.toString(),
-                    GlobalMemoryMetrics.LEVELS[2]));
+            name -> {
+              metricService.remove(
+                  MetricType.GAUGE,
+                  Metric.MEMORY_THRESHOLD_SIZE.toString(),
+                  Tag.NAME.toString(),
+                  name,
+                  Tag.TYPE.toString(),
+                  GlobalMemoryMetrics.ON_HEAP,
+                  Tag.LEVEL.toString(),
+                  GlobalMemoryMetrics.LEVELS[2]);
+              metricService.remove(
+                  MetricType.AUTO_GAUGE,
+                  Metric.MEMORY_ACTUAL_SIZE.toString(),
+                  Tag.NAME.toString(),
+                  name,
+                  Tag.TYPE.toString(),
+                  GlobalMemoryMetrics.ON_HEAP,
+                  Tag.LEVEL.toString(),
+                  GlobalMemoryMetrics.LEVELS[2]);
+            });
     Arrays.asList(STORAGE_ENGINE_WRITE_MEMTABLE, STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO)
         .forEach(
             name ->
