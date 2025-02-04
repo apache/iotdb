@@ -107,6 +107,17 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
             Tag.LEVEL.toString(),
             GlobalMemoryMetrics.LEVELS[3])
         .set(config.getMemtableMemoryManager().getTotalMemorySizeInBytes());
+    metricService.createAutoGauge(
+        Metric.MEMORY_ACTUAL_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getMemtableMemoryManager(),
+        MemoryManager::getUsedMemorySizeInBytes,
+        Tag.NAME.toString(),
+        STORAGE_ENGINE_WRITE_MEMTABLE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[3]);
     metricService
         .getOrCreateGauge(
             Metric.MEMORY_THRESHOLD_SIZE.toString(),
@@ -190,16 +201,26 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
             });
     Arrays.asList(STORAGE_ENGINE_WRITE_MEMTABLE, STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO)
         .forEach(
-            name ->
-                metricService.remove(
-                    MetricType.GAUGE,
-                    Metric.MEMORY_THRESHOLD_SIZE.toString(),
-                    Tag.NAME.toString(),
-                    name,
-                    Tag.TYPE.toString(),
-                    GlobalMemoryMetrics.ON_HEAP,
-                    Tag.LEVEL.toString(),
-                    GlobalMemoryMetrics.LEVELS[3]));
+            name -> {
+              metricService.remove(
+                  MetricType.GAUGE,
+                  Metric.MEMORY_THRESHOLD_SIZE.toString(),
+                  Tag.NAME.toString(),
+                  name,
+                  Tag.TYPE.toString(),
+                  GlobalMemoryMetrics.ON_HEAP,
+                  Tag.LEVEL.toString(),
+                  GlobalMemoryMetrics.LEVELS[3]);
+              metricService.remove(
+                  MetricType.AUTO_GAUGE,
+                  Metric.MEMORY_ACTUAL_SIZE.toString(),
+                  Tag.NAME.toString(),
+                  name,
+                  Tag.TYPE.toString(),
+                  GlobalMemoryMetrics.ON_HEAP,
+                  Tag.LEVEL.toString(),
+                  GlobalMemoryMetrics.LEVELS[3]);
+            });
     Arrays.asList(
             STORAGE_ENGINE_WRITE_MEMTABLE_DEVICE_PATH_CACHE,
             STORAGE_ENGINE_WRITE_MEMTABLE_BUFFERED_ARRAYS,

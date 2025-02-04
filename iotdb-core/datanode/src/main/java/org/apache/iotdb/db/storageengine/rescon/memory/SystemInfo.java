@@ -53,7 +53,7 @@ public class SystemInfo {
   private long totalStorageGroupMemCost = 0L;
   private volatile boolean rejected = false;
 
-  private long memorySizeForMemtable;
+  private MemoryBlock memtableMemoryBlock;
   private long memorySizeForWalBufferQueue;
   private final Map<DataRegionInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
 
@@ -71,8 +71,8 @@ public class SystemInfo {
 
   private final ExecutorService flushTaskSubmitThreadPool =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.FLUSH_TASK_SUBMIT.getName());
-  private double FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
-  private double REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
+  private double FLUSH_THRESHOLD;
+  private double REJECT_THRESHOLD;
 
   private volatile boolean isEncodingFasterThanIo = true;
 
@@ -122,14 +122,14 @@ public class SystemInfo {
           REJECT_THRESHOLD);
       rejected = true;
       if (chooseMemTablesToMarkFlush(tsFileProcessor)) {
-        if (totalStorageGroupMemCost < memorySizeForMemtable) {
+        if (totalStorageGroupMemCost < memtableMemoryBlock.getMaxMemorySizeInByte()) {
           return true;
         } else {
           throw new WriteProcessRejectException(
               "Total database MemCost "
                   + totalStorageGroupMemCost
                   + " is over than memorySizeForWriting "
-                  + memorySizeForMemtable);
+                  + memtableMemoryBlock.getMaxMemorySizeInByte());
         }
       } else {
         return false;
@@ -337,14 +337,15 @@ public class SystemInfo {
   }
 
   public void allocateWriteMemory() {
-    memorySizeForMemtable = config.getMemtableMemoryManager().getTotalMemorySizeInBytes();
+    memtableMemoryBlock =
+        config.getMemtableMemoryManager().forceAllocate("Total", MemoryBlockType.FUNCTION);
     compactionMemoryBlock =
         config.getCompactionMemoryManager().forceAllocate("Total", MemoryBlockType.FUNCTION);
     memorySizeForWalBufferQueue = config.getWalBufferQueueManager().getTotalMemorySizeInBytes();
     directBufferMemoryBlock =
         config.getDirectBufferMemoryManager().forceAllocate("Total", MemoryBlockType.FUNCTION);
-    FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
-    REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
+    FLUSH_THRESHOLD = memtableMemoryBlock.getMaxMemorySizeInByte() * config.getFlushProportion();
+    REJECT_THRESHOLD = memtableMemoryBlock.getMaxMemorySizeInByte() * config.getRejectProportion();
     WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
     WritingMetrics.getInstance().recordRejectThreshold(REJECT_THRESHOLD);
     WritingMetrics.getInstance().recordWALQueueMaxMemorySize(memorySizeForWalBufferQueue);
@@ -459,18 +460,28 @@ public class SystemInfo {
   }
 
   public synchronized void applyTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
-    memorySizeForMemtable -= estimatedTemporaryMemSize;
-    FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
-    REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
+    if (memtableMemoryBlock.allocate(estimatedTemporaryMemSize)) {
+      logger.error(
+          String.format(
+              "Failed to allocate %d bytes memory for flush, "
+                  + "total memory budget for memtable module is %d bytes, %d bytes is used",
+              estimatedTemporaryMemSize,
+              memtableMemoryBlock.getMaxMemorySizeInByte(),
+              memtableMemoryBlock.getMemoryUsageInBytes()));
+    }
+    FLUSH_THRESHOLD = memtableMemoryBlock.getRemainedMemoryInBytes() * config.getFlushProportion();
+    REJECT_THRESHOLD =
+        memtableMemoryBlock.getRemainedMemoryInBytes() * config.getRejectProportion();
     WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
     WritingMetrics.getInstance().recordRejectThreshold(REJECT_THRESHOLD);
     WritingMetrics.getInstance().recordWALQueueMaxMemorySize(memorySizeForWalBufferQueue);
   }
 
   public synchronized void releaseTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
-    memorySizeForMemtable += estimatedTemporaryMemSize;
-    FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
-    REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
+    memtableMemoryBlock.release(estimatedTemporaryMemSize);
+    FLUSH_THRESHOLD = memtableMemoryBlock.getRemainedMemoryInBytes() * config.getFlushProportion();
+    REJECT_THRESHOLD =
+        memtableMemoryBlock.getRemainedMemoryInBytes() * config.getRejectProportion();
     WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
     WritingMetrics.getInstance().recordRejectThreshold(REJECT_THRESHOLD);
     WritingMetrics.getInstance().recordWALQueueMaxMemorySize(memorySizeForWalBufferQueue);
