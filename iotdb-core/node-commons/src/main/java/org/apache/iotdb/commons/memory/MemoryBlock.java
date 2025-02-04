@@ -58,6 +58,7 @@ public class MemoryBlock extends IMemoryBlock {
           result.set(true);
           return memCost + sizeInByte;
         });
+    LOGGER.error(this.toString());
     return result.get();
   }
 
@@ -73,6 +74,7 @@ public class MemoryBlock extends IMemoryBlock {
       Thread.sleep(TimeUnit.MILLISECONDS.toMillis(timeInterval));
       originSize = memoryUsageInBytes.get();
     }
+    LOGGER.error(this.toString());
     return true;
   }
 
