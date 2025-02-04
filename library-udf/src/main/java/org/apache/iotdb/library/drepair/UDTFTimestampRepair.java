@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.library.drepair;
 
+import org.apache.iotdb.library.drepair.util.TimesegmentRepair;
 import org.apache.iotdb.library.drepair.util.TimestampRepair;
-import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -31,33 +31,24 @@ import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrat
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.type.Type;
 
-/** This function is used for timestamp repair. */
 public class UDTFTimestampRepair implements UDTF {
   String intervalMethod;
-  long interval;
-  long intervalMode;
+  Boolean segmentation;
+  int interval;
+  int intervalMode;
+  int num_interval;
+  long[] timestamp;
+  double[] value;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64);
-
-    String intervalString = validator.getParameters().getStringOrDefault("interval", null);
-    if (intervalString != null) {
-      try {
-        interval = Long.parseLong(intervalString);
-      } catch (NumberFormatException e) {
-        try {
-          interval = Util.parseTime(intervalString, validator.getParameters());
-        } catch (Exception ex) {
-          throw new UDFException("Invalid time format for interval.");
-        }
-      }
-      validator.validate(
-          x -> interval > 0,
-          "Invalid time unit input. Supported units are ns, us, ms, s, m, h, d.");
-    }
+        .validateInputSeriesDataType(0, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64)
+        .validate(
+            x -> (Integer) x >= 0,
+            "Interval should be a positive integer.",
+            validator.getParameters().getIntOrDefault("interval", 0));
   }
 
   @Override
@@ -66,39 +57,44 @@ public class UDTFTimestampRepair implements UDTF {
     configurations
         .setAccessStrategy(new SlidingSizeWindowAccessStrategy(Integer.MAX_VALUE))
         .setOutputDataType(parameters.getDataType(0));
-
+    segmentation = parameters.getBooleanOrDefault("Segment", false);
     intervalMethod = parameters.getStringOrDefault("method", "Median");
-    String intervalString = parameters.getStringOrDefault("interval", null);
-
-    if (intervalString != null) {
-      try {
-        interval = Long.parseLong(intervalString);
-      } catch (NumberFormatException e) {
-        interval = Util.parseTime(intervalString, parameters);
+    interval = parameters.getIntOrDefault("interval", 0);
+    num_interval = parameters.getIntOrDefault("num_interval", 1);
+    if (segmentation) {
+      if (num_interval > 10) {
+        throw new UDFException("The calculation interval is too large, causing slow execution!");
+      } else if (num_interval <= 0) {
+        throw new UDFException("Error num_interval!");
       }
     } else {
-      interval = 0;
-    }
-
-    if (interval > 0) {
-      intervalMode = interval;
-    } else if ("Median".equalsIgnoreCase(intervalMethod)) {
-      intervalMode = -1L;
-    } else if ("Mode".equalsIgnoreCase(intervalMethod)) {
-      intervalMode = -2L;
-    } else if ("Cluster".equalsIgnoreCase(intervalMethod)) {
-      intervalMode = -3L;
-    } else {
-      throw new UDFException("Illegal method.");
+      if (interval > 0) {
+        intervalMode = interval;
+      } else if ("Median".equalsIgnoreCase(intervalMethod)) {
+        intervalMode = -1;
+      } else if ("Mode".equalsIgnoreCase(intervalMethod)) {
+        intervalMode = -2;
+      } else if ("Cluster".equalsIgnoreCase(intervalMethod)) {
+        intervalMode = -3;
+      } else {
+        throw new UDFException("Illegal method.");
+      }
     }
   }
 
   @Override
   public void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
-    TimestampRepair ts = new TimestampRepair(rowWindow.getRowIterator(), intervalMode, 2);
-    ts.dpRepair();
-    long[] timestamp = ts.getRepaired();
-    double[] value = ts.getRepairedValue();
+    if (segmentation) {
+      TimesegmentRepair tseg = new TimesegmentRepair(rowWindow.getRowIterator(), this.num_interval);
+      tseg.exactRepair();
+      timestamp = tseg.getRepaired();
+      value = tseg.getRepairedValue();
+    } else {
+      TimestampRepair ts = new TimestampRepair(rowWindow.getRowIterator(), intervalMode, 2);
+      ts.dpRepair();
+      timestamp = ts.getRepaired();
+      value = ts.getRepairedValue();
+    }
     switch (rowWindow.getDataType(0)) {
       case DOUBLE:
         for (int i = 0; i < timestamp.length; i++) {
@@ -120,12 +116,6 @@ public class UDTFTimestampRepair implements UDTF {
           collector.putLong(timestamp[i], (long) value[i]);
         }
         break;
-      case DATE:
-      case TIMESTAMP:
-      case BLOB:
-      case BOOLEAN:
-      case TEXT:
-      case STRING:
       default:
         throw new UDFException("");
     }
