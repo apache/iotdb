@@ -21,10 +21,15 @@ package org.apache.iotdb.commons.memory;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class IMemoryBlock implements AutoCloseable {
+  private static final Logger LOGGER = LoggerFactory.getLogger(MemoryBlock.class);
+
   /** The memory manager that manages this memory block */
   protected MemoryManager memoryManager;
 
@@ -90,6 +95,7 @@ public abstract class IMemoryBlock implements AutoCloseable {
 
   /** Get the memory usage in byte of this memory block */
   public long getMemoryUsageInBytes() {
+    LOGGER.error(this.toString());
     return memoryUsageInBytes.get();
   }
 
