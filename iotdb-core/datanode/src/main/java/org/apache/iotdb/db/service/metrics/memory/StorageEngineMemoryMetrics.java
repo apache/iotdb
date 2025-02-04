@@ -94,7 +94,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
         Tag.TYPE.toString(),
         GlobalMemoryMetrics.ON_HEAP,
         Tag.LEVEL.toString(),
-        GlobalMemoryMetrics.LEVELS[1]);
+        GlobalMemoryMetrics.LEVELS[2]);
     // The write memory of storage engine divided into MemTable and TimePartitionInfo
     metricService
         .getOrCreateGauge(
