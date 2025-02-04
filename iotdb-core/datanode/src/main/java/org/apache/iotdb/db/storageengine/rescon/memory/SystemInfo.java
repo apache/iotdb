@@ -54,13 +54,12 @@ public class SystemInfo {
   private volatile boolean rejected = false;
 
   private long memorySizeForMemtable;
-  private long memorySizeForCompaction;
   private long memorySizeForWalBufferQueue;
   private final Map<DataRegionInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
 
   private long flushingMemTablesCost = 0L;
   private MemoryBlock directBufferMemoryBlock;
-  private final AtomicLong compactionMemoryCost = new AtomicLong(0L);
+  private MemoryBlock compactionMemoryBlock;
   private final AtomicLong seqInnerSpaceCompactionMemoryCost = new AtomicLong(0L);
   private final AtomicLong unseqInnerSpaceCompactionMemoryCost = new AtomicLong(0L);
   private final AtomicLong crossSpaceCompactionMemoryCost = new AtomicLong(0L);
@@ -267,75 +266,29 @@ public class SystemInfo {
     }
   }
 
-  public boolean addCompactionMemoryCost(
-      CompactionTaskType taskType, long memoryCost, long timeOutInSecond)
-      throws InterruptedException, CompactionMemoryNotEnoughException {
-    if (memoryCost > memorySizeForCompaction) {
-      // required memory cost is greater than the total memory budget for compaction
-      throw new CompactionMemoryNotEnoughException(
-          String.format(
-              "Required memory cost %d bytes is greater than "
-                  + "the total memory budget for compaction %d bytes",
-              memoryCost, memorySizeForCompaction));
-    }
-    long startTime = System.currentTimeMillis();
-    long originSize = this.compactionMemoryCost.get();
-    while (originSize + memoryCost > memorySizeForCompaction
-        || !compactionMemoryCost.compareAndSet(originSize, originSize + memoryCost)) {
-      if (System.currentTimeMillis() - startTime >= timeOutInSecond * 1000L) {
-        throw new CompactionMemoryNotEnoughException(
-            String.format(
-                "Failed to allocate %d bytes memory for compaction after %d seconds, "
-                    + "total memory budget for compaction module is %d bytes, %d bytes is used",
-                memoryCost, timeOutInSecond, memorySizeForCompaction, originSize));
-      }
-      Thread.sleep(100);
-      originSize = this.compactionMemoryCost.get();
-    }
-    switch (taskType) {
-      case INNER_SEQ:
-        seqInnerSpaceCompactionMemoryCost.addAndGet(memoryCost);
-        break;
-      case INNER_UNSEQ:
-        unseqInnerSpaceCompactionMemoryCost.addAndGet(memoryCost);
-        break;
-      case CROSS:
-        crossSpaceCompactionMemoryCost.addAndGet(memoryCost);
-        break;
-      case SETTLE:
-        settleCompactionMemoryCost.addAndGet(memoryCost);
-        break;
-      default:
-    }
-    return true;
-  }
-
   public void addCompactionMemoryCost(
       CompactionTaskType taskType, long memoryCost, boolean waitUntilAcquired)
       throws CompactionMemoryNotEnoughException, InterruptedException {
-    if (memoryCost > memorySizeForCompaction) {
+    if (memoryCost > compactionMemoryBlock.getMaxMemorySizeInByte()) {
       // required memory cost is greater than the total memory budget for compaction
       throw new CompactionMemoryNotEnoughException(
           String.format(
               "Required memory cost %d bytes is greater than "
                   + "the total memory budget for compaction %d bytes",
-              memoryCost, memorySizeForCompaction));
+              memoryCost, compactionMemoryBlock.getMaxMemorySizeInByte()));
     }
-    long originSize = this.compactionMemoryCost.get();
-    while (true) {
-      boolean canUpdate = originSize + memoryCost <= memorySizeForCompaction;
-      if (!canUpdate && !waitUntilAcquired) {
-        throw new CompactionMemoryNotEnoughException(
-            String.format(
-                "Failed to allocate %d bytes memory for compaction, "
-                    + "total memory budget for compaction module is %d bytes, %d bytes is used",
-                memoryCost, memorySizeForCompaction, originSize));
-      }
-      if (canUpdate && compactionMemoryCost.compareAndSet(originSize, originSize + memoryCost)) {
-        break;
-      }
-      Thread.sleep(TimeUnit.MILLISECONDS.toMillis(100));
-      originSize = this.compactionMemoryCost.get();
+    boolean allocateResult =
+        waitUntilAcquired
+            ? compactionMemoryBlock.allocateUntilAvailable(memoryCost, 100)
+            : compactionMemoryBlock.allocate(memoryCost);
+    if (!allocateResult) {
+      throw new CompactionMemoryNotEnoughException(
+          String.format(
+              "Failed to allocate %d bytes memory for compaction, "
+                  + "total memory budget for compaction module is %d bytes, %d bytes is used",
+              memoryCost,
+              compactionMemoryBlock.getMaxMemorySizeInByte(),
+              compactionMemoryBlock.getMemoryUsageInBytes()));
     }
     switch (taskType) {
       case INNER_SEQ:
@@ -356,7 +309,7 @@ public class SystemInfo {
 
   public synchronized void resetCompactionMemoryCost(
       CompactionTaskType taskType, long compactionMemoryCost) {
-    this.compactionMemoryCost.addAndGet(-compactionMemoryCost);
+    this.compactionMemoryBlock.release(compactionMemoryCost);
     switch (taskType) {
       case INNER_SEQ:
         seqInnerSpaceCompactionMemoryCost.addAndGet(-compactionMemoryCost);
@@ -380,12 +333,13 @@ public class SystemInfo {
   }
 
   public long getMemorySizeForCompaction() {
-    return memorySizeForCompaction;
+    return compactionMemoryBlock.getMaxMemorySizeInByte();
   }
 
   public void allocateWriteMemory() {
     memorySizeForMemtable = config.getMemtableMemoryManager().getTotalMemorySizeInBytes();
-    memorySizeForCompaction = config.getCompactionMemoryManager().getTotalMemorySizeInBytes();
+    compactionMemoryBlock =
+        config.getCompactionMemoryManager().forceAllocate("Total", MemoryBlockType.FUNCTION);
     memorySizeForWalBufferQueue = config.getWalBufferQueueManager().getTotalMemorySizeInBytes();
     directBufferMemoryBlock =
         config.getDirectBufferMemoryManager().forceAllocate("Total", MemoryBlockType.FUNCTION);
@@ -398,7 +352,7 @@ public class SystemInfo {
 
   @TestOnly
   public void setMemorySizeForCompaction(long size) {
-    memorySizeForCompaction = size;
+    compactionMemoryBlock.setMaxMemorySizeInByte(size);
   }
 
   @TestOnly
@@ -410,8 +364,8 @@ public class SystemInfo {
     return totalFileLimitForCompactionTask;
   }
 
-  public AtomicLong getCompactionMemoryCost() {
-    return compactionMemoryCost;
+  public MemoryBlock getCompactionMemoryBlock() {
+    return compactionMemoryBlock;
   }
 
   public AtomicLong getSeqInnerSpaceCompactionMemoryCost() {

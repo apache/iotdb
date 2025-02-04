@@ -62,8 +62,28 @@ public class MemoryBlock extends IMemoryBlock {
   }
 
   @Override
+  public boolean allocateUntilAvailable(long sizeInByte, long timeInterval)
+      throws InterruptedException {
+    long originSize = memoryUsageInBytes.get();
+    while (true) {
+      boolean canUpdate = originSize + sizeInByte <= maxMemorySizeInByte;
+      if (canUpdate && memoryUsageInBytes.compareAndSet(originSize, originSize + sizeInByte)) {
+        break;
+      }
+      Thread.sleep(TimeUnit.MILLISECONDS.toMillis(timeInterval));
+      originSize = memoryUsageInBytes.get();
+    }
+    return true;
+  }
+
+  @Override
   public void release(long sizeInByte) {
     memoryUsageInBytes.addAndGet(-sizeInByte);
+  }
+
+  @Override
+  public void setMemoryUsageInBytes(long memoryUsageInBytes) {
+    this.memoryUsageInBytes.set(memoryUsageInBytes);
   }
 
   @Override

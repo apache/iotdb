@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.memory;
 
+import org.apache.iotdb.commons.utils.TestOnly;
+
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -53,11 +55,23 @@ public abstract class IMemoryBlock implements AutoCloseable {
   public abstract boolean allocate(final long sizeInByte);
 
   /**
+   * Allocate memory managed by this memory block until the required memory is available
+   *
+   * @param sizeInByte the size of memory to be allocated, should positive
+   * @param timeInterval the time interval to wait for memory to be available
+   */
+  public abstract boolean allocateUntilAvailable(final long sizeInByte, long timeInterval)
+      throws InterruptedException;
+
+  /**
    * Try to record memory managed by this memory block
    *
    * @param sizeInByte the size of memory to be released, should positive
    */
   public abstract void release(final long sizeInByte);
+
+  @TestOnly
+  public abstract void setMemoryUsageInBytes(final long memoryUsageInBytes);
 
   /** Update maximum memory size in byte of this memory block */
   public void setMaxMemorySizeInByte(final long maxMemorySizeInByte) {
