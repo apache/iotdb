@@ -59,7 +59,7 @@ public class PrimitiveArrayManager {
 
   /** threshold total size of arrays for all data types */
   private static final double POOLED_ARRAYS_MEMORY_THRESHOLD =
-      POOLED_ARRAYS_MEMORY_BLOCK.getMaxMemorySizeInByte() / AMPLIFICATION_FACTOR;
+      POOLED_ARRAYS_MEMORY_BLOCK.getTotalMemorySizeInBytes() / AMPLIFICATION_FACTOR;
 
   /** TSDataType#serialize() -> ArrayDeque<Array>, VECTOR and UNKNOWN are ignored */
   private static final ArrayDeque[] POOLED_ARRAYS = new ArrayDeque[TSDataType.values().length];

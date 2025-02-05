@@ -128,7 +128,7 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
     return "LoadTsFileDataCacheMemoryBlock{"
         + "limitedMemorySizeInBytes="
         + limitedMemorySizeInBytes.get()
-        + ", memoryUsageInBytes="
+        + ", usedMemoryInBytes="
         + memoryUsageInBytes.get()
         + '}';
   }

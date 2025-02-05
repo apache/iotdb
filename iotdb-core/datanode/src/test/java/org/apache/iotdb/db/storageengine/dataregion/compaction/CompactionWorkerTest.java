@@ -55,13 +55,13 @@ public class CompactionWorkerTest {
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     SystemInfo.getInstance().getCompactionFileNumCost().set(0);
-    SystemInfo.getInstance().getCompactionMemoryBlock().setMemoryUsageInBytes(0);
+    SystemInfo.getInstance().getCompactionMemoryBlock().setUsedMemoryInBytes(0);
   }
 
   @After
   public void teardown() {
     SystemInfo.getInstance().getCompactionFileNumCost().set(0);
-    SystemInfo.getInstance().getCompactionMemoryBlock().setMemoryUsageInBytes(0);
+    SystemInfo.getInstance().getCompactionMemoryBlock().setUsedMemoryInBytes(0);
   }
 
   @Test
@@ -110,7 +110,7 @@ public class CompactionWorkerTest {
     thread.start();
     thread.join(TimeUnit.SECONDS.toMillis(2));
     Assert.assertEquals(
-        0, SystemInfo.getInstance().getCompactionMemoryBlock().getMemoryUsageInBytes());
+        0, SystemInfo.getInstance().getCompactionMemoryBlock().getUsedMemoryInBytes());
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
     for (TsFileResource tsFileResource : sequenceFiles) {
       Assert.assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());
@@ -167,7 +167,7 @@ public class CompactionWorkerTest {
       thread.start();
       thread.join(TimeUnit.SECONDS.toMillis(2));
       Assert.assertEquals(
-          0, SystemInfo.getInstance().getCompactionMemoryBlock().getMemoryUsageInBytes());
+          0, SystemInfo.getInstance().getCompactionMemoryBlock().getUsedMemoryInBytes());
       Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
       for (TsFileResource tsFileResource : sequenceFiles) {
         Assert.assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());
@@ -222,7 +222,7 @@ public class CompactionWorkerTest {
     thread.start();
     thread.join(TimeUnit.SECONDS.toMillis(2));
     Assert.assertEquals(
-        0, SystemInfo.getInstance().getCompactionMemoryBlock().getMemoryUsageInBytes());
+        0, SystemInfo.getInstance().getCompactionMemoryBlock().getUsedMemoryInBytes());
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
     for (TsFileResource tsFileResource : sequenceFiles) {
       Assert.assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());
@@ -262,7 +262,7 @@ public class CompactionWorkerTest {
     thread.start();
     thread.join(TimeUnit.SECONDS.toMillis(2));
     Assert.assertEquals(
-        0, SystemInfo.getInstance().getCompactionMemoryBlock().getMemoryUsageInBytes());
+        0, SystemInfo.getInstance().getCompactionMemoryBlock().getUsedMemoryInBytes());
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
     for (TsFileResource tsFileResource : sequenceFiles) {
       Assert.assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());

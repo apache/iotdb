@@ -40,11 +40,11 @@ public abstract class IMemoryBlock implements AutoCloseable {
   /** The flag that indicates whether this memory block is released */
   protected volatile boolean isReleased = false;
 
-  /** The maximum memory size in byte of this memory block */
-  protected long maxMemorySizeInByte = 0;
+  /** The total memory size in byte of this memory block */
+  protected long totalMemorySizeInBytes = 0;
 
   /** The memory usage in byte of this memory block */
-  protected final AtomicLong memoryUsageInBytes = new AtomicLong(0);
+  protected final AtomicLong usedMemoryInBytes = new AtomicLong(0);
 
   /**
    * Allocate memory managed by this memory block
@@ -58,16 +58,9 @@ public abstract class IMemoryBlock implements AutoCloseable {
    * Allocate memory managed by this memory block until the required memory is available
    *
    * @param sizeInByte the size of memory to be allocated, should positive
+   * @param timeInMillis the time interval to wait for memory to be available
    */
-  public abstract boolean allocateUntilAvailable(final long sizeInByte) throws InterruptedException;
-
-  /**
-   * Allocate memory managed by this memory block until the required memory is available
-   *
-   * @param sizeInByte the size of memory to be allocated, should positive
-   * @param timeInterval the time interval to wait for memory to be available
-   */
-  public abstract boolean allocateUntilAvailable(final long sizeInByte, long timeInterval)
+  public abstract boolean allocateUntilAvailable(final long sizeInByte, long timeInMillis)
       throws InterruptedException;
 
   /**
@@ -80,24 +73,29 @@ public abstract class IMemoryBlock implements AutoCloseable {
   /**
    * Try to set memory usage in byte of this memory block (for test only)
    *
-   * @param memoryUsageInBytes the memory usage in byte to be set
+   * @param usedMemoryInBytes the memory usage in byte to be set
    */
   @TestOnly
-  public abstract void setMemoryUsageInBytes(final long memoryUsageInBytes);
+  public abstract void setUsedMemoryInBytes(final long usedMemoryInBytes);
+
+  /** Get the name of memory block */
+  public String getName() {
+    return name;
+  }
 
   /** Update maximum memory size in byte of this memory block */
-  public void setMaxMemorySizeInByte(final long maxMemorySizeInByte) {
-    this.maxMemorySizeInByte = maxMemorySizeInByte;
+  public void setTotalMemorySizeInBytes(final long totalMemorySizeInBytes) {
+    this.totalMemorySizeInBytes = totalMemorySizeInBytes;
   }
 
   /** Get the maximum memory size in byte of this memory block */
-  public long getMaxMemorySizeInByte() {
-    return maxMemorySizeInByte;
+  public long getTotalMemorySizeInBytes() {
+    return totalMemorySizeInBytes;
   }
 
   /** Get the memory usage in byte of this memory block */
-  public long getMemoryUsageInBytes() {
-    return memoryUsageInBytes.get();
+  public long getUsedMemoryInBytes() {
+    return usedMemoryInBytes.get();
   }
 
   /** Get whether this memory block is released */

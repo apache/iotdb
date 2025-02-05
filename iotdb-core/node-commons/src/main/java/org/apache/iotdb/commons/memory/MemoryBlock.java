@@ -32,7 +32,7 @@ public class MemoryBlock extends IMemoryBlock {
       final String name, final MemoryManager memoryManager, final long maxMemorySizeInByte) {
     this.name = name;
     this.memoryManager = memoryManager;
-    this.maxMemorySizeInByte = maxMemorySizeInByte;
+    this.totalMemorySizeInBytes = maxMemorySizeInByte;
     this.memoryBlockType = MemoryBlockType.NONE;
   }
 
@@ -43,16 +43,16 @@ public class MemoryBlock extends IMemoryBlock {
       final MemoryBlockType memoryBlockType) {
     this.name = name;
     this.memoryManager = memoryManager;
-    this.maxMemorySizeInByte = maxMemorySizeInByte;
+    this.totalMemorySizeInBytes = maxMemorySizeInByte;
     this.memoryBlockType = memoryBlockType;
   }
 
   @Override
   public boolean allocate(long sizeInByte) {
     AtomicBoolean result = new AtomicBoolean(false);
-    memoryUsageInBytes.updateAndGet(
+    usedMemoryInBytes.updateAndGet(
         memCost -> {
-          if (memCost + sizeInByte > maxMemorySizeInByte) {
+          if (memCost + sizeInByte > totalMemorySizeInBytes) {
             return memCost;
           }
           result.set(true);
@@ -62,44 +62,37 @@ public class MemoryBlock extends IMemoryBlock {
   }
 
   @Override
-  public boolean allocateUntilAvailable(long sizeInByte) throws InterruptedException {
-    long originSize = memoryUsageInBytes.get();
-    while (true) {
-      boolean canUpdate = originSize + sizeInByte <= maxMemorySizeInByte;
-      if (canUpdate && memoryUsageInBytes.compareAndSet(originSize, originSize + sizeInByte)) {
-        break;
-      }
-      synchronized (memoryUsageInBytes) {
-        memoryUsageInBytes.wait();
-      }
-      originSize = memoryUsageInBytes.get();
-    }
-    return true;
-  }
-
-  @Override
-  public boolean allocateUntilAvailable(long sizeInByte, long timeInterval)
+  public boolean allocateUntilAvailable(long sizeInByte, long timeInMillis)
       throws InterruptedException {
-    long originSize = memoryUsageInBytes.get();
+    long originSize = usedMemoryInBytes.get();
     while (true) {
-      boolean canUpdate = originSize + sizeInByte <= maxMemorySizeInByte;
-      if (canUpdate && memoryUsageInBytes.compareAndSet(originSize, originSize + sizeInByte)) {
+      boolean canUpdate = originSize + sizeInByte <= totalMemorySizeInBytes;
+      if (canUpdate && usedMemoryInBytes.compareAndSet(originSize, originSize + sizeInByte)) {
         break;
       }
-      Thread.sleep(TimeUnit.MILLISECONDS.toMillis(timeInterval));
-      originSize = memoryUsageInBytes.get();
+      Thread.sleep(TimeUnit.MILLISECONDS.toMillis(timeInMillis));
+      originSize = usedMemoryInBytes.get();
     }
     return true;
   }
 
   @Override
   public void release(long sizeInByte) {
-    memoryUsageInBytes.addAndGet(-sizeInByte);
+    usedMemoryInBytes.updateAndGet(
+        memCost -> {
+          if (sizeInByte > memCost) {
+            LOGGER.warn(
+                "The memory cost to be released is larger than the memory cost of memory block {}",
+                this);
+            return 0;
+          }
+          return memCost - sizeInByte;
+        });
   }
 
   @Override
-  public void setMemoryUsageInBytes(long memoryUsageInBytes) {
-    this.memoryUsageInBytes.set(memoryUsageInBytes);
+  public void setUsedMemoryInBytes(long usedMemoryInBytes) {
+    this.usedMemoryInBytes.set(usedMemoryInBytes);
   }
 
   @Override
@@ -111,10 +104,10 @@ public class MemoryBlock extends IMemoryBlock {
         + isReleased
         + ", memoryBlockType="
         + memoryBlockType
-        + ", maxMemorySizeInByte="
-        + maxMemorySizeInByte
-        + ", memoryUsageInBytes="
-        + memoryUsageInBytes
+        + ", totalMemorySizeInBytes="
+        + totalMemorySizeInBytes
+        + ", usedMemoryInBytes="
+        + usedMemoryInBytes
         + '}';
   }
 

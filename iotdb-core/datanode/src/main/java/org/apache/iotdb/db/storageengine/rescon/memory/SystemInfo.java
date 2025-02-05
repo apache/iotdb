@@ -209,7 +209,7 @@ public class SystemInfo {
   }
 
   public long getDirectBufferMemoryCost() {
-    return directBufferMemoryBlock.getMemoryUsageInBytes();
+    return directBufferMemoryBlock.getUsedMemoryInBytes();
   }
 
   public boolean addCompactionFileNum(int fileNum, long timeOutInSecond)
@@ -267,13 +267,13 @@ public class SystemInfo {
   public void addCompactionMemoryCost(
       CompactionTaskType taskType, long memoryCost, boolean waitUntilAcquired)
       throws CompactionMemoryNotEnoughException, InterruptedException {
-    if (memoryCost > compactionMemoryBlock.getMaxMemorySizeInByte()) {
+    if (memoryCost > compactionMemoryBlock.getTotalMemorySizeInBytes()) {
       // required memory cost is greater than the total memory budget for compaction
       throw new CompactionMemoryNotEnoughException(
           String.format(
               "Required memory cost %d bytes is greater than "
                   + "the total memory budget for compaction %d bytes",
-              memoryCost, compactionMemoryBlock.getMaxMemorySizeInByte()));
+              memoryCost, compactionMemoryBlock.getTotalMemorySizeInBytes()));
     }
     boolean allocateResult =
         waitUntilAcquired
@@ -285,8 +285,8 @@ public class SystemInfo {
               "Failed to allocate %d bytes memory for compaction, "
                   + "total memory budget for compaction module is %d bytes, %d bytes is used",
               memoryCost,
-              compactionMemoryBlock.getMaxMemorySizeInByte(),
-              compactionMemoryBlock.getMemoryUsageInBytes()));
+              compactionMemoryBlock.getTotalMemorySizeInBytes(),
+              compactionMemoryBlock.getUsedMemoryInBytes()));
     }
     switch (taskType) {
       case INNER_SEQ:
@@ -331,7 +331,7 @@ public class SystemInfo {
   }
 
   public long getMemorySizeForCompaction() {
-    return compactionMemoryBlock.getMaxMemorySizeInByte();
+    return compactionMemoryBlock.getTotalMemorySizeInBytes();
   }
 
   public void allocateWriteMemory() {
@@ -349,12 +349,12 @@ public class SystemInfo {
     WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
     WritingMetrics.getInstance().recordRejectThreshold(REJECT_THRESHOLD);
     WritingMetrics.getInstance()
-        .recordWALQueueMaxMemorySize(walBufferQueueMemoryBlock.getMaxMemorySizeInByte());
+        .recordWALQueueMaxMemorySize(walBufferQueueMemoryBlock.getTotalMemorySizeInBytes());
   }
 
   @TestOnly
   public void setMemorySizeForCompaction(long size) {
-    compactionMemoryBlock.setMaxMemorySizeInByte(size);
+    compactionMemoryBlock.setTotalMemorySizeInBytes(size);
   }
 
   @TestOnly
@@ -467,7 +467,7 @@ public class SystemInfo {
     WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
     WritingMetrics.getInstance().recordRejectThreshold(REJECT_THRESHOLD);
     WritingMetrics.getInstance()
-        .recordWALQueueMaxMemorySize(walBufferQueueMemoryBlock.getMaxMemorySizeInByte());
+        .recordWALQueueMaxMemorySize(walBufferQueueMemoryBlock.getTotalMemorySizeInBytes());
   }
 
   public synchronized void releaseTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
@@ -477,7 +477,7 @@ public class SystemInfo {
     WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
     WritingMetrics.getInstance().recordRejectThreshold(REJECT_THRESHOLD);
     WritingMetrics.getInstance()
-        .recordWALQueueMaxMemorySize(walBufferQueueMemoryBlock.getMaxMemorySizeInByte());
+        .recordWALQueueMaxMemorySize(walBufferQueueMemoryBlock.getTotalMemorySizeInBytes());
   }
 
   public long getTotalMemTableSize() {

@@ -160,7 +160,7 @@ public class TableDeviceSchemaCacheTest {
     MemoryManager memoryManager = config.getSchemaEngineMemoryManager();
     MemoryManager schemaCacheMemoryManager = config.getSchemaCacheMemoryManager();
     schemaCacheMemoryManager.clearAll();
-    memoryManager.removeChildMemoryManager("schemaCache");
+    memoryManager.releaseChildMemoryManager("schemaCache");
     schemaCacheMemoryManager = memoryManager.getOrCreateMemoryManager("schemaCache", size);
     config.setSchemaCacheMemoryManager(schemaCacheMemoryManager);
   }

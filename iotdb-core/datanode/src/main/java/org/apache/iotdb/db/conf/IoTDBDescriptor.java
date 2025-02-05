@@ -2257,7 +2257,7 @@ public class IoTDBDescriptor {
 
     String offHeapMemoryStr = System.getProperty("OFF_HEAP_MEMORY");
     MemoryManager offHeapMemoryManager =
-        globalMemoryManager.gerOrCreateMemoryManager(
+        globalMemoryManager.getOrCreateMemoryManager(
             "OffHeap", MemUtils.strToBytesCnt(offHeapMemoryStr), false);
     conf.setOffHeapMemoryManager(offHeapMemoryManager);
 
@@ -2970,7 +2970,7 @@ public class IoTDBDescriptor {
     long newSize =
         storageEngineMemoryManager.getTotalMemorySizeInBytes()
             + consensusMemoryManager.getTotalMemorySizeInBytes();
-    globalMemoryManager.removeChildMemoryManager("StorageEngine");
+    globalMemoryManager.releaseChildMemoryManager("StorageEngine");
     storageEngineMemoryManager.clearAll();
     // @Spricoder to find a better way
     consensusMemoryManager.setTotalMemorySizeInBytes(0);

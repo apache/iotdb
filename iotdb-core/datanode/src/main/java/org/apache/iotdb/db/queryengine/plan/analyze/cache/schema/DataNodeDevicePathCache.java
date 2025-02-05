@@ -47,10 +47,10 @@ public class DataNodeDevicePathCache {
             .getDevicePathCacheMemoryManager()
             .forceAllocate("DevicePathCache", MemoryBlockType.PERFORMANCE);
     // TODO @spricoder: later we can find a way to get the byte size of cache
-    devicePathCacheMemoryBlock.allocate(devicePathCacheMemoryBlock.getMaxMemorySizeInByte());
+    devicePathCacheMemoryBlock.allocate(devicePathCacheMemoryBlock.getTotalMemorySizeInBytes());
     devicePathCache =
         Caffeine.newBuilder()
-            .maximumWeight(devicePathCacheMemoryBlock.getMaxMemorySizeInByte())
+            .maximumWeight(devicePathCacheMemoryBlock.getTotalMemorySizeInBytes())
             .weigher(
                 (Weigher<String, PartialPath>) (key, val) -> (PartialPath.estimateSize(val) + 32))
             .build();

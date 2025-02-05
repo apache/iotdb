@@ -54,7 +54,7 @@ public class CompactionTaskQueueTest extends AbstractCompactionTest {
   @Before
   public void setup()
       throws IOException, InterruptedException, MetadataException, WriteProcessException {
-    SystemInfo.getInstance().getCompactionMemoryBlock().setMemoryUsageInBytes(0);
+    SystemInfo.getInstance().getCompactionMemoryBlock().setUsedMemoryInBytes(0);
     SystemInfo.getInstance().getCompactionFileNumCost().set(0);
     SystemInfo.getInstance().setMemorySizeForCompaction(2000);
     SystemInfo.getInstance().setTotalFileLimitForCompactionTask(50);
@@ -63,7 +63,7 @@ public class CompactionTaskQueueTest extends AbstractCompactionTest {
 
   @After
   public void teardown() throws StorageEngineException, IOException {
-    SystemInfo.getInstance().getCompactionMemoryBlock().setMemoryUsageInBytes(0);
+    SystemInfo.getInstance().getCompactionMemoryBlock().setUsedMemoryInBytes(0);
     SystemInfo.getInstance().getCompactionFileNumCost().set(0);
     SystemInfo.getInstance().setMemorySizeForCompaction(originalMemorySizeForCompaction);
     SystemInfo.getInstance().setTotalFileLimitForCompactionTask(originalFileNumLimitForCompaction);
@@ -81,7 +81,7 @@ public class CompactionTaskQueueTest extends AbstractCompactionTest {
     Assert.assertNotNull(task);
     releaseTaskOccupiedResources(task);
     Assert.assertEquals(
-        0, SystemInfo.getInstance().getCompactionMemoryBlock().getMemoryUsageInBytes());
+        0, SystemInfo.getInstance().getCompactionMemoryBlock().getUsedMemoryInBytes());
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
   }
 
@@ -120,7 +120,7 @@ public class CompactionTaskQueueTest extends AbstractCompactionTest {
       Thread.sleep(TimeUnit.MILLISECONDS.toMillis(100));
     }
     Assert.assertEquals(
-        0, SystemInfo.getInstance().getCompactionMemoryBlock().getMemoryUsageInBytes());
+        0, SystemInfo.getInstance().getCompactionMemoryBlock().getUsedMemoryInBytes());
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
     for (Thread thread : threadList) {
       thread.interrupt();
@@ -164,7 +164,7 @@ public class CompactionTaskQueueTest extends AbstractCompactionTest {
       Thread.sleep(TimeUnit.MILLISECONDS.toMillis(100));
     }
     Assert.assertEquals(
-        0, SystemInfo.getInstance().getCompactionMemoryBlock().getMemoryUsageInBytes());
+        0, SystemInfo.getInstance().getCompactionMemoryBlock().getUsedMemoryInBytes());
     Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
     for (Thread thread : threadList) {
       thread.interrupt();

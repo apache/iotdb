@@ -59,7 +59,7 @@ public class MemoryManager {
   private final Map<String, MemoryManager> children = new ConcurrentHashMap<>();
 
   /** The allocated memory blocks of this memory manager */
-  private final Set<MemoryBlock> allocatedMemoryBlocks = new HashSet<>();
+  private final Set<IMemoryBlock> allocatedMemoryBlocks = new HashSet<>();
 
   private MemoryManager(
       String name, MemoryManager parentMemoryManager, long totalMemorySizeInBytes) {
@@ -77,7 +77,7 @@ public class MemoryManager {
     this.enable = enable;
   }
 
-  // region memory block management
+  // region The Methods Of MemoryBlock Management
 
   /**
    * Try to force allocate memory block with specified size in bytes
@@ -87,7 +87,7 @@ public class MemoryManager {
    * @param type the type of memory block
    * @return the memory block if success, otherwise throw MemoryException
    */
-  public MemoryBlock forceAllocate(String name, long sizeInBytes, MemoryBlockType type) {
+  public IMemoryBlock forceAllocate(String name, long sizeInBytes, MemoryBlockType type) {
     if (!enable) {
       return registerMemoryBlock(name, sizeInBytes, type);
     }
@@ -122,8 +122,9 @@ public class MemoryManager {
    * @param name the name of memory block
    * @param memoryBlockType the type of memory block
    */
-  public MemoryBlock forceAllocate(String name, MemoryBlockType memoryBlockType) {
-    return forceAllocate(name, totalMemorySizeInBytes, memoryBlockType);
+  public IMemoryBlock forceAllocate(String name, MemoryBlockType memoryBlockType) {
+    return forceAllocate(
+        name, totalMemorySizeInBytes - allocatedMemorySizeInBytes, memoryBlockType);
   }
 
   /**
@@ -135,7 +136,7 @@ public class MemoryManager {
    * @param memoryBlockType the type of memory block
    * @return the memory block if success, otherwise null
    */
-  public synchronized MemoryBlock forceAllocateIfSufficient(
+  public synchronized IMemoryBlock forceAllocateIfSufficient(
       String name, long sizeInBytes, float usedThreshold, MemoryBlockType memoryBlockType) {
     if (usedThreshold < 0.0f || usedThreshold > 1.0f) {
       return null;
@@ -170,13 +171,13 @@ public class MemoryManager {
    * @param type the type of memory block
    * @return the memory block if success, otherwise null
    */
-  public synchronized MemoryBlock tryAllocate(
+  public synchronized IMemoryBlock tryAllocate(
       String name,
       long sizeInBytes,
       LongUnaryOperator customAllocateStrategy,
       MemoryBlockType type) {
     if (!enable) {
-      return new MemoryBlock(name, this, sizeInBytes);
+      return registerMemoryBlock(name, sizeInBytes, type);
     }
 
     if (totalMemorySizeInBytes - allocatedMemorySizeInBytes >= sizeInBytes) {
@@ -223,9 +224,9 @@ public class MemoryManager {
    * @param type
    * @return the memory block
    */
-  private MemoryBlock registerMemoryBlock(String name, long sizeInBytes, MemoryBlockType type) {
+  private IMemoryBlock registerMemoryBlock(String name, long sizeInBytes, MemoryBlockType type) {
     allocatedMemorySizeInBytes += sizeInBytes;
-    final MemoryBlock memoryBlock = new MemoryBlock(name, this, sizeInBytes, type);
+    final IMemoryBlock memoryBlock = new MemoryBlock(name, this, sizeInBytes, type);
     allocatedMemoryBlocks.add(memoryBlock);
     return memoryBlock;
   }
@@ -236,7 +237,7 @@ public class MemoryManager {
    * @param block the memory block to release
    */
   public synchronized void release(IMemoryBlock block) {
-    if (!enable || block == null || block.isReleased()) {
+    if (block == null || block.isReleased()) {
       return;
     }
     releaseWithOutNotify(block);
@@ -249,18 +250,23 @@ public class MemoryManager {
    * @param block the memory block to release
    */
   public synchronized void releaseWithOutNotify(IMemoryBlock block) {
-    if (!enable || block == null || block.isReleased()) {
+    if (block == null || block.isReleased()) {
       return;
     }
 
     block.markAsReleased();
-    allocatedMemorySizeInBytes -= block.getMemoryUsageInBytes();
+    allocatedMemorySizeInBytes -= block.getTotalMemorySizeInBytes();
     allocatedMemoryBlocks.remove(block);
+    try {
+      block.close();
+    } catch (Exception e) {
+      LOGGER.error("releaseWithOutNotify: failed to close memory block", e);
+    }
   }
 
   // endregion
 
-  // region memory manager management
+  // region The Methods Of MemoryManager Management
 
   /**
    * Try to create a new memory manager with specified name and total memory size in bytes, then put
@@ -268,25 +274,33 @@ public class MemoryManager {
    * existing one.
    *
    * @param name the name of memory manager
-   * @param totalMemorySizeInBytes the total memory size in bytes of memory manager
+   * @param sizeInBytes the total memory size in bytes of memory manager
    * @param enable whether memory management is enabled
    * @return the memory manager
    */
-  public MemoryManager gerOrCreateMemoryManager(
-      String name, long totalMemorySizeInBytes, boolean enable) {
-    MemoryManager result = new MemoryManager(name, this, totalMemorySizeInBytes, enable);
+  public synchronized MemoryManager getOrCreateMemoryManager(
+      String name, long sizeInBytes, boolean enable) {
+    if (this.enable
+        && sizeInBytes + this.allocatedMemorySizeInBytes > this.totalMemorySizeInBytes) {
+      LOGGER.warn(
+          "getOrCreateMemoryManager failed: total memory size {} bytes is less than allocated memory size {} bytes",
+          sizeInBytes,
+          allocatedMemorySizeInBytes);
+      return null;
+    }
     return children.compute(
         name,
         (managerName, manager) -> {
           if (manager != null) {
             LOGGER.warn(
-                "gerOrCreateMemoryManager failed: memory manager {} already exists, it's size is {}, enable is {}",
+                "getOrCreateMemoryManager failed: memory manager {} already exists, it's size is {}, enable is {}",
                 managerName,
                 manager.getTotalMemorySizeInBytes(),
                 manager.isEnable());
             return manager;
           } else {
-            return result;
+            allocatedMemorySizeInBytes += sizeInBytes;
+            return new MemoryManager(name, this, sizeInBytes, enable);
           }
         });
   }
@@ -300,8 +314,9 @@ public class MemoryManager {
    * @param totalMemorySizeInBytes the total memory size in bytes of memory manager
    * @return the memory manager
    */
-  public MemoryManager getOrCreateMemoryManager(String name, long totalMemorySizeInBytes) {
-    return gerOrCreateMemoryManager(name, totalMemorySizeInBytes, false);
+  public synchronized MemoryManager getOrCreateMemoryManager(
+      String name, long totalMemorySizeInBytes) {
+    return getOrCreateMemoryManager(name, totalMemorySizeInBytes, false);
   }
 
   /**
@@ -322,40 +337,57 @@ public class MemoryManager {
    * @return the memory manager if find it, otherwise null
    */
   private MemoryManager getMemoryManager(int index, String... names) {
-    if (index >= names.length) return null;
+    if (index >= names.length) return this;
     MemoryManager memoryManager = children.get(names[index]);
     if (memoryManager != null) {
-      return getMemoryManager(index + 1, names);
+      return memoryManager.getMemoryManager(index + 1, names);
     } else {
       return null;
     }
   }
 
   /**
-   * Remove the child memory manager with specified name
+   * Release the child memory manager with specified name
    *
    * @param memoryManagerName the name of memory manager
    */
-  public void removeChildMemoryManager(String memoryManagerName) {
-    children.remove(memoryManagerName);
+  public void releaseChildMemoryManager(String memoryManagerName) {
+    MemoryManager memoryManager = children.remove(memoryManagerName);
+    if (memoryManager != null) {
+      memoryManager.clearAll();
+      allocatedMemorySizeInBytes -= memoryManager.getTotalMemorySizeInBytes();
+    }
   }
 
   /** Clear all memory blocks and child memory managers */
-  public void clearAll() {
+  public synchronized void clearAll() {
     for (MemoryManager child : children.values()) {
       child.clearAll();
     }
     children.clear();
-    for (MemoryBlock block : allocatedMemoryBlocks) {
-      releaseWithOutNotify(block);
+    for (IMemoryBlock block : allocatedMemoryBlocks) {
+      if (block == null || block.isReleased()) {
+        return;
+      }
+
+      block.markAsReleased();
+      allocatedMemorySizeInBytes -= block.getTotalMemorySizeInBytes();
+
+      try {
+        block.close();
+      } catch (Exception e) {
+        LOGGER.error("releaseWithOutNotify: failed to close memory block", e);
+      }
     }
     allocatedMemoryBlocks.clear();
-    parentMemoryManager.removeChildMemoryManager(name);
+    if (parentMemoryManager != null) {
+      parentMemoryManager.releaseChildMemoryManager(name);
+    }
   }
 
   // endregion
 
-  // region attribute related
+  // region The Methods of Attribute
 
   public String getName() {
     return name;
@@ -387,7 +419,7 @@ public class MemoryManager {
   /** Get actual used memory size in bytes of memory manager */
   public long getUsedMemorySizeInBytes() {
     long memorySize =
-        allocatedMemoryBlocks.stream().mapToLong(MemoryBlock::getMemoryUsageInBytes).sum();
+        allocatedMemoryBlocks.stream().mapToLong(IMemoryBlock::getUsedMemoryInBytes).sum();
     for (MemoryManager child : children.values()) {
       memorySize += child.getUsedMemorySizeInBytes();
     }
@@ -396,7 +428,7 @@ public class MemoryManager {
 
   // endregion
 
-  // region global memory manager
+  // region The Methods of GlobalMemoryManager
 
   public static MemoryManager global() {
     return MemoryManagerHolder.GLOBAL;

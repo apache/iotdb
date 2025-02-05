@@ -268,7 +268,7 @@ public class WritingMetrics implements IMetricSet {
         Metric.WAL_QUEUE_MEM_COST.toString(),
         MetricLevel.IMPORTANT,
         systemInfo,
-        (s) -> s.getWalBufferQueueMemoryBlock().getMemoryUsageInBytes(),
+        (s) -> s.getWalBufferQueueMemoryBlock().getUsedMemoryInBytes(),
         Tag.NAME.toString(),
         WAL_QUEUE_CURRENT_MEM_COST);
   }
