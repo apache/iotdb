@@ -277,7 +277,7 @@ public class SystemInfo {
     }
     boolean allocateResult =
         waitUntilAcquired
-            ? compactionMemoryBlock.allocateUntilAvailable(memoryCost)
+            ? compactionMemoryBlock.allocateUntilAvailable(memoryCost, 100)
             : compactionMemoryBlock.allocate(memoryCost);
     if (!allocateResult) {
       throw new CompactionMemoryNotEnoughException(
