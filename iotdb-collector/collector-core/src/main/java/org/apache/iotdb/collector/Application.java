@@ -19,29 +19,77 @@
 
 package org.apache.iotdb.collector;
 
-import org.apache.iotdb.collector.config.CollectorConfig;
 import org.apache.iotdb.collector.config.CollectorDescriptor;
+import org.apache.iotdb.collector.service.ApiService;
+import org.apache.iotdb.collector.service.IService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.charset.Charset;
+import java.util.LinkedList;
 
 public class Application {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Application.class);
 
-  private static final CollectorConfig COLLECTOR_CONFIG =
-      CollectorDescriptor.getInstance().getConfig();
+  private final LinkedList<IService> services = new LinkedList<>();
+
+  private Application() {
+    services.add(new ApiService());
+
+    LOGGER.info(
+        "IoTDB-CollectorNode configuration: {}",
+        CollectorDescriptor.getInstance().getConfig().getConfigMessage());
+    LOGGER.info(
+        "Congratulations, IoTDB CollectorNode is set up successfully. Now, enjoy yourself!");
+    LOGGER.info("Default charset is: {}", Charset.defaultCharset().displayName());
+  }
 
   public static void main(String[] args) {
-    LOGGER.info("Environment variables: {}", CollectorConfig.getEnvironmentVariables());
-    LOGGER.info("Default charset is: {}", Charset.defaultCharset().displayName());
+    LOGGER.info("[Application] Starting ...");
+    final long startTime = System.currentTimeMillis();
 
     final Application application = new Application();
 
-    LOGGER.info("IoTDB-CollectorNode configuration: {}", COLLECTOR_CONFIG.getConfigMessage());
+    application.registerShutdownHook();
+    application.startServices();
+
     LOGGER.info(
-        "Congratulations, IoTDB CollectorNode is set up successfully. Now, enjoy yourself!");
+        "[Application] Successfully started in {}ms", System.currentTimeMillis() - startTime);
+  }
+
+  public void registerShutdownHook() {
+    Runtime.getRuntime()
+        .addShutdownHook(
+            new Thread(
+                () -> {
+                  LOGGER.warn("[Application] Exiting ...");
+
+                  for (final IService service : services) {
+                    try {
+                      service.stop();
+                    } catch (final Exception e) {
+                      LOGGER.warn(
+                          "[{}] Unexpected exception occurred when stopping: {}",
+                          service.name(),
+                          e.getMessage(),
+                          e);
+                    }
+                  }
+
+                  LOGGER.warn(
+                      "[Application] JVM report: total memory {}, free memory {}, used memory {}",
+                      Runtime.getRuntime().totalMemory(),
+                      Runtime.getRuntime().freeMemory(),
+                      Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
+                  LOGGER.warn("[Application] Exited.");
+                }));
+  }
+
+  public void startServices() {
+    for (final IService service : services) {
+      service.start();
+    }
   }
 }

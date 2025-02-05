@@ -157,10 +157,10 @@
                 </executions>
             </plugin>
             <!--
-        TODO: For some reason I am unable to prevent the generation of the default implementations in the "impl"
-        package. Also I was unable to prevent the maven-compiler-plugin from compiling them. So we're simply
-        excluding them from the jar as a measure of last resort.
-      -->
+            TODO: For some reason I am unable to prevent the generation of the default implementations in the "impl"
+            package. Also I was unable to prevent the maven-compiler-plugin from compiling them. So we're simply
+            excluding them from the jar as a measure of last resort.
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>

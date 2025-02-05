@@ -31,10 +31,6 @@ public class CollectorConfig {
 
   private int restServicePort = 17070;
 
-  public static String getEnvironmentVariables() {
-    return "";
-  }
-
   public int getRestServicePort() {
     return restServicePort;
   }

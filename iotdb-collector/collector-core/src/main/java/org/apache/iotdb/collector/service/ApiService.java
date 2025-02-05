@@ -20,7 +20,6 @@
 package org.apache.iotdb.collector.service;
 
 import org.apache.iotdb.collector.api.filter.ApiOriginFilter;
-import org.apache.iotdb.collector.config.CollectorConfig;
 import org.apache.iotdb.collector.config.CollectorDescriptor;
 
 import org.eclipse.jetty.server.Server;
@@ -34,24 +33,25 @@ import javax.servlet.DispatcherType;
 
 import java.util.EnumSet;
 
-public class ApiService {
+public class ApiService implements IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ApiService.class);
 
-  private static final CollectorConfig CONFIG = CollectorDescriptor.getInstance().getConfig();
+  private Server server;
 
-  private static Server server;
-
-  private ApiService() {}
-
+  @Override
   public void start() {
-    startNonSSL(CONFIG.getRestServicePort());
-  }
-
-  private void startNonSSL(final int restServicePort) {
-    server = new Server(restServicePort);
+    server = new Server(CollectorDescriptor.getInstance().getConfig().getRestServicePort());
     server.setHandler(constructServletContextHandler());
-    serverStart();
+    try {
+      server.start();
+      LOGGER.info(
+          "[ApiService] Started successfully. Listening on port {}",
+          CollectorDescriptor.getInstance().getConfig().getRestServicePort());
+    } catch (final Exception e) {
+      LOGGER.warn("[ApiService] Failed to start: {}", e.getMessage(), e);
+      server.destroy();
+    }
   }
 
   private ServletContextHandler constructServletContextHandler() {
@@ -72,23 +72,25 @@ public class ApiService {
     return context;
   }
 
-  private void serverStart() {
-    try {
-      server.start();
-    } catch (final Exception e) {
-      LOGGER.warn("ApiService failed to start: {}", e.getMessage());
-      server.destroy();
-    }
-    LOGGER.info("start ApiService successfully");
-  }
-
+  @Override
   public void stop() {
+    if (server == null) {
+      LOGGER.info("[ApiService] Not started yet. Nothing to stop.");
+      return;
+    }
+
     try {
       server.stop();
+      LOGGER.info("[ApiService] Stopped successfully.");
     } catch (final Exception e) {
-      LOGGER.warn("ApiService failed to stop: {}", e.getMessage());
+      LOGGER.warn("[ApiService] Failed to stop: {}", e.getMessage(), e);
     } finally {
       server.destroy();
     }
+  }
+
+  @Override
+  public String name() {
+    return "ApiService";
   }
 }
