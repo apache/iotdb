@@ -130,7 +130,8 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
             username,
             password,
             shouldReceiverConvertOnTypeMismatch,
-            loadTsFileStrategy);
+            loadTsFileStrategy,
+            loadTsFileValidation);
   }
 
   protected abstract IoTDBSyncClientManager constructClient(
@@ -145,7 +146,8 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
       final String username,
       final String password,
       final boolean shouldReceiverConvertOnTypeMismatch,
-      final String loadTsFileStrategy);
+      final String loadTsFileStrategy,
+      final boolean validateTsFile);
 
   @Override
   public void handshake() throws Exception {
