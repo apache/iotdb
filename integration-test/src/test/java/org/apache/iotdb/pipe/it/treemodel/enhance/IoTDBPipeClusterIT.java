@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.treemodel.comprehensive;
+package org.apache.iotdb.pipe.it.treemodel.enhance;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
@@ -34,7 +34,7 @@ import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2ComprehensiveTreeModel;
+import org.apache.iotdb.itbase.category.MultiClusterIT2TreeModelEnhance;
 import org.apache.iotdb.pipe.it.tablemodel.TableModelUtils;
 import org.apache.iotdb.pipe.it.treemodel.AbstractPipeDualAutoIT;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -60,7 +60,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2ComprehensiveTreeModel.class})
+@Category({MultiClusterIT2TreeModelEnhance.class})
 public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
 
   @Override

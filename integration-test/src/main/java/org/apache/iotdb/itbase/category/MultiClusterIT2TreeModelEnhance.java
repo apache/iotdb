@@ -19,4 +19,4 @@
 
 package org.apache.iotdb.itbase.category;
 
-public class MultiClusterIT2ComprehensiveTreeModel {}
+public class MultiClusterIT2TreeModelEnhance {}

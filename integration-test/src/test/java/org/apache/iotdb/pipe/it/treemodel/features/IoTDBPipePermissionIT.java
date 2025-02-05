@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.treemodel.comprehensive;
+package org.apache.iotdb.pipe.it.treemodel.features;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -27,7 +27,7 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2ComprehensiveTreeModel;
+import org.apache.iotdb.itbase.category.MultiClusterIT2TreeModelFeature;
 import org.apache.iotdb.pipe.it.treemodel.AbstractPipeDualManualIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -47,7 +47,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2ComprehensiveTreeModel.class})
+@Category({MultiClusterIT2TreeModelFeature.class})
 public class IoTDBPipePermissionIT extends AbstractPipeDualManualIT {
   @Override
   @Before

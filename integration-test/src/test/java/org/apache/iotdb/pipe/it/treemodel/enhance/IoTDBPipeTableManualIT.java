@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.treemodel.comprehensive;
+package org.apache.iotdb.pipe.it.treemodel.enhance;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -25,7 +25,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2ComprehensiveTreeModel;
+import org.apache.iotdb.itbase.category.MultiClusterIT2TreeModelEnhance;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.tablemodel.TableModelUtils;
 import org.apache.iotdb.pipe.it.treemodel.AbstractPipeDualManualIT;
@@ -43,7 +43,7 @@ import java.util.HashSet;
 import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2ComprehensiveTreeModel.class})
+@Category({MultiClusterIT2TreeModelEnhance.class})
 public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
   @Test
   public void testTableSync() throws Exception {

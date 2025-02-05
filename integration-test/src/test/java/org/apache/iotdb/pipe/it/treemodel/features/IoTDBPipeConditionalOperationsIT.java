@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.treemodel.dataprocess;
+package org.apache.iotdb.pipe.it.treemodel.features;
 
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2DataProcessTreeModel;
+import org.apache.iotdb.itbase.category.MultiClusterIT2TreeModelFeature;
 import org.apache.iotdb.pipe.it.treemodel.AbstractPipeDualAutoIT;
 
 import org.junit.Assert;
@@ -40,7 +40,7 @@ import java.util.List;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2DataProcessTreeModel.class})
+@Category({MultiClusterIT2TreeModelFeature.class})
 public class IoTDBPipeConditionalOperationsIT extends AbstractPipeDualAutoIT {
 
   @Test

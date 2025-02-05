@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.treemodel.dataprocess;
+package org.apache.iotdb.pipe.it.treemodel.features;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -27,7 +27,7 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2DataProcessTreeModel;
+import org.apache.iotdb.itbase.category.MultiClusterIT2TreeModelFeature;
 import org.apache.iotdb.pipe.it.treemodel.AbstractPipeDualAutoIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -43,7 +43,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2DataProcessTreeModel.class})
+@Category({MultiClusterIT2TreeModelFeature.class})
 public class IoTDBPipeWithLoadIT extends AbstractPipeDualAutoIT {
 
   @Before

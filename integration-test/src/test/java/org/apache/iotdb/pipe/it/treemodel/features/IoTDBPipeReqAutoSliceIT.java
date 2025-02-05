@@ -17,13 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.treemodel.comprehensive;
+package org.apache.iotdb.pipe.it.treemodel.features;
 
 import org.apache.iotdb.commons.utils.function.CheckedTriConsumer;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2ComprehensiveTreeModel;
+import org.apache.iotdb.itbase.category.MultiClusterIT2TreeModelFeature;
 import org.apache.iotdb.pipe.it.treemodel.AbstractPipeDualManualIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -47,7 +47,7 @@ import java.util.List;
 import java.util.Random;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2ComprehensiveTreeModel.class})
+@Category({MultiClusterIT2TreeModelFeature.class})
 public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualManualIT {
   private static final int generateDataSize = 10;
 

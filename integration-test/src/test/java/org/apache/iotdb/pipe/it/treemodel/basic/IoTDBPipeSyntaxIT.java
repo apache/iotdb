@@ -26,7 +26,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2BasicFunctionTreeModel;
+import org.apache.iotdb.itbase.category.MultiClusterIT2TreeModelFeature;
 import org.apache.iotdb.pipe.it.treemodel.AbstractPipeDualAutoIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -46,7 +46,7 @@ import java.util.Map;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2BasicFunctionTreeModel.class})
+@Category({MultiClusterIT2TreeModelFeature.class})
 public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
   @Test
   public void testValidPipeName() throws Exception {

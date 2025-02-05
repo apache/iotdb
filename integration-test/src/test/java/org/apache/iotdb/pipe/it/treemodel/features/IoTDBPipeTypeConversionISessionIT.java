@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.treemodel.dataprocess;
+package org.apache.iotdb.pipe.it.treemodel.features;
 
 import org.apache.iotdb.commons.utils.function.CheckedTriConsumer;
 import org.apache.iotdb.db.it.utils.TestUtils;
@@ -25,7 +25,7 @@ import org.apache.iotdb.db.pipe.receiver.transform.converter.ValueConverter;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2DataProcessTreeModel;
+import org.apache.iotdb.itbase.category.MultiClusterIT2TreeModelFeature;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.treemodel.AbstractPipeDualManualIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -63,7 +63,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2DataProcessTreeModel.class})
+@Category({MultiClusterIT2TreeModelFeature.class})
 public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT {
   private static final int generateDataSize = 100;
 

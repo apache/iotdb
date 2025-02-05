@@ -25,7 +25,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2BasicFunctionTreeModel;
+import org.apache.iotdb.itbase.category.MultiClusterIT2TreeModelBasicFunction;
 import org.apache.iotdb.pipe.it.treemodel.AbstractPipeDualAutoIT;
 
 import org.junit.Assert;
@@ -45,7 +45,7 @@ import java.util.Set;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2BasicFunctionTreeModel.class})
+@Category({MultiClusterIT2TreeModelBasicFunction.class})
 public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
 
   @Test

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.treemodel.comprehensive;
+package org.apache.iotdb.pipe.it.treemodel.basic;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -26,7 +26,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2ComprehensiveTreeModel;
+import org.apache.iotdb.itbase.category.MultiClusterIT2TreeModelBasicFunction;
 import org.apache.iotdb.pipe.it.treemodel.AbstractPipeDualAutoIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -52,7 +52,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tryExecuteNonQueriesWithRet
 import static org.apache.iotdb.db.it.utils.TestUtils.tryExecuteNonQueryWithRetry;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2ComprehensiveTreeModel.class})
+@Category({MultiClusterIT2TreeModelBasicFunction.class})
 public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
   @Test
   public void testLifeCycleWithHistoryEnabled() throws Exception {

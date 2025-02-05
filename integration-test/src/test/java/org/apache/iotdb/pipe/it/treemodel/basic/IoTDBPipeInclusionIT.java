@@ -25,7 +25,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2BasicFunctionTreeModel;
+import org.apache.iotdb.itbase.category.MultiClusterIT2TreeModelBasicFunction;
 import org.apache.iotdb.pipe.it.treemodel.AbstractPipeDualManualIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -41,7 +41,7 @@ import java.util.HashSet;
 import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2BasicFunctionTreeModel.class})
+@Category({MultiClusterIT2TreeModelBasicFunction.class})
 public class IoTDBPipeInclusionIT extends AbstractPipeDualManualIT {
   @Test
   public void testPureSchemaInclusion() throws Exception {
