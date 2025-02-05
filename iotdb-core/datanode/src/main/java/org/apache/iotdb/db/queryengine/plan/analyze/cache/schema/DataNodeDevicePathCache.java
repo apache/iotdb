@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -32,13 +34,20 @@ import com.github.benmanes.caffeine.cache.Weigher;
 public class DataNodeDevicePathCache {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private final IMemoryBlock devicePathCacheMemoryBlock;
 
   private final Cache<String, PartialPath> devicePathCache;
 
   private DataNodeDevicePathCache() {
+    devicePathCacheMemoryBlock =
+        config
+            .getDevicePathCacheMemoryManager()
+            .forceAllocate("DevicePathCache", MemoryBlockType.PERFORMANCE);
+    // TODO @spricoder: later we can find a way to get the byte size of cache
+    devicePathCacheMemoryBlock.allocate(devicePathCacheMemoryBlock.getMaxMemorySizeInByte());
     devicePathCache =
         Caffeine.newBuilder()
-            .maximumWeight(config.getDevicePathCacheMemoryManager().getTotalMemorySizeInBytes())
+            .maximumWeight(devicePathCacheMemoryBlock.getMaxMemorySizeInByte())
             .weigher(
                 (Weigher<String, PartialPath>) (key, val) -> (PartialPath.estimateSize(val) + 32))
             .build();

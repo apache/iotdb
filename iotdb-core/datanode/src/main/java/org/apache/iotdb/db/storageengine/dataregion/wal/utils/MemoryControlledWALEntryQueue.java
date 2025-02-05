@@ -38,32 +38,20 @@ public class MemoryControlledWALEntryQueue {
   public WALEntry poll(long timeout, TimeUnit unit) throws InterruptedException {
     WALEntry e = queue.poll(timeout, unit);
     if (e != null) {
-      SystemInfo.getInstance().updateWalQueueMemoryCost(-getElementSize(e));
-      synchronized (nonFullCondition) {
-        nonFullCondition.notifyAll();
-      }
+      SystemInfo.getInstance().getWalBufferQueueMemoryBlock().release(getElementSize(e));
     }
     return e;
   }
 
   public void put(WALEntry e) throws InterruptedException {
     long elementSize = getElementSize(e);
-    synchronized (nonFullCondition) {
-      while (SystemInfo.getInstance().cannotReserveMemoryForWalEntry(elementSize)) {
-        nonFullCondition.wait();
-      }
-    }
+    SystemInfo.getInstance().getWalBufferQueueMemoryBlock().allocateUntilAvailable(elementSize);
     queue.put(e);
-    SystemInfo.getInstance().updateWalQueueMemoryCost(elementSize);
   }
 
   public WALEntry take() throws InterruptedException {
     WALEntry e = queue.take();
-    SystemInfo.getInstance().updateWalQueueMemoryCost(-getElementSize(e));
-    synchronized (nonFullCondition) {
-      nonFullCondition.notifyAll();
-    }
-
+    SystemInfo.getInstance().getWalBufferQueueMemoryBlock().release(getElementSize(e));
     return e;
   }
 

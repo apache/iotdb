@@ -58,10 +58,8 @@ public abstract class IMemoryBlock implements AutoCloseable {
    * Allocate memory managed by this memory block until the required memory is available
    *
    * @param sizeInByte the size of memory to be allocated, should positive
-   * @param timeInterval the time interval to wait for memory to be available
    */
-  public abstract boolean allocateUntilAvailable(final long sizeInByte, long timeInterval)
-      throws InterruptedException;
+  public abstract boolean allocateUntilAvailable(final long sizeInByte) throws InterruptedException;
 
   /**
    * Try to record memory managed by this memory block

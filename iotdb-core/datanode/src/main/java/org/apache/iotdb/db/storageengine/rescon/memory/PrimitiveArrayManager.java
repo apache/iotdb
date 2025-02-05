@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.storageengine.rescon.memory;
 
+import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
@@ -49,9 +51,15 @@ public class PrimitiveArrayManager {
    */
   private static final double AMPLIFICATION_FACTOR = 1.5;
 
+  /** memory block for all arrays */
+  private static final IMemoryBlock POOLED_ARRAYS_MEMORY_BLOCK =
+      CONFIG
+          .getBufferedArraysMemoryManager()
+          .forceAllocate("BufferedArrays", MemoryBlockType.FUNCTION);
+
   /** threshold total size of arrays for all data types */
   private static final double POOLED_ARRAYS_MEMORY_THRESHOLD =
-      CONFIG.getBufferedArraysMemoryManager().getTotalMemorySizeInBytes() / AMPLIFICATION_FACTOR;
+      POOLED_ARRAYS_MEMORY_BLOCK.getMaxMemorySizeInByte() / AMPLIFICATION_FACTOR;
 
   /** TSDataType#serialize() -> ArrayDeque<Array>, VECTOR and UNKNOWN are ignored */
   private static final ArrayDeque[] POOLED_ARRAYS = new ArrayDeque[TSDataType.values().length];
