@@ -46,6 +46,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.Consumer;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DataProcessTableModel.class})
@@ -203,12 +204,18 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeTableModelTestIT {
 
   private void executeAndVerifyTypeConversion(TSDataType source, TSDataType target) {
     List<Pair> pairs = prepareTypeConversionTest(source, target);
+    final Consumer<String> handleFailure =
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        };
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         String.format("select time,status,s1 from %s2%s", source.name(), target.name()),
         "time,status,s1,",
         createExpectedResultSet(pairs, source, target),
-        "test");
+        "test",
+        handleFailure);
   }
 
   private List<Pair> prepareTypeConversionTest(TSDataType sourceType, TSDataType targetType) {

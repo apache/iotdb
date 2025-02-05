@@ -192,7 +192,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
         return;
       }
 
-      TableModelUtils.assertCountData("test", "test", 150, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 150, receiverEnv, handleFailure);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -237,7 +237,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
               new HashSet<>(Arrays.asList("0,1.0,", "1,1.0,", "2,1.0,", "3,1.0,", "4,1.0,"))),
           handleFailure);
 
-      TableModelUtils.assertCountData("test", "test", 350, receiverEnv);
+      TableModelUtils.assertCountData("test", "test", 350, receiverEnv, handleFailure);
     }
   }
 
