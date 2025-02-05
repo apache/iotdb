@@ -783,6 +783,9 @@ public class StatementGeneratorTest {
     // 1. test complex privilege on single path :"root.**"
     Set<String> allPriv = new HashSet<>();
     for (PrivilegeType type : PrivilegeType.values()) {
+      if (type.isRelationalPrivilege()) {
+        continue;
+      }
       allPriv.add(type.toString());
     }
 
