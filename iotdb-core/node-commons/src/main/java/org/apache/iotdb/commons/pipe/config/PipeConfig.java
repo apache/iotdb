@@ -224,6 +224,12 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAirGapReceiverPort();
   }
 
+  /////////////////////////////// Receiver ///////////////////////////////
+
+  public long getPipeReceiverLoginPeriodicVerificationIntervalMs() {
+    return COMMON_CONFIG.getPipeReceiverLoginPeriodicVerificationIntervalMs();
+  }
+
   /////////////////////////////// Hybrid Mode ///////////////////////////////
 
   public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
@@ -433,6 +439,10 @@ public class PipeConfig {
 
     LOGGER.info("PipeAirGapReceiverEnabled: {}", getPipeAirGapReceiverEnabled());
     LOGGER.info("PipeAirGapReceiverPort: {}", getPipeAirGapReceiverPort());
+
+    LOGGER.info(
+        "PipeReceiverLoginPeriodicVerificationIntervalMs: {}",
+        getPipeReceiverLoginPeriodicVerificationIntervalMs());
 
     LOGGER.info(
         "PipeMaxAllowedHistoricalTsFilePerDataRegion: {}",
