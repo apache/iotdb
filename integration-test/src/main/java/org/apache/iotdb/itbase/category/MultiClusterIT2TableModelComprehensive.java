@@ -19,4 +19,4 @@
 
 package org.apache.iotdb.itbase.category;
 
-public class MultiClusterIT2BasicFunctionTableModel {}
+public class MultiClusterIT2TableModelComprehensive {}

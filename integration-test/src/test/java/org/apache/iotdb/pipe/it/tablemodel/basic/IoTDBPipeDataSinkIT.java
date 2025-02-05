@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.tablemodel.dataprocess;
+package org.apache.iotdb.pipe.it.tablemodel.basic;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -25,7 +25,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2DataProcessTableModel;
+import org.apache.iotdb.itbase.category.MultiClusterIT2TableModelBasicFunction;
 import org.apache.iotdb.pipe.it.tablemodel.AbstractPipeTableModelTestIT;
 import org.apache.iotdb.pipe.it.tablemodel.TableModelUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -49,7 +49,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2DataProcessTableModel.class})
+@Category({MultiClusterIT2TableModelBasicFunction.class})
 public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
 
   @Test

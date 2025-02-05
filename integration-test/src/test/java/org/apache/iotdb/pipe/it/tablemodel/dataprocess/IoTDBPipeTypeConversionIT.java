@@ -22,7 +22,7 @@ package org.apache.iotdb.pipe.it.tablemodel.dataprocess;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.pipe.receiver.transform.converter.ValueConverter;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2DataProcessTableModel;
+import org.apache.iotdb.itbase.category.MultiClusterIT2TableModelDataProcess;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.tablemodel.AbstractPipeTableModelTestIT;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -49,7 +49,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2DataProcessTableModel.class})
+@Category({MultiClusterIT2TableModelDataProcess.class})
 public class IoTDBPipeTypeConversionIT extends AbstractPipeTableModelTestIT {
 
   private static final int generateDataSize = 100;

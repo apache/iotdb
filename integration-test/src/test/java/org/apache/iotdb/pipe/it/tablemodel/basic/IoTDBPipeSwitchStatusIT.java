@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.tablemodel.comprehensive;
+package org.apache.iotdb.pipe.it.tablemodel.basic;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -27,7 +27,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2ComprehensiveTableModel;
+import org.apache.iotdb.itbase.category.MultiClusterIT2TableModelBasicFunction;
 import org.apache.iotdb.pipe.it.tablemodel.AbstractPipeTableModelTestIT;
 import org.apache.iotdb.pipe.it.tablemodel.TableModelUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -42,7 +42,7 @@ import java.util.List;
 import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2ComprehensiveTableModel.class})
+@Category({MultiClusterIT2TableModelBasicFunction.class})
 public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelTestIT {
   @Test
   public void testPipeSwitchStatus() throws Exception {

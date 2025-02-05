@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.tablemodel.basic;
+package org.apache.iotdb.pipe.it.tablemodel.comprehensive;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
@@ -34,7 +34,7 @@ import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2BasicFunctionTableModel;
+import org.apache.iotdb.itbase.category.MultiClusterIT2TableModelComprehensive;
 import org.apache.iotdb.pipe.it.tablemodel.AbstractPipeTableModelTestIT;
 import org.apache.iotdb.pipe.it.tablemodel.TableModelUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -58,7 +58,7 @@ import java.util.function.Consumer;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2BasicFunctionTableModel.class})
+@Category({MultiClusterIT2TableModelComprehensive.class})
 public class IoTDBPipeClusterIT extends AbstractPipeTableModelTestIT {
 
   @Override

@@ -25,7 +25,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2DataProcessTableModel;
+import org.apache.iotdb.itbase.category.MultiClusterIT2TableModelDataProcess;
 import org.apache.iotdb.pipe.it.tablemodel.AbstractPipeTableModelTestIT;
 import org.apache.iotdb.pipe.it.tablemodel.TableModelUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -43,7 +43,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2DataProcessTableModel.class})
+@Category({MultiClusterIT2TableModelDataProcess.class})
 public class IoTDBPipeConnectorParallelIT extends AbstractPipeTableModelTestIT {
   @Test
   public void testIoTConnectorParallel() throws Exception {
