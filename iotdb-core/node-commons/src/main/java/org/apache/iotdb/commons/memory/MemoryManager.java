@@ -129,9 +129,9 @@ public class MemoryManager {
   /**
    * Try to force allocate memory block with specified size in bytes when memory is sufficient.
    *
-   * @param name            the name of memory block
-   * @param sizeInBytes     the size in bytes of memory block try to allocate
-   * @param usedThreshold   the used threshold of allocatedMemorySizeInBytes / totalMemorySizeInBytes
+   * @param name the name of memory block
+   * @param sizeInBytes the size in bytes of memory block try to allocate
+   * @param usedThreshold the used threshold of allocatedMemorySizeInBytes / totalMemorySizeInBytes
    * @param memoryBlockType the type of memory block
    * @return the memory block if success, otherwise null
    */
