@@ -212,6 +212,31 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>${maven.assembly.version}</version>
+                <configuration>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                    <archive>
+                        <manifest>
+                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                        </manifest>
+                    </archive>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <!-- bind to the packaging phase -->
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <!-- this is used for inheritance merges -->
+                        <phase>package</phase>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
     <profiles>
@@ -277,41 +302,6 @@
             <properties>
                 <jdbc.ut.skip>true</jdbc.ut.skip>
             </properties>
-        </profile>
-        <profile>
-            <id>get-jar-with-dependencies</id>
-             <activation>
-                <jdk>[1.8,)</jdk>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <version>${maven.assembly.version}</version>
-                        <configuration>
-                            <descriptorRefs>
-                                <descriptorRef>jar-with-dependencies</descriptorRef>
-                            </descriptorRefs>
-                            <archive>
-                                <manifest>
-                                    <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
-                                </manifest>
-                            </archive>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <id>make-assembly</id>
-                                <!-- bind to the packaging phase -->
-                                <goals>
-                                    <goal>single</goal>
-                                </goals>
-                                <!-- this is used for inheritance merges -->
-                                <phase>package</phase>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
         </profile>
     </profiles>
 </project>
