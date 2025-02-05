@@ -136,11 +136,10 @@ public abstract class IoTDBConnector implements PipeConnector {
   protected String username = CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
   protected String password = CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
 
-  protected boolean validateTsFile;
-
   protected String loadBalanceStrategy;
 
   protected String loadTsFileStrategy;
+  protected boolean loadTsFileValidation;
 
   private boolean isRpcCompressionEnabled;
   private final List<PipeCompressor> compressors = new ArrayList<>();
@@ -214,11 +213,6 @@ public abstract class IoTDBConnector implements PipeConnector {
             Arrays.asList(CONNECTOR_IOTDB_PASSWORD_KEY, SINK_IOTDB_PASSWORD_KEY),
             CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE);
 
-    validateTsFile =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(CONNECTOR_LOAD_TSFILE_VALIDATION_KEY, SINK_LOAD_TSFILE_VALIDATION_KEY),
-            CONNECTOR_LOAD_TSFILE_VALIDATION_DEFAULT_VALUE);
-
     loadBalanceStrategy =
         parameters
             .getStringOrDefault(
@@ -246,6 +240,10 @@ public abstract class IoTDBConnector implements PipeConnector {
             "Load tsfile strategy should be one of %s, but got %s.",
             CONNECTOR_LOAD_TSFILE_STRATEGY_SET, loadTsFileStrategy),
         loadTsFileStrategy);
+    loadTsFileValidation =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(CONNECTOR_LOAD_TSFILE_VALIDATION_KEY, SINK_LOAD_TSFILE_VALIDATION_KEY),
+            CONNECTOR_LOAD_TSFILE_VALIDATION_DEFAULT_VALUE);
 
     final int zstdCompressionLevel =
         parameters.getIntOrDefault(

@@ -131,7 +131,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
             password,
             shouldReceiverConvertOnTypeMismatch,
             loadTsFileStrategy,
-            validateTsFile);
+            loadTsFileValidation);
   }
 
   protected abstract IoTDBSyncClientManager constructClient(

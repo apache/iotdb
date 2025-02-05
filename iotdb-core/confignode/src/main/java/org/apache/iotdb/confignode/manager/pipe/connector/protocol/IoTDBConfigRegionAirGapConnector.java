@@ -81,7 +81,7 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, password);
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_VALIDATE_TSFILE,
-        Boolean.toString(validateTsFile));
+        Boolean.toString(loadTsFileValidation));
 
     return PipeTransferConfigNodeHandshakeV2Req.toTPipeTransferBytes(params);
   }
