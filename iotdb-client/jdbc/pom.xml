@@ -280,6 +280,9 @@
         </profile>
         <profile>
             <id>get-jar-with-dependencies</id>
+             <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
             <build>
                 <plugins>
                     <plugin>
