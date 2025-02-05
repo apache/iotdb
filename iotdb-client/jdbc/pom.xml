@@ -281,7 +281,7 @@
         <profile>
             <id>get-jar-with-dependencies</id>
              <activation>
-                <activeByDefault>true</activeByDefault>
+                <jdk>[1.8,)</jdk>
             </activation>
             <build>
                 <plugins>
