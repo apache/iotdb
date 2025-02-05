@@ -69,7 +69,9 @@ public class MemoryBlock extends IMemoryBlock {
       if (canUpdate && memoryUsageInBytes.compareAndSet(originSize, originSize + sizeInByte)) {
         break;
       }
-      this.wait();
+      synchronized (memoryUsageInBytes) {
+        memoryBlockType.wait();
+      }
       originSize = memoryUsageInBytes.get();
     }
     return true;
@@ -78,7 +80,9 @@ public class MemoryBlock extends IMemoryBlock {
   @Override
   public void release(long sizeInByte) {
     memoryUsageInBytes.addAndGet(-sizeInByte);
-    this.notifyAll();
+    synchronized (memoryUsageInBytes) {
+      memoryBlockType.notifyAll();
+    }
   }
 
   @Override

@@ -29,9 +29,12 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Weigher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** This cache is for reducing duplicated DeviceId PartialPath initialization in write process. */
 public class DataNodeDevicePathCache {
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeDevicePathCache.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final IMemoryBlock devicePathCacheMemoryBlock;
@@ -45,6 +48,10 @@ public class DataNodeDevicePathCache {
             .forceAllocate("DevicePathCache", MemoryBlockType.PERFORMANCE);
     // TODO @spricoder: later we can find a way to get the byte size of cache
     devicePathCacheMemoryBlock.allocate(devicePathCacheMemoryBlock.getMaxMemorySizeInByte());
+    LOGGER.error("DevicePathCacheMemoryBlock: {}", devicePathCacheMemoryBlock);
+    LOGGER.error(
+        "DevicePathMemorySize: {}",
+        config.getDevicePathCacheMemoryManager().getUsedMemorySizeInBytes());
     devicePathCache =
         Caffeine.newBuilder()
             .maximumWeight(devicePathCacheMemoryBlock.getMaxMemorySizeInByte())
