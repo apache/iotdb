@@ -187,7 +187,7 @@ class Session(object):
         if self.__use_ssl:
             context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
             context.load_verify_locations(cafile=self.__ca_certs)
-            transport = TSSLSocket.TSSLSocket(
+            socket = TSSLSocket.TSSLSocket(
                 host=endpoint.ip,
                 port=endpoint.port,
                 ssl_context=context,
