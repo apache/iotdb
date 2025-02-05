@@ -2353,6 +2353,12 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                   node.getPlanNodeId(),
                   TableFunctionOperator.class.getSimpleName());
 
+      List<TSDataType> inputDataTypes =
+          node.getChild().getOutputSymbols().stream()
+              .map(context.getTypeProvider()::getTableModelType)
+              .map(InternalTypeManager::getTSDataType)
+              .collect(Collectors.toList());
+
       List<TSDataType> outputDataTypes =
           node.getOutputSymbols().stream()
               .map(context.getTypeProvider()::getTableModelType)
@@ -2380,6 +2386,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           operatorContext,
           processorProvider,
           operator,
+          inputDataTypes,
           outputDataTypes,
           properChannelCount,
           requiredChannels,

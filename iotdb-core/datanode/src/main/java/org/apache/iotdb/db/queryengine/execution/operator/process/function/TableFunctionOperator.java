@@ -23,16 +23,20 @@ import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.PartitionState;
+import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.Slice;
+import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.SliceCache;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.LongColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 
 import java.util.Arrays;
@@ -49,16 +53,22 @@ public class TableFunctionOperator implements ProcessOperator {
   private final TableFunctionProcessorProvider processorProvider;
   private final PartitionRecognizer partitionRecognizer;
   private final TsBlockBuilder blockBuilder;
+  private final int properChannelCount;
+  private final boolean needPassThrough;
 
   private TableFunctionDataProcessor processor;
   private PartitionState partitionState;
   private ListenableFuture<?> isBlocked;
   private boolean finished = false;
+  private ColumnBuilder passThroughIndexBuilder;
+
+  private SliceCache sliceCache;
 
   public TableFunctionOperator(
       OperatorContext operatorContext,
       TableFunctionProcessorProvider processorProvider,
       Operator inputOperator,
+      List<TSDataType> inputDataTypes,
       List<TSDataType> outputDataTypes,
       int properChannelCount,
       List<Integer> requiredChannels,
@@ -66,11 +76,14 @@ public class TableFunctionOperator implements ProcessOperator {
       List<Integer> partitionChannels) {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
+    this.properChannelCount = properChannelCount;
     this.processorProvider = processorProvider;
     this.partitionRecognizer =
-        new PartitionRecognizer(partitionChannels, requiredChannels, outputDataTypes);
+        new PartitionRecognizer(partitionChannels, requiredChannels, inputDataTypes);
+    this.needPassThrough = properChannelCount != outputDataTypes.size();
     this.partitionState = null;
     this.blockBuilder = new TsBlockBuilder(outputDataTypes);
+    this.sliceCache = new SliceCache();
   }
 
   @Override
@@ -107,42 +120,72 @@ public class TableFunctionOperator implements ProcessOperator {
   @Override
   public TsBlock next() throws Exception {
     PartitionState.StateType stateType = partitionState.getStateType();
-    Iterator<Record> recordIterator = partitionState.getRecordIterator();
+    Slice slice = partitionState.getSlice();
     partitionState = null;
     if (stateType == PartitionState.StateType.INIT
         || stateType == PartitionState.StateType.NEED_MORE_DATA) {
       isBlocked = null;
       return null;
     } else {
-      List<ColumnBuilder> columnBuilders = getOutputColumnBuilders();
+      List<ColumnBuilder> properColumnBuilders = getProperColumnBuilders();
+      ColumnBuilder passThroughIndexBuilder = getPassThroughIndexBuilder();
       if (stateType == PartitionState.StateType.FINISHED) {
         if (processor != null) {
-          processor.finish(columnBuilders);
+          processor.finish(properColumnBuilders, passThroughIndexBuilder);
         }
         finished = true;
-        return buildTsBlock(columnBuilders);
+        return buildTsBlock(properColumnBuilders, passThroughIndexBuilder);
       }
       if (stateType == PartitionState.StateType.NEW_PARTITION) {
         if (processor != null) {
-          processor.finish(columnBuilders);
+          processor.finish(properColumnBuilders, passThroughIndexBuilder);
         }
+        sliceCache.clear();
         processor = processorProvider.getDataProcessor();
       }
+      sliceCache.addSlice(slice);
+      Iterator<Record> recordIterator = slice.getRequiredRecordIterator();
       while (recordIterator.hasNext()) {
-        processor.process(recordIterator.next(), columnBuilders);
+        processor.process(recordIterator.next(), properColumnBuilders, passThroughIndexBuilder);
       }
-      return buildTsBlock(columnBuilders);
+      return buildTsBlock(properColumnBuilders, passThroughIndexBuilder);
     }
   }
 
-  private List<ColumnBuilder> getOutputColumnBuilders() {
+  private List<ColumnBuilder> getProperColumnBuilders() {
     blockBuilder.reset();
-    return Arrays.asList(blockBuilder.getValueColumnBuilders());
+    return Arrays.asList(blockBuilder.getValueColumnBuilders()).subList(0, properChannelCount);
   }
 
-  private TsBlock buildTsBlock(List<ColumnBuilder> columnBuilders) {
-    int positionCount = columnBuilders.get(0).getPositionCount();
+  private ColumnBuilder getPassThroughIndexBuilder() {
+    if (needPassThrough) {
+      passThroughIndexBuilder = new LongColumnBuilder(null, 1);
+    }
+    return passThroughIndexBuilder;
+  }
+
+  private TsBlock buildTsBlock(
+      List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
+    List<ColumnBuilder> passThroughColumnBuilders =
+        Arrays.asList(blockBuilder.getValueColumnBuilders())
+            .subList(properChannelCount, blockBuilder.getValueColumnBuilders().length);
+    int positionCount = properColumnBuilders.get(0).getPositionCount();
     blockBuilder.declarePositions(positionCount);
+    if (needPassThrough) {
+      // handle pass through column only if needed
+      Column passThroughIndex = passThroughIndexBuilder.build();
+      for (int i = 0; i < passThroughIndex.getPositionCount(); i++) {
+        long index = passThroughIndex.getLong(i);
+        Record row = sliceCache.getOriginalRecord((int) index);
+        for (int j = 0; j < row.size(); j++) {
+          if (row.isNull(j)) {
+            passThroughColumnBuilders.get(j).appendNull();
+          } else {
+            passThroughColumnBuilders.get(j).writeObject(row.getObject(j));
+          }
+        }
+      }
+    }
     return blockBuilder.build(new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, positionCount));
   }
 
@@ -150,13 +193,15 @@ public class TableFunctionOperator implements ProcessOperator {
   public boolean hasNext() throws Exception {
     if (partitionState == null) {
       isBlocked().get(); // wait for the next TsBlock
-      partitionState = partitionRecognizer.getState();
+      partitionState = partitionRecognizer.nextState();
     }
     return !finished;
   }
 
   @Override
-  public void close() throws Exception {}
+  public void close() throws Exception {
+    sliceCache.close();
+  }
 
   @Override
   public boolean isFinished() throws Exception {

@@ -633,25 +633,12 @@ public abstract class AstVisitor<R, C> {
     return visitNode(tableFunctionTableArgument, context);
   }
 
-  public R visitDescriptorField(DescriptorField descriptorField, C context) {
-    return visitNode(descriptorField, context);
-  }
-
-  public R visitDescriptor(Descriptor descriptor, C context) {
-    return visitNode(descriptor, context);
-  }
-
   public R visitEmptyTableTreatment(EmptyTableTreatment emptyTableTreatment, C context) {
     return visitNode(emptyTableTreatment, context);
   }
 
   public R visitTableFunctionArgument(TableFunctionArgument tableFunctionArgument, C context) {
     return visitNode(tableFunctionArgument, context);
-  }
-
-  public R visitDescriptorArgument(
-      TableFunctionDescriptorArgument tableFunctionDescriptorArgument, C context) {
-    return visitNode(tableFunctionDescriptorArgument, context);
   }
 
   public R visitTableFunctionInvocation(

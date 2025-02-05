@@ -67,8 +67,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Descriptor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescriptorField;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
@@ -246,8 +244,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSe
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.EXPLICIT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.ROLLUP;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName.mapIdentifier;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionDescriptorArgument.descriptorArgument;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionDescriptorArgument.nullDescriptorArgument;
 import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
@@ -1864,8 +1860,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     Node value;
     if (context.tableArgument() != null) {
       value = visit(context.tableArgument());
-    } else if (context.descriptorArgument() != null) {
-      value = visit(context.descriptorArgument());
     } else {
       value = visit(context.scalarArgument());
     }
@@ -1944,24 +1938,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
 
     return relation;
-  }
-
-  @Override
-  public Node visitDescriptorArgument(RelationalSqlParser.DescriptorArgumentContext context) {
-    if (context.NULL() != null) {
-      return nullDescriptorArgument(getLocation(context));
-    }
-    List<DescriptorField> fields = visit(context.descriptorField(), DescriptorField.class);
-    return descriptorArgument(
-        getLocation(context), new Descriptor(getLocation(context.DESCRIPTOR()), fields));
-  }
-
-  @Override
-  public Node visitDescriptorField(RelationalSqlParser.DescriptorFieldContext context) {
-    return new DescriptorField(
-        getLocation(context),
-        (Identifier) visit(context.identifier()),
-        visitIfPresent(context.type(), DataType.class));
   }
 
   @Override

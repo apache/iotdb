@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.execution.function.table;
 
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
-import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
@@ -35,7 +34,6 @@ import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpe
 import org.apache.iotdb.udf.api.type.Type;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.tsfile.block.column.ColumnBuilder;
 
 import java.util.Arrays;
 import java.util.List;
@@ -47,7 +45,7 @@ public class ExcludeColumnFunction implements TableFunction {
   private final String COL_PARAM = "EXCLUDE";
 
   @Override
-  public List<ParameterSpecification> getArgumentsSpecification() {
+  public List<ParameterSpecification> getArgumentsSpecifications() {
     return Arrays.asList(
         TableParameterSpecification.builder().name(TBL_PARAM).rowSemantics().build(),
         ScalarParameterSpecification.builder().name(COL_PARAM).type(Type.STRING).build());
@@ -56,9 +54,6 @@ public class ExcludeColumnFunction implements TableFunction {
   @Override
   public TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException {
     TableArgument tableArgument = (TableArgument) arguments.get(TBL_PARAM);
-    if (tableArgument == null) {
-      throw new UDFException("Table argument is missing");
-    }
     String excludeColumn = (String) ((ScalarArgument) arguments.get(COL_PARAM)).getValue();
     ImmutableList.Builder<Integer> requiredColumns = ImmutableList.builder();
     DescribedSchema.Builder schemaBuilder = DescribedSchema.builder();
@@ -80,21 +75,13 @@ public class ExcludeColumnFunction implements TableFunction {
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
-        return new TableFunctionDataProcessor() {
-          @Override
-          public void process(Record input, List<ColumnBuilder> columnBuilders) {
-            for (int i = 0; i < input.size(); i++) {
-              if (input.isNull(i)) {
-                columnBuilders.get(i).appendNull();
-              } else {
-                columnBuilders.get(i).writeObject(input.getObject(i));
-              }
+        return (input, properColumnBuilders, passThroughIndexBuilder) -> {
+          for (int i = 0; i < input.size(); i++) {
+            if (input.isNull(i)) {
+              properColumnBuilders.get(i).appendNull();
+            } else {
+              properColumnBuilders.get(i).writeObject(input.getObject(i));
             }
-          }
-
-          @Override
-          public void finish(List<ColumnBuilder> columnBuilders) {
-            // do nothing
           }
         };
       }

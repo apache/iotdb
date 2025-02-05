@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.PartitionRecognizer;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.PartitionState;
+import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.Slice;
 import org.apache.iotdb.udf.api.relational.access.Record;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -187,7 +188,7 @@ public class TableFunctionOperatorTest {
   }
 
   @Test
-  public void PartitionRecognizerTest() {
+  public void testPartitionRecognizer() {
     QueryId queryId = new QueryId("stub_query");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
@@ -202,91 +203,97 @@ public class TableFunctionOperatorTest {
               Collections.singletonList(1),
               Arrays.asList(0, 1, 3),
               Arrays.asList(TSDataType.TIMESTAMP, TSDataType.STRING, TSDataType.INT32));
-      PartitionState state = partitionRecognizer.getState();
+      PartitionState state = partitionRecognizer.nextState();
       Assert.assertEquals(PartitionState.INIT_STATE, state);
-      Assert.assertEquals(PartitionState.INIT_STATE, partitionRecognizer.getState());
+      Assert.assertEquals(PartitionState.INIT_STATE, partitionRecognizer.nextState());
       // 1. add first TsBlock, expected NEW_PARTITION and NEED_MORE_DATA
       Assert.assertTrue(childOperator.hasNext());
       partitionRecognizer.addTsBlock(childOperator.next());
-      state = partitionRecognizer.getState();
+      state = partitionRecognizer.nextState();
       Assert.assertEquals(PartitionState.StateType.NEW_PARTITION, state.getStateType());
-      checkIteratorSimply(state.getRecordIterator(), Collections.emptyList());
-      state = partitionRecognizer.getState();
+      checkIteratorSimply(state.getSlice(), Collections.emptyList());
+      state = partitionRecognizer.nextState();
       Assert.assertEquals(PartitionState.StateType.NEW_PARTITION, state.getStateType());
       checkIteratorSimply(
-          state.getRecordIterator(),
+          state.getSlice(),
           Arrays.asList(
               Arrays.asList(1717171200000L, D1_BINARY, 60),
               Arrays.asList(1719763200000L, D1_BINARY, 60)));
-      state = partitionRecognizer.getState();
+      state = partitionRecognizer.nextState();
       Assert.assertEquals(PartitionState.StateType.NEED_MORE_DATA, state.getStateType());
       // 2. add second TsBlock, expected ITERATING, NEW_PARTITION and NEED_MORE_DATA
       Assert.assertTrue(childOperator.hasNext());
       partitionRecognizer.addTsBlock(childOperator.next());
-      state = partitionRecognizer.getState();
+      state = partitionRecognizer.nextState();
       Assert.assertEquals(PartitionState.StateType.ITERATING, state.getStateType());
       checkIteratorSimply(
-          state.getRecordIterator(),
+          state.getSlice(),
           Collections.singletonList(Arrays.asList(1722441600000L, D1_BINARY, 61)));
-      state = partitionRecognizer.getState();
+      state = partitionRecognizer.nextState();
       Assert.assertEquals(PartitionState.StateType.NEW_PARTITION, state.getStateType());
       checkIteratorSimply(
-          state.getRecordIterator(),
+          state.getSlice(),
           Arrays.asList(
               Arrays.asList(1725120000000L, D2_BINARY, 62),
               Arrays.asList(1725130000000L, D2_BINARY, 62),
               Arrays.asList(1725140000000L, D2_BINARY, 63)));
-      state = partitionRecognizer.getState();
+      state = partitionRecognizer.nextState();
       Assert.assertEquals(PartitionState.StateType.NEED_MORE_DATA, state.getStateType());
       // 3. add third and fourth TsBlock, expected NEED_MORE_DATA
       Assert.assertTrue(childOperator.hasNext());
       partitionRecognizer.addTsBlock(childOperator.next());
-      state = partitionRecognizer.getState();
+      state = partitionRecognizer.nextState();
       Assert.assertEquals(PartitionState.StateType.NEED_MORE_DATA, state.getStateType());
       Assert.assertTrue(childOperator.hasNext());
       partitionRecognizer.addTsBlock(childOperator.next());
-      state = partitionRecognizer.getState();
+      state = partitionRecognizer.nextState();
       Assert.assertEquals(PartitionState.StateType.NEED_MORE_DATA, state.getStateType());
       // 4. add fifth TsBlock, expected NEW_PARTITION, NEW_PARTITION and NEED_MORE_DATA
       Assert.assertTrue(childOperator.hasNext());
       partitionRecognizer.addTsBlock(childOperator.next());
-      state = partitionRecognizer.getState();
+      state = partitionRecognizer.nextState();
       Assert.assertEquals(PartitionState.StateType.NEW_PARTITION, state.getStateType());
       checkIteratorSimply(
-          state.getRecordIterator(),
+          state.getSlice(),
           Arrays.asList(
               Arrays.asList(1722441600000L, D3_BINARY, 63),
               Arrays.asList(1722441800000L, D3_BINARY, 64)));
-      state = partitionRecognizer.getState();
+      state = partitionRecognizer.nextState();
       Assert.assertEquals(PartitionState.StateType.NEW_PARTITION, state.getStateType());
       checkIteratorSimply(
-          state.getRecordIterator(),
+          state.getSlice(),
           Collections.singletonList(Arrays.asList(1722551600000L, D5_BINARY, 64)));
-      state = partitionRecognizer.getState();
+      state = partitionRecognizer.nextState();
       Assert.assertEquals(PartitionState.StateType.NEED_MORE_DATA, state.getStateType());
       // 5. add sixth TsBlock, expected ITERATING and  NEED_MORE_DATA
       Assert.assertTrue(childOperator.hasNext());
       partitionRecognizer.addTsBlock(childOperator.next());
-      state = partitionRecognizer.getState();
+      state = partitionRecognizer.nextState();
       Assert.assertEquals(PartitionState.StateType.ITERATING, state.getStateType());
       checkIteratorSimply(
-          state.getRecordIterator(),
+          state.getSlice(),
           Arrays.asList(
               Arrays.asList(1722552800000L, D5_BINARY, 65),
               Arrays.asList(1722553000000L, D5_BINARY, 65)));
-      state = partitionRecognizer.getState();
+      state = partitionRecognizer.nextState();
       Assert.assertEquals(PartitionState.StateType.NEED_MORE_DATA, state.getStateType());
       // no more data, expected FINISHED
       Assert.assertFalse(childOperator.hasNext());
       partitionRecognizer.noMoreData();
-      state = partitionRecognizer.getState();
+      state = partitionRecognizer.nextState();
       Assert.assertEquals(PartitionState.StateType.FINISHED, state.getStateType());
     } catch (Exception e) {
       fail(e.getMessage());
     }
   }
 
-  private void checkIteratorSimply(Iterator<Record> recordIterable, List<List<Object>> expected) {
+  @Test
+  public void testConstructResult() {
+    // TODO(UDF)
+  }
+
+  private void checkIteratorSimply(Slice slice, List<List<Object>> expected) {
+    Iterator<Record> recordIterable = slice.getRequiredRecordIterator();
     int i = 0;
     while (recordIterable.hasNext()) {
       Record record = recordIterable.next();

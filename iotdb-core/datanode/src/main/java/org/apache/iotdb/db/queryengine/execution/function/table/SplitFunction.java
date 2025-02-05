@@ -44,7 +44,7 @@ public class SplitFunction implements TableFunction {
   private final String SPLIT_PARAMETER_NAME = "SPLIT";
 
   @Override
-  public List<ParameterSpecification> getArgumentsSpecification() {
+  public List<ParameterSpecification> getArgumentsSpecifications() {
     return Arrays.asList(
         ScalarParameterSpecification.builder().name(INPUT_PARAMETER_NAME).type(Type.STRING).build(),
         ScalarParameterSpecification.builder()

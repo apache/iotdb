@@ -740,7 +740,7 @@ tableFunctionCall
     ;
 
 tableFunctionArgument
-    : (identifier '=>')? (tableArgument | descriptorArgument | scalarArgument) // descriptor before expression to avoid parsing descriptor as a function call
+    : (identifier '=>')? (tableArgument | scalarArgument) // descriptor before expression to avoid parsing descriptor as a function call
     ;
 
 tableArgument
@@ -753,15 +753,6 @@ tableArgument
 tableArgumentRelation
     : TABLE '(' qualifiedName ')' (AS? identifier columnAliases?)?  #tableArgumentTable
     | TABLE '(' query ')' (AS? identifier columnAliases?)?          #tableArgumentQuery
-    ;
-
-descriptorArgument
-    : DESCRIPTOR '(' descriptorField (',' descriptorField)* ')'
-    | CAST '(' NULL AS DESCRIPTOR ')'
-    ;
-
-descriptorField
-    : identifier type?
     ;
 
 scalarArgument

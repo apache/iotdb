@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.function.partition;
 
-import org.apache.iotdb.udf.api.relational.access.Record;
-
-import java.util.Iterator;
-
 public class PartitionState {
 
   public static final PartitionState NEED_MORE_DATA_STATE =
@@ -30,12 +26,12 @@ public class PartitionState {
   public static final PartitionState FINISHED_STATE = new PartitionState(StateType.FINISHED, null);
   public static final PartitionState INIT_STATE = new PartitionState(StateType.INIT, null);
 
-  public static PartitionState newPartitionState(Iterator<Record> recordIterator) {
-    return new PartitionState(StateType.NEW_PARTITION, recordIterator);
+  public static PartitionState newPartitionState(Slice slice) {
+    return new PartitionState(StateType.NEW_PARTITION, slice);
   }
 
-  public static PartitionState iteratingState(Iterator<Record> recordIterator) {
-    return new PartitionState(StateType.ITERATING, recordIterator);
+  public static PartitionState iteratingState(Slice slice) {
+    return new PartitionState(StateType.ITERATING, slice);
   }
 
   public enum StateType {
@@ -48,11 +44,11 @@ public class PartitionState {
 
   private final StateType stateType;
   // Nullable
-  private final Iterator<Record> recordIterator;
+  private final Slice slice;
 
-  protected PartitionState(StateType stateType, Iterator<Record> recordIterator) {
+  protected PartitionState(StateType stateType, Slice slice) {
     this.stateType = stateType;
-    this.recordIterator = recordIterator;
+    this.slice = slice;
   }
 
   public StateType getStateType() {
@@ -60,7 +56,7 @@ public class PartitionState {
   }
 
   // Nullable
-  public Iterator<Record> getRecordIterator() {
-    return recordIterator;
+  public Slice getSlice() {
+    return slice;
   }
 }

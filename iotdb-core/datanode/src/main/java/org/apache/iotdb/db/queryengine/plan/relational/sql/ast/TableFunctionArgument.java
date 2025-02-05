@@ -36,10 +36,7 @@ public class TableFunctionArgument extends Node {
     super(location);
     this.name = requireNonNull(name, "name is null");
     requireNonNull(value, "value is null");
-    checkArgument(
-        value instanceof TableFunctionTableArgument
-            || value instanceof TableFunctionDescriptorArgument
-            || value instanceof Expression);
+    checkArgument(value instanceof TableFunctionTableArgument || value instanceof Expression);
     this.value = value;
   }
 

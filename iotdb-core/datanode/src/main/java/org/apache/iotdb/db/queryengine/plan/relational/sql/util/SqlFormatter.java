@@ -88,7 +88,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionArgument;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionDescriptorArgument;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionTableArgument;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
@@ -1312,28 +1311,6 @@ public final class SqlFormatter {
                 builder.append("\n");
                 append(indent, formatOrderBy(orderBy));
               });
-
-      return null;
-    }
-
-    @Override
-    public Void visitDescriptorArgument(TableFunctionDescriptorArgument node, Integer indent) {
-      if (node.getDescriptor().isPresent()) {
-        builder.append(
-            node.getDescriptor().get().getFields().stream()
-                .map(
-                    field -> {
-                      String formattedField = formatName(field.getName());
-                      if (field.getType().isPresent()) {
-                        formattedField =
-                            formattedField + " " + formatExpression(field.getType().get());
-                      }
-                      return formattedField;
-                    })
-                .collect(joining(", ", "DESCRIPTOR(", ")")));
-      } else {
-        builder.append("CAST (NULL AS DESCRIPTOR)");
-      }
 
       return null;
     }

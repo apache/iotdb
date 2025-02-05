@@ -41,8 +41,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 public class HOPTableFunction implements TableFunction {
 
@@ -53,7 +51,7 @@ public class HOPTableFunction implements TableFunction {
   private static final String START_PARAMETER_NAME = "START";
 
   @Override
-  public List<ParameterSpecification> getArgumentsSpecification() {
+  public List<ParameterSpecification> getArgumentsSpecifications() {
     return Arrays.asList(
         TableParameterSpecification.builder()
             .name(DATA_PARAMETER_NAME)
@@ -85,7 +83,6 @@ public class HOPTableFunction implements TableFunction {
     return requiredIndex;
   }
 
-  // TODO: ImmutableMap
   @Override
   public TableFunctionAnalysis analyze(Map<String, Argument> arguments) {
     TableArgument tableArgument = (TableArgument) arguments.get(DATA_PARAMETER_NAME);
@@ -104,29 +101,19 @@ public class HOPTableFunction implements TableFunction {
     // outputColumnSchema
     return TableFunctionAnalysis.builder()
         .properColumnSchema(properColumnSchema)
-        .requiredColumns(
-            DATA_PARAMETER_NAME,
-            IntStream.range(0, tableArgument.getFieldTypes().size())
-                .boxed()
-                .collect(Collectors.toList()))
+        .requiredColumns(DATA_PARAMETER_NAME, Collections.singletonList(requiredIndex))
         .build();
   }
 
   @Override
   public TableFunctionProcessorProvider getProcessorProvider(Map<String, Argument> arguments) {
-    TableArgument tableArgument = (TableArgument) arguments.get(DATA_PARAMETER_NAME);
-    String expectedFieldName =
-        (String) ((ScalarArgument) arguments.get(TIMECOL_PARAMETER_NAME)).getValue();
-    int requiredIndex = findTimeColumnIndex(tableArgument, expectedFieldName);
-
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
         return new HOPDataProcessor(
             (Long) ((ScalarArgument) arguments.get(START_PARAMETER_NAME)).getValue(),
             (Long) ((ScalarArgument) arguments.get(SLIDE_PARAMETER_NAME)).getValue(),
-            (Long) ((ScalarArgument) arguments.get(SIZE_PARAMETER_NAME)).getValue(),
-            requiredIndex);
+            (Long) ((ScalarArgument) arguments.get(SIZE_PARAMETER_NAME)).getValue());
       }
     };
   }
@@ -135,19 +122,21 @@ public class HOPTableFunction implements TableFunction {
 
     private final long slide;
     private final long size;
-    private final int timeColumnIndex;
     private long curTime;
+    private long curIndex = 0;
 
-    public HOPDataProcessor(long startTime, long slide, long size, int timeColumnIndex) {
+    public HOPDataProcessor(long startTime, long slide, long size) {
       this.slide = slide;
       this.size = size;
       this.curTime = startTime;
-      this.timeColumnIndex = timeColumnIndex;
     }
 
     @Override
-    public void process(Record input, List<ColumnBuilder> columnBuilders) {
-      long timeValue = input.getLong(timeColumnIndex);
+    public void process(
+        Record input,
+        List<ColumnBuilder> properColumnBuilders,
+        ColumnBuilder passThroughIndexBuilder) {
+      long timeValue = input.getLong(0);
       if (curTime == Long.MIN_VALUE) {
         curTime = timeValue;
       }
@@ -158,20 +147,12 @@ public class HOPTableFunction implements TableFunction {
       }
       long slideTime = curTime;
       while (slideTime <= timeValue && slideTime + size > timeValue) {
-        for (int i = 0; i < input.size(); i++) {
-          if (input.isNull(i)) {
-            columnBuilders.get(i + 2).appendNull();
-          } else {
-            columnBuilders.get(i + 2).writeObject(input.getObject(i));
-          }
-        }
-        columnBuilders.get(0).writeLong(slideTime);
-        columnBuilders.get(1).writeLong(slideTime + size);
+        properColumnBuilders.get(0).writeLong(slideTime);
+        properColumnBuilders.get(1).writeLong(slideTime + size);
+        passThroughIndexBuilder.writeLong(curIndex);
         slideTime += slide;
       }
+      curIndex++;
     }
-
-    @Override
-    public void finish(List<ColumnBuilder> columnBuilders) {}
   }
 }

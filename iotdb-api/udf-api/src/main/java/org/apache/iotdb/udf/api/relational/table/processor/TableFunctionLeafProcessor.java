@@ -24,6 +24,11 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import java.util.List;
 
 public interface TableFunctionLeafProcessor {
+
+  default void beforeStart() {
+    // do nothing
+  }
+
   /**
    * This method processes a portion of data. It is called multiple times until the processor is
    * fully processed.

@@ -35,8 +35,8 @@ import static java.util.Objects.requireNonNull;
 public class TableFunctionAnalysis {
 
   /**
-   * The `returnedSchema` field is used to inform the Analyzer of the proper columns returned by the
-   * Table Function, that is, the columns produced by the function.
+   * The `properColumnSchema` field is used to inform the Analyzer of the proper columns returned by
+   * the Table Function, that is, the columns produced by the function.
    */
   private final Optional<DescribedSchema> properColumnSchema;
 

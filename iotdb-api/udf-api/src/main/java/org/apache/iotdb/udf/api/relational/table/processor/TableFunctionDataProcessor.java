@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.udf.api.relational.table.processor;
 
-import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
 
@@ -30,23 +29,36 @@ import java.util.List;
 /** Each instance of TableFunctionDataProcessor processes one partition of data. */
 public interface TableFunctionDataProcessor {
 
+  default void beforeStart() {
+    // do nothing
+  }
+
   /**
    * This method processes a portion of data. It is called multiple times until the partition is
    * fully processed.
    *
    * @param input {@link Record} including a portion of one partition for each table function's
-   *     input table. Input is ordered according to the corresponding argument specifications in
-   *     {@link TableFunction}. A page for an argument consists of columns requested during analysis
-   *     (see {@link TableFunctionAnalysis#getRequiredColumns}).
-   * @param columnBuilders a list of {@link ColumnBuilder} for each column in the output table.
+   *     input table. A Record consists of columns requested during analysis (see {@link
+   *     TableFunctionAnalysis#getRequiredColumns}).
+   * @param properColumnBuilders A list of {@link ColumnBuilder} for each column in the output
+   *     table.
+   * @param passThroughIndexBuilder A {@link ColumnBuilder} for pass through columns. Index is
+   *     started from 0 of the whole partition.
    */
-  void process(Record input, List<ColumnBuilder> columnBuilders);
+  void process(
+      Record input,
+      List<ColumnBuilder> properColumnBuilders,
+      ColumnBuilder passThroughIndexBuilder);
 
   /**
-   * This method is called after all data is processed. It is used to finalize the output table. All
-   * remaining data should be written to the columnBuilders.
+   * This method is called after all data is processed. It is used to finalize the output table and
+   * close resource. All remaining data should be written to the columnBuilders.
    *
-   * @param columnBuilders a list of {@link ColumnBuilder} for each column in the output table.
+   * @param columnBuilders A list of {@link ColumnBuilder} for each column in the output table.
+   * @param passThroughIndexBuilder A {@link ColumnBuilder} for pass through columns. Index is
+   *     started from 0 of the whole partition.
    */
-  void finish(List<ColumnBuilder> columnBuilders);
+  default void finish(List<ColumnBuilder> columnBuilders, ColumnBuilder passThroughIndexBuilder) {
+    // do nothing
+  }
 }

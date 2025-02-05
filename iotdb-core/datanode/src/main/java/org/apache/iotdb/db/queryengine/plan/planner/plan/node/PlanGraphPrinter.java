@@ -78,7 +78,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNod
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
-import org.apache.iotdb.udf.api.relational.table.argument.DescriptorArgument;
 import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
 import org.apache.iotdb.udf.api.relational.table.argument.TableArgument;
 
@@ -96,7 +95,6 @@ import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
-import static java.util.stream.Collectors.joining;
 import static org.apache.iotdb.db.utils.DateTimeUtils.TIMESTAMP_PRECISION;
 
 public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter.GraphContext> {
@@ -989,11 +987,10 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   private String formatArgument(String argumentName, Argument argument) {
     if (argument instanceof ScalarArgument) {
       return formatScalarArgument(argumentName, (ScalarArgument) argument);
-    }
-    if (argument instanceof DescriptorArgument) {
-      return formatDescriptorArgument(argumentName, (DescriptorArgument) argument);
-    } else {
+    } else if (argument instanceof TableArgument) {
       return formatTableArgument(argumentName, (TableArgument) argument);
+    } else {
+      return argumentName + " => " + argument;
     }
   }
 
@@ -1001,19 +998,6 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     return format(
         "%s => ScalarArgument{type=%s, value=%s}",
         argumentName, argument.getType(), argument.getValue());
-  }
-
-  private String formatDescriptorArgument(String argumentName, DescriptorArgument argument) {
-    String descriptor;
-    if (argument.getDescriptor().isPresent()) {
-      descriptor =
-          argument.getDescriptor().get().getFields().stream()
-              .map(field -> field.getName() + field.getType().map(type -> " " + type).orElse(""))
-              .collect(joining(", ", "(", ")"));
-    } else {
-      descriptor = "NULL";
-    }
-    return format("%s => DescriptorArgument{%s}", argumentName, descriptor);
   }
 
   private String formatTableArgument(String argumentName, TableArgument argument) {
