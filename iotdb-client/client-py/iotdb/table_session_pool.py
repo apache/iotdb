@@ -34,8 +34,8 @@ class TableSessionPoolConfig(object):
         enable_compression: bool = False,
         wait_timeout_in_ms: int = 10000,
         max_retry: int = 3,
-        use_ssl: bool= False,
-        ca_certs: str= None,
+        use_ssl: bool = False,
+        ca_certs: str = None,
     ):
         """
         Initialize a TableSessionPoolConfig object with the provided parameters.

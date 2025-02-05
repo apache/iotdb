@@ -36,7 +36,7 @@ class TableSessionConfig(object):
         enable_redirection: bool = True,
         enable_compression: bool = False,
         use_ssl: bool = False,
-        ca_certs: str= None,
+        ca_certs: str = None,
     ):
         """
         Initialize a TableSessionConfig object with the provided parameters.

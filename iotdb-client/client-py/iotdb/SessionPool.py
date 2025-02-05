@@ -44,7 +44,7 @@ class PoolConfig(object):
         max_retry: int = DEFAULT_MAX_RETRY,
         enable_compression: bool = False,
         enable_redirection: bool = True,
-        use_ssl: bool =False,
+        use_ssl: bool = False,
         ca_certs: str = None,
     ):
         self.host = host
