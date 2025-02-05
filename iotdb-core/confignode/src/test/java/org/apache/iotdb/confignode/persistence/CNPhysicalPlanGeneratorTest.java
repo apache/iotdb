@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
@@ -115,7 +115,7 @@ public class CNPhysicalPlanGeneratorTest {
     final HashSet<Integer> answerSet = new HashSet<>();
     String roleName = "test1";
     setupAuthorInfo();
-    AuthorPlan plan = new AuthorPlan(ConfigPhysicalPlanType.CreateRole);
+    AuthorTreePlan plan = new AuthorTreePlan(ConfigPhysicalPlanType.CreateRole);
     plan.setRoleName(roleName);
     plan.setPermissions(new HashSet<>());
     plan.setNodeNameList(new ArrayList<>());
@@ -124,7 +124,7 @@ public class CNPhysicalPlanGeneratorTest {
     authorInfo.authorNonQuery(plan);
 
     // Step 2: grant role path privileges - plan2
-    plan = new AuthorPlan(ConfigPhysicalPlanType.GrantRole);
+    plan = new AuthorTreePlan(ConfigPhysicalPlanType.GrantRole);
     plan.setRoleName(roleName);
     plan.setUserName("");
     plan.setNodeNameList(Collections.singletonList(new PartialPath("root.db.t1")));
@@ -143,7 +143,7 @@ public class CNPhysicalPlanGeneratorTest {
     answerSet.add(plan.hashCode());
 
     // Step 3: grant role sys privileges - plan3
-    plan = new AuthorPlan(ConfigPhysicalPlanType.GrantRole);
+    plan = new AuthorTreePlan(ConfigPhysicalPlanType.GrantRole);
     plan.setRoleName(roleName);
     plan.setUserName("");
     plan.setNodeNameList(Collections.emptyList());
@@ -192,25 +192,28 @@ public class CNPhysicalPlanGeneratorTest {
     final String userName = "test1";
     final Set<Integer> answerSet = new HashSet<>();
     setupAuthorInfo();
-    AuthorPlan plan = new AuthorPlan(ConfigPhysicalPlanType.CreateUser);
+    AuthorTreePlan plan = new AuthorTreePlan(ConfigPhysicalPlanType.CreateUser);
     plan.setPassword("password");
     plan.setUserName(userName);
     plan.setPermissions(new HashSet<>());
     plan.setNodeNameList(new ArrayList<>());
     // Create user plan 1
     authorInfo.authorNonQuery(plan);
-    plan.setAuthorType(ConfigPhysicalPlanType.CreateUserWithRawPassword);
+    plan = new AuthorTreePlan(ConfigPhysicalPlanType.CreateUserWithRawPassword);
     plan.setPassword(AuthUtils.encryptPassword("password"));
+    plan.setUserName(userName);
+    plan.setPermissions(new HashSet<>());
+    plan.setNodeNameList(new ArrayList<>());
     answerSet.add(plan.hashCode());
 
-    plan = new AuthorPlan(ConfigPhysicalPlanType.CreateRole);
+    plan = new AuthorTreePlan(ConfigPhysicalPlanType.CreateRole);
     plan.setRoleName("role1");
     plan.setPermissions(new HashSet<>());
     plan.setNodeNameList(new ArrayList<>());
     authorInfo.authorNonQuery(plan);
 
     // Grant path privileges, plan 2 , plan 3
-    plan = new AuthorPlan(ConfigPhysicalPlanType.GrantUser);
+    plan = new AuthorTreePlan(ConfigPhysicalPlanType.GrantUser);
     plan.setUserName(userName);
     plan.setRoleName("");
     plan.setNodeNameList(Collections.singletonList(new PartialPath("root.db1.t2")));
@@ -230,7 +233,7 @@ public class CNPhysicalPlanGeneratorTest {
     answerSet.add(plan.hashCode());
 
     // Grant system privileges, plan 4
-    plan = new AuthorPlan(ConfigPhysicalPlanType.GrantUser);
+    plan = new AuthorTreePlan(ConfigPhysicalPlanType.GrantUser);
     plan.setUserName(userName);
     plan.setRoleName("");
     plan.setNodeNameList(Collections.emptyList());
@@ -240,7 +243,7 @@ public class CNPhysicalPlanGeneratorTest {
     answerSet.add(plan.hashCode());
 
     // Grant role to user, plan 5
-    plan = new AuthorPlan(ConfigPhysicalPlanType.GrantRoleToUser);
+    plan = new AuthorTreePlan(ConfigPhysicalPlanType.GrantRoleToUser);
     plan.setRoleName("role1");
     plan.setUserName("");
     plan.setUserName(userName);
