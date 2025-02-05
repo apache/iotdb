@@ -42,6 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
@@ -2041,7 +2042,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     } else {
       right = (Relation) visit(ctx.rightRelation);
       if (ctx.joinCriteria().ON() != null) {
-        criteria = new JoinOn((Expression) visit(ctx.joinCriteria().booleanExpression()));
+        if (ctx.ASOF() != null) {
+          criteria = new AsofJoinOn((Expression) visit(ctx.joinCriteria().booleanExpression()), 0);
+          return new Join(getLocation(ctx), Join.Type.INNER, left, right, criteria);
+        } else {
+          criteria = new JoinOn((Expression) visit(ctx.joinCriteria().booleanExpression()));
+        }
       } else if (ctx.joinCriteria().USING() != null) {
         criteria = new JoinUsing(visit(ctx.joinCriteria().identifier(), Identifier.class));
       } else {
