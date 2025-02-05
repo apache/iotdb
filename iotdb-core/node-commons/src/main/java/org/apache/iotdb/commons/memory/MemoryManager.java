@@ -89,7 +89,7 @@ public class MemoryManager {
    */
   public MemoryBlock forceAllocate(String name, long sizeInBytes, MemoryBlockType type) {
     if (!enable) {
-      return new MemoryBlock(name, this, sizeInBytes, type);
+      return registerMemoryBlock(name, sizeInBytes, type);
     }
     for (int i = 0; i < MEMORY_ALLOCATE_MAX_RETRIES; i++) {
       if (totalMemorySizeInBytes - allocatedMemorySizeInBytes >= sizeInBytes) {
@@ -129,22 +129,23 @@ public class MemoryManager {
   /**
    * Try to force allocate memory block with specified size in bytes when memory is sufficient.
    *
-   * @param name the name of memory block
-   * @param sizeInBytes the size in bytes of memory block try to allocate
-   * @param usedThreshold the used threshold of allocatedMemorySizeInBytes / totalMemorySizeInBytes
+   * @param name            the name of memory block
+   * @param sizeInBytes     the size in bytes of memory block try to allocate
+   * @param usedThreshold   the used threshold of allocatedMemorySizeInBytes / totalMemorySizeInBytes
+   * @param memoryBlockType the type of memory block
    * @return the memory block if success, otherwise null
    */
   public synchronized MemoryBlock forceAllocateIfSufficient(
-      String name, long sizeInBytes, float usedThreshold) {
+      String name, long sizeInBytes, float usedThreshold, MemoryBlockType memoryBlockType) {
     if (usedThreshold < 0.0f || usedThreshold > 1.0f) {
       return null;
     }
     if (!enable) {
-      return new MemoryBlock(name, this, sizeInBytes);
+      return registerMemoryBlock(name, sizeInBytes, memoryBlockType);
     }
     if (totalMemorySizeInBytes - allocatedMemorySizeInBytes >= sizeInBytes
         && (float) allocatedMemorySizeInBytes / totalMemorySizeInBytes < usedThreshold) {
-      return forceAllocate(name, sizeInBytes, MemoryBlockType.NONE);
+      return forceAllocate(name, sizeInBytes, memoryBlockType);
     } else {
       // TODO @spricoder: consider to find more memory in active way
       LOGGER.debug(

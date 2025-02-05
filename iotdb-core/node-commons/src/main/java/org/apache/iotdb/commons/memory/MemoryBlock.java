@@ -70,7 +70,7 @@ public class MemoryBlock extends IMemoryBlock {
         break;
       }
       synchronized (memoryUsageInBytes) {
-        memoryBlockType.wait();
+        memoryUsageInBytes.wait();
       }
       originSize = memoryUsageInBytes.get();
     }
@@ -81,7 +81,7 @@ public class MemoryBlock extends IMemoryBlock {
   public void release(long sizeInByte) {
     memoryUsageInBytes.addAndGet(-sizeInByte);
     synchronized (memoryUsageInBytes) {
-      memoryBlockType.notifyAll();
+      memoryUsageInBytes.notifyAll();
     }
   }
 
