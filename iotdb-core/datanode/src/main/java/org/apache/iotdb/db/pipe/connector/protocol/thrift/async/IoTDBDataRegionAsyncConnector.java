@@ -134,7 +134,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
             password,
             shouldReceiverConvertOnTypeMismatch,
             loadTsFileStrategy,
-            validateTsFile);
+            loadTsFileValidation);
 
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new PipeTransferBatchReqBuilder(parameters);
