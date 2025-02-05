@@ -226,7 +226,7 @@ public class PipeConfig {
 
   /////////////////////////////// Receiver ///////////////////////////////
 
-  public long getPipeReceiverLoginInvalidInterval() {
+  public long getPipeReceiverLoginPeriodicVerificationIntervalMs() {
     return COMMON_CONFIG.getPipeReceiverLoginPeriodicVerificationIntervalMs();
   }
 
@@ -439,6 +439,10 @@ public class PipeConfig {
 
     LOGGER.info("PipeAirGapReceiverEnabled: {}", getPipeAirGapReceiverEnabled());
     LOGGER.info("PipeAirGapReceiverPort: {}", getPipeAirGapReceiverPort());
+
+    LOGGER.info(
+        "PipeReceiverLoginPeriodicVerificationIntervalMs: {}",
+        getPipeReceiverLoginPeriodicVerificationIntervalMs());
 
     LOGGER.info(
         "PipeMaxAllowedHistoricalTsFilePerDataRegion: {}",

@@ -176,9 +176,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private static final Set<String> ALREADY_CREATED_DATABASES = ConcurrentHashMap.newKeySet();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
-
-  private static final long LOGIN_INVALID_INTERVAL =
-      PipeConfig.getInstance().getPipeReceiverLoginInvalidInterval();
+  private static final long LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS =
+      PipeConfig.getInstance().getPipeReceiverLoginPeriodicVerificationIntervalMs();
   private long lastSuccessfulLoginTime = Long.MIN_VALUE;
 
   static {
@@ -499,8 +498,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
     if (clientSession == null
         || !clientSession.isLogin()
-        || (LOGIN_INVALID_INTERVAL >= 0
-            && lastSuccessfulLoginTime < System.currentTimeMillis() - LOGIN_INVALID_INTERVAL)) {
+        || (LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS >= 0
+            && lastSuccessfulLoginTime
+                < System.currentTimeMillis() - LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS)) {
       final TSStatus status =
           SESSION_MANAGER.login(
               SESSION_MANAGER.getCurrSession(),
@@ -823,8 +823,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
     if (clientSession == null
         || !clientSession.isLogin()
-        || (LOGIN_INVALID_INTERVAL >= 0
-            && lastSuccessfulLoginTime < System.currentTimeMillis() - LOGIN_INVALID_INTERVAL)) {
+        || (LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS >= 0
+            && lastSuccessfulLoginTime
+                < System.currentTimeMillis() - LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS)) {
       permissionCheckStatus = login();
       if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return permissionCheckStatus;
@@ -1008,8 +1009,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       if (clientSession == null
           || !clientSession.isLogin()
-          || (LOGIN_INVALID_INTERVAL >= 0
-              && lastSuccessfulLoginTime < System.currentTimeMillis() - LOGIN_INVALID_INTERVAL)) {
+          || (LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS >= 0
+              && lastSuccessfulLoginTime
+                  < System.currentTimeMillis() - LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS)) {
         final TSStatus result = login();
         if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return result;
