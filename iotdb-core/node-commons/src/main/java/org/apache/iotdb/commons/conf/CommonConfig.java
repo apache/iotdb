@@ -248,7 +248,7 @@ public class CommonConfig {
   private boolean pipeAirGapReceiverEnabled = false;
   private int pipeAirGapReceiverPort = 9780;
 
-  private long pipeReceiverLoginInvalidInterval = 300000;
+  private long pipeReceiverLoginPeriodicVerificationIntervalMs = 300000;
 
   private int pipeMaxAllowedHistoricalTsFilePerDataRegion = 100;
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 2;
@@ -983,12 +983,14 @@ public class CommonConfig {
     return pipeAirGapReceiverPort;
   }
 
-  public void setPipeReceiverLoginInvalidInterval(long pipeReceiverLoginInvalidInterval) {
-    this.pipeReceiverLoginInvalidInterval = pipeReceiverLoginInvalidInterval;
+  public void setPipeReceiverLoginPeriodicVerificationIntervalMs(
+      long pipeReceiverLoginPeriodicVerificationIntervalMs) {
+    this.pipeReceiverLoginPeriodicVerificationIntervalMs =
+        pipeReceiverLoginPeriodicVerificationIntervalMs;
   }
 
-  public long getPipeReceiverLoginInvalidInterval() {
-    return pipeReceiverLoginInvalidInterval;
+  public long getPipeReceiverLoginPeriodicVerificationIntervalMs() {
+    return pipeReceiverLoginPeriodicVerificationIntervalMs;
   }
 
   public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {

@@ -227,7 +227,7 @@ public class PipeConfig {
   /////////////////////////////// Receiver ///////////////////////////////
 
   public long getPipeReceiverLoginInvalidInterval() {
-    return COMMON_CONFIG.getPipeReceiverLoginInvalidInterval();
+    return COMMON_CONFIG.getPipeReceiverLoginPeriodicVerificationIntervalMs();
   }
 
   /////////////////////////////// Hybrid Mode ///////////////////////////////
