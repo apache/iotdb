@@ -193,9 +193,9 @@ class Session(object):
                 ssl_context=context,
             )
         else:
-            transport=TSocket.TSocket(endpoint.ip, endpoint.port)
+            socket = TSocket.TSocket(endpoint.ip, endpoint.port)
 
-        transport = TTransport.TFramedTransport(transport)
+        transport = TTransport.TFramedTransport(socket)
 
         if not transport.isOpen():
             try:
