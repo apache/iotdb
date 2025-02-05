@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CreateFunc
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CreatePipePluginTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DropFunctionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DropPipePluginTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.RemoveDataNodeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterIdTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFunctionsTask;
@@ -56,6 +58,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DropDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DropTableTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.RelationalAuthorizerTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowAINodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowConfigNodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
@@ -120,6 +123,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
@@ -151,6 +156,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
@@ -164,7 +170,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
-import java.security.AccessControlException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -319,7 +324,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             accessControl.checkCanShowOrUseDatabase(
                 context.getSession().getUserName(), databaseName);
             return true;
-          } catch (final AccessControlException e) {
+          } catch (final AccessDeniedException e) {
             return false;
           }
         });
@@ -349,6 +354,18 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     treeStatement.setStorageGroups(showRegions.getDatabases());
     treeStatement.setNodeIds(showRegions.getNodeIds());
     return new ShowRegionTask(treeStatement, true);
+  }
+
+  @Override
+  protected IConfigTask visitRemoveDataNode(
+      final RemoveDataNode removeDataNode, final MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    // As the implementation is identical, we'll simply translate to the
+    // corresponding tree-model variant and execute that.
+    final RemoveDataNodeStatement treeStatement =
+        new RemoveDataNodeStatement(removeDataNode.getNodeIds());
+    return new RemoveDataNodeTask(treeStatement);
   }
 
   @Override
@@ -661,7 +678,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
                 context.getSession().getUserName(),
                 new QualifiedObjectName(finalDatabase, tableName));
             return true;
-          } catch (final AccessControlException e) {
+          } catch (final AccessDeniedException e) {
             return false;
           }
         };
@@ -935,6 +952,15 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       ShowCurrentTimestamp node, MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowCurrentTimestampTask();
+  }
+
+  @Override
+  protected IConfigTask visitRelationalAuthorPlan(
+      RelationalAuthorStatement node, MPPQueryContext context) {
+    accessControl.checkUserCanRunRelationalAuthorStatement(
+        context.getSession().getUserName(), node);
+    context.setQueryType(node.getQueryType());
+    return new RelationalAuthorizerTask(node);
   }
 
   @Override

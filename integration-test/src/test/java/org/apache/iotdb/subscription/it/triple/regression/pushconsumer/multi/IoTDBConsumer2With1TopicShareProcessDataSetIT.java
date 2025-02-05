@@ -25,7 +25,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
@@ -64,8 +64,8 @@ public class IoTDBConsumer2With1TopicShareProcessDataSetIT
   private static List<IMeasurementSchema> schemaList = new ArrayList<>();
 
   private static final String pattern = database + ".**";
-  private static SubscriptionPushConsumer consumer;
-  private static SubscriptionPushConsumer consumer2;
+  private static SubscriptionTreePushConsumer consumer;
+  private static SubscriptionTreePushConsumer consumer2;
 
   @Override
   @Before
@@ -143,7 +143,7 @@ public class IoTDBConsumer2With1TopicShareProcessDataSetIT
               }
             });
     consumer =
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("db_dataset_consumer_1")
@@ -167,7 +167,7 @@ public class IoTDBConsumer2With1TopicShareProcessDataSetIT
     consumer.open();
     consumer.subscribe(topicName);
     consumer2 =
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("db_dataset_consumer_2")

@@ -456,6 +456,9 @@ public class IoTDBDatabaseIT {
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute("create database test");
+      statement.execute("use test");
+      statement.execute("create table table1(id1 tag, s1 string)");
+      statement.execute("insert into table1 values(0, 'd1', null), (1,'d1', 1)");
     }
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
@@ -463,6 +466,7 @@ public class IoTDBDatabaseIT {
       statement.execute("create database root.test");
       statement.execute(
           "alter database root.test WITH SCHEMA_REGION_GROUP_NUM=2, DATA_REGION_GROUP_NUM=3");
+      statement.execute("insert into root.test.d1 (s1) values(1)");
       statement.execute("drop database root.test");
     }
 
@@ -475,8 +479,6 @@ public class IoTDBDatabaseIT {
           assertTrue(resultSet.next());
         }
         assertEquals("test", resultSet.getString(1));
-        assertEquals(0, resultSet.getInt(6));
-        assertEquals(0, resultSet.getInt(7));
         assertFalse(resultSet.next());
       }
 

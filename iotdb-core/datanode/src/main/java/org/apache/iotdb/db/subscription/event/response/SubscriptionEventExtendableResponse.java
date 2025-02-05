@@ -79,6 +79,7 @@ public abstract class SubscriptionEventExtendableResponse
   public void cleanUp() {
     CachedSubscriptionPollResponse response;
     while (Objects.nonNull(response = poll())) {
+      response.closeMemoryBlock();
       SubscriptionPollResponseCache.getInstance().invalidate(response);
     }
 

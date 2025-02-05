@@ -74,6 +74,7 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
 
   private static String username = SessionConfig.DEFAULT_USER;
   private static String password = SessionConfig.DEFAULT_PASSWORD;
+  private static boolean validateTsFile;
 
   public ImportTsFileRemotely(String timePrecision) {
     setTimePrecision(timePrecision);
@@ -189,6 +190,9 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, LOAD_STRATEGY);
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, username);
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, password);
+    params.put(
+        PipeTransferHandshakeConstant.HANDSHAKE_KEY_VALIDATE_TSFILE,
+        Boolean.toString(validateTsFile));
     return params;
   }
 
@@ -345,5 +349,9 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
 
   public static void setPassword(final String password) {
     ImportTsFileRemotely.password = password;
+  }
+
+  public static void setValidateTsFile(final boolean validateTsFile) {
+    ImportTsFileRemotely.validateTsFile = validateTsFile;
   }
 }
