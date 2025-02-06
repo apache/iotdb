@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.memory;
 
+import org.apache.iotdb.commons.utils.TestOnly;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,6 +62,14 @@ public class MemoryManager {
 
   /** The allocated memory blocks of this memory manager */
   private final Set<IMemoryBlock> allocatedMemoryBlocks = new HashSet<>();
+
+  @TestOnly
+  public MemoryManager(long totalMemorySizeInBytes) {
+    this.name = "Test";
+    this.parentMemoryManager = null;
+    this.totalMemorySizeInBytes = totalMemorySizeInBytes;
+    this.enable = false;
+  }
 
   private MemoryManager(
       String name, MemoryManager parentMemoryManager, long totalMemorySizeInBytes) {

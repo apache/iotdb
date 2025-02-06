@@ -30,13 +30,11 @@ public class LocalMemoryManager {
   private final MemoryPool queryPool;
 
   public LocalMemoryManager() {
+    // TODO @spricoder: why this pool is only used for query data exchange
     queryPool =
         new MemoryPool(
             "read",
-            IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getDataExchangeMemoryManager()
-                .getTotalMemorySizeInBytes(),
+            IoTDBDescriptor.getInstance().getConfig().getDataExchangeMemoryManager(),
             IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance());
   }
 

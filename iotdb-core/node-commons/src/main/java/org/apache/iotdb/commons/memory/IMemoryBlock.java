@@ -55,8 +55,9 @@ public abstract class IMemoryBlock implements AutoCloseable {
    * Force allocate memory without the limit of totalMemorySizeInBytes
    *
    * @param sizeInByte the size of memory to be allocated, should positive
+   * @return
    */
-  public abstract void forceAllocate(final long sizeInByte);
+  public abstract long forceAllocate(final long sizeInByte);
 
   /**
    * Allocate memory managed by this memory block
@@ -79,8 +80,9 @@ public abstract class IMemoryBlock implements AutoCloseable {
    * Try to release memory managed by this memory block
    *
    * @param sizeInByte the size of memory to be released, should positive
+   * @return
    */
-  public abstract void release(final long sizeInByte);
+  public abstract long release(final long sizeInByte);
 
   /**
    * Try to set memory usage in byte of this memory block (for test only)

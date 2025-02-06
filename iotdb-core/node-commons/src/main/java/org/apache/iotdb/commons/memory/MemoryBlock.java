@@ -48,8 +48,8 @@ public class MemoryBlock extends IMemoryBlock {
   }
 
   @Override
-  public void forceAllocate(long sizeInByte) {
-    usedMemoryInBytes.addAndGet(sizeInByte);
+  public long forceAllocate(long sizeInByte) {
+    return usedMemoryInBytes.addAndGet(sizeInByte);
   }
 
   @Override
@@ -82,8 +82,8 @@ public class MemoryBlock extends IMemoryBlock {
   }
 
   @Override
-  public void release(long sizeInByte) {
-    usedMemoryInBytes.updateAndGet(
+  public long release(long sizeInByte) {
+    return usedMemoryInBytes.updateAndGet(
         memCost -> {
           if (sizeInByte > memCost) {
             LOGGER.warn(
