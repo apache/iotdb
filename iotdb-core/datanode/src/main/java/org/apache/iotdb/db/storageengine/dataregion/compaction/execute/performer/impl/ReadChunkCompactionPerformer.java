@@ -36,7 +36,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
-import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -179,8 +179,9 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       MultiTsFileDeviceIterator deviceIterator)
       throws IOException, InterruptedException, IllegalPathException, PageException {
     checkThreadInterrupted();
-    LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList =
-        deviceIterator.getReaderAndChunkMetadataForCurrentAlignedSeries();
+    LinkedList<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
+        readerAndChunkMetadataList =
+            deviceIterator.getReaderAndChunkMetadataForCurrentAlignedSeries();
     if (!checkAlignedSeriesExists(readerAndChunkMetadataList)) {
       return;
     }
@@ -212,9 +213,9 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   }
 
   private boolean checkAlignedSeriesExists(
-      LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
+      LinkedList<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
           readerAndChunkMetadataList) {
-    for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> readerListPair :
+    for (Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>> readerListPair :
         readerAndChunkMetadataList) {
       if (!readerListPair.right.isEmpty()) {
         return true;
