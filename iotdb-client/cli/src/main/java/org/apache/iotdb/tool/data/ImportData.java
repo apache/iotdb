@@ -325,9 +325,10 @@ public class ImportData extends AbstractDataTool {
       File dir = createFailDir(commandLine);
       isFailDirEqualsSourceDir = isFileStoreEquals(targetPath, dir);
     }
-
-    successOperation = ImportTsFileOperation.getOperation(onSuccess, isSuccessDirEqualsSourceDir);
-    failOperation = ImportTsFileOperation.getOperation(onFail, isFailDirEqualsSourceDir);
+    if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
+      successOperation = ImportTsFileOperation.getOperation(onSuccess, isSuccessDirEqualsSourceDir);
+      failOperation = ImportTsFileOperation.getOperation(onFail, isFailDirEqualsSourceDir);
+    }
   }
 
   public static boolean isFileStoreEquals(String pathString, File dir) {
