@@ -27,8 +27,8 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tool.common.Constants;
+import org.apache.iotdb.tool.common.ImportTsFileOperation;
 import org.apache.iotdb.tool.common.OptionsUtil;
-import org.apache.iotdb.tool.tsfile.ImportTsFile;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -307,27 +307,27 @@ public class ImportData extends AbstractDataTool {
     final String of = commandLine.getOptionValue(Constants.ON_FAIL_ARGS);
     final String onFail = StringUtils.isNotBlank(of) ? of.trim().toLowerCase() : null;
     if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)
-        && (!ImportTsFile.Operation.isValidOperation(onSuccess)
-            || !ImportTsFile.Operation.isValidOperation(onFail))) {
+        && (!ImportTsFileOperation.isValidOperation(onSuccess)
+            || !ImportTsFileOperation.isValidOperation(onFail))) {
       ioTPrinter.println("Args error: os/of must be one of none, mv, cp, delete");
       System.exit(Constants.CODE_ERROR);
+    }
+    if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
       boolean isSuccessDirEqualsSourceDir = false;
-      if (ImportTsFile.Operation.MV.name().equalsIgnoreCase(onSuccess)
-          || ImportTsFile.Operation.CP.name().equalsIgnoreCase(onSuccess)) {
+      if (ImportTsFileOperation.MV.name().equalsIgnoreCase(onSuccess)
+          || ImportTsFileOperation.CP.name().equalsIgnoreCase(onSuccess)) {
         File dir = createSuccessDir(commandLine);
         isSuccessDirEqualsSourceDir = isFileStoreEquals(targetPath, dir);
       }
 
       boolean isFailDirEqualsSourceDir = false;
-      if (ImportTsFile.Operation.MV.name().equalsIgnoreCase(onFail)
-          || ImportTsFile.Operation.CP.name().equalsIgnoreCase(onFail)) {
+      if (ImportTsFileOperation.MV.name().equalsIgnoreCase(onFail)
+          || ImportTsFileOperation.CP.name().equalsIgnoreCase(onFail)) {
         File dir = createFailDir(commandLine);
         isFailDirEqualsSourceDir = isFileStoreEquals(targetPath, dir);
       }
-
-      successOperation =
-          ImportTsFile.Operation.getOperation(onSuccess, isSuccessDirEqualsSourceDir);
-      failOperation = ImportTsFile.Operation.getOperation(onFail, isFailDirEqualsSourceDir);
+      successOperation = ImportTsFileOperation.getOperation(onSuccess, isSuccessDirEqualsSourceDir);
+      failOperation = ImportTsFileOperation.getOperation(onFail, isFailDirEqualsSourceDir);
     }
   }
 
