@@ -18,6 +18,7 @@
 
 import logging
 import random
+import sys
 import ssl
 import struct
 import time
@@ -184,25 +185,34 @@ class Session(object):
             }
 
     def init_connection(self, endpoint):
-        if self.__use_ssl:
-            context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
-            context.load_verify_locations(cafile=self.__ca_certs)
-            socket = TSSLSocket.TSSLSocket(
-                host=endpoint.ip,
-                port=endpoint.port,
-                ssl_context=context,
-            )
-        else:
-            socket = TSocket.TSocket(endpoint.ip, endpoint.port)
+        try:
+            if self.__use_ssl:
+                if sys.version_info >= (3, 10):
+                    context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+                else:
+                    context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+                    context.verify_mode = ssl.CERT_REQUIRED
+                    context.check_hostname = True
+                context.load_verify_locations(cafile=self.__ca_certs)
+                socket = TSSLSocket.TSSLSocket(
+                    host=endpoint.ip,
+                    port=endpoint.port,
+                    ssl_context=context
+                )
+            else:
+                socket = TSocket.TSocket(endpoint.ip, endpoint.port)
+            transport = TTransport.TFramedTransport(socket)
 
-        transport = TTransport.TFramedTransport(socket)
+            if not transport.isOpen():
+                try:
+                    transport.open()
+                except TTransport.TTransportException as e:
+                    raise IoTDBConnectionException(e) from None
 
-        if not transport.isOpen():
-            try:
-                transport.open()
-            except TTransport.TTransportException as e:
-                raise IoTDBConnectionException(e) from None
-
+        except ssl.SSLError as e:
+            print(f"SSL error occurred: {e}")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
         if self.__enable_rpc_compression:
             client = Client(TCompactProtocol.TCompactProtocolAccelerated(transport))
         else:
