@@ -457,4 +457,19 @@ public class MemoryManager {
         + allocatedMemorySizeInBytes
         + '}';
   }
+
+  public void print(int index) {
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < index; i++) {
+      sb.append("  ");
+    }
+    sb.append(this);
+    LOGGER.error(sb.toString());
+    for (IMemoryBlock block : allocatedMemoryBlocks) {
+      block.print(index + 1);
+    }
+    for (MemoryManager child : children.values()) {
+      child.print(index + 1);
+    }
+  }
 }

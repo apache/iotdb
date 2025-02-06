@@ -20,11 +20,14 @@
 package org.apache.iotdb.commons.memory;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class IMemoryBlock implements AutoCloseable {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IMemoryBlock.class);
   /** The memory manager that manages this memory block */
   protected MemoryManager memoryManager;
 
@@ -111,5 +114,14 @@ public abstract class IMemoryBlock implements AutoCloseable {
   /** Get the type of this memory block */
   public MemoryBlockType getMemoryBlockType() {
     return memoryBlockType;
+  }
+
+  public void print(int index){
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < index; i++) {
+      sb.append("  ");
+    }
+    sb.append(this);
+    LOGGER.error(sb.toString());
   }
 }
