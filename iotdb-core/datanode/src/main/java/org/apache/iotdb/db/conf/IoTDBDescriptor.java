@@ -2976,14 +2976,9 @@ public class IoTDBDescriptor {
     long newSize =
         storageEngineMemoryManager.getTotalMemorySizeInBytes()
             + consensusMemoryManager.getTotalMemorySizeInBytes();
-    globalMemoryManager.releaseChildMemoryManager("StorageEngine");
-    storageEngineMemoryManager.clearAll();
-    // @Spricoder to find a better way
     consensusMemoryManager.setTotalMemorySizeInBytes(0);
-    // then we need to allocate the memory to storage engine
-    conf.setStorageEngineMemoryManager(
-        globalMemoryManager.getOrCreateMemoryManager("StorageEngine", newSize));
-    SystemInfo.getInstance().allocateWriteMemory();
+    storageEngineMemoryManager.setTotalMemorySizeInBytesWithReload(newSize);
+    SystemInfo.getInstance().loadWriteMemory();
   }
 
   private static class IoTDBDescriptorHolder {

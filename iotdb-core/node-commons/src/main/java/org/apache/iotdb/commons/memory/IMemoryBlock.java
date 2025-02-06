@@ -46,7 +46,7 @@ public abstract class IMemoryBlock implements AutoCloseable {
   protected volatile boolean isReleased = false;
 
   /** The total memory size in byte of this memory block */
-  protected long totalMemorySizeInBytes = 0;
+  protected long totalMemorySizeInBytes;
 
   /** The memory usage in byte of this memory block */
   protected final AtomicLong usedMemoryInBytes = new AtomicLong(0);

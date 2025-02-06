@@ -226,7 +226,7 @@ public class MemoryManager {
    */
   private IMemoryBlock registerMemoryBlock(String name, long sizeInBytes, MemoryBlockType type) {
     if (sizeInBytes <= 0) {
-      LOGGER.warn("forceAllocate {}: sizeInBytes should be positive", type);
+      LOGGER.warn("forceAllocate {}: sizeInBytes should be positive", name);
     }
     allocatedMemorySizeInBytes += sizeInBytes;
     final IMemoryBlock memoryBlock = new MemoryBlock(name, this, sizeInBytes, type);
@@ -326,6 +326,24 @@ public class MemoryManager {
   }
 
   /**
+   * Re-allocate memory according to ratio
+   *
+   * @param ratio the ratio of new total memory size to old total memory size
+   */
+  private void reAllocateMemoryAccordingToRatio(double ratio) {
+    // first increase the total memory size of this memory manager
+    this.totalMemorySizeInBytes *= ratio;
+    // then re-allocate memory for all memory blocks
+    for (IMemoryBlock block : allocatedMemoryBlocks) {
+      block.setTotalMemorySizeInBytes((long) (block.getTotalMemorySizeInBytes() * ratio));
+    }
+    // finally re-allocate memory for all child memory managers
+    for (Map.Entry<String, MemoryManager> entry : children.entrySet()) {
+      entry.getValue().reAllocateMemoryAccordingToRatio(ratio);
+    }
+  }
+
+  /**
    * Get the memory manager with specified names in levels
    *
    * @param names the names of memory manager in levels
@@ -410,6 +428,10 @@ public class MemoryManager {
 
   public void setTotalMemorySizeInBytes(long totalMemorySizeInBytes) {
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
+  }
+
+  public void setTotalMemorySizeInBytesWithReload(long totalMemorySizeInBytes) {
+    reAllocateMemoryAccordingToRatio((double) totalMemorySizeInBytes / this.totalMemorySizeInBytes);
   }
 
   /** Get available memory size in bytes of memory manager */

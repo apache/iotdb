@@ -21,11 +21,8 @@ package org.apache.iotdb.commons.memory;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class MemoryManagerTest {
-  private static final Logger LOGGER = LoggerFactory.getLogger(MemoryManagerTest.class);
   private final MemoryManager GLOBAL_MEMORY_MANAGER = MemoryManager.global();
 
   @Before

@@ -77,7 +77,7 @@ public class SystemInfo {
   private volatile boolean isEncodingFasterThanIo = true;
 
   private SystemInfo() {
-    allocateWriteMemory();
+    loadWriteMemory();
   }
 
   /**
@@ -334,7 +334,7 @@ public class SystemInfo {
     return compactionMemoryBlock.getTotalMemorySizeInBytes();
   }
 
-  public void allocateWriteMemory() {
+  public void loadWriteMemory() {
     memorySizeForMemtable = config.getMemtableMemoryManager().getTotalMemorySizeInBytes();
     compactionMemoryBlock =
         config.getCompactionMemoryManager().forceAllocate("Compaction", MemoryBlockType.FUNCTION);

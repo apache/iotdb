@@ -48,7 +48,6 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    long storageEngineSize = config.getStorageEngineMemoryManager().getTotalMemorySizeInBytes();
     // Total memory size of storage engine
     metricService
         .getOrCreateGauge(
