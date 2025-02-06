@@ -34,6 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointMan
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.BrokenWALFileException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALNodeClosedException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.MemoryControlledWALEntryQueue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
@@ -57,8 +58,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -77,7 +76,6 @@ public class WALBuffer extends AbstractWALBuffer {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   public static final int ONE_THIRD_WAL_BUFFER_SIZE = config.getWalBufferSize() / 3;
   private static final double FSYNC_BUFFER_RATIO = 0.95;
-  private static final int QUEUE_CAPACITY = config.getWalBufferQueueCapacity();
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
 
   // whether close method is called
@@ -85,7 +83,7 @@ public class WALBuffer extends AbstractWALBuffer {
   // manage checkpoints
   private final CheckpointManager checkpointManager;
   // WALEntries
-  private final BlockingQueue<WALEntry> walEntries = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
+  private final MemoryControlledWALEntryQueue walEntries = new MemoryControlledWALEntryQueue();
   // lock to provide synchronization for double buffers mechanism, protecting buffers status
   private final Lock buffersLock = new ReentrantLock();
   // condition to guarantee correctness of switching buffers

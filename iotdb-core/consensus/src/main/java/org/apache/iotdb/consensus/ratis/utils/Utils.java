@@ -253,6 +253,7 @@ public class Utils {
     GrpcConfigKeys.Server.setLeaderOutstandingAppendsMax(
         properties, config.getGrpc().getLeaderOutstandingAppendsMax());
 
+    RaftServerConfigKeys.setStagingTimeout(properties, TimeDuration.valueOf(240, TimeUnit.SECONDS));
     RaftServerConfigKeys.Rpc.setSlownessTimeout(properties, config.getRpc().getSlownessTimeout());
     RaftServerConfigKeys.Rpc.setTimeoutMin(properties, config.getRpc().getTimeoutMin());
     RaftServerConfigKeys.Rpc.setTimeoutMax(properties, config.getRpc().getTimeoutMax());
@@ -310,7 +311,8 @@ public class Utils {
         properties, RaftServerConfigKeys.Log.CorruptionPolicy.WARN_AND_RETURN);
 
     RaftServerConfigKeys.Write.setByteLimit(
-        properties, config.getLeaderLogAppender().getBufferByteLimit());
+        properties,
+        SizeInBytes.valueOf(config.getLeaderLogAppender().getBufferByteLimit().getSize() * 10));
 
     RaftServerConfigKeys.Log.setQueueByteLimit(
         properties, config.getLeaderLogAppender().getBufferByteLimit());

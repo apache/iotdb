@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorReadPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
@@ -90,6 +89,7 @@ import org.apache.iotdb.confignode.consensus.request.write.model.DropModelInNode
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.AutoCleanPartitionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
@@ -297,13 +297,17 @@ public class ConfigPlanExecutor {
       case GetOrCreateSchemaPartition:
         return partitionInfo.getSchemaPartition((GetSchemaPartitionPlan) req);
       case ListUser:
-        return authorInfo.executeListUsers((AuthorReadPlan) req);
+      case RListUser:
+        return authorInfo.executeListUsers((AuthorPlan) req);
       case ListRole:
-        return authorInfo.executeListRoles((AuthorReadPlan) req);
+      case RListRole:
+        return authorInfo.executeListRoles((AuthorPlan) req);
       case ListUserPrivilege:
-        return authorInfo.executeListUserPrivileges((AuthorReadPlan) req);
+      case RListUserPrivilege:
+        return authorInfo.executeListUserPrivileges((AuthorPlan) req);
       case ListRolePrivilege:
-        return authorInfo.executeListRolePrivileges((AuthorReadPlan) req);
+      case RListRolePrivilege:
+        return authorInfo.executeListRolePrivileges((AuthorPlan) req);
       case GetNodePathsPartition:
         return getSchemaNodeManagementPartition(req);
       case GetRegionInfoList:
@@ -322,10 +326,14 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.getTemplateSetInfo((GetTemplateSetInfoPlan) req);
       case ShowTable:
         return clusterSchemaInfo.showTables((ShowTablePlan) req);
+      case ShowTable4InformationSchema:
+        return clusterSchemaInfo.showTables4InformationSchema();
       case FetchTable:
         return clusterSchemaInfo.fetchTables((FetchTablePlan) req);
       case DescTable:
         return clusterSchemaInfo.descTable((DescTablePlan) req);
+      case DescTable4InformationSchema:
+        return clusterSchemaInfo.descTable4InformationSchema();
       case GetTriggerTable:
         return triggerInfo.getTriggerTable((GetTriggerTablePlan) req);
       case GetTriggerLocation:
@@ -438,6 +446,8 @@ public class ConfigPlanExecutor {
         return partitionInfo.createSchemaPartition((CreateSchemaPartitionPlan) physicalPlan);
       case CreateDataPartition:
         return partitionInfo.createDataPartition((CreateDataPartitionPlan) physicalPlan);
+      case AutoCleanPartitionTable:
+        return partitionInfo.autoCleanPartitionTable((AutoCleanPartitionTablePlan) physicalPlan);
       case UpdateProcedure:
         return procedureInfo.updateProcedure((UpdateProcedurePlan) physicalPlan);
       case DeleteProcedure:
@@ -465,6 +475,33 @@ public class ConfigPlanExecutor {
       case RevokeRoleDep:
       case RevokeRoleFromUserDep:
       case UpdateUserDep:
+      case RCreateRole:
+      case RCreateUser:
+      case RDropUser:
+      case RDropRole:
+      case RUpdateUser:
+      case RGrantUserRole:
+      case RGrantRoleAny:
+      case RGrantUserAny:
+      case RGrantUserAll:
+      case RGrantRoleAll:
+      case RGrantUserDBPriv:
+      case RGrantUserSysPri:
+      case RGrantUserTBPriv:
+      case RGrantRoleDBPriv:
+      case RGrantRoleSysPri:
+      case RGrantRoleTBPriv:
+      case RRevokeRoleAny:
+      case RRevokeUserAny:
+      case RRevokeUserAll:
+      case RRevokeRoleAll:
+      case RRevokeUserDBPriv:
+      case RRevokeUserSysPri:
+      case RRevokeUserTBPriv:
+      case RRevokeRoleDBPriv:
+      case RRevokeRoleSysPri:
+      case RRevokeRoleTBPriv:
+      case RRevokeUserRole:
         return authorInfo.authorNonQuery((AuthorPlan) physicalPlan);
       case ApplyConfigNode:
         return nodeInfo.applyConfigNode((ApplyConfigNodePlan) physicalPlan);
@@ -608,6 +645,7 @@ public class ConfigPlanExecutor {
       case PipeDeleteTimeSeries:
       case PipeDeleteLogicalView:
       case PipeDeactivateTemplate:
+      case PipeDeleteDevices:
         // Pipe payload, used to trigger plan extraction.
         // Will not be actually executed.
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -677,7 +715,7 @@ public class ConfigPlanExecutor {
     return result.get();
   }
 
-  public void loadSnapshot(File latestSnapshotRootDir) {
+  public void loadSnapshot(final File latestSnapshotRootDir) {
     if (!latestSnapshotRootDir.exists()) {
       LOGGER.error(
           "snapshot directory [{}] is not exist, can not load snapshot with this directory.",
@@ -685,12 +723,12 @@ public class ConfigPlanExecutor {
       return;
     }
 
-    AtomicBoolean result = new AtomicBoolean(true);
+    final AtomicBoolean result = new AtomicBoolean(true);
     snapshotProcessorList.parallelStream()
         .forEach(
             x -> {
               try {
-                long startTime = System.currentTimeMillis();
+                final long startTime = System.currentTimeMillis();
                 LOGGER.info(
                     "[ConfigNodeSnapshot] Start to load snapshot for {} from {}",
                     x.getClass().getName(),
@@ -700,7 +738,7 @@ public class ConfigPlanExecutor {
                     "[ConfigNodeSnapshot] Load snapshot for {} cost {} ms",
                     x.getClass().getName(),
                     System.currentTimeMillis() - startTime);
-              } catch (TException | IOException e) {
+              } catch (final TException | IOException e) {
                 result.set(false);
                 LOGGER.error("Load snapshot error", e);
               }
@@ -765,13 +803,13 @@ public class ConfigPlanExecutor {
     return schemaNodeManagementResp;
   }
 
-  private DataSet getRegionInfoList(ConfigPhysicalPlan req) {
+  private DataSet getRegionInfoList(final ConfigPhysicalPlan req) {
     final GetRegionInfoListPlan getRegionInfoListPlan = (GetRegionInfoListPlan) req;
-    TShowRegionReq showRegionReq = getRegionInfoListPlan.getShowRegionReq();
+    final TShowRegionReq showRegionReq = getRegionInfoListPlan.getShowRegionReq();
     if (showRegionReq != null && showRegionReq.isSetDatabases()) {
       final List<String> storageGroups = showRegionReq.getDatabases();
       final List<String> matchedStorageGroups =
-          clusterSchemaInfo.getMatchedDatabaseSchemasByName(storageGroups).values().stream()
+          clusterSchemaInfo.getMatchedDatabaseSchemasByName(storageGroups, false).values().stream()
               .map(TDatabaseSchema::getName)
               .collect(Collectors.toList());
       if (!matchedStorageGroups.isEmpty()) {

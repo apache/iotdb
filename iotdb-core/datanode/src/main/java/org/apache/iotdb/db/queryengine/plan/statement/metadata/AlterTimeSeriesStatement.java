@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -41,7 +42,7 @@ import java.util.Objects;
  * <p>ALTER TIMESERIES path RENAME | SET | DROP | ADD TAGS | ADD ATTRIBUTES | UPSERT
  */
 public class AlterTimeSeriesStatement extends Statement {
-  private PartialPath path;
+  private MeasurementPath path;
   private AlterTimeSeriesStatement.AlterType alterType;
 
   /**
@@ -81,11 +82,11 @@ public class AlterTimeSeriesStatement extends Statement {
     return Collections.singletonList(path);
   }
 
-  public PartialPath getPath() {
+  public MeasurementPath getPath() {
     return path;
   }
 
-  public void setPath(PartialPath path) {
+  public void setPath(MeasurementPath path) {
     this.path = path;
   }
 
@@ -139,8 +140,7 @@ public class AlterTimeSeriesStatement extends Statement {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathPermission(
-            userName, path, PrivilegeType.WRITE_SCHEMA.ordinal()),
+        AuthorityChecker.checkFullPathPermission(userName, path, PrivilegeType.WRITE_SCHEMA),
         PrivilegeType.WRITE_SCHEMA);
   }
 

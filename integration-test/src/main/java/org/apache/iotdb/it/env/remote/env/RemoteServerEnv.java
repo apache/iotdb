@@ -51,6 +51,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -176,6 +177,13 @@ public class RemoteServerEnv implements BaseEnv {
     return connection;
   }
 
+  @Override
+  public Connection getConnection(
+      DataNodeWrapper dataNodeWrapper, String username, String password, String sqlDialect)
+      throws SQLException {
+    throw new UnsupportedOperationException();
+  }
+
   public void setTestMethodName(String testCaseName) {
     // Do nothing
   }
@@ -269,6 +277,14 @@ public class RemoteServerEnv implements BaseEnv {
   @Override
   public ISession getSessionConnection() throws IoTDBConnectionException {
     Session session = new Session.Builder().host(ip_addr).port(Integer.parseInt(port)).build();
+    session.open();
+    return session;
+  }
+
+  @Override
+  public ISession getSessionConnection(ZoneId zoneId) throws IoTDBConnectionException {
+    Session session =
+        new Session.Builder().host(ip_addr).port(Integer.parseInt(port)).zoneId(zoneId).build();
     session.open();
     return session;
   }
@@ -438,6 +454,11 @@ public class RemoteServerEnv implements BaseEnv {
 
   @Override
   public void shutdownAllDataNodes() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void shutdownForciblyAllDataNodes() {
     throw new UnsupportedOperationException();
   }
 

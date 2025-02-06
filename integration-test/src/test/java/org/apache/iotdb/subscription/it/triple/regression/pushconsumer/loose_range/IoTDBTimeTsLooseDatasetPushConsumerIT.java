@@ -26,7 +26,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
@@ -67,7 +67,7 @@ public class IoTDBTimeTsLooseDatasetPushConsumerIT extends AbstractSubscriptionR
   private static List<IMeasurementSchema> schemaList = new ArrayList<>();
 
   private static final String pattern = device + ".s_0";
-  public static SubscriptionPushConsumer consumer;
+  public static SubscriptionTreePushConsumer consumer;
 
   @Override
   @Before
@@ -152,7 +152,7 @@ public class IoTDBTimeTsLooseDatasetPushConsumerIT extends AbstractSubscriptionR
     session_src.executeNonQueryStatement("flush");
 
     consumer =
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("push_dataset_ts_dataset_consumer")

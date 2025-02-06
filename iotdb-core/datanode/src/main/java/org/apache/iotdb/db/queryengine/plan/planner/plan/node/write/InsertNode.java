@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -49,6 +50,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public abstract class InsertNode extends SearchNode {
 
@@ -85,11 +87,33 @@ public abstract class InsertNode extends SearchNode {
 
   protected ProgressIndex progressIndex;
 
+  protected long memorySize;
+
   private static final DeviceIDFactory deviceIDFactory = DeviceIDFactory.getInstance();
 
   protected InsertNode(PlanNodeId id) {
     super(id);
   }
+
+  @Override
+  public final SearchNode merge(List<SearchNode> searchNodes) {
+    if (searchNodes.isEmpty()) {
+      throw new IllegalArgumentException("insertNodes should never be empty");
+    }
+    if (searchNodes.size() == 1) {
+      return searchNodes.get(0);
+    }
+    List<InsertNode> insertNodes =
+        searchNodes.stream()
+            .map(searchNode -> (InsertNode) searchNode)
+            .collect(Collectors.toList());
+    InsertNode result = mergeInsertNode(insertNodes);
+    result.setSearchIndex(insertNodes.get(0).getSearchIndex());
+    result.setTargetPath(insertNodes.get(0).getTargetPath());
+    return result;
+  }
+
+  public abstract InsertNode mergeInsertNode(List<InsertNode> insertNodes);
 
   protected InsertNode(
       PlanNodeId id,
@@ -156,15 +180,13 @@ public abstract class InsertNode extends SearchNode {
       return measurements.length;
     }
     return (int)
-        Arrays.stream(columnCategories)
-            .filter(col -> col == TsTableColumnCategory.MEASUREMENT)
-            .count();
+        Arrays.stream(columnCategories).filter(col -> col == TsTableColumnCategory.FIELD).count();
   }
 
   public boolean isValidMeasurement(int i) {
     return measurementSchemas != null
         && measurementSchemas[i] != null
-        && (columnCategories == null || columnCategories[i] == TsTableColumnCategory.MEASUREMENT);
+        && (columnCategories == null || columnCategories[i] == TsTableColumnCategory.FIELD);
   }
 
   public void setMeasurements(String[] measurements) {
@@ -377,7 +399,7 @@ public abstract class InsertNode extends SearchNode {
     if (columnCategories != null) {
       idColumnIndices = new ArrayList<>();
       for (int i = 0; i < columnCategories.length; i++) {
-        if (columnCategories[i].equals(TsTableColumnCategory.ID)) {
+        if (columnCategories[i].equals(TsTableColumnCategory.TAG)) {
           idColumnIndices.add(i);
         }
       }
@@ -417,5 +439,12 @@ public abstract class InsertNode extends SearchNode {
       throws IllegalPathException, IOException {
     return DataNodeDevicePathCache.getInstance()
         .getPartialPath(ReadWriteIOUtils.readString(stream));
+  }
+
+  public long getMemorySize() {
+    if (memorySize == 0) {
+      memorySize = InsertNodeMemoryEstimator.sizeOf(this);
+    }
+    return memorySize;
   }
 }

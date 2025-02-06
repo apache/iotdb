@@ -28,13 +28,13 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch {
@@ -95,14 +95,16 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
     }
 
     final List<SubscriptionEvent> events = new ArrayList<>();
-    final List<File> tsFiles = batch.sealTsFiles();
-    final AtomicInteger referenceCount = new AtomicInteger(tsFiles.size());
-    for (final File tsFile : tsFiles) {
+    final List<Pair<String, File>> dbTsFilePairs = batch.sealTsFiles();
+    final AtomicInteger referenceCount = new AtomicInteger(dbTsFilePairs.size());
+    for (final Pair<String, File> tsFile : dbTsFilePairs) {
       final SubscriptionCommitContext commitContext =
           prefetchingQueue.generateSubscriptionCommitContext();
       events.add(
           new SubscriptionEvent(
-              new SubscriptionPipeTsFileBatchEvents(this, referenceCount), tsFile, commitContext));
+              new SubscriptionPipeTsFileBatchEvents(this, referenceCount),
+              tsFile.right,
+              commitContext));
     }
     return events;
   }
@@ -110,19 +112,5 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
   @Override
   protected boolean shouldEmit() {
     return batch.shouldEmit();
-  }
-
-  /////////////////////////////// stringify ///////////////////////////////
-
-  @Override
-  public String toString() {
-    return "SubscriptionPipeTsFileEventBatch" + this.coreReportMessage();
-  }
-
-  @Override
-  protected Map<String, String> coreReportMessage() {
-    final Map<String, String> coreReportMessage = super.coreReportMessage();
-    coreReportMessage.put("batch", batch.toString());
-    return coreReportMessage;
   }
 }

@@ -224,6 +224,12 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAirGapReceiverPort();
   }
 
+  /////////////////////////////// Receiver ///////////////////////////////
+
+  public long getPipeReceiverLoginPeriodicVerificationIntervalMs() {
+    return COMMON_CONFIG.getPipeReceiverLoginPeriodicVerificationIntervalMs();
+  }
+
   /////////////////////////////// Hybrid Mode ///////////////////////////////
 
   public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
@@ -248,6 +254,10 @@ public class PipeConfig {
 
   public long getPipeStuckRestartIntervalSeconds() {
     return COMMON_CONFIG.getPipeStuckRestartIntervalSeconds();
+  }
+
+  public long getPipeStuckRestartMinIntervalMs() {
+    return COMMON_CONFIG.getPipeStuckRestartMinIntervalMs();
   }
 
   /////////////////////////////// Logger ///////////////////////////////
@@ -431,6 +441,10 @@ public class PipeConfig {
     LOGGER.info("PipeAirGapReceiverPort: {}", getPipeAirGapReceiverPort());
 
     LOGGER.info(
+        "PipeReceiverLoginPeriodicVerificationIntervalMs: {}",
+        getPipeReceiverLoginPeriodicVerificationIntervalMs());
+
+    LOGGER.info(
         "PipeMaxAllowedHistoricalTsFilePerDataRegion: {}",
         getPipeMaxAllowedHistoricalTsFilePerDataRegion());
     LOGGER.info(
@@ -442,6 +456,7 @@ public class PipeConfig {
         "PipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage: {}",
         getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage());
     LOGGER.info("PipeStuckRestartIntervalSeconds: {}", getPipeStuckRestartIntervalSeconds());
+    LOGGER.info("PipeStuckRestartMinIntervalMs: {}", getPipeStuckRestartMinIntervalMs());
 
     LOGGER.info("PipeMetaReportMaxLogNumPerRound: {}", getPipeMetaReportMaxLogNumPerRound());
     LOGGER.info("PipeMetaReportMaxLogIntervalRounds: {}", getPipeMetaReportMaxLogIntervalRounds());

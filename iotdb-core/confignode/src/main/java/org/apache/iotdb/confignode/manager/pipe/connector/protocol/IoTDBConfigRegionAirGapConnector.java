@@ -33,6 +33,8 @@ import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEv
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.pipe.api.annotation.TableModel;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -48,6 +50,8 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Objects;
 
+@TreeModel
+@TableModel
 public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
 
   private static final Logger LOGGER =
@@ -75,6 +79,9 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, loadTsFileStrategy);
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, username);
     params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, password);
+    params.put(
+        PipeTransferHandshakeConstant.HANDSHAKE_KEY_VALIDATE_TSFILE,
+        Boolean.toString(loadTsFileValidation));
 
     return PipeTransferConfigNodeHandshakeV2Req.toTPipeTransferBytes(params);
   }
@@ -214,6 +221,10 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
         PipeTransferConfigSnapshotSealReq.toTPipeTransferBytes(
             // The pattern is surely Non-null
             pipeConfigRegionSnapshotEvent.getTreePatternString(),
+            pipeConfigRegionSnapshotEvent.getTablePattern().getDatabasePattern(),
+            pipeConfigRegionSnapshotEvent.getTablePattern().getTablePattern(),
+            pipeConfigRegionSnapshotEvent.getTreePattern().isTreeModelDataAllowedToBeCaptured(),
+            pipeConfigRegionSnapshotEvent.getTablePattern().isTableModelDataAllowedToBeCaptured(),
             snapshot.getName(),
             snapshot.length(),
             Objects.nonNull(templateFile) ? templateFile.getName() : null,

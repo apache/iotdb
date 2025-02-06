@@ -25,11 +25,10 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -47,16 +46,12 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Objects;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 
 public class DropTableColumnProcedure
     extends AbstractAlterOrDropTableProcedure<DropTableColumnState> {
@@ -66,16 +61,17 @@ public class DropTableColumnProcedure
   private String columnName;
   private boolean isAttributeColumn;
 
-  public DropTableColumnProcedure() {
-    super();
+  public DropTableColumnProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   public DropTableColumnProcedure(
       final String database,
       final String tableName,
       final String queryId,
-      final String columnName) {
-    super(database, tableName, queryId);
+      final String columnName,
+      final boolean isGeneratedByPipe) {
+    super(database, tableName, queryId, isGeneratedByPipe);
     this.columnName = columnName;
   }
 
@@ -179,23 +175,10 @@ public class DropTableColumnProcedure
   }
 
   private void executeOnRegions(final ConfigNodeProcedureEnv env) {
-    final PathPatternTree patternTree = new PathPatternTree();
-    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    final PartialPath path;
-    try {
-      path = new PartialPath(new String[] {ROOT, database.substring(5), tableName});
-      patternTree.appendPathPattern(path);
-      patternTree.appendPathPattern(path.concatAsMeasurementPath(MULTI_LEVEL_PATH_WILDCARD));
-      patternTree.serialize(dataOutputStream);
-    } catch (final IOException e) {
-      LOGGER.warn("failed to serialize request for table {}.{}", database, table.getTableName(), e);
-    }
-
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedRegionGroup =
         isAttributeColumn
-            ? env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true)
-            : env.getConfigManager().getRelatedDataRegionGroup(patternTree, true);
+            ? env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database)
+            : env.getConfigManager().getRelatedDataRegionGroup4TableModel(database);
 
     if (!relatedRegionGroup.isEmpty()) {
       new TableRegionTaskExecutor<>(
@@ -218,7 +201,11 @@ public class DropTableColumnProcedure
   private void dropColumn(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
         SchemaUtils.executeInConsensusLayer(
-            new CommitDeleteColumnPlan(database, tableName, columnName), env, LOGGER);
+            isGeneratedByPipe
+                ? new PipeEnrichedPlan(new CommitDeleteColumnPlan(database, tableName, columnName))
+                : new CommitDeleteColumnPlan(database, tableName, columnName),
+            env,
+            LOGGER);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
@@ -254,7 +241,10 @@ public class DropTableColumnProcedure
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.DROP_TABLE_COLUMN_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_DROP_TABLE_COLUMN_PROCEDURE.getTypeCode()
+            : ProcedureType.DROP_TABLE_COLUMN_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
     ReadWriteIOUtils.write(columnName, stream);

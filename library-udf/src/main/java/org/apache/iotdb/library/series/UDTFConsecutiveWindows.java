@@ -44,19 +44,22 @@ public class UDTFConsecutiveWindows implements UDTF {
         .validate(
             x -> (long) x > 0,
             "gap should be a time period whose unit is ms, s, m, h.",
-            Util.parseTime(validator.getParameters().getStringOrDefault("gap", "1ms")))
+            Util.parseTime(
+                validator.getParameters().getStringOrDefault("gap", "1ms"),
+                validator.getParameters()))
         .validate(
             x -> (long) x > 0,
             "length should be a time period whose unit is ms, s, m, h.",
-            Util.parseTime(validator.getParameters().getString("length")));
+            Util.parseTime(
+                validator.getParameters().getString("length"), validator.getParameters()));
   }
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.INT32);
-    long gap = Util.parseTime(parameters.getStringOrDefault("gap", "0ms"));
-    len = Util.parseTime(parameters.getString("length"));
+    long gap = Util.parseTime(parameters.getStringOrDefault("gap", "0ms"), parameters);
+    len = Util.parseTime(parameters.getString("length"), parameters);
     int count = gap == 0 ? 0 : (int) (len / gap + 1);
     consUtil = new ConsecutiveUtil(-gap, -gap, gap);
     consUtil.setCount(count);

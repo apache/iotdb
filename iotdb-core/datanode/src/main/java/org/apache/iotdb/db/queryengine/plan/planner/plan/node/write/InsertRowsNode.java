@@ -73,6 +73,21 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
     insertRowNodeIndexList = new ArrayList<>();
   }
 
+  @Override
+  public InsertNode mergeInsertNode(List<InsertNode> insertNodes) {
+    List<InsertRowNode> list = new ArrayList<>();
+    List<Integer> index = new ArrayList<>();
+    int i = 0;
+    for (InsertNode insertNode : insertNodes) {
+      for (InsertRowNode insertRowNode : ((InsertRowsNode) insertNode).getInsertRowNodeList()) {
+        list.add(insertRowNode);
+        index.add(i);
+        i++;
+      }
+    }
+    return new InsertRowsNode(insertNodes.get(0).getPlanNodeId(), index, list);
+  }
+
   public InsertRowsNode(
       PlanNodeId id, List<Integer> insertRowNodeIndexList, List<InsertRowNode> insertRowNodeList) {
     super(id);

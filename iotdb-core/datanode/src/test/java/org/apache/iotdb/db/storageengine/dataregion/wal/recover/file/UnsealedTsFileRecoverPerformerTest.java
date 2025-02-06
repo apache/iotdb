@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -48,7 +48,6 @@ import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
-import org.apache.tsfile.file.metadata.TsFileMetadata;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -188,7 +187,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     // fake table schema
     final TsTable testTable1 = new TsTable("table1");
     testTable1.addColumnSchema(
-        new MeasurementColumnSchema("m1", TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+        new FieldColumnSchema("m1", TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
     DataNodeTableCache.getInstance().preUpdateTable(SG_NAME, testTable1);
     DataNodeTableCache.getInstance().commitUpdateTable(SG_NAME, "table1");
     // generate crashed .tsfile
@@ -212,8 +211,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     }
     // check file content
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
-    TsFileMetadata metadata = reader.readFileMetadata();
-    Map<String, TableSchema> tableSchemaMap = reader.readFileMetadata().getTableSchemaMap();
+    Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
     assertEquals(1, tableSchemaMap.size());
     assertTrue(tableSchemaMap.containsKey("table1"));
     reader.close();

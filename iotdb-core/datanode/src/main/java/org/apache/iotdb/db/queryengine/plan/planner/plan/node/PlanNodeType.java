@@ -116,9 +116,16 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
@@ -258,7 +265,7 @@ public enum PlanNodeType {
   DELETE_TABLE_DEVICES_IN_BLACK_LIST((short) 912),
   TABLE_ATTRIBUTE_COLUMN_DROP((short) 913),
 
-  TABLE_SCAN_NODE((short) 1000),
+  DEVICE_TABLE_SCAN_NODE((short) 1000),
   TABLE_FILTER_NODE((short) 1001),
   TABLE_PROJECT_NODE((short) 1002),
   TABLE_OUTPUT_NODE((short) 1003),
@@ -278,6 +285,13 @@ public enum PlanNodeType {
   TABLE_GAP_FILL_NODE((short) 1017),
   TABLE_EXCHANGE_NODE((short) 1018),
   TABLE_EXPLAIN_ANALYZE_NODE((short) 1019),
+  TABLE_ENFORCE_SINGLE_ROW_NODE((short) 1020),
+  INFORMATION_SCHEMA_TABLE_SCAN_NODE((short) 1021),
+  AGGREGATION_TREE_DEVICE_VIEW_SCAN_NODE((short) 1022),
+  TREE_ALIGNED_DEVICE_VIEW_SCAN_NODE((short) 1023),
+  TREE_NONALIGNED_DEVICE_VIEW_SCAN_NODE((short) 1024),
+  TABLE_SEMI_JOIN_NODE((short) 1025),
+  MARK_DISTINCT_NODE((short) 1026),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -579,7 +593,7 @@ public enum PlanNodeType {
       case 913:
         return TableAttributeColumnDropNode.deserialize(buffer);
       case 1000:
-        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode
+        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode
             .deserialize(buffer);
       case 1001:
         return org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode.deserialize(
@@ -633,6 +647,21 @@ public enum PlanNodeType {
             .deserialize(buffer);
       case 1019:
         throw new UnsupportedOperationException("ExplainAnalyzeNode should not be deserialized");
+      case 1020:
+        return EnforceSingleRowNode.deserialize(buffer);
+      case 1021:
+        return InformationSchemaTableScanNode.deserialize(buffer);
+      case 1022:
+        return AggregationTreeDeviceViewScanNode.deserialize(buffer);
+      case 1023:
+        return TreeAlignedDeviceViewScanNode.deserialize(buffer);
+      case 1024:
+        return TreeNonAlignedDeviceViewScanNode.deserialize(buffer);
+      case 1025:
+        return SemiJoinNode.deserialize(buffer);
+      case 1026:
+        return MarkDistinctNode.deserialize(buffer);
+
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:

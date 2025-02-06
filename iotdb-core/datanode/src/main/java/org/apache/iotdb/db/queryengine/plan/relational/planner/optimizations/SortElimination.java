@@ -23,11 +23,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 
 import java.util.Collections;
@@ -36,8 +36,8 @@ import java.util.Collections;
  * <b>Optimization phase:</b> Distributed plan planning.
  *
  * <p>This optimize rule implement the rules below.
- * <li>When order by time and there is only one device entry in TableScanNode below, the SortNode
- *     can be eliminated.
+ * <li>When order by time and there is only one device entry in DeviceTableScanNode below, the
+ *     SortNode can be eliminated.
  * <li>When order by all IDColumns and time, the SortNode can be eliminated.
  * <li>When StreamSortIndex==OrderBy size()-1, remove this StreamSortNode
  */
@@ -92,7 +92,7 @@ public class SortElimination implements PlanOptimizer {
     }
 
     @Override
-    public PlanNode visitTableScan(TableScanNode node, Context context) {
+    public PlanNode visitDeviceTableScan(DeviceTableScanNode node, Context context) {
       context.addDeviceEntrySize(node.getDeviceEntries().size());
       context.setTimeColumnName(node.getTimeColumn().map(Symbol::getName).orElse(null));
       return node;

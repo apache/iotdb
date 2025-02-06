@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapOneByteResponse;
+import org.apache.iotdb.pipe.api.annotation.TableModel;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
@@ -40,6 +42,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -56,13 +59,15 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY;
 import static org.apache.iotdb.commons.utils.BasicStructureSerDeUtil.LONG_LEN;
 
+@TreeModel
+@TableModel
 public abstract class IoTDBAirGapConnector extends IoTDBConnector {
 
   protected static class AirGapSocket extends Socket {
 
     private final TEndPoint endPoint;
 
-    public AirGapSocket(String ip, int port) {
+    public AirGapSocket(final String ip, final int port) {
       this.endPoint = new TEndPoint(ip, port);
     }
 
@@ -184,8 +189,14 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
         continue;
       }
 
-      sendHandshakeReq(socket);
-      isSocketAlive.set(i, true);
+      try {
+        sendHandshakeReq(socket);
+        isSocketAlive.set(i, true);
+      } catch (Exception e) {
+        LOGGER.warn(
+            "Handshake error occurs. It may be caused by an error on the receiving end. Ignore it.",
+            e);
+      }
     }
 
     for (int i = 0; i < sockets.size(); i++) {
@@ -292,7 +303,8 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       final String pipeName, final long creationTime, final AirGapSocket socket, byte[] bytes)
       throws IOException {
     if (!socket.isConnected()) {
-      return false;
+      throw new SocketException(
+          String.format("Socket %s is closed, will try to handshake", socket));
     }
 
     bytes = compressIfNeeded(bytes);

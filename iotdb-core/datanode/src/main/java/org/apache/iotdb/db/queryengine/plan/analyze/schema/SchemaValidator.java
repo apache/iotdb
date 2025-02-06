@@ -62,13 +62,15 @@ public class SchemaValidator {
   }
 
   public static void validate(
-      Metadata metadata, WrappedInsertStatement insertStatement, MPPQueryContext context) {
+      final Metadata metadata,
+      final WrappedInsertStatement insertStatement,
+      final MPPQueryContext context) {
     try {
       insertStatement.toLowerCase();
       insertStatement.validateTableSchema(metadata, context);
       insertStatement.updateAfterSchemaValidation(context);
       insertStatement.validateDeviceSchema(metadata, context);
-    } catch (QueryProcessException e) {
+    } catch (final QueryProcessException e) {
       throw new SemanticException(e.getMessage());
     }
   }

@@ -29,9 +29,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
-import org.apache.iotdb.db.utils.annotations.TableModel;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.common.constant.TsFileConstant;
 
 import java.io.File;
@@ -43,19 +43,24 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_LEVEL_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_NAME_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.MODEL_KEY;
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_DELETE_VALUE;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_KEY;
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_NONE_VALUE;
 
 public class LoadTsFileStatement extends Statement {
 
   private final File file;
   private int databaseLevel; // For loading to tree-model only
   private String database; // For loading to table-model only
-  private boolean verifySchema;
-  private boolean deleteAfterLoad;
-  private boolean autoCreateDatabase;
+  private boolean verifySchema = true;
+  private boolean deleteAfterLoad = false;
+  private boolean convertOnTypeMismatch = true;
+  private boolean autoCreateDatabase = true;
+  private boolean isGeneratedByPipe = false;
   private String model = LoadTsFileConfigurator.MODEL_TREE_VALUE;
 
   private Map<String, String> loadAttributes;
@@ -69,6 +74,7 @@ public class LoadTsFileStatement extends Statement {
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
     this.verifySchema = true;
     this.deleteAfterLoad = false;
+    this.convertOnTypeMismatch = true;
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.resources = new ArrayList<>();
     this.writePointCountList = new ArrayList<>();
@@ -99,6 +105,7 @@ public class LoadTsFileStatement extends Statement {
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
     this.verifySchema = true;
     this.deleteAfterLoad = false;
+    this.convertOnTypeMismatch = true;
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
@@ -136,52 +143,68 @@ public class LoadTsFileStatement extends Statement {
         });
   }
 
-  public void setDeleteAfterLoad(boolean deleteAfterLoad) {
-    this.deleteAfterLoad = deleteAfterLoad;
-  }
-
   public void setDatabaseLevel(int databaseLevel) {
     this.databaseLevel = databaseLevel;
-  }
-
-  public void setDatabase(String database) {
-    this.database = database;
-  }
-
-  public void setModel(String model) {
-    this.model = model;
-  }
-
-  public void setVerifySchema(boolean verifySchema) {
-    this.verifySchema = verifySchema;
-  }
-
-  public void setAutoCreateDatabase(boolean autoCreateDatabase) {
-    this.autoCreateDatabase = autoCreateDatabase;
-  }
-
-  public boolean isVerifySchema() {
-    return verifySchema;
-  }
-
-  public boolean isDeleteAfterLoad() {
-    return deleteAfterLoad;
-  }
-
-  public boolean isAutoCreateDatabase() {
-    return autoCreateDatabase;
   }
 
   public int getDatabaseLevel() {
     return databaseLevel;
   }
 
+  public void setDatabase(String database) {
+    this.database = database;
+  }
+
   public String getDatabase() {
     return database;
   }
 
+  public void setVerifySchema(boolean verifySchema) {
+    this.verifySchema = verifySchema;
+  }
+
+  public boolean isVerifySchema() {
+    return verifySchema;
+  }
+
+  public void setDeleteAfterLoad(boolean deleteAfterLoad) {
+    this.deleteAfterLoad = deleteAfterLoad;
+  }
+
+  public boolean isDeleteAfterLoad() {
+    return deleteAfterLoad;
+  }
+
+  public void setConvertOnTypeMismatch(boolean convertOnTypeMismatch) {
+    this.convertOnTypeMismatch = convertOnTypeMismatch;
+  }
+
+  public boolean isConvertOnTypeMismatch() {
+    return convertOnTypeMismatch;
+  }
+
+  public void setAutoCreateDatabase(boolean autoCreateDatabase) {
+    this.autoCreateDatabase = autoCreateDatabase;
+  }
+
+  public boolean isAutoCreateDatabase() {
+    return autoCreateDatabase;
+  }
+
+  public void setModel(String model) {
+    this.model = model;
+  }
+
   public String getModel() {
     return model;
+  }
+
+  public void markIsGeneratedByPipe() {
+    isGeneratedByPipe = true;
+  }
+
+  public boolean isGeneratedByPipe() {
+    return isGeneratedByPipe;
   }
 
   public List<File> getTsFiles() {
@@ -213,6 +236,8 @@ public class LoadTsFileStatement extends Statement {
     this.databaseLevel = LoadTsFileConfigurator.parseOrGetDefaultDatabaseLevel(loadAttributes);
     this.database = LoadTsFileConfigurator.parseDatabaseName(loadAttributes);
     this.deleteAfterLoad = LoadTsFileConfigurator.parseOrGetDefaultOnSuccess(loadAttributes);
+    this.convertOnTypeMismatch =
+        LoadTsFileConfigurator.parseOrGetDefaultConvertOnTypeMismatch(loadAttributes);
     this.model =
         LoadTsFileConfigurator.parseOrGetDefaultModel(
             loadAttributes, LoadTsFileConfigurator.MODEL_TREE_VALUE);
@@ -234,14 +259,18 @@ public class LoadTsFileStatement extends Statement {
   public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement toRelationalStatement(
       MPPQueryContext context) {
     loadAttributes = new HashMap<>();
+
     loadAttributes.put(DATABASE_LEVEL_KEY, String.valueOf(databaseLevel));
     if (database != null) {
       loadAttributes.put(DATABASE_NAME_KEY, database);
     }
-    loadAttributes.put(ON_SUCCESS_KEY, String.valueOf(deleteAfterLoad));
+    loadAttributes.put(
+        ON_SUCCESS_KEY, deleteAfterLoad ? ON_SUCCESS_DELETE_VALUE : ON_SUCCESS_NONE_VALUE);
+    loadAttributes.put(CONVERT_ON_TYPE_MISMATCH_KEY, String.valueOf(convertOnTypeMismatch));
     if (model != null) {
       loadAttributes.put(MODEL_KEY, model);
     }
+
     return new LoadTsFile(null, file.getAbsolutePath(), loadAttributes);
   }
 
@@ -255,13 +284,15 @@ public class LoadTsFileStatement extends Statement {
     return "LoadTsFileStatement{"
         + "file="
         + file
-        + ", deleteAfterLoad="
+        + ", delete-after-load="
         + deleteAfterLoad
-        + ", databaseLevel="
+        + ", database-level="
         + databaseLevel
-        + ", verifySchema="
+        + ", verify-schema="
         + verifySchema
-        + ", tsFiles Size="
+        + ", convert-on-type-mismatch="
+        + convertOnTypeMismatch
+        + ", tsFiles size="
         + tsFiles.size()
         + '}';
   }

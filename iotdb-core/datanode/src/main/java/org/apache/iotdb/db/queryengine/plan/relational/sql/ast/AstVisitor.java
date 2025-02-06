@@ -313,6 +313,10 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitAlterDB(final AlterDB node, final C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitDropDB(final DropDB node, final C context) {
     return visitStatement(node, context);
   }
@@ -369,6 +373,10 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitRemoveDataNode(RemoveDataNode node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitDescribeTable(DescribeTable node, C context) {
     return visitStatement(node, context);
   }
@@ -414,6 +422,14 @@ public abstract class AstVisitor<R, C> {
   }
 
   protected R visitSetConfiguration(SetConfiguration node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitStartRepairData(StartRepairData node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitStopRepairData(StopRepairData node, C context) {
     return visitStatement(node, context);
   }
 
@@ -501,7 +517,7 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
-  protected R visitCreateDevice(CreateOrUpdateDevice node, C context) {
+  protected R visitCreateOrUpdateDevice(CreateOrUpdateDevice node, C context) {
     return visitStatement(node, context);
   }
 
@@ -602,6 +618,22 @@ public abstract class AstVisitor<R, C> {
   }
 
   protected R visitShowCurrentTimestamp(ShowCurrentTimestamp node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowStatement(ShowStatement node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitCountStatement(CountStatement node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitKillQuery(KillQuery node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitRelationalAuthorPlan(RelationalAuthorStatement node, C context) {
     return visitStatement(node, context);
   }
 }

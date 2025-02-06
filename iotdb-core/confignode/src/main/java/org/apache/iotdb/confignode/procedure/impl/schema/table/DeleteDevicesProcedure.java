@@ -25,11 +25,12 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.manager.ClusterManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -37,9 +38,11 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternOrModReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -48,7 +51,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 
-import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -59,8 +61,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.CHECK_TABLE_EXISTENCE;
 import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.CLEAN_DATANODE_SCHEMA_CACHE;
 import static org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState.CONSTRUCT_BLACK_LIST;
@@ -74,14 +74,11 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
   private byte[] filterBytes;
   private byte[] modBytes;
 
-  // Transient
-  private PathPatternTree patternTree;
-
   // Transient, will not be returned if once recovers
   private long deletedDevicesNum;
 
-  public DeleteDevicesProcedure() {
-    super();
+  public DeleteDevicesProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   public DeleteDevicesProcedure(
@@ -90,8 +87,9 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
       final String queryId,
       final @Nonnull byte[] patternBytes,
       final @Nonnull byte[] filterBytes,
-      final @Nonnull byte[] modBytes) {
-    super(database, tableName, queryId);
+      final @Nonnull byte[] modBytes,
+      final boolean isGeneratedByPipe) {
+    super(database, tableName, queryId, isGeneratedByPipe);
     this.patternBytes = patternBytes;
     this.filterBytes = filterBytes;
     this.modBytes = modBytes;
@@ -127,6 +125,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
         case DELETE_DEVICE_SCHEMA:
           LOGGER.info("Delete devices in {}.{} in schemaEngine", database, tableName);
           deleteDeviceSchema(env);
+          collectPayload4Pipe(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException("Unrecognized state " + state));
@@ -147,9 +146,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
         setFailure(
             new ProcedureException(
                 new IoTDBException(
-                    String.format(
-                        "Table '%s.%s' not exists.",
-                        database.substring(ROOT.length() + 1), tableName),
+                    String.format("Table '%s.%s' not exists.", database, tableName),
                     TABLE_NOT_EXISTS.getStatusCode())));
       } else {
         setNextState(CONSTRUCT_BLACK_LIST);
@@ -160,21 +157,8 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
   }
 
   private void constructBlackList(final ConfigNodeProcedureEnv env) {
-    patternTree = new PathPatternTree();
-    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    final PartialPath path;
-    try {
-      path = new PartialPath(new String[] {ROOT, database.substring(5), tableName});
-      patternTree.appendPathPattern(path);
-      patternTree.appendPathPattern(path.concatAsMeasurementPath(MULTI_LEVEL_PATH_WILDCARD));
-      patternTree.serialize(dataOutputStream);
-    } catch (final IOException e) {
-      LOGGER.warn("failed to serialize request for table {}.{}", database, table.getTableName(), e);
-    }
-
     final Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
-        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true);
+        env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database);
 
     if (relatedSchemaRegionGroup.isEmpty()) {
       deletedDevicesNum = 0;
@@ -274,7 +258,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     new TableRegionTaskExecutor<>(
             "delete data for table device",
             env,
-            env.getConfigManager().getRelatedDataRegionGroup(patternTree, true),
+            env.getConfigManager().getRelatedDataRegionGroup4TableModel(database),
             CnToDnAsyncRequestType.DELETE_DATA_FOR_TABLE_DEVICE,
             (dataNodeLocation, consensusGroupIdList) ->
                 new TTableDeviceDeletionWithPatternOrModReq(
@@ -287,12 +271,35 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
     new TableRegionTaskExecutor<>(
             "roll back table device black list",
             env,
-            env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true),
+            env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database),
             CnToDnAsyncRequestType.DELETE_TABLE_DEVICE_IN_BLACK_LIST,
             (dataNodeLocation, consensusGroupIdList) ->
                 new TTableDeviceDeletionWithPatternOrModReq(
                     consensusGroupIdList, tableName, ByteBuffer.wrap(patternBytes)))
         .execute();
+  }
+
+  private void collectPayload4Pipe(final ConfigNodeProcedureEnv env) {
+    TSStatus result;
+    try {
+      result =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(
+                  isGeneratedByPipe
+                      ? new PipeEnrichedPlan(
+                          new PipeDeleteDevicesPlan(
+                              database, tableName, patternBytes, filterBytes, modBytes))
+                      : new PipeDeleteDevicesPlan(
+                          database, tableName, patternBytes, filterBytes, modBytes));
+    } catch (final ConsensusException e) {
+      LOGGER.warn(ClusterManager.CONSENSUS_WRITE_ERROR, e);
+      result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+    }
+    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(result.getMessage());
+    }
   }
 
   @Override
@@ -303,7 +310,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
       new TableRegionTaskExecutor<>(
               "roll back table device black list",
               env,
-              env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, true),
+              env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database),
               CnToDnAsyncRequestType.ROLLBACK_TABLE_DEVICE_BLACK_LIST,
               (dataNodeLocation, consensusGroupIdList) ->
                   new TTableDeviceDeletionWithPatternOrModReq(
@@ -339,7 +346,10 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.DELETE_DEVICES_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_DELETE_DEVICES_PROCEDURE.getTypeCode()
+            : ProcedureType.DELETE_DEVICES_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
     ReadWriteIOUtils.write(patternBytes.length, stream);

@@ -1,26 +1,31 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
@@ -28,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
@@ -162,7 +168,19 @@ public class TableLogicalPlanner {
     return new LogicalQueryPlan(queryContext, planNode);
   }
 
-  private PlanNode planStatement(final Analysis analysis, final Statement statement) {
+  private PlanNode planStatement(final Analysis analysis, Statement statement) {
+    // Schema statements are handled here
+    if (statement instanceof PipeEnriched) {
+      statement = ((PipeEnriched) statement).getInnerStatement();
+      if (statement instanceof CreateOrUpdateDevice) {
+        return new PipeEnrichedWritePlanNode(
+            (WritePlanNode) planCreateOrUpdateDevice((CreateOrUpdateDevice) statement, analysis));
+      }
+      if (statement instanceof Update) {
+        return new PipeEnrichedWritePlanNode(
+            (WritePlanNode) planUpdate((Update) statement, analysis));
+      }
+    }
     if (statement instanceof CreateOrUpdateDevice) {
       return planCreateOrUpdateDevice((CreateOrUpdateDevice) statement, analysis);
     }

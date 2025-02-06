@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -25,12 +26,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
@@ -72,7 +73,7 @@ public class TestPlanBuilder {
     return this;
   }
 
-  public TestPlanBuilder tableScan(
+  public TestPlanBuilder deviceTableScan(
       String id,
       QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
@@ -84,9 +85,10 @@ public class TestPlanBuilder {
       Expression pushDownPredicate,
       long pushDownLimit,
       long pushDownOffset,
-      boolean pushLimitToEachDevice) {
+      boolean pushLimitToEachDevice,
+      boolean containsNonAlignedDevice) {
     this.root =
-        new TableScanNode(
+        new DeviceTableScanNode(
             new PlanNodeId(id),
             qualifiedObjectName,
             outputSymbols,
@@ -98,7 +100,8 @@ public class TestPlanBuilder {
             pushDownPredicate,
             pushDownLimit,
             pushDownOffset,
-            pushLimitToEachDevice);
+            pushLimitToEachDevice,
+            containsNonAlignedDevice);
     return this;
   }
 }

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -53,7 +53,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.COLUMN_TTL;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.COLUMN_TTL;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;

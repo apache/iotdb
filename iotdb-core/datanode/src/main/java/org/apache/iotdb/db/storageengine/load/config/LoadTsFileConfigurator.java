@@ -49,6 +49,12 @@ public class LoadTsFileConfigurator {
         break;
       case DATABASE_NAME_KEY:
         break;
+      case CONVERT_ON_TYPE_MISMATCH_KEY:
+        validateConvertOnTypeMismatchParam(value);
+        break;
+      case VERIFY_KEY:
+        validateVerifyParam(value);
+        break;
       default:
         throw new SemanticException("Invalid parameter '" + key + "' for LOAD TSFILE command.");
     }
@@ -90,8 +96,8 @@ public class LoadTsFileConfigurator {
   }
 
   public static final String ON_SUCCESS_KEY = "on-success";
-  private static final String ON_SUCCESS_DELETE_VALUE = "delete";
-  private static final String ON_SUCCESS_NONE_VALUE = "none";
+  public static final String ON_SUCCESS_DELETE_VALUE = "delete";
+  public static final String ON_SUCCESS_NONE_VALUE = "none";
   private static final Set<String> ON_SUCCESS_VALUE_SET =
       Collections.unmodifiableSet(
           new HashSet<>(Arrays.asList(ON_SUCCESS_DELETE_VALUE, ON_SUCCESS_NONE_VALUE)));
@@ -107,7 +113,44 @@ public class LoadTsFileConfigurator {
 
   public static boolean parseOrGetDefaultOnSuccess(final Map<String, String> loadAttributes) {
     final String value = loadAttributes.get(ON_SUCCESS_KEY);
-    return StringUtils.isEmpty(value) || ON_SUCCESS_DELETE_VALUE.equals(value);
+    return !StringUtils.isEmpty(value) && ON_SUCCESS_DELETE_VALUE.equalsIgnoreCase(value);
+  }
+
+  public static final String CONVERT_ON_TYPE_MISMATCH_KEY = "convert-on-type-mismatch";
+  private static final boolean CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE = true;
+
+  public static void validateConvertOnTypeMismatchParam(final String convertOnTypeMismatch) {
+    if (!"true".equalsIgnoreCase(convertOnTypeMismatch)
+        && !"false".equalsIgnoreCase(convertOnTypeMismatch)) {
+      throw new SemanticException(
+          String.format(
+              "Given %s value '%s' is not supported, please input a valid boolean value.",
+              CONVERT_ON_TYPE_MISMATCH_KEY, convertOnTypeMismatch));
+    }
+  }
+
+  public static boolean parseOrGetDefaultConvertOnTypeMismatch(
+      final Map<String, String> loadAttributes) {
+    return Boolean.parseBoolean(
+        loadAttributes.getOrDefault(
+            CONVERT_ON_TYPE_MISMATCH_KEY, String.valueOf(CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE)));
+  }
+
+  public static final String VERIFY_KEY = "verify";
+  private static final boolean VERIFY_DEFAULT_VALUE = true;
+
+  public static void validateVerifyParam(final String verify) {
+    if (!"true".equalsIgnoreCase(verify) && !"false".equalsIgnoreCase(verify)) {
+      throw new SemanticException(
+          String.format(
+              "Given %s value '%s' is not supported, please input a valid boolean value.",
+              VERIFY_KEY, verify));
+    }
+  }
+
+  public static boolean parseOrGetDefaultVerify(final Map<String, String> loadAttributes) {
+    return Boolean.parseBoolean(
+        loadAttributes.getOrDefault(VERIFY_KEY, String.valueOf(VERIFY_DEFAULT_VALUE)));
   }
 
   public static final String MODEL_KEY = "model";

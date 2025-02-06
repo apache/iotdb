@@ -26,11 +26,16 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.pipe.receiver.transform.converter.ValueConverter;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 
+import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 public class PipeConvertedInsertRowStatement extends InsertRowStatement {
 
@@ -42,16 +47,46 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
     // Statement
     isDebug = insertRowStatement.isDebug();
     // InsertBaseStatement
-    insertRowStatement.removeAllFailedMeasurementMarks();
     devicePath = insertRowStatement.getDevicePath();
     isAligned = insertRowStatement.isAligned();
     measurementSchemas = insertRowStatement.getMeasurementSchemas();
     measurements = insertRowStatement.getMeasurements();
     dataTypes = insertRowStatement.getDataTypes();
+    columnCategories = insertRowStatement.getColumnCategories();
+    idColumnIndices = insertRowStatement.getIdColumnIndices();
+    attrColumnIndices = insertRowStatement.getAttrColumnIndices();
+    writeToTable = insertRowStatement.isWriteToTable();
+    databaseName = insertRowStatement.getDatabaseName().orElse(null);
     // InsertRowStatement
     time = insertRowStatement.getTime();
     values = insertRowStatement.getValues();
     isNeedInferType = insertRowStatement.isNeedInferType();
+    deviceID = insertRowStatement.getRawTableDeviceID();
+
+    // To ensure that the measurement remains unchanged during the WAL writing process, the array
+    // needs to be copied before the failed Measurement mark can be deleted.
+    final MeasurementSchema[] measurementSchemas = insertRowStatement.getMeasurementSchemas();
+    if (measurementSchemas != null) {
+      this.measurementSchemas = Arrays.copyOf(measurementSchemas, measurementSchemas.length);
+    }
+
+    final String[] measurements = insertRowStatement.getMeasurements();
+    if (measurements != null) {
+      this.measurements = Arrays.copyOf(measurements, measurements.length);
+    }
+
+    final TSDataType[] dataTypes = insertRowStatement.getDataTypes();
+    if (dataTypes != null) {
+      this.dataTypes = Arrays.copyOf(dataTypes, dataTypes.length);
+    }
+
+    final Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info =
+        insertRowStatement.getFailedMeasurementInfoMap();
+    if (failedMeasurementIndex2Info != null) {
+      this.failedMeasurementIndex2Info = new HashMap<>(failedMeasurementIndex2Info);
+    }
+
+    removeAllFailedMeasurementMarks();
   }
 
   @Override
@@ -109,5 +144,11 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
     }
 
     isNeedInferType = false;
+  }
+
+  @TableModel
+  @Override
+  public boolean isForceTypeConversion() {
+    return true;
   }
 }

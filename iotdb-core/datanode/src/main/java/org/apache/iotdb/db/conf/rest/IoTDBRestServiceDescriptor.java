@@ -34,7 +34,6 @@ import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.Optional;
 
 public class IoTDBRestServiceDescriptor {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBRestServiceDescriptor.class);
@@ -81,95 +80,48 @@ public class IoTDBRestServiceDescriptor {
   private void loadProps(TrimProperties trimProperties) {
     conf.setEnableRestService(
         Boolean.parseBoolean(
-            Optional.ofNullable(
-                    trimProperties.getProperty(
-                        "enable_rest_service", Boolean.toString(conf.isEnableRestService())))
-                .map(String::trim)
-                .orElse(Boolean.toString(conf.isEnableRestService()))));
+            trimProperties.getProperty(
+                "enable_rest_service", Boolean.toString(conf.isEnableRestService()))));
     conf.setRestServicePort(
         Integer.parseInt(
-            Optional.ofNullable(
-                    trimProperties.getProperty(
-                        "rest_service_port", Integer.toString(conf.getRestServicePort())))
-                .map(String::trim)
-                .orElse(Integer.toString(conf.getRestServicePort()))));
+            trimProperties.getProperty(
+                "rest_service_port", Integer.toString(conf.getRestServicePort()))));
     conf.setRestQueryDefaultRowSizeLimit(
         Integer.parseInt(
-            Optional.ofNullable(
-                    trimProperties.getProperty(
-                        "rest_query_default_row_size_limit",
-                        Integer.toString(conf.getRestQueryDefaultRowSizeLimit())))
-                .map(String::trim)
-                .orElse(Integer.toString(conf.getRestQueryDefaultRowSizeLimit()))));
+            trimProperties.getProperty(
+                "rest_query_default_row_size_limit",
+                Integer.toString(conf.getRestQueryDefaultRowSizeLimit()))));
     conf.setEnableSwagger(
         Boolean.parseBoolean(
-            Optional.ofNullable(
-                    trimProperties.getProperty(
-                        "enable_swagger", Boolean.toString(conf.isEnableSwagger())))
-                .map(String::trim)
-                .orElse(Boolean.toString(conf.isEnableSwagger()))));
+            trimProperties.getProperty(
+                "enable_swagger", Boolean.toString(conf.isEnableSwagger()))));
 
     conf.setEnableHttps(
         Boolean.parseBoolean(
-            Optional.ofNullable(
-                    trimProperties.getProperty(
-                        "enable_https", Boolean.toString(conf.isEnableHttps())))
-                .map(String::trim)
-                .orElse(Boolean.toString(conf.isEnableHttps()))));
+            trimProperties.getProperty("enable_https", Boolean.toString(conf.isEnableHttps()))));
     conf.setClientAuth(
         Boolean.parseBoolean(
-            Optional.ofNullable(
-                    trimProperties.getProperty(
-                        "client_auth", Boolean.toString(conf.isClientAuth())))
-                .map(String::trim)
-                .orElse(Boolean.toString(conf.isClientAuth()))));
-    conf.setKeyStorePath(
-        Optional.ofNullable(trimProperties.getProperty("key_store_path", conf.getKeyStorePath()))
-            .map(String::trim)
-            .orElse(conf.getKeyStorePath()));
-    conf.setKeyStorePwd(
-        Optional.ofNullable(trimProperties.getProperty("key_store_pwd", conf.getKeyStorePwd()))
-            .map(String::trim)
-            .orElse(conf.getKeyStorePwd()));
+            trimProperties.getProperty("client_auth", Boolean.toString(conf.isClientAuth()))));
+    conf.setKeyStorePath(trimProperties.getProperty("key_store_path", conf.getKeyStorePath()));
+    conf.setKeyStorePwd(trimProperties.getProperty("key_store_pwd", conf.getKeyStorePwd()));
     conf.setTrustStorePath(
-        Optional.ofNullable(
-                trimProperties.getProperty("trust_store_path", conf.getTrustStorePath()))
-            .map(String::trim)
-            .orElse(conf.getTrustStorePath()));
-    conf.setTrustStorePwd(
-        Optional.ofNullable(trimProperties.getProperty("trust_store_pwd", conf.getTrustStorePwd()))
-            .map(String::trim)
-            .orElse(conf.getTrustStorePwd()));
+        trimProperties.getProperty("trust_store_path", conf.getTrustStorePath()));
+    conf.setTrustStorePwd(trimProperties.getProperty("trust_store_pwd", conf.getTrustStorePwd()));
     conf.setIdleTimeoutInSeconds(
         Integer.parseInt(
-            Optional.ofNullable(
-                    trimProperties.getProperty(
-                        "idle_timeout_in_seconds",
-                        Integer.toString(conf.getIdleTimeoutInSeconds())))
-                .map(String::trim)
-                .orElse(Integer.toString(conf.getIdleTimeoutInSeconds()))));
+            trimProperties.getProperty(
+                "idle_timeout_in_seconds", Integer.toString(conf.getIdleTimeoutInSeconds()))));
     conf.setCacheExpireInSeconds(
         Integer.parseInt(
-            Optional.ofNullable(
-                    trimProperties.getProperty(
-                        "cache_expire_in_seconds",
-                        Integer.toString(conf.getCacheExpireInSeconds())))
-                .map(String::trim)
-                .orElse(Integer.toString(conf.getCacheExpireInSeconds()))));
+            trimProperties.getProperty(
+                "cache_expire_in_seconds", Integer.toString(conf.getCacheExpireInSeconds()))));
     conf.setCacheInitNum(
         Integer.parseInt(
-            Optional.ofNullable(
-                    trimProperties.getProperty(
-                        "cache_init_num", Integer.toString(conf.getCacheInitNum())))
-                .map(String::trim)
-                .orElse(Integer.toString(conf.getCacheInitNum()))));
+            trimProperties.getProperty(
+                "cache_init_num", Integer.toString(conf.getCacheInitNum()))));
     conf.setCacheMaxNum(
         Integer.parseInt(
-            Optional.ofNullable(
-                    trimProperties.getProperty(
-                        "cache_max_num", Integer.toString(conf.getCacheMaxNum())))
-                .map(String::trim)
-                .orElse(Integer.toString(conf.getCacheMaxNum()))));
+            trimProperties.getProperty("cache_max_num", Integer.toString(conf.getCacheMaxNum()))));
   }
 
   /**

@@ -203,6 +203,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode) {
+    cnConfig.setIoTConsensusV2Mode(ioTConsensusV2Mode);
+    dnConfig.setIoTConsensusV2Mode(ioTConsensusV2Mode);
+    return this;
+  }
+
+  @Override
   public CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy) {
     cnConfig.setSchemaRegionGroupExtensionPolicy(schemaRegionGroupExtensionPolicy);
     dnConfig.setSchemaRegionGroupExtensionPolicy(schemaRegionGroupExtensionPolicy);
@@ -248,6 +255,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setTimePartitionInterval(long timePartitionInterval) {
     cnConfig.setTimePartitionInterval(timePartitionInterval);
     dnConfig.setTimePartitionInterval(timePartitionInterval);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTTLCheckInterval(long ttlCheckInterval) {
+    cnConfig.setTTLCheckInterval(ttlCheckInterval);
+    dnConfig.setTTLCheckInterval(ttlCheckInterval);
     return this;
   }
 
@@ -372,6 +386,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
     cnConfig.setSeriesSlotNum(seriesSlotNum);
     dnConfig.setSeriesSlotNum(seriesSlotNum);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
+    cnConfig.setSeriesPartitionExecutorClass(seriesPartitionExecutorClass);
+    dnConfig.setSeriesPartitionExecutorClass(seriesPartitionExecutorClass);
     return this;
   }
 
@@ -510,6 +531,20 @@ public class MppSharedCommonConfig implements CommonConfig {
       int pipeConnectorRequestSliceThresholdBytes) {
     dnConfig.setPipeConnectorRequestSliceThresholdBytes(pipeConnectorRequestSliceThresholdBytes);
     cnConfig.setPipeConnectorRequestSliceThresholdBytes(pipeConnectorRequestSliceThresholdBytes);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
+    dnConfig.setQueryMemoryProportion(queryMemoryProportion);
+    cnConfig.setQueryMemoryProportion(queryMemoryProportion);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+    dnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
+    cnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
     return this;
   }
 }

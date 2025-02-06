@@ -22,7 +22,7 @@ package org.apache.iotdb.subscription.it.triple.regression.param;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionMisc;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.session.subscription.SubscriptionSession;
+import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.junit.Before;
@@ -42,22 +42,22 @@ public class IoTDBTestParamSubscriptionSessionIT extends AbstractSubscriptionReg
 
   @Test
   public void testCreateSession_null_host() {
-    new SubscriptionSession.Builder().host(null).build();
+    new SubscriptionTreeSession.Builder().host(null).build();
   }
 
   @Test(expected = IoTDBConnectionException.class)
   public void testCreateSession_error_port() throws IoTDBConnectionException {
-    new SubscriptionSession(SRC_HOST, SRC_PORT + 1).open();
+    new SubscriptionTreeSession(SRC_HOST, SRC_PORT + 1).open();
   }
 
   @Test(expected = IoTDBConnectionException.class)
   public void testCreateSession_ErrorHostname() throws IoTDBConnectionException {
-    new SubscriptionSession.Builder().host("noName").build().open();
+    new SubscriptionTreeSession.Builder().host("noName").build().open();
   }
 
   @Test(expected = IoTDBConnectionException.class)
   public void testCreateSession_ErrorUsername() throws IoTDBConnectionException {
-    new SubscriptionSession.Builder()
+    new SubscriptionTreeSession.Builder()
         .host(SRC_HOST)
         .port(SRC_PORT)
         .username("admin")
@@ -67,7 +67,7 @@ public class IoTDBTestParamSubscriptionSessionIT extends AbstractSubscriptionReg
 
   @Test(expected = IoTDBConnectionException.class)
   public void testCreateSession_ErrorPassword() throws IoTDBConnectionException {
-    new SubscriptionSession.Builder()
+    new SubscriptionTreeSession.Builder()
         .host(SRC_HOST)
         .port(SRC_PORT)
         .password("admin")

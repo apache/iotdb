@@ -21,8 +21,8 @@ package org.apache.iotdb.confignode.manager.pipe.connector.payload;
 
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.IOException;
@@ -48,7 +48,11 @@ public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReqV2
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferConfigSnapshotSealReq toTPipeTransferReq(
-      final String pattern,
+      final String treePattern,
+      final String tablePatternDatabase,
+      final String tablePatternTable,
+      final boolean isTreeCaptured,
+      final boolean isTableCaptured,
       final String snapshotName,
       final long snapshotLength,
       final String templateFileName,
@@ -57,7 +61,15 @@ public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReqV2
       final String typeString)
       throws IOException {
     final Map<String, String> parameters = new HashMap<>();
-    parameters.put(ColumnHeaderConstant.PATH_PATTERN, pattern);
+    parameters.put(ColumnHeaderConstant.PATH_PATTERN, treePattern);
+    parameters.put(DATABASE_PATTERN, tablePatternDatabase);
+    parameters.put(ColumnHeaderConstant.TABLE_NAME, tablePatternTable);
+    if (isTreeCaptured) {
+      parameters.put(TREE, "");
+    }
+    if (isTableCaptured) {
+      parameters.put(TABLE, "");
+    }
     parameters.put(FILE_TYPE, Byte.toString(fileType.getType()));
     parameters.put(ColumnHeaderConstant.TYPE, typeString);
 
@@ -81,7 +93,11 @@ public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReqV2
   /////////////////////////////// Air Gap ///////////////////////////////
 
   public static byte[] toTPipeTransferBytes(
-      final String pattern,
+      final String treePattern,
+      final String tablePatternDatabase,
+      final String tablePatternTable,
+      final boolean isTreeCaptured,
+      final boolean isTableCaptured,
       final String snapshotName,
       final long snapshotLength,
       final String templateFileName,
@@ -90,7 +106,15 @@ public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReqV2
       final String typeString)
       throws IOException {
     final Map<String, String> parameters = new HashMap<>();
-    parameters.put(ColumnHeaderConstant.PATH_PATTERN, pattern);
+    parameters.put(ColumnHeaderConstant.PATH_PATTERN, treePattern);
+    parameters.put(DATABASE_PATTERN, tablePatternDatabase);
+    parameters.put(ColumnHeaderConstant.TABLE_NAME, tablePatternTable);
+    if (isTreeCaptured) {
+      parameters.put(TREE, "");
+    }
+    if (isTableCaptured) {
+      parameters.put(TABLE, "");
+    }
     parameters.put(FILE_TYPE, Byte.toString(fileType.getType()));
     parameters.put(ColumnHeaderConstant.TYPE, typeString);
     return new PipeTransferConfigSnapshotSealReq()

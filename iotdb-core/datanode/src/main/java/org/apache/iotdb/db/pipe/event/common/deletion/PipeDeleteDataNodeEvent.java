@@ -82,17 +82,17 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
     return deletionResource;
   }
 
-  public void setDeletionResource(DeletionResource deletionResource) {
+  public void setDeletionResource(final DeletionResource deletionResource) {
     this.deletionResource = deletionResource;
   }
 
   @Override
-  public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     return true;
   }
 
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     return true;
   }
 
@@ -111,13 +111,13 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
 
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName,
-      long creationTime,
-      PipeTaskMeta pipeTaskMeta,
-      TreePattern treePattern,
-      TablePattern tablePattern,
-      long startTime,
-      long endTime) {
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
+      final long startTime,
+      final long endTime) {
     return new PipeDeleteDataNodeEvent(
         deleteDataNode,
         pipeName,
@@ -153,13 +153,13 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
   }
 
   @Override
-  public void deserializeFromByteBuffer(ByteBuffer buffer) {
+  public void deserializeFromByteBuffer(final ByteBuffer buffer) {
     isGeneratedByPipe = ReadWriteIOUtils.readBool(buffer);
     deleteDataNode = (DeleteDataNode) PlanNodeType.deserialize(buffer);
     progressIndex = deleteDataNode.getProgressIndex();
   }
 
-  public static PipeDeleteDataNodeEvent deserialize(ByteBuffer buffer) {
+  public static PipeDeleteDataNodeEvent deserialize(final ByteBuffer buffer) {
     final PipeDeleteDataNodeEvent event = new PipeDeleteDataNodeEvent();
     event.deserializeFromByteBuffer(buffer);
     return event;

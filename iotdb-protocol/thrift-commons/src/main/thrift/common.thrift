@@ -281,7 +281,8 @@ enum TAggregationType {
   FIRST_BY,
   LAST_BY,
   MIN,
-  MAX
+  MAX,
+  COUNT_ALL
 }
 
 struct TShowConfigurationTemplateResp {
@@ -304,6 +305,13 @@ enum TrainingState {
 }
 
 enum Model{
-  TREE,
-  TABLE
+  TREE=0,
+  TABLE=1
+}
+
+enum FunctionType{
+  NONE=0,
+  SCALAR=1,
+  AGGREGATE=2,
+  TABLE=3
 }

@@ -14,31 +14,55 @@
 
 package org.apache.iotdb.relational.it.db.it;
 
-import static org.junit.Assert.assertEquals;
-
-import java.util.Arrays;
-import java.util.Locale;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.record.Tablet.ColumnCategory;
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.util.Arrays;
+import java.util.Locale;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 public class IoTDBAuthenticationIT {
   @BeforeClass
-  public static void setUp() throws Exception {
+  public static void setUpClass() {
     Locale.setDefault(Locale.ENGLISH);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
+  @After
+  public void tearDown() throws Exception {
+    try (ITableSession sessionRoot = EnvFactory.getEnv().getTableSessionConnection()) {
+      String[] sqls =
+          new String[] {
+            "DROP USER userA",
+            "DROP USER userB",
+            "DROP USER userC",
+            "DROP USER userD",
+            "DROP ROLE role1",
+            "DROP ROLE role2",
+          };
+      for (String sql : sqls) {
+        try {
+          sessionRoot.executeNonQueryStatement(sql);
+        } catch (StatementExecutionException ignore) {
+        }
+      }
+    }
+  }
+
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDownClass() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -50,113 +74,158 @@ public class IoTDBAuthenticationIT {
       sessionRoot.executeNonQueryStatement("USE test");
 
       // insert by root
-      Tablet tablet = new Tablet("table1",
-          Arrays.asList("id", "attr", "measurement"),
-          Arrays.asList(TSDataType.STRING, TSDataType.STRING, TSDataType.DOUBLE),
-          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT));
+      Tablet tablet =
+          new Tablet(
+              "table1",
+              Arrays.asList("id", "attr", "measurement"),
+              Arrays.asList(TSDataType.STRING, TSDataType.STRING, TSDataType.DOUBLE),
+              Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD));
       tablet.addTimestamp(0, 0);
       tablet.addValue(0, 0, "id1");
       tablet.addValue(0, 1, "attr1");
-      tablet.addValue(0, 0, 0.1);
+      tablet.addValue(0, 2, 0.1);
 
       sessionRoot.insert(tablet);
 
-      sessionRoot.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+      sessionRoot.executeNonQueryStatement(
+          "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
 
       // revoke root
       try {
         sessionRoot.executeNonQueryStatement("REVOKE INSERT ON ANY FROM USER root");
+        fail("Should have thrown an exception");
       } catch (StatementExecutionException e) {
-        assertEquals("", e.getMessage());
+        assertEquals("803: Cannot grant/revoke privileges to/from admin", e.getMessage());
       }
       try {
-        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON test FROM USER root");
+        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON DATABASE test FROM USER root");
+        fail("Should have thrown an exception");
       } catch (StatementExecutionException e) {
-        assertEquals("", e.getMessage());
+        assertEquals("803: Cannot grant/revoke privileges of admin user", e.getMessage());
       }
       try {
-        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON table1 FROM USER root");
+        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON TABLE table1 FROM USER root");
+        fail("Should have thrown an exception");
       } catch (StatementExecutionException e) {
-        assertEquals("", e.getMessage());
+        assertEquals("803: Cannot grant/revoke privileges of admin user", e.getMessage());
       }
 
       // test users
-      sessionRoot.executeNonQueryStatement("CREATE USER userA userA");
-      sessionRoot.executeNonQueryStatement("CREATE USER userB userB");
+      sessionRoot.executeNonQueryStatement("CREATE USER userA 'userA'");
+      sessionRoot.executeNonQueryStatement("CREATE USER userB 'userB'");
+      // grant an irrelevant privilege so that the new users can use database
+      sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE test TO USER userA");
+      sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE test TO USER userB");
 
-      try (ITableSession sessionA = EnvFactory.getEnv().getTableSessionConnection("userA", "userA");
-          ITableSession sessionB = EnvFactory.getEnv().getTableSessionConnection("userB", "userB")) {
+      try (ITableSession sessionA =
+              EnvFactory.getEnv().getTableSessionConnection("userA", "userA");
+          ITableSession sessionB =
+              EnvFactory.getEnv().getTableSessionConnection("userB", "userB")) {
         sessionA.executeNonQueryStatement("USE test");
         sessionB.executeNonQueryStatement("USE test");
         // userA no privilege
         try {
-          sessionA.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          sessionA.executeNonQueryStatement(
+              "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              e.getMessage());
         }
 
         // grant and revoke - ALL
-        sessionRoot.executeNonQueryStatement("GRANT ALL ON ANY TO USER userA");
-        sessionA.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
-        sessionRoot.executeNonQueryStatement("REVOKE ALL ON ANY FROM USER userA");
+        sessionRoot.executeNonQueryStatement("GRANT ALL TO USER userA");
+        sessionA.executeNonQueryStatement(
+            "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+        sessionRoot.executeNonQueryStatement("REVOKE ALL FROM USER userA");
         try {
-          sessionA.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          sessionA.executeNonQueryStatement(
+              "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              e.getMessage());
         }
 
         // grant and revoke - ANY
         sessionRoot.executeNonQueryStatement("GRANT INSERT ON ANY TO USER userA");
-        sessionA.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+        sessionA.executeNonQueryStatement(
+            "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
         sessionRoot.executeNonQueryStatement("REVOKE INSERT ON ANY FROM USER userA");
         try {
-          sessionA.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          sessionA.executeNonQueryStatement(
+              "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              e.getMessage());
         }
 
         // grant and revoke - database
-        sessionRoot.executeNonQueryStatement("GRANT INSERT ON test TO USER userA");
-        sessionA.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
-        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON test FROM USER userA");
+        sessionRoot.executeNonQueryStatement("GRANT INSERT ON DATABASE test TO USER userA");
+        sessionA.executeNonQueryStatement(
+            "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON DATABASE test FROM USER userA");
         try {
-          sessionA.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          sessionA.executeNonQueryStatement(
+              "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              e.getMessage());
         }
 
         // grant and revoke - table
-        sessionRoot.executeNonQueryStatement("GRANT INSERT ON table1 TO USER userA");
-        sessionA.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
-        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON table1 FROM USER userA");
+        sessionRoot.executeNonQueryStatement("GRANT INSERT ON TABLE table1 TO USER userA");
+        sessionA.executeNonQueryStatement(
+            "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON TABLE table1 FROM USER userA");
         try {
-          sessionA.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          sessionA.executeNonQueryStatement(
+              "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              e.getMessage());
         }
 
         // grant multiple and revoke one-by-one
         sessionRoot.executeNonQueryStatement("GRANT INSERT ON ANY TO USER userA");
-        sessionRoot.executeNonQueryStatement("GRANT INSERT ON test TO USER userA");
-        sessionRoot.executeNonQueryStatement("GRANT INSERT ON table1 TO USER userA");
-        sessionA.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+        sessionRoot.executeNonQueryStatement("GRANT INSERT ON DATABASE test TO USER userA");
+        sessionRoot.executeNonQueryStatement("GRANT INSERT ON TABLE table1 TO USER userA");
+        sessionA.executeNonQueryStatement(
+            "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
         sessionRoot.executeNonQueryStatement("REVOKE INSERT ON ANY FROM USER userA");
-        sessionA.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
-        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON test FROM USER userA");
-        sessionA.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
-        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON table1 FROM USER userA");
+        sessionA.executeNonQueryStatement(
+            "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON DATABASE test FROM USER userA");
+        sessionA.executeNonQueryStatement(
+            "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON TABLE table1 FROM USER userA");
         try {
-          sessionA.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          sessionA.executeNonQueryStatement(
+              "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              e.getMessage());
         }
 
         // userA cannot revoke himself
         sessionRoot.executeNonQueryStatement("GRANT INSERT ON ANY TO USER userA");
         try {
           sessionA.executeNonQueryStatement("REVOKE INSERT ON ANY FROM USER userA");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add grant option to privilege INSERT",
+              e.getMessage());
         }
         sessionRoot.executeNonQueryStatement("REVOKE INSERT ON ANY FROM USER userA");
 
@@ -164,198 +233,290 @@ public class IoTDBAuthenticationIT {
         sessionRoot.executeNonQueryStatement("GRANT INSERT ON ANY TO USER userA WITH GRANT OPTION");
         sessionA.executeNonQueryStatement("REVOKE INSERT ON ANY FROM USER userA");
         try {
-          sessionA.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          sessionA.executeNonQueryStatement(
+              "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              e.getMessage());
         }
         // after revoked cannot revoke again
         try {
           sessionA.executeNonQueryStatement("REVOKE INSERT ON ANY FROM USER userA");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add grant option to privilege INSERT",
+              e.getMessage());
         }
 
         // userA cannot grant to userB
         try {
           sessionA.executeNonQueryStatement("GRANT INSERT ON ANY TO USER userB");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add grant option to privilege INSERT",
+              e.getMessage());
         }
         sessionRoot.executeNonQueryStatement("GRANT INSERT ON ANY TO USER userA");
         try {
           sessionA.executeNonQueryStatement("GRANT INSERT ON ANY TO USER userB");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add grant option to privilege INSERT",
+              e.getMessage());
         }
         try {
           sessionB.executeNonQueryStatement("REVOKE INSERT ON ANY FROM USER userA");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add grant option to privilege INSERT",
+              e.getMessage());
         }
 
         // userA can grant to userB
         sessionRoot.executeNonQueryStatement("GRANT INSERT ON ANY TO USER userA WITH GRANT OPTION");
-        sessionA.executeNonQueryStatement("GRANT INSERT ON ANY TO USER userB");
-        sessionB.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+        sessionA.executeNonQueryStatement("GRANT INSERT ON ANY TO USER userB WITH GRANT OPTION");
+        sessionB.executeNonQueryStatement(
+            "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
         // userB can revoke userA
         sessionB.executeNonQueryStatement("REVOKE INSERT ON ANY FROM USER userA");
         try {
-          sessionA.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          sessionA.executeNonQueryStatement(
+              "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              e.getMessage());
         }
         // userB can revoke himself
         sessionB.executeNonQueryStatement("REVOKE INSERT ON ANY FROM USER userB");
         try {
           sessionB.executeNonQueryStatement("REVOKE INSERT ON ANY FROM USER userA");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add grant option to privilege INSERT",
+              e.getMessage());
         }
       }
 
       // test role
-      sessionRoot.executeNonQueryStatement("CREATE USER userC userC");
-      sessionRoot.executeNonQueryStatement("CREATE USER userD userD");
+      sessionRoot.executeNonQueryStatement("CREATE USER userC 'userC'");
+      sessionRoot.executeNonQueryStatement("CREATE USER userD 'userD'");
       sessionRoot.executeNonQueryStatement("CREATE ROLE role1");
       sessionRoot.executeNonQueryStatement("CREATE ROLE role2");
       sessionRoot.executeNonQueryStatement("GRANT ROLE role1 TO userC");
       sessionRoot.executeNonQueryStatement("GRANT ROLE role2 TO userD");
 
-      try (ITableSession sessionC = EnvFactory.getEnv().getTableSessionConnection("userC", "userC");
-          ITableSession sessionD = EnvFactory.getEnv().getTableSessionConnection("userD", "userD")) {
+      try (ITableSession sessionC =
+              EnvFactory.getEnv().getTableSessionConnection("userC", "userC");
+          ITableSession sessionD =
+              EnvFactory.getEnv().getTableSessionConnection("userD", "userD")) {
+        // grant an irrelevant privilege so that the new users can use database
+        sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE test TO USER userC");
+        sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE test TO USER userD");
         sessionC.executeNonQueryStatement("USE test");
         sessionD.executeNonQueryStatement("USE test");
         // userC no privilege
         try {
-          sessionC.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          sessionC.executeNonQueryStatement(
+              "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              e.getMessage());
         }
 
         // grant and revoke - ALL
-        sessionRoot.executeNonQueryStatement("GRANT ALL ON ANY TO ROLE role1");
-        sessionC.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
-        sessionRoot.executeNonQueryStatement("REVOKE ALL ON ANY FROM ROLE role1");
+        sessionRoot.executeNonQueryStatement("GRANT ALL TO ROLE role1");
+        sessionC.executeNonQueryStatement(
+            "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+        sessionRoot.executeNonQueryStatement("REVOKE ALL FROM ROLE role1");
         try {
-          sessionC.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          sessionC.executeNonQueryStatement(
+              "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              e.getMessage());
         }
 
         // grant and revoke - ANY
         sessionRoot.executeNonQueryStatement("GRANT INSERT ON ANY TO ROLE role1");
-        sessionC.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+        sessionC.executeNonQueryStatement(
+            "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
         sessionRoot.executeNonQueryStatement("REVOKE INSERT ON ANY FROM ROLE role1");
         try {
-          sessionC.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          sessionC.executeNonQueryStatement(
+              "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              e.getMessage());
         }
 
         // grant and revoke - database
-        sessionRoot.executeNonQueryStatement("GRANT INSERT ON test TO ROLE role1");
-        sessionC.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
-        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON test FROM ROLE role1");
+        sessionRoot.executeNonQueryStatement("GRANT INSERT ON DATABASE test TO ROLE role1");
+        sessionC.executeNonQueryStatement(
+            "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON DATABASE test FROM ROLE role1");
         try {
-          sessionC.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          sessionC.executeNonQueryStatement(
+              "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              e.getMessage());
         }
 
         // grant and revoke - table
-        sessionRoot.executeNonQueryStatement("GRANT INSERT ON table1 TO ROLE role1");
-        sessionC.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
-        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON table1 FROM ROLE role1");
+        sessionRoot.executeNonQueryStatement("GRANT INSERT ON TABLE table1 TO ROLE role1");
+        sessionC.executeNonQueryStatement(
+            "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON TABLE table1 FROM ROLE role1");
         try {
-          sessionC.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          sessionC.executeNonQueryStatement(
+              "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              e.getMessage());
         }
 
         // grant multiple and revoke one-by-one
         sessionRoot.executeNonQueryStatement("GRANT INSERT ON ANY TO ROLE role1");
-        sessionRoot.executeNonQueryStatement("GRANT INSERT ON test TO ROLE role1");
-        sessionRoot.executeNonQueryStatement("GRANT INSERT ON table1 TO ROLE role1");
-        sessionC.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+        sessionRoot.executeNonQueryStatement("GRANT INSERT ON DATABASE test TO ROLE role1");
+        sessionRoot.executeNonQueryStatement("GRANT INSERT ON TABLE table1 TO ROLE role1");
+        sessionC.executeNonQueryStatement(
+            "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
         sessionRoot.executeNonQueryStatement("REVOKE INSERT ON ANY FROM ROLE role1");
-        sessionC.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
-        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON test FROM ROLE role1");
-        sessionC.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
-        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON table1 FROM ROLE role1");
+        sessionC.executeNonQueryStatement(
+            "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON DATABASE test FROM ROLE role1");
+        sessionC.executeNonQueryStatement(
+            "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON TABLE table1 FROM ROLE role1");
         try {
-          sessionC.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          sessionC.executeNonQueryStatement(
+              "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              e.getMessage());
         }
 
         // role1 cannot revoke himself
         sessionRoot.executeNonQueryStatement("GRANT INSERT ON ANY TO ROLE role1");
         try {
           sessionC.executeNonQueryStatement("REVOKE INSERT ON ANY FROM ROLE role1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add grant option to privilege INSERT",
+              e.getMessage());
         }
         sessionRoot.executeNonQueryStatement("REVOKE INSERT ON ANY FROM ROLE role1");
 
         // role1 can revoke himself
-        sessionRoot.executeNonQueryStatement("GRANT INSERT ON ANY TO USER userC WITH GRANT OPTION");
+        sessionRoot.executeNonQueryStatement("GRANT INSERT ON ANY TO ROLE role1 WITH GRANT OPTION");
         sessionC.executeNonQueryStatement("REVOKE INSERT ON ANY FROM ROLE role1");
         try {
-          sessionC.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          sessionC.executeNonQueryStatement(
+              "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              e.getMessage());
         }
         // after revoked cannot revoke again
         try {
           sessionC.executeNonQueryStatement("REVOKE INSERT ON ANY FROM ROLE role1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add grant option to privilege INSERT",
+              e.getMessage());
         }
 
         // role1 cannot grant to role2
         try {
           sessionC.executeNonQueryStatement("GRANT INSERT ON ANY TO ROLE role2");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add grant option to privilege INSERT",
+              e.getMessage());
         }
         sessionRoot.executeNonQueryStatement("GRANT INSERT ON ANY TO ROLE role1");
         try {
           sessionC.executeNonQueryStatement("GRANT INSERT ON ANY TO ROLE role2");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add grant option to privilege INSERT",
+              e.getMessage());
         }
         try {
-          sessionD.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          sessionD.executeNonQueryStatement(
+              "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              e.getMessage());
         }
 
         // userC can grant to userD
-        sessionRoot.executeNonQueryStatement("GRANT INSERT ON ANY TO USER userC WITH GRANT OPTION");
-        sessionC.executeNonQueryStatement("GRANT INSERT ON ANY TO ROLE role2");
-        sessionD.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+        sessionRoot.executeNonQueryStatement("GRANT INSERT ON ANY TO ROLE role1 WITH GRANT OPTION");
+        sessionC.executeNonQueryStatement("GRANT INSERT ON ANY TO ROLE role2 WITH GRANT OPTION");
+        sessionD.executeNonQueryStatement(
+            "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
         // userD can revoke userC
         sessionD.executeNonQueryStatement("REVOKE INSERT ON ANY FROM ROLE role1");
         try {
-          sessionC.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          sessionC.executeNonQueryStatement(
+              "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              e.getMessage());
         }
         // userD can revoke himself
         sessionD.executeNonQueryStatement("REVOKE INSERT ON ANY FROM ROLE role2");
         try {
           sessionD.executeNonQueryStatement("REVOKE INSERT ON ANY FROM ROLE role1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add grant option to privilege INSERT",
+              e.getMessage());
         }
 
         // lose privilege after role is revoked
         sessionRoot.executeNonQueryStatement("GRANT INSERT ON ANY TO ROLE role1");
         sessionRoot.executeNonQueryStatement("REVOKE ROLE role1 FROM userC");
         try {
-          sessionC.executeNonQueryStatement("INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          sessionC.executeNonQueryStatement(
+              "INSERT INTO table1 (time, id, attr, measurement) VALUES (1, 'id2', 'attr2', 0.2)");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
+              e.getMessage());
         }
       }
     }
@@ -369,14 +530,16 @@ public class IoTDBAuthenticationIT {
       sessionRoot.executeNonQueryStatement("USE test2");
 
       // insert by root
-      Tablet tablet = new Tablet("table1",
-          Arrays.asList("id", "attr", "measurement"),
-          Arrays.asList(TSDataType.STRING, TSDataType.STRING, TSDataType.DOUBLE),
-          Arrays.asList(ColumnCategory.ID, ColumnCategory.ATTRIBUTE, ColumnCategory.MEASUREMENT));
+      Tablet tablet =
+          new Tablet(
+              "table1",
+              Arrays.asList("id", "attr", "measurement"),
+              Arrays.asList(TSDataType.STRING, TSDataType.STRING, TSDataType.DOUBLE),
+              Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD));
       tablet.addTimestamp(0, 0);
       tablet.addValue(0, 0, "id1");
       tablet.addValue(0, 1, "attr1");
-      tablet.addValue(0, 0, 0.1);
+      tablet.addValue(0, 2, 0.1);
 
       sessionRoot.insert(tablet);
 
@@ -385,43 +548,57 @@ public class IoTDBAuthenticationIT {
       // revoke root
       try {
         sessionRoot.executeNonQueryStatement("REVOKE DELETE ON ANY FROM USER root");
+        fail("Should have thrown an exception");
       } catch (StatementExecutionException e) {
-        assertEquals("", e.getMessage());
+        assertEquals("803: Cannot grant/revoke privileges to/from admin", e.getMessage());
       }
       try {
-        sessionRoot.executeNonQueryStatement("REVOKE DELETE ON test FROM USER root");
+        sessionRoot.executeNonQueryStatement("REVOKE DELETE ON DATABASE test FROM USER root");
+        fail("Should have thrown an exception");
       } catch (StatementExecutionException e) {
-        assertEquals("", e.getMessage());
+        assertEquals("803: Cannot grant/revoke privileges of admin user", e.getMessage());
       }
       try {
-        sessionRoot.executeNonQueryStatement("REVOKE DELETE ON table1 FROM USER root");
+        sessionRoot.executeNonQueryStatement("REVOKE DELETE ON TABLE table1 FROM USER root");
+        fail("Should have thrown an exception");
       } catch (StatementExecutionException e) {
-        assertEquals("", e.getMessage());
+        assertEquals("803: Cannot grant/revoke privileges of admin user", e.getMessage());
       }
 
       // test users
-      sessionRoot.executeNonQueryStatement("CREATE USER userA userA");
-      sessionRoot.executeNonQueryStatement("CREATE USER userB userB");
+      sessionRoot.executeNonQueryStatement("CREATE USER userA 'userA'");
+      sessionRoot.executeNonQueryStatement("CREATE USER userB 'userB'");
 
-      try (ITableSession sessionA = EnvFactory.getEnv().getTableSessionConnection("userA", "userA");
-          ITableSession sessionB = EnvFactory.getEnv().getTableSessionConnection("userB", "userB")) {
+      try (ITableSession sessionA =
+              EnvFactory.getEnv().getTableSessionConnection("userA", "userA");
+          ITableSession sessionB =
+              EnvFactory.getEnv().getTableSessionConnection("userB", "userB")) {
+        // grant an irrelevant privilege so that the new users can use database
+        sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE test2 TO USER userA");
+        sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE test2 TO USER userB");
         sessionA.executeNonQueryStatement("USE test2");
         sessionB.executeNonQueryStatement("USE test2");
         // userA no privilege
         try {
           sessionA.executeNonQueryStatement("DELETE FROM table1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege DELETE ON test2.table1",
+              e.getMessage());
         }
 
         // grant and revoke - ALL
-        sessionRoot.executeNonQueryStatement("GRANT ALL ON ANY TO USER userA");
+        sessionRoot.executeNonQueryStatement("GRANT ALL TO USER userA");
         sessionA.executeNonQueryStatement("DELETE FROM table1");
-        sessionRoot.executeNonQueryStatement("REVOKE ALL ON ANY FROM USER userA");
+        sessionRoot.executeNonQueryStatement("REVOKE ALL FROM USER userA");
         try {
           sessionA.executeNonQueryStatement("DELETE FROM table1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege DELETE ON test2.table1",
+              e.getMessage());
         }
 
         // grant and revoke - ANY
@@ -430,52 +607,67 @@ public class IoTDBAuthenticationIT {
         sessionRoot.executeNonQueryStatement("REVOKE DELETE ON ANY FROM USER userA");
         try {
           sessionA.executeNonQueryStatement("DELETE FROM table1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege DELETE ON test2.table1",
+              e.getMessage());
         }
 
         // grant and revoke - database
-        sessionRoot.executeNonQueryStatement("GRANT DELETE ON test TO USER userA");
+        sessionRoot.executeNonQueryStatement("GRANT DELETE ON DATABASE test2 TO USER userA");
         sessionA.executeNonQueryStatement("DELETE FROM table1");
-        sessionRoot.executeNonQueryStatement("REVOKE DELETE ON test FROM USER userA");
+        sessionRoot.executeNonQueryStatement("REVOKE DELETE ON DATABASE test2 FROM USER userA");
         try {
           sessionA.executeNonQueryStatement("DELETE FROM table1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege DELETE ON test2.table1",
+              e.getMessage());
         }
 
         // grant and revoke - table
-        sessionRoot.executeNonQueryStatement("GRANT DELETE ON table1 TO USER userA");
+        sessionRoot.executeNonQueryStatement("GRANT DELETE ON TABLE table1 TO USER userA");
         sessionA.executeNonQueryStatement("DELETE FROM table1");
-        sessionRoot.executeNonQueryStatement("REVOKE DELETE ON table1 FROM USER userA");
+        sessionRoot.executeNonQueryStatement("REVOKE DELETE ON TABLE table1 FROM USER userA");
         try {
           sessionA.executeNonQueryStatement("DELETE FROM table1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege DELETE ON test2.table1",
+              e.getMessage());
         }
 
         // grant multiple and revoke one-by-one
         sessionRoot.executeNonQueryStatement("GRANT DELETE ON ANY TO USER userA");
-        sessionRoot.executeNonQueryStatement("GRANT DELETE ON test TO USER userA");
-        sessionRoot.executeNonQueryStatement("GRANT DELETE ON table1 TO USER userA");
+        sessionRoot.executeNonQueryStatement("GRANT DELETE ON DATABASE test2 TO USER userA");
+        sessionRoot.executeNonQueryStatement("GRANT DELETE ON TABLE table1 TO USER userA");
         sessionA.executeNonQueryStatement("DELETE FROM table1");
         sessionRoot.executeNonQueryStatement("REVOKE DELETE ON ANY FROM USER userA");
         sessionA.executeNonQueryStatement("DELETE FROM table1");
-        sessionRoot.executeNonQueryStatement("REVOKE DELETE ON test FROM USER userA");
+        sessionRoot.executeNonQueryStatement("REVOKE DELETE ON DATABASE test2 FROM USER userA");
         sessionA.executeNonQueryStatement("DELETE FROM table1");
-        sessionRoot.executeNonQueryStatement("REVOKE DELETE ON table1 FROM USER userA");
+        sessionRoot.executeNonQueryStatement("REVOKE DELETE ON TABLE table1 FROM USER userA");
         try {
           sessionA.executeNonQueryStatement("DELETE FROM table1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege DELETE ON test2.table1",
+              e.getMessage());
         }
 
         // userA cannot revoke himself
         sessionRoot.executeNonQueryStatement("GRANT DELETE ON ANY TO USER userA");
         try {
           sessionA.executeNonQueryStatement("REVOKE DELETE ON ANY FROM USER userA");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add grant option to privilege DELETE",
+              e.getMessage());
         }
         sessionRoot.executeNonQueryStatement("REVOKE DELETE ON ANY FROM USER userA");
 
@@ -484,80 +676,113 @@ public class IoTDBAuthenticationIT {
         sessionA.executeNonQueryStatement("REVOKE DELETE ON ANY FROM USER userA");
         try {
           sessionA.executeNonQueryStatement("DELETE FROM table1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege DELETE ON test2.table1",
+              e.getMessage());
         }
         // after revoked cannot revoke again
         try {
           sessionA.executeNonQueryStatement("REVOKE DELETE ON ANY FROM USER userA");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add grant option to privilege DELETE",
+              e.getMessage());
         }
 
         // userA cannot grant to userB
         try {
           sessionA.executeNonQueryStatement("GRANT DELETE ON ANY TO USER userB");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add grant option to privilege DELETE",
+              e.getMessage());
         }
         sessionRoot.executeNonQueryStatement("GRANT DELETE ON ANY TO USER userA");
         try {
           sessionA.executeNonQueryStatement("GRANT DELETE ON ANY TO USER userB");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add grant option to privilege DELETE",
+              e.getMessage());
         }
         try {
           sessionB.executeNonQueryStatement("REVOKE DELETE ON ANY FROM USER userA");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add grant option to privilege DELETE",
+              e.getMessage());
         }
 
         // userA can grant to userB
         sessionRoot.executeNonQueryStatement("GRANT DELETE ON ANY TO USER userA WITH GRANT OPTION");
-        sessionA.executeNonQueryStatement("GRANT DELETE ON ANY TO USER userB");
+        sessionA.executeNonQueryStatement("GRANT DELETE ON ANY TO USER userB WITH GRANT OPTION");
         sessionB.executeNonQueryStatement("DELETE FROM table1");
         // userB can revoke userA
         sessionB.executeNonQueryStatement("REVOKE DELETE ON ANY FROM USER userA");
         try {
           sessionA.executeNonQueryStatement("DELETE FROM table1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege DELETE ON test2.table1",
+              e.getMessage());
         }
         // userB can revoke himself
         sessionB.executeNonQueryStatement("REVOKE DELETE ON ANY FROM USER userB");
         try {
           sessionB.executeNonQueryStatement("REVOKE DELETE ON ANY FROM USER userA");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add grant option to privilege DELETE",
+              e.getMessage());
         }
       }
 
       // test role
-      sessionRoot.executeNonQueryStatement("CREATE USER userC userC");
-      sessionRoot.executeNonQueryStatement("CREATE USER userD userD");
+      sessionRoot.executeNonQueryStatement("CREATE USER userC 'userC'");
+      sessionRoot.executeNonQueryStatement("CREATE USER userD 'userD'");
       sessionRoot.executeNonQueryStatement("CREATE ROLE role1");
       sessionRoot.executeNonQueryStatement("CREATE ROLE role2");
       sessionRoot.executeNonQueryStatement("GRANT ROLE role1 TO userC");
       sessionRoot.executeNonQueryStatement("GRANT ROLE role2 TO userD");
 
-      try (ITableSession sessionC = EnvFactory.getEnv().getTableSessionConnection("userC", "userC");
-          ITableSession sessionD = EnvFactory.getEnv().getTableSessionConnection("userD", "userD")) {
-        sessionC.executeNonQueryStatement("USE test");
+      try (ITableSession sessionC =
+              EnvFactory.getEnv().getTableSessionConnection("userC", "userC");
+          ITableSession sessionD =
+              EnvFactory.getEnv().getTableSessionConnection("userD", "userD")) {
+        // grant an irrelevant privilege so that the new users can use database
+        sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE test2 TO USER userC");
+        sessionRoot.executeNonQueryStatement("GRANT SELECT ON DATABASE test2 TO USER userD");
+        sessionC.executeNonQueryStatement("USE test2");
+        sessionD.executeNonQueryStatement("USE test2");
         // userC no privilege
         try {
           sessionC.executeNonQueryStatement("DELETE FROM table1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege DELETE ON test2.table1",
+              e.getMessage());
         }
 
         // grant and revoke - ALL
-        sessionRoot.executeNonQueryStatement("GRANT ALL ON ANY TO ROLE role1");
+        sessionRoot.executeNonQueryStatement("GRANT ALL TO ROLE role1");
         sessionC.executeNonQueryStatement("DELETE FROM table1");
-        sessionRoot.executeNonQueryStatement("REVOKE ALL ON ANY FROM ROLE role1");
+        sessionRoot.executeNonQueryStatement("REVOKE ALL FROM ROLE role1");
         try {
           sessionC.executeNonQueryStatement("DELETE FROM table1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege DELETE ON test2.table1",
+              e.getMessage());
         }
 
         // grant and revoke - ANY
@@ -566,105 +791,141 @@ public class IoTDBAuthenticationIT {
         sessionRoot.executeNonQueryStatement("REVOKE DELETE ON ANY FROM ROLE role1");
         try {
           sessionC.executeNonQueryStatement("DELETE FROM table1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege DELETE ON test2.table1",
+              e.getMessage());
         }
 
         // grant and revoke - database
-        sessionRoot.executeNonQueryStatement("GRANT DELETE ON test TO ROLE role1");
+        sessionRoot.executeNonQueryStatement("GRANT DELETE ON DATABASE test2 TO ROLE role1");
         sessionC.executeNonQueryStatement("DELETE FROM table1");
-        sessionRoot.executeNonQueryStatement("REVOKE DELETE ON test FROM ROLE role1");
+        sessionRoot.executeNonQueryStatement("REVOKE DELETE ON DATABASE test2 FROM ROLE role1");
         try {
           sessionC.executeNonQueryStatement("DELETE FROM table1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege DELETE ON test2.table1",
+              e.getMessage());
         }
 
         // grant and revoke - table
-        sessionRoot.executeNonQueryStatement("GRANT DELETE ON table1 TO ROLE role1");
+        sessionRoot.executeNonQueryStatement("GRANT DELETE ON TABLE table1 TO ROLE role1");
         sessionC.executeNonQueryStatement("DELETE FROM table1");
-        sessionRoot.executeNonQueryStatement("REVOKE DELETE ON table1 FROM ROLE role1");
+        sessionRoot.executeNonQueryStatement("REVOKE DELETE ON TABLE table1 FROM ROLE role1");
         try {
           sessionC.executeNonQueryStatement("DELETE FROM table1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege DELETE ON test2.table1",
+              e.getMessage());
         }
 
         // grant multiple and revoke one-by-one
         sessionRoot.executeNonQueryStatement("GRANT DELETE ON ANY TO ROLE role1");
-        sessionRoot.executeNonQueryStatement("GRANT DELETE ON test TO ROLE role1");
-        sessionRoot.executeNonQueryStatement("GRANT DELETE ON table1 TO ROLE role1");
+        sessionRoot.executeNonQueryStatement("GRANT DELETE ON DATABASE test2 TO ROLE role1");
+        sessionRoot.executeNonQueryStatement("GRANT DELETE ON TABLE table1 TO ROLE role1");
         sessionC.executeNonQueryStatement("DELETE FROM table1");
         sessionRoot.executeNonQueryStatement("REVOKE DELETE ON ANY FROM ROLE role1");
         sessionC.executeNonQueryStatement("DELETE FROM table1");
-        sessionRoot.executeNonQueryStatement("REVOKE DELETE ON test FROM ROLE role1");
+        sessionRoot.executeNonQueryStatement("REVOKE DELETE ON DATABASE test2 FROM ROLE role1");
         sessionC.executeNonQueryStatement("DELETE FROM table1");
-        sessionRoot.executeNonQueryStatement("REVOKE DELETE ON table1 FROM ROLE role1");
+        sessionRoot.executeNonQueryStatement("REVOKE DELETE ON TABLE table1 FROM ROLE role1");
         try {
           sessionC.executeNonQueryStatement("DELETE FROM table1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege DELETE ON test2.table1",
+              e.getMessage());
         }
 
         // role1 cannot revoke himself
         sessionRoot.executeNonQueryStatement("GRANT DELETE ON ANY TO ROLE role1");
         try {
           sessionC.executeNonQueryStatement("REVOKE DELETE ON ANY FROM ROLE role1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add grant option to privilege DELETE",
+              e.getMessage());
         }
         sessionRoot.executeNonQueryStatement("REVOKE DELETE ON ANY FROM ROLE role1");
 
         // role1 can revoke himself
-        sessionRoot.executeNonQueryStatement("GRANT DELETE ON ANY TO USER userC WITH GRANT OPTION");
+        sessionRoot.executeNonQueryStatement("GRANT DELETE ON ANY TO ROLE role1 WITH GRANT OPTION");
         sessionC.executeNonQueryStatement("REVOKE DELETE ON ANY FROM ROLE role1");
         try {
           sessionC.executeNonQueryStatement("DELETE FROM table1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege DELETE ON test2.table1",
+              e.getMessage());
         }
         // after revoked cannot revoke again
         try {
           sessionC.executeNonQueryStatement("REVOKE DELETE ON ANY FROM ROLE role1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add grant option to privilege DELETE",
+              e.getMessage());
         }
 
         // role1 cannot grant to role2
         try {
           sessionC.executeNonQueryStatement("GRANT DELETE ON ANY TO ROLE role2");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add grant option to privilege DELETE",
+              e.getMessage());
         }
         sessionRoot.executeNonQueryStatement("GRANT DELETE ON ANY TO ROLE role1");
         try {
           sessionC.executeNonQueryStatement("GRANT DELETE ON ANY TO ROLE role2");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add grant option to privilege DELETE",
+              e.getMessage());
         }
         try {
           sessionD.executeNonQueryStatement("DELETE FROM table1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege DELETE ON test2.table1",
+              e.getMessage());
         }
 
-        // userC can grant to userD
-        sessionRoot.executeNonQueryStatement("GRANT DELETE ON ANY TO USER userC WITH GRANT OPTION");
-        sessionC.executeNonQueryStatement("GRANT DELETE ON ANY TO ROLE role2");
+        // role1 can grant to role2
+        sessionRoot.executeNonQueryStatement("GRANT DELETE ON ANY TO ROLE role1 WITH GRANT OPTION");
+        sessionC.executeNonQueryStatement("GRANT DELETE ON ANY TO ROLE role2 WITH GRANT OPTION");
         sessionD.executeNonQueryStatement("DELETE FROM table1");
-        // userD can revoke userC
+        // role2 can revoke role1
         sessionD.executeNonQueryStatement("REVOKE DELETE ON ANY FROM ROLE role1");
         try {
           sessionC.executeNonQueryStatement("DELETE FROM table1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege DELETE ON test2.table1",
+              e.getMessage());
         }
-        // userD can revoke himself
+        // role2 can revoke himself
         sessionD.executeNonQueryStatement("REVOKE DELETE ON ANY FROM ROLE role2");
         try {
           sessionD.executeNonQueryStatement("REVOKE DELETE ON ANY FROM ROLE role1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add grant option to privilege DELETE",
+              e.getMessage());
         }
 
         // lose privilege after role is revoked
@@ -672,11 +933,13 @@ public class IoTDBAuthenticationIT {
         sessionRoot.executeNonQueryStatement("REVOKE ROLE role1 FROM userC");
         try {
           sessionC.executeNonQueryStatement("DELETE FROM table1");
+          fail("Should have thrown an exception");
         } catch (StatementExecutionException e) {
-          assertEquals("", e.getMessage());
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege DELETE ON test2.table1",
+              e.getMessage());
         }
       }
     }
   }
-
 }

@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -49,22 +51,30 @@ import org.apache.iotdb.db.queryengine.plan.planner.TreeModelPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableModelPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DistributedOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.LogicalOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.security.AllowAllAccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
@@ -77,14 +87,19 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentTimest
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -113,9 +128,13 @@ public class Coordinator {
   private static final Logger LOGGER = LoggerFactory.getLogger(Coordinator.class);
   private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 10;
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   private static final Logger SLOW_SQL_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.SLOW_SQL_LOGGER_NAME);
+
+  private static final Logger SAMPLED_QUERIES_LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.SAMPLED_QUERIES_LOGGER_NAME);
 
   private static final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       SYNC_INTERNAL_SERVICE_CLIENT_MANAGER =
@@ -140,15 +159,20 @@ public class Coordinator {
 
   private final ConcurrentHashMap<Long, IQueryExecution> queryExecutionMap;
 
+  private final StatementRewrite statementRewrite;
   private final List<PlanOptimizer> logicalPlanOptimizers;
   private final List<PlanOptimizer> distributionPlanOptimizers;
   private final AccessControl accessControl;
+  private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
 
   private Coordinator() {
     this.queryExecutionMap = new ConcurrentHashMap<>();
     this.executor = getQueryExecutor();
     this.writeOperationExecutor = getWriteExecutor();
     this.scheduledExecutor = getScheduledExecutor();
+    this.statementRewrite =
+        new StatementRewriteFactory(LocalExecutionPlanner.getInstance().metadata)
+            .getStatementRewrite();
     this.logicalPlanOptimizers =
         new LogicalOptimizeFactory(
                 new PlannerContext(
@@ -159,13 +183,15 @@ public class Coordinator {
                 new PlannerContext(
                     LocalExecutionPlanner.getInstance().metadata, new InternalTypeManager()))
             .getPlanOptimizers();
-    this.accessControl = new AllowAllAccessControl();
+    this.accessControl = new AccessControlImpl(new ITableAuthCheckerImpl());
+    this.dataNodeLocationSupplier = DataNodeLocationSupplierFactory.getSupplier();
   }
 
   private ExecutionResult execution(
       long queryId,
       SessionInfo session,
       String sql,
+      boolean userQuery,
       BiFunction<MPPQueryContext, Long, IQueryExecution> iQueryExecutionFactory) {
     long startTime = System.currentTimeMillis();
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
@@ -182,6 +208,7 @@ public class Coordinator {
               session,
               DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
               DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT);
+      queryContext.setUserQuery(userQuery);
       IQueryExecution execution = iQueryExecutionFactory.apply(queryContext, startTime);
       if (execution.isQuery()) {
         queryExecutionMap.put(queryId, execution);
@@ -213,7 +240,7 @@ public class Coordinator {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
     return executeForTreeModel(
-        statement, queryId, session, sql, partitionFetcher, schemaFetcher, Long.MAX_VALUE);
+        statement, queryId, session, sql, partitionFetcher, schemaFetcher, Long.MAX_VALUE, false);
   }
 
   public ExecutionResult executeForTreeModel(
@@ -223,11 +250,13 @@ public class Coordinator {
       String sql,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
-      long timeOut) {
+      long timeOut,
+      boolean userQuery) {
     return execution(
         queryId,
         session,
         sql,
+        userQuery,
         ((queryContext, startTime) ->
             createQueryExecutionForTreeModel(
                 statement,
@@ -276,11 +305,13 @@ public class Coordinator {
       SessionInfo session,
       String sql,
       Metadata metadata,
-      long timeOut) {
+      long timeOut,
+      boolean userQuery) {
     return execution(
         queryId,
         session,
         sql,
+        userQuery,
         ((queryContext, startTime) ->
             createQueryExecutionForTableModel(
                 statement,
@@ -305,6 +336,7 @@ public class Coordinator {
         queryId,
         session,
         sql,
+        false,
         ((queryContext, startTime) ->
             createQueryExecutionForTableModel(
                 statement,
@@ -324,7 +356,6 @@ public class Coordinator {
       Metadata metadata,
       long timeOut,
       long startTime) {
-    queryContext.setTableQuery(true);
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
     TableModelPlanner tableModelPlanner =
@@ -337,9 +368,11 @@ public class Coordinator {
             scheduledExecutor,
             SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
             ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
+            statementRewrite,
             logicalPlanOptimizers,
             distributionPlanOptimizers,
-            accessControl);
+            accessControl,
+            dataNodeLocationSupplier);
     return new QueryExecution(tableModelPlanner, queryContext, executor);
   }
 
@@ -351,12 +384,12 @@ public class Coordinator {
       final Metadata metadata,
       final long timeOut,
       final long startTime) {
-    queryContext.setTableQuery(true);
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
     if (statement instanceof DropDB
         || statement instanceof ShowDB
         || statement instanceof CreateDB
+        || statement instanceof AlterDB
         || statement instanceof Use
         || statement instanceof CreateTable
         || statement instanceof DescribeTable
@@ -374,7 +407,10 @@ public class Coordinator {
         || statement instanceof Flush
         || statement instanceof ClearCache
         || statement instanceof SetConfiguration
+        || statement instanceof StartRepairData
+        || statement instanceof StopRepairData
         || statement instanceof PipeStatement
+        || statement instanceof RemoveDataNode
         || statement instanceof SubscriptionStatement
         || statement instanceof ShowCurrentSqlDialect
         || statement instanceof ShowCurrentUser
@@ -382,7 +418,12 @@ public class Coordinator {
         || statement instanceof ShowVersion
         || statement instanceof ShowVariables
         || statement instanceof ShowClusterId
-        || statement instanceof ShowCurrentTimestamp) {
+        || statement instanceof ShowCurrentTimestamp
+        || statement instanceof KillQuery
+        || statement instanceof CreateFunction
+        || statement instanceof DropFunction
+        || statement instanceof ShowFunctions
+        || statement instanceof RelationalAuthorStatement) {
       return new ConfigExecution(
           queryContext,
           null,
@@ -403,9 +444,11 @@ public class Coordinator {
             scheduledExecutor,
             SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
             ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
+            statementRewrite,
             logicalPlanOptimizers,
             distributionPlanOptimizers,
-            accessControl);
+            accessControl,
+            dataNodeLocationSupplier);
     return new QueryExecution(tableModelPlanner, queryContext, executor);
   }
 
@@ -421,7 +464,6 @@ public class Coordinator {
     return queryExecutionMap.size();
   }
 
-  // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ExecutorService getQueryExecutor() {
     int coordinatorReadExecutorSize = CONFIG.getCoordinatorReadExecutorSize();
     return IoTDBThreadPoolFactory.newFixedThreadPool(
@@ -434,7 +476,6 @@ public class Coordinator {
         coordinatorWriteExecutorSize, ThreadName.MPP_COORDINATOR_WRITE_EXECUTOR.getName());
   }
 
-  // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ScheduledExecutorService getScheduledExecutor() {
     return IoTDBThreadPoolFactory.newScheduledThreadPool(
         COORDINATOR_SCHEDULED_EXECUTOR_SIZE,
@@ -453,13 +494,27 @@ public class Coordinator {
         LOGGER.debug("[CleanUpQuery]]");
         queryExecution.stopAndCleanup(t);
         queryExecutionMap.remove(queryId);
-        if (queryExecution.isQuery()) {
+        if (queryExecution.isQuery() && queryExecution.isUserQuery()) {
           long costTime = queryExecution.getTotalExecutionTime();
+          // print slow query
           if (costTime / 1_000_000 >= CONFIG.getSlowQueryThreshold()) {
             SLOW_SQL_LOGGER.info(
                 "Cost: {} ms, {}",
                 costTime / 1_000_000,
                 getContentOfRequest(nativeApiRequest, queryExecution));
+          }
+
+          // only sample successful query
+          if (t == null && COMMON_CONFIG.isEnableQuerySampling()) { // sampling is enabled
+            String queryRequest = getContentOfRequest(nativeApiRequest, queryExecution);
+            if (COMMON_CONFIG.isQuerySamplingHasRateLimit()) {
+              if (COMMON_CONFIG.getQuerySamplingRateLimiter().tryAcquire(queryRequest.length())) {
+                SAMPLED_QUERIES_LOGGER.info(queryRequest);
+              }
+            } else {
+              // no limit, always sampled
+              SAMPLED_QUERIES_LOGGER.info(queryRequest);
+            }
           }
         }
       }
@@ -477,6 +532,10 @@ public class Coordinator {
 
   public static Coordinator getInstance() {
     return INSTANCE;
+  }
+
+  public AccessControl getAccessControl() {
+    return accessControl;
   }
 
   public void recordExecutionTime(long queryId, long executionTime) {
@@ -500,5 +559,9 @@ public class Coordinator {
 
   public List<PlanOptimizer> getLogicalPlanOptimizers() {
     return logicalPlanOptimizers;
+  }
+
+  public DataNodeLocationSupplierFactory.DataNodeLocationSupplier getDataNodeLocationSupplier() {
+    return dataNodeLocationSupplier;
   }
 }

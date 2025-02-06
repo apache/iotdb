@@ -296,20 +296,17 @@ public class RouteBalancer implements IClusterStatusSubscriber {
         new TreeMap<>();
     try {
       Map<TConsensusGroupId, Integer> regionLeaderMap = getLoadManager().getRegionLeaderMap();
-      Map<Integer, Long> dataNodeLoadScoreMap = getLoadManager().getAllDataNodeLoadScores();
 
       // Balancing region priority in each SchemaRegionGroup
       Map<TConsensusGroupId, TRegionReplicaSet> optimalRegionPriorityMap =
           priorityRouter.generateOptimalRoutePriority(
               getPartitionManager().getAllReplicaSets(TConsensusGroupType.SchemaRegion),
-              regionLeaderMap,
-              dataNodeLoadScoreMap);
+              regionLeaderMap);
       // Balancing region priority in each DataRegionGroup
       optimalRegionPriorityMap.putAll(
           priorityRouter.generateOptimalRoutePriority(
               getPartitionManager().getAllReplicaSets(TConsensusGroupType.DataRegion),
-              regionLeaderMap,
-              dataNodeLoadScoreMap));
+              regionLeaderMap));
 
       optimalRegionPriorityMap.forEach(
           (regionGroupId, optimalRegionPriority) -> {

@@ -21,12 +21,13 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterUtil;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
@@ -189,8 +190,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       final String tableName,
       final List<List<SchemaFilter>> idDeterminedPredicateList) {
     if (Objects.isNull(DataNodeTableCache.getInstance().getTable(database, tableName))) {
-      throw new SchemaExecutionException(
-          String.format("Table '%s.%s' does not exist.", database, tableName));
+      TableMetadataImpl.throwTableNotExistsException(database, tableName);
     }
     return DeviceFilterUtil.convertToDevicePattern(
         database,
@@ -224,7 +224,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
     TsTableColumnSchema columnSchema;
     for (final ColumnHeader columnHeader : columnHeaderList) {
       columnSchema = table.getColumnSchema(columnHeader.getColumnName());
-      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
+      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
         if (pathNodes.length <= idIndex || pathNodes[idIndex] == null) {
           builder.getColumnBuilder(resultIndex).appendNull();
         } else {

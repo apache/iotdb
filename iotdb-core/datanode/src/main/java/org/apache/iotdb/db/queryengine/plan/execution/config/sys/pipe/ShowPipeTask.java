@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe;
 
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -52,10 +52,11 @@ public class ShowPipeTask implements IConfigTask {
     this.showPipesStatement = showPipesStatement;
   }
 
-  public ShowPipeTask(ShowPipes node) {
+  public ShowPipeTask(final ShowPipes node) {
     showPipesStatement = new ShowPipesStatement();
     showPipesStatement.setPipeName(node.getPipeName());
     showPipesStatement.setWhereClause(node.hasWhereClause());
+    showPipesStatement.setTableModel(true);
   }
 
   @Override

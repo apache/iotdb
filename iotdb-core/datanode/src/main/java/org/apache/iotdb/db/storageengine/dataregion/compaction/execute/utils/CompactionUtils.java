@@ -33,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
@@ -55,7 +56,9 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * This tool can be used to perform inner space or cross space compaction of aligned and non aligned
@@ -145,7 +148,7 @@ public class CompactionUtils {
     Set<ModEntry> modifications = new HashSet<>();
     // get compaction mods from all source unseq files
     for (TsFileResource unseqFile : unseqResources) {
-      modifications.addAll(ModificationFile.getCompactionMods(unseqFile).getAllMods());
+      modifications.addAll(ModificationFile.readAllCompactionModifications(unseqFile.getTsFile()));
     }
 
     // write target mods file
@@ -155,10 +158,54 @@ public class CompactionUtils {
         continue;
       }
       Set<ModEntry> seqModifications =
-          new HashSet<>(ModificationFile.getCompactionMods(seqResources.get(i)).getAllMods());
+          new HashSet<>(
+              ModificationFile.readAllCompactionModifications(seqResources.get(i).getTsFile()));
       modifications.addAll(seqModifications);
       updateOneTargetMods(targetResource, modifications);
       modifications.removeAll(seqModifications);
+    }
+  }
+
+  @SafeVarargs
+  public static void prepareCompactionModFiles(
+      List<TsFileResource> targets, List<TsFileResource>... sourceLists) throws IOException {
+    if (!TsFileResource.useSharedModFile) {
+      Set<ModificationFile> compactionModFileSet =
+          targets.stream()
+              .map(
+                  tsFileResource -> {
+                    try {
+                      return tsFileResource.getModFileForWrite();
+                    } catch (IOException e) {
+                      logger.error("Can not get mod file of {}", tsFileResource, e);
+                      return null;
+                    }
+                  })
+              .filter(Objects::nonNull)
+              .collect(Collectors.toSet());
+      for (List<TsFileResource> sourceList : sourceLists) {
+        for (TsFileResource tsFileResource : sourceList) {
+          tsFileResource.getModFileForWrite().setCascadeFile(compactionModFileSet);
+        }
+      }
+      return;
+    }
+    TsFileResource firstSource = sourceLists[0].get(0);
+    TsFileResource firstTarget = targets.get(0);
+    ModFileManagement modFileManagement = firstSource.getModFileManagement();
+    ModificationFile modificationFile = modFileManagement.allocateFor(firstTarget);
+    for (TsFileResource tsFileResource : targets) {
+      tsFileResource.setModFileManagement(modFileManagement);
+      modFileManagement.addReference(tsFileResource, modificationFile);
+      tsFileResource.setSharedModFile(modificationFile, false);
+    }
+    for (List<TsFileResource> sources : sourceLists) {
+      for (TsFileResource tsFileResource : sources) {
+        // lock so that the compaction mod file will not be omitted by deletion
+        tsFileResource.writeLock();
+        tsFileResource.setCompactionModFile(modificationFile);
+        tsFileResource.writeUnlock();
+      }
     }
   }
 

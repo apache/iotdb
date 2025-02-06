@@ -30,6 +30,8 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupCache;
@@ -63,6 +65,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /** Maintain all kinds of heartbeat samples and statistics. */
@@ -76,6 +79,8 @@ public class LoadCache {
           ProcedureManager.PROCEDURE_WAIT_TIME_OUT - TimeUnit.SECONDS.toMillis(2),
           TimeUnit.SECONDS.toMillis(10));
 
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+
   // Map<NodeId, is heartbeat processing>
   // False indicates there is no processing heartbeat request, true otherwise
   private final Map<Integer, AtomicBoolean> heartbeatProcessingMap;
@@ -83,6 +88,8 @@ public class LoadCache {
   private final Map<Integer, BaseNodeCache> nodeCacheMap;
   // Map<RegionGroupId, RegionGroupCache>
   private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
+  // Map<NodeId, Map<RegionGroupId, RegionSize>>
+  private final Map<Integer, Map<Integer, Long>> regionSizeMap;
   // Map<RegionGroupId, ConsensusGroupCache>
   private final Map<TConsensusGroupId, ConsensusGroupCache> consensusGroupCacheMap;
   // Map<DataNodeId, confirmedConfigNodes>
@@ -92,11 +99,12 @@ public class LoadCache {
     this.nodeCacheMap = new ConcurrentHashMap<>();
     this.heartbeatProcessingMap = new ConcurrentHashMap<>();
     this.regionGroupCacheMap = new ConcurrentHashMap<>();
+    this.regionSizeMap = new ConcurrentHashMap<>();
     this.consensusGroupCacheMap = new ConcurrentHashMap<>();
     this.confirmedConfigNodeMap = new ConcurrentHashMap<>();
   }
 
-  public void initHeartbeatCache(IManager configManager) {
+  public void initHeartbeatCache(final IManager configManager) {
     initNodeHeartbeatCache(
         configManager.getNodeManager().getRegisteredConfigNodes(),
         configManager.getNodeManager().getRegisteredDataNodes(),
@@ -161,13 +169,16 @@ public class LoadCache {
             regionReplicaSets.forEach(
                 regionReplicaSet -> {
                   TConsensusGroupId regionGroupId = regionReplicaSet.getRegionId();
+                  boolean isStrongConsistency =
+                      CONF.isConsensusGroupStrongConsistency(regionGroupId);
                   regionGroupCacheMap.put(
                       regionGroupId,
                       new RegionGroupCache(
                           database,
                           regionReplicaSet.getDataNodeLocations().stream()
                               .map(TDataNodeLocation::getDataNodeId)
-                              .collect(Collectors.toSet())));
+                              .collect(Collectors.toSet()),
+                          isStrongConsistency));
                   consensusGroupCacheMap.put(regionGroupId, new ConsensusGroupCache());
                 }));
   }
@@ -274,7 +285,9 @@ public class LoadCache {
    */
   public void createRegionGroupHeartbeatCache(
       String database, TConsensusGroupId regionGroupId, Set<Integer> dataNodeIds) {
-    regionGroupCacheMap.put(regionGroupId, new RegionGroupCache(database, dataNodeIds));
+    boolean isStrongConsistency = CONF.isConsensusGroupStrongConsistency(regionGroupId);
+    regionGroupCacheMap.put(
+        regionGroupId, new RegionGroupCache(database, dataNodeIds, isStrongConsistency));
     consensusGroupCacheMap.put(regionGroupId, new ConsensusGroupCache());
   }
 
@@ -539,6 +552,22 @@ public class LoadCache {
   }
 
   /**
+   * Filter DataNodes through the NodeStatus predicate.
+   *
+   * @param statusPredicate The NodeStatus predicate
+   * @return Filtered DataNodes with the predicate
+   */
+  public List<Integer> filterDataNodeThroughStatus(Function<NodeStatus, Boolean> statusPredicate) {
+    return nodeCacheMap.entrySet().stream()
+        .filter(
+            nodeCacheEntry ->
+                nodeCacheEntry.getValue() instanceof DataNodeHeartbeatCache
+                    && statusPredicate.apply(nodeCacheEntry.getValue().getNodeStatus()))
+        .map(Map.Entry::getKey)
+        .collect(Collectors.toList());
+  }
+
+  /**
    * Get the free disk space of the specified DataNode.
    *
    * @param dataNodeId The index of the specified DataNode
@@ -548,22 +577,6 @@ public class LoadCache {
     return Optional.ofNullable((DataNodeHeartbeatCache) nodeCacheMap.get(dataNodeId))
         .map(DataNodeHeartbeatCache::getFreeDiskSpace)
         .orElse(0d);
-  }
-
-  /**
-   * Get the loadScore of each DataNode.
-   *
-   * @return Map<DataNodeId, loadScore>
-   */
-  public Map<Integer, Long> getAllDataNodeLoadScores() {
-    Map<Integer, Long> result = new ConcurrentHashMap<>();
-    nodeCacheMap.forEach(
-        (dataNodeId, heartbeatCache) -> {
-          if (heartbeatCache instanceof DataNodeHeartbeatCache) {
-            result.put(dataNodeId, heartbeatCache.getLoadScore());
-          }
-        });
-    return result;
   }
 
   /**
@@ -763,5 +776,13 @@ public class LoadCache {
 
   public Set<TEndPoint> getConfirmedConfigNodeEndPoints(int dataNodeId) {
     return confirmedConfigNodeMap.get(dataNodeId);
+  }
+
+  public void updateRegionSizeMap(int dataNodeId, Map<Integer, Long> regionSizeMap) {
+    this.regionSizeMap.put(dataNodeId, regionSizeMap);
+  }
+
+  public Map<Integer, Map<Integer, Long>> getRegionSizeMap() {
+    return regionSizeMap;
   }
 }

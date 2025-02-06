@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableBuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.common.type.Type;
@@ -62,8 +63,6 @@ public class Util {
               resolvedFunction.getSignature().getArgumentTypes());
       Symbol intermediateSymbol =
           symbolAllocator.newSymbol(resolvedFunction.getSignature().getName(), intermediateType);
-      // TODO put symbol and its type to TypeProvide or later process: add all map contents of
-      // SymbolAllocator to the TypeProvider
       checkState(
           !originalAggregation.getOrderingScheme().isPresent(),
           "Aggregate with ORDER BY does not support partial aggregation");
@@ -117,6 +116,13 @@ public class Util {
    */
   public static Pair<AggregationNode, AggregationTableScanNode> split(
       AggregationTableScanNode node, SymbolAllocator symbolAllocator, QueryId queryId) {
+    AggregationTreeDeviceViewScanNode aggregationTreeDeviceViewScanNode;
+    if (node instanceof AggregationTreeDeviceViewScanNode) {
+      aggregationTreeDeviceViewScanNode = (AggregationTreeDeviceViewScanNode) node;
+    } else {
+      aggregationTreeDeviceViewScanNode = null;
+    }
+
     Map<Symbol, AggregationNode.Aggregation> intermediateAggregation = new LinkedHashMap<>();
     Map<Symbol, AggregationNode.Aggregation> finalAggregation = new LinkedHashMap<>();
     for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
@@ -154,6 +160,51 @@ public class Util {
               Optional.empty()));
     }
 
+    AggregationTableScanNode rightResult =
+        aggregationTreeDeviceViewScanNode == null
+            ? new AggregationTableScanNode(
+                queryId.genPlanNodeId(),
+                node.getQualifiedObjectName(),
+                node.getOutputSymbols(),
+                node.getAssignments(),
+                ImmutableList.of(),
+                node.getIdAndAttributeIndexMap(),
+                node.getScanOrder(),
+                node.getTimePredicate().orElse(null),
+                node.getPushDownPredicate(),
+                node.getPushDownLimit(),
+                node.getPushDownOffset(),
+                node.isPushLimitToEachDevice(),
+                node.containsNonAlignedDevice(),
+                node.getProjection(),
+                intermediateAggregation,
+                node.getGroupingSets(),
+                node.getPreGroupedSymbols(),
+                PARTIAL,
+                node.getGroupIdSymbol())
+            : new AggregationTreeDeviceViewScanNode(
+                queryId.genPlanNodeId(),
+                node.getQualifiedObjectName(),
+                node.getOutputSymbols(),
+                node.getAssignments(),
+                ImmutableList.of(),
+                node.getIdAndAttributeIndexMap(),
+                node.getScanOrder(),
+                node.getTimePredicate().orElse(null),
+                node.getPushDownPredicate(),
+                node.getPushDownLimit(),
+                node.getPushDownOffset(),
+                node.isPushLimitToEachDevice(),
+                node.containsNonAlignedDevice(),
+                node.getProjection(),
+                intermediateAggregation,
+                node.getGroupingSets(),
+                node.getPreGroupedSymbols(),
+                PARTIAL,
+                node.getGroupIdSymbol(),
+                aggregationTreeDeviceViewScanNode.getTreeDBName(),
+                aggregationTreeDeviceViewScanNode.getMeasurementColumnNameMap());
+
     return new Pair<>(
         new AggregationNode(
             node.getPlanNodeId(),
@@ -164,24 +215,6 @@ public class Util {
             FINAL,
             Optional.empty(),
             node.getGroupIdSymbol()),
-        new AggregationTableScanNode(
-            queryId.genPlanNodeId(),
-            node.getQualifiedObjectName(),
-            node.getOutputSymbols(),
-            node.getAssignments(),
-            ImmutableList.of(),
-            node.getIdAndAttributeIndexMap(),
-            node.getScanOrder(),
-            node.getTimePredicate().orElse(null),
-            node.getPushDownPredicate(),
-            node.getPushDownLimit(),
-            node.getPushDownOffset(),
-            node.isPushLimitToEachDevice(),
-            node.getProjection(),
-            intermediateAggregation,
-            node.getGroupingSets(),
-            node.getPreGroupedSymbols(),
-            PARTIAL,
-            node.getGroupIdSymbol()));
+        rightResult);
   }
 }

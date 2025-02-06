@@ -116,13 +116,12 @@ public class TopicConfig extends PipeParameters {
   public Map<String, String> getAttributesWithSourceDatabaseAndTableName() {
     final Map<String, String> attributes = new HashMap<>();
     attributes.put(
-        TopicConstant.DATABASE_NAME_KEY,
+        TopicConstant.DATABASE_KEY,
         this.attributes.getOrDefault(
-            TopicConstant.DATABASE_NAME_KEY, TopicConstant.DATABASE_NAME_DEFAULT_VALUE));
+            TopicConstant.DATABASE_KEY, TopicConstant.DATABASE_DEFAULT_VALUE));
     attributes.put(
-        TopicConstant.TABLE_NAME_KEY,
-        this.attributes.getOrDefault(
-            TopicConstant.TABLE_NAME_KEY, TopicConstant.TABLE_NAME_DEFAULT_VALUE));
+        TopicConstant.TABLE_KEY,
+        this.attributes.getOrDefault(TopicConstant.TABLE_KEY, TopicConstant.TABLE_DEFAULT_VALUE));
     return attributes;
   }
 
@@ -168,6 +167,17 @@ public class TopicConfig extends PipeParameters {
     }
   }
 
+  public Map<String, String> getAttributesWithSourcePrefix() {
+    final Map<String, String> attributesWithProcessorPrefix = new HashMap<>();
+    attributes.forEach(
+        (key, value) -> {
+          if (key.toLowerCase().startsWith("source")) {
+            attributesWithProcessorPrefix.put(key, value);
+          }
+        });
+    return attributesWithProcessorPrefix;
+  }
+
   /////////////////////////////// processor attributes mapping ///////////////////////////////
 
   public Map<String, String> getAttributesWithProcessorPrefix() {
@@ -185,5 +195,16 @@ public class TopicConfig extends PipeParameters {
 
   public Map<String, String> getAttributesWithSinkFormat() {
     return SINK_HYBRID_FORMAT_CONFIG; // default to hybrid
+  }
+
+  public Map<String, String> getAttributesWithSinkPrefix() {
+    final Map<String, String> attributesWithProcessorPrefix = new HashMap<>();
+    attributes.forEach(
+        (key, value) -> {
+          if (key.toLowerCase().startsWith("sink")) {
+            attributesWithProcessorPrefix.put(key, value);
+          }
+        });
+    return attributesWithProcessorPrefix;
   }
 }

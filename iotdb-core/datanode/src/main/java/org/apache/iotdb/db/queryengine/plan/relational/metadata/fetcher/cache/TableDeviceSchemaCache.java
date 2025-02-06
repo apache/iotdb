@@ -246,7 +246,7 @@ public class TableDeviceSchemaCache {
 
   /**
    * Update the last cache in writing or the second push of last cache query. If a measurement is
-   * with all {@code null}s or is an id/attribute column, its {@link TimeValuePair}[] shall be
+   * with all {@code null}s or is a tag/attribute column, its {@link TimeValuePair}[] shall be
    * {@code null}. For correctness, this will put the cache lazily and only update the existing last
    * caches of measurements.
    *
@@ -282,6 +282,25 @@ public class TableDeviceSchemaCache {
     final TableDeviceCacheEntry entry =
         dualKeyCache.get(new TableId(database, deviceId.getTableName()), deviceId);
     return Objects.nonNull(entry) ? entry.getTimeValuePair(measurement) : null;
+  }
+
+  /**
+   * Get the last {@link TimeValuePair}s of given measurements, the measurements shall never be
+   * "time".
+   *
+   * @param database the device's database, without "root", {@code null} for tree model
+   * @param deviceId {@link IDeviceID}
+   * @param measurements the measurements to get
+   * @return {@code null} iff cache miss, {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR} iff
+   *     cache hit but result is {@code null}, and the result value otherwise.
+   */
+  public TimeValuePair[] getLastEntries(
+      final @Nullable String database, final IDeviceID deviceId, final String[] measurements) {
+    final TableDeviceCacheEntry entry =
+        dualKeyCache.get(new TableId(database, deviceId.getTableName()), deviceId);
+    return Objects.nonNull(entry)
+        ? Arrays.stream(measurements).map(entry::getTimeValuePair).toArray(TimeValuePair[]::new)
+        : null;
   }
 
   /**
@@ -489,46 +508,51 @@ public class TableDeviceSchemaCache {
     return dualKeyCache.stats().requestCount();
   }
 
-  // This database is with "root"
-  void invalidateLastCache(final @Nonnull String qualifiedDatabase) {
-    final String database = PathUtils.unQualifyDatabaseName(qualifiedDatabase);
+  void invalidateLastCache(final @Nonnull String database) {
     readWriteLock.writeLock().lock();
 
     try {
-      dualKeyCache.update(
-          tableId ->
-              tableId.belongTo(database)
-                  || Objects.isNull(tableId.getDatabase())
-                      && tableId.getTableName().startsWith(qualifiedDatabase),
-          deviceID -> true,
-          entry -> -entry.invalidateLastCache());
-      dualKeyCache.update(
-          tableId ->
-              Objects.isNull(tableId.getDatabase())
-                  && qualifiedDatabase.startsWith(tableId.getTableName()),
-          deviceID -> deviceID.matchDatabaseName(qualifiedDatabase),
-          entry -> -entry.invalidateLastCache());
+      if (PathUtils.isTableModelDatabase(database)) {
+        dualKeyCache.update(
+            tableId -> tableId.belongTo(database),
+            deviceID -> true,
+            entry -> -entry.invalidateLastCache());
+      } else {
+        dualKeyCache.update(
+            tableId ->
+                Objects.isNull(tableId.getDatabase())
+                    && tableId.getTableName().startsWith(database),
+            deviceID -> true,
+            entry -> -entry.invalidateLastCache());
+        dualKeyCache.update(
+            tableId ->
+                Objects.isNull(tableId.getDatabase())
+                    && database.startsWith(tableId.getTableName()),
+            deviceID -> deviceID.matchDatabaseName(database),
+            entry -> -entry.invalidateLastCache());
+      }
     } finally {
       readWriteLock.writeLock().unlock();
     }
   }
 
-  // This database is without "root"
   public void invalidate(final @Nonnull String database) {
-    final String qualifiedDatabase = PathUtils.qualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
-      dualKeyCache.invalidate(
-          tableId ->
-              tableId.belongTo(database)
-                  || Objects.isNull(tableId.getDatabase())
-                      && tableId.getTableName().startsWith(qualifiedDatabase),
-          deviceID -> true);
-      dualKeyCache.invalidate(
-          tableId ->
-              Objects.isNull(tableId.getDatabase())
-                  && qualifiedDatabase.startsWith(tableId.getTableName()),
-          deviceID -> deviceID.matchDatabaseName(qualifiedDatabase));
+      if (PathUtils.isTableModelDatabase(database)) {
+        dualKeyCache.invalidate(tableId -> tableId.belongTo(database), deviceID -> true);
+      } else {
+        dualKeyCache.invalidate(
+            tableId ->
+                Objects.isNull(tableId.getDatabase())
+                    && tableId.getTableName().startsWith(database),
+            deviceID -> true);
+        dualKeyCache.invalidate(
+            tableId ->
+                Objects.isNull(tableId.getDatabase())
+                    && database.startsWith(tableId.getTableName()),
+            deviceID -> deviceID.matchDatabaseName(database));
+      }
     } finally {
       readWriteLock.writeLock().unlock();
     }

@@ -178,11 +178,11 @@ public class PathUtils {
   }
 
   /** Return true if the str is a real number. Examples: 1.0; +1.0; -1.0; 0011; 011e3; +23e-3 */
-  public static boolean isRealNumber(String str) {
+  public static boolean isRealNumber(final String str) {
     return PathVisitor.isRealNumber(str);
   }
 
-  public static boolean isStartWith(IDeviceID deviceID, String storageGroup) {
+  public static boolean isStartWith(final IDeviceID deviceID, final String storageGroup) {
     return deviceID.segmentNum() > 0 && deviceID.matchDatabaseName(storageGroup);
   }
 
@@ -216,8 +216,12 @@ public class PathUtils {
 
   public static String unQualifyDatabaseName(String databaseName) {
     if (databaseName != null && databaseName.startsWith("root.")) {
-      databaseName = databaseName.substring(5);
+      databaseName = databaseName.substring(5).toLowerCase();
     }
     return databaseName;
+  }
+
+  public static boolean isTableModelDatabase(final String databaseName) {
+    return !databaseName.startsWith("root.");
   }
 }

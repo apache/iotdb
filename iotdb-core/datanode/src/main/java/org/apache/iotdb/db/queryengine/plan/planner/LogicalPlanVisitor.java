@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
@@ -100,7 +100,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.ENDTIME;
 
 /**
  * This visitor is used to generate a logical plan for the statement and returns the {@link
@@ -497,8 +497,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
   @Override
   public PlanNode visitPipeEnrichedStatement(
-      PipeEnrichedStatement pipeEnrichedStatement, MPPQueryContext context) {
-    WritePlanNode node =
+      final PipeEnrichedStatement pipeEnrichedStatement, final MPPQueryContext context) {
+    final WritePlanNode node =
         (WritePlanNode) pipeEnrichedStatement.getInnerStatement().accept(this, context);
 
     if (node instanceof LoadTsFileNode) {
@@ -513,7 +513,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   }
 
   @Override
-  public PlanNode visitLoadFile(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
+  public PlanNode visitLoadFile(
+      final LoadTsFileStatement loadTsFileStatement, final MPPQueryContext context) {
     final List<Boolean> isTableModel = new ArrayList<>();
     for (int i = 0; i < loadTsFileStatement.getResources().size(); i++) {
       isTableModel.add(

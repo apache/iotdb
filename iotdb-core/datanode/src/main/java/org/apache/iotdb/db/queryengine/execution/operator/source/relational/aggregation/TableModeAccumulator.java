@@ -100,29 +100,60 @@ public class TableModeAccumulator implements TableAccumulator {
   }
 
   @Override
-  public void addInput(Column[] arguments) {
+  public void addInput(Column[] arguments, AggregationMask mask) {
     switch (seriesDataType) {
       case BOOLEAN:
-        addBooleanInput(arguments[0]);
+        addBooleanInput(arguments[0], mask);
         break;
       case INT32:
       case DATE:
-        addIntInput(arguments[0]);
+        addIntInput(arguments[0], mask);
         break;
       case FLOAT:
-        addFloatInput(arguments[0]);
+        addFloatInput(arguments[0], mask);
         break;
       case INT64:
       case TIMESTAMP:
-        addLongInput(arguments[0]);
+        addLongInput(arguments[0], mask);
         break;
       case DOUBLE:
-        addDoubleInput(arguments[0]);
+        addDoubleInput(arguments[0], mask);
         break;
       case TEXT:
       case STRING:
       case BLOB:
-        addBinaryInput(arguments[0]);
+        addBinaryInput(arguments[0], mask);
+        break;
+      default:
+        throw new UnsupportedOperationException(
+            String.format(UNSUPPORTED_TYPE_MESSAGE, seriesDataType));
+    }
+  }
+
+  @Override
+  public void removeInput(Column[] arguments) {
+    switch (seriesDataType) {
+      case BOOLEAN:
+        removeBooleanInput(arguments[0]);
+        break;
+      case INT32:
+      case DATE:
+        removeIntInput(arguments[0]);
+        break;
+      case FLOAT:
+        removeFloatInput(arguments[0]);
+        break;
+      case INT64:
+      case TIMESTAMP:
+        removeLongInput(arguments[0]);
+        break;
+      case DOUBLE:
+        removeDoubleInput(arguments[0]);
+        break;
+      case TEXT:
+      case STRING:
+      case BLOB:
+        removeBinaryInput(arguments[0]);
         break;
       default:
         throw new UnsupportedOperationException(
@@ -280,6 +311,11 @@ public class TableModeAccumulator implements TableAccumulator {
       binaryCountMap.clear();
     }
     nullCount = 0;
+  }
+
+  @Override
+  public boolean removable() {
+    return true;
   }
 
   // haveNull | nullCount (optional) | countMap
@@ -476,70 +512,230 @@ public class TableModeAccumulator implements TableAccumulator {
     }
   }
 
-  private void addBooleanInput(Column column) {
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      if (!column.isNull(i)) {
-        booleanCountMap.compute(column.getBoolean(i), (k, v) -> v == null ? 1 : v + 1);
-        if (booleanCountMap.size() > MAP_SIZE_THRESHOLD) {
+  private void addBooleanInput(Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column.isNull(i)) {
+          booleanCountMap.compute(column.getBoolean(i), (k, v) -> v == null ? 1 : v + 1);
           checkMapSize(booleanCountMap.size());
+        } else {
+          nullCount++;
         }
-      } else {
-        nullCount++;
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          booleanCountMap.compute(column.getBoolean(position), (k, v) -> v == null ? 1 : v + 1);
+          checkMapSize(booleanCountMap.size());
+        } else {
+          nullCount++;
+        }
       }
     }
   }
 
-  private void addIntInput(Column column) {
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      if (!column.isNull(i)) {
-        intCountMap.compute(column.getInt(i), (k, v) -> v == null ? 1 : v + 1);
-        checkMapSize(intCountMap.size());
-      } else {
-        nullCount++;
+  private void addIntInput(Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column.isNull(i)) {
+          intCountMap.compute(column.getInt(i), (k, v) -> v == null ? 1 : v + 1);
+          checkMapSize(intCountMap.size());
+        } else {
+          nullCount++;
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          intCountMap.compute(column.getInt(position), (k, v) -> v == null ? 1 : v + 1);
+          checkMapSize(intCountMap.size());
+        } else {
+          nullCount++;
+        }
       }
     }
   }
 
-  private void addFloatInput(Column column) {
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      if (!column.isNull(i)) {
-        floatCountMap.compute(column.getFloat(i), (k, v) -> v == null ? 1 : v + 1);
-        checkMapSize(floatCountMap.size());
-      } else {
-        nullCount++;
+  private void addFloatInput(Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column.isNull(i)) {
+          floatCountMap.compute(column.getFloat(i), (k, v) -> v == null ? 1 : v + 1);
+          checkMapSize(floatCountMap.size());
+        } else {
+          nullCount++;
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          floatCountMap.compute(column.getFloat(position), (k, v) -> v == null ? 1 : v + 1);
+          checkMapSize(floatCountMap.size());
+        } else {
+          nullCount++;
+        }
       }
     }
   }
 
-  private void addLongInput(Column column) {
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      if (!column.isNull(i)) {
-        longCountMap.compute(column.getLong(i), (k, v) -> v == null ? 1 : v + 1);
-        checkMapSize(longCountMap.size());
-      } else {
-        nullCount++;
+  private void addLongInput(Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column.isNull(i)) {
+          longCountMap.compute(column.getLong(i), (k, v) -> v == null ? 1 : v + 1);
+          checkMapSize(longCountMap.size());
+        } else {
+          nullCount++;
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          longCountMap.compute(column.getLong(position), (k, v) -> v == null ? 1 : v + 1);
+          checkMapSize(longCountMap.size());
+        } else {
+          nullCount++;
+        }
       }
     }
   }
 
-  private void addDoubleInput(Column column) {
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      if (!column.isNull(i)) {
-        doubleCountMap.compute(column.getDouble(i), (k, v) -> v == null ? 1 : v + 1);
-        checkMapSize(doubleCountMap.size());
-      } else {
-        nullCount++;
+  private void addDoubleInput(Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column.isNull(i)) {
+          doubleCountMap.compute(column.getDouble(i), (k, v) -> v == null ? 1 : v + 1);
+          checkMapSize(doubleCountMap.size());
+        } else {
+          nullCount++;
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          doubleCountMap.compute(column.getDouble(position), (k, v) -> v == null ? 1 : v + 1);
+          checkMapSize(doubleCountMap.size());
+        } else {
+          nullCount++;
+        }
       }
     }
   }
 
-  private void addBinaryInput(Column column) {
+  private void addBinaryInput(Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column.isNull(i)) {
+          binaryCountMap.compute(column.getBinary(i), (k, v) -> v == null ? 1 : v + 1);
+          checkMapSize(binaryCountMap.size());
+        } else {
+          nullCount++;
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          binaryCountMap.compute(column.getBinary(position), (k, v) -> v == null ? 1 : v + 1);
+          checkMapSize(binaryCountMap.size());
+        } else {
+          nullCount++;
+        }
+      }
+    }
+  }
+
+  private void removeBooleanInput(Column column) {
     for (int i = 0; i < column.getPositionCount(); i++) {
       if (!column.isNull(i)) {
-        binaryCountMap.compute(column.getBinary(i), (k, v) -> v == null ? 1 : v + 1);
-        checkMapSize(binaryCountMap.size());
+        boolean key = column.getBoolean(i);
+        booleanCountMap.compute(key, (k, count) -> count - 1);
       } else {
-        nullCount++;
+        nullCount--;
+      }
+    }
+  }
+
+  private void removeIntInput(Column column) {
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (!column.isNull(i)) {
+        int key = column.getInt(i);
+        intCountMap.compute(key, (k, count) -> count - 1);
+      } else {
+        nullCount--;
+      }
+    }
+  }
+
+  private void removeFloatInput(Column column) {
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (!column.isNull(i)) {
+        float key = column.getFloat(i);
+        floatCountMap.compute(key, (k, count) -> count - 1);
+      } else {
+        nullCount--;
+      }
+    }
+  }
+
+  private void removeLongInput(Column column) {
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (!column.isNull(i)) {
+        long key = column.getLong(i);
+        longCountMap.compute(key, (k, count) -> count - 1);
+      } else {
+        nullCount--;
+      }
+    }
+  }
+
+  private void removeDoubleInput(Column column) {
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (!column.isNull(i)) {
+        double key = column.getDouble(i);
+        doubleCountMap.compute(key, (k, count) -> count - 1);
+      } else {
+        nullCount--;
+      }
+    }
+  }
+
+  private void removeBinaryInput(Column column) {
+    for (int i = 0; i < column.getPositionCount(); i++) {
+      if (!column.isNull(i)) {
+        Binary key = column.getBinary(i);
+        binaryCountMap.compute(key, (k, count) -> count - 1);
+      } else {
+        nullCount--;
       }
     }
   }

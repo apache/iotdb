@@ -19,13 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -47,7 +51,8 @@ public class AlterLogicalViewNode extends PlanNode {
    */
   private final Map<PartialPath, ViewExpression> viewPathToSourceMap;
 
-  public AlterLogicalViewNode(PlanNodeId id, Map<PartialPath, ViewExpression> viewPathToSourceMap) {
+  public AlterLogicalViewNode(
+      final PlanNodeId id, final Map<PartialPath, ViewExpression> viewPathToSourceMap) {
     super(id);
     this.viewPathToSourceMap = viewPathToSourceMap;
   }
@@ -56,10 +61,24 @@ public class AlterLogicalViewNode extends PlanNode {
     return viewPathToSourceMap;
   }
 
-  // region Interfaces in WritePlanNode or PlanNode
+  // For pipe
+  // TODO: Add auth check for source paths
+  public TSStatus checkPermissionBeforeProcess(final String userName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
 
+    final List<PartialPath> targetPathList = new ArrayList<>(viewPathToSourceMap.keySet());
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkFullPathListPermission(
+            userName, targetPathList, PrivilegeType.WRITE_SCHEMA),
+        targetPathList,
+        PrivilegeType.WRITE_SCHEMA);
+  }
+
+  // region Interfaces in WritePlanNode or PlanNode
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final PlanVisitor<R, C> visitor, final C context) {
     return visitor.visitAlterLogicalView(this, context);
   }
 
@@ -69,7 +88,7 @@ public class AlterLogicalViewNode extends PlanNode {
   }
 
   @Override
-  public void addChild(PlanNode child) {
+  public void addChild(final PlanNode child) {
     // do nothing. this node should never have any child
   }
 
@@ -85,14 +104,14 @@ public class AlterLogicalViewNode extends PlanNode {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    AlterLogicalViewNode that = (AlterLogicalViewNode) obj;
+    final AlterLogicalViewNode that = (AlterLogicalViewNode) obj;
     return (this.getPlanNodeId().equals(that.getPlanNodeId())
         && Objects.equals(this.viewPathToSourceMap, that.viewPathToSourceMap));
   }
@@ -116,31 +135,31 @@ public class AlterLogicalViewNode extends PlanNode {
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
+  protected void serializeAttributes(final ByteBuffer byteBuffer) {
     PlanNodeType.ALTER_LOGICAL_VIEW.serialize(byteBuffer);
     // serialize other member variables for this node
     ReadWriteIOUtils.write(this.viewPathToSourceMap.size(), byteBuffer);
-    for (Map.Entry<PartialPath, ViewExpression> entry : viewPathToSourceMap.entrySet()) {
+    for (final Map.Entry<PartialPath, ViewExpression> entry : viewPathToSourceMap.entrySet()) {
       entry.getKey().serialize(byteBuffer);
       ViewExpression.serialize(entry.getValue(), byteBuffer);
     }
   }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+  protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     PlanNodeType.ALTER_LOGICAL_VIEW.serialize(stream);
     // serialize other member variables for this node
     ReadWriteIOUtils.write(this.viewPathToSourceMap.size(), stream);
-    for (Map.Entry<PartialPath, ViewExpression> entry : viewPathToSourceMap.entrySet()) {
+    for (final Map.Entry<PartialPath, ViewExpression> entry : viewPathToSourceMap.entrySet()) {
       entry.getKey().serialize(stream);
       ViewExpression.serialize(entry.getValue(), stream);
     }
   }
 
-  public static AlterLogicalViewNode deserialize(ByteBuffer byteBuffer) {
+  public static AlterLogicalViewNode deserialize(final ByteBuffer byteBuffer) {
     // deserialize member variables
-    Map<PartialPath, ViewExpression> viewPathToSourceMap = new HashMap<>();
-    int size = byteBuffer.getInt();
+    final Map<PartialPath, ViewExpression> viewPathToSourceMap = new HashMap<>();
+    final int size = byteBuffer.getInt();
     PartialPath path;
     ViewExpression viewExpression;
     for (int i = 0; i < size; i++) {
@@ -149,7 +168,7 @@ public class AlterLogicalViewNode extends PlanNode {
       viewPathToSourceMap.put(path, viewExpression);
     }
     // deserialize PlanNodeId next
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    final PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new AlterLogicalViewNode(planNodeId, viewPathToSourceMap);
   }
   // endregion

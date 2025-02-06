@@ -24,12 +24,12 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.pipe.datastructure.PersistentResource;
+import org.apache.iotdb.commons.pipe.datastructure.resource.PersistentResource;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.exception.load.PartitionViolationException;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -81,6 +81,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -163,7 +164,7 @@ public class TsFileResource implements PersistentResource {
 
   private TsFileID tsFileID;
 
-  private long ramSize;
+  private long deviceTimeIndexRamSize;
 
   private AtomicInteger tierLevel;
 
@@ -312,7 +313,8 @@ public class TsFileResource implements PersistentResource {
 
       if (inputStream.available() > 0) {
         String modFilePath = ReadWriteIOUtils.readString(inputStream);
-        if (modFilePath != null && !modFilePath.isEmpty()) {
+        // ends with ".mods2" means it is a new version resource file
+        if (modFilePath != null && modFilePath.endsWith(ModificationFile.FILE_SUFFIX)) {
           sharedModFileOffset = ReadWriteIOUtils.readLong(inputStream);
           if (sharedModFilePathFuture != null) {
             sharedModFilePathFuture.complete(modFilePath);
@@ -389,11 +391,23 @@ public class TsFileResource implements PersistentResource {
   }
 
   public void linkModFile(TsFileResource target) throws IOException {
-    if (exclusiveModFileExists()) {
-      Files.createLink(
-          ModificationFile.getExclusiveMods(target.getTsFile()).toPath(),
-          ModificationFile.getExclusiveMods(getTsFile()).toPath());
+    File targetModsFile = ModificationFile.getExclusiveMods(target.getTsFile());
+    ModificationFile sourceModFile = this.getExclusiveModFile();
+    ModificationFile targetModsFileObject;
+    sourceModFile.writeLock();
+    try {
+      if (sourceModFile.exists()) {
+        Files.createLink(
+            targetModsFile.toPath(), ModificationFile.getExclusiveMods(getTsFile()).toPath());
+        targetModsFileObject = new ModificationFile(targetModsFile, true);
+      } else {
+        targetModsFileObject = new ModificationFile(targetModsFile, true);
+        sourceModFile.setCascadeFile(Collections.singleton(targetModsFileObject));
+      }
+    } finally {
+      sourceModFile.writeUnlock();
     }
+    target.setExclusiveModFile(targetModsFileObject);
     if (sharedModFileExists()) {
       modFileManagement.addReference(target, sharedModFile);
       target.setSharedModFile(this.getSharedModFile(), false);
@@ -601,7 +615,17 @@ public class TsFileResource implements PersistentResource {
     }
   }
 
-  public long getOrderTime(IDeviceID deviceId, boolean ascending) {
+  // cannot use FileTimeIndex
+  public long getOrderTimeForSeq(IDeviceID deviceId, boolean ascending) {
+    if (timeIndex instanceof ArrayDeviceTimeIndex) {
+      return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
+    } else {
+      return ascending ? Long.MIN_VALUE : Long.MAX_VALUE;
+    }
+  }
+
+  // can use FileTimeIndex
+  public long getOrderTimeForUnseq(IDeviceID deviceId, boolean ascending) {
     return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
   }
 
@@ -756,7 +780,6 @@ public class TsFileResource implements PersistentResource {
     if (getExclusiveModFile().exists()) {
       getExclusiveModFile().remove();
     }
-    exclusiveModFile = null;
 
     if (getSharedModFile() != null && modFileManagement != null) {
       modFileManagement.releaseFor(this, sharedModFile);
@@ -1027,7 +1050,6 @@ public class TsFileResource implements PersistentResource {
     return timeIndex.isSpanMultiTimePartitions();
   }
 
-  @TestOnly
   public void setExclusiveModFile(ModificationFile exclusiveModFile) {
     synchronized (this) {
       this.exclusiveModFile = exclusiveModFile;
@@ -1038,12 +1060,21 @@ public class TsFileResource implements PersistentResource {
    * @return resource map size
    */
   public long calculateRamSize() {
-    if (ramSize == 0) {
-      ramSize = INSTANCE_SIZE + timeIndex.calculateRamSize();
-      return ramSize;
-    } else {
-      return ramSize;
+    if (timeIndex.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE) {
+      return INSTANCE_SIZE + timeIndex.calculateRamSize();
     }
+    if (deviceTimeIndexRamSize == 0) {
+      deviceTimeIndexRamSize = timeIndex.calculateRamSize();
+    }
+    return INSTANCE_SIZE + deviceTimeIndexRamSize;
+  }
+
+  // used for compaction
+  public Optional<Long> getDeviceTimeIndexRamSize() {
+    if (!this.isClosed()) {
+      return Optional.empty();
+    }
+    return Optional.of(deviceTimeIndexRamSize);
   }
 
   public long getMaxPlanIndex() {
@@ -1247,10 +1278,6 @@ public class TsFileResource implements PersistentResource {
     }
   }
 
-  public long getRamSize() {
-    return ramSize;
-  }
-
   /** the DeviceTimeIndex degrade to FileTimeIndex and release memory */
   public long degradeTimeIndex() {
     TimeIndexLevel timeIndexLevel = TimeIndexLevel.valueOf(getTimeIndexType());
@@ -1264,12 +1291,8 @@ public class TsFileResource implements PersistentResource {
     long endTime = timeIndex.getMaxEndTime();
     // replace the DeviceTimeIndex with FileTimeIndex
     timeIndex = new FileTimeIndex(startTime, endTime);
-
-    long beforeRamSize = ramSize;
-
-    ramSize = INSTANCE_SIZE + timeIndex.calculateRamSize();
-
-    return beforeRamSize - ramSize;
+    // deviceTimeIndexRamSize has already been calculated before
+    return deviceTimeIndexRamSize - timeIndex.calculateRamSize();
   }
 
   private void generatePathToTimeSeriesMetadataMap() throws IOException {
@@ -1435,28 +1458,32 @@ public class TsFileResource implements PersistentResource {
     }
   }
 
-  @SuppressWarnings({"java:S4042", "java:S899", "ResultOfMethodCallIgnored"})
   public void upgradeModFile(ExecutorService upgradeModFileThreadPool) throws IOException {
     ModificationFileV1 oldModFile = ModificationFileV1.getNormalMods(this);
     if (!oldModFile.exists()) {
       return;
     }
 
-    exclusiveModFileFuture =
-        upgradeModFileThreadPool.submit(
-            () -> {
-              ModificationFile newMFile = ModificationFile.getExclusiveMods(this);
-              newMFile.getFile().delete();
-              try {
-                for (Modification oldMod : oldModFile.getModifications()) {
-                  newMFile.write(new TreeDeletionEntry((Deletion) oldMod));
-                }
-              } finally {
-                newMFile.close();
-              }
-              oldModFile.remove();
-              return newMFile;
-            });
+    if (upgradeModFileThreadPool != null) {
+      exclusiveModFileFuture = upgradeModFileThreadPool.submit(() -> doUpgradeModFile(oldModFile));
+    } else {
+      exclusiveModFileFuture = CompletableFuture.completedFuture(doUpgradeModFile(oldModFile));
+    }
+  }
+
+  @SuppressWarnings({"java:S4042", "java:S899", "ResultOfMethodCallIgnored"})
+  private ModificationFile doUpgradeModFile(ModificationFileV1 oldModFile) throws IOException {
+    ModificationFile newMFile = ModificationFile.getExclusiveMods(this);
+    newMFile.getFile().delete();
+    try {
+      for (Modification oldMod : oldModFile.getModifications()) {
+        newMFile.write(new TreeDeletionEntry((Deletion) oldMod));
+      }
+    } finally {
+      newMFile.close();
+    }
+    oldModFile.remove();
+    return newMFile;
   }
 
   public TsFileResource getPrev() {

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.rescon.memory;
 
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -77,8 +78,25 @@ public class TsFileResourceManager {
         totalTimeIndexMemCost -= tsFileResource.calculateRamSize();
         degradedTimeIndexNum--;
       } else {
-        totalTimeIndexMemCost -= tsFileResource.getRamSize();
+        totalTimeIndexMemCost -= tsFileResource.calculateRamSize();
       }
+    }
+  }
+
+  public void forceDegradeTsFileResource(TsFileResource resource) {
+    if (TimeIndexLevel.valueOf(resource.getTimeIndexType()) == TimeIndexLevel.FILE_TIME_INDEX) {
+      return;
+    }
+    logger.debug("Force degrade tsfile resource {}", resource.getTsFilePath());
+    synchronized (this) {
+      if (!sealedTsFileResources.remove(resource)) {
+        resource.degradeTimeIndex();
+        return;
+      }
+      long memoryReduce = resource.degradeTimeIndex();
+      degradedTimeIndexNum++;
+      releaseTimeIndexMemCost(memoryReduce);
+      sealedTsFileResources.add(resource);
     }
   }
 

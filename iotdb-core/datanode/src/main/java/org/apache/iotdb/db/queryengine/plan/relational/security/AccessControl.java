@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.security;
 
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 
 public interface AccessControl {
 
@@ -58,7 +59,7 @@ public interface AccessControl {
    * @param databaseName without `root.` prefix, like db
    * @throws AccessDeniedException if not allowed
    */
-  void checkCanShowOrUseDatabase(String userName, String databaseName);
+  void checkCanShowOrUseDatabase(final String userName, final String databaseName);
 
   /**
    * Check if user is allowed to create the specified table.
@@ -130,4 +131,13 @@ public interface AccessControl {
    * @throws AccessDeniedException if not allowed
    */
   void checkUserHasMaintainPrivilege(String userName);
+
+  /**
+   * Check if user can run relational author statement.
+   *
+   * @param userName name of user
+   * @throws AccessDeniedException if not allowed
+   */
+  void checkUserCanRunRelationalAuthorStatement(
+      String userName, RelationalAuthorStatement statement);
 }

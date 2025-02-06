@@ -61,7 +61,7 @@ public class InsertRows extends WrappedInsertStatement {
 
   @Override
   public String getTableName() {
-    return getInnerTreeStatement().getDevicePath().getFullPath();
+    return getInnerTreeStatement().getInsertRowStatementList().get(0).getDevicePath().getFullPath();
   }
 
   @Override
@@ -97,7 +97,8 @@ public class InsertRows extends WrappedInsertStatement {
                   AnalyzeUtils.getDatabaseName(insertRowStatement, context),
                   incomingTableSchema,
                   context,
-                  allowCreateTable)
+                  allowCreateTable,
+                  false)
               .orElse(null);
       if (realSchema == null) {
         throw new SemanticException(
