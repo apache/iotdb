@@ -36,7 +36,7 @@ public class SqlConstant {
 
   public static final String ROOT = "root";
 
-  public static final String ROOT_DOT = "root.";
+  public static final String TREE_MODEL_DATABASE_PREFIX = "root.";
 
   public static final String QUOTE = "'";
   public static final String DQUOTE = "\"";

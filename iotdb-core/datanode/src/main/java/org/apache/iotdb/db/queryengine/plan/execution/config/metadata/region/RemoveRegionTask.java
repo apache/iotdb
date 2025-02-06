@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveRegion;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -29,14 +31,30 @@ import com.google.common.util.concurrent.ListenableFuture;
 public class RemoveRegionTask implements IConfigTask {
 
   protected final RemoveRegionStatement statement;
+  private final Model model;
 
   public RemoveRegionTask(RemoveRegionStatement statement) {
     this.statement = statement;
+    this.model = Model.TREE;
+  }
+
+  public RemoveRegionTask(RemoveRegion removeRegion) {
+    this.statement =
+        new RemoveRegionStatement(removeRegion.getRegionId(), removeRegion.getDataNodeId());
+    this.model = Model.TABLE;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.removeRegion(statement);
+    return configTaskExecutor.removeRegion(this);
+  }
+
+  public RemoveRegionStatement getStatement() {
+    return statement;
+  }
+
+  public Model getModel() {
+    return model;
   }
 }

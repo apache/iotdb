@@ -167,10 +167,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ExtendRegionStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
@@ -1012,10 +1009,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
     // As the implementation is identical, we'll simply translate to the
     // corresponding tree-model variant and execute that.
-    final MigrateRegionStatement treeStatement =
-        new MigrateRegionStatement(
-            migrateRegion.getRegionId(), migrateRegion.getFromId(), migrateRegion.getToId());
-    return new MigrateRegionTask(treeStatement);
+    return new MigrateRegionTask(migrateRegion);
   }
 
   @Override
@@ -1037,9 +1031,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
     // As the implementation is identical, we'll simply translate to the
     // corresponding tree-model variant and execute that.
-    final ExtendRegionStatement treeStatement =
-        new ExtendRegionStatement(extendRegion.getRegionId(), extendRegion.getDataNodeId());
-    return new ExtendRegionTask(treeStatement);
+    return new ExtendRegionTask(extendRegion);
   }
 
   @Override
@@ -1048,8 +1040,6 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
     // As the implementation is identical, we'll simply translate to the
     // corresponding tree-model variant and execute that.
-    final RemoveRegionStatement treeStatement =
-        new RemoveRegionStatement(removeRegion.getRegionId(), removeRegion.getDataNodeId());
-    return new RemoveRegionTask(treeStatement);
+    return new RemoveRegionTask(removeRegion);
   }
 }

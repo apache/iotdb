@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ExtendRegionStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -29,14 +31,30 @@ import com.google.common.util.concurrent.ListenableFuture;
 public class ExtendRegionTask implements IConfigTask {
 
   protected final ExtendRegionStatement statement;
+  private final Model model;
 
   public ExtendRegionTask(ExtendRegionStatement statement) {
     this.statement = statement;
+    this.model = Model.TREE;
+  }
+
+  public ExtendRegionTask(ExtendRegion extendRegion) {
+    this.statement =
+        new ExtendRegionStatement(extendRegion.getRegionId(), extendRegion.getDataNodeId());
+    this.model = Model.TABLE;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.extendRegion(statement);
+    return configTaskExecutor.extendRegion(this);
+  }
+
+  public ExtendRegionStatement getStatement() {
+    return statement;
+  }
+
+  public Model getModel() {
+    return model;
   }
 }
