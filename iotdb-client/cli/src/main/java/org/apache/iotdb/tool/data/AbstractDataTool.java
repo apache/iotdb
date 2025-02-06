@@ -31,7 +31,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tool.common.Constants;
-import org.apache.iotdb.tool.tsfile.ImportTsFile;
+import org.apache.iotdb.tool.common.ImportTsFileOperation;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.HelpFormatter;
@@ -110,9 +110,9 @@ public abstract class AbstractDataTool {
   protected static String successDir = "success/";
   protected static String timestampPrecision = "ms";
   protected static String failedFileDirectory = null;
-  protected static ImportTsFile.Operation failOperation;
+  protected static ImportTsFileOperation failOperation;
   protected static ZoneId zoneId = ZoneId.systemDefault();
-  protected static ImportTsFile.Operation successOperation;
+  protected static ImportTsFileOperation successOperation;
   protected static String targetFile = Constants.DUMP_FILE_NAME_DEFAULT;
   protected static final LongAdder loadFileFailedNum = new LongAdder();
   protected static final LongAdder loadFileSuccessfulNum = new LongAdder();
