@@ -312,20 +312,20 @@ public class ImportData extends AbstractDataTool {
       ioTPrinter.println("Args error: os/of must be one of none, mv, cp, delete");
       System.exit(Constants.CODE_ERROR);
     }
-    boolean isSuccessDirEqualsSourceDir = false;
-    if (ImportTsFileOperation.MV.name().equalsIgnoreCase(onSuccess)
-        || ImportTsFileOperation.CP.name().equalsIgnoreCase(onSuccess)) {
-      File dir = createSuccessDir(commandLine);
-      isSuccessDirEqualsSourceDir = isFileStoreEquals(targetPath, dir);
-    }
-
-    boolean isFailDirEqualsSourceDir = false;
-    if (ImportTsFileOperation.MV.name().equalsIgnoreCase(onFail)
-        || ImportTsFileOperation.CP.name().equalsIgnoreCase(onFail)) {
-      File dir = createFailDir(commandLine);
-      isFailDirEqualsSourceDir = isFileStoreEquals(targetPath, dir);
-    }
     if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
+      boolean isSuccessDirEqualsSourceDir = false;
+      if (ImportTsFileOperation.MV.name().equalsIgnoreCase(onSuccess)
+          || ImportTsFileOperation.CP.name().equalsIgnoreCase(onSuccess)) {
+        File dir = createSuccessDir(commandLine);
+        isSuccessDirEqualsSourceDir = isFileStoreEquals(targetPath, dir);
+      }
+
+      boolean isFailDirEqualsSourceDir = false;
+      if (ImportTsFileOperation.MV.name().equalsIgnoreCase(onFail)
+          || ImportTsFileOperation.CP.name().equalsIgnoreCase(onFail)) {
+        File dir = createFailDir(commandLine);
+        isFailDirEqualsSourceDir = isFileStoreEquals(targetPath, dir);
+      }
       successOperation = ImportTsFileOperation.getOperation(onSuccess, isSuccessDirEqualsSourceDir);
       failOperation = ImportTsFileOperation.getOperation(onFail, isFailDirEqualsSourceDir);
     }
