@@ -110,6 +110,11 @@ public abstract class IMemoryBlock implements AutoCloseable {
     return usedMemoryInBytes.get();
   }
 
+  /** Get the free memory in byte of this memory block */
+  public long getFreeMemoryInBytes() {
+    return totalMemorySizeInBytes - usedMemoryInBytes.get();
+  }
+
   /** Get whether this memory block is released */
   public boolean isReleased() {
     return isReleased;
