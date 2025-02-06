@@ -19,5 +19,4 @@
 
 package org.apache.iotdb.itbase.category;
 
-public class MultiClusterIT2DualTreeManual {
-}
+public class MultiClusterIT2DualTreeManual {}
