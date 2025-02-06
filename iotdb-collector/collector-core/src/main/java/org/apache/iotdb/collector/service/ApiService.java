@@ -20,7 +20,7 @@
 package org.apache.iotdb.collector.service;
 
 import org.apache.iotdb.collector.api.filter.ApiOriginFilter;
-import org.apache.iotdb.collector.config.CollectorDescriptor;
+import org.apache.iotdb.collector.config.ApiServiceOptions;
 
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
@@ -41,13 +41,13 @@ public class ApiService implements IService {
 
   @Override
   public void start() {
-    server = new Server(CollectorDescriptor.getInstance().getConfig().getRestServicePort());
+    server = new Server(ApiServiceOptions.PORT.value());
     server.setHandler(constructServletContextHandler());
     try {
       server.start();
       LOGGER.info(
           "[ApiService] Started successfully. Listening on port {}",
-          CollectorDescriptor.getInstance().getConfig().getRestServicePort());
+          ApiServiceOptions.PORT.value());
     } catch (final Exception e) {
       LOGGER.warn("[ApiService] Failed to start: {}", e.getMessage(), e);
       server.destroy();

@@ -19,31 +19,24 @@
 
 package org.apache.iotdb.collector;
 
-import org.apache.iotdb.collector.config.CollectorDescriptor;
+import org.apache.iotdb.collector.config.Configuration;
 import org.apache.iotdb.collector.service.ApiService;
 import org.apache.iotdb.collector.service.IService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.charset.Charset;
 import java.util.LinkedList;
 
 public class Application {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Application.class);
 
+  private final Configuration configuration = new Configuration();
   private final LinkedList<IService> services = new LinkedList<>();
 
   private Application() {
     services.add(new ApiService());
-
-    LOGGER.info(
-        "IoTDB-CollectorNode configuration: {}",
-        CollectorDescriptor.getInstance().getConfig().getAllFormattedConfigFields());
-    LOGGER.info(
-        "Congratulations, IoTDB CollectorNode is set up successfully. Now, enjoy yourself!");
-    LOGGER.info("Default charset is: {}", Charset.defaultCharset().displayName());
   }
 
   public static void main(String[] args) {
@@ -52,6 +45,7 @@ public class Application {
 
     final Application application = new Application();
 
+    application.logAllOptions();
     application.registerShutdownHook();
     application.startServices();
 
@@ -59,7 +53,11 @@ public class Application {
         "[Application] Successfully started in {}ms", System.currentTimeMillis() - startTime);
   }
 
-  public void registerShutdownHook() {
+  private void logAllOptions() {
+    configuration.logAllOptions();
+  }
+
+  private void registerShutdownHook() {
     Runtime.getRuntime()
         .addShutdownHook(
             new Thread(
@@ -87,7 +85,7 @@ public class Application {
                 }));
   }
 
-  public void startServices() {
+  private void startServices() {
     for (final IService service : services) {
       service.start();
     }

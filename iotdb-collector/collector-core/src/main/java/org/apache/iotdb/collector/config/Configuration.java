@@ -33,47 +33,45 @@ import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.Properties;
 
-public class CollectorDescriptor {
+public class Configuration {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(CollectorDescriptor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(Configuration.class);
 
   private static final String CONFIG_FILE_NAME = "application.properties";
-  private static final CollectorConfig CONFIG = new CollectorConfig();
 
-  private CollectorDescriptor() {
+  private final Options options = new Options();
+
+  public Configuration() {
     loadProps();
   }
 
   private void loadProps() {
-    final TrimProperties collectorProperties = new TrimProperties();
     final Optional<URL> url = getPropsUrl();
-
     if (url.isPresent()) {
       try (final InputStream inputStream = url.get().openStream()) {
         LOGGER.info("Start to read config file {}", url.get());
         final Properties properties = new Properties();
         properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-        collectorProperties.putAll(properties);
-        loadProperties(collectorProperties);
+        final TrimProperties trimProperties = new TrimProperties();
+        trimProperties.putAll(properties);
+        options.loadProperties(trimProperties);
       } catch (final FileNotFoundException e) {
-        LOGGER.error("Fail to find config file {}, reject CollectorNode startup.", url.get(), e);
+        LOGGER.error("Fail to find config file, reject startup.", e);
         System.exit(-1);
       } catch (final IOException e) {
-        LOGGER.error("Cannot load config file, reject CollectorNode startup.", e);
+        LOGGER.error("IO exception when reading config file, reject startup.", e);
         System.exit(-1);
       } catch (final Exception e) {
-        LOGGER.error("Incorrect format in config file, reject CollectorNode startup.", e);
+        LOGGER.error("Unexpected exception when reading config file, reject startup.", e);
         System.exit(-1);
       }
     } else {
-      LOGGER.warn(
-          "Couldn't load the configuration {} from any of the known sources.", CONFIG_FILE_NAME);
-      System.exit(-1);
+      LOGGER.warn("{} is not found, use default configuration", CONFIG_FILE_NAME);
     }
   }
 
-  private static Optional<URL> getPropsUrl() {
-    final URL url = CollectorConfig.class.getResource("/" + CONFIG_FILE_NAME);
+  private Optional<URL> getPropsUrl() {
+    final URL url = Options.class.getResource("/" + CONFIG_FILE_NAME);
 
     if (url != null) {
       return Optional.of(url);
@@ -82,31 +80,11 @@ public class CollectorDescriptor {
           "Cannot find IOTDB_COLLECTOR_HOME or IOTDB_COLLECTOR_CONF environment variable when loading "
               + "config file {}, use default configuration",
           CONFIG_FILE_NAME);
-
       return Optional.empty();
     }
   }
 
-  // properties config
-  private void loadProperties(final TrimProperties properties) {
-    CONFIG.setRestServicePort(
-        Integer.parseInt(
-            Optional.ofNullable(properties.getProperty("collector_rest_service_port"))
-                .orElse(String.valueOf(CONFIG.getRestServicePort()))));
-  }
-
-  public static CollectorDescriptor getInstance() {
-    return CollectorDescriptorHolder.INSTANCE;
-  }
-
-  public CollectorConfig getConfig() {
-    return CONFIG;
-  }
-
-  private static class CollectorDescriptorHolder {
-
-    private static final CollectorDescriptor INSTANCE = new CollectorDescriptor();
-
-    private CollectorDescriptorHolder() {}
+  public void logAllOptions() {
+    options.logAllOptions();
   }
 }
