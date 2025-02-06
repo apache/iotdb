@@ -40,7 +40,7 @@ public class Application {
 
     LOGGER.info(
         "IoTDB-CollectorNode configuration: {}",
-        CollectorDescriptor.getInstance().getConfig().getConfigMessage());
+        CollectorDescriptor.getInstance().getConfig().getAllFormattedConfigFields());
     LOGGER.info(
         "Congratulations, IoTDB CollectorNode is set up successfully. Now, enjoy yourself!");
     LOGGER.info("Default charset is: {}", Charset.defaultCharset().displayName());

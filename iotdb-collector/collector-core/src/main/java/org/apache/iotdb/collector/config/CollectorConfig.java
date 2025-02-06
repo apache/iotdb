@@ -39,13 +39,12 @@ public class CollectorConfig {
     this.restServicePort = restServicePort;
   }
 
-  public String getConfigMessage() {
+  public String getAllFormattedConfigFields() {
     final StringBuilder configMessage = new StringBuilder();
-    String configContent;
-
     for (final Field configField : CollectorConfig.class.getDeclaredFields()) {
       try {
         final String configType = configField.getGenericType().getTypeName();
+        final String configContent;
         if (configType.contains("java.lang.String[][]")) {
           final String[][] configList = (String[][]) configField.get(this);
           final StringBuilder builder = new StringBuilder();
@@ -66,10 +65,10 @@ public class CollectorConfig {
             .append(configContent)
             .append(";");
       } catch (final IllegalAccessException e) {
-        LOGGER.warn("failed to show config message", e);
+        LOGGER.warn("Failed to get config message for field {}: {}",
+            configField.getName(), e.getMessage(), e);
       }
     }
-
     return configMessage.toString();
   }
 }
