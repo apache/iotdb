@@ -48,6 +48,11 @@ public class MemoryBlock extends IMemoryBlock {
   }
 
   @Override
+  public void forceAllocate(long sizeInByte) {
+    usedMemoryInBytes.addAndGet(sizeInByte);
+  }
+
+  @Override
   public boolean allocate(long sizeInByte) {
     AtomicBoolean result = new AtomicBoolean(false);
     usedMemoryInBytes.updateAndGet(

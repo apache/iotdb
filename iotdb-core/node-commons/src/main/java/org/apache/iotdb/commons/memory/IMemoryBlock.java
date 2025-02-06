@@ -52,6 +52,13 @@ public abstract class IMemoryBlock implements AutoCloseable {
   protected final AtomicLong usedMemoryInBytes = new AtomicLong(0);
 
   /**
+   * Force allocate memory without the limit of totalMemorySizeInBytes
+   *
+   * @param sizeInByte the size of memory to be allocated, should positive
+   */
+  public abstract void forceAllocate(final long sizeInByte);
+
+  /**
    * Allocate memory managed by this memory block
    *
    * @param sizeInByte the size of memory to be allocated, should positive

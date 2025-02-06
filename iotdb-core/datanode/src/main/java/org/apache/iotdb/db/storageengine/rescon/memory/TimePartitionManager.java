@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.storageengine.rescon.memory;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeTimePartitionListener;
@@ -41,15 +43,15 @@ public class TimePartitionManager {
   private static final Logger logger = LoggerFactory.getLogger(TimePartitionManager.class);
   final Map<DataRegionId, Map<Long, TimePartitionInfo>> timePartitionInfoMap;
 
-  long memCost = 0;
-  long timePartitionInfoMemoryThreshold =
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .getTimePartitionInfoMemoryManager()
-          .getTotalMemorySizeInBytes();
+  IMemoryBlock timePartitionInfoMemoryBlock;
 
   private TimePartitionManager() {
     timePartitionInfoMap = new HashMap<>();
+    timePartitionInfoMemoryBlock =
+        IoTDBDescriptor.getInstance()
+            .getConfig()
+            .getTimePartitionInfoMemoryManager()
+            .forceAllocate("TimePartitionInfoMemoryBlock", MemoryBlockType.FUNCTION);
   }
 
   public void registerTimePartitionInfo(TimePartitionInfo timePartitionInfo) {
@@ -85,10 +87,11 @@ public class TimePartitionManager {
               .get(timePartitionId);
       if (timePartitionInfo != null) {
         timePartitionInfo.lastSystemFlushTime = systemFlushTime;
-        memCost += memSize - timePartitionInfo.memSize;
+        timePartitionInfoMemoryBlock.forceAllocate(memSize - timePartitionInfo.memSize);
         timePartitionInfo.memSize = memSize;
         timePartitionInfo.isActive = isActive;
-        if (memCost > timePartitionInfoMemoryThreshold) {
+        if (timePartitionInfoMemoryBlock.getUsedMemoryInBytes()
+            > timePartitionInfoMemoryBlock.getTotalMemorySizeInBytes()) {
           degradeLastFlushTime();
         }
       }
@@ -115,12 +118,13 @@ public class TimePartitionManager {
         treeSet.addAll(entry.getValue().values());
       }
 
-      while (memCost > timePartitionInfoMemoryThreshold) {
+      while (timePartitionInfoMemoryBlock.getUsedMemoryInBytes()
+          > timePartitionInfoMemoryBlock.getTotalMemorySizeInBytes()) {
         TimePartitionInfo timePartitionInfo = treeSet.pollFirst();
         if (timePartitionInfo == null) {
           return;
         }
-        memCost -= timePartitionInfo.memSize + Long.BYTES;
+        timePartitionInfoMemoryBlock.release(timePartitionInfo.memSize + Long.BYTES);
         DataRegion dataRegion =
             StorageEngine.getInstance().getDataRegion(timePartitionInfo.dataRegionId);
         if (dataRegion != null) {
@@ -130,7 +134,7 @@ public class TimePartitionManager {
               timePartitionInfo.dataRegionId,
               timePartitionInfo.partitionId,
               timePartitionInfo.memSize,
-              memCost);
+              timePartitionInfoMemoryBlock.getUsedMemoryInBytes());
         }
         timePartitionInfoMap
             .get(timePartitionInfo.dataRegionId)
@@ -146,7 +150,7 @@ public class TimePartitionManager {
       if (timePartitionInfoMapForRegion != null) {
         for (TimePartitionInfo timePartitionInfo : timePartitionInfoMapForRegion.values()) {
           if (timePartitionInfo != null) {
-            memCost -= timePartitionInfo.memSize + Long.BYTES;
+            timePartitionInfoMemoryBlock.release(timePartitionInfo.memSize + Long.BYTES);
           }
         }
       }
@@ -165,16 +169,17 @@ public class TimePartitionManager {
     }
   }
 
+  @TestOnly
   public void clear() {
     synchronized (timePartitionInfoMap) {
       timePartitionInfoMap.clear();
-      memCost = 0;
+      timePartitionInfoMemoryBlock.setUsedMemoryInBytes(0L);
     }
   }
 
   @TestOnly
   public void setTimePartitionInfoMemoryThreshold(long timePartitionInfoMemoryThreshold) {
-    this.timePartitionInfoMemoryThreshold = timePartitionInfoMemoryThreshold;
+    timePartitionInfoMemoryBlock.setTotalMemorySizeInBytes(timePartitionInfoMemoryThreshold);
   }
 
   public static TimePartitionManager getInstance() {
