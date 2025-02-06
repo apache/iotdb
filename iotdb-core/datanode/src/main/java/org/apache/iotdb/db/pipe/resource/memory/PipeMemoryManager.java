@@ -204,7 +204,7 @@ public class PipeMemoryManager {
 
   public synchronized void forceResize(PipeMemoryBlock block, long targetSize) {
     if (block == null || block.isReleased()) {
-      LOGGER.warn("forceResize: cannot setTotalMemorySizeInBytes a null or released memory block");
+      LOGGER.warn("forceResize: cannot resize a null or released memory block");
       return;
     }
 
