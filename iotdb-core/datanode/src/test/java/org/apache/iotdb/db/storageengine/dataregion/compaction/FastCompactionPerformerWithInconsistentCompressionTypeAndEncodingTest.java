@@ -32,7 +32,7 @@ import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
-import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -622,9 +622,9 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
       throws IOException {
     Map<String, CompressionType> compressionTypeMap = new HashMap<>();
     for (IDeviceID device : reader.getAllDevices()) {
-      List<AlignedChunkMetadata> alignedChunkMetadataList =
+      List<AbstractAlignedChunkMetadata> alignedChunkMetadataList =
           reader.getAlignedChunkMetadata(device, true);
-      for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
+      for (AbstractAlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
         IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
         List<IChunkMetadata> valueChunkMetadataList =
             alignedChunkMetadata.getValueChunkMetadataList();
