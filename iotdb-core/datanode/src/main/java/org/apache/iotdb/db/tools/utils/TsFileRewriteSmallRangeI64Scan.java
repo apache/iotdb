@@ -26,8 +26,8 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.reader.IPageReader;
-import org.apache.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.tsfile.read.reader.chunk.TableChunkReader;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
@@ -47,7 +47,7 @@ public class TsFileRewriteSmallRangeI64Scan extends TsFileSequenceScan {
   private TsFileIOWriter writer;
   private Chunk currTimeChunk;
 
-  public TsFileRewriteSmallRangeI64Scan(File target) throws IOException {
+  public TsFileRewriteSmallRangeI64Scan(File target) {
     this.target = target;
   }
 
@@ -168,8 +168,9 @@ public class TsFileRewriteSmallRangeI64Scan extends TsFileSequenceScan {
   }
 
   private boolean rewriteInt64ChunkAligned(Chunk chunk) throws IOException {
-    AlignedChunkReader chunkReader =
-        new AlignedChunkReader(currTimeChunk, Collections.singletonList(chunk));
+    // use TableChunkReader so that nulls will not be skipped
+    TableChunkReader chunkReader =
+        new TableChunkReader(currTimeChunk, Collections.singletonList(chunk), null);
     ChunkHeader header = chunk.getHeader();
     List<IPageReader> pageReaders = chunkReader.loadPageReaderList();
     ValueChunkWriter valueChunkWriter =
@@ -207,19 +208,23 @@ public class TsFileRewriteSmallRangeI64Scan extends TsFileSequenceScan {
   }
 
   @Override
-  protected void onTimePage(PageHeader pageHeader, ByteBuffer pageData, ChunkHeader chunkHeader)
-      throws IOException {}
+  protected void onTimePage(PageHeader pageHeader, ByteBuffer pageData, ChunkHeader chunkHeader) {
+    // do nothing
+  }
 
   @Override
-  protected void onValuePage(PageHeader pageHeader, ByteBuffer pageData, ChunkHeader chunkHeader)
-      throws IOException {}
+  protected void onValuePage(PageHeader pageHeader, ByteBuffer pageData, ChunkHeader chunkHeader) {
+    // do nothing
+  }
 
   @Override
   protected void onNonAlignedPage(
-      PageHeader pageHeader, ByteBuffer pageData, ChunkHeader chunkHeader) throws IOException {}
+      PageHeader pageHeader, ByteBuffer pageData, ChunkHeader chunkHeader) {
+    // do nothing
+  }
 
   @Override
   protected void onException(Throwable t) {
-    t.printStackTrace();
+    throw new RuntimeException(t);
   }
 }
