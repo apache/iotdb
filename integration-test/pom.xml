@@ -467,7 +467,7 @@
             </properties>
         </profile>
         <profile>
-            <id>MultiClusterIT2ComprehensiveTreeModel</id>
+            <id>MultiClusterIT2TreeModelEnhance</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
@@ -481,7 +481,7 @@
             </properties>
         </profile>
         <profile>
-            <id>MultiClusterIT2BasicFunctionTreeModel</id>
+            <id>MultiClusterIT2TreeModelBasicFunction</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
@@ -495,7 +495,7 @@
             </properties>
         </profile>
         <profile>
-            <id>MultiClusterIT2DataProcessTreeModel</id>
+            <id>MultiClusterIT2TreeModelFeature</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
@@ -509,7 +509,7 @@
             </properties>
         </profile>
         <profile>
-            <id>MultiClusterIT2BasicFunctionTableModel</id>
+            <id>MultiClusterIT2TableModelBasicFunction</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
@@ -523,7 +523,7 @@
             </properties>
         </profile>
         <profile>
-            <id>MultiClusterIT2DataProcessTableModel</id>
+            <id>MultiClusterIT2TableModelDataProcess</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
@@ -537,7 +537,7 @@
             </properties>
         </profile>
         <profile>
-            <id>MultiClusterIT2ComprehensiveTableModel</id>
+            <id>MultiClusterIT2TableModelComprehensive</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
