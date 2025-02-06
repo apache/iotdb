@@ -537,6 +537,12 @@ public class StatementAnalyzer {
       InsertBaseStatement innerInsert = insert.getInnerTreeStatement();
 
       innerInsert.semanticCheck();
+
+      accessControl.checkCanInsertIntoTable(
+          sessionContext.getUserName(),
+          new QualifiedObjectName(
+              unQualifyDatabaseName(insert.getDatabase()), insert.getTableName()));
+
       innerInsert =
           AnalyzeUtils.analyzeInsert(
               context,
@@ -549,24 +555,20 @@ public class StatementAnalyzer {
       insert.setInnerTreeStatement(innerInsert);
       analysis.setScope(insert, ret);
 
-      accessControl.checkCanInsertIntoTable(
-          sessionContext.getUserName(),
-          new QualifiedObjectName(
-              unQualifyDatabaseName(insert.getDatabase()), insert.getTableName()));
-
       return ret;
     }
 
     @Override
     protected Scope visitDelete(Delete node, Optional<Scope> scope) {
       final Scope ret = Scope.create();
-      AnalyzeUtils.analyzeDelete(node, queryContext);
-      analysis.setScope(node, ret);
       accessControl.checkCanDeleteFromTable(
           sessionContext.getUserName(),
           new QualifiedObjectName(
-              unQualifyDatabaseName(node.getDatabaseName()),
+              AnalyzeUtils.getDatabaseName(node, queryContext),
               node.getTable().getName().getSuffix()));
+      AnalyzeUtils.analyzeDelete(node, queryContext);
+
+      analysis.setScope(node, ret);
       return ret;
     }
 
