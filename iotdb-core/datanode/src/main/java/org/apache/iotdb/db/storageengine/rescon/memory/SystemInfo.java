@@ -77,6 +77,14 @@ public class SystemInfo {
   private volatile boolean isEncodingFasterThanIo = true;
 
   private SystemInfo() {
+    compactionMemoryBlock =
+        config.getCompactionMemoryManager().forceAllocate("Compaction", MemoryBlockType.FUNCTION);
+    walBufferQueueMemoryBlock =
+        config.getWalBufferQueueManager().forceAllocate("WalBufferQueue", MemoryBlockType.FUNCTION);
+    directBufferMemoryBlock =
+        config
+            .getDirectBufferMemoryManager()
+            .forceAllocate("DirectBuffer", MemoryBlockType.FUNCTION);
     loadWriteMemory();
   }
 
@@ -336,14 +344,6 @@ public class SystemInfo {
 
   public void loadWriteMemory() {
     memorySizeForMemtable = config.getMemtableMemoryManager().getTotalMemorySizeInBytes();
-    compactionMemoryBlock =
-        config.getCompactionMemoryManager().forceAllocate("Compaction", MemoryBlockType.FUNCTION);
-    walBufferQueueMemoryBlock =
-        config.getWalBufferQueueManager().forceAllocate("WalBufferQueue", MemoryBlockType.FUNCTION);
-    directBufferMemoryBlock =
-        config
-            .getDirectBufferMemoryManager()
-            .forceAllocate("DirectBuffer", MemoryBlockType.FUNCTION);
     FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
     REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
     WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
