@@ -1093,6 +1093,7 @@ public class SessionConnection {
     if (status != null) {
       RpcUtils.verifySuccess(status);
     } else if (lastTException != null) {
+      reconnect();
       throw new IoTDBConnectionException(lastTException);
     } else {
       throw new IoTDBConnectionException(logForReconnectionFailure());
