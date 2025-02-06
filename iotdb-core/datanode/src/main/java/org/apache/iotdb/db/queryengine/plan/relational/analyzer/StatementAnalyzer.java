@@ -537,6 +537,7 @@ public class StatementAnalyzer {
       InsertBaseStatement innerInsert = insert.getInnerTreeStatement();
 
       innerInsert.semanticCheck();
+      innerInsert.toLowerCase();
 
       accessControl.checkCanInsertIntoTable(
           sessionContext.getUserName(),

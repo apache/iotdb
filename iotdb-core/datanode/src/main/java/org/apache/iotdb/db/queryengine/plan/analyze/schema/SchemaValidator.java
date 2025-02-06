@@ -66,7 +66,6 @@ public class SchemaValidator {
       final WrappedInsertStatement insertStatement,
       final MPPQueryContext context) {
     try {
-      insertStatement.toLowerCase();
       insertStatement.validateTableSchema(metadata, context);
       insertStatement.updateAfterSchemaValidation(context);
       insertStatement.validateDeviceSchema(metadata, context);
