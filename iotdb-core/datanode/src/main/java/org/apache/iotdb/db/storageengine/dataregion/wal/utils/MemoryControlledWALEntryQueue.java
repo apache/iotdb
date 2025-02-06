@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
+import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
@@ -30,8 +31,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 public class MemoryControlledWALEntryQueue {
-  private Logger logger = LoggerFactory.getLogger(MemoryControlledWALEntryQueue.class);
-
+  private static final Logger LOGGER = LoggerFactory.getLogger(MemoryControlledWALEntryQueue.class);
   private final BlockingQueue<WALEntry> queue;
   private static final Object nonFullCondition = new Object();
 
@@ -53,16 +53,16 @@ public class MemoryControlledWALEntryQueue {
   public void put(WALEntry e) throws InterruptedException {
     long elementSize = getElementSize(e);
     synchronized (nonFullCondition) {
-      while (!SystemInfo.getInstance().cannotReserveMemoryForWalEntry(elementSize)) {
-        logger.error(
-            "Cannot reserve memory {} for wal entry, waiting... {}",
+      while (!SystemInfo.getInstance().getWalBufferQueueMemoryBlock().allocate(elementSize)) {
+        LOGGER.error(
+            "Cannot reserve memory {} for wal entry, waiting for memory release, {}",
             elementSize,
             SystemInfo.getInstance().getWalBufferQueueMemoryBlock());
+        MemoryManager.global().print(0);
         nonFullCondition.wait();
       }
     }
     queue.put(e);
-    SystemInfo.getInstance().getWalBufferQueueMemoryBlock().release(-elementSize);
   }
 
   public WALEntry take() throws InterruptedException {

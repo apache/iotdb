@@ -495,9 +495,4 @@ public class SystemInfo {
   public IMemoryBlock getWalBufferQueueMemoryBlock() {
     return walBufferQueueMemoryBlock;
   }
-
-  public boolean cannotReserveMemoryForWalEntry(long walEntrySize) {
-    return walBufferQueueMemoryBlock.getUsedMemoryInBytes() + walEntrySize
-        > walBufferQueueMemoryBlock.getTotalMemorySizeInBytes();
-  }
 }

@@ -225,6 +225,9 @@ public class MemoryManager {
    * @return the memory block
    */
   private IMemoryBlock registerMemoryBlock(String name, long sizeInBytes, MemoryBlockType type) {
+    if (sizeInBytes <= 0) {
+      LOGGER.warn("forceAllocate {}: sizeInBytes should be positive", type);
+    }
     allocatedMemorySizeInBytes += sizeInBytes;
     final IMemoryBlock memoryBlock = new MemoryBlock(name, this, sizeInBytes, type);
     allocatedMemoryBlocks.add(memoryBlock);
@@ -280,6 +283,9 @@ public class MemoryManager {
    */
   public synchronized MemoryManager getOrCreateMemoryManager(
       String name, long sizeInBytes, boolean enable) {
+    if (sizeInBytes <= 0) {
+      LOGGER.warn("getOrCreateMemoryManager {}: sizeInBytes should be positive", name);
+    }
     if (this.enable
         && sizeInBytes + this.allocatedMemorySizeInBytes > this.totalMemorySizeInBytes) {
       LOGGER.warn(

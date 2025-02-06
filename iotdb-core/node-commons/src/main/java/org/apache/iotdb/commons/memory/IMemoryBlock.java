@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.memory;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +29,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class IMemoryBlock implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(IMemoryBlock.class);
+
   /** The memory manager that manages this memory block */
   protected MemoryManager memoryManager;
 
@@ -67,7 +69,7 @@ public abstract class IMemoryBlock implements AutoCloseable {
       throws InterruptedException;
 
   /**
-   * Try to record memory managed by this memory block
+   * Try to release memory managed by this memory block
    *
    * @param sizeInByte the size of memory to be released, should positive
    */
@@ -116,7 +118,7 @@ public abstract class IMemoryBlock implements AutoCloseable {
     return memoryBlockType;
   }
 
-  public void print(int index){
+  public void print(int index) {
     StringBuilder sb = new StringBuilder();
     for (int i = 0; i < index; i++) {
       sb.append("  ");
