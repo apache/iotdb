@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.storageengine.buffer;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -67,8 +69,7 @@ public class TimeSeriesMetadataCache {
   private static final Logger logger = LoggerFactory.getLogger(TimeSeriesMetadataCache.class);
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final long MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE =
-      config.getTimeSeriesMetaDataCacheMemoryManager().getTotalMemorySizeInBytes();
+  private static final IMemoryBlock CACHE_MEMORY_BLOCK;
   private static final boolean CACHE_ENABLE = config.isMetaDataCacheEnable();
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
@@ -82,14 +83,23 @@ public class TimeSeriesMetadataCache {
       Collections.synchronizedMap(new WeakHashMap<>());
   private static final String SEPARATOR = "$";
 
+  static {
+    CACHE_MEMORY_BLOCK =
+        config
+            .getChunkCacheMemoryManager()
+            .forceAllocate("TimeSeriesMetadataCache", MemoryBlockType.PERFORMANCE);
+    // TODO @spricoder find a better way to get the size of cache
+    CACHE_MEMORY_BLOCK.setUsedMemoryInBytes(CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
+  }
+
   private TimeSeriesMetadataCache() {
     if (CACHE_ENABLE) {
       logger.info(
-          "TimeSeriesMetadataCache size = {}", MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE);
+          "TimeSeriesMetadataCache size = {}", CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
     }
     lruCache =
         Caffeine.newBuilder()
-            .maximumWeight(MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE)
+            .maximumWeight(CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes())
             .weigher(
                 (Weigher<TimeSeriesMetadataCacheKey, TimeseriesMetadata>)
                     (key, value) ->
@@ -257,7 +267,7 @@ public class TimeSeriesMetadataCache {
   }
 
   public long getMaxMemory() {
-    return MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE;
+    return CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes();
   }
 
   public double getAverageLoadPenalty() {
