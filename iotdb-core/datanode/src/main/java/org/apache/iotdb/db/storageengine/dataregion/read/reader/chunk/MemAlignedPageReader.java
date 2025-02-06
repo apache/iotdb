@@ -24,7 +24,7 @@ import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.BatchDataFactory;
@@ -49,7 +49,7 @@ import static org.apache.tsfile.read.reader.series.PaginationController.UNLIMITE
 public class MemAlignedPageReader implements IPageReader {
 
   private final TsBlock tsBlock;
-  private final AlignedChunkMetadata chunkMetadata;
+  private final AbstractAlignedChunkMetadata chunkMetadata;
 
   private Filter recordFilter;
   private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
@@ -57,7 +57,7 @@ public class MemAlignedPageReader implements IPageReader {
   private TsBlockBuilder builder;
 
   public MemAlignedPageReader(
-      TsBlock tsBlock, AlignedChunkMetadata chunkMetadata, Filter recordFilter) {
+      TsBlock tsBlock, AbstractAlignedChunkMetadata chunkMetadata, Filter recordFilter) {
     this.tsBlock = tsBlock;
     this.chunkMetadata = chunkMetadata;
     this.recordFilter = recordFilter;
