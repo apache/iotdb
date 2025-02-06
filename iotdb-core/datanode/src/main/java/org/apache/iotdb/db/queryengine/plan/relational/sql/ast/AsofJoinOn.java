@@ -26,22 +26,16 @@ import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
-public class AsofJoinOn extends JoinCriteria {
+public class AsofJoinOn extends JoinOn {
 
-  private final Expression expression;
+  private final List<LongLiteral> toleranceValue;
 
-  private final long toleranceValue;
-
-  public AsofJoinOn(final Expression expression, final long toleranceValue) {
-    this.expression = expression;
+  public AsofJoinOn(final Expression expression, final List<LongLiteral> toleranceValue) {
+    super(expression);
     this.toleranceValue = toleranceValue;
   }
 
-  public Expression getExpression() {
-    return this.expression;
-  }
-
-  public long getToleranceValue() {
+  public List<LongLiteral> getToleranceValue() {
     return this.toleranceValue;
   }
 

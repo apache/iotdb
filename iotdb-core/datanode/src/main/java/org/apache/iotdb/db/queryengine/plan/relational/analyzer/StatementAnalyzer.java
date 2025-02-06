@@ -51,6 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
@@ -2072,6 +2073,7 @@ public class StatementAnalyzer {
       } else if (node.getType() == Join.Type.CROSS || node.getType() == Join.Type.IMPLICIT) {
         return output;
       }
+
       if (criteria instanceof JoinOn) {
         Expression expression = ((JoinOn) criteria).getExpression();
         verifyNoAggregateWindowOrGroupingFunctions(expression, "JOIN clause");
@@ -2104,6 +2106,9 @@ public class StatementAnalyzer {
 
         analysis.recordSubqueries(node, expressionAnalysis);
         analysis.setJoinCriteria(node, expression);
+        if (criteria instanceof AsofJoinOn) {
+          analysis.setAsofJoinCriteria(node, ((AsofJoinOn) criteria).getToleranceValue());
+        }
       } else {
         throw new UnsupportedOperationException(
             "Unsupported join criteria: " + criteria.getClass().getName());

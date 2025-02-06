@@ -824,7 +824,7 @@ relation
       ( CROSS JOIN right=aliasedRelation
       | joinType JOIN rightRelation=relation joinCriteria
       | NATURAL joinType JOIN right=aliasedRelation
-      | ASOF (toleranceParameter)? JOIN rightRelation=relation joinCriteria
+      | ASOF toleranceParameter? JOIN rightRelation=relation joinCriteria
       )                                                     #joinRelation
     | aliasedRelation                                       #relationDefault
     ;
@@ -846,28 +846,12 @@ aliasedRelation
     ;
 
 toleranceParameter
-    : '(' 'tolerance' timeUnit ')'
+    : '(' TOLERANCE toleranceValue ')'
     ;
 
 toleranceValue
-    : numericLiteral_
-    | timeInterval
-    ;
-
-timeInterval
-    : numericLiteral_ timeUnit
-    ;
-
-timeUnit
-    : 's'       // seconds
-    | 'ms'      // milliseconds
-    | 'm'       // minutes
-    | 'h'       // hours
-    | 'd'       // days
-    ;
-
-numericLiteral_
-    : DIGIT+ ('.' DIGIT+)?  // Supports integers and floats
+    : timeDuration
+    | INTEGER_VALUE
     ;
 
 columnAliases
@@ -1439,6 +1423,7 @@ TIMESERIES: 'TIMESERIES';
 TIMESLOTID: 'TIMESLOTID';
 TIMESTAMP: 'TIMESTAMP';
 TO: 'TO';
+TOLERANCE: 'TOLERANCE';
 TOPIC: 'TOPIC';
 TOPICS: 'TOPICS';
 TRAILING: 'TRAILING';

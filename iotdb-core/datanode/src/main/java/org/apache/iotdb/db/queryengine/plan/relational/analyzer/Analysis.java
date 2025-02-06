@@ -49,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
@@ -146,6 +147,8 @@ public class Analysis implements IAnalysis {
   private final Map<NodeRef<Node>, SubqueryAnalysis> subQueries = new LinkedHashMap<>();
   private final Map<NodeRef<Expression>, PredicateCoercions> predicateCoercions =
       new LinkedHashMap<>();
+  // TODO null firstly
+  private final Map<NodeRef<Join>, List<LongLiteral>> asofJoinTolerances = new LinkedHashMap<>();
 
   private final Map<NodeRef<Table>, TableEntry> tables = new LinkedHashMap<>();
 
@@ -542,6 +545,10 @@ public class Analysis implements IAnalysis {
 
   public void setJoinCriteria(Join node, Expression criteria) {
     joins.put(NodeRef.of(node), criteria);
+  }
+
+  public void setAsofJoinCriteria(Join node, List<LongLiteral> tolerance) {
+    asofJoinTolerances.put(NodeRef.of(node), tolerance);
   }
 
   public Expression getJoinCriteria(Join join) {

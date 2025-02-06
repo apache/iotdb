@@ -29,7 +29,7 @@ import static java.util.Objects.requireNonNull;
 
 public class JoinOn extends JoinCriteria {
 
-  private final Expression expression;
+  protected final Expression expression;
 
   public JoinOn(Expression expression) {
     this.expression = requireNonNull(expression, "expression is null");

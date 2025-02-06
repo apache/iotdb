@@ -2043,7 +2043,37 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       right = (Relation) visit(ctx.rightRelation);
       if (ctx.joinCriteria().ON() != null) {
         if (ctx.ASOF() != null) {
-          criteria = new AsofJoinOn((Expression) visit(ctx.joinCriteria().booleanExpression()), 0);
+          List<LongLiteral> tolerance = new ArrayList<>(2);
+          if (ctx.toleranceParameter() != null) {
+            if (ctx.toleranceParameter().toleranceValue().timeDuration() != null) {
+              TimeDuration timeDuration =
+                  DateTimeUtils.constructTimeDuration(
+                      ctx.toleranceParameter().toleranceValue().timeDuration().getText());
+
+              if (timeDuration.monthDuration != 0 && timeDuration.nonMonthDuration != 0) {
+                throw new SemanticException(
+                    "Simultaneous setting of monthly and non-monthly intervals is not supported.");
+              }
+
+              LongLiteral monthDuration =
+                  new LongLiteral(
+                      getLocation(ctx.toleranceParameter().toleranceValue().timeDuration()),
+                      String.valueOf(timeDuration.monthDuration));
+              LongLiteral nonMonthDuration =
+                  new LongLiteral(
+                      getLocation(ctx.toleranceParameter().toleranceValue().timeDuration()),
+                      String.valueOf(timeDuration.nonMonthDuration));
+              tolerance.add(monthDuration);
+              tolerance.add(nonMonthDuration);
+            } else {
+              throw new SemanticException("Only support time duration");
+            }
+          } else {
+            tolerance.add(new LongLiteral("0"));
+            tolerance.add(new LongLiteral("0"));
+          }
+          criteria =
+              new AsofJoinOn((Expression) visit(ctx.joinCriteria().booleanExpression()), tolerance);
           return new Join(getLocation(ctx), Join.Type.INNER, left, right, criteria);
         } else {
           criteria = new JoinOn((Expression) visit(ctx.joinCriteria().booleanExpression()));
