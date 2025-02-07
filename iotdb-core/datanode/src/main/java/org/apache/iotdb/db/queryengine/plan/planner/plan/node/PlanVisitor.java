@@ -127,6 +127,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
@@ -799,5 +800,9 @@ public abstract class PlanVisitor<R, C> {
 
   public R visitMarkDistinct(MarkDistinctNode node, C context) {
     return visitSingleChildProcess(node, context);
+  }
+
+  public R visitPatternRecognition(PatternRecognitionNode node, C context) {
+    return visitPlan(node, context);
   }
 }
