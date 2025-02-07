@@ -19,24 +19,43 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReconstructRegion;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
 public class ReconstructRegionTask implements IConfigTask {
 
-  protected final ReconstructRegionStatement reconstructRegionStatement;
+  protected final ReconstructRegionStatement statement;
+  private final Model model;
 
   public ReconstructRegionTask(ReconstructRegionStatement reconstructRegionStatement) {
-    this.reconstructRegionStatement = reconstructRegionStatement;
+    this.statement = reconstructRegionStatement;
+    this.model = Model.TREE;
+  }
+
+  public ReconstructRegionTask(ReconstructRegion reconstructRegion) {
+    this.statement =
+        new ReconstructRegionStatement(
+            reconstructRegion.getDataNodeId(), reconstructRegion.getRegionIds());
+    this.model = Model.TABLE;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.reconstructRegion(reconstructRegionStatement);
+    return configTaskExecutor.reconstructRegion(this);
+  }
+
+  public Model getModel() {
+    return model;
+  }
+
+  public ReconstructRegionStatement getStatement() {
+    return statement;
   }
 }
