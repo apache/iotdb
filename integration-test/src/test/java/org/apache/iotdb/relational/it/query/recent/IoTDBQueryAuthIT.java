@@ -284,5 +284,38 @@ public class IoTDBQueryAuthIT {
             + ": Access Denied: No permissions for this operation, please add privilege SELECT ON test.table2",
         USER_9,
         PASSWORD);
+
+    // case 11: user1 with SELECT ON ANY
+    String[] expectedHeader4 = new String[] {"time", "device_id", "table1_s1", "table2_s1"};
+    String[] retArray4 =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,d1,1,1,",
+        };
+
+    tableResultSetEqualTest(
+        "select table1.time as time, table1.device_id as device_id, table1.s1 as table1_s1, table2.s1 as table2_s1 from table1 inner join table2 on table1.time=table2.time and table1.device_id=table2.device_id",
+        expectedHeader4,
+        retArray4,
+        USER_1,
+        PASSWORD,
+        DATABASE_NAME);
+
+    // case 12: user2 with SELECT ON database
+    tableResultSetEqualTest(
+        "select table1.time as time, table1.device_id as device_id, table1.s1 as table1_s1, table2.s1 as table2_s1 from table1 inner join table2 on table1.time=table2.time and table1.device_id=table2.device_id",
+        expectedHeader4,
+        retArray4,
+        USER_2,
+        PASSWORD,
+        DATABASE_NAME);
+
+    // case 3: user3 with SELECT ON just table1
+    tableAssertTestFail(
+        "select table1.time as time, table1.device_id as device_id, table1.s1 as table1_s1, table2.s1 as table2_s1 from table1 inner join table2 on table1.time=table2.time and table1.device_id=table2.device_id",
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege SELECT ON test.table2",
+        USER_3,
+        PASSWORD,
+        DATABASE_NAME);
   }
 }
