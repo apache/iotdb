@@ -38,17 +38,17 @@ public class OffHeapMemoryMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            DIRECT_BUFFER,
-            Tag.TYPE.toString(),
-            GlobalMemoryMetrics.OFF_HEAP,
-            Tag.LEVEL.toString(),
-            GlobalMemoryMetrics.LEVELS[1])
-        .set(config.getDirectBufferMemoryManager().getTotalMemorySizeInBytes());
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getDirectBufferMemoryManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        DIRECT_BUFFER,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.OFF_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[1]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.NORMAL,
@@ -68,7 +68,7 @@ public class OffHeapMemoryMetrics implements IMetricSet {
         .forEach(
             name -> {
               metricService.remove(
-                  MetricType.GAUGE,
+                  MetricType.AUTO_GAUGE,
                   Metric.MEMORY_THRESHOLD_SIZE.toString(),
                   Tag.NAME.toString(),
                   name,

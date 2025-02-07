@@ -496,7 +496,11 @@ public class MemoryManager {
         + '}';
   }
 
-  public void print(int index) {
+  public void print() {
+    print(0);
+  }
+
+  private void print(int index) {
     StringBuilder sb = new StringBuilder();
     for (int i = 0; i < index; i++) {
       sb.append("  ");

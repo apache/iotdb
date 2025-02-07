@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.service.metrics.memory;
 
+import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -34,23 +35,23 @@ public class StreamEngineMemoryMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            STREAM_ENGINE,
-            Tag.TYPE.toString(),
-            GlobalMemoryMetrics.ON_HEAP,
-            Tag.LEVEL.toString(),
-            GlobalMemoryMetrics.LEVELS[1])
-        .set(config.getPipeMemoryManager().getTotalMemorySizeInBytes());
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getPipeMemoryManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        STREAM_ENGINE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[1]);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         Tag.NAME.toString(),
         STREAM_ENGINE,

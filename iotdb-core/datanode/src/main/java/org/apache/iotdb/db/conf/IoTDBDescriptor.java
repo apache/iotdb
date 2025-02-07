@@ -2214,25 +2214,29 @@ public class IoTDBDescriptor {
         }
       }
     }
+    // on heap memory manager
+    MemoryManager onheapMemoryManager =
+        globalMemoryManager.getOrCreateMemoryManager("OnHeap", Runtime.getRuntime().maxMemory());
+    conf.setOnHeapMemoryManager(onheapMemoryManager);
     // storage engine memory manager
     MemoryManager storageEngineMemoryManager =
-        globalMemoryManager.getOrCreateMemoryManager("StorageEngine", storageEngineMemorySize);
+        onheapMemoryManager.getOrCreateMemoryManager("StorageEngine", storageEngineMemorySize);
     conf.setStorageEngineMemoryManager(storageEngineMemoryManager);
     // query engine memory manager
     MemoryManager queryEngineMemoryManager =
-        globalMemoryManager.getOrCreateMemoryManager("QueryEngine", queryEngineMemorySize);
+        onheapMemoryManager.getOrCreateMemoryManager("QueryEngine", queryEngineMemorySize);
     conf.setQueryEngineMemoryManager(queryEngineMemoryManager);
     // schema engine memory manager
     MemoryManager schemaEngineMemoryManager =
-        globalMemoryManager.getOrCreateMemoryManager("SchemaEngine", schemaEngineMemorySize);
+        onheapMemoryManager.getOrCreateMemoryManager("SchemaEngine", schemaEngineMemorySize);
     conf.setSchemaEngineMemoryManager(schemaEngineMemoryManager);
     // consensus layer memory manager
     MemoryManager consensusMemoryManager =
-        globalMemoryManager.getOrCreateMemoryManager("Consensus", consensusMemorySize);
+        onheapMemoryManager.getOrCreateMemoryManager("Consensus", consensusMemorySize);
     conf.setConsensusMemoryManager(consensusMemoryManager);
     // pipe memory manager
     MemoryManager pipeMemoryManager =
-        globalMemoryManager.getOrCreateMemoryManager("Pipe", pipeMemorySize);
+        onheapMemoryManager.getOrCreateMemoryManager("Pipe", pipeMemorySize);
     conf.setPipeMemoryManager(pipeMemoryManager);
 
     LOGGER.info(

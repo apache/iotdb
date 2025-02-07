@@ -45,28 +45,28 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            QUERY_ENGINE,
-            Tag.TYPE.toString(),
-            GlobalMemoryMetrics.ON_HEAP,
-            Tag.LEVEL.toString(),
-            GlobalMemoryMetrics.LEVELS[1])
-        .set(config.getQueryEngineMemoryManager().getTotalMemorySizeInBytes());
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            QUERY_ENGINE_BLOOM_FILTER_CACHE,
-            Tag.TYPE.toString(),
-            GlobalMemoryMetrics.ON_HEAP,
-            Tag.LEVEL.toString(),
-            GlobalMemoryMetrics.LEVELS[2])
-        .set(config.getBloomFilterCacheMemoryManager().getTotalMemorySizeInBytes());
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getQueryEngineMemoryManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        QUERY_ENGINE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[1]);
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getBloomFilterCacheMemoryManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        QUERY_ENGINE_BLOOM_FILTER_CACHE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.NORMAL,
@@ -78,17 +78,17 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.ON_HEAP,
         Tag.LEVEL.toString(),
         GlobalMemoryMetrics.LEVELS[2]);
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            QUERY_ENGINE_CHUNK_CACHE,
-            Tag.TYPE.toString(),
-            GlobalMemoryMetrics.ON_HEAP,
-            Tag.LEVEL.toString(),
-            GlobalMemoryMetrics.LEVELS[2])
-        .set(config.getChunkCacheMemoryManager().getTotalMemorySizeInBytes());
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getChunkCacheMemoryManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        QUERY_ENGINE_CHUNK_CACHE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.NORMAL,
@@ -100,17 +100,17 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.ON_HEAP,
         Tag.LEVEL.toString(),
         GlobalMemoryMetrics.LEVELS[2]);
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            QUERY_ENGINE_TIME_SERIES_METADATA_CACHE,
-            Tag.TYPE.toString(),
-            GlobalMemoryMetrics.ON_HEAP,
-            Tag.LEVEL.toString(),
-            GlobalMemoryMetrics.LEVELS[2])
-        .set(config.getTimeSeriesMetaDataCacheMemoryManager().getTotalMemorySizeInBytes());
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getTimeSeriesMetaDataCacheMemoryManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        QUERY_ENGINE_TIME_SERIES_METADATA_CACHE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.NORMAL,
@@ -122,17 +122,17 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.ON_HEAP,
         Tag.LEVEL.toString(),
         GlobalMemoryMetrics.LEVELS[2]);
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            QUERY_ENGINE_OPERATORS,
-            Tag.TYPE.toString(),
-            GlobalMemoryMetrics.ON_HEAP,
-            Tag.LEVEL.toString(),
-            GlobalMemoryMetrics.LEVELS[2])
-        .set(config.getOperatorsMemoryManager().getTotalMemorySizeInBytes());
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getOperatorsMemoryManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        QUERY_ENGINE_OPERATORS,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.NORMAL,
@@ -144,17 +144,17 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.ON_HEAP,
         Tag.LEVEL.toString(),
         GlobalMemoryMetrics.LEVELS[2]);
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            QUERY_ENGINE_DATA_EXCHANGE,
-            Tag.TYPE.toString(),
-            GlobalMemoryMetrics.ON_HEAP,
-            Tag.LEVEL.toString(),
-            GlobalMemoryMetrics.LEVELS[2])
-        .set(config.getDataExchangeMemoryManager().getTotalMemorySizeInBytes());
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getDataExchangeMemoryManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        QUERY_ENGINE_DATA_EXCHANGE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.NORMAL,
@@ -166,17 +166,17 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.ON_HEAP,
         Tag.LEVEL.toString(),
         GlobalMemoryMetrics.LEVELS[2]);
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            QUERY_ENGINE_TIME_INDEX,
-            Tag.TYPE.toString(),
-            GlobalMemoryMetrics.ON_HEAP,
-            Tag.LEVEL.toString(),
-            GlobalMemoryMetrics.LEVELS[2])
-        .set(config.getTimeIndexMemoryManager().getTotalMemorySizeInBytes());
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getTimeIndexMemoryManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        QUERY_ENGINE_TIME_INDEX,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.NORMAL,
@@ -188,24 +188,24 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.ON_HEAP,
         Tag.LEVEL.toString(),
         GlobalMemoryMetrics.LEVELS[2]);
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            QUERY_ENGINE_COORDINATOR,
-            Tag.TYPE.toString(),
-            GlobalMemoryMetrics.ON_HEAP,
-            Tag.LEVEL.toString(),
-            GlobalMemoryMetrics.LEVELS[2])
-        .set(config.getCoordinatorMemoryManager().getTotalMemorySizeInBytes());
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getCoordinatorMemoryManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        QUERY_ENGINE_COORDINATOR,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[2]);
     // TODO @spricoder: CoordinatorMemoryManager are not used
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         Tag.NAME.toString(),
         QUERY_ENGINE,
@@ -224,7 +224,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         .forEach(
             name -> {
               metricService.remove(
-                  MetricType.GAUGE,
+                  MetricType.AUTO_GAUGE,
                   Metric.MEMORY_THRESHOLD_SIZE.toString(),
                   Tag.NAME.toString(),
                   name,

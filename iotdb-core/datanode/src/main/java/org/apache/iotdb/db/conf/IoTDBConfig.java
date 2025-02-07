@@ -148,6 +148,9 @@ public class IoTDBConfig {
   /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 65535;
 
+  /** The memory manager of on heap */
+  private MemoryManager onHeapMemoryManager;
+
   /** Memory manager for the write process */
   private MemoryManager storageEngineMemoryManager;
 
@@ -2123,6 +2126,14 @@ public class IoTDBConfig {
 
   public void setWriteMemoryVariationReportProportion(double writeMemoryVariationReportProportion) {
     this.writeMemoryVariationReportProportion = writeMemoryVariationReportProportion;
+  }
+
+  public MemoryManager getOnHeapMemoryManager() {
+    return onHeapMemoryManager;
+  }
+
+  public void setOnHeapMemoryManager(MemoryManager onHeapMemoryManager) {
+    this.onHeapMemoryManager = onHeapMemoryManager;
   }
 
   public void setStorageEngineMemoryManager(MemoryManager storageEngineMemoryManager) {

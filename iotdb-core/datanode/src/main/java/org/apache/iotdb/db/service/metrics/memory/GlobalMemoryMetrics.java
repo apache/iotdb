@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.service.metrics.memory;
 
+import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -40,28 +41,28 @@ public class GlobalMemoryMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            TOTAL,
-            Tag.TYPE.toString(),
-            ON_HEAP,
-            Tag.LEVEL.toString(),
-            LEVELS[0])
-        .set(Runtime.getRuntime().maxMemory());
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            TOTAL,
-            Tag.TYPE.toString(),
-            OFF_HEAP,
-            Tag.LEVEL.toString(),
-            LEVELS[0])
-        .set(config.getOffHeapMemoryManager().getTotalMemorySizeInBytes());
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getOnHeapMemoryManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        TOTAL,
+        Tag.TYPE.toString(),
+        ON_HEAP,
+        Tag.LEVEL.toString(),
+        LEVELS[0]);
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getOffHeapMemoryManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        TOTAL,
+        Tag.TYPE.toString(),
+        OFF_HEAP,
+        Tag.LEVEL.toString(),
+        LEVELS[0]);
     StorageEngineMemoryMetrics.getInstance().bindTo(metricService);
     QueryEngineMemoryMetrics.getInstance().bindTo(metricService);
     SchemaEngineMemoryMetrics.getInstance().bindTo(metricService);
@@ -76,7 +77,7 @@ public class GlobalMemoryMetrics implements IMetricSet {
         .forEach(
             type -> {
               metricService.remove(
-                  MetricType.GAUGE,
+                  MetricType.AUTO_GAUGE,
                   Metric.MEMORY_THRESHOLD_SIZE.toString(),
                   Tag.NAME.toString(),
                   TOTAL,
