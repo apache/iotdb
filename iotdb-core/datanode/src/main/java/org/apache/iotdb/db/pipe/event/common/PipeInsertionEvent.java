@@ -29,9 +29,12 @@ import javax.validation.constraints.NotNull;
 
 public abstract class PipeInsertionEvent extends EnrichedEvent {
 
+  // Record the database name of the DataRegion corresponding to the SourceEvent
+  private final String sourceDatabaseNameFromDataRegion;
+
   private Boolean isTableModelEvent; // lazy initialization
 
-  private String treeModelDatabaseName;
+  private String treeModelDatabaseName; // lazy initialization
   private String tableModelDatabaseName; // lazy initialization
 
   protected PipeInsertionEvent(
@@ -43,10 +46,12 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
       final long startTime,
       final long endTime,
       final Boolean isTableModelEvent,
+      final String databaseNameFromDataRegion,
       final String treeModelDatabaseName,
       final String tableModelDatabaseName) {
     super(pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, startTime, endTime);
     this.isTableModelEvent = isTableModelEvent;
+    this.sourceDatabaseNameFromDataRegion = databaseNameFromDataRegion;
     this.treeModelDatabaseName = treeModelDatabaseName;
     if (tableModelDatabaseName != null) {
       this.tableModelDatabaseName = tableModelDatabaseName.toLowerCase();
@@ -73,6 +78,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
         endTime,
         isTableModelEvent,
         databaseNameFromDataRegion,
+        null,
         null);
   }
 
@@ -86,7 +92,10 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
 
   public boolean isTableModelEvent() {
     if (isTableModelEvent == null) {
-      throw new IllegalStateException("isTableModelEvent is not initialized");
+      if (sourceDatabaseNameFromDataRegion == null) {
+        throw new IllegalStateException("databaseNameFromDataRegion is null");
+      }
+      return isTableModelEvent = PathUtils.isTableModelDatabase(sourceDatabaseNameFromDataRegion);
     }
     return isTableModelEvent;
   }
@@ -96,13 +105,20 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
     return isTableModelEvent;
   }
 
+  /** Only for internal use. */
+  public String getSourceDatabaseNameFromDataRegion() {
+    return sourceDatabaseNameFromDataRegion;
+  }
+
   public String getTreeModelDatabaseName() {
-    return treeModelDatabaseName;
+    return treeModelDatabaseName == null
+        ? treeModelDatabaseName = PathUtils.qualifyDatabaseName(sourceDatabaseNameFromDataRegion)
+        : treeModelDatabaseName;
   }
 
   public String getTableModelDatabaseName() {
     return tableModelDatabaseName == null
-        ? tableModelDatabaseName = PathUtils.unQualifyDatabaseName(treeModelDatabaseName)
+        ? tableModelDatabaseName = PathUtils.unQualifyDatabaseName(sourceDatabaseNameFromDataRegion)
         : tableModelDatabaseName;
   }
 
@@ -110,6 +126,6 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
     // Please note that if you parse TsFile, you need to use TreeModelDatabaseName, so you need to
     // rename TreeModelDatabaseName as well.
     this.tableModelDatabaseName = tableModelDatabaseName.toLowerCase();
-    this.treeModelDatabaseName = "root." + tableModelDatabaseName;
+    this.treeModelDatabaseName = PathUtils.qualifyDatabaseName(tableModelDatabaseName);
   }
 }

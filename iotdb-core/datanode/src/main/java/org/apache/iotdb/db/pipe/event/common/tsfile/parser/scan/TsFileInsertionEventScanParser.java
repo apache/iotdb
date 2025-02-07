@@ -145,7 +145,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             try {
               return new PipeRawTabletInsertionEvent(
                   sourceEvent != null ? sourceEvent.isTableModelEvent() : null,
-                  sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
+                  sourceEvent != null ? sourceEvent.getSourceDatabaseNameFromDataRegion() : null,
                   tablet,
                   isAligned,
                   sourceEvent != null ? sourceEvent.getPipeName() : null,

@@ -117,7 +117,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   private static final Map<Integer, Long> DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP = new HashMap<>();
   private static final long PIPE_MIN_FLUSH_INTERVAL_IN_MS = 2000;
 
-  private static final String TREE_MODEL_EVENT_TABLE_NAME_PREFIX = PATH_ROOT + PATH_SEPARATOR;
+  private static final String TREE_MODEL_EVENT_DATABASE_NAME_PREFIX = PATH_ROOT + PATH_SEPARATOR;
 
   private String pipeName;
   private long creationTime;
@@ -320,8 +320,13 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     if (Objects.nonNull(dataRegion)) {
       final String databaseName = dataRegion.getDatabaseName();
       if (Objects.nonNull(databaseName)) {
-        isDbNameCoveredByPattern =
-            treePattern.coversDb(databaseName) && tablePattern.coversDb(databaseName);
+        isTableModel = !databaseName.startsWith(TREE_MODEL_EVENT_DATABASE_NAME_PREFIX);
+        isModelDetected = true;
+        if (isTableModel) {
+          isDbNameCoveredByPattern = tablePattern.coversDb(databaseName);
+        } else {
+          isDbNameCoveredByPattern = treePattern.coversDb(databaseName);
+        }
       }
     }
 
@@ -668,7 +673,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   private void detectModel(final TsFileResource resource, final IDeviceID deviceID) {
     this.isTableModel =
         !(deviceID instanceof PlainDeviceID
-            || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
+            || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_DATABASE_NAME_PREFIX)
             || deviceID.getTableName().equals(PATH_ROOT));
 
     final String databaseName = resource.getDatabaseName();

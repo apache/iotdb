@@ -45,10 +45,22 @@ public class PipeRowCollector implements RowCollector {
   private boolean isAligned = false;
   private final PipeTaskMeta pipeTaskMeta; // Used to report progress
   private final EnrichedEvent sourceEvent; // Used to report progress
+  private final String sourceEventDataBaseName;
 
   public PipeRowCollector(PipeTaskMeta pipeTaskMeta, EnrichedEvent sourceEvent) {
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
+    sourceEventDataBaseName =
+        sourceEvent instanceof PipeInsertionEvent
+            ? ((PipeInsertionEvent) sourceEvent).getSourceDatabaseNameFromDataRegion()
+            : null;
+  }
+
+  public PipeRowCollector(
+      PipeTaskMeta pipeTaskMeta, EnrichedEvent sourceEvent, String sourceEventDataBase) {
+    this.pipeTaskMeta = pipeTaskMeta;
+    this.sourceEvent = sourceEvent;
+    this.sourceEventDataBaseName = sourceEventDataBase;
   }
 
   @Override
@@ -107,7 +119,7 @@ public class PipeRowCollector implements RowCollector {
       tabletInsertionEventList.add(
           new PipeRawTabletInsertionEvent(
               pipeInsertionEvent == null ? null : pipeInsertionEvent.isTableModelEvent(),
-              pipeInsertionEvent == null ? null : pipeInsertionEvent.getTreeModelDatabaseName(),
+              sourceEventDataBaseName,
               tablet,
               isAligned,
               sourceEvent == null ? null : sourceEvent.getPipeName(),

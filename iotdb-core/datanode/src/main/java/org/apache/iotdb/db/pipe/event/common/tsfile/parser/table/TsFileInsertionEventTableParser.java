@@ -118,7 +118,9 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
               next =
                   new PipeRawTabletInsertionEvent(
                       Boolean.TRUE,
-                      sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
+                      sourceEvent != null
+                          ? sourceEvent.getSourceDatabaseNameFromDataRegion()
+                          : null,
                       tablet,
                       true,
                       sourceEvent != null ? sourceEvent.getPipeName() : null,
@@ -131,7 +133,9 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
               next =
                   new PipeRawTabletInsertionEvent(
                       Boolean.TRUE,
-                      sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
+                      sourceEvent != null
+                          ? sourceEvent.getSourceDatabaseNameFromDataRegion()
+                          : null,
                       tablet,
                       true,
                       sourceEvent != null ? sourceEvent.getPipeName() : null,
