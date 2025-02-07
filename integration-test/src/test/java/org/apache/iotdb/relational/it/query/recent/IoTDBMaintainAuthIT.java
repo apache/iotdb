@@ -75,7 +75,7 @@ public class IoTDBMaintainAuthIT {
     // user1 with select on table1
     String[] expectedHeader = new String[] {"distribution plan"};
     tableQueryNoVerifyResultTest(
-        "explain select * from table1", expectedHeader, USER_1, PASSWORD, DATABASE_NAME);
+        "explain select * from test.table1", expectedHeader, USER_1, PASSWORD);
     // user2 without select on table1
     tableAssertTestFail(
         "explain select * from test.table1",
@@ -88,13 +88,9 @@ public class IoTDBMaintainAuthIT {
     // user1 with select on table1
     expectedHeader = new String[] {"Explain Analyze"};
     tableQueryNoVerifyResultTest(
-        "explain analyze select * from table1", expectedHeader, USER_1, PASSWORD, DATABASE_NAME);
+        "explain analyze select * from test.table1", expectedHeader, USER_1, PASSWORD);
     tableQueryNoVerifyResultTest(
-        "explain analyze verbose select * from table1",
-        expectedHeader,
-        USER_1,
-        PASSWORD,
-        DATABASE_NAME);
+        "explain analyze verbose select * from test.table1", expectedHeader, USER_1, PASSWORD);
     // user2 without select on table1
     tableAssertTestFail(
         "explain analyze select * from test.table1",
@@ -111,27 +107,24 @@ public class IoTDBMaintainAuthIT {
 
     // case 3: show current_sql_dialect
     expectedHeader = new String[] {"CurrentSqlDialect"};
-    tableQueryNoVerifyResultTest(
-        "SHOW CURRENT_SQL_DIALECT", expectedHeader, USER_2, PASSWORD, DATABASE_NAME);
+    tableQueryNoVerifyResultTest("SHOW CURRENT_SQL_DIALECT", expectedHeader, USER_2, PASSWORD);
 
     // case 4: show current_user
     expectedHeader = new String[] {"CurrentUser"};
-    tableQueryNoVerifyResultTest(
-        "SHOW CURRENT_USER", expectedHeader, USER_2, PASSWORD, DATABASE_NAME);
+    tableQueryNoVerifyResultTest("SHOW CURRENT_USER", expectedHeader, USER_2, PASSWORD);
 
     // case 5: show version
     expectedHeader = new String[] {"Version", "BuildInfo"};
-    tableQueryNoVerifyResultTest("SHOW VERSION", expectedHeader, USER_2, PASSWORD, DATABASE_NAME);
+    tableQueryNoVerifyResultTest("SHOW VERSION", expectedHeader, USER_2, PASSWORD);
 
     // case 6: show current_timestamp
     expectedHeader = new String[] {"CurrentTimestamp"};
-    tableQueryNoVerifyResultTest(
-        "SHOW CURRENT_TIMESTAMP", expectedHeader, USER_2, PASSWORD, DATABASE_NAME);
+    tableQueryNoVerifyResultTest("SHOW CURRENT_TIMESTAMP", expectedHeader, USER_2, PASSWORD);
 
     // case 7: show variables
     expectedHeader = new String[] {"Variable", "Value"};
     // user1 with MAINTAIN
-    tableQueryNoVerifyResultTest("SHOW VARIABLES", expectedHeader, USER_1, PASSWORD, DATABASE_NAME);
+    tableQueryNoVerifyResultTest("SHOW VARIABLES", expectedHeader, USER_1, PASSWORD);
     // user2 without MAINTAIN
     tableAssertTestFail(
         "SHOW VARIABLES",
@@ -143,8 +136,7 @@ public class IoTDBMaintainAuthIT {
     // case 8: show cluster_id
     expectedHeader = new String[] {"ClusterId"};
     // user1 with MAINTAIN
-    tableQueryNoVerifyResultTest(
-        "SHOW CLUSTER_ID", expectedHeader, USER_1, PASSWORD, DATABASE_NAME);
+    tableQueryNoVerifyResultTest("SHOW CLUSTER_ID", expectedHeader, USER_1, PASSWORD);
     // user2 without MAINTAIN
     tableAssertTestFail(
         "SHOW CLUSTER_ID",
@@ -190,7 +182,7 @@ public class IoTDBMaintainAuthIT {
     // user1 with select on information_schema.queries
     expectedHeader =
         new String[] {"query_id", "start_time", "datanode_id", "elapsed_time", "statement"};
-    tableQueryNoVerifyResultTest("SHOW QUERIES", expectedHeader, USER_1, PASSWORD, DATABASE_NAME);
+    tableQueryNoVerifyResultTest("SHOW QUERIES", expectedHeader, USER_1, PASSWORD);
     // user2 without select on information_schema.queries
     tableAssertTestFail(
         "SHOW QUERIES",
@@ -202,13 +194,13 @@ public class IoTDBMaintainAuthIT {
     // case 13: kill query
     // user1 with MAINTAIN
     tableAssertTestFail(
-        "kill query '20250206_093300_00001_100'",
+        "kill query '20250206_093300_00001_1'",
         TSStatusCode.NO_SUCH_QUERY.getStatusCode() + ": No such query",
         USER_1,
         PASSWORD);
     // user2 without MAINTAIN
     tableAssertTestFail(
-        "kill query '20250206_093300_00001_100'",
+        "kill query '20250206_093300_00001_1'",
         TSStatusCode.NO_PERMISSION.getStatusCode()
             + ": Access Denied: No permissions for this operation, please add privilege MAINTAIN",
         USER_2,

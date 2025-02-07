@@ -282,12 +282,11 @@ public class TestUtils {
   }
 
   public static void tableQueryNoVerifyResultTest(
-      String sql, String[] expectedHeader, String userName, String password, String database) {
+      String sql, String[] expectedHeader, String userName, String password) {
     try (Connection connection =
         EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT)) {
       connection.setClientInfo("time_zone", "+00:00");
       try (Statement statement = connection.createStatement()) {
-        statement.execute("use " + database);
         try (ResultSet resultSet = statement.executeQuery(sql)) {
           ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
