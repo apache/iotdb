@@ -86,8 +86,8 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityCo
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.NullColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.TimeColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.AbstractGreatestLeastColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.CoalesceColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.GreatestColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InBinaryMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InBooleanMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InDoubleMultiColumnTransformer;
@@ -95,7 +95,6 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InFloatMu
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InInt32MultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InInt64MultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InMultiColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LeastColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalAndMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalOrMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.BetweenColumnTransformer;
@@ -987,14 +986,16 @@ public class ColumnTransformerBuilder
         columnTransformers.add(this.process(child, context));
       }
       Type returnType = columnTransformers.get(0).getType();
-      return new GreatestColumnTransformer(returnType, columnTransformers);
+      return AbstractGreatestLeastColumnTransformer.getGreatestColumnTransformer(
+          returnType, columnTransformers);
     } else if (TableBuiltinScalarFunction.LEAST.getFunctionName().equalsIgnoreCase(functionName)) {
       List<ColumnTransformer> columnTransformers = new ArrayList<>();
       for (Expression child : children) {
         columnTransformers.add(this.process(child, context));
       }
       Type returnType = columnTransformers.get(0).getType();
-      return new LeastColumnTransformer(returnType, columnTransformers);
+      return AbstractGreatestLeastColumnTransformer.getLeastColumnTransformer(
+          returnType, columnTransformers);
     } else {
       // user defined function
       if (TableUDFUtils.isScalarFunction(functionName)) {

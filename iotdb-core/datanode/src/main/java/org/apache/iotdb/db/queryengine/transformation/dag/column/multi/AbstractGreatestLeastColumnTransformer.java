@@ -20,9 +20,7 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
-import org.apache.tsfile.utils.Binary;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public abstract class AbstractGreatestLeastColumnTransformer extends MultiColumnTransformer {
@@ -41,6 +39,7 @@ public abstract class AbstractGreatestLeastColumnTransformer extends MultiColumn
         builder.appendNull();
         continue;
       }
+
       transform(builder, childrenColumns, index);
     }
   }
@@ -58,62 +57,114 @@ public abstract class AbstractGreatestLeastColumnTransformer extends MultiColumn
     }
   }
 
-  protected void transform(ColumnBuilder builder, List<Column> childrenColumns, int i) {
-    TypeEnum type = columnTransformerList.get(0).getType().getTypeEnum();
-    switch (type) {
+  protected abstract void transform(ColumnBuilder builder, List<Column> childrenColumns, int index);
+
+  public static ColumnTransformer getGreatestColumnTransformer(
+      Type type, List<ColumnTransformer> columnTransformers) {
+    TypeEnum typeEnum = type.getTypeEnum();
+    switch (typeEnum) {
       case BOOLEAN:
-        transformBoolean(builder, getValues(childrenColumns, i, Column::getBoolean));
-        break;
+        return new BooleanGreatestColumnTransformer(type, columnTransformers);
       case INT32:
       case DATE:
-        transformInt(builder, getValues(childrenColumns, i, Column::getInt));
-        break;
+        return new Int32GreatestColumnTransformer(type, columnTransformers);
       case INT64:
       case TIMESTAMP:
-        transformLong(builder, getValues(childrenColumns, i, Column::getLong));
-        break;
+        return new Int64GreatestColumnTransformer(type, columnTransformers);
       case FLOAT:
-        transformFloat(builder, getValues(childrenColumns, i, Column::getFloat));
-        break;
+        return new FloatGreatestColumnTransformer(type, columnTransformers);
       case DOUBLE:
-        transformDouble(builder, getValues(childrenColumns, i, Column::getDouble));
-        break;
+        return new DoubleGreatestColumnTransformer(type, columnTransformers);
       case STRING:
       case TEXT:
-        transformBinary(builder, getValues(childrenColumns, i, Column::getBinary));
-        break;
+        return new BinaryGreatestColumnTransformer(type, columnTransformers);
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported data type: %s", returnType.getTypeEnum()));
+            String.format("Unsupported data type: %s", typeEnum));
     }
   }
 
-  private <T> List<T> getValues(List<Column> columns, int index, ValueExtractor<T> extractor) {
-    List<T> values = new ArrayList<>();
-    for (Column column : columns) {
-      if (!column.isNull(index)) {
-        values.add(extractor.extract(column, index));
-      }
+  public static ColumnTransformer getLeastColumnTransformer(
+      Type type, List<ColumnTransformer> columnTransformers) {
+    TypeEnum typeEnum = type.getTypeEnum();
+    switch (typeEnum) {
+      case BOOLEAN:
+        return new BooleanLeastColumnTransformer(type, columnTransformers);
+      case INT32:
+      case DATE:
+        return new Int32LeastColumnTransformer(type, columnTransformers);
+      case INT64:
+      case TIMESTAMP:
+        return new Int64LeastColumnTransformer(type, columnTransformers);
+      case FLOAT:
+        return new FloatLeastColumnTransformer(type, columnTransformers);
+      case DOUBLE:
+        return new DoubleLeastColumnTransformer(type, columnTransformers);
+      case STRING:
+      case TEXT:
+        return new BinaryLeastColumnTransformer(type, columnTransformers);
+      default:
+        throw new UnsupportedOperationException(
+            String.format("Unsupported data type: %s", typeEnum));
     }
-    return values;
   }
 
-  @FunctionalInterface
-  private interface ValueExtractor<T> {
-    T extract(Column column, int index);
-  }
+  //  protected void transform(ColumnBuilder builder, List<Column> childrenColumns, int i) {
+  //    TypeEnum type = columnTransformerList.get(0).getType().getTypeEnum();
+  //    switch (type) {
+  //      case BOOLEAN:
+  //        transformBoolean(builder, getValues(childrenColumns, i, Column::getBoolean));
+  //        break;
+  //      case INT32:
+  //      case DATE:
+  //        transformInt(builder, getValues(childrenColumns, i, Column::getInt));
+  //        break;
+  //      case INT64:
+  //      case TIMESTAMP:
+  //        transformLong(builder, getValues(childrenColumns, i, Column::getLong));
+  //        break;
+  //      case FLOAT:
+  //        transformFloat(builder, getValues(childrenColumns, i, Column::getFloat));
+  //        break;
+  //      case DOUBLE:
+  //        transformDouble(builder, getValues(childrenColumns, i, Column::getDouble));
+  //        break;
+  //      case STRING:
+  //      case TEXT:
+  //        transformBinary(builder, getValues(childrenColumns, i, Column::getBinary));
+  //        break;
+  //      default:
+  //        throw new UnsupportedOperationException(
+  //            String.format("Unsupported data type: %s", returnType.getTypeEnum()));
+  //    }
+  //  }
 
-  protected abstract void transformBoolean(ColumnBuilder builder, List<Boolean> values);
+  //  private <T> List<T> getValues(List<Column> columns, int index, ValueExtractor<T> extractor) {
+  //    List<T> values = new ArrayList<>();
+  //    for (Column column : columns) {
+  //      if (!column.isNull(index)) {
+  //        values.add(extractor.extract(column, index));
+  //      }
+  //    }
+  //    return values;
+  //  }
+  //
+  //  @FunctionalInterface
+  //  private interface ValueExtractor<T> {
+  //    T extract(Column column, int index);
+  //  }
 
-  protected abstract void transformInt(ColumnBuilder builder, List<Integer> values);
-
-  protected abstract void transformLong(ColumnBuilder builder, List<Long> values);
-
-  protected abstract void transformFloat(ColumnBuilder builder, List<Float> values);
-
-  protected abstract void transformDouble(ColumnBuilder builder, List<Double> values);
-
-  protected abstract void transformBinary(ColumnBuilder builder, List<Binary> values);
+  //  protected abstract void transformBoolean(ColumnBuilder builder, List<Boolean> values);
+  //
+  //  protected abstract void transformInt(ColumnBuilder builder, List<Integer> values);
+  //
+  //  protected abstract void transformLong(ColumnBuilder builder, List<Long> values);
+  //
+  //  protected abstract void transformFloat(ColumnBuilder builder, List<Float> values);
+  //
+  //  protected abstract void transformDouble(ColumnBuilder builder, List<Double> values);
+  //
+  //  protected abstract void transformBinary(ColumnBuilder builder, List<Binary> values);
 
   @Override
   protected void checkType() {
