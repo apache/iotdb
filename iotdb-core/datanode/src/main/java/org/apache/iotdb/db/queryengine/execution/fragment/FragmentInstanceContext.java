@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
@@ -60,6 +61,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
+import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.READY_QUEUED_TIME;
 
 public class FragmentInstanceContext extends QueryContext {
 
@@ -675,6 +679,11 @@ public class FragmentInstanceContext extends QueryContext {
 
     // record fragment instance execution time and metadata get time to metrics
     long durationTime = System.currentTimeMillis() - executionStartTime.get();
+    DriverSchedulerMetricSet.getInstance()
+        .recordTaskQueueTime(BLOCK_QUEUED_TIME, blockQueueTime.get());
+    DriverSchedulerMetricSet.getInstance()
+        .recordTaskQueueTime(READY_QUEUED_TIME, readyQueueTime.get());
+
     QueryRelatedResourceMetricSet.getInstance().updateFragmentInstanceTime(durationTime);
 
     SeriesScanCostMetricSet.getInstance()
