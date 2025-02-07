@@ -33,7 +33,7 @@ import java.util.Locale;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class IoTDBAuthenticationIT {
+public class IoTDBAuthenticationTableIT {
   @BeforeClass
   public static void setUpClass() {
     Locale.setDefault(Locale.ENGLISH);
@@ -193,6 +193,62 @@ public class IoTDBAuthenticationIT {
               "803: Access Denied: No permissions for this operation, please add privilege INSERT ON test.table1",
               e.getMessage());
         }
+
+        // can write but cannot auto-create
+        sessionRoot.executeNonQueryStatement("GRANT INSERT ON DATABASE test TO USER userA");
+        tablet.setTableName("table2");
+        try {
+          sessionA.insert(tablet);
+          fail("Should have thrown an exception");
+        } catch (StatementExecutionException e) {
+          assertEquals(
+              "301: [EXECUTE_STATEMENT_ERROR(301)] Exception occurred: insertTablet failed. Access Denied: No permissions for this operation, please add privilege CREATE ON test.table2",
+              e.getMessage());
+        }
+        sessionRoot.executeNonQueryStatement("GRANT CREATE ON DATABASE test TO USER userA");
+        sessionA.insert(tablet);
+        sessionRoot.executeNonQueryStatement("REVOKE CREATE ON DATABASE test FROM USER userA");
+        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON DATABASE test FROM USER userA");
+
+        // can write but cannot add column
+        sessionRoot.executeNonQueryStatement("GRANT INSERT ON DATABASE test TO USER userA");
+        tablet =
+            new Tablet(
+                "table2",
+                Arrays.asList("id", "attr", "measurement", "id2", "attr2", "measurement2"),
+                Arrays.asList(
+                    TSDataType.STRING,
+                    TSDataType.STRING,
+                    TSDataType.DOUBLE,
+                    TSDataType.STRING,
+                    TSDataType.STRING,
+                    TSDataType.DOUBLE),
+                Arrays.asList(
+                    ColumnCategory.TAG,
+                    ColumnCategory.ATTRIBUTE,
+                    ColumnCategory.FIELD,
+                    ColumnCategory.TAG,
+                    ColumnCategory.ATTRIBUTE,
+                    ColumnCategory.FIELD));
+        tablet.addTimestamp(0, 0);
+        tablet.addValue(0, 0, "id1");
+        tablet.addValue(0, 1, "attr1");
+        tablet.addValue(0, 2, 0.1);
+        tablet.addValue(0, 3, "id2");
+        tablet.addValue(0, 4, "attr2");
+        tablet.addValue(0, 5, 0.2);
+        try {
+          sessionA.insert(tablet);
+          fail("Should have thrown an exception");
+        } catch (StatementExecutionException e) {
+          assertEquals(
+              "301: [EXECUTE_STATEMENT_ERROR(301)] Exception occurred: insertTablet failed. Access Denied: No permissions for this operation, please add privilege ALTER ON test.table2",
+              e.getMessage());
+        }
+        sessionRoot.executeNonQueryStatement("GRANT ALTER ON TABLE table2 TO USER userA");
+        sessionA.insert(tablet);
+        sessionRoot.executeNonQueryStatement("REVOKE ALTER ON TABLE table2 FROM USER userA");
+        sessionRoot.executeNonQueryStatement("REVOKE INSERT ON DATABASE test FROM USER userA");
 
         // grant multiple and revoke one-by-one
         sessionRoot.executeNonQueryStatement("GRANT INSERT ON ANY TO USER userA");

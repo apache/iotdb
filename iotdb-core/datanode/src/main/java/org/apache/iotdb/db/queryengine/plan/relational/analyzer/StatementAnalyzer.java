@@ -189,7 +189,6 @@ import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
-import static org.apache.iotdb.commons.utils.PathUtils.unQualifyDatabaseName;
 import static org.apache.iotdb.db.queryengine.execution.warnings.StandardWarningCode.REDUNDANT_ORDER_BY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifyOrderByAggregations;
@@ -539,20 +538,16 @@ public class StatementAnalyzer {
       innerInsert.semanticCheck();
       innerInsert.toLowerCase();
 
-      accessControl.checkCanInsertIntoTable(
-          sessionContext.getUserName(),
-          new QualifiedObjectName(
-              unQualifyDatabaseName(insert.getDatabase()), insert.getTableName()));
-
       innerInsert =
           AnalyzeUtils.analyzeInsert(
               context,
               innerInsert,
-              () -> SchemaValidator.validate(metadata, insert, context),
+              () -> SchemaValidator.validate(metadata, insert, context, accessControl),
               metadata::getOrCreateDataPartition,
               AnalyzeUtils::computeTableDataPartitionParams,
               analysis,
               false);
+
       insert.setInnerTreeStatement(innerInsert);
       analysis.setScope(insert, ret);
 
