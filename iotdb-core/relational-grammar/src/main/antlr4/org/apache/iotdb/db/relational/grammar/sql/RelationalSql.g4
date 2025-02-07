@@ -634,7 +634,7 @@ revokeStatement
 privilegeObjectScope
     : systemPrivileges
     | objectPrivileges ON objectType objectName=identifier
-    | objectPrivileges ON objectScope
+    | objectPrivileges ON (TABLE)? objectScope
     | objectPrivileges ON ANY
     | ALL
     ;
