@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.concurrent.BlockingQueue;
 
 public interface IWritableMemChunk extends WALEntryValue {
-
   void putLong(long t, long v);
 
   void putInt(long t, int v);
@@ -85,6 +84,8 @@ public interface IWritableMemChunk extends WALEntryValue {
 
   long count();
 
+  long rowCount();
+
   IMeasurementSchema getSchema();
 
   /**
@@ -126,12 +127,12 @@ public interface IWritableMemChunk extends WALEntryValue {
    */
   void sortTvListForFlush();
 
-  default TVList getTVList() {
-    return null;
-  }
-
   default long getMaxTime() {
     return Long.MAX_VALUE;
+  }
+
+  default long getMinTime() {
+    return Long.MIN_VALUE;
   }
 
   /**
@@ -150,4 +151,10 @@ public interface IWritableMemChunk extends WALEntryValue {
   long getLastPoint();
 
   boolean isEmpty();
+
+  List<? extends TVList> getSortedList();
+
+  TVList getWorkingTVList();
+
+  void setWorkingTVList(TVList list);
 }

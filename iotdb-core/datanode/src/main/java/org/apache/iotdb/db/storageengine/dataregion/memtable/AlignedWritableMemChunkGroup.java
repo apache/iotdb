@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
@@ -42,6 +43,12 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
 
   public AlignedWritableMemChunkGroup(List<IMeasurementSchema> schemaList, boolean isTableModel) {
     memChunk = new AlignedWritableMemChunk(schemaList, isTableModel);
+  }
+
+  @TestOnly
+  public AlignedWritableMemChunkGroup(
+      AlignedWritableMemChunk memChunk, List<IMeasurementSchema> schemaList, boolean isTableModel) {
+    this.memChunk = memChunk;
   }
 
   private AlignedWritableMemChunkGroup() {
@@ -131,8 +138,8 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public long getCurrentTVListSize(String measurement) {
-    return memChunk.getTVList().rowCount();
+  public long getMeasurementSize(String measurement) {
+    return memChunk.rowCount();
   }
 
   @Override
