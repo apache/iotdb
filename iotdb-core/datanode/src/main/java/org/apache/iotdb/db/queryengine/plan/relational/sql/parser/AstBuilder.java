@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
@@ -106,6 +107,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
@@ -139,6 +141,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSystemStatus;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
@@ -191,7 +194,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
@@ -1230,7 +1235,17 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitSetSystemStatusStatement(
       RelationalSqlParser.SetSystemStatusStatementContext ctx) {
-    return super.visitSetSystemStatusStatement(ctx);
+    SetSystemStatusStatement setSystemStatusStatement = new SetSystemStatusStatement();
+    setSystemStatusStatement.setOnCluster(
+        ctx.localOrClusterMode() == null || ctx.localOrClusterMode().LOCAL() == null);
+    if (ctx.RUNNING() != null) {
+      setSystemStatusStatement.setStatus(NodeStatus.Running);
+    } else if (ctx.READONLY() != null) {
+      setSystemStatusStatement.setStatus(NodeStatus.ReadOnly);
+    } else {
+      throw new SemanticException("Unknown system status in set system command.");
+    }
+    return new SetSystemStatus(setSystemStatusStatement, null);
   }
 
   @Override
@@ -1308,7 +1323,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitLoadConfigurationStatement(
       RelationalSqlParser.LoadConfigurationStatementContext ctx) {
-    return super.visitLoadConfigurationStatement(ctx);
+    LoadConfigurationStatement loadConfigurationStatement =
+        new LoadConfigurationStatement(StatementType.LOAD_CONFIGURATION);
+    loadConfigurationStatement.setOnCluster(
+        ctx.localOrClusterMode() == null || ctx.localOrClusterMode().LOCAL() == null);
+    return new LoadConfiguration(loadConfigurationStatement, null);
   }
 
   @Override
@@ -1343,7 +1362,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       RelationalSqlParser.StartRepairDataStatementContext ctx) {
     StartRepairDataStatement startRepairDataStatement =
         new StartRepairDataStatement(StatementType.START_REPAIR_DATA);
-    startRepairDataStatement.setOnCluster(ctx.localOrClusterMode().LOCAL() == null);
+    startRepairDataStatement.setOnCluster(
+        ctx.localOrClusterMode() == null || ctx.localOrClusterMode().LOCAL() == null);
     return new StartRepairData(startRepairDataStatement, null);
   }
 
@@ -1351,7 +1371,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   public Node visitStopRepairDataStatement(RelationalSqlParser.StopRepairDataStatementContext ctx) {
     StopRepairDataStatement stopRepairDataStatement =
         new StopRepairDataStatement(StatementType.STOP_REPAIR_DATA);
-    stopRepairDataStatement.setOnCluster(ctx.localOrClusterMode().LOCAL() == null);
+    stopRepairDataStatement.setOnCluster(
+        ctx.localOrClusterMode() == null || ctx.localOrClusterMode().LOCAL() == null);
     return new StopRepairData(stopRepairDataStatement, null);
   }
 

@@ -77,7 +77,9 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrent
 import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowVersionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.FlushTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.KillQueryTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.LoadConfigurationTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetConfigurationTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetSystemStatusTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.StartRepairDataTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.StopRepairDataTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.AlterPipeTask;
@@ -124,6 +126,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MigrateRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
@@ -137,6 +140,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSystemStatus;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
@@ -168,7 +172,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
@@ -736,6 +742,20 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     context.setQueryType(QueryType.WRITE);
     accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
     return new StopRepairDataTask(((StopRepairDataStatement) node.getInnerTreeStatement()));
+  }
+
+  @Override
+  protected IConfigTask visitLoadConfiguration(LoadConfiguration node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    return new LoadConfigurationTask(((LoadConfigurationStatement) node.getInnerTreeStatement()));
+  }
+
+  @Override
+  protected IConfigTask visitSetSystemStatus(SetSystemStatus node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    return new SetSystemStatusTask(((SetSystemStatusStatement) node.getInnerTreeStatement()));
   }
 
   private Optional<String> parseStringFromLiteralIfBinary(final Object value) {
