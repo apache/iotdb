@@ -63,6 +63,17 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
         Tag.LEVEL.toString(),
         GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
+        Metric.MEMORY_ACTUAL_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getSchemaRegionMemoryManager(),
+        MemoryManager::getUsedMemorySizeInBytes,
+        Tag.NAME.toString(),
+        SCHEMA_ENGINE_SCHEMA_REGION,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[2]);
+    metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.NORMAL,
         config.getSchemaCacheMemoryManager(),
@@ -74,10 +85,32 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
         Tag.LEVEL.toString(),
         GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
+        Metric.MEMORY_ACTUAL_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getSchemaCacheMemoryManager(),
+        MemoryManager::getUsedMemorySizeInBytes,
+        Tag.NAME.toString(),
+        SCHEMA_ENGINE_SCHEMA_CACHE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[2]);
+    metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.NORMAL,
         config.getPartitionCacheMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        SCHEMA_ENGINE_PARTITION_CACHE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[2]);
+    metricService.createAutoGauge(
+        Metric.MEMORY_ACTUAL_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getPartitionCacheMemoryManager(),
+        MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         SCHEMA_ENGINE_PARTITION_CACHE,
         Tag.TYPE.toString(),
@@ -100,16 +133,26 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
     Arrays.asList(
             SCHEMA_ENGINE_SCHEMA_REGION, SCHEMA_ENGINE_SCHEMA_CACHE, SCHEMA_ENGINE_PARTITION_CACHE)
         .forEach(
-            name ->
-                metricService.remove(
-                    MetricType.AUTO_GAUGE,
-                    Metric.MEMORY_THRESHOLD_SIZE.toString(),
-                    Tag.NAME.toString(),
-                    name,
-                    Tag.TYPE.toString(),
-                    GlobalMemoryMetrics.ON_HEAP,
-                    Tag.LEVEL.toString(),
-                    GlobalMemoryMetrics.LEVELS[2]));
+            name -> {
+              metricService.remove(
+                  MetricType.AUTO_GAUGE,
+                  Metric.MEMORY_THRESHOLD_SIZE.toString(),
+                  Tag.NAME.toString(),
+                  name,
+                  Tag.TYPE.toString(),
+                  GlobalMemoryMetrics.ON_HEAP,
+                  Tag.LEVEL.toString(),
+                  GlobalMemoryMetrics.LEVELS[2]);
+              metricService.remove(
+                  MetricType.AUTO_GAUGE,
+                  Metric.MEMORY_ACTUAL_SIZE.toString(),
+                  Tag.NAME.toString(),
+                  name,
+                  Tag.TYPE.toString(),
+                  GlobalMemoryMetrics.ON_HEAP,
+                  Tag.LEVEL.toString(),
+                  GlobalMemoryMetrics.LEVELS[2]);
+            });
   }
 
   public static SchemaEngineMemoryMetrics getInstance() {

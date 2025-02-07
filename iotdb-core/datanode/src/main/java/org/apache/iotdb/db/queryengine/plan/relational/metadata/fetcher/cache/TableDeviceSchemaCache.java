@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
@@ -100,17 +102,23 @@ public class TableDeviceSchemaCache {
 
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
 
+  private final IMemoryBlock memoryBlock;
+
   private TableDeviceSchemaCache() {
+    memoryBlock =
+        config
+            .getSchemaCacheMemoryManager()
+            .forceAllocate("TableDeviceSchemaCache", MemoryBlockType.FUNCTION);
     dualKeyCache =
         new DualKeyCacheBuilder<TableId, IDeviceID, TableDeviceCacheEntry>()
             .cacheEvictionPolicy(
                 DualKeyCachePolicy.valueOf(config.getDataNodeSchemaCacheEvictionPolicy()))
-            .memoryCapacity(config.getSchemaCacheMemoryManager().getTotalMemorySizeInBytes())
+            .memoryCapacity(memoryBlock.getTotalMemorySizeInBytes())
             .firstKeySizeComputer(TableId::estimateSize)
             .secondKeySizeComputer(deviceID -> (int) deviceID.ramBytesUsed())
             .valueSizeComputer(TableDeviceCacheEntry::estimateSize)
             .build();
-
+    memoryBlock.allocate(memoryBlock.getTotalMemorySizeInBytes());
     MetricService.getInstance().addMetricSet(new TableDeviceSchemaCacheMetrics(this));
   }
 

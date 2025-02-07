@@ -30,6 +30,8 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
@@ -113,8 +115,15 @@ public class PartitionCache {
       ConfigNodeClientManager.getInstance();
 
   private final CacheMetrics cacheMetrics;
+  private final IMemoryBlock memoryBlock;
 
   public PartitionCache() {
+    this.memoryBlock =
+        config
+            .getPartitionCacheMemoryManager()
+            .forceAllocate("PartitionCache", MemoryBlockType.FUNCTION);
+    this.memoryBlock.allocate(this.memoryBlock.getTotalMemorySizeInBytes());
+    // TODO @spricoder: PartitionCache need to be controlled according to memory
     this.schemaPartitionCache =
         Caffeine.newBuilder().maximumSize(config.getPartitionCacheSize()).build();
     this.dataPartitionCache =
