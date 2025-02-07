@@ -974,15 +974,15 @@ public class ProcedureManager {
   private String checkRegionOperationModelCorrectness(TConsensusGroupId regionId, Model model) {
     String databaseName = configManager.getPartitionManager().getRegionDatabase(regionId);
     boolean isTreeModelDatabase = databaseName.startsWith(SqlConstant.TREE_MODEL_DATABASE_PREFIX);
-    if (Model.TREE == model && isTreeModelDatabase) {
-      return null;
-    }
-    if (Model.TABLE == model && !isTreeModelDatabase) {
+    if (Model.TREE == model && isTreeModelDatabase
+        || Model.TABLE == model && !isTreeModelDatabase) {
       return null;
     }
     return String.format(
-        "The region's database is belong to %s model, but the model you are operating is %s",
-        isTreeModelDatabase ? Model.TREE.toString() : Model.TABLE.toString(), model.toString());
+        "The region's database %s is belong to %s model, but the model you are operating is %s",
+        databaseName,
+        isTreeModelDatabase ? Model.TREE.toString() : Model.TABLE.toString(),
+        model.toString());
   }
 
   // end region

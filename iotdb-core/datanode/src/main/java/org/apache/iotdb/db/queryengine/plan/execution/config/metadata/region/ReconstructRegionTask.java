@@ -22,14 +22,13 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region;
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.IModelDistinguish;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReconstructRegion;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class ReconstructRegionTask implements IConfigTask, IModelDistinguish {
+public class ReconstructRegionTask implements IConfigTask {
 
   protected final ReconstructRegionStatement statement;
   private final Model model;
@@ -52,7 +51,6 @@ public class ReconstructRegionTask implements IConfigTask, IModelDistinguish {
     return configTaskExecutor.reconstructRegion(this);
   }
 
-  @Override
   public Model getModel() {
     return model;
   }

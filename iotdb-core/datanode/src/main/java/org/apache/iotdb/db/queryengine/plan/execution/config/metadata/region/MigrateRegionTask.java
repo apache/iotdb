@@ -22,14 +22,13 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region;
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.IModelDistinguish;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MigrateRegion;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class MigrateRegionTask implements IConfigTask, IModelDistinguish {
+public class MigrateRegionTask implements IConfigTask {
 
   protected final MigrateRegionStatement statement;
   private final Model model;
@@ -53,7 +52,6 @@ public class MigrateRegionTask implements IConfigTask, IModelDistinguish {
     return configTaskExecutor.migrateRegion(this);
   }
 
-  @Override
   public Model getModel() {
     return this.model;
   }
