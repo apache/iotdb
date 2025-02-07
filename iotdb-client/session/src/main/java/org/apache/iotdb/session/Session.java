@@ -2690,6 +2690,7 @@ public class Session implements ISession {
       if (measurementSchema.getMeasurementId() == null) {
         throw new IllegalArgumentException("measurement should be non null value");
       }
+      request.addToMeasurements(measurementSchema.getMeasurementId());
       request.addToTypes(measurementSchema.getType().ordinal());
     }
 
