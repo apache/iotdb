@@ -25,8 +25,8 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.subscription.SubscriptionSession;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
 import org.apache.iotdb.subscription.it.triple.AbstractSubscriptionTripleIT;
@@ -75,7 +75,7 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
   public int DEST_PORT;
   public int DEST_PORT2;
 
-  public SubscriptionSession subs;
+  public SubscriptionTreeSession subs;
 
   public Session session_src;
   public Session session_dest;
@@ -132,7 +132,7 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
     session_dest.open(false);
     session_dest2.open(false);
 
-    subs = new SubscriptionSession(SRC_HOST, SRC_PORT);
+    subs = new SubscriptionTreeSession(SRC_HOST, SRC_PORT);
     subs.open();
     System.out.println("TestConfig beforeClass");
   }
@@ -178,10 +178,10 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
     }
   }
 
-  public SubscriptionPullConsumer create_pull_consumer(
+  public SubscriptionTreePullConsumer create_pull_consumer(
       String groupId, String consumerId, Boolean autoCommit, Long interval)
       throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
-    SubscriptionPullConsumer pullConsumer;
+    SubscriptionTreePullConsumer pullConsumer;
     Properties properties = new Properties();
     properties.put(ConsumerConstant.HOST_KEY, SRC_HOST);
     properties.put(ConsumerConstant.PORT_KEY, SRC_PORT);
@@ -198,7 +198,7 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
       properties.put(ConsumerConstant.AUTO_COMMIT_INTERVAL_MS_KEY, interval);
     }
     properties.put(ConsumerConstant.FILE_SAVE_DIR_KEY, "target/pull-subscription");
-    pullConsumer = new SubscriptionPullConsumer(properties);
+    pullConsumer = new SubscriptionTreePullConsumer(properties);
     pullConsumer.open();
     return pullConsumer;
   }
@@ -279,7 +279,7 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
     assertEquals(getCount(session_dest2, sql), expect_count, "Query count:" + msg);
   }
 
-  public void consume_data(SubscriptionPullConsumer consumer, Session session)
+  public void consume_data(SubscriptionTreePullConsumer consumer, Session session)
       throws TException,
           IOException,
           StatementExecutionException,
@@ -304,16 +304,16 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
   }
 
   public List<Integer> consume_tsfile_withFileCount(
-      SubscriptionPullConsumer consumer, String device) throws InterruptedException {
+      SubscriptionTreePullConsumer consumer, String device) throws InterruptedException {
     return consume_tsfile(consumer, Collections.singletonList(device));
   }
 
-  public int consume_tsfile(SubscriptionPullConsumer consumer, String device)
+  public int consume_tsfile(SubscriptionTreePullConsumer consumer, String device)
       throws InterruptedException {
     return consume_tsfile(consumer, Collections.singletonList(device)).get(0);
   }
 
-  public List<Integer> consume_tsfile(SubscriptionPullConsumer consumer, List<String> devices)
+  public List<Integer> consume_tsfile(SubscriptionTreePullConsumer consumer, List<String> devices)
       throws InterruptedException {
     List<AtomicInteger> rowCounts = new ArrayList<>(devices.size());
     for (int i = 0; i < devices.size(); i++) {
@@ -360,7 +360,7 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
   }
 
   public static void consume_data_long(
-      SubscriptionPullConsumer consumer, Session session, Long timeout)
+      SubscriptionTreePullConsumer consumer, Session session, Long timeout)
       throws StatementExecutionException, InterruptedException, IoTDBConnectionException {
     timeout = System.currentTimeMillis() + timeout;
     while (System.currentTimeMillis() < timeout) {
@@ -379,7 +379,7 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
     }
   }
 
-  public void consume_data(SubscriptionPullConsumer consumer)
+  public void consume_data(SubscriptionTreePullConsumer consumer)
       throws TException,
           IOException,
           StatementExecutionException,

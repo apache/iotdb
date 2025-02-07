@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
@@ -411,6 +412,27 @@ public final class PlanMatchPattern {
         outputSymbol ->
             result.withAlias(outputSymbol, new ColumnReference(expectedTableName, outputSymbol)));
     return result;
+  }
+
+  public static PlanMatchPattern markDistinct(
+      String markerSymbol, List<String> distinctSymbols, PlanMatchPattern source) {
+    return node(MarkDistinctNode.class, source)
+        .with(
+            new MarkDistinctMatcher(
+                new SymbolAlias(markerSymbol), toSymbolAliases(distinctSymbols), Optional.empty()));
+  }
+
+  public static PlanMatchPattern markDistinct(
+      String markerSymbol,
+      List<String> distinctSymbols,
+      String hashSymbol,
+      PlanMatchPattern source) {
+    return node(MarkDistinctNode.class, source)
+        .with(
+            new MarkDistinctMatcher(
+                new SymbolAlias(markerSymbol),
+                toSymbolAliases(distinctSymbols),
+                Optional.of(new SymbolAlias(hashSymbol))));
   }
 
   /*

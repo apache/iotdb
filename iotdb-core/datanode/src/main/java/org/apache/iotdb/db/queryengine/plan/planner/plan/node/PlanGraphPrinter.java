@@ -65,12 +65,14 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
@@ -690,8 +692,18 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     int i = 0;
     for (org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation
         aggregation : node.getAggregations().values()) {
-      boxValue.add(
-          String.format("Aggregator-%d: %s", i++, aggregation.getResolvedFunction().toString()));
+      StringBuilder aggregator =
+          new StringBuilder(
+              String.format(
+                  "Aggregator-%d: %s", i++, aggregation.getResolvedFunction().toString()));
+      if (aggregation.hasMask()) {
+        aggregator.append(String.format("  mask: %s", aggregation.getMask().get()));
+      }
+
+      if (aggregation.isDistinct()) {
+        aggregator.append("  distinct: true");
+      }
+      boxValue.add(aggregator.toString());
     }
     boxValue.add(String.format("GroupingKeys: %s", node.getGroupingKeys()));
     if (node.isStreamable()) {
@@ -713,8 +725,18 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     int i = 0;
     for (org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation
         aggregation : node.getAggregations().values()) {
-      boxValue.add(
-          String.format("Aggregator-%d: %s", i++, aggregation.getResolvedFunction().toString()));
+      StringBuilder aggregator =
+          new StringBuilder(
+              String.format(
+                  "Aggregator-%d: %s", i++, aggregation.getResolvedFunction().toString()));
+      if (aggregation.hasMask()) {
+        aggregator.append(String.format("  mask: %s", aggregation.getMask().get()));
+      }
+
+      if (aggregation.isDistinct()) {
+        aggregator.append("  distinct: true");
+      }
+      boxValue.add(aggregator.toString());
     }
     boxValue.add(String.format("GroupingKeys: %s", node.getGroupingKeys()));
     if (node.isStreamable()) {
@@ -752,6 +774,17 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
               "MeasurementToColumnName: %s",
               aggregationTreeDeviceViewScanNode.getMeasurementColumnNameMap()));
     }
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitMarkDistinct(MarkDistinctNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("MarkDistinct-%s", node.getPlanNodeId()));
+    boxValue.add(String.format("MarkerSymbol-%s", node.getMarkerSymbol()));
+    boxValue.add(String.format("DistinctSymbols-%s", node.getDistinctSymbols()));
+    Optional<Symbol> hashSymbol = node.getHashSymbol();
+    hashSymbol.ifPresent(symbol -> boxValue.add(String.format("HashSymbol-%s", symbol)));
     return render(node, boxValue, context);
   }
 

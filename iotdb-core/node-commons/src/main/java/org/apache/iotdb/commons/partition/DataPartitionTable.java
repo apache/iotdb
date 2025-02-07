@@ -264,6 +264,18 @@ public class DataPartitionTable {
     return result;
   }
 
+  /**
+   * Remove PartitionTable where the TimeSlot is expired.
+   *
+   * @param TTL The Time To Live
+   * @param currentTimeSlot The current TimeSlot
+   */
+  public void autoCleanPartitionTable(long TTL, TTimePartitionSlot currentTimeSlot) {
+    dataPartitionMap.forEach(
+        (seriesPartitionSlot, seriesPartitionTable) ->
+            seriesPartitionTable.autoCleanPartitionTable(TTL, currentTimeSlot));
+  }
+
   public void serialize(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
     ReadWriteIOUtils.write(dataPartitionMap.size(), outputStream);

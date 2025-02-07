@@ -24,7 +24,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionCon
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
@@ -60,7 +60,7 @@ public class IoTDBAllTsDatasetPullConsumerIT extends AbstractSubscriptionRegress
   private static final String pattern = device + ".s_0";
   private static final String topicName = "topic_loose_range_all_pull_dataset";
   private List<IMeasurementSchema> schemaList = new ArrayList<>();
-  private SubscriptionPullConsumer consumer;
+  private SubscriptionTreePullConsumer consumer;
 
   @Override
   @Before
