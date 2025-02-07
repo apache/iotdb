@@ -619,11 +619,11 @@ listRolePrivilegeStatement
     ;
 
 listUserStatement
-    : LIST USER
+    : LIST USER (OF ROLE roleName=identifier)?
     ;
 
 listRoleStatement
-    : LIST ROLE
+    : LIST ROLE (OF USER userName=identifier)?
     ;
 
 
@@ -645,6 +645,7 @@ systemPrivileges
 
 objectPrivileges
     : objectPrivilege (',' objectPrivilege)*
+    | ALL
     ;
 
 objectScope

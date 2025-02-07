@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -159,6 +160,21 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
+  public void revokeAllPrivilegeFromUser(String userName) throws AuthException {
+    checkAdmin(userName, "Invalid operation, administrator cannot revoke privileges");
+    User user = userManager.getEntity(userName);
+    if (user == null) {
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", userName));
+    }
+    user.setObjectPrivilegeMap(new HashMap<>());
+    user.getSysPrivilege().removeIf(PrivilegeType::forRelationalSys);
+    user.getSysPriGrantOpt().removeIf(PrivilegeType::forRelationalSys);
+    user.setAnyScopePrivilegeSet(new HashSet<>());
+    user.setAnyScopePrivilegeGrantOptSet(new HashSet<>());
+  }
+
+  @Override
   public void createRole(String roleName) throws AuthException {
     AuthUtils.validateRolename(roleName);
     if (!roleManager.createRole(roleName)) {
@@ -199,6 +215,17 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void revokePrivilegeFromRole(String roleName, PrivilegeUnion union) throws AuthException {
     roleManager.revokePrivilegeFromEntity(roleName, union);
+  }
+
+  @Override
+  public void revokeAllPrivilegeFromRole(String roleName) throws AuthException {
+    Role role = roleManager.getEntity(roleName);
+    if (role == null) {
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, String.format("Role %s does not exist", roleName));
+    }
+    role.setObjectPrivilegeMap(new HashMap<>());
+    role.getSysPrivilege().removeIf(PrivilegeType::forRelationalSys);
   }
 
   @Override
