@@ -188,16 +188,18 @@ public class IoTDBMaintainAuthIT {
 
     // case 12: show queries
     // user1 with select on information_schema.queries
-    tableExecuteTest("show queries", USER_1, PASSWORD);
+    expectedHeader =
+        new String[] {"query_id", "start_time", "datanode_id", "elapsed_time", "statement"};
+    tableQueryNoVerifyResultTest("SHOW QUERIES", expectedHeader, USER_1, PASSWORD, DATABASE_NAME);
     // user2 without select on information_schema.queries
     tableAssertTestFail(
-        "show queries",
+        "SHOW QUERIES",
         TSStatusCode.NO_PERMISSION.getStatusCode()
             + ": Access Denied: No permissions for this operation, please add privilege SELECT ON information_schema.queries",
         USER_2,
         PASSWORD);
 
-    // case 12: kill query
+    // case 13: kill query
     // user1 with MAINTAIN
     tableAssertTestFail(
         "kill query '20250206_093300_00001_100'",
@@ -207,6 +209,50 @@ public class IoTDBMaintainAuthIT {
     // user2 without MAINTAIN
     tableAssertTestFail(
         "kill query '20250206_093300_00001_100'",
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+        USER_2,
+        PASSWORD);
+
+    // case 14: load configuration
+    // user1 with MAINTAIN
+    tableExecuteTest("LOAD CONFIGURATION", USER_1, PASSWORD);
+    // user2 without MAINTAIN
+    tableAssertTestFail(
+        "LOAD CONFIGURATION",
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+        USER_2,
+        PASSWORD);
+
+    // case 15: set system status
+    // user1 with MAINTAIN
+    tableExecuteTest("SET SYSTEM TO RUNNING", USER_1, PASSWORD);
+    // user2 without MAINTAIN
+    tableAssertTestFail(
+        "SET SYSTEM TO RUNNING",
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+        USER_2,
+        PASSWORD);
+
+    // case 16: start repair data
+    // user1 with MAINTAIN
+    tableExecuteTest("START REPAIR DATA", USER_1, PASSWORD);
+    // user2 without MAINTAIN
+    tableAssertTestFail(
+        "START REPAIR DATA",
+        TSStatusCode.NO_PERMISSION.getStatusCode()
+            + ": Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+        USER_2,
+        PASSWORD);
+
+    // case 17: stop repair data
+    // user1 with MAINTAIN
+    tableExecuteTest("STOP REPAIR DATA", USER_1, PASSWORD);
+    // user2 without MAINTAIN
+    tableAssertTestFail(
+        "STOP REPAIR DATA",
         TSStatusCode.NO_PERMISSION.getStatusCode()
             + ": Access Denied: No permissions for this operation, please add privilege MAINTAIN",
         USER_2,
