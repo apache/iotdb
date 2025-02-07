@@ -57,7 +57,7 @@ public class IoTDBSetSystemStatusTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("SET SYSTEM TO READONLY ON CLUSTER");
       Awaitility.await()
-          .atMost(3, TimeUnit.SECONDS)
+          .atMost(10, TimeUnit.SECONDS)
           .pollDelay(1, TimeUnit.SECONDS)
           .until(
               () -> {
@@ -74,7 +74,7 @@ public class IoTDBSetSystemStatusTableIT {
 
       statement.execute("SET SYSTEM TO RUNNING ON CLUSTER");
       Awaitility.await()
-          .atMost(30, TimeUnit.SECONDS)
+          .atMost(10, TimeUnit.SECONDS)
           .pollDelay(1, TimeUnit.SECONDS)
           .until(
               () -> {
