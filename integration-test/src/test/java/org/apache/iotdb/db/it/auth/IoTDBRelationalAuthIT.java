@@ -520,7 +520,8 @@ public class IoTDBRelationalAuthIT {
       TestUtils.assertResultSetEqual(resultSet, "Role,Scope,Privileges,GrantOption,", resultSetALL);
       adminStmt.execute("REVOKE ALL FROM USER test");
       resultSet = adminStmt.executeQuery("List privileges of user test");
-      TestUtils.assertResultSetEqual(resultSet, "Role,Scope,Privileges,GrantOption,", resultSetALL);
+      TestUtils.assertResultSetEqual(
+          resultSet, "Role,Scope,Privileges,GrantOption,", Collections.emptySet());
     }
   }
 }
