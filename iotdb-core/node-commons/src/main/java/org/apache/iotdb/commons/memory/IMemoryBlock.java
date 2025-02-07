@@ -24,17 +24,11 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.ReentrantLock;
-
 public abstract class IMemoryBlock implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(IMemoryBlock.class);
 
   /** The memory manager that manages this memory block */
   protected MemoryManager memoryManager;
-
-  /** The reentrant lock of memory block */
-  protected final ReentrantLock lock = new ReentrantLock();
 
   /** The name of this memory block */
   protected String name;
@@ -47,9 +41,6 @@ public abstract class IMemoryBlock implements AutoCloseable {
 
   /** The total memory size in byte of this memory block */
   protected long totalMemorySizeInBytes;
-
-  /** The memory usage in byte of this memory block */
-  protected final AtomicLong usedMemoryInBytes = new AtomicLong(0);
 
   /**
    * Force allocate memory without the limit of totalMemorySizeInBytes
@@ -92,6 +83,12 @@ public abstract class IMemoryBlock implements AutoCloseable {
   @TestOnly
   public abstract void setUsedMemoryInBytes(final long usedMemoryInBytes);
 
+  /** Get the memory usage in byte of this memory block */
+  public abstract long getUsedMemoryInBytes();
+
+  /** Get the free memory in byte of this memory block */
+  public abstract long getFreeMemoryInBytes();
+
   /** Get the name of memory block */
   public String getName() {
     return name;
@@ -105,16 +102,6 @@ public abstract class IMemoryBlock implements AutoCloseable {
   /** Get the maximum memory size in byte of this memory block */
   public long getTotalMemorySizeInBytes() {
     return totalMemorySizeInBytes;
-  }
-
-  /** Get the memory usage in byte of this memory block */
-  public long getUsedMemoryInBytes() {
-    return usedMemoryInBytes.get();
-  }
-
-  /** Get the free memory in byte of this memory block */
-  public long getFreeMemoryInBytes() {
-    return totalMemorySizeInBytes - usedMemoryInBytes.get();
   }
 
   /** Get whether this memory block is released */

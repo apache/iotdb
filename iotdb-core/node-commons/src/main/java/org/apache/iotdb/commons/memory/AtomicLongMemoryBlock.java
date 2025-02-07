@@ -24,11 +24,19 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
 
-public class MemoryBlock extends IMemoryBlock {
-  private static final Logger LOGGER = LoggerFactory.getLogger(MemoryBlock.class);
+public class AtomicLongMemoryBlock extends IMemoryBlock {
+  private static final Logger LOGGER = LoggerFactory.getLogger(AtomicLongMemoryBlock.class);
 
-  public MemoryBlock(
+  /** The reentrant lock of memory block */
+  protected final ReentrantLock lock = new ReentrantLock();
+
+  /** The memory usage in byte of this memory block */
+  protected final AtomicLong usedMemoryInBytes = new AtomicLong(0);
+
+  public AtomicLongMemoryBlock(
       final String name, final MemoryManager memoryManager, final long maxMemorySizeInByte) {
     this.name = name;
     this.memoryManager = memoryManager;
@@ -36,7 +44,7 @@ public class MemoryBlock extends IMemoryBlock {
     this.memoryBlockType = MemoryBlockType.NONE;
   }
 
-  public MemoryBlock(
+  public AtomicLongMemoryBlock(
       final String name,
       final MemoryManager memoryManager,
       final long maxMemorySizeInByte,
@@ -98,6 +106,15 @@ public class MemoryBlock extends IMemoryBlock {
   @Override
   public void setUsedMemoryInBytes(long usedMemoryInBytes) {
     this.usedMemoryInBytes.set(usedMemoryInBytes);
+  }
+
+  public long getUsedMemoryInBytes() {
+    return usedMemoryInBytes.get();
+  }
+
+  /** Get the free memory in byte of this memory block */
+  public long getFreeMemoryInBytes() {
+    return totalMemorySizeInBytes - usedMemoryInBytes.get();
   }
 
   @Override

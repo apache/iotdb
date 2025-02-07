@@ -46,6 +46,17 @@ public class StreamEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.ON_HEAP,
         Tag.LEVEL.toString(),
         GlobalMemoryMetrics.LEVELS[1]);
+    metricService.createAutoGauge(
+        Metric.MEMORY_ACTUAL_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getPipeMemoryManager(),
+        MemoryManager::getUsedMemorySizeInBytes,
+        Tag.NAME.toString(),
+        STREAM_ENGINE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[1]);
   }
 
   @Override
@@ -53,6 +64,15 @@ public class StreamEngineMemoryMetrics implements IMetricSet {
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        Tag.NAME.toString(),
+        STREAM_ENGINE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[1]);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.MEMORY_ACTUAL_SIZE.toString(),
         Tag.NAME.toString(),
         STREAM_ENGINE,
         Tag.TYPE.toString(),

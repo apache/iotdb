@@ -87,7 +87,7 @@ public class MemoryManager {
     this.enable = enable;
   }
 
-  // region The Methods Of MemoryBlock Management
+  // region The Methods Of IMemoryBlock Management
 
   /**
    * Try to force allocate memory block with specified size in bytes
@@ -239,7 +239,7 @@ public class MemoryManager {
       LOGGER.warn("forceAllocate {}: sizeInBytes should be positive", name);
     }
     allocatedMemorySizeInBytes += sizeInBytes;
-    final IMemoryBlock memoryBlock = new MemoryBlock(name, this, sizeInBytes, type);
+    final IMemoryBlock memoryBlock = new AtomicLongMemoryBlock(name, this, sizeInBytes, type);
     allocatedMemoryBlocks.add(memoryBlock);
     return memoryBlock;
   }
