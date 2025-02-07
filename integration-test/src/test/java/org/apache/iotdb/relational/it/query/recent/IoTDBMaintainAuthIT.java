@@ -31,6 +31,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import static org.apache.iotdb.db.auth.AuthorityChecker.ONLY_ADMIN_ALLOWED;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableExecuteTest;
@@ -247,6 +248,41 @@ public class IoTDBMaintainAuthIT {
         "STOP REPAIR DATA",
         TSStatusCode.NO_PERMISSION.getStatusCode()
             + ": Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+        USER_2,
+        PASSWORD);
+
+    // case 18: create function
+    // user1 with MAINTAIN
+    tableAssertTestFail(
+        "create function udsf as 'org.apache.iotdb.db.query.udf.example.relational.ContainNull'",
+        TSStatusCode.NO_PERMISSION.getStatusCode() + ": Access Denied: " + ONLY_ADMIN_ALLOWED,
+        USER_1,
+        PASSWORD);
+    // user2 without MAINTAIN
+    tableAssertTestFail(
+        "create function udsf as 'org.apache.iotdb.db.query.udf.example.relational.ContainNull'",
+        TSStatusCode.NO_PERMISSION.getStatusCode() + ": Access Denied: " + ONLY_ADMIN_ALLOWED,
+        USER_2,
+        PASSWORD);
+
+    // case 19: show functions
+    // user1 with MAINTAIN
+    expectedHeader = new String[] {"FunctionName", "FunctionType", "ClassName(UDF)", "State"};
+    tableQueryNoVerifyResultTest("SHOW FUNCTIONS", expectedHeader, USER_1, PASSWORD);
+    // user2 without MAINTAIN
+    tableQueryNoVerifyResultTest("SHOW FUNCTIONS", expectedHeader, USER_2, PASSWORD);
+
+    // case 20: create function
+    // user1 with MAINTAIN
+    tableAssertTestFail(
+        "drop function udsf",
+        TSStatusCode.NO_PERMISSION.getStatusCode() + ": Access Denied: " + ONLY_ADMIN_ALLOWED,
+        USER_1,
+        PASSWORD);
+    // user2 without MAINTAIN
+    tableAssertTestFail(
+        "drop function udsf",
+        TSStatusCode.NO_PERMISSION.getStatusCode() + ": Access Denied: " + ONLY_ADMIN_ALLOWED,
         USER_2,
         PASSWORD);
   }
