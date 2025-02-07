@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
@@ -110,6 +112,8 @@ public class DataRegionConsensusImpl {
     }
 
     private static ConsensusConfig buildConsensusConfig() {
+      IMemoryBlock memoryBlock =
+          CONF.getConsensusMemoryManager().forceAllocate("Consensus", MemoryBlockType.FUNCTION);
       return ConsensusConfig.newBuilder()
           .setThisNodeId(CONF.getDataNodeId())
           .setThisNode(new TEndPoint(CONF.getInternalAddress(), CONF.getDataRegionConsensusPort()))
@@ -133,7 +137,7 @@ public class DataRegionConsensusImpl {
                   .setReplication(
                       IoTConsensusConfig.Replication.newBuilder()
                           .setWalThrottleThreshold(CONF.getThrottleThreshold())
-                          .setConsensusMemoryManager(CONF.getConsensusMemoryManager())
+                          .setConsensusMemoryBlock(memoryBlock)
                           .setMaxLogEntriesNumPerBatch(CONF.getMaxLogEntriesNumPerBatch())
                           .setMaxSizePerBatch(CONF.getMaxSizePerBatch())
                           .setMaxPendingBatchesNum(CONF.getMaxPendingBatchesNum())

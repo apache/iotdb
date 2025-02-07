@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.consensus.iot.logdispatcher;
 
+import org.apache.iotdb.commons.memory.AtomicLongMemoryBlock;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
-import org.apache.iotdb.commons.memory.MemoryBlockType;
-import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.service.metric.MetricService;
 
 import org.slf4j.Logger;
@@ -33,7 +32,8 @@ public class IoTConsensusMemoryManager {
   private static final Logger logger = LoggerFactory.getLogger(IoTConsensusMemoryManager.class);
   private final AtomicLong queueMemorySizeInByte = new AtomicLong(0);
   private final AtomicLong syncMemorySizeInByte = new AtomicLong(0);
-  private IMemoryBlock memoryBlock;
+  private IMemoryBlock memoryBlock =
+      new AtomicLongMemoryBlock("Consensus-Default", null, Runtime.getRuntime().maxMemory() / 10);
   private Double maxMemoryRatioForQueue = 0.6;
 
   private IoTConsensusMemoryManager() {
@@ -69,8 +69,8 @@ public class IoTConsensusMemoryManager {
         currentUsedMemory);
   }
 
-  public void init(MemoryManager memoryManager, double maxMemoryRatioForQueue) {
-    this.memoryBlock = memoryManager.forceAllocate("IoT-Consensus", MemoryBlockType.FUNCTION);
+  public void init(IMemoryBlock memoryBlock, double maxMemoryRatioForQueue) {
+    this.memoryBlock = memoryBlock;
     this.maxMemoryRatioForQueue = maxMemoryRatioForQueue;
   }
 

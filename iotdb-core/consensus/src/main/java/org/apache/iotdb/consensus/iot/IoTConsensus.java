@@ -124,7 +124,7 @@ public class IoTConsensus implements IConsensus {
     // init IoTConsensus memory manager
     IoTConsensusMemoryManager.getInstance()
         .init(
-            config.getIotConsensusConfig().getReplication().getConsensusMemoryManager(),
+            config.getIotConsensusConfig().getReplication().getConsensusMemoryBlock(),
             config.getIotConsensusConfig().getReplication().getMaxMemoryRatioForQueue());
     // init IoTConsensus Rate Limiter
     IoTConsensusRateLimiter.getInstance()

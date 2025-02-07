@@ -20,7 +20,8 @@
 package org.apache.iotdb.consensus.config;
 
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
-import org.apache.iotdb.commons.memory.MemoryManager;
+import org.apache.iotdb.commons.memory.AtomicLongMemoryBlock;
+import org.apache.iotdb.commons.memory.IMemoryBlock;
 
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -247,7 +248,7 @@ public class IoTConsensusConfig {
     private final long walThrottleThreshold;
     private final long throttleTimeOutMs;
     private final long checkpointGap;
-    private final MemoryManager consensusMemoryManager;
+    private final IMemoryBlock consensusMemoryBlock;
     private final double maxMemoryRatioForQueue;
     private final long regionMigrationSpeedLimitBytesPerSecond;
 
@@ -263,7 +264,7 @@ public class IoTConsensusConfig {
         long walThrottleThreshold,
         long throttleTimeOutMs,
         long checkpointGap,
-        MemoryManager consensusMemoryManager,
+        IMemoryBlock consensusMemoryBlock,
         double maxMemoryRatioForQueue,
         long regionMigrationSpeedLimitBytesPerSecond) {
       this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
@@ -277,7 +278,7 @@ public class IoTConsensusConfig {
       this.walThrottleThreshold = walThrottleThreshold;
       this.throttleTimeOutMs = throttleTimeOutMs;
       this.checkpointGap = checkpointGap;
-      this.consensusMemoryManager = consensusMemoryManager;
+      this.consensusMemoryBlock = consensusMemoryBlock;
       this.maxMemoryRatioForQueue = maxMemoryRatioForQueue;
       this.regionMigrationSpeedLimitBytesPerSecond = regionMigrationSpeedLimitBytesPerSecond;
     }
@@ -326,8 +327,8 @@ public class IoTConsensusConfig {
       return checkpointGap;
     }
 
-    public MemoryManager getConsensusMemoryManager() {
-      return consensusMemoryManager;
+    public IMemoryBlock getConsensusMemoryBlock() {
+      return consensusMemoryBlock;
     }
 
     public double getMaxMemoryRatioForQueue() {
@@ -356,7 +357,9 @@ public class IoTConsensusConfig {
       private long walThrottleThreshold = 50 * 1024 * 1024 * 1024L;
       private long throttleTimeOutMs = TimeUnit.SECONDS.toMillis(30);
       private long checkpointGap = 500;
-      private MemoryManager consensusMemoryManager;
+      private IMemoryBlock consensusMemoryBlock =
+          new AtomicLongMemoryBlock(
+              "Consensus-Default", null, Runtime.getRuntime().maxMemory() / 10);
       private double maxMemoryRatioForQueue = 0.6;
       private long regionMigrationSpeedLimitBytesPerSecond = 32 * 1024 * 1024L;
 
@@ -417,8 +420,8 @@ public class IoTConsensusConfig {
         return this;
       }
 
-      public Replication.Builder setConsensusMemoryManager(MemoryManager consensusMemoryManager) {
-        this.consensusMemoryManager = consensusMemoryManager;
+      public Replication.Builder setConsensusMemoryBlock(IMemoryBlock consensusMemoryBlock) {
+        this.consensusMemoryBlock = consensusMemoryBlock;
         return this;
       }
 
@@ -446,7 +449,7 @@ public class IoTConsensusConfig {
             walThrottleThreshold,
             throttleTimeOutMs,
             checkpointGap,
-            consensusMemoryManager,
+            consensusMemoryBlock,
             maxMemoryRatioForQueue,
             regionMigrationSpeedLimitBytesPerSecond);
       }
