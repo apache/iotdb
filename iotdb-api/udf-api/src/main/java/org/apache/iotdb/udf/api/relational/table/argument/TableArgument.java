@@ -31,12 +31,14 @@ public class TableArgument implements Argument {
   private final List<Type> fieldTypes;
   private final List<String> partitionBy;
   private final List<String> orderBy;
+  private final boolean rowSemantics;
 
   public TableArgument(
       List<Optional<String>> fieldNames,
       List<Type> fieldTypes,
       List<String> partitionBy,
-      List<String> orderBy) {
+      List<String> orderBy,
+      boolean rowSemantic) {
     this.fieldNames = requireNonNull(fieldNames, "fieldNames is null");
     this.fieldTypes = requireNonNull(fieldTypes, "fieldTypes is null");
     if (fieldNames.size() != fieldTypes.size()) {
@@ -44,6 +46,7 @@ public class TableArgument implements Argument {
     }
     this.partitionBy = requireNonNull(partitionBy, "partitionBy is null");
     this.orderBy = requireNonNull(orderBy, "orderBy is null");
+    this.rowSemantics = rowSemantic;
   }
 
   public List<Optional<String>> getFieldNames() {
@@ -60,6 +63,10 @@ public class TableArgument implements Argument {
 
   public List<String> getOrderBy() {
     return orderBy;
+  }
+
+  public boolean isRowSemantics() {
+    return rowSemantics;
   }
 
   public int size() {

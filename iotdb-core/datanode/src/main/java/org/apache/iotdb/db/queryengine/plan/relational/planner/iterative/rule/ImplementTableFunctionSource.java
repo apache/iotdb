@@ -106,7 +106,7 @@ public class ImplementTableFunctionSource implements Rule<TableFunctionNode> {
               node.getProperOutputs(),
               Optional.empty(),
               false,
-              ImmutableList.of(),
+              Optional.empty(),
               ImmutableList.of(),
               Optional.empty(),
               node.getArguments()));
@@ -153,8 +153,8 @@ public class ImplementTableFunctionSource implements Rule<TableFunctionNode> {
               node.getProperOutputs(),
               Optional.of(child.get()),
               sourceProperties.isPruneWhenEmpty(),
-              ImmutableList.of(sourceProperties.getPassThroughSpecification()),
-              ImmutableList.of(sourceProperties.getRequiredColumns()),
+              Optional.ofNullable(sourceProperties.getPassThroughSpecification()),
+              sourceProperties.getRequiredColumns(),
               sourceProperties.getDataOrganizationSpecification(),
               node.getArguments()));
     } else {

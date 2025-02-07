@@ -3518,7 +3518,8 @@ public class StatementAnalyzer {
       analysisBuilder.withPassThroughColumns(argumentSpecification.isPassThroughColumns());
 
       return new ArgumentAnalysis(
-          new TableArgument(fieldNames, fieldTypes, partitionBy, orderBy),
+          new TableArgument(
+              fieldNames, fieldTypes, partitionBy, orderBy, argumentSpecification.isRowSemantics()),
           Optional.of(analysisBuilder.build()));
     }
 

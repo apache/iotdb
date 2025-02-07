@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 import com.google.common.collect.ImmutableList;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
@@ -42,5 +43,19 @@ public class DataOrganizationSpecification {
 
   public Optional<OrderingScheme> getOrderingScheme() {
     return orderingScheme;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    DataOrganizationSpecification that = (DataOrganizationSpecification) o;
+    return Objects.equals(partitionBy, that.partitionBy)
+        && Objects.equals(orderingScheme, that.orderingScheme);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(partitionBy, orderingScheme);
   }
 }

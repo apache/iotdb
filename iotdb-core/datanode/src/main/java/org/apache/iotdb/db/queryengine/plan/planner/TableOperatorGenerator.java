@@ -225,7 +225,6 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.ImmutableList.toImmutableList;
-import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
@@ -2366,13 +2365,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               .collect(Collectors.toList());
 
       int properChannelCount = node.getProperOutputs().size();
-      TableFunctionNode.PassThroughSpecification passThroughSpecifications =
-          getOnlyElement(node.getPassThroughSpecifications());
+      Optional<TableFunctionNode.PassThroughSpecification> passThroughSpecification =
+          node.getPassThroughSpecification();
 
       Map<Symbol, Integer> childLayout =
           makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
       List<Integer> requiredChannels =
-          getChannelsForSymbols(getOnlyElement(node.getRequiredSymbols()), childLayout);
+          getChannelsForSymbols(node.getRequiredSymbols(), childLayout);
 
       List<Integer> partitionChannels;
       if (node.getDataOrganizationSpecification().isPresent()) {
@@ -2390,7 +2389,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           outputDataTypes,
           properChannelCount,
           requiredChannels,
-          passThroughSpecifications,
+          passThroughSpecification,
           partitionChannels);
     }
   }

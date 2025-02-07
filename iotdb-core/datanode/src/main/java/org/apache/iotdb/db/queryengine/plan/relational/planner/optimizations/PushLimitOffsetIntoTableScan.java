@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFill
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
@@ -235,6 +236,16 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
         InformationSchemaTableScanNode node, Context context) {
       context.enablePushDown = false;
       return node;
+    }
+
+    @Override
+    public PlanNode visitTableFunctionProcessor(TableFunctionProcessorNode node, Context context) {
+      if (node.getChildren().isEmpty()) {
+        context.enablePushDown = false;
+        return node;
+      } else {
+        return visitPlan(node, context);
+      }
     }
 
     @Override

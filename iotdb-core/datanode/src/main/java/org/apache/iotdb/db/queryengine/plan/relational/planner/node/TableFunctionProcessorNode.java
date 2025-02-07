@@ -33,13 +33,11 @@ import com.google.common.collect.ImmutableMap;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
 
@@ -55,10 +53,10 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
   private final boolean pruneWhenEmpty;
 
   // all source symbols to be produced on output, ordered as table argument specifications
-  private final List<TableFunctionNode.PassThroughSpecification> passThroughSpecifications;
+  private final Optional<TableFunctionNode.PassThroughSpecification> passThroughSpecification;
 
   // symbols required from each source, ordered as table argument specifications
-  private final List<List<Symbol>> requiredSymbols;
+  private final List<Symbol> requiredSymbols;
 
   // partitioning and ordering combined from sources
   private final Optional<DataOrganizationSpecification> dataOrganizationSpecification;
@@ -71,17 +69,16 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
       List<Symbol> properOutputs,
       Optional<PlanNode> source,
       boolean pruneWhenEmpty,
-      List<TableFunctionNode.PassThroughSpecification> passThroughSpecifications,
-      List<List<Symbol>> requiredSymbols,
+      Optional<TableFunctionNode.PassThroughSpecification> passThroughSpecification,
+      List<Symbol> requiredSymbols,
       Optional<DataOrganizationSpecification> dataOrganizationSpecification,
       Map<String, Argument> arguments) {
     super(id, source.orElse(null));
     this.name = requireNonNull(name, "name is null");
     this.properOutputs = ImmutableList.copyOf(properOutputs);
     this.pruneWhenEmpty = pruneWhenEmpty;
-    this.passThroughSpecifications = ImmutableList.copyOf(passThroughSpecifications);
-    this.requiredSymbols =
-        requiredSymbols.stream().map(ImmutableList::copyOf).collect(toImmutableList());
+    this.passThroughSpecification = passThroughSpecification;
+    this.requiredSymbols = ImmutableList.copyOf(requiredSymbols);
     this.dataOrganizationSpecification =
         requireNonNull(dataOrganizationSpecification, "specification is null");
     this.arguments = ImmutableMap.copyOf(arguments);
@@ -92,17 +89,16 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
       String name,
       List<Symbol> properOutputs,
       boolean pruneWhenEmpty,
-      List<TableFunctionNode.PassThroughSpecification> passThroughSpecifications,
-      List<List<Symbol>> requiredSymbols,
+      Optional<TableFunctionNode.PassThroughSpecification> passThroughSpecification,
+      List<Symbol> requiredSymbols,
       Optional<DataOrganizationSpecification> dataOrganizationSpecification,
       Map<String, Argument> arguments) {
     super(id);
     this.name = requireNonNull(name, "name is null");
     this.properOutputs = ImmutableList.copyOf(properOutputs);
     this.pruneWhenEmpty = pruneWhenEmpty;
-    this.passThroughSpecifications = ImmutableList.copyOf(passThroughSpecifications);
-    this.requiredSymbols =
-        requiredSymbols.stream().map(ImmutableList::copyOf).collect(toImmutableList());
+    this.passThroughSpecification = passThroughSpecification;
+    this.requiredSymbols = ImmutableList.copyOf(requiredSymbols);
     this.dataOrganizationSpecification =
         requireNonNull(dataOrganizationSpecification, "specification is null");
     this.arguments = ImmutableMap.copyOf(arguments);
@@ -120,11 +116,11 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
     return pruneWhenEmpty;
   }
 
-  public List<TableFunctionNode.PassThroughSpecification> getPassThroughSpecifications() {
-    return passThroughSpecifications;
+  public Optional<TableFunctionNode.PassThroughSpecification> getPassThroughSpecification() {
+    return passThroughSpecification;
   }
 
-  public List<List<Symbol>> getRequiredSymbols() {
+  public List<Symbol> getRequiredSymbols() {
     return requiredSymbols;
   }
 
@@ -143,7 +139,7 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
         name,
         properOutputs,
         pruneWhenEmpty,
-        passThroughSpecifications,
+        passThroughSpecification,
         requiredSymbols,
         dataOrganizationSpecification,
         arguments);
@@ -153,11 +149,11 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
   public List<Symbol> getOutputSymbols() {
     ImmutableList.Builder<Symbol> symbols = ImmutableList.builder();
     symbols.addAll(properOutputs);
-    passThroughSpecifications.stream()
-        .map(TableFunctionNode.PassThroughSpecification::getColumns)
-        .flatMap(Collection::stream)
-        .map(TableFunctionNode.PassThroughColumn::getSymbol)
-        .forEach(symbols::add);
+    passThroughSpecification.ifPresent(
+        passThroughSpecification1 ->
+            passThroughSpecification1.getColumns().stream()
+                .map(TableFunctionNode.PassThroughColumn::getSymbol)
+                .forEach(symbols::add));
     return symbols.build();
   }
 
@@ -165,12 +161,12 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
   public List<String> getOutputColumnNames() {
     ImmutableList.Builder<String> symbols = ImmutableList.builder();
     symbols.addAll(properOutputs.stream().map(Symbol::getName).collect(Collectors.toList()));
-    passThroughSpecifications.stream()
-        .map(TableFunctionNode.PassThroughSpecification::getColumns)
-        .flatMap(Collection::stream)
-        .map(TableFunctionNode.PassThroughColumn::getSymbol)
-        .map(Symbol::getName)
-        .forEach(symbols::add);
+    passThroughSpecification.ifPresent(
+        passThroughSpecification1 ->
+            passThroughSpecification1.getColumns().stream()
+                .map(TableFunctionNode.PassThroughColumn::getSymbol)
+                .map(Symbol::getName)
+                .forEach(symbols::add));
     return symbols.build();
   }
 
@@ -199,7 +195,7 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
         properOutputs,
         newSource,
         pruneWhenEmpty,
-        passThroughSpecifications,
+        passThroughSpecification,
         requiredSymbols,
         dataOrganizationSpecification,
         arguments);

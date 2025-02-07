@@ -42,6 +42,7 @@ import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 
@@ -72,7 +73,7 @@ public class TableFunctionOperator implements ProcessOperator {
       List<TSDataType> outputDataTypes,
       int properChannelCount,
       List<Integer> requiredChannels,
-      TableFunctionNode.PassThroughSpecification passThroughSpecifications,
+      Optional<TableFunctionNode.PassThroughSpecification> passThroughSpecifications,
       List<Integer> partitionChannels) {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;

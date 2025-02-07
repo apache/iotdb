@@ -29,6 +29,9 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.execution.function.table.ExcludeColumnFunction;
+import org.apache.iotdb.db.queryengine.execution.function.table.HOPTableFunction;
+import org.apache.iotdb.db.queryengine.execution.function.table.SplitFunction;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
@@ -442,7 +445,15 @@ public class TestMatadata implements Metadata {
 
   @Override
   public TableFunction getTableFunction(String functionName) {
-    return null;
+    if ("HOP".equalsIgnoreCase(functionName)) {
+      return new HOPTableFunction();
+    } else if ("EXCLUDE".equalsIgnoreCase(functionName)) {
+      return new ExcludeColumnFunction();
+    } else if ("SPLIT".equalsIgnoreCase(functionName)) {
+      return new SplitFunction();
+    } else {
+      return null;
+    }
   }
 
   private static final DataPartition TABLE_DATA_PARTITION =

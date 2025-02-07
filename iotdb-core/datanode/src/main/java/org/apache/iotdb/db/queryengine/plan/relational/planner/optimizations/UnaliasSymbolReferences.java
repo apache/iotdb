@@ -827,7 +827,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
                 mapper.map(node.getProperOutputs()),
                 Optional.empty(),
                 node.isPruneWhenEmpty(),
-                ImmutableList.of(),
+                Optional.empty(),
                 ImmutableList.of(),
                 Optional.empty(),
                 node.getArguments()),
@@ -838,8 +838,8 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
       Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
       SymbolMapper mapper = symbolMapper(mapping);
 
-      List<TableFunctionNode.PassThroughSpecification> newPassThroughSpecification =
-          node.getPassThroughSpecifications().stream()
+      Optional<TableFunctionNode.PassThroughSpecification> newPassThroughSpecification =
+          node.getPassThroughSpecification()
               .map(
                   passThroughSpecification ->
                       new TableFunctionNode.PassThroughSpecification(
@@ -850,10 +850,8 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
                                       new TableFunctionNode.PassThroughColumn(
                                           mapper.map(column.getSymbol()),
                                           column.isPartitioningColumn()))
-                              .collect(toImmutableList())))
-              .collect(Collectors.toList());
-      List<List<Symbol>> newRequiredSymbols =
-          node.getRequiredSymbols().stream().map(mapper::map).collect(toImmutableList());
+                              .collect(toImmutableList())));
+      List<Symbol> newRequiredSymbols = mapper.map(node.getRequiredSymbols());
 
       Optional<DataOrganizationSpecification> newSpecification =
           node.getDataOrganizationSpecification().map(mapper::mapAndDistinct);
