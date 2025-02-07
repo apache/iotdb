@@ -48,41 +48,64 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    // Total memory size of storage engine
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            STORAGE_ENGINE,
-            Tag.TYPE.toString(),
-            GlobalMemoryMetrics.ON_HEAP,
-            Tag.LEVEL.toString(),
-            GlobalMemoryMetrics.LEVELS[1])
-        .set(config.getStorageEngineMemoryManager().getTotalMemorySizeInBytes());
-    // The memory of storage engine divided into Write and Compaction
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            STORAGE_ENGINE_WRITE,
-            Tag.TYPE.toString(),
-            GlobalMemoryMetrics.ON_HEAP,
-            Tag.LEVEL.toString(),
-            GlobalMemoryMetrics.LEVELS[2])
-        .set(config.getWriteMemoryManager().getTotalMemorySizeInBytes());
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            STORAGE_ENGINE_COMPACTION,
-            Tag.TYPE.toString(),
-            GlobalMemoryMetrics.ON_HEAP,
-            Tag.LEVEL.toString(),
-            GlobalMemoryMetrics.LEVELS[2])
-        .set(config.getCompactionMemoryManager().getTotalMemorySizeInBytes());
+    // total memory of storage engine
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getStorageEngineMemoryManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        STORAGE_ENGINE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[1]);
+    bindStorageEngineDividedMetrics(metricService);
+    bindWriteDividedMetrics(metricService);
+    bindMemtableDividedMetrics(metricService);
+  }
+
+  @Override
+  public void unbindFrom(AbstractMetricService metricService) {
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        Tag.NAME.toString(),
+        STORAGE_ENGINE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[1]);
+    unbindStorageEngineDividedMetrics(metricService);
+    unbindWriteDividedMetric(metricService);
+    unbindMemtableDividedMetrics(metricService);
+  }
+
+  // region Storage Engine Divided Memory Metrics
+  private void bindStorageEngineDividedMetrics(AbstractMetricService metricService) {
+    // The memory of storage engine divided into write and compaction
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getWriteMemoryManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        STORAGE_ENGINE_WRITE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[2]);
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getCompactionMemoryManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        STORAGE_ENGINE_COMPACTION,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.NORMAL,
@@ -94,42 +117,105 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.ON_HEAP,
         Tag.LEVEL.toString(),
         GlobalMemoryMetrics.LEVELS[2]);
-    // The write memory of storage engine divided into MemTable and TimePartitionInfo
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            STORAGE_ENGINE_WRITE_MEMTABLE,
-            Tag.TYPE.toString(),
-            GlobalMemoryMetrics.ON_HEAP,
-            Tag.LEVEL.toString(),
-            GlobalMemoryMetrics.LEVELS[3])
-        .set(config.getMemtableMemoryManager().getTotalMemorySizeInBytes());
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO,
-            Tag.TYPE.toString(),
-            GlobalMemoryMetrics.ON_HEAP,
-            Tag.LEVEL.toString(),
-            GlobalMemoryMetrics.LEVELS[3])
-        .set(config.getTimePartitionInfoMemoryManager().getTotalMemorySizeInBytes());
-    // The memtable memory of storage engine contain DataNodeDevicePathCache (NOTICE: This part of
-    // memory is not divided)
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            STORAGE_ENGINE_WRITE_MEMTABLE_DEVICE_PATH_CACHE,
-            Tag.TYPE.toString(),
-            GlobalMemoryMetrics.ON_HEAP,
-            Tag.LEVEL.toString(),
-            GlobalMemoryMetrics.LEVELS[4])
-        .set(config.getDevicePathCacheMemoryManager().getTotalMemorySizeInBytes());
+  }
+
+  private void unbindStorageEngineDividedMetrics(AbstractMetricService metricService) {
+    Arrays.asList(STORAGE_ENGINE_WRITE, STORAGE_ENGINE_COMPACTION)
+        .forEach(
+            name -> {
+              metricService.remove(
+                  MetricType.AUTO_GAUGE,
+                  Metric.MEMORY_THRESHOLD_SIZE.toString(),
+                  Tag.NAME.toString(),
+                  name,
+                  Tag.TYPE.toString(),
+                  GlobalMemoryMetrics.ON_HEAP,
+                  Tag.LEVEL.toString(),
+                  GlobalMemoryMetrics.LEVELS[2]);
+              metricService.remove(
+                  MetricType.AUTO_GAUGE,
+                  Metric.MEMORY_ACTUAL_SIZE.toString(),
+                  Tag.NAME.toString(),
+                  name,
+                  Tag.TYPE.toString(),
+                  GlobalMemoryMetrics.ON_HEAP,
+                  Tag.LEVEL.toString(),
+                  GlobalMemoryMetrics.LEVELS[2]);
+            });
+  }
+
+  // endregion
+
+  // region Write Divided Memory Metrics
+  private void bindWriteDividedMetrics(AbstractMetricService metricService) {
+    // The memory of write divided into memtable and compaction
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getMemtableMemoryManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        STORAGE_ENGINE_WRITE_MEMTABLE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[3]);
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getTimePartitionInfoMemoryManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[3]);
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getTimePartitionInfoMemoryManager(),
+        MemoryManager::getUsedMemorySizeInBytes,
+        Tag.NAME.toString(),
+        STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[3]);
+  }
+
+  private void unbindWriteDividedMetric(AbstractMetricService metricService) {
+    Arrays.asList(STORAGE_ENGINE_WRITE_MEMTABLE, STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO)
+        .forEach(
+            name ->
+                metricService.remove(
+                    MetricType.AUTO_GAUGE,
+                    Metric.MEMORY_THRESHOLD_SIZE.toString(),
+                    Tag.NAME.toString(),
+                    name,
+                    Tag.TYPE.toString(),
+                    GlobalMemoryMetrics.ON_HEAP,
+                    Tag.LEVEL.toString(),
+                    GlobalMemoryMetrics.LEVELS[3]));
+  }
+
+  // endregion
+
+  // region Memtable Divided Memory Metrics
+
+  private void bindMemtableDividedMetrics(AbstractMetricService metricService) {
+    // DevicePathCache related metrics
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getDevicePathCacheMemoryManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        STORAGE_ENGINE_WRITE_MEMTABLE_DEVICE_PATH_CACHE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[4]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.NORMAL,
@@ -141,17 +227,18 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.ON_HEAP,
         Tag.LEVEL.toString(),
         GlobalMemoryMetrics.LEVELS[4]);
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            STORAGE_ENGINE_WRITE_MEMTABLE_BUFFERED_ARRAYS,
-            Tag.TYPE.toString(),
-            GlobalMemoryMetrics.ON_HEAP,
-            Tag.LEVEL.toString(),
-            GlobalMemoryMetrics.LEVELS[4])
-        .set(config.getBufferedArraysMemoryManager().getTotalMemorySizeInBytes());
+    // BufferedArrays related metrics
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getBufferedArraysMemoryManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        STORAGE_ENGINE_WRITE_MEMTABLE_BUFFERED_ARRAYS,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[4]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.NORMAL,
@@ -163,17 +250,18 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.ON_HEAP,
         Tag.LEVEL.toString(),
         GlobalMemoryMetrics.LEVELS[4]);
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            STORAGE_ENGINE_WRITE_MEMTABLE_WAL_BUFFER_QUEUE,
-            Tag.TYPE.toString(),
-            GlobalMemoryMetrics.ON_HEAP,
-            Tag.LEVEL.toString(),
-            GlobalMemoryMetrics.LEVELS[4])
-        .set(config.getWalBufferQueueManager().getTotalMemorySizeInBytes());
+    // WalBufferQueue related metrics
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.NORMAL,
+        config.getWalBufferQueueManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        STORAGE_ENGINE_WRITE_MEMTABLE_WAL_BUFFER_QUEUE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[4]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.NORMAL,
@@ -187,51 +275,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[4]);
   }
 
-  @Override
-  public void unbindFrom(AbstractMetricService metricService) {
-    metricService.remove(
-        MetricType.GAUGE,
-        Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        Tag.NAME.toString(),
-        STORAGE_ENGINE,
-        Tag.TYPE.toString(),
-        GlobalMemoryMetrics.ON_HEAP,
-        Tag.LEVEL.toString(),
-        GlobalMemoryMetrics.LEVELS[1]);
-    Arrays.asList(STORAGE_ENGINE_WRITE, STORAGE_ENGINE_COMPACTION)
-        .forEach(
-            name -> {
-              metricService.remove(
-                  MetricType.GAUGE,
-                  Metric.MEMORY_THRESHOLD_SIZE.toString(),
-                  Tag.NAME.toString(),
-                  name,
-                  Tag.TYPE.toString(),
-                  GlobalMemoryMetrics.ON_HEAP,
-                  Tag.LEVEL.toString(),
-                  GlobalMemoryMetrics.LEVELS[2]);
-              metricService.remove(
-                  MetricType.AUTO_GAUGE,
-                  Metric.MEMORY_ACTUAL_SIZE.toString(),
-                  Tag.NAME.toString(),
-                  name,
-                  Tag.TYPE.toString(),
-                  GlobalMemoryMetrics.ON_HEAP,
-                  Tag.LEVEL.toString(),
-                  GlobalMemoryMetrics.LEVELS[2]);
-            });
-    Arrays.asList(STORAGE_ENGINE_WRITE_MEMTABLE, STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO)
-        .forEach(
-            name ->
-                metricService.remove(
-                    MetricType.GAUGE,
-                    Metric.MEMORY_THRESHOLD_SIZE.toString(),
-                    Tag.NAME.toString(),
-                    name,
-                    Tag.TYPE.toString(),
-                    GlobalMemoryMetrics.ON_HEAP,
-                    Tag.LEVEL.toString(),
-                    GlobalMemoryMetrics.LEVELS[3]));
+  private void unbindMemtableDividedMetrics(AbstractMetricService metricService) {
     Arrays.asList(
             STORAGE_ENGINE_WRITE_MEMTABLE_DEVICE_PATH_CACHE,
             STORAGE_ENGINE_WRITE_MEMTABLE_BUFFERED_ARRAYS,
@@ -239,7 +283,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
         .forEach(
             name -> {
               metricService.remove(
-                  MetricType.GAUGE,
+                  MetricType.AUTO_GAUGE,
                   Metric.MEMORY_THRESHOLD_SIZE.toString(),
                   Tag.NAME.toString(),
                   name,
@@ -258,6 +302,8 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
                   GlobalMemoryMetrics.LEVELS[4]);
             });
   }
+
+  // endregion
 
   public static StorageEngineMemoryMetrics getInstance() {
     return StorageEngineMemoryMetricsHolder.INSTANCE;
