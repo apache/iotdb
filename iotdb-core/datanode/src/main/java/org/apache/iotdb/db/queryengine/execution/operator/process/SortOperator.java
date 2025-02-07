@@ -62,7 +62,7 @@ public abstract class SortOperator extends AbstractSortOperator {
       if (tsBlock == null) {
         return null;
       }
-      dataSize += tsBlock.getRetainedSizeInBytes();
+      dataSize += tsBlock.getSizeInBytes();
       cacheTsBlock(tsBlock);
     } catch (IoTDBException e) {
       clear();
