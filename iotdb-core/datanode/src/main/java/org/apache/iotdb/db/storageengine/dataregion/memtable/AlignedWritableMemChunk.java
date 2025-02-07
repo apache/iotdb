@@ -401,6 +401,9 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public long getMaxTime() {
+    if (isEmpty()) {
+      return Long.MIN_VALUE;
+    }
     long maxTime = list.getMaxTime();
     for (AlignedTVList alignedTvList : sortedList) {
       maxTime = Math.max(maxTime, alignedTvList.getMaxTime());
@@ -924,7 +927,15 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public boolean isEmpty() {
-    return rowCount() == 0 || measurementIndexMap.isEmpty();
+    if (list.rowCount() == 0) {
+      return true;
+    }
+    if (ignoreAllNullRows) {
+      return measurementIndexMap.isEmpty()
+          || (list.getAllValueColDeletedMap() != null
+              && list.getAllValueColDeletedMap().isAllMarked());
+    }
+    return false;
   }
 
   @Override

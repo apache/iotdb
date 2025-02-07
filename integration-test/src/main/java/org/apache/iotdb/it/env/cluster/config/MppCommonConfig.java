@@ -255,6 +255,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setTTLCheckInterval(long ttlCheckInterval) {
+    setProperty("ttl_check_interval", String.valueOf(ttlCheckInterval));
+    return this;
+  }
+
+  @Override
   public CommonConfig setTimePartitionOrigin(long timePartitionOrigin) {
     setProperty("time_partition_origin", String.valueOf(timePartitionOrigin));
     return this;
@@ -378,6 +384,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
     setProperty("series_slot_num", String.valueOf(seriesSlotNum));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
+    setProperty("series_partition_executor_class", seriesPartitionExecutorClass);
     return this;
   }
 

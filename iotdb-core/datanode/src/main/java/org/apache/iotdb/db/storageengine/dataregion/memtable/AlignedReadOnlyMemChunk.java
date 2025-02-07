@@ -32,6 +32,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.TableDeviceChunkMetadata;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
@@ -129,7 +130,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     // init chunk meta
     Statistics<? extends Serializable> chunkTimeStatistics =
         Statistics.getStatsByType(TSDataType.VECTOR);
-    IChunkMetadata chunkTimeMetadata =
+    IChunkMetadata timeChunkMetadata =
         new ChunkMetadata(timeChunkName, TSDataType.VECTOR, null, null, 0, chunkTimeStatistics);
     Statistics<? extends Serializable>[] chunkValueStatistics =
         new Statistics[valueChunkNames.size()];
@@ -254,7 +255,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     pageOffsetsList.add(Arrays.copyOf(alignedTvListOffsets, alignedTvListOffsets.length));
 
     // aligned chunk meta
-    List<IChunkMetadata> chunkValueMetadataList = new ArrayList<>();
+    List<IChunkMetadata> valueChunkMetadataList = new ArrayList<>();
     for (int column = 0; column < valueChunkNames.size(); column++) {
       if (chunkValueStatistics[column] != null) {
         IChunkMetadata valueChunkMetadata =
@@ -265,13 +266,16 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
                 null,
                 0,
                 chunkValueStatistics[column]);
-        chunkValueMetadataList.add(valueChunkMetadata);
+        valueChunkMetadataList.add(valueChunkMetadata);
       } else {
-        chunkValueMetadataList.add(null);
+        valueChunkMetadataList.add(null);
       }
     }
+
     IChunkMetadata alignedChunkMetadata =
-        new AlignedChunkMetadata(chunkTimeMetadata, chunkValueMetadataList);
+        context.isIgnoreAllNullRows()
+            ? new AlignedChunkMetadata(timeChunkMetadata, valueChunkMetadataList)
+            : new TableDeviceChunkMetadata(timeChunkMetadata, valueChunkMetadataList);
     alignedChunkMetadata.setChunkLoader(new MemAlignedChunkLoader(context, this));
     alignedChunkMetadata.setVersion(Long.MAX_VALUE);
     cachedMetaData = alignedChunkMetadata;

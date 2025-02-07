@@ -25,7 +25,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
@@ -68,7 +68,7 @@ public class IoTDBDefaultPatternTsfilePushConsumerIT extends AbstractSubscriptio
   private static final String topicName = "topic_DefaultPatternTsfilePushConsumer";
   private static List<IMeasurementSchema> schemaList = new ArrayList<>();
 
-  private SubscriptionPushConsumer consumer;
+  private SubscriptionTreePushConsumer consumer;
 
   @Override
   @Before
@@ -151,7 +151,7 @@ public class IoTDBDefaultPatternTsfilePushConsumerIT extends AbstractSubscriptio
     rowCounts.add(d1s0_rowCount);
     rowCounts.add(other_d2_rowCount);
     consumer =
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("default_pattern_TsFile_consumer")

@@ -393,13 +393,23 @@ public class TsFileResource implements PersistentResource {
   }
 
   public void linkModFile(TsFileResource target) throws IOException {
-    if (exclusiveModFileExists()) {
-      File modsFileForTargetResource = ModificationFile.getExclusiveMods(target.getTsFile());
-      Files.createLink(
-          modsFileForTargetResource.toPath(),
-          ModificationFile.getExclusiveMods(getTsFile()).toPath());
-      target.setExclusiveModFile(new ModificationFile(modsFileForTargetResource, true));
+    File targetModsFile = ModificationFile.getExclusiveMods(target.getTsFile());
+    ModificationFile sourceModFile = this.getExclusiveModFile();
+    ModificationFile targetModsFileObject;
+    sourceModFile.writeLock();
+    try {
+      if (sourceModFile.exists()) {
+        Files.createLink(
+            targetModsFile.toPath(), ModificationFile.getExclusiveMods(getTsFile()).toPath());
+        targetModsFileObject = new ModificationFile(targetModsFile, true);
+      } else {
+        targetModsFileObject = new ModificationFile(targetModsFile, true);
+        sourceModFile.setCascadeFile(Collections.singleton(targetModsFileObject));
+      }
+    } finally {
+      sourceModFile.writeUnlock();
     }
+    target.setExclusiveModFile(targetModsFileObject);
     if (sharedModFileExists()) {
       modFileManagement.addReference(target, sharedModFile);
       target.setSharedModFile(this.getSharedModFile(), false);
@@ -772,7 +782,6 @@ public class TsFileResource implements PersistentResource {
     if (getExclusiveModFile().exists()) {
       getExclusiveModFile().remove();
     }
-    exclusiveModFile = null;
 
     if (getSharedModFile() != null && modFileManagement != null) {
       modFileManagement.releaseFor(this, sharedModFile);

@@ -226,7 +226,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
         return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
+            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER),
             PrivilegeType.MANAGE_USER);
 
       case UPDATE_USER:
@@ -235,7 +235,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
         return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
+            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER),
             PrivilegeType.MANAGE_USER);
 
       case DROP_USER:
@@ -246,7 +246,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
         return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
+            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER),
             PrivilegeType.MANAGE_USER);
 
       case LIST_USER:
@@ -254,7 +254,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
         return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
+            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER),
             PrivilegeType.MANAGE_USER);
 
       case LIST_USER_PRIVILEGE:
@@ -262,7 +262,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
         return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
+            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER),
             PrivilegeType.MANAGE_USER);
 
       case LIST_ROLE_PRIVILEGE:
@@ -271,7 +271,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         }
         if (!AuthorityChecker.checkRole(userName, roleName)) {
           return AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_ROLE.ordinal()),
+              AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_ROLE),
               PrivilegeType.MANAGE_ROLE);
         } else {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -285,7 +285,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         } else {
           return AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_ROLE.ordinal()),
+              AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_ROLE),
               PrivilegeType.MANAGE_ROLE);
         }
 
@@ -301,11 +301,13 @@ public class AuthorStatement extends Statement implements IConfigStatement {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
         return AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_ROLE.ordinal()),
+            AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_ROLE),
             PrivilegeType.MANAGE_ROLE);
 
       case REVOKE_USER:
       case GRANT_USER:
+      case GRANT_ROLE:
+      case REVOKE_ROLE:
         if (AuthorityChecker.SUPER_USER.equals(this.userName)) {
           return AuthorityChecker.getTSStatus(
               false, "Cannot grant/revoke privileges of admin user");
@@ -313,22 +315,32 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
-        return AuthorityChecker.getOptTSStatus(
-            AuthorityChecker.checkGrantOption(userName, privilegeList, nodeNameList),
-            "Has no permission to execute "
-                + authorType
-                + ", please ensure you have these privileges and the grant option is TRUE when granted");
 
-      case GRANT_ROLE:
-      case REVOKE_ROLE:
-        if (AuthorityChecker.SUPER_USER.equals(userName)) {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        for (String s : privilegeList) {
+          PrivilegeType privilegeType = PrivilegeType.valueOf(s.toUpperCase());
+          if (privilegeType.isSystemPrivilege()) {
+            if (!AuthorityChecker.checkSystemPermissionGrantOption(userName, privilegeType)) {
+              return AuthorityChecker.getTSStatus(
+                  false,
+                  "Has no permission to execute "
+                      + authorType
+                      + ", please ensure you have these privileges and the grant option is TRUE when granted)");
+            }
+          } else if (privilegeType.isPathPrivilege()) {
+            if (!AuthorityChecker.checkPathPermissionGrantOption(
+                userName, privilegeType, nodeNameList)) {
+              return AuthorityChecker.getTSStatus(
+                  false,
+                  "Has no permission to execute "
+                      + authorType
+                      + ", please ensure you have these privileges and the grant option is TRUE when granted)");
+            }
+          } else {
+            return AuthorityChecker.getTSStatus(
+                false, "Not support Relation statement in tree sql_dialect");
+          }
         }
-        return AuthorityChecker.getOptTSStatus(
-            AuthorityChecker.checkGrantOption(userName, privilegeList, nodeNameList),
-            "Has no permission to execute "
-                + authorType
-                + ", please ensure you have these privileges and the grant option is TRUE when granted");
+        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       default:
         throw new IllegalArgumentException("Unknown authorType: " + authorType);
     }

@@ -139,7 +139,7 @@ public class MemTableFlushTask {
     for (IDeviceID deviceID : deviceIDList) {
       final Map<String, IWritableMemChunk> value = memTableMap.get(deviceID).getMemChunkMap();
       // skip the empty device/chunk group
-      if (memTableMap.get(deviceID).count() == 0 || value.isEmpty()) {
+      if (memTableMap.get(deviceID).isEmpty() || value.isEmpty()) {
         continue;
       }
       encodingTaskQueue.put(new StartFlushGroupIOTask(deviceID));
