@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -101,7 +102,7 @@ public class ModificationUtils {
   }
 
   private static void modifyValueColumns(
-      AlignedChunkMetadata metaData, List<List<ModEntry>> valueColumnsModifications) {
+      AbstractAlignedChunkMetadata metaData, List<List<ModEntry>> valueColumnsModifications) {
     List<IChunkMetadata> valueChunkMetadataList = metaData.getValueChunkMetadataList();
     // deal with each sub sensor
     for (int j = 0; j < valueChunkMetadataList.size(); j++) {
@@ -116,7 +117,7 @@ public class ModificationUtils {
   }
 
   private static boolean areAllValueColumnsDeleted(
-      AlignedChunkMetadata alignedChunkMetadata, boolean modified) {
+      AbstractAlignedChunkMetadata alignedChunkMetadata, boolean modified) {
 
     // the whole aligned path need to be removed, only set to be true if all the sub sensors
     // are deleted and ignoreAllNullRows is true
@@ -156,11 +157,11 @@ public class ModificationUtils {
   }
 
   public static void modifyAlignedChunkMetaData(
-      List<AlignedChunkMetadata> chunkMetaData,
+      List<? extends AbstractAlignedChunkMetadata> chunkMetaData,
       List<ModEntry> timeColumnModifications,
       List<List<ModEntry>> valueColumnsModifications,
       boolean ignoreAllNullRows) {
-    for (AlignedChunkMetadata metaData : chunkMetaData) {
+    for (AbstractAlignedChunkMetadata metaData : chunkMetaData) {
       IChunkMetadata timeColumnChunkMetadata = metaData.getTimeChunkMetadata();
 
       for (ModEntry modification : timeColumnModifications) {

@@ -108,6 +108,9 @@ statement
     | countTimeSlotListStatement
     | showSeriesSlotListStatement
     | migrateRegionStatement
+    | reconstructRegionStatement
+    | extendRegionStatement
+    | removeRegionStatement
     | removeDataNodeStatement
 
     // Admin Statement
@@ -128,6 +131,19 @@ statement
     | showCurrentTimestampStatement
 
     // auth Statement
+    | grantStatement
+    | revokeStatement
+    | createUserStatement
+    | createRoleStatement
+    | dropUserStatement
+    | dropRoleStatement
+    | grantUserRoleStatement
+    | revokeUserRoleStatement
+    | alterUserStatement
+    | listUserPrivilegeStatement
+    | listRolePrivilegeStatement
+    | listUserStatement
+    | listRoleStatement
 
     // View, Trigger, pipe, CQ, Quota are not supported yet
     ;
@@ -466,6 +482,18 @@ migrateRegionStatement
     : MIGRATE REGION regionId=INTEGER_VALUE FROM fromId=INTEGER_VALUE TO toId=INTEGER_VALUE
     ;
 
+reconstructRegionStatement
+    : RECONSTRUCT REGION regionIds+=INTEGER_VALUE (COMMA regionIds+=INTEGER_VALUE)* ON targetDataNodeId=INTEGER_VALUE
+    ;
+
+extendRegionStatement
+    : EXTEND REGION regionId=INTEGER_VALUE TO targetDataNodeId=INTEGER_VALUE
+    ;
+
+removeRegionStatement
+    : REMOVE REGION regionId=INTEGER_VALUE FROM targetDataNodeId=INTEGER_VALUE
+    ;
+
 removeDataNodeStatement
     : REMOVE DATANODE dataNodeId=INTEGER_VALUE (',' dataNodeId=INTEGER_VALUE)*
     ;
@@ -547,8 +575,113 @@ showCurrentTimestampStatement
     ;
 
 
+// ------------------------------------------- Authority Statement -----------------------------------------------------
+
+createUserStatement
+    : CREATE USER userName=identifier password=string
+    ;
+
+createRoleStatement
+    : CREATE ROLE roleName=identifier
+    ;
+
+dropUserStatement
+    : DROP USER userName=identifier
+    ;
+
+dropRoleStatement
+    : DROP ROLE roleName=identifier
+    ;
+
+alterUserStatement
+    : ALTER USER userName=identifier SET PASSWORD password=identifier
+    ;
+
+grantUserRoleStatement
+    : GRANT ROLE roleName=identifier TO userName=identifier
+    ;
+
+revokeUserRoleStatement
+    : REVOKE ROLE roleName=identifier FROM userName=identifier
+    ;
 
 
+grantStatement
+    : GRANT privilegeObjectScope TO holderType holderName=identifier (grantOpt)?
+    ;
+
+listUserPrivilegeStatement
+    : LIST PRIVILEGES OF USER userName=identifier
+    ;
+
+listRolePrivilegeStatement
+    : LIST PRIVILEGES OF ROLE roleName=identifier
+    ;
+
+listUserStatement
+    : LIST USER
+    ;
+
+listRoleStatement
+    : LIST ROLE
+    ;
+
+
+revokeStatement
+    : REVOKE (revokeGrantOpt)? privilegeObjectScope FROM holderType holderName=identifier
+    ;
+
+privilegeObjectScope
+    : systemPrivileges
+    | objectPrivileges ON objectType objectName=identifier
+    | objectPrivileges ON objectScope
+    | objectPrivileges ON ANY
+    | ALL
+    ;
+
+systemPrivileges
+    : systemPrivilege (',' systemPrivilege)*
+    ;
+
+objectPrivileges
+    : objectPrivilege (',' objectPrivilege)*
+    ;
+
+objectScope
+    : dbname=identifier '.' tbname=identifier;
+
+systemPrivilege
+    : MANAGE_USER
+    | MANAGE_ROLE
+    | MAINTAIN
+    ;
+
+objectPrivilege
+    : CREATE
+    | DROP
+    | ALTER
+    | SELECT
+    | INSERT
+    | DELETE
+    ;
+
+objectType
+    : TABLE
+    | DATABASE
+    ;
+
+holderType
+    : USER
+    | ROLE
+    ;
+
+grantOpt
+    : WITH GRANT OPTION
+    ;
+
+revokeGrantOpt
+    : GRANT OPTION FOR
+    ;
 
 // ------------------------------------------- Query Statement ---------------------------------------------------------
 queryStatement
@@ -1070,6 +1203,7 @@ EXCLUDING: 'EXCLUDING';
 EXECUTE: 'EXECUTE';
 EXISTS: 'EXISTS';
 EXPLAIN: 'EXPLAIN';
+EXTEND: 'EXTEND';
 EXTRACT: 'EXTRACT';
 EXTRACTOR: 'EXTRACTOR';
 FALSE: 'FALSE';
@@ -1139,6 +1273,7 @@ LEVEL: 'LEVEL';
 LIKE: 'LIKE';
 LIMIT: 'LIMIT';
 LINEAR: 'LINEAR';
+LIST: 'LIST';
 LISTAGG: 'LISTAGG';
 LOAD: 'LOAD';
 LOCAL: 'LOCAL';
@@ -1146,6 +1281,9 @@ LOCALTIME: 'LOCALTIME';
 LOCALTIMESTAMP: 'LOCALTIMESTAMP';
 LOGICAL: 'LOGICAL';
 LOOP: 'LOOP';
+MAINTAIN: 'MAINTAIN';
+MANAGE_ROLE: 'MANAGE_ROLE';
+MANAGE_USER: 'MANAGE_USER';
 MAP: 'MAP';
 MATCH: 'MATCH';
 MATCHED: 'MATCHED';
@@ -1196,6 +1334,7 @@ OVERFLOW: 'OVERFLOW';
 PARTITION: 'PARTITION';
 PARTITIONS: 'PARTITIONS';
 PASSING: 'PASSING';
+PASSWORD: 'PASSWORD';
 PAST: 'PAST';
 PATH: 'PATH';
 PATTERN: 'PATTERN';
@@ -1354,6 +1493,7 @@ PERCENT: '%';
 CONCAT: '||';
 QUESTION_MARK: '?';
 SEMICOLON: ';';
+
 
 STRING
     : '\'' ( ~'\'' | '\'\'' )* '\''

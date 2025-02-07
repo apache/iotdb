@@ -16,60 +16,52 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.auth.user;
+package org.apache.iotdb.commons.auth.entity;
 
-import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 
 import java.io.IOException;
 import java.util.List;
 
-/** This interface manages the serialization/deserialization of the user objects. */
-public interface IUserAccessor extends SnapshotProcessor {
+/** This interface manages the serialization/deserialization of the entity objects. */
+public interface IEntityAccessor extends SnapshotProcessor {
 
   /**
-   * Deserialize a user from lower storage.
+   * Deserialize an entity from lower storage.
    *
-   * @param username The name of the user to be deserialized.
-   * @return The user object or null if no such user.
+   * @param entityName The name of the user/role to be deserialized.
+   * @return The user object or null if no such entity.
    * @throws IOException if an exception is raised when interacting with the lower storage.
    */
-  User loadUser(String username) throws IOException;
+  Role loadEntity(String entityName) throws IOException;
 
   /**
-   * Serialize the user object to lower storage.
+   * Serialize the entity object to lower storage.
    *
-   * @param user The user object that is to be saved.
+   * @param entity The user/role object that is to be saved.
    * @throws IOException if an exception is raised when interacting with the lower storage.
    */
-  void saveUser(User user) throws IOException;
+  void saveEntity(Role entity) throws IOException;
 
   /**
    * Delete a user's from lower storage.
    *
-   * @param username The name of the user to be deleted.
-   * @return True if the user is successfully deleted, false if the user does not exists.
+   * @param entityName The name of the user/role to be deleted.
+   * @return True if the user/role is successfully deleted, false if the user does not exist.
    * @throws IOException if an exception is raised when interacting with the lower storage.
    */
-  boolean deleteUser(String username) throws IOException;
+  boolean deleteEntity(String entityName) throws IOException;
 
   /**
-   * List all users existing in the database.
+   * List all entities existing in the database.
    *
    * @return A list that contains names of all users.
    */
-  List<String> listAllUsers();
+  List<String> listAllEntities();
 
-  /** Delete user's folders. */
-  void cleanUserFolder();
+  /** Delete entities' folders. */
+  void cleanEntityFolder();
 
   /** Re-initialize this object. */
   void reset();
-
-  /**
-   * get UserDirPath
-   *
-   * @return userDirPath
-   */
-  public String getDirPath();
 }
