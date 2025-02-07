@@ -553,7 +553,8 @@ public class AggregateProcessor implements PipeProcessor {
                 final AtomicReference<TimeSeriesRuntimeState> stateReference =
                     pipeName2timeSeries2TimeSeriesRuntimeStateMap.get(pipeName).get(timeSeries);
                 synchronized (stateReference) {
-                  final PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, null);
+                  final PipeRowCollector rowCollector =
+                      new PipeRowCollector(pipeTaskMeta, null, dataBaseName);
                   try {
                     collectWindowOutputs(
                         stateReference.get().forceOutput(), timeSeries, rowCollector);
