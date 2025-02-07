@@ -172,7 +172,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
         Tag.LEVEL.toString(),
         GlobalMemoryMetrics.LEVELS[3]);
     metricService.createAutoGauge(
-        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.NORMAL,
         config.getTimePartitionInfoMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
