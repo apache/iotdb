@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.config;
 
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
+import org.apache.iotdb.commons.memory.MemoryManager;
 
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -246,8 +247,8 @@ public class IoTConsensusConfig {
     private final long walThrottleThreshold;
     private final long throttleTimeOutMs;
     private final long checkpointGap;
-    private final long allocateMemoryForConsensus;
-    private final long allocateMemoryForQueue;
+    private final MemoryManager consensusMemoryManager;
+    private final double maxMemoryRatioForQueue;
     private final long regionMigrationSpeedLimitBytesPerSecond;
 
     private Replication(
@@ -262,7 +263,7 @@ public class IoTConsensusConfig {
         long walThrottleThreshold,
         long throttleTimeOutMs,
         long checkpointGap,
-        long allocateMemoryForConsensus,
+        MemoryManager consensusMemoryManager,
         double maxMemoryRatioForQueue,
         long regionMigrationSpeedLimitBytesPerSecond) {
       this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
@@ -276,8 +277,8 @@ public class IoTConsensusConfig {
       this.walThrottleThreshold = walThrottleThreshold;
       this.throttleTimeOutMs = throttleTimeOutMs;
       this.checkpointGap = checkpointGap;
-      this.allocateMemoryForConsensus = allocateMemoryForConsensus;
-      this.allocateMemoryForQueue = (long) (allocateMemoryForConsensus * maxMemoryRatioForQueue);
+      this.consensusMemoryManager = consensusMemoryManager;
+      this.maxMemoryRatioForQueue = maxMemoryRatioForQueue;
       this.regionMigrationSpeedLimitBytesPerSecond = regionMigrationSpeedLimitBytesPerSecond;
     }
 
@@ -325,12 +326,12 @@ public class IoTConsensusConfig {
       return checkpointGap;
     }
 
-    public Long getAllocateMemoryForConsensus() {
-      return allocateMemoryForConsensus;
+    public MemoryManager getConsensusMemoryManager() {
+      return consensusMemoryManager;
     }
 
-    public long getAllocateMemoryForQueue() {
-      return allocateMemoryForQueue;
+    public double getMaxMemoryRatioForQueue() {
+      return maxMemoryRatioForQueue;
     }
 
     public long getRegionMigrationSpeedLimitBytesPerSecond() {
@@ -355,7 +356,7 @@ public class IoTConsensusConfig {
       private long walThrottleThreshold = 50 * 1024 * 1024 * 1024L;
       private long throttleTimeOutMs = TimeUnit.SECONDS.toMillis(30);
       private long checkpointGap = 500;
-      private long allocateMemoryForConsensus = Runtime.getRuntime().maxMemory() / 10;
+      private MemoryManager consensusMemoryManager;
       private double maxMemoryRatioForQueue = 0.6;
       private long regionMigrationSpeedLimitBytesPerSecond = 32 * 1024 * 1024L;
 
@@ -416,8 +417,8 @@ public class IoTConsensusConfig {
         return this;
       }
 
-      public Replication.Builder setAllocateMemoryForConsensus(long allocateMemoryForConsensus) {
-        this.allocateMemoryForConsensus = allocateMemoryForConsensus;
+      public Replication.Builder setConsensusMemoryManager(MemoryManager consensusMemoryManager) {
+        this.consensusMemoryManager = consensusMemoryManager;
         return this;
       }
 
@@ -445,7 +446,7 @@ public class IoTConsensusConfig {
             walThrottleThreshold,
             throttleTimeOutMs,
             checkpointGap,
-            allocateMemoryForConsensus,
+            consensusMemoryManager,
             maxMemoryRatioForQueue,
             regionMigrationSpeedLimitBytesPerSecond);
       }

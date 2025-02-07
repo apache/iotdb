@@ -133,8 +133,7 @@ public class DataRegionConsensusImpl {
                   .setReplication(
                       IoTConsensusConfig.Replication.newBuilder()
                           .setWalThrottleThreshold(CONF.getThrottleThreshold())
-                          .setAllocateMemoryForConsensus(
-                              CONF.getConsensusMemoryManager().getTotalMemorySizeInBytes())
+                          .setConsensusMemoryManager(CONF.getConsensusMemoryManager())
                           .setMaxLogEntriesNumPerBatch(CONF.getMaxLogEntriesNumPerBatch())
                           .setMaxSizePerBatch(CONF.getMaxSizePerBatch())
                           .setMaxPendingBatchesNum(CONF.getMaxPendingBatchesNum())

@@ -54,9 +54,16 @@ public abstract class IMemoryBlock implements AutoCloseable {
    * Allocate memory managed by this memory block
    *
    * @param sizeInByte the size of memory to be allocated, should positive
-   * @return
    */
   public abstract boolean allocate(final long sizeInByte);
+
+  /**
+   * Allocate memory managed by this memory block
+   *
+   * @param sizeInByte the size of memory to be allocated, should positive
+   * @param maxRatio the maximum ratio of memory can be allocated
+   */
+  public abstract boolean allocateIfSufficient(final long sizeInByte, final double maxRatio);
 
   /**
    * Allocate memory managed by this memory block until the required memory is available

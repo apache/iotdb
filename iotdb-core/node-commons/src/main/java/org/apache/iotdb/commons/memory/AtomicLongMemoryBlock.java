@@ -75,6 +75,20 @@ public class AtomicLongMemoryBlock extends IMemoryBlock {
   }
 
   @Override
+  public boolean allocateIfSufficient(final long sizeInByte, final double maxRatio) {
+    AtomicBoolean result = new AtomicBoolean(false);
+    usedMemoryInBytes.updateAndGet(
+        memCost -> {
+          if (memCost + sizeInByte > totalMemorySizeInBytes * maxRatio) {
+            return memCost;
+          }
+          result.set(true);
+          return memCost + sizeInByte;
+        });
+    return result.get();
+  }
+
+  @Override
   public boolean allocateUntilAvailable(long sizeInByte, long timeInMillis)
       throws InterruptedException {
     long originSize = usedMemoryInBytes.get();
