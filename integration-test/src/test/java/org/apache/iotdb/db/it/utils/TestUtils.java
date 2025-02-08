@@ -713,13 +713,12 @@ public class TestUtils {
   }
 
   public static void executeNonQueryWithRetry(final BaseEnv env, final String sql) {
-    executeNonQueryWithRetry(
-        env,
-        sql,
-        SessionConfig.DEFAULT_USER,
-        SessionConfig.DEFAULT_PASSWORD,
-        null,
-        TREE_SQL_DIALECT);
+    executeNonQueryWithRetry(env, sql, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+  }
+
+  public static void executeNonQueryWithRetry(
+      final BaseEnv env, final String sql, final String userName, final String password) {
+    executeNonQueryWithRetry(env, sql, userName, password, null, TREE_SQL_DIALECT);
   }
 
   public static void executeNonQueryWithRetry(
@@ -731,6 +730,11 @@ public class TestUtils {
       final String sqlDialect) {
     executeNonQueriesWithRetry(
         env, Collections.singletonList(sql), userName, password, database, sqlDialect);
+  }
+
+  public static void executeNonQueriesWithRetry(
+      final BaseEnv env, final List<String> sqlList, final String userName, final String password) {
+    executeNonQueriesWithRetry(env, sqlList, userName, password, "", TREE_SQL_DIALECT);
   }
 
   public static void executeNonQueriesWithRetry(
