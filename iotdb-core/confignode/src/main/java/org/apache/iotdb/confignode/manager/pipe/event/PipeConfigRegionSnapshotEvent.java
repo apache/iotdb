@@ -71,6 +71,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
                     ConfigPhysicalPlanType.RGrantRoleDBPriv.getPlanType(),
                     ConfigPhysicalPlanType.RGrantRoleTBPriv.getPlanType(),
                     ConfigPhysicalPlanType.RGrantRoleAny.getPlanType(),
+                    ConfigPhysicalPlanType.RGrantRoleSysPri.getPlanType(),
                     ConfigPhysicalPlanType.RGrantRoleAll.getPlanType()))));
     SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.put(
         CNSnapshotFileType.USER,
@@ -82,6 +83,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
                     ConfigPhysicalPlanType.RGrantUserDBPriv.getPlanType(),
                     ConfigPhysicalPlanType.RGrantUserTBPriv.getPlanType(),
                     ConfigPhysicalPlanType.RGrantUserAny.getPlanType(),
+                    ConfigPhysicalPlanType.RGrantUserSysPri.getPlanType(),
                     ConfigPhysicalPlanType.RGrantUserAll.getPlanType()))));
     SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.put(
         CNSnapshotFileType.USER_ROLE,

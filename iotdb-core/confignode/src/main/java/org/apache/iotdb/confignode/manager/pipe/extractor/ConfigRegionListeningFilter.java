@@ -133,10 +133,18 @@ public class ConfigRegionListeningFilter {
       // Both
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.role.grant"),
-          Collections.singletonList(ConfigPhysicalPlanType.GrantRole));
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.GrantRole,
+                  ConfigPhysicalPlanType.RGrantRoleAll,
+                  ConfigPhysicalPlanType.RGrantRoleSysPri)));
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.role.revoke"),
-          Collections.singletonList(ConfigPhysicalPlanType.RevokeRole));
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.RevokeRole,
+                  ConfigPhysicalPlanType.RRevokeRoleAll,
+                  ConfigPhysicalPlanType.RRevokeRoleSysPri)));
 
       // Table
       OPTION_PLAN_MAP.put(
@@ -177,14 +185,18 @@ public class ConfigRegionListeningFilter {
               Arrays.asList(
                   ConfigPhysicalPlanType.GrantUser,
                   ConfigPhysicalPlanType.GrantRoleToUser,
-                  ConfigPhysicalPlanType.RGrantUserRole)));
+                  ConfigPhysicalPlanType.RGrantUserRole,
+                  ConfigPhysicalPlanType.RGrantUserAll,
+                  ConfigPhysicalPlanType.RGrantUserSysPri)));
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.user.revoke"),
           Collections.unmodifiableList(
               Arrays.asList(
                   ConfigPhysicalPlanType.RevokeUser,
                   ConfigPhysicalPlanType.RevokeRoleFromUser,
-                  ConfigPhysicalPlanType.RRevokeUserRole)));
+                  ConfigPhysicalPlanType.RRevokeUserRole,
+                  ConfigPhysicalPlanType.RGrantUserAll,
+                  ConfigPhysicalPlanType.RGrantUserSysPri)));
 
       // Table
       OPTION_PLAN_MAP.put(
@@ -243,7 +255,7 @@ public class ConfigRegionListeningFilter {
 
   private static Set<ConfigPhysicalPlanType> getOptionsByPrefix(final PartialPath prefix) {
     return OPTION_PLAN_MAP.keySet().stream()
-        .filter(path -> path.overlapWithFullPathPrefix(prefix))
+        .filter(path -> path.matchPrefixPath(prefix))
         .map(OPTION_PLAN_MAP::get)
         .flatMap(Collection::stream)
         .collect(Collectors.toSet());
