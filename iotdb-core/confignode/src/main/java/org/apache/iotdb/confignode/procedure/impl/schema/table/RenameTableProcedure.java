@@ -45,13 +45,17 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
   private static final Logger LOGGER = LoggerFactory.getLogger(RenameTableProcedure.class);
   private String newName;
 
-  public RenameTableProcedure() {
-    super();
+  public RenameTableProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   public RenameTableProcedure(
-      final String database, final String tableName, final String queryId, final String newName) {
-    super(database, tableName, queryId);
+      final String database,
+      final String tableName,
+      final String queryId,
+      final String newName,
+      final boolean isGeneratedByPipe) {
+    super(database, tableName, queryId, isGeneratedByPipe);
     this.newName = newName;
   }
 
@@ -122,7 +126,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .executePlan(new RenameTablePlan(database, tableName, newName));
+            .executePlan(new RenameTablePlan(database, tableName, newName), isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     } else {
@@ -160,7 +164,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .executePlan(new RenameTablePlan(database, newName, tableName));
+            .executePlan(new RenameTablePlan(database, newName, tableName), isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
@@ -188,7 +192,10 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.RENAME_TABLE_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_RENAME_TABLE_PROCEDURE.getTypeCode()
+            : ProcedureType.RENAME_TABLE_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
     ReadWriteIOUtils.write(newName, stream);

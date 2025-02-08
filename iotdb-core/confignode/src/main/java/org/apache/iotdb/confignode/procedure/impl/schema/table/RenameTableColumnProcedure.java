@@ -133,7 +133,9 @@ public class RenameTableColumnProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .executePlan(new RenameTableColumnPlan(database, tableName, oldName, newName));
+            .executePlan(
+                new RenameTableColumnPlan(database, tableName, oldName, newName),
+                isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     } else {
@@ -175,7 +177,9 @@ public class RenameTableColumnProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .executePlan(new RenameTableColumnPlan(database, tableName, newName, oldName));
+            .executePlan(
+                new RenameTableColumnPlan(database, tableName, newName, oldName),
+                isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }

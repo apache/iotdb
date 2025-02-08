@@ -1861,7 +1861,11 @@ public class ProcedureManager {
         req.queryId,
         ProcedureType.RENAME_TABLE_PROCEDURE,
         new RenameTableProcedure(
-            req.database, req.tableName, req.queryId, ReadWriteIOUtils.readString(req.updateInfo)));
+            req.database,
+            req.tableName,
+            req.queryId,
+            ReadWriteIOUtils.readString(req.updateInfo),
+            false));
   }
 
   public TDeleteTableDeviceResp deleteDevices(

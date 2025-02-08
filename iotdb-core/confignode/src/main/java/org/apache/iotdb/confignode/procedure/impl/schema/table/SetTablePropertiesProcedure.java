@@ -146,7 +146,9 @@ public class SetTablePropertiesProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .executePlan(new SetTablePropertiesPlan(database, tableName, updatedProperties));
+            .executePlan(
+                new SetTablePropertiesPlan(database, tableName, updatedProperties),
+                isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     } else {
@@ -194,7 +196,9 @@ public class SetTablePropertiesProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .executePlan(new SetTablePropertiesPlan(database, tableName, originalProperties));
+            .executePlan(
+                new SetTablePropertiesPlan(database, tableName, originalProperties),
+                isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }

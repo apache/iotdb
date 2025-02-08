@@ -130,7 +130,9 @@ public class AddTableColumnProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .executePlan(new AddTableColumnPlan(database, tableName, addedColumnList, false));
+            .executePlan(
+                new AddTableColumnPlan(database, tableName, addedColumnList, false),
+                isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     } else {
@@ -175,7 +177,9 @@ public class AddTableColumnProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .executePlan(new AddTableColumnPlan(database, tableName, addedColumnList, true));
+            .executePlan(
+                new AddTableColumnPlan(database, tableName, addedColumnList, true),
+                isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }

@@ -218,7 +218,7 @@ public class ProcedureFactory implements IProcedureFactory {
         procedure = new DeleteDevicesProcedure(false);
         break;
       case RENAME_TABLE_PROCEDURE:
-        procedure = new RenameTableProcedure();
+        procedure = new RenameTableProcedure(false);
         break;
       case CREATE_PIPE_PLUGIN_PROCEDURE:
         procedure = new CreatePipePluginProcedure();
@@ -285,6 +285,9 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case PIPE_ENRICHED_DELETE_DEVICES_PROCEDURE:
         procedure = new DeleteDevicesProcedure(true);
+        break;
+      case PIPE_ENRICHED_RENAME_TABLE_PROCEDURE:
+        procedure = new RenameTableProcedure(true);
         break;
       case REMOVE_AI_NODE_PROCEDURE:
         procedure = new RemoveAINodeProcedure();

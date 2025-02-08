@@ -34,7 +34,7 @@ public class RenameTableProcedureTest {
   @Test
   public void serializeDeserializeTest() throws IllegalPathException, IOException {
     final RenameTableProcedure renameTableProcedure =
-        new RenameTableProcedure("database1", "table1", "0", "newName");
+        new RenameTableProcedure("database1", "table1", "0", "newName", false);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -44,7 +44,7 @@ public class RenameTableProcedureTest {
 
     Assert.assertEquals(ProcedureType.RENAME_TABLE_PROCEDURE.getTypeCode(), byteBuffer.getShort());
 
-    final RenameTableProcedure deserializedProcedure = new RenameTableProcedure();
+    final RenameTableProcedure deserializedProcedure = new RenameTableProcedure(false);
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(renameTableProcedure, deserializedProcedure);

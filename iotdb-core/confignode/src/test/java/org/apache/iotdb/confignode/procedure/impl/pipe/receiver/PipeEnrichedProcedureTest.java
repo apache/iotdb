@@ -47,6 +47,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.table.DeleteDevicesProc
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure;
@@ -555,5 +556,25 @@ public class PipeEnrichedProcedureTest {
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(deleteDevicesProcedure, deserializedProcedure);
+  }
+
+  @Test
+  public void serializeDeserializeTest() throws IllegalPathException, IOException {
+    final RenameTableProcedure renameTableProcedure =
+        new RenameTableProcedure("database1", "table1", "0", "newName", true);
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    renameTableProcedure.serialize(dataOutputStream);
+
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+
+    Assert.assertEquals(
+        ProcedureType.PIPE_ENRICHED_RENAME_TABLE_PROCEDURE.getTypeCode(), byteBuffer.getShort());
+
+    final RenameTableProcedure deserializedProcedure = new RenameTableProcedure(true);
+    deserializedProcedure.deserialize(byteBuffer);
+
+    Assert.assertEquals(renameTableProcedure, deserializedProcedure);
   }
 }

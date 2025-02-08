@@ -1428,11 +1428,7 @@ public class ClusterSchemaManager {
 
   public TSStatus executePlan(final ConfigPhysicalPlan plan, final boolean isGeneratedByPipe) {
     try {
-      return getConsensusManager()
-          .write(
-              isGeneratedByPipe
-                  ? new PipeEnrichedPlan(plan)
-                  : plan);
+      return getConsensusManager().write(isGeneratedByPipe ? new PipeEnrichedPlan(plan) : plan);
     } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
