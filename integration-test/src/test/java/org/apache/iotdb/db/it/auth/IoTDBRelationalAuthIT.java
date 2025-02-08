@@ -106,6 +106,12 @@ public class IoTDBRelationalAuthIT {
                   ",testdb.tb,INSERT,true,",
                   ",testdb.tb,DROP,true,"));
       TestUtils.assertResultSetEqual(rs, "Role,Scope,Privileges,GrantOption,", ans);
+      adminStmt.execute("create role testrole");
+      adminStmt.execute("GRANT ROLE testrole to testuser");
+      rs = adminStmt.executeQuery("LIST USER OF ROLE testrole");
+      TestUtils.assertResultSetEqual(rs, "User,", Collections.singleton("testuser,"));
+      rs = adminStmt.executeQuery("LIST ROLE OF USER testuser");
+      TestUtils.assertResultSetEqual(rs, "Role,", Collections.singleton("testrole,"));
     }
   }
 
