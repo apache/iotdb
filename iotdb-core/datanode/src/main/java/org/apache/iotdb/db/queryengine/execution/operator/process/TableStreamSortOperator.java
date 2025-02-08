@@ -119,7 +119,7 @@ public class TableStreamSortOperator extends AbstractSortOperator {
           return null;
         }
         // record total sorted data size
-        dataSize += currentTsBlock.getRetainedSizeInBytes();
+        dataSize += currentTsBlock.getSizeInBytes();
 
         // if currentTsBlock line count + remainingCount is still less than minLinesToOutput, just
         // cache it

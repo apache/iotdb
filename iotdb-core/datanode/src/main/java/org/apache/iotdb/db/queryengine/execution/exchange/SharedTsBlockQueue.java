@@ -197,8 +197,8 @@ public class SharedTsBlockQueue {
             localFragmentInstanceId.getQueryId(),
             fullFragmentInstanceId,
             localPlanNodeId,
-            tsBlock.getRetainedSizeInBytes());
-    bufferRetainedSizeInBytes -= tsBlock.getRetainedSizeInBytes();
+            tsBlock.getSizeInBytes());
+    bufferRetainedSizeInBytes -= tsBlock.getSizeInBytes();
     // Every time LocalSourceHandle consumes a TsBlock, it needs to send the event to
     // corresponding LocalSinkChannel.
     if (sinkChannel != null) {
@@ -240,10 +240,10 @@ public class SharedTsBlockQueue {
                 localFragmentInstanceId.getQueryId(),
                 fullFragmentInstanceId,
                 localPlanNodeId,
-                tsBlock.getRetainedSizeInBytes(),
+                tsBlock.getSizeInBytes(),
                 maxBytesCanReserve);
     blockedOnMemory = pair.left;
-    bufferRetainedSizeInBytes += tsBlock.getRetainedSizeInBytes();
+    bufferRetainedSizeInBytes += tsBlock.getSizeInBytes();
 
     // reserve memory failed, we should wait until there is enough memory
     if (!Boolean.TRUE.equals(pair.right)) {

@@ -35,6 +35,10 @@ import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ExtendRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.RemoveRegionTask;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
@@ -67,10 +71,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePlug
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ExtendRegionStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
@@ -254,14 +254,13 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> countTimeSlotList(
       CountTimeSlotListStatement countTimeSlotListStatement);
 
-  SettableFuture<ConfigTaskResult> migrateRegion(MigrateRegionStatement migrateRegionStatement);
+  SettableFuture<ConfigTaskResult> migrateRegion(MigrateRegionTask migrateRegionTask);
 
-  SettableFuture<ConfigTaskResult> reconstructRegion(
-      ReconstructRegionStatement reconstructRegionStatement);
+  SettableFuture<ConfigTaskResult> reconstructRegion(ReconstructRegionTask reconstructRegionTask);
 
-  SettableFuture<ConfigTaskResult> extendRegion(ExtendRegionStatement extendRegionStatement);
+  SettableFuture<ConfigTaskResult> extendRegion(ExtendRegionTask extendRegionTask);
 
-  SettableFuture<ConfigTaskResult> removeRegion(RemoveRegionStatement removeRegionStatement);
+  SettableFuture<ConfigTaskResult> removeRegion(RemoveRegionTask removeRegionTask);
 
   SettableFuture<ConfigTaskResult> removeDataNode(RemoveDataNodeStatement removeDataNodeStatement);
 
