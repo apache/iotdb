@@ -195,9 +195,7 @@ class Session(object):
                     context.check_hostname = True
                 context.load_verify_locations(cafile=self.__ca_certs)
                 socket = TSSLSocket.TSSLSocket(
-                    host=endpoint.ip,
-                    port=endpoint.port,
-                    ssl_context=context
+                    host=endpoint.ip, port=endpoint.port, ssl_context=context
                 )
             else:
                 socket = TSocket.TSocket(endpoint.ip, endpoint.port)
