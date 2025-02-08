@@ -1773,6 +1773,47 @@ public class IoTDBDeletionTableIT {
     }
   }
 
+  @Test
+  public void testCaseSensitivity() throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db1");
+      session.executeNonQueryStatement("USE db1");
+      session.executeNonQueryStatement("CREATE TABLE case_sensitivity (tag1 TAG, s1 INT32)");
+
+      session.executeNonQueryStatement(
+          "INSERT INTO case_sensitivity (time, tag1, s1) VALUES (1, 'd1', 1)");
+      session.executeNonQueryStatement(
+          "INSERT INTO case_sensitivity (time, tag1, s1) VALUES (2, 'd2', 2)");
+      session.executeNonQueryStatement(
+          "INSERT INTO case_sensitivity (time, tag1, s1) VALUES (3, 'd3', 3)");
+
+      session.executeNonQueryStatement("DELETE FROM DB1.case_sensitivity where time = 1");
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from db1.case_sensitivity order by time");
+      RowRecord rec = dataSet.next();
+      assertEquals(2, rec.getFields().get(0).getLongV());
+      assertEquals("d2", rec.getFields().get(1).toString());
+      assertEquals(2, rec.getFields().get(2).getIntV());
+      rec = dataSet.next();
+      assertEquals(3, rec.getFields().get(0).getLongV());
+      assertEquals("d3", rec.getFields().get(1).toString());
+      assertEquals(3, rec.getFields().get(2).getIntV());
+      assertFalse(dataSet.hasNext());
+
+      session.executeNonQueryStatement("DELETE FROM db1.CASE_sensitivity where time = 2");
+      dataSet = session.executeQueryStatement("select * from db1.case_sensitivity order by time");
+      rec = dataSet.next();
+      assertEquals(3, rec.getFields().get(0).getLongV());
+      assertEquals("d3", rec.getFields().get(1).toString());
+      assertEquals(3, rec.getFields().get(2).getIntV());
+      assertFalse(dataSet.hasNext());
+
+      session.executeNonQueryStatement("DELETE FROM db1.CASE_sensitivity where TAG1 = 'd3'");
+      dataSet = session.executeQueryStatement("select * from db1.case_sensitivity order by time");
+      assertFalse(dataSet.hasNext());
+    }
+  }
+
   @Ignore("performance")
   @Test
   public void testDeletionWritePerformance() throws SQLException, IOException {
