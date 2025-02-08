@@ -38,7 +38,7 @@ public class RestClientSession extends IClientSession {
   }
 
   @Override
-  int getClientPort() {
+  public int getClientPort() {
     return 0;
   }
 

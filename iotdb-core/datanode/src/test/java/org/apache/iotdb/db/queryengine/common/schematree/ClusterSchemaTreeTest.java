@@ -709,7 +709,7 @@ public class ClusterSchemaTreeTest {
     Assert.assertEquals(
         measurements,
         deviceSchemaInfo.getMeasurementSchemaList().stream()
-            .map(IMeasurementSchema::getMeasurementId)
+            .map(IMeasurementSchema::getMeasurementName)
             .collect(Collectors.toList()));
 
     devicePath = new PartialPath("root.sg.d2.a");
@@ -722,7 +722,7 @@ public class ClusterSchemaTreeTest {
     Assert.assertEquals(
         measurements,
         deviceSchemaInfo.getMeasurementSchemaList().stream()
-            .map(IMeasurementSchema::getMeasurementId)
+            .map(IMeasurementSchema::getMeasurementName)
             .collect(Collectors.toList()));
   }
 

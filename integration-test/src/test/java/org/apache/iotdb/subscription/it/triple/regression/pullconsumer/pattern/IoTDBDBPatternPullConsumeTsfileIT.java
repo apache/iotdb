@@ -23,7 +23,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionConsumer;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
@@ -59,7 +59,7 @@ public class IoTDBDBPatternPullConsumeTsfileIT extends AbstractSubscriptionRegre
   private static List<IMeasurementSchema> schemaList = new ArrayList<>();
 
   private static final String pattern = database + ".**";
-  private static SubscriptionPullConsumer consumer;
+  private static SubscriptionTreePullConsumer consumer;
 
   @Override
   @Before
@@ -115,14 +115,14 @@ public class IoTDBDBPatternPullConsumeTsfileIT extends AbstractSubscriptionRegre
     Tablet tablet = new Tablet(device, schemaList, 5);
     int rowIndex = 0;
     for (int row = 0; row < 5; row++) {
-      rowIndex = tablet.rowSize++;
+      rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue("s_0", rowIndex, (row + 1) * 20L + row);
       tablet.addValue("s_1", rowIndex, row + 2.45);
       timestamp += 2000;
     }
     session_src.insertTablet(tablet);
-    session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush");
   }
 
   @Test
@@ -135,7 +135,7 @@ public class IoTDBDBPatternPullConsumeTsfileIT extends AbstractSubscriptionRegre
     // Write data before subscribing
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
     consumer =
-        new SubscriptionPullConsumer.Builder()
+        new SubscriptionTreePullConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("db_tsfile")

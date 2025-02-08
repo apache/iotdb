@@ -37,9 +37,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.utils.CommonUtils;
-import org.apache.iotdb.db.utils.annotations.TableModel;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -99,7 +99,7 @@ public abstract class InsertBaseStatement extends Statement {
   /** it is the end of current range. */
   protected int recordedEndOfLogicalViewSchemaList = 0;
 
-  @TableModel private String databaseName;
+  @TableModel protected String databaseName;
 
   // endregion
 
@@ -180,7 +180,7 @@ public abstract class InsertBaseStatement extends Statement {
     List<PartialPath> checkedPaths = getPaths().stream().distinct().collect(Collectors.toList());
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkFullPathListPermission(
-            userName, checkedPaths, PrivilegeType.WRITE_DATA.ordinal()),
+            userName, checkedPaths, PrivilegeType.WRITE_DATA),
         checkedPaths,
         PrivilegeType.WRITE_DATA);
   }
@@ -192,7 +192,7 @@ public abstract class InsertBaseStatement extends Statement {
   public void updateAfterSchemaValidation(MPPQueryContext context) throws QueryProcessException {}
 
   /** Check whether data types are matched with measurement schemas */
-  protected void selfCheckDataTypes(int index)
+  public void selfCheckDataTypes(int index)
       throws DataTypeMismatchException, PathNotExistException {
     if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
       // if enable partial insert, mark failed measurements with exception
@@ -305,7 +305,7 @@ public abstract class InsertBaseStatement extends Statement {
     if (idColumnIndices == null && columnCategories != null) {
       idColumnIndices = new ArrayList<>();
       for (int i = 0; i < columnCategories.length; i++) {
-        if (columnCategories[i].equals(TsTableColumnCategory.ID)) {
+        if (columnCategories[i].equals(TsTableColumnCategory.TAG)) {
           idColumnIndices.add(i);
         }
       }
@@ -341,6 +341,10 @@ public abstract class InsertBaseStatement extends Statement {
             .collect(Collectors.toList());
   }
 
+  public Map<Integer, FailedMeasurementInfo> getFailedMeasurementInfoMap() {
+    return failedMeasurementIndex2Info;
+  }
+
   public List<Exception> getFailedExceptions() {
     return failedMeasurementIndex2Info == null
         ? Collections.emptyList()
@@ -364,7 +368,7 @@ public abstract class InsertBaseStatement extends Statement {
             .collect(Collectors.toList());
   }
 
-  protected static class FailedMeasurementInfo {
+  public static class FailedMeasurementInfo {
     protected String measurement;
     protected TSDataType dataType;
     protected Object value;
@@ -483,13 +487,13 @@ public abstract class InsertBaseStatement extends Statement {
     }
   }
 
-  public void insertColumn(int pos, ColumnSchema columnSchema) {
+  public void insertColumn(final int pos, final ColumnSchema columnSchema) {
     if (pos < 0 || pos > measurements.length) {
       throw new ArrayIndexOutOfBoundsException(pos);
     }
 
     if (measurementSchemas != null) {
-      MeasurementSchema[] tmp = new MeasurementSchema[measurementSchemas.length + 1];
+      final MeasurementSchema[] tmp = new MeasurementSchema[measurementSchemas.length + 1];
       System.arraycopy(measurementSchemas, 0, tmp, 0, pos);
       tmp[pos] =
           new MeasurementSchema(
@@ -509,7 +513,7 @@ public abstract class InsertBaseStatement extends Statement {
       dataTypes = new TSDataType[measurements.length + 1];
       dataTypes[pos] = InternalTypeManager.getTSDataType(columnSchema.getType());
     } else {
-      TSDataType[] tmpTypes = new TSDataType[dataTypes.length + 1];
+      final TSDataType[] tmpTypes = new TSDataType[dataTypes.length + 1];
       System.arraycopy(dataTypes, 0, tmpTypes, 0, pos);
       tmpTypes[pos] = InternalTypeManager.getTSDataType(columnSchema.getType());
       System.arraycopy(dataTypes, pos, tmpTypes, pos + 1, dataTypes.length - pos);
@@ -520,7 +524,7 @@ public abstract class InsertBaseStatement extends Statement {
       columnCategories = new TsTableColumnCategory[measurements.length + 1];
       columnCategories[pos] = columnSchema.getColumnCategory();
     } else {
-      TsTableColumnCategory[] tmpCategories =
+      final TsTableColumnCategory[] tmpCategories =
           new TsTableColumnCategory[columnCategories.length + 1];
       System.arraycopy(columnCategories, 0, tmpCategories, 0, pos);
       tmpCategories[pos] = columnSchema.getColumnCategory();
@@ -553,7 +557,7 @@ public abstract class InsertBaseStatement extends Statement {
     return writeToTable;
   }
 
-  public void setWriteToTable(boolean writeToTable) {
+  public void setWriteToTable(final boolean writeToTable) {
     this.writeToTable = writeToTable;
     if (writeToTable) {
       isAligned = true;
@@ -561,7 +565,7 @@ public abstract class InsertBaseStatement extends Statement {
   }
 
   @TableModel
-  public void setDatabaseName(String databaseName) {
+  public void setDatabaseName(final String databaseName) {
     this.databaseName = databaseName;
   }
 
@@ -584,15 +588,18 @@ public abstract class InsertBaseStatement extends Statement {
       }
     }
     if (measurementSchemas != null) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
-        measurementSchema.setMeasurementId(measurementSchema.getMeasurementId().toLowerCase());
+      for (final MeasurementSchema measurementSchema : measurementSchemas) {
+        if (measurementSchema != null) {
+          measurementSchema.setMeasurementName(
+              measurementSchema.getMeasurementName().toLowerCase());
+        }
       }
     }
   }
 
   @TableModel
   public List<String> getAttributeColumnNameList() {
-    List<String> attributeColumnNameList = new ArrayList<>();
+    final List<String> attributeColumnNameList = new ArrayList<>();
     for (int i = 0; i < getColumnCategories().length; i++) {
       if (getColumnCategories()[i] == TsTableColumnCategory.ATTRIBUTE) {
         attributeColumnNameList.add(getMeasurements()[i]);
@@ -604,5 +611,11 @@ public abstract class InsertBaseStatement extends Statement {
   @TableModel
   public String getTableName() {
     return devicePath.getFullPath();
+  }
+
+  // Only Pipe will set the return value to true
+  @TableModel
+  public boolean isForceTypeConversion() {
+    return false;
   }
 }

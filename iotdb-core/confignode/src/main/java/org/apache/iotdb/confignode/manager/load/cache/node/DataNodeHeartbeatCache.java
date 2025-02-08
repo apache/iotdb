@@ -22,10 +22,15 @@ package org.apache.iotdb.confignode.manager.load.cache.node;
 import org.apache.iotdb.common.rpc.thrift.TLoadSample;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.atomic.AtomicReference;
 
 /** Heartbeat cache for cluster DataNodes. */
 public class DataNodeHeartbeatCache extends BaseNodeCache {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeHeartbeatCache.class);
 
   // TODO: The load sample may be moved into NodeStatistics in the future
   private final AtomicReference<TLoadSample> latestLoadSample;
@@ -74,6 +79,11 @@ public class DataNodeHeartbeatCache extends BaseNodeCache {
     long loadScore = NodeStatus.isNormalStatus(status) ? 0 : Long.MAX_VALUE;
 
     currentStatistics.set(new NodeStatistics(currentNanoTime, status, statusReason, loadScore));
+
+    if (forceUpdate) {
+      LOGGER.debug(
+          "Force update NodeCache: status={}, currentNanoTime={}", status, currentNanoTime);
+    }
   }
 
   public double getFreeDiskSpace() {

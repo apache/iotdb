@@ -49,6 +49,12 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STAND
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_CONFIG_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_DATA_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LOCK_FILE_PATH;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_CONSENSUS_BATCH_MODE;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_CONSENSUS_BATCH_MODE_CONFIG_NODE_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_CONSENSUS_BATCH_MODE_DATA_NODE_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_CONSENSUS_STREAM_MODE;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_CONSENSUS_STREAM_MODE_CONFIG_NODE_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_CONSENSUS_STREAM_MODE_DATA_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.RATIS_CONSENSUS_STR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCALABLE_SINGLE_NODE_MODE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCALABLE_SINGLE_NODE_MODE_CONFIG_NODE_NUM;
@@ -142,6 +148,14 @@ public class EnvUtils {
           return new Pair<>(
               Integer.parseInt(System.getProperty(STRONG_CONSISTENCY_CLUSTER_MODE_CONFIG_NODE_NUM)),
               Integer.parseInt(System.getProperty(STRONG_CONSISTENCY_CLUSTER_MODE_DATA_NODE_NUM)));
+        case PIPE_CONSENSUS_BATCH_MODE:
+          return new Pair<>(
+              Integer.parseInt(System.getProperty(PIPE_CONSENSUS_BATCH_MODE_CONFIG_NODE_NUM)),
+              Integer.parseInt(System.getProperty(PIPE_CONSENSUS_BATCH_MODE_DATA_NODE_NUM)));
+        case PIPE_CONSENSUS_STREAM_MODE:
+          return new Pair<>(
+              Integer.parseInt(System.getProperty(PIPE_CONSENSUS_STREAM_MODE_CONFIG_NODE_NUM)),
+              Integer.parseInt(System.getProperty(PIPE_CONSENSUS_STREAM_MODE_DATA_NODE_NUM)));
         default:
           // Print nothing to avoid polluting test outputs
           return null;

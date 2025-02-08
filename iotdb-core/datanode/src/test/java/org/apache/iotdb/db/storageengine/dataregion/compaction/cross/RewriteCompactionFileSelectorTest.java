@@ -774,21 +774,21 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
         if (j == 3 && i > 5) {
           continue;
         }
-        TSRecord record = new TSRecord(i, deviceIds[j]);
+        TSRecord record = new TSRecord(deviceIds[j], i);
         for (int k = 0; k < measurementNum; ++k) {
           record.addTuple(
               DataPoint.getDataPoint(
                   measurementSchemas[k].getType(),
-                  measurementSchemas[k].getMeasurementId(),
+                  measurementSchemas[k].getMeasurementName(),
                   String.valueOf(i)));
         }
-        fileWriter.write(record);
+        fileWriter.writeRecord(record);
         firstTsFileResource.updateStartTime(deviceIds[j], i);
         firstTsFileResource.updateEndTime(deviceIds[j], i);
       }
     }
 
-    fileWriter.flushAllChunkGroups();
+    fileWriter.flush();
     fileWriter.close();
 
     // second file time range: [11, 20]
@@ -823,20 +823,20 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     }
     for (long i = 11; i < 21; ++i) {
       for (int j = 0; j < deviceNum; j++) {
-        TSRecord record = new TSRecord(i, deviceIds[j]);
+        TSRecord record = new TSRecord(deviceIds[j], i);
         for (int k = 0; k < measurementNum; k++) {
           record.addTuple(
               DataPoint.getDataPoint(
                   measurementSchemas[k].getType(),
-                  measurementSchemas[k].getMeasurementId(),
+                  measurementSchemas[k].getMeasurementName(),
                   String.valueOf(i)));
         }
-        fileWriter.write(record);
+        fileWriter.writeRecord(record);
         secondTsFileResource.updateStartTime(deviceIds[j], i);
         secondTsFileResource.updateEndTime(deviceIds[j], i);
       }
     }
-    fileWriter.flushAllChunkGroups();
+    fileWriter.flush();
     fileWriter.close();
 
     // unseq file: [0, 1]
@@ -869,20 +869,20 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     }
     for (long i = 0; i < 2; ++i) {
       for (int j = 0; j < deviceNum; j++) {
-        TSRecord record = new TSRecord(i, deviceIds[j]);
+        TSRecord record = new TSRecord(deviceIds[j], i);
         for (int k = 0; k < measurementNum; k++) {
           record.addTuple(
               DataPoint.getDataPoint(
                   measurementSchemas[k].getType(),
-                  measurementSchemas[k].getMeasurementId(),
+                  measurementSchemas[k].getMeasurementName(),
                   String.valueOf(i)));
         }
-        fileWriter.write(record);
+        fileWriter.writeRecord(record);
         thirdTsFileResource.updateStartTime(deviceIds[j], i);
         thirdTsFileResource.updateEndTime(deviceIds[j], i);
       }
     }
-    fileWriter.flushAllChunkGroups();
+    fileWriter.flush();
     fileWriter.close();
 
     // unseq file: [6, 14]
@@ -918,31 +918,31 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
         if (j == 3) {
           continue;
         }
-        TSRecord record = new TSRecord(i, deviceIds[j]);
+        TSRecord record = new TSRecord(deviceIds[j], i);
         for (int k = 0; k < measurementNum; k++) {
           record.addTuple(
               DataPoint.getDataPoint(
                   measurementSchemas[k].getType(),
-                  measurementSchemas[k].getMeasurementId(),
+                  measurementSchemas[k].getMeasurementName(),
                   String.valueOf(i)));
         }
-        fileWriter.write(record);
+        fileWriter.writeRecord(record);
         fourthTsFileResource.updateStartTime(deviceIds[j], i);
         fourthTsFileResource.updateEndTime(deviceIds[j], i);
       }
     }
-    TSRecord record = new TSRecord(1, deviceIds[3]);
+    TSRecord record = new TSRecord(deviceIds[3], 1);
     for (int k = 0; k < measurementNum; k++) {
       record.addTuple(
           DataPoint.getDataPoint(
               measurementSchemas[k].getType(),
-              measurementSchemas[k].getMeasurementId(),
+              measurementSchemas[k].getMeasurementName(),
               String.valueOf(1)));
     }
-    fileWriter.write(record);
+    fileWriter.writeRecord(record);
     fourthTsFileResource.updateStartTime(deviceIds[3], 1);
     fourthTsFileResource.updateEndTime(deviceIds[3], 1);
-    fileWriter.flushAllChunkGroups();
+    fileWriter.flush();
     fileWriter.close();
 
     long origin = SystemInfo.getInstance().getMemorySizeForCompaction();

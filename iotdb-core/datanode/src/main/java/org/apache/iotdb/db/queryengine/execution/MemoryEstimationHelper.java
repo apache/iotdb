@@ -70,7 +70,7 @@ public class MemoryEstimationHelper {
           alignedPath.getMeasurementList().stream().mapToLong(RamUsageEstimator::sizeOf).sum();
       totalSize +=
           alignedPath.getSchemaList().stream()
-              .mapToLong(schema -> RamUsageEstimator.sizeOf(schema.getMeasurementId()))
+              .mapToLong(schema -> RamUsageEstimator.sizeOf(schema.getMeasurementName()))
               .sum();
     } else if (partialPath instanceof MeasurementPath) {
       totalSize += partialPath.getIDeviceID().ramBytesUsed();
@@ -81,7 +81,7 @@ public class MemoryEstimationHelper {
       totalSize += RamUsageEstimator.sizeOf(measurementPath.getMeasurementAlias());
       if (measurementPath.getMeasurementSchema() != null) {
         totalSize +=
-            RamUsageEstimator.sizeOf(measurementPath.getMeasurementSchema().getMeasurementId());
+            RamUsageEstimator.sizeOf(measurementPath.getMeasurementSchema().getMeasurementName());
       }
     } else {
       // the whole path is a device

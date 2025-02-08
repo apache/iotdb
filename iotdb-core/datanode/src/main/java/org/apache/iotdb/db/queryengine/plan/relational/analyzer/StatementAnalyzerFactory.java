@@ -35,7 +35,7 @@ public class StatementAnalyzerFactory {
   private final AccessControl accessControl;
 
   public StatementAnalyzerFactory(
-      Metadata metadata, SqlParser sqlParser, AccessControl accessControl) {
+      final Metadata metadata, final SqlParser sqlParser, final AccessControl accessControl) {
     this.metadata = requireNonNull(metadata, "plannerContext is null");
     this.sqlParser = sqlParser;
     this.accessControl = requireNonNull(accessControl, "accessControl is null");
@@ -46,11 +46,11 @@ public class StatementAnalyzerFactory {
   }
 
   public StatementAnalyzer createStatementAnalyzer(
-      Analysis analysis,
-      MPPQueryContext context,
-      SessionInfo session,
-      WarningCollector warningCollector,
-      CorrelationSupport correlationSupport) {
+      final Analysis analysis,
+      final MPPQueryContext context,
+      final SessionInfo session,
+      final WarningCollector warningCollector,
+      final CorrelationSupport correlationSupport) {
     return new StatementAnalyzer(
         this,
         analysis,

@@ -20,12 +20,16 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.MapBigArray;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -34,6 +38,7 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.UNSUPPORTED_TYPE_MESSAGE;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.serializeBinaryValue;
 import static org.apache.tsfile.utils.BytesUtils.bytesToBool;
@@ -68,29 +73,29 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
   }
 
   @Override
-  public void addInput(int[] groupIds, Column[] arguments) {
+  public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
     switch (seriesDataType) {
       case BOOLEAN:
-        addBooleanInput(groupIds, arguments[0]);
+        addBooleanInput(groupIds, arguments[0], mask);
         break;
       case INT32:
       case DATE:
-        addIntInput(groupIds, arguments[0]);
+        addIntInput(groupIds, arguments[0], mask);
         break;
       case FLOAT:
-        addFloatInput(groupIds, arguments[0]);
+        addFloatInput(groupIds, arguments[0], mask);
         break;
       case INT64:
       case TIMESTAMP:
-        addLongInput(groupIds, arguments[0]);
+        addLongInput(groupIds, arguments[0], mask);
         break;
       case DOUBLE:
-        addDoubleInput(groupIds, arguments[0]);
+        addDoubleInput(groupIds, arguments[0], mask);
         break;
       case TEXT:
       case STRING:
       case BLOB:
-        addBinaryInput(groupIds, arguments[0]);
+        addBinaryInput(groupIds, arguments[0], mask);
         break;
       default:
         throw new UnsupportedOperationException(
@@ -100,6 +105,12 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
 
   @Override
   public void addIntermediate(int[] groupIds, Column argument) {
+    checkArgument(
+        argument instanceof BinaryColumn
+            || (argument instanceof RunLengthEncodedColumn
+                && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
+        "intermediate input and output of Mode should be BinaryColumn");
+
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
         continue;
@@ -112,6 +123,10 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
 
   @Override
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
+    checkArgument(
+        columnBuilder instanceof BinaryColumnBuilder,
+        "intermediate input and output of Mode should be BinaryColumn");
+
     columnBuilder.writeBinary(new Binary(serializeCountMap(groupId)));
   }
 
@@ -161,6 +176,12 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
 
   @Override
   public void prepareFinal() {}
+
+  @Override
+  public void reset() {
+    countMaps.reset();
+    nullCounts.reset();
+  }
 
   // haveNull | nullCount (optional) | countMap
   private byte[] serializeCountMap(int groupId) {
@@ -362,81 +383,204 @@ public class GroupedModeAccumulator implements GroupedAccumulator {
     }
   }
 
-  private void addBooleanInput(int[] groupIds, Column column) {
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      if (!column.isNull(i)) {
-        HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
-        countMap.compute(
-            getByType(seriesDataType, column.getBoolean(i)), (k, v) -> v == null ? 1 : v + 1);
-        checkMapSize(countMap.size());
+  private void addBooleanInput(int[] groupIds, Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
 
-      } else {
-        nullCounts.increment(groupIds[i]);
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column.isNull(i)) {
+          HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
+          countMap.compute(
+              getByType(seriesDataType, column.getBoolean(i)), (k, v) -> v == null ? 1 : v + 1);
+          checkMapSize(countMap.size());
+
+        } else {
+          nullCounts.increment(groupIds[i]);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[position]);
+          countMap.compute(
+              getByType(seriesDataType, column.getBoolean(position)),
+              (k, v) -> v == null ? 1 : v + 1);
+          checkMapSize(countMap.size());
+
+        } else {
+          nullCounts.increment(groupIds[position]);
+        }
       }
     }
   }
 
-  private void addIntInput(int[] groupIds, Column column) {
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      if (!column.isNull(i)) {
-        HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
-        countMap.compute(
-            getByType(seriesDataType, column.getInt(i)), (k, v) -> v == null ? 1 : v + 1);
-        checkMapSize(countMap.size());
-      } else {
-        nullCounts.increment(groupIds[i]);
+  private void addIntInput(int[] groupIds, Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column.isNull(i)) {
+          HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
+          countMap.compute(
+              getByType(seriesDataType, column.getInt(i)), (k, v) -> v == null ? 1 : v + 1);
+          checkMapSize(countMap.size());
+
+        } else {
+          nullCounts.increment(groupIds[i]);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[position]);
+          countMap.compute(
+              getByType(seriesDataType, column.getInt(position)), (k, v) -> v == null ? 1 : v + 1);
+          checkMapSize(countMap.size());
+
+        } else {
+          nullCounts.increment(groupIds[position]);
+        }
       }
     }
   }
 
-  private void addFloatInput(int[] groupIds, Column column) {
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      if (!column.isNull(i)) {
-        HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
-        countMap.compute(
-            getByType(seriesDataType, column.getFloat(i)), (k, v) -> v == null ? 1 : v + 1);
-        checkMapSize(countMap.size());
-      } else {
-        nullCounts.increment(groupIds[i]);
+  private void addFloatInput(int[] groupIds, Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column.isNull(i)) {
+          HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
+          countMap.compute(
+              getByType(seriesDataType, column.getFloat(i)), (k, v) -> v == null ? 1 : v + 1);
+          checkMapSize(countMap.size());
+
+        } else {
+          nullCounts.increment(groupIds[i]);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[position]);
+          countMap.compute(
+              getByType(seriesDataType, column.getFloat(position)),
+              (k, v) -> v == null ? 1 : v + 1);
+          checkMapSize(countMap.size());
+
+        } else {
+          nullCounts.increment(groupIds[position]);
+        }
       }
     }
   }
 
-  private void addLongInput(int[] groupIds, Column column) {
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      if (!column.isNull(i)) {
-        HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
-        countMap.compute(
-            getByType(seriesDataType, column.getLong(i)), (k, v) -> v == null ? 1 : v + 1);
-        checkMapSize(countMap.size());
-      } else {
-        nullCounts.increment(groupIds[i]);
+  private void addLongInput(int[] groupIds, Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column.isNull(i)) {
+          HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
+          countMap.compute(
+              getByType(seriesDataType, column.getLong(i)), (k, v) -> v == null ? 1 : v + 1);
+          checkMapSize(countMap.size());
+
+        } else {
+          nullCounts.increment(groupIds[i]);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[position]);
+          countMap.compute(
+              getByType(seriesDataType, column.getLong(position)), (k, v) -> v == null ? 1 : v + 1);
+          checkMapSize(countMap.size());
+
+        } else {
+          nullCounts.increment(groupIds[position]);
+        }
       }
     }
   }
 
-  private void addDoubleInput(int[] groupIds, Column column) {
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      if (!column.isNull(i)) {
-        HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
-        countMap.compute(
-            getByType(seriesDataType, column.getDouble(i)), (k, v) -> v == null ? 1 : v + 1);
-        checkMapSize(countMap.size());
-      } else {
-        nullCounts.increment(groupIds[i]);
+  private void addDoubleInput(int[] groupIds, Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column.isNull(i)) {
+          HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
+          countMap.compute(
+              getByType(seriesDataType, column.getDouble(i)), (k, v) -> v == null ? 1 : v + 1);
+          checkMapSize(countMap.size());
+
+        } else {
+          nullCounts.increment(groupIds[i]);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[position]);
+          countMap.compute(
+              getByType(seriesDataType, column.getDouble(position)),
+              (k, v) -> v == null ? 1 : v + 1);
+          checkMapSize(countMap.size());
+
+        } else {
+          nullCounts.increment(groupIds[position]);
+        }
       }
     }
   }
 
-  private void addBinaryInput(int[] groupIds, Column column) {
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      if (!column.isNull(i)) {
-        HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
-        countMap.compute(
-            getByType(seriesDataType, column.getBinary(i)), (k, v) -> v == null ? 1 : v + 1);
-        checkMapSize(countMap.size());
-      } else {
-        nullCounts.increment(groupIds[i]);
+  private void addBinaryInput(int[] groupIds, Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column.isNull(i)) {
+          HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[i]);
+          countMap.compute(
+              getByType(seriesDataType, column.getBinary(i)), (k, v) -> v == null ? 1 : v + 1);
+          checkMapSize(countMap.size());
+
+        } else {
+          nullCounts.increment(groupIds[i]);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          HashMap<TsPrimitiveType, Long> countMap = countMaps.get(groupIds[position]);
+          countMap.compute(
+              getByType(seriesDataType, column.getBinary(position)),
+              (k, v) -> v == null ? 1 : v + 1);
+          checkMapSize(countMap.size());
+
+        } else {
+          nullCounts.increment(groupIds[position]);
+        }
       }
     }
   }

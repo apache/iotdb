@@ -50,7 +50,7 @@ public class IoTDBScalarFunctionTableIT {
         "CREATE DATABASE " + DATABASE_NAME,
         "use " + DATABASE_NAME,
         // absSQL
-        "create table absTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table absTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO absTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         "INSERT INTO absTable(Time,device_id,s2) values(2, 'd1',  -1)",
         "INSERT INTO absTable(Time,device_id,s2) values(3, 'd1',  -2)",
@@ -61,21 +61,21 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO absTable(Time,device_id,s5) values(2, 'd1',  -1.5)",
         "INSERT INTO absTable(Time,device_id,s5) values(3, 'd1',  -2.5)",
         // acosSQL
-        "create table acosTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table acosTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO acosTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1, 'abcd', X'abcd')",
         "INSERT INTO acosTable(Time,device_id,s2) values(2, 'd1',  2)",
         "INSERT INTO acosTable(Time,device_id,s3) values(2, 'd1',  2)",
         "INSERT INTO acosTable(Time,device_id,s4) values(2, 'd1',  0.5)",
         "INSERT INTO acosTable(Time,device_id,s5) values(2, 'd1',  0.5)",
         // asinSQL
-        "create table asinTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table asinTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO asinTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1, 'abcd', X'abcd')",
         "INSERT INTO asinTable(Time,device_id,s2) values(2, 'd1',  2)",
         "INSERT INTO asinTable(Time,device_id,s3) values(2, 'd1',  2)",
         "INSERT INTO asinTable(Time,device_id,s4) values(2, 'd1',  0.5)",
         "INSERT INTO asinTable(Time,device_id,s5) values(2, 'd1',  0.5)",
         // atanSQL
-        "create table atanTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table atanTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO atanTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         "INSERT INTO atanTable(Time,device_id,s2) values(2, 'd1',  2)",
         "INSERT INTO atanTable(Time,device_id,s2) values(3, 'd1',  3)",
@@ -86,7 +86,7 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO atanTable(Time,device_id,s5) values(2, 'd1',  2.5)",
         "INSERT INTO atanTable(Time,device_id,s5) values(3, 'd1',  3.5)",
         // ceilSQL
-        "create table ceilTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table ceilTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO ceilTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         "INSERT INTO ceilTable(Time,device_id,s2) values(2, 'd1',  2)",
         "INSERT INTO ceilTable(Time,device_id,s2) values(3, 'd1',  -2)",
@@ -97,7 +97,7 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO ceilTable(Time,device_id,s5) values(2, 'd1',  2.5)",
         "INSERT INTO ceilTable(Time,device_id,s5) values(3, 'd1',  -2.5)",
         // concatSQL
-        "create table concatTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table concatTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO concatTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'ab', X'abcd')",
         "INSERT INTO concatTable(Time,device_id,s1) values(2, 'd1', 'Test')",
         "INSERT INTO concatTable(Time,device_id,s1) values(3, 'd1', 'efgh')",
@@ -106,7 +106,7 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO concatTable(Time,device_id,s9) values(3, 'd1', 'efgh')",
         "INSERT INTO concatTable(Time,device_id,s9) values(4, 'd1', 'haha')",
         // cosSQL
-        "create table cosTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table cosTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO cosTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         "INSERT INTO cosTable(Time,device_id,s2) values(2, 'd1',  2)",
         "INSERT INTO cosTable(Time,device_id,s2) values(3, 'd1',  3)",
@@ -117,7 +117,7 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO cosTable(Time,device_id,s5) values(2, 'd1',  2.5)",
         "INSERT INTO cosTable(Time,device_id,s5) values(3, 'd1',  3.5)",
         // coshSQL
-        "create table coshTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table coshTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO coshTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         "INSERT INTO coshTable(Time,device_id,s2) values(2, 'd1',  2)",
         "INSERT INTO coshTable(Time,device_id,s2) values(3, 'd1',  3)",
@@ -128,7 +128,7 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO coshTable(Time,device_id,s5) values(2, 'd1',  2.5)",
         "INSERT INTO coshTable(Time,device_id,s5) values(3, 'd1',  3.5)",
         // degreesSQL
-        "create table degreesTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table degreesTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO degreesTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         "INSERT INTO degreesTable(Time,device_id,s2) values(2, 'd1',  2)",
         "INSERT INTO degreesTable(Time,device_id,s2) values(3, 'd1',  3)",
@@ -139,14 +139,14 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO degreesTable(Time,device_id,s5) values(2, 'd1',  2.5)",
         "INSERT INTO degreesTable(Time,device_id,s5) values(3, 'd1',  3.5)",
         // endsWithSQL
-        "create table endsWithTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table endsWithTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO endsWithTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'ab', X'abcd')",
         "INSERT INTO endsWithTable(Time,device_id,s1) values(2, 'd1', 'Test')",
         "INSERT INTO endsWithTable(Time,device_id,s1) values(3, 'd1', 'efgh')",
         "INSERT INTO endsWithTable(Time,device_id,s9) values(2, 'd1', 'Test')",
         "INSERT INTO endsWithTable(Time,device_id,s9) values(3, 'd1', 'efgh')",
         // expSQL
-        "create table expTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table expTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO expTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         "INSERT INTO expTable(Time,device_id,s2) values(2, 'd1',  2)",
         "INSERT INTO expTable(Time,device_id,s2) values(3, 'd1',  3)",
@@ -157,7 +157,7 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO expTable(Time,device_id,s5) values(2, 'd1',  2.5)",
         "INSERT INTO expTable(Time,device_id,s5) values(3, 'd1',  3.5)",
         // floorSQL
-        "create table floorTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table floorTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO floorTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         "INSERT INTO floorTable(Time,device_id,s2) values(2, 'd1',  2)",
         "INSERT INTO floorTable(Time,device_id,s2) values(3, 'd1',  -2)",
@@ -168,14 +168,14 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO floorTable(Time,device_id,s5) values(2, 'd1',  2.5)",
         "INSERT INTO floorTable(Time,device_id,s5) values(3, 'd1',  -2.5)",
         // lengthSQL
-        "create table lengthTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table lengthTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO lengthTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         "INSERT INTO lengthTable(Time,device_id,s1) values(2, 'd1', 'test')",
         "INSERT INTO lengthTable(Time,device_id,s1) values(3, 'd1', 'abcdefg')",
         "INSERT INTO lengthTable(Time,device_id,s9) values(2, 'd1', 'test')",
         "INSERT INTO lengthTable(Time,device_id,s9) values(3, 'd1', 'abcdefg')",
         // lnSQL
-        "create table lnTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table lnTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO lnTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         "INSERT INTO lnTable(Time,device_id,s2) values(2, 'd1',  0)",
         "INSERT INTO lnTable(Time,device_id,s2) values(3, 'd1',  -3)",
@@ -186,7 +186,7 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO lnTable(Time,device_id,s5) values(2, 'd1',  0.0)",
         "INSERT INTO lnTable(Time,device_id,s5) values(3, 'd1',  -3.5)",
         // log10SQL
-        "create table log10Table(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table log10Table(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO log10Table(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         "INSERT INTO log10Table(Time,device_id,s2) values(2, 'd1',  0)",
         "INSERT INTO log10Table(Time,device_id,s2) values(3, 'd1',  -3)",
@@ -197,14 +197,14 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO log10Table(Time,device_id,s5) values(2, 'd1',  0.0)",
         "INSERT INTO log10Table(Time,device_id,s5) values(3, 'd1',  -3.5)",
         // lowerSQL
-        "create table lowerTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table lowerTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO lowerTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'ABCD', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'ABCD', X'abcd')",
         "INSERT INTO lowerTable(Time,device_id,s1) values(2, 'd1', 'Test')",
         "INSERT INTO lowerTable(Time,device_id,s1) values(3, 'd1', 'Abcdefg')",
         "INSERT INTO lowerTable(Time,device_id,s9) values(2, 'd1', 'Test')",
         "INSERT INTO lowerTable(Time,device_id,s9) values(3, 'd1', 'Abcdefg')",
         // radiansSQL
-        "create table radiansTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table radiansTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO radiansTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         "INSERT INTO radiansTable(Time,device_id,s2) values(2, 'd1',  2)",
         "INSERT INTO radiansTable(Time,device_id,s2) values(3, 'd1',  3)",
@@ -215,14 +215,14 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO radiansTable(Time,device_id,s5) values(2, 'd1',  2.5)",
         "INSERT INTO radiansTable(Time,device_id,s5) values(3, 'd1',  3.5)",
         // regexpLikeSQL
-        "create table regexpLikeTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table regexpLikeTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO regexpLikeTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'ab', X'abcd')",
         "INSERT INTO regexpLikeTable(Time,device_id,s1) values(2, 'd1', 'Test')",
         "INSERT INTO regexpLikeTable(Time,device_id,s1) values(3, 'd1', 'efgh')",
         "INSERT INTO regexpLikeTable(Time,device_id,s9) values(2, 'd1', 'Test')",
         "INSERT INTO regexpLikeTable(Time,device_id,s9) values(3, 'd1', '[e-g]+')",
         // signSQL
-        "create table signTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table signTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO signTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         "INSERT INTO signTable(Time,device_id,s2) values(2, 'd1',  0)",
         "INSERT INTO signTable(Time,device_id,s2) values(3, 'd1',  -1)",
@@ -233,7 +233,7 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO signTable(Time,device_id,s5) values(2, 'd1',  0.0)",
         "INSERT INTO signTable(Time,device_id,s5) values(3, 'd1',  -1.0)",
         // sinSQL
-        "create table sinTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table sinTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO sinTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         "INSERT INTO sinTable(Time,device_id,s2) values(2, 'd1',  2)",
         "INSERT INTO sinTable(Time,device_id,s2) values(3, 'd1',  3)",
@@ -244,7 +244,7 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO sinTable(Time,device_id,s5) values(2, 'd1',  2.5)",
         "INSERT INTO sinTable(Time,device_id,s5) values(3, 'd1',  3.5)",
         // sinhSQL
-        "create table sinhTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table sinhTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO sinhTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         "INSERT INTO sinhTable(Time,device_id,s2) values(2, 'd1',  2)",
         "INSERT INTO sinhTable(Time,device_id,s2) values(3, 'd1',  3)",
@@ -255,7 +255,7 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO sinhTable(Time,device_id,s5) values(2, 'd1',  2.5)",
         "INSERT INTO sinhTable(Time,device_id,s5) values(3, 'd1',  3.5)",
         // sqrtSQL
-        "create table sqrtTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table sqrtTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO sqrtTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         "INSERT INTO sqrtTable(Time,device_id,s2) values(2, 'd1',  0)",
         "INSERT INTO sqrtTable(Time,device_id,s2) values(3, 'd1',  -1)",
@@ -266,28 +266,28 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO sqrtTable(Time,device_id,s5) values(2, 'd1',  0.0)",
         "INSERT INTO sqrtTable(Time,device_id,s5) values(3, 'd1',  -1.5)",
         // startsWithSQL
-        "create table startsWithTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table startsWithTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO startsWithTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'ab', X'abcd')",
         "INSERT INTO startsWithTable(Time,device_id,s1) values(2, 'd1', 'Test')",
         "INSERT INTO startsWithTable(Time,device_id,s1) values(3, 'd1', 'efgh')",
         "INSERT INTO startsWithTable(Time,device_id,s9) values(2, 'd1', 'Test')",
         "INSERT INTO startsWithTable(Time,device_id,s9) values(3, 'd1', 'efgh')",
         // strcmpSQL
-        "create table strcmpTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table strcmpTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO strcmpTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'ab', X'abcd')",
         "INSERT INTO strcmpTable(Time,device_id,s1) values(2, 'd1', 'Test')",
         "INSERT INTO strcmpTable(Time,device_id,s1) values(3, 'd1', 'efgh')",
         "INSERT INTO strcmpTable(Time,device_id,s9) values(2, 'd1', 'Test')",
         "INSERT INTO strcmpTable(Time,device_id,s9) values(3, 'd1', 'efgh')",
         // strposSQL
-        "create table strposTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table strposTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO strposTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'ab', X'abcd')",
         "INSERT INTO strposTable(Time,device_id,s1) values(2, 'd1', 'Test')",
         "INSERT INTO strposTable(Time,device_id,s1) values(3, 'd1', 'efgh')",
         "INSERT INTO strposTable(Time,device_id,s9) values(2, 'd1', 'Test')",
         "INSERT INTO strposTable(Time,device_id,s9) values(3, 'd1', 'efgh')",
         // tanSQL
-        "create table tanTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table tanTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO tanTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         "INSERT INTO tanTable(Time,device_id,s2) values(2, 'd1',  2)",
         "INSERT INTO tanTable(Time,device_id,s2) values(3, 'd1',  3)",
@@ -298,7 +298,7 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO tanTable(Time,device_id,s5) values(2, 'd1',  1.57079632675)",
         "INSERT INTO tanTable(Time,device_id,s5) values(3, 'd1',  3.5)",
         // tanhSQL
-        "create table tanhTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table tanhTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO tanhTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         "INSERT INTO tanhTable(Time,device_id,s2) values(2, 'd1',  2)",
         "INSERT INTO tanhTable(Time,device_id,s2) values(3, 'd1',  3)",
@@ -309,24 +309,24 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO tanhTable(Time,device_id,s5) values(2, 'd1',  2.5)",
         "INSERT INTO tanhTable(Time,device_id,s5) values(3, 'd1',  3.5)",
         // trimSQL
-        "create table trimTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table trimTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO trimTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'ab', X'abcd')",
         "INSERT INTO trimTable(Time,device_id,s1) values(2, 'd1', 'xyTestxy')",
         "INSERT INTO trimTable(Time,device_id,s1) values(3, 'd1', '  Test  ')",
         "INSERT INTO trimTable(Time,device_id,s9) values(2, 'd1', 'xy')",
         "INSERT INTO trimTable(Time,device_id,s9) values(3, 'd1', ' T')",
         // upperSQL
-        "create table upperTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table upperTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO upperTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         "INSERT INTO upperTable(Time,device_id,s1) values(2, 'd1', 'Test')",
         "INSERT INTO upperTable(Time,device_id,s1) values(3, 'd1', 'Abcdefg')",
         "INSERT INTO upperTable(Time,device_id,s9) values(2, 'd1', 'Test')",
         "INSERT INTO upperTable(Time,device_id,s9) values(3, 'd1', 'Abcdefg')",
         // no args SQL
-        "create table NoArgTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table NoArgTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         "INSERT INTO NoArgTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 0, 0, 0, 0, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         // dateBinSQL use s8 to calculate
-        "create table dateBinTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "create table dateBinTable(device_id STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD, s3 INT64 FIELD, s4 FLOAT FIELD, s5 DOUBLE FIELD, s6 BOOLEAN FIELD, s7 DATE FIELD, s8 TIMESTAMP FIELD, s9 STRING FIELD, s10 BLOB FIELD)",
         // 2024-01-01T00:00:00.000Z
         "INSERT INTO dateBinTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'Test', 1, 1, 1, 1, true, '2024-01-01', 1704067200000, 'abcd', X'abcd')",
         // 2024-01-01T01:00:00.000Z
@@ -2828,6 +2828,22 @@ public class IoTDBScalarFunctionTableIT {
         };
     tableResultSetEqualTest(
         "select time,s1,s8,date_bin(1H, s8) from dateBinTable",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"time", "s8", "_col2"};
+    expectedAns =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,2024-01-01T00:00:00.000Z,2023-12-28T00:00:00.000Z,",
+          "1970-01-01T00:00:00.002Z,2024-01-01T01:00:00.000Z,2023-12-28T00:00:00.000Z,",
+          "1970-01-01T00:00:00.003Z,2024-01-01T01:59:00.000Z,2023-12-28T00:00:00.000Z,",
+          "1970-01-01T00:00:00.004Z,2023-12-31T23:59:00.000Z,2023-12-28T00:00:00.000Z,",
+          "1970-01-01T00:00:00.005Z,1969-12-31T23:59:00.000Z,1969-12-25T00:00:00.000Z,",
+          "1970-01-01T00:00:00.006Z,null,null,",
+        };
+    tableResultSetEqualTest(
+        "select time,s8,date_bin(1W, s8) from dateBinTable",
         expectedHeader,
         expectedAns,
         DATABASE_NAME);

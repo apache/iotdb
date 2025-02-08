@@ -72,7 +72,7 @@ public class ClusterQuotaManager {
     regionDisk = new ConcurrentHashMap<>();
   }
 
-  public TSStatus setSpaceQuota(TSetSpaceQuotaReq req) {
+  public TSStatus setSpaceQuota(final TSetSpaceQuotaReq req) {
     if (!checkSpaceQuota(req)) {
       return RpcUtils.getStatus(
           TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
@@ -80,12 +80,12 @@ public class ClusterQuotaManager {
     }
     // TODO: Datanode failed to receive rpc
     try {
-      TSStatus response =
+      final TSStatus response =
           configManager
               .getConsensusManager()
               .write(new SetSpaceQuotaPlan(req.getDatabase(), req.getSpaceLimit()));
       if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
             configManager.getNodeManager().getRegisteredDataNodeLocations();
         DataNodeAsyncRequestContext<TSetSpaceQuotaReq, TSStatus> clientHandler =
             new DataNodeAsyncRequestContext<>(
@@ -95,7 +95,7 @@ public class ClusterQuotaManager {
         return RpcUtils.squashResponseStatusList(clientHandler.getResponseList());
       }
       return response;
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(
           String.format(
               "Unexpected error happened while setting space quota on database: %s ",

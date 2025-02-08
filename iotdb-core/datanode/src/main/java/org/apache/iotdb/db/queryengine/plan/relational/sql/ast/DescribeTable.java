@@ -31,23 +31,25 @@ import static java.util.Objects.requireNonNull;
 
 public class DescribeTable extends Statement {
   private final QualifiedName table;
+  private final boolean isDetails;
 
-  public DescribeTable(QualifiedName table) {
-    super(null);
-    this.table = requireNonNull(table, "table is null");
-  }
-
-  public DescribeTable(@Nonnull NodeLocation location, QualifiedName table) {
+  public DescribeTable(
+      final @Nonnull NodeLocation location, final QualifiedName table, final boolean isDetails) {
     super(requireNonNull(location, "location is null"));
     this.table = requireNonNull(table, "table is null");
+    this.isDetails = isDetails;
   }
 
   public QualifiedName getTable() {
     return table;
   }
 
+  public boolean isDetails() {
+    return isDetails;
+  }
+
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitDescribeTable(this, context);
   }
 
@@ -57,14 +59,14 @@ public class DescribeTable extends Statement {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    DescribeTable that = (DescribeTable) o;
+    final DescribeTable that = (DescribeTable) o;
     return Objects.equals(table, that.table);
   }
 

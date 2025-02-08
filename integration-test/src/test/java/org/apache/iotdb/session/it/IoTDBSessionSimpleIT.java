@@ -20,6 +20,7 @@ package org.apache.iotdb.session.it;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -41,7 +42,6 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -64,6 +64,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -114,19 +115,19 @@ public class IoTDBSessionSimpleIT {
       long timestamp = System.currentTimeMillis();
 
       for (long row = 0; row < 15; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp);
         tablet.addValue("s1", rowIndex, 1L);
         tablet.addValue("s2", rowIndex, 1D);
         tablet.addValue("s3", rowIndex, new Binary("1", TSFileConfig.STRING_CHARSET));
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           session.insertTablet(tablet, true);
           tablet.reset();
         }
         timestamp++;
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insertTablet(tablet);
         tablet.reset();
       }
@@ -167,25 +168,25 @@ public class IoTDBSessionSimpleIT {
       long timestamp = System.currentTimeMillis();
 
       for (long row = 0; row < 15; row++) {
-        int rowIndex1 = tablet1.rowSize++;
+        int rowIndex1 = tablet1.getRowSize();
         tablet1.addTimestamp(rowIndex1, timestamp);
         tablet1.addValue("s1", rowIndex1, 1L);
         tablet1.addValue("s2", rowIndex1, 1D);
         tablet1.addValue("s3", rowIndex1, new Binary("1", TSFileConfig.STRING_CHARSET));
 
-        int rowIndex2 = tablet2.rowSize++;
+        int rowIndex2 = tablet2.getRowSize();
         tablet2.addTimestamp(rowIndex2, timestamp);
         tablet2.addValue("s1", rowIndex2, 1L);
         tablet2.addValue("s2", rowIndex2, 1D);
         tablet2.addValue("s3", rowIndex2, new Binary("1", TSFileConfig.STRING_CHARSET));
 
-        int rowIndex3 = tablet3.rowSize++;
+        int rowIndex3 = tablet3.getRowSize();
         tablet3.addTimestamp(rowIndex3, timestamp);
         tablet3.addValue("s1", rowIndex3, 1L);
         tablet3.addValue("s2", rowIndex3, 1D);
         tablet3.addValue("s3", rowIndex3, new Binary("1", TSFileConfig.STRING_CHARSET));
 
-        if (tablet1.rowSize == tablet1.getMaxRowNumber()) {
+        if (tablet1.getRowSize() == tablet1.getMaxRowNumber()) {
           session.insertTablets(tabletMap);
           tablet1.reset();
           tablet2.reset();
@@ -194,7 +195,7 @@ public class IoTDBSessionSimpleIT {
         timestamp++;
       }
 
-      if (tablet1.rowSize != 0) {
+      if (tablet1.getRowSize() != 0) {
         session.insertTablets(tabletMap);
         tablet1.reset();
         tablet2.reset();
@@ -446,20 +447,20 @@ public class IoTDBSessionSimpleIT {
       long timestamp = System.currentTimeMillis();
 
       for (long row = 0; row < 10; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp);
         tablet.addValue(
-            schemaList.get(0).getMeasurementId(), rowIndex, new SecureRandom().nextLong());
+            schemaList.get(0).getMeasurementName(), rowIndex, new SecureRandom().nextLong());
         tablet.addValue(
-            schemaList.get(1).getMeasurementId(), rowIndex, new SecureRandom().nextInt());
+            schemaList.get(1).getMeasurementName(), rowIndex, new SecureRandom().nextInt());
         tablet.addValue(
-            schemaList.get(2).getMeasurementId(),
+            schemaList.get(2).getMeasurementName(),
             rowIndex,
             new Binary("test", TSFileConfig.STRING_CHARSET));
         timestamp++;
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insertAlignedTablet(tablet);
         tablet.reset();
       }
@@ -479,7 +480,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
-  public void insertTabletWithNullValuesTest() {
+  public void insertTabletWithNullValuesTest() throws InterruptedException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
@@ -491,30 +492,25 @@ public class IoTDBSessionSimpleIT {
 
       Tablet tablet = new Tablet("root.sg1.d1", schemaList);
       for (long time = 0; time < 10; time++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, time);
 
-        tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, (double) time);
-        tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (float) time);
-        tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, time);
-        tablet.addValue(schemaList.get(3).getMeasurementId(), rowIndex, (int) time);
-        tablet.addValue(schemaList.get(4).getMeasurementId(), rowIndex, time % 2 == 0);
+        tablet.addValue(schemaList.get(0).getMeasurementName(), rowIndex, (double) time);
+        tablet.addValue(schemaList.get(1).getMeasurementName(), rowIndex, (float) time);
+        tablet.addValue(schemaList.get(2).getMeasurementName(), rowIndex, time);
+        tablet.addValue(schemaList.get(3).getMeasurementName(), rowIndex, (int) time);
+        tablet.addValue(schemaList.get(4).getMeasurementName(), rowIndex, time % 2 == 0);
         tablet.addValue(
-            schemaList.get(5).getMeasurementId(),
+            schemaList.get(5).getMeasurementName(),
             rowIndex,
             new Binary(String.valueOf(time), TSFileConfig.STRING_CHARSET));
       }
 
-      BitMap[] bitMaps = new BitMap[schemaList.size()];
       for (int i = 0; i < schemaList.size(); i++) {
-        if (bitMaps[i] == null) {
-          bitMaps[i] = new BitMap(10);
-        }
-        bitMaps[i].mark(i);
+        tablet.getBitMaps()[i].mark(i);
       }
-      tablet.bitMaps = bitMaps;
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insertTablet(tablet);
         tablet.reset();
       }
@@ -526,6 +522,38 @@ public class IoTDBSessionSimpleIT {
         for (Field field : rowRecord.getFields()) {
           assertEquals(9L, field.getLongV());
         }
+      }
+      dataSet = session.executeQueryStatement("select s3 from root.sg1.d1");
+      int result = 0;
+      assertTrue(dataSet.hasNext());
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        Field field = rowRecord.getFields().get(0);
+        // skip null value
+        if (result == 3) {
+          result++;
+        }
+        assertEquals(result++, field.getIntV());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+    TimeUnit.MILLISECONDS.sleep(2000);
+
+    TestUtils.stopForciblyAndRestartDataNodes();
+
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      SessionDataSet dataSet = session.executeQueryStatement("select s3 from root.sg1.d1");
+      int result = 0;
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        Field field = rowRecord.getFields().get(0);
+        // skip null value
+        if (result == 3) {
+          result++;
+        }
+        assertEquals(result++, field.getIntV());
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -548,22 +576,22 @@ public class IoTDBSessionSimpleIT {
 
       Tablet tablet = new Tablet("root.sg1.d1", schemaList);
       for (long time = 0; time < 10; time++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, time);
 
-        tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, (double) time);
-        tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (float) time);
-        tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, time);
-        tablet.addValue(schemaList.get(3).getMeasurementId(), rowIndex, (int) time);
-        tablet.addValue(schemaList.get(4).getMeasurementId(), rowIndex, time % 2 == 0);
+        tablet.addValue(schemaList.get(0).getMeasurementName(), rowIndex, (double) time);
+        tablet.addValue(schemaList.get(1).getMeasurementName(), rowIndex, (float) time);
+        tablet.addValue(schemaList.get(2).getMeasurementName(), rowIndex, time);
+        tablet.addValue(schemaList.get(3).getMeasurementName(), rowIndex, (int) time);
+        tablet.addValue(schemaList.get(4).getMeasurementName(), rowIndex, time % 2 == 0);
         tablet.addValue(
-            schemaList.get(5).getMeasurementId(),
+            schemaList.get(5).getMeasurementName(),
             rowIndex,
             new Binary("Text" + time, TSFileConfig.STRING_CHARSET));
-        tablet.addValue(schemaList.get(6).getMeasurementId(), rowIndex, "Text" + time);
+        tablet.addValue(schemaList.get(6).getMeasurementName(), rowIndex, "Text" + time);
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insertTablet(tablet);
         tablet.reset();
       }
@@ -572,6 +600,17 @@ public class IoTDBSessionSimpleIT {
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         List<Field> fields = rowRecord.getFields();
+        // this test may occasionally fail by IndexOutOfBoundsException
+        if (fields.size() != 7) {
+          SessionDataSet showTimeseriesDataSet =
+              session.executeQueryStatement("show timeseries root.sg1.d1.*");
+          LOGGER.error("show timeseries result:");
+          while (showTimeseriesDataSet.hasNext()) {
+            RowRecord row = showTimeseriesDataSet.next();
+            LOGGER.error(row.toString());
+          }
+          LOGGER.error("The number of fields is not correct. fields values: " + fields);
+        }
         assertEquals(fields.get(5).getBinaryV(), fields.get(6).getBinaryV());
       }
     } catch (Exception e) {
@@ -595,22 +634,22 @@ public class IoTDBSessionSimpleIT {
 
       Tablet tablet = new Tablet("root.sg1.d1", schemaList);
       for (long time = 0; time < 10; time++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, -time);
 
-        tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, (double) time);
-        tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (float) time);
-        tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, time);
-        tablet.addValue(schemaList.get(3).getMeasurementId(), rowIndex, (int) time);
-        tablet.addValue(schemaList.get(4).getMeasurementId(), rowIndex, time % 2 == 0);
+        tablet.addValue(schemaList.get(0).getMeasurementName(), rowIndex, (double) time);
+        tablet.addValue(schemaList.get(1).getMeasurementName(), rowIndex, (float) time);
+        tablet.addValue(schemaList.get(2).getMeasurementName(), rowIndex, time);
+        tablet.addValue(schemaList.get(3).getMeasurementName(), rowIndex, (int) time);
+        tablet.addValue(schemaList.get(4).getMeasurementName(), rowIndex, time % 2 == 0);
         tablet.addValue(
-            schemaList.get(5).getMeasurementId(),
+            schemaList.get(5).getMeasurementName(),
             rowIndex,
             new Binary("Text" + time, TSFileConfig.STRING_CHARSET));
-        tablet.addValue(schemaList.get(6).getMeasurementId(), rowIndex, "Text" + time);
+        tablet.addValue(schemaList.get(6).getMeasurementName(), rowIndex, "Text" + time);
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insertTablet(tablet);
         tablet.reset();
       }
@@ -643,22 +682,22 @@ public class IoTDBSessionSimpleIT {
 
       Tablet tablet = new Tablet("root.sg1.d1", schemaList);
       for (long time = 1694689856546000000L; time < 1694689856546000010L; time++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, time);
 
-        tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, (double) time);
-        tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (float) time);
-        tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, time);
-        tablet.addValue(schemaList.get(3).getMeasurementId(), rowIndex, (int) time);
-        tablet.addValue(schemaList.get(4).getMeasurementId(), rowIndex, time % 2 == 0);
+        tablet.addValue(schemaList.get(0).getMeasurementName(), rowIndex, (double) time);
+        tablet.addValue(schemaList.get(1).getMeasurementName(), rowIndex, (float) time);
+        tablet.addValue(schemaList.get(2).getMeasurementName(), rowIndex, time);
+        tablet.addValue(schemaList.get(3).getMeasurementName(), rowIndex, (int) time);
+        tablet.addValue(schemaList.get(4).getMeasurementName(), rowIndex, time % 2 == 0);
         tablet.addValue(
-            schemaList.get(5).getMeasurementId(),
+            schemaList.get(5).getMeasurementName(),
             rowIndex,
             new Binary("Text" + time, TSFileConfig.STRING_CHARSET));
-        tablet.addValue(schemaList.get(6).getMeasurementId(), rowIndex, "Text" + time);
+        tablet.addValue(schemaList.get(6).getMeasurementName(), rowIndex, "Text" + time);
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insertTablet(tablet);
         tablet.reset();
       }
@@ -678,15 +717,15 @@ public class IoTDBSessionSimpleIT {
 
       Tablet tablet = new Tablet("root.sg1.d1", schemaList);
       for (long time = 0L; time < 10L; time++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, time);
 
-        tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, (double) time);
-        tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (double) time);
-        tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, (double) time);
+        tablet.addValue(schemaList.get(0).getMeasurementName(), rowIndex, (double) time);
+        tablet.addValue(schemaList.get(1).getMeasurementName(), rowIndex, (double) time);
+        tablet.addValue(schemaList.get(2).getMeasurementName(), rowIndex, (double) time);
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         session.insertTablet(tablet);
         tablet.reset();
       }
@@ -1437,11 +1476,11 @@ public class IoTDBSessionSimpleIT {
                 5);
         long ts = 7L;
         for (long row = 0; row < 8; row++) {
-          int rowIndex = tablet.rowSize++;
+          int rowIndex = tablet.getRowSize();
           tablet.addTimestamp(rowIndex, ts);
           tablet.addValue("s1", rowIndex, 1);
           tablet.addValue("s2", rowIndex, 1.0F);
-          if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
             session.insertTablet(tablet, true);
             tablet.reset();
           }
@@ -1476,15 +1515,15 @@ public class IoTDBSessionSimpleIT {
         tablets.put("root.sg.d2", tablet2);
         long ts = 16L;
         for (long row = 0; row < 8; row++) {
-          int row1 = tablet1.rowSize++;
-          int row2 = tablet2.rowSize++;
+          int row1 = tablet1.getRowSize();
+          int row2 = tablet2.getRowSize();
           tablet1.addTimestamp(row1, ts);
           tablet2.addTimestamp(row2, ts);
           tablet1.addValue("s1", row1, 1);
           tablet1.addValue("s2", row1, 1.0F);
           tablet2.addValue("s1", row2, 1);
           tablet2.addValue("s2", row2, 1.0F);
-          if (tablet1.rowSize == tablet1.getMaxRowNumber()) {
+          if (tablet1.getRowSize() == tablet1.getMaxRowNumber()) {
             session.insertTablets(tablets, true);
             tablet1.reset();
             tablet2.reset();
@@ -1695,12 +1734,12 @@ public class IoTDBSessionSimpleIT {
       long timestamp = System.currentTimeMillis();
 
       for (long row = 0; row < 15; row++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp);
         tablet.addValue("s1", rowIndex, 1L);
         tablet.addValue("s2", rowIndex, 1D);
         tablet.addValue("s3", rowIndex, new Binary("1", TSFileConfig.STRING_CHARSET));
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
           try {
             session.insertTablet(tablet, true);
           } catch (StatementExecutionException e) {
@@ -1712,7 +1751,7 @@ public class IoTDBSessionSimpleIT {
         timestamp++;
       }
 
-      if (tablet.rowSize != 0) {
+      if (tablet.getRowSize() != 0) {
         try {
           session.insertTablet(tablet);
         } catch (StatementExecutionException e) {
@@ -1766,10 +1805,10 @@ public class IoTDBSessionSimpleIT {
       Tablet tablet = new Tablet("root.sg1.d1", schemaList, 100);
       for (int i = 0; i < bytesData.size(); i++) {
         byte[] data = (byte[]) bytesData.get(i);
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, i);
         Binary dataBinary = new Binary(data);
-        tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, dataBinary);
+        tablet.addValue(schemaList.get(0).getMeasurementName(), rowIndex, dataBinary);
       }
       session.insertTablet(tablet);
       // check result
@@ -1857,6 +1896,29 @@ public class IoTDBSessionSimpleIT {
       assertEquals(1000, dataSet.next().getFields().get(0).getLongV());
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testWriteRestartAndDeleteDB()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.insertRecord("root.sg1.d1", 1, Arrays.asList("s3"), Arrays.asList("1"));
+
+      TestUtils.stopForciblyAndRestartDataNodes();
+
+      SessionDataSet dataSet = session.executeQueryStatement("select s3 from root.sg1.d1");
+      dataSet.next();
+      dataSet.close();
+
+      session.executeNonQueryStatement("DELETE DATABASE root.sg1");
+
+      session.insertRecord(
+          "root.sg1.d1", 1, Arrays.asList("s1", "s2", "s3"), Arrays.asList("1", "1", "1"));
+
+      dataSet = session.executeQueryStatement("SELECT * FROM root.sg1.d1");
+      RowRecord record = dataSet.next();
+      assertEquals(3, record.getFields().size());
     }
   }
 }

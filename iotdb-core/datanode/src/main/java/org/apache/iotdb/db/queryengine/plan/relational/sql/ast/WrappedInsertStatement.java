@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -44,6 +47,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 public abstract class WrappedInsertStatement extends WrappedStatement
@@ -103,7 +107,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     final TableSchema incomingSchema = getTableSchema();
     final TableSchema realSchema =
         metadata
-            .validateTableHeaderSchema(databaseName, incomingSchema, context, true)
+            .validateTableHeaderSchema(databaseName, incomingSchema, context, true, false)
             .orElse(null);
     if (realSchema == null) {
       throw new SemanticException(
@@ -167,7 +171,8 @@ public abstract class WrappedInsertStatement extends WrappedStatement
           new SemanticException(
               "Column " + incoming.getName() + " does not exists or fails to be " + "created",
               TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
-      if (incoming.getColumnCategory() != TsTableColumnCategory.MEASUREMENT) {
+      if (incoming.getColumnCategory() != TsTableColumnCategory.FIELD
+          || !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
         // non-measurement columns cannot be partially inserted
         throw semanticException;
       } else {
@@ -176,24 +181,27 @@ public abstract class WrappedInsertStatement extends WrappedStatement
         return;
       }
     }
-    if (incoming.getType() == null
-        || incoming.getColumnCategory() != TsTableColumnCategory.MEASUREMENT) {
+    if (incoming.getType() == null || incoming.getColumnCategory() != TsTableColumnCategory.FIELD) {
       // sql insertion does not provide type
       // the type is inferred and can be inconsistent with the existing one
       innerTreeStatement.setDataType(InternalTypeManager.getTSDataType(real.getType()), i);
-    } else if (!incoming.getType().equals(real.getType())) {
+    } else if (!InternalTypeManager.getTSDataType(real.getType())
+            .isCompatible(InternalTypeManager.getTSDataType(incoming.getType()))
+        && !innerTreeStatement.isForceTypeConversion()) {
       SemanticException semanticException =
           new SemanticException(
               String.format(
-                  "Inconsistent data type of column %s: %s/%s",
+                  "Incompatible data type of column %s: %s/%s",
                   incoming.getName(), incoming.getType(), real.getType()),
               TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode());
-      if (incoming.getColumnCategory() != TsTableColumnCategory.MEASUREMENT) {
+      if (incoming.getColumnCategory() != TsTableColumnCategory.FIELD
+          || !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
         // non-measurement columns cannot be partially inserted
         throw semanticException;
       } else {
         // partial insertion
         innerTreeStatement.markFailedMeasurement(i, semanticException);
+        return;
       }
     }
     if (incoming.getColumnCategory() == null) {
@@ -214,6 +222,11 @@ public abstract class WrappedInsertStatement extends WrappedStatement
             getDefaultEncoding(tsDataType),
             TSFileDescriptor.getInstance().getConfig().getCompressor());
     innerTreeStatement.setMeasurementSchema(measurementSchema, i);
+    try {
+      innerTreeStatement.selfCheckDataTypes(i);
+    } catch (DataTypeMismatchException | PathNotExistException e) {
+      throw new SemanticException(e);
+    }
   }
 
   public void validateDeviceSchema(Metadata metadata, MPPQueryContext context) {
@@ -223,7 +236,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
   public String getDatabase() {
     String databaseName = AnalyzeUtils.getDatabaseName(getInnerTreeStatement(), context);
     if (databaseName == null) {
-      throw new SemanticException("database is not specified");
+      throw new SemanticException(DATABASE_NOT_SPECIFIED);
     }
     return databaseName;
   }

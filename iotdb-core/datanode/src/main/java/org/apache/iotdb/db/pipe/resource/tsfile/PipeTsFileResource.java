@@ -97,6 +97,10 @@ public class PipeTsFileResource implements AutoCloseable {
     return fileSize;
   }
 
+  public long getTsFileResourceSize() {
+    return Objects.nonNull(tsFileResource) ? tsFileResource.calculateRamSize() : 0;
+  }
+
   ///////////////////// Reference Count /////////////////////
 
   public int getReferenceCount() {

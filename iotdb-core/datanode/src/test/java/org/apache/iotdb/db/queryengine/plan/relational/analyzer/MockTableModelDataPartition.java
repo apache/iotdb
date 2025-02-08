@@ -48,8 +48,6 @@ public class MockTableModelDataPartition {
           IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
           IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
 
-  private static final String DB_NAME = "root.testdb";
-
   static final String DEVICE_1 = "table1.beijing.A1.ZZ";
   static final String DEVICE_2 = "table1.beijing.A2.XX";
   static final String DEVICE_3 = "table1.shanghai.A3.YY";
@@ -99,7 +97,7 @@ public class MockTableModelDataPartition {
    * device6(startTime:0): DataRegionGroup_2,
    * device6(startTime:100): DataRegionGroup_3,
    */
-  public static DataPartition constructDataPartition() {
+  public static DataPartition constructDataPartition(String dbName) {
     DataPartition dataPartition =
         new DataPartition(
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
@@ -132,43 +130,44 @@ public class MockTableModelDataPartition {
     devicePartitionMap.put(EXECUTOR.getSeriesPartitionSlot(DEVICE_5), dataRegionMap3);
     devicePartitionMap.put(EXECUTOR.getSeriesPartitionSlot(DEVICE_6), dataRegionMap3);
 
-    dbPartitionMap.put(DB_NAME, devicePartitionMap);
+    dbPartitionMap.put(dbName, devicePartitionMap);
     dataPartition.setDataPartitionMap(dbPartitionMap);
 
     return dataPartition;
   }
 
-  public static SchemaPartition constructSchemaPartition() {
-    SchemaPartition schemaPartition =
+  public static SchemaPartition constructSchemaPartition(String dbName) {
+    final SchemaPartition schemaPartition =
         new SchemaPartition(
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
-    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap = new HashMap<>();
+    final Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
+        new HashMap<>();
 
-    TRegionReplicaSet schemaRegion1 =
+    final TRegionReplicaSet schemaRegion1 =
         new TRegionReplicaSet(
             new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 11),
             Arrays.asList(
                 genDataNodeLocation(11, "192.0.1.1"), genDataNodeLocation(12, "192.0.1.2")));
 
-    TRegionReplicaSet schemaRegion2 =
+    final TRegionReplicaSet schemaRegion2 =
         new TRegionReplicaSet(
             new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 21),
             Arrays.asList(
                 genDataNodeLocation(21, "192.0.2.1"), genDataNodeLocation(22, "192.0.2.2")));
 
-    Map<TSeriesPartitionSlot, TRegionReplicaSet> schemaRegionMap = new HashMap<>();
+    final Map<TSeriesPartitionSlot, TRegionReplicaSet> schemaRegionMap = new HashMap<>();
     schemaRegionMap.put(EXECUTOR.getSeriesPartitionSlot(DEVICE_1), schemaRegion1);
     schemaRegionMap.put(EXECUTOR.getSeriesPartitionSlot(DEVICE_2), schemaRegion2);
     schemaRegionMap.put(EXECUTOR.getSeriesPartitionSlot(DEVICE_3), schemaRegion2);
-    schemaPartitionMap.put(DB_NAME, schemaRegionMap);
+    schemaPartitionMap.put(dbName, schemaRegionMap);
     schemaPartition.setSchemaPartitionMap(schemaPartitionMap);
 
     return schemaPartition;
   }
 
   private static TRegionReplicaSet genDataRegionGroup(
-      int regionGroupId, int dataNodeId1, int dataNodeId2) {
+      final int regionGroupId, final int dataNodeId1, final int dataNodeId2) {
     return new TRegionReplicaSet(
         new TConsensusGroupId(TConsensusGroupType.DataRegion, regionGroupId),
         Arrays.asList(
@@ -176,7 +175,7 @@ public class MockTableModelDataPartition {
             genDataNodeLocation(dataNodeId2, String.format("192.0.%s.2", regionGroupId))));
   }
 
-  private static TDataNodeLocation genDataNodeLocation(int dataNodeId, String ip) {
+  public static TDataNodeLocation genDataNodeLocation(final int dataNodeId, final String ip) {
     return new TDataNodeLocation()
         .setDataNodeId(dataNodeId)
         .setClientRpcEndPoint(new TEndPoint(ip, 9000))

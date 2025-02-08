@@ -238,7 +238,7 @@ public class ConvertSchemaPredicateToFilterVisitor
             .table
             .getColumnSchema(columnName)
             .getColumnCategory()
-            .equals(TsTableColumnCategory.ID)
+            .equals(TsTableColumnCategory.TAG)
         ? new IdFilter(filter, context.idColumnIndexMap.get(columnName))
         : new AttributeFilter(filter, columnName);
   }
@@ -258,7 +258,7 @@ public class ConvertSchemaPredicateToFilterVisitor
       List<TsTableColumnSchema> columnSchemaList = table.getColumnList();
       int idIndex = 0;
       for (TsTableColumnSchema columnSchema : columnSchemaList) {
-        if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
+        if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
           map.put(columnSchema.getColumnName(), idIndex);
           idIndex++;
         }

@@ -20,28 +20,27 @@
 package org.apache.iotdb.db.schemaengine.schemaregion;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.schemaengine.rescon.ISchemaEngineStatistics;
 
 public class SchemaRegionParams implements ISchemaRegionParams {
 
-  private final PartialPath database;
+  private final String database;
 
   private final SchemaRegionId schemaRegionId;
 
   private final ISchemaEngineStatistics schemaEngineStatistics;
 
   public SchemaRegionParams(
-      PartialPath database,
-      SchemaRegionId schemaRegionId,
-      ISchemaEngineStatistics schemaEngineStatistics) {
+      final String database,
+      final SchemaRegionId schemaRegionId,
+      final ISchemaEngineStatistics schemaEngineStatistics) {
     this.database = database;
     this.schemaRegionId = schemaRegionId;
     this.schemaEngineStatistics = schemaEngineStatistics;
   }
 
   @Override
-  public PartialPath getDatabase() {
+  public String getDatabase() {
     return database;
   }
 

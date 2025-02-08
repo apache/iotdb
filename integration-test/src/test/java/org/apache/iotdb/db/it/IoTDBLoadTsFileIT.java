@@ -20,17 +20,21 @@
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.it.utils.TsFileGenerator;
+import org.apache.iotdb.it.utils.TsFileTableGenerator;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
@@ -48,6 +52,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -56,6 +61,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.assertNonQueryTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
@@ -134,7 +140,7 @@ public class IoTDBLoadTsFileIT {
     final String sql =
         String.format(
             "create timeseries %s %s",
-            new Path(device, schema.getMeasurementId(), true).getFullPath(),
+            new Path(device, schema.getMeasurementName(), true).getFullPath(),
             schema.getType().name());
     LOGGER.info("schema execute: {}", sql);
     return sql;
@@ -144,7 +150,7 @@ public class IoTDBLoadTsFileIT {
     String sql = String.format("create aligned timeseries %s(", device);
     for (int i = 0; i < schemas.size(); i++) {
       final IMeasurementSchema schema = schemas.get(i);
-      sql += (String.format("%s %s", schema.getMeasurementId(), schema.getType().name()));
+      sql += (String.format("%s %s", schema.getMeasurementName(), schema.getType().name()));
       sql += (i == schemas.size() - 1 ? ")" : ",");
     }
     LOGGER.info("schema execute: {}.", sql);
@@ -245,7 +251,7 @@ public class IoTDBLoadTsFileIT {
       statement.execute(
           String.format(
               "delete timeseries %s.%s",
-              SchemaConfig.DEVICE_0, SchemaConfig.MEASUREMENT_00.getMeasurementId()));
+              SchemaConfig.DEVICE_0, SchemaConfig.MEASUREMENT_00.getMeasurementName()));
     }
   }
 
@@ -306,14 +312,14 @@ public class IoTDBLoadTsFileIT {
               Arrays.asList(
                   "lat",
                   "lon",
-                  SchemaConfig.MEASUREMENT_00.getMeasurementId(),
-                  SchemaConfig.MEASUREMENT_01.getMeasurementId(),
-                  SchemaConfig.MEASUREMENT_02.getMeasurementId(),
-                  SchemaConfig.MEASUREMENT_03.getMeasurementId(),
-                  SchemaConfig.MEASUREMENT_04.getMeasurementId(),
-                  SchemaConfig.MEASUREMENT_05.getMeasurementId(),
-                  SchemaConfig.MEASUREMENT_06.getMeasurementId(),
-                  SchemaConfig.MEASUREMENT_07.getMeasurementId()));
+                  SchemaConfig.MEASUREMENT_00.getMeasurementName(),
+                  SchemaConfig.MEASUREMENT_01.getMeasurementName(),
+                  SchemaConfig.MEASUREMENT_02.getMeasurementName(),
+                  SchemaConfig.MEASUREMENT_03.getMeasurementName(),
+                  SchemaConfig.MEASUREMENT_04.getMeasurementName(),
+                  SchemaConfig.MEASUREMENT_05.getMeasurementName(),
+                  SchemaConfig.MEASUREMENT_06.getMeasurementName(),
+                  SchemaConfig.MEASUREMENT_07.getMeasurementName()));
       try (final ResultSet resultSet = statement.executeQuery("show nodes in schema template t1")) {
         while (resultSet.next()) {
           String device = resultSet.getString(ColumnHeaderConstant.CHILD_NODES);
@@ -328,7 +334,7 @@ public class IoTDBLoadTsFileIT {
   }
 
   @Test
-  public void testLoadWithAutoRegister() throws Exception {
+  public void testLoadWithAutoCreate() throws Exception {
     final long writtenPoint1;
     // device 0, device 1, sg 0
     try (final TsFileGenerator generator =
@@ -587,7 +593,7 @@ public class IoTDBLoadTsFileIT {
     registerSchema();
 
     final String device = SchemaConfig.DEVICE_0;
-    final String measurement = SchemaConfig.MEASUREMENT_00.getMeasurementId();
+    final String measurement = SchemaConfig.MEASUREMENT_00.getMeasurementName();
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
@@ -898,7 +904,148 @@ public class IoTDBLoadTsFileIT {
     }
   }
 
+  @Test
+  public void testLoadWithConvertOnTypeMismatchForTreeModel() throws Exception {
+
+    List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
+        generateMeasurementSchemasForDataTypeConvertion();
+
+    final File file = new File(tmpDir, "1-0-0-0.tsfile");
+
+    long writtenPoint = 0;
+    List<MeasurementSchema> schemaList1 =
+        measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
+    List<IMeasurementSchema> schemaList2 =
+        measurementSchemas.stream().map(pair -> pair.right).collect(Collectors.toList());
+
+    try (final TsFileGenerator generator = new TsFileGenerator(file)) {
+      generator.registerTimeseries(SchemaConfig.DEVICE_0, schemaList2);
+
+      generator.generateData(SchemaConfig.DEVICE_0, 10000, PARTITION_INTERVAL / 10_000, false);
+
+      writtenPoint = generator.getTotalNumber();
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+
+      for (MeasurementSchema schema : schemaList1) {
+        statement.execute(convert2SQL(SchemaConfig.DEVICE_0, schema));
+      }
+
+      statement.execute(String.format("load \"%s\" ", file.getAbsolutePath()));
+
+      try (final ResultSet resultSet =
+          statement.executeQuery("select count(*) from root.** group by level=1,2")) {
+        if (resultSet.next()) {
+          final long sgCount = resultSet.getLong("count(root.sg.test_0.*.*)");
+          Assert.assertEquals(writtenPoint, sgCount);
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
+      }
+    }
+  }
+
+  private List<Pair<MeasurementSchema, MeasurementSchema>>
+      generateMeasurementSchemasForDataTypeConvertion() {
+    TSDataType[] dataTypes = {
+      TSDataType.STRING,
+      TSDataType.TEXT,
+      TSDataType.BLOB,
+      TSDataType.TIMESTAMP,
+      TSDataType.BOOLEAN,
+      TSDataType.DATE,
+      TSDataType.DOUBLE,
+      TSDataType.FLOAT,
+      TSDataType.INT32,
+      TSDataType.INT64
+    };
+    List<Pair<MeasurementSchema, MeasurementSchema>> pairs = new ArrayList<>();
+
+    for (TSDataType type : dataTypes) {
+      for (TSDataType dataType : dataTypes) {
+        String id = String.format("%s2%s", type.name(), dataType.name());
+        pairs.add(new Pair<>(new MeasurementSchema(id, type), new MeasurementSchema(id, dataType)));
+      }
+    }
+    return pairs;
+  }
+
+  @Test
+  public void testLoadWithConvertOnTypeMismatchForTableModel() throws Exception {
+    final int lineCount = 10000;
+
+    List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
+        generateMeasurementSchemasForDataTypeConvertion();
+    List<Tablet.ColumnCategory> columnCategories =
+        generateTabletColumnCategory(0, measurementSchemas.size());
+
+    final File file = new File(tmpDir, "1-0-0-0.tsfile");
+
+    List<MeasurementSchema> schemaList1 =
+        measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
+    List<IMeasurementSchema> schemaList2 =
+        measurementSchemas.stream().map(pair -> pair.right).collect(Collectors.toList());
+
+    try (final TsFileTableGenerator generator = new TsFileTableGenerator(file)) {
+      generator.registerTable(SchemaConfig.TABLE_0, schemaList2, columnCategories);
+
+      generator.generateData(SchemaConfig.TABLE_0, lineCount, PARTITION_INTERVAL / 10_000);
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(String.format("create database if not exists %s", SchemaConfig.DATABASE_0));
+      statement.execute(String.format("use %s", SchemaConfig.DATABASE_0));
+      statement.execute(convert2TableSQL(SchemaConfig.TABLE_0, schemaList1, columnCategories));
+      statement.execute(String.format("load '%s'", file.getAbsolutePath()));
+      try (final ResultSet resultSet =
+          statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
+        if (resultSet.next()) {
+          Assert.assertEquals(lineCount, resultSet.getLong(1));
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
+      }
+    }
+  }
+
+  private List<Tablet.ColumnCategory> generateTabletColumnCategory(int tagNum, int filedNum) {
+    List<Tablet.ColumnCategory> columnTypes = new ArrayList<>(tagNum + filedNum);
+    for (int i = 0; i < tagNum; i++) {
+      columnTypes.add(Tablet.ColumnCategory.TAG);
+    }
+    for (int i = 0; i < filedNum; i++) {
+      columnTypes.add(Tablet.ColumnCategory.FIELD);
+    }
+    return columnTypes;
+  }
+
+  private String convert2TableSQL(
+      final String tableName,
+      final List<MeasurementSchema> schemaList,
+      final List<Tablet.ColumnCategory> columnCategoryList) {
+    List<String> columns = new ArrayList<>();
+    for (int i = 0; i < schemaList.size(); i++) {
+      final MeasurementSchema measurement = schemaList.get(i);
+      columns.add(
+          String.format(
+              "%s %s %s",
+              measurement.getMeasurementName(),
+              measurement.getType(),
+              columnCategoryList.get(i).name()));
+    }
+    String tableCreation =
+        String.format("create table %s(%s)", tableName, String.join(", ", columns));
+    LOGGER.info("schema execute: {}", tableCreation);
+    return tableCreation;
+  }
+
   private static class SchemaConfig {
+    private static final String DATABASE_0 = "root";
+    private static final String TABLE_0 = "test";
     private static final String STORAGE_GROUP_0 = "root.sg.test_0";
     private static final String STORAGE_GROUP_1 = "root.sg.test_1";
 

@@ -168,7 +168,7 @@ class PipeAgentLauncher {
               getAllPipeInfoResp.getAllPipeInfo().stream()
                   .map(
                       byteBuffer -> {
-                        final PipeMeta pipeMeta = PipeMeta.deserialize(byteBuffer);
+                        final PipeMeta pipeMeta = PipeMeta.deserialize4TaskAgent(byteBuffer);
                         LOGGER.info(
                             "Pulled pipe meta from config node: {}, recovering ...", pipeMeta);
                         return pipeMeta;

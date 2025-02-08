@@ -70,7 +70,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.function.IntToLongFunction;
 
 import static org.apache.iotdb.db.utils.CommonUtils.isAlive;
 
@@ -98,6 +97,17 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   public InsertTabletNode(PlanNodeId id) {
     super(id);
+  }
+
+  @Override
+  public InsertNode mergeInsertNode(List<InsertNode> insertNodes) {
+    List<Integer> index = new ArrayList<>();
+    List<InsertTabletNode> insertTabletNodes = new ArrayList<>();
+    for (int i = 0; i < insertNodes.size(); i++) {
+      insertTabletNodes.add((InsertTabletNode) insertNodes.get(i));
+      index.add(i);
+    }
+    return new InsertMultiTabletsNode(this.getPlanNodeId(), index, insertTabletNodes);
   }
 
   @TestOnly
@@ -719,7 +729,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       this.measurementSchemas = new MeasurementSchema[measurementSize];
       for (int i = 0; i < measurementSize; i++) {
         measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
-        measurements[i] = measurementSchemas[i].getMeasurementId();
+        measurements[i] = measurementSchemas[i].getMeasurementName();
       }
     } else {
       for (int i = 0; i < measurementSize; i++) {
@@ -1229,26 +1239,23 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   /**
    * @param results insertion result of each row
-   * @param rowTTLGetter the ttl associated with each row
+   * @param ttl the ttl
    * @return the position of the first alive row
    * @throws OutOfTTLException if all rows have expired the TTL
    */
-  public int checkTTL(TSStatus[] results, IntToLongFunction rowTTLGetter) throws OutOfTTLException {
-    return checkTTLInternal(results, rowTTLGetter, true);
+  public int checkTTL(TSStatus[] results, long ttl) throws OutOfTTLException {
+    return checkTTLInternal(results, ttl, true);
   }
 
-  protected int checkTTLInternal(
-      TSStatus[] results, IntToLongFunction rowTTLGetter, boolean breakOnFirstAlive)
+  protected int checkTTLInternal(TSStatus[] results, long ttl, boolean breakOnFirstAlive)
       throws OutOfTTLException {
 
     /*
      * assume that batch has been sorted by client
      */
     int loc = 0;
-    long ttl = 0;
     int firstAliveLoc = -1;
     while (loc < getRowCount()) {
-      ttl = rowTTLGetter.applyAsLong(loc);
       long currTime = getTimes()[loc];
       // skip points that do not satisfy TTL
       if (!isAlive(currTime, ttl)) {

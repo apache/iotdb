@@ -95,6 +95,7 @@ public class FirstCreateStrategy extends AbstractNodeAllocationStrategy {
     try {
       WALNode walNode = identifier2Nodes.remove(applicantUniqueId);
       if (walNode != null) {
+        walNode.setDeleted(true);
         walNode.close();
         if (walNode.getLogDirectory().exists()) {
           FileUtils.deleteFileOrDirectory(walNode.getLogDirectory());

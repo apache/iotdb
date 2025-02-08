@@ -82,7 +82,7 @@ public class MPPQueryContext {
   // constructing some Expression and PlanNode.
   private final MemoryReservationManager memoryReservationManager;
 
-  private boolean isTableQuery = false;
+  private boolean userQuery = false;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -248,10 +248,16 @@ public class MPPQueryContext {
   }
 
   public long getFetchPartitionCost() {
+    if (queryPlanStatistics == null) {
+      return 0;
+    }
     return queryPlanStatistics.getFetchPartitionCost();
   }
 
   public long getFetchSchemaCost() {
+    if (queryPlanStatistics == null) {
+      return 0;
+    }
     return queryPlanStatistics.getFetchSchemaCost();
   }
 
@@ -340,15 +346,15 @@ public class MPPQueryContext {
 
   // endregion
 
-  public boolean isTableQuery() {
-    return isTableQuery;
-  }
-
-  public void setTableQuery(boolean tableQuery) {
-    isTableQuery = tableQuery;
-  }
-
   public Optional<String> getDatabaseName() {
     return session.getDatabaseName();
+  }
+
+  public boolean isUserQuery() {
+    return userQuery;
+  }
+
+  public void setUserQuery(boolean userQuery) {
+    this.userQuery = userQuery;
   }
 }

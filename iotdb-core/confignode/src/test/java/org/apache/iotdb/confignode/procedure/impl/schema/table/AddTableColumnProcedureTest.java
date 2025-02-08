@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -35,13 +34,14 @@ import java.util.Collections;
 
 public class AddTableColumnProcedureTest {
   @Test
-  public void serializeDeserializeTest() throws IllegalPathException, IOException {
+  public void serializeDeserializeTest() throws IOException {
     final AddTableColumnProcedure addTableColumnProcedure =
         new AddTableColumnProcedure(
-            "root.database1",
+            "database1",
             "table1",
             "0",
-            Collections.singletonList(new IdColumnSchema("Id", TSDataType.STRING)));
+            Collections.singletonList(new TagColumnSchema("Id", TSDataType.STRING)),
+            false);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -52,7 +52,7 @@ public class AddTableColumnProcedureTest {
     Assert.assertEquals(
         ProcedureType.ADD_TABLE_COLUMN_PROCEDURE.getTypeCode(), byteBuffer.getShort());
 
-    final AddTableColumnProcedure deserializedProcedure = new AddTableColumnProcedure();
+    final AddTableColumnProcedure deserializedProcedure = new AddTableColumnProcedure(false);
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(addTableColumnProcedure.getDatabase(), deserializedProcedure.getDatabase());

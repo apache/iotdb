@@ -36,8 +36,9 @@ import java.util.List;
 public class StartPipeStatement extends Statement implements IConfigStatement {
 
   private String pipeName;
+  private boolean isTableModel;
 
-  public StartPipeStatement(StatementType startPipeStatement) {
+  public StartPipeStatement(final StatementType startPipeStatement) {
     this.statementType = startPipeStatement;
   }
 
@@ -45,8 +46,16 @@ public class StartPipeStatement extends Statement implements IConfigStatement {
     return pipeName;
   }
 
-  public void setPipeName(String pipeName) {
+  public boolean isTableModel() {
+    return isTableModel;
+  }
+
+  public void setPipeName(final String pipeName) {
     this.pipeName = pipeName;
+  }
+
+  public void setTableModel(final boolean tableModel) {
+    this.isTableModel = tableModel;
   }
 
   @Override
@@ -60,17 +69,17 @@ public class StartPipeStatement extends Statement implements IConfigStatement {
   }
 
   @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
+  public TSStatus checkPermissionBeforeProcess(final String userName) {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_PIPE.ordinal()),
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_PIPE),
         PrivilegeType.USE_PIPE);
   }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final StatementVisitor<R, C> visitor, final C context) {
     return visitor.visitStartPipe(this, context);
   }
 }

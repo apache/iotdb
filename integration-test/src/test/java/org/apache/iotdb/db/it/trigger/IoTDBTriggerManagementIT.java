@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.it.trigger;
 
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -267,6 +267,53 @@ public class IoTDBTriggerManagementIT {
               TRIGGER_FILE_TIMES_COUNTER,
               TRIGGER_JAR_PREFIX + "TriggerFireTimesCounter.jar",
               STATEFUL_TRIGGER_AFTER_INSERTION_PREFIX + "all"));
+      ResultSet resultSet = statement.executeQuery("show triggers");
+      int cnt = 0;
+      while (resultSet.next()) {
+        cnt++;
+        String triggerName = resultSet.getString(ColumnHeaderConstant.TRIGGER_NAME);
+        String[] triggerInformation = result.get(triggerName);
+        assertEquals(triggerInformation[0], triggerName);
+        assertEquals(triggerInformation[1], resultSet.getString(ColumnHeaderConstant.EVENT));
+        assertEquals(triggerInformation[2], resultSet.getString(ColumnHeaderConstant.TYPE));
+        assertEquals(triggerInformation[3], resultSet.getString(ColumnHeaderConstant.STATE));
+        assertEquals(triggerInformation[4], resultSet.getString(ColumnHeaderConstant.PATH_PATTERN));
+        assertEquals(triggerInformation[5], resultSet.getString(ColumnHeaderConstant.CLASS_NAME));
+      }
+      assertEquals(cnt, result.size());
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCreateTriggersNormally2() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      Map<String, String[]> result =
+          new HashMap<String, String[]>() {
+            {
+              put(
+                  STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a",
+                  new String[] {
+                    STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a",
+                    BEFORE_INSERT,
+                    STATELESS,
+                    ACTIVE,
+                    "root.test.stateless.a",
+                    TRIGGER_FILE_TIMES_COUNTER
+                  });
+            }
+          };
+
+      // create stateless triggers before insertion
+      statement.execute(
+          String.format(
+              "create stateless trigger %s before insert on root.test.stateless.a as '%s' with (\"name\"=\"%s\")",
+              STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a",
+              TRIGGER_FILE_TIMES_COUNTER,
+              STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a"));
+
       ResultSet resultSet = statement.executeQuery("show triggers");
       int cnt = 0;
       while (resultSet.next()) {

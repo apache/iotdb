@@ -61,22 +61,22 @@ public class IoTDBRecoverTableIT {
       new String[] {
         "CREATE DATABASE test",
         "USE \"test\"",
-        "CREATE TABLE vehicle (id1 string id, s0 int32 measurement, s1 int64 measurement, s2 float measurement, s3 text measurement, s4 boolean measurement)"
+        "CREATE TABLE vehicle (tag1 string tag, s0 int32 field, s1 int64 field, s2 float field, s3 text field, s4 boolean field)"
       };
   private static final String[] dataSet2 =
       new String[] {
         "CREATE DATABASE ln",
         "USE \"ln\"",
-        "CREATE TABLE wf01 (id1 string id, status boolean measurement, temperature float measurement, hardware int32 measurement)",
-        "INSERT INTO wf01(id1, time,temperature,status, hardware) "
+        "CREATE TABLE wf01 (tag1 string tag, status boolean field, temperature float field, hardware int32 field)",
+        "INSERT INTO wf01(tag1, time,temperature,status, hardware) "
             + "values('wt01', 1, 1.1, false, 11)",
-        "INSERT INTO wf01(id1, time,temperature,status, hardware) "
+        "INSERT INTO wf01(tag1, time,temperature,status, hardware) "
             + "values('wt01', 2, 2.2, true, 22)",
-        "INSERT INTO wf01(id1, time,temperature,status, hardware) "
+        "INSERT INTO wf01(tag1, time,temperature,status, hardware) "
             + "values('wt01', 3, 3.3, false, 33 )",
-        "INSERT INTO wf01(id1, time,temperature,status, hardware) "
+        "INSERT INTO wf01(tag1, time,temperature,status, hardware) "
             + "values('wt01', 4, 4.4, false, 44)",
-        "INSERT INTO wf01(id1, time,temperature,status, hardware) "
+        "INSERT INTO wf01(tag1, time,temperature,status, hardware) "
             + "values('wt01',5, 5.5, false, 55)"
       };
   private static final String d0s0 = "s0";
@@ -256,7 +256,7 @@ public class IoTDBRecoverTableIT {
 
       // prepare BufferWrite file
       String insertTemplate =
-          "INSERT INTO vehicle(id1,timestamp,s0,s1,s2,s3,s4)" + " VALUES('d0',%d,%d,%d,%f,%s,%s)";
+          "INSERT INTO vehicle(tag1,timestamp,s0,s1,s2,s3,s4)" + " VALUES('d0',%d,%d,%d,%f,%s,%s)";
       for (int i = 5000; i < 7000; i++) {
         statement.addBatch(
             String.format(

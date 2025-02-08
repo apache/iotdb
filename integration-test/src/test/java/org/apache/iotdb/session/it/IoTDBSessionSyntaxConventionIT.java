@@ -33,8 +33,6 @@ import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -266,21 +264,13 @@ public class IoTDBSessionSyntaxConventionIT {
     schemaList.add(new MeasurementSchema("s4", TSDataType.INT64, TSEncoding.PLAIN));
 
     Tablet tablet = new Tablet(deviceId, schemaList, 10);
-
-    long[] timestamps = tablet.timestamps;
-    Object[] values = tablet.values;
-
     for (long time = 0; time < 10; time++) {
-      int row = tablet.rowSize++;
-      timestamps[row] = time;
-      long[] sensor = (long[]) values[0];
-      sensor[row] = time;
-      double[] sensor2 = (double[]) values[1];
-      sensor2[row] = 0.1 + time;
-      Binary[] sensor3 = (Binary[]) values[2];
-      sensor3[row] = BytesUtils.valueOf("ha" + time);
-      long[] sensor4 = (long[]) values[3];
-      sensor4[row] = time;
+      int row = tablet.getRowSize();
+      tablet.addTimestamp(row, time);
+      tablet.addValue(row, 0, time);
+      tablet.addValue(row, 1, 0.1d + time);
+      tablet.addValue(row, 2, "ha" + time);
+      tablet.addValue(row, 3, time);
     }
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {

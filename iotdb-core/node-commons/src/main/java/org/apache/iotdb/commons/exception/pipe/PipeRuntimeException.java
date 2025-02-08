@@ -28,16 +28,16 @@ import java.util.Objects;
 
 public abstract class PipeRuntimeException extends PipeException {
 
-  protected PipeRuntimeException(String message) {
+  protected PipeRuntimeException(final String message) {
     super(message);
   }
 
-  protected PipeRuntimeException(String message, long timeStamp) {
+  protected PipeRuntimeException(final String message, final long timeStamp) {
     super(message, timeStamp);
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     return obj instanceof PipeRuntimeException
         && Objects.equals(getMessage(), ((PipeRuntimeException) obj).getMessage())
         && Objects.equals(getTimeStamp(), ((PipeRuntimeException) obj).getTimeStamp());
@@ -48,7 +48,7 @@ public abstract class PipeRuntimeException extends PipeException {
     return Objects.hash(getMessage(), getTimeStamp());
   }
 
-  public abstract void serialize(ByteBuffer byteBuffer);
+  public abstract void serialize(final ByteBuffer byteBuffer);
 
-  public abstract void serialize(OutputStream stream) throws IOException;
+  public abstract void serialize(final OutputStream stream) throws IOException;
 }

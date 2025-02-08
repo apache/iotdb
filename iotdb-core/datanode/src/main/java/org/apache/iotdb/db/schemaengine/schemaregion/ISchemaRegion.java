@@ -25,11 +25,14 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDevicesInBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
@@ -91,7 +94,6 @@ public interface ISchemaRegion {
 
   void forceMlog();
 
-  @TestOnly
   ISchemaRegionStatistics getSchemaRegionStatistics();
 
   ISchemaRegionMetric getSchemaRegionMetric();
@@ -154,6 +156,16 @@ public interface ISchemaRegion {
    * @throws SchemaQuotaExceededException if the number of time series or devices exceeds the limit
    */
   void checkSchemaQuota(final PartialPath devicePath, final int timeSeriesNum)
+      throws SchemaQuotaExceededException;
+
+  /**
+   * Check whether table device can be created.
+   *
+   * @param tableName the table of the created device
+   * @param deviceIdList the id segments of the created device
+   * @throws SchemaQuotaExceededException if the number of time series or devices exceeds the limit
+   */
+  void checkSchemaQuota(final String tableName, final List<Object[]> deviceIdList)
       throws SchemaQuotaExceededException;
 
   /**
@@ -336,6 +348,21 @@ public interface ISchemaRegion {
       throws MetadataException;
 
   void deleteTableDevice(final DeleteTableDeviceNode deleteTableDeviceNode)
+      throws MetadataException;
+
+  void dropTableAttribute(final TableAttributeColumnDropNode dropTableAttributeNode)
+      throws MetadataException;
+
+  long constructTableDevicesBlackList(
+      final ConstructTableDevicesBlackListNode constructDevicesBlackListNode)
+      throws MetadataException;
+
+  void rollbackTableDevicesBlackList(
+      final RollbackTableDevicesBlackListNode rollbackTableDevicesBlackListNode)
+      throws MetadataException;
+
+  void deleteTableDevicesInBlackList(
+      final DeleteTableDevicesInBlackListNode rollbackTableDevicesBlackListNode)
       throws MetadataException;
 
   // endregion

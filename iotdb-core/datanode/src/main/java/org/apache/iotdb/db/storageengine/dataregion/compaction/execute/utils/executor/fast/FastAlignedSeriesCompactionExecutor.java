@@ -35,7 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader.CompactionChunkReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
@@ -44,10 +44,12 @@ import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.TableDeviceChunkMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.utils.Pair;
@@ -78,7 +80,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
       AbstractCompactionWriter compactionWriter,
       Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
-      Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+      Map<String, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
           modificationCacheMap,
       List<TsFileResource> sortedSourceFiles,
       IDeviceID deviceId,
@@ -93,7 +95,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
     this.timeColumnMeasurementSchema = measurementSchemas.get(0);
     this.measurementSchemaMap = new HashMap<>();
     this.measurementSchemas.forEach(
-        schema -> measurementSchemaMap.put(schema.getMeasurementId(), schema));
+        schema -> measurementSchemaMap.put(schema.getMeasurementName(), schema));
     this.ignoreAllNullRows = ignoreAllNullRows;
     // get source files which are sorted by the startTime of current device from old to new,
     // files that do not contain the current device have been filtered out as well.
@@ -155,7 +157,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
       throws IOException, IllegalPathException {
     for (FileElement fileElement : fileElements) {
       TsFileResource resource = fileElement.resource;
-      List<AlignedChunkMetadata> alignedChunkMetadataList = getAlignedChunkMetadataList(resource);
+      List<AbstractAlignedChunkMetadata> alignedChunkMetadataList =
+          getAlignedChunkMetadataList(resource);
 
       if (alignedChunkMetadataList.isEmpty()) {
         // all chunks have been deleted in this file or current file does not contain this aligned
@@ -174,7 +177,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
     }
   }
 
-  protected List<AlignedChunkMetadata> getAlignedChunkMetadataList(TsFileResource resource)
+  protected List<AbstractAlignedChunkMetadata> getAlignedChunkMetadataList(TsFileResource resource)
       throws IOException, IllegalPathException {
     // read time chunk metadatas and value chunk metadatas in the current file
     List<IChunkMetadata> timeChunkMetadatas = null;
@@ -216,7 +219,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
       }
     }
 
-    List<AlignedChunkMetadata> alignedChunkMetadataList = new ArrayList<>();
+    List<AbstractAlignedChunkMetadata> alignedChunkMetadataList = new ArrayList<>();
     // if current file contains this aligned device,then construct aligned chunk metadatas
     if (timeChunkMetadatas != null) {
       for (int i = 0; i < timeChunkMetadatas.size(); i++) {
@@ -228,18 +231,20 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
             valueChunkMetadataList.add(chunkMetadata.get(i));
           }
         }
-        AlignedChunkMetadata alignedChunkMetadata =
-            new AlignedChunkMetadata(timeChunkMetadatas.get(i), valueChunkMetadataList);
+        AbstractAlignedChunkMetadata alignedChunkMetadata =
+            ignoreAllNullRows
+                ? new AlignedChunkMetadata(timeChunkMetadatas.get(i), valueChunkMetadataList)
+                : new TableDeviceChunkMetadata(timeChunkMetadatas.get(i), valueChunkMetadataList);
 
         alignedChunkMetadataList.add(alignedChunkMetadata);
       }
 
       // get time modifications of this file
-      List<Modification> timeModifications =
+      List<ModEntry> timeModifications =
           getModificationsFromCache(
               resource, CompactionPathUtils.getPath(deviceId, AlignedPath.VECTOR_PLACEHOLDER));
       // get value modifications of this file
-      List<List<Modification>> valueModifications = new ArrayList<>();
+      List<List<ModEntry>> valueModifications = new ArrayList<>();
       alignedChunkMetadataList
           .get(0)
           .getValueChunkMetadataList()
@@ -345,8 +350,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
   @Override
   void readChunk(ChunkMetadataElement chunkMetadataElement) throws IOException {
     updateSummary(chunkMetadataElement, ChunkStatus.READ_IN);
-    AlignedChunkMetadata alignedChunkMetadata =
-        (AlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
+    AbstractAlignedChunkMetadata alignedChunkMetadata =
+        (AbstractAlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
     TsFileSequenceReader reader = readerCacheMap.get(chunkMetadataElement.fileElement.resource);
     chunkMetadataElement.chunk =
         readChunk(reader, (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
@@ -418,8 +423,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
   protected ModifiedStatus isPageModified(PageElement pageElement) {
     long startTime = pageElement.getStartTime();
     long endTime = pageElement.getEndTime();
-    AlignedChunkMetadata alignedChunkMetadata =
-        (AlignedChunkMetadata) pageElement.getChunkMetadataElement().chunkMetadata;
+    AbstractAlignedChunkMetadata alignedChunkMetadata =
+        (AbstractAlignedChunkMetadata) pageElement.getChunkMetadataElement().chunkMetadata;
     return AlignedSeriesBatchCompactionUtils.calculateAlignedPageModifiedStatus(
         startTime, endTime, alignedChunkMetadata, ignoreAllNullRows);
   }

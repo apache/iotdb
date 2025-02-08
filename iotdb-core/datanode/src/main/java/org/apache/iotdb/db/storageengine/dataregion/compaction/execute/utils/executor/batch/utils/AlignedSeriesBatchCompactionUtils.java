@@ -21,7 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 
-import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -43,17 +43,18 @@ public class AlignedSeriesBatchCompactionUtils {
   private AlignedSeriesBatchCompactionUtils() {}
 
   public static void markAlignedChunkHasDeletion(
-      LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
+      LinkedList<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
           readerAndChunkMetadataList) {
-    for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> pair : readerAndChunkMetadataList) {
-      List<AlignedChunkMetadata> alignedChunkMetadataList = pair.getRight();
+    for (Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>> pair :
+        readerAndChunkMetadataList) {
+      List<AbstractAlignedChunkMetadata> alignedChunkMetadataList = pair.getRight();
       markAlignedChunkHasDeletion(alignedChunkMetadataList);
     }
   }
 
   public static void markAlignedChunkHasDeletion(
-      List<AlignedChunkMetadata> alignedChunkMetadataList) {
-    for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
+      List<AbstractAlignedChunkMetadata> alignedChunkMetadataList) {
+    for (AbstractAlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
       IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
       for (IChunkMetadata iChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
         if (iChunkMetadata != null && iChunkMetadata.isModified()) {
@@ -68,8 +69,8 @@ public class AlignedSeriesBatchCompactionUtils {
     return chunkMetadata.getMeasurementUid().isEmpty();
   }
 
-  public static AlignedChunkMetadata filterAlignedChunkMetadataByIndex(
-      AlignedChunkMetadata alignedChunkMetadata, List<Integer> selectedMeasurements) {
+  public static AbstractAlignedChunkMetadata filterAlignedChunkMetadataByIndex(
+      AbstractAlignedChunkMetadata alignedChunkMetadata, List<Integer> selectedMeasurements) {
     IChunkMetadata[] valueChunkMetadataArr = new IChunkMetadata[selectedMeasurements.size()];
     List<IChunkMetadata> originValueChunkMetadataList =
         alignedChunkMetadata.getValueChunkMetadataList();
@@ -77,12 +78,13 @@ public class AlignedSeriesBatchCompactionUtils {
       int columnIndex = selectedMeasurements.get(i);
       valueChunkMetadataArr[i] = originValueChunkMetadataList.get(columnIndex);
     }
-    return new AlignedChunkMetadata(
+    return alignedChunkMetadata.createNewChunkMetadata(
         alignedChunkMetadata.getTimeChunkMetadata(), Arrays.asList(valueChunkMetadataArr));
   }
 
-  public static AlignedChunkMetadata fillAlignedChunkMetadataBySchemaList(
-      AlignedChunkMetadata originAlignedChunkMetadata, List<IMeasurementSchema> schemaList) {
+  public static AbstractAlignedChunkMetadata fillAlignedChunkMetadataBySchemaList(
+      AbstractAlignedChunkMetadata originAlignedChunkMetadata,
+      List<IMeasurementSchema> schemaList) {
     List<IChunkMetadata> originValueChunkMetadataList =
         originAlignedChunkMetadata.getValueChunkMetadataList();
     IChunkMetadata[] newValueChunkMetadataArr = new IChunkMetadata[schemaList.size()];
@@ -103,20 +105,20 @@ public class AlignedSeriesBatchCompactionUtils {
           originValueChunkMetadataList.get(currentValueChunkMetadataIndex);
       if (currentValueChunkMetadata != null
           && currentSchema
-              .getMeasurementId()
+              .getMeasurementName()
               .equals(currentValueChunkMetadata.getMeasurementUid())) {
         newValueChunkMetadataArr[i] = currentValueChunkMetadata;
         currentValueChunkMetadataIndex++;
       }
     }
-    return new AlignedChunkMetadata(
+    return originAlignedChunkMetadata.createNewChunkMetadata(
         originAlignedChunkMetadata.getTimeChunkMetadata(), Arrays.asList(newValueChunkMetadataArr));
   }
 
   public static ModifiedStatus calculateAlignedPageModifiedStatus(
       long startTime,
       long endTime,
-      AlignedChunkMetadata originAlignedChunkMetadata,
+      AbstractAlignedChunkMetadata originAlignedChunkMetadata,
       boolean ignoreAllNullRows) {
     ModifiedStatus timePageModifiedStatus =
         checkIsModified(

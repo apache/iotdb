@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.itbase.constant;
 
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 
 import org.apache.tsfile.utils.FilePathUtils;
 import org.apache.tsfile.write.record.TSRecord;

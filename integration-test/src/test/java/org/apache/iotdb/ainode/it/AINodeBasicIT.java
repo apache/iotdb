@@ -56,6 +56,7 @@ public class AINodeBasicIT {
 
   static String[] sqls =
       new String[] {
+        "set configuration \"trusted_uri_pattern\"='.*'",
         "create model identity using uri \"" + MODEL_PATH + "\"",
         "CREATE DATABASE root.AI.data",
         "CREATE TIMESERIES root.AI.data.s0 WITH DATATYPE=FLOAT, ENCODING=RLE",

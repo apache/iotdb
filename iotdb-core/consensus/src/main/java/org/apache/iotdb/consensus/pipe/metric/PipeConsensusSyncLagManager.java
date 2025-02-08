@@ -21,10 +21,11 @@ package org.apache.iotdb.consensus.pipe.metric;
 
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeConnector;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * This class is used to aggregate the write progress of all Connectors to calculate the minimum
@@ -33,66 +34,55 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * <p>Note: every consensusGroup/dataRegion has and only has 1 instance of this class.
  */
 public class PipeConsensusSyncLagManager {
-  long userWriteProgress = 0;
-  long minReplicateProgress = Long.MAX_VALUE;
-  List<ConsensusPipeConnector> consensusPipeConnectorList = new CopyOnWriteArrayList<>();
+  long syncLag = Long.MIN_VALUE;
+  ReentrantLock lock = new ReentrantLock();
+  List<ConsensusPipeConnector> consensusPipeConnectorList = new ArrayList<>();
 
-  private void updateReplicateProgress() {
-    minReplicateProgress = Long.MAX_VALUE;
-    // if there isn't a consensus pipe task, replicate progress is Long.MAX_VALUE.
-    if (consensusPipeConnectorList.isEmpty()) {
-      return;
-    }
-    // else we find the minimum progress in all consensus pipe task.
-    consensusPipeConnectorList.forEach(
-        consensusPipeConnector ->
-            minReplicateProgress =
-                Math.min(
-                    minReplicateProgress,
-                    consensusPipeConnector.getConsensusPipeReplicateProgress()));
-  }
-
-  private void updateUserWriteProgress() {
-    // if there isn't a consensus pipe task, user write progress is 0.
-    if (consensusPipeConnectorList.isEmpty()) {
-      userWriteProgress = 0;
-      return;
-    }
-    // since the user write progress of different consensus pipes on the same DataRegion is the
-    // same, we only need to take out one Connector to calculate
-    try {
-      ConsensusPipeConnector connector = consensusPipeConnectorList.get(0);
-      userWriteProgress = connector.getConsensusPipeCommitProgress();
-    } catch (Exception e) {
-      // if removing the last connector happens after empty check, we may encounter
-      // OutOfBoundsException, in this case, we set userWriteProgress to 0.
-      userWriteProgress = 0;
-    }
+  private long getSyncLagForSpecificConsensusPipe(ConsensusPipeConnector consensusPipeConnector) {
+    long userWriteProgress = consensusPipeConnector.getConsensusPipeCommitProgress();
+    long replicateProgress = consensusPipeConnector.getConsensusPipeReplicateProgress();
+    return Math.max(userWriteProgress - replicateProgress, 0);
   }
 
   public void addConsensusPipeConnector(ConsensusPipeConnector consensusPipeConnector) {
-    consensusPipeConnectorList.add(consensusPipeConnector);
+    try {
+      lock.lock();
+      consensusPipeConnectorList.add(consensusPipeConnector);
+    } finally {
+      lock.unlock();
+    }
   }
 
   public void removeConsensusPipeConnector(ConsensusPipeConnector connector) {
-    consensusPipeConnectorList.remove(connector);
+    try {
+      lock.lock();
+      consensusPipeConnectorList.remove(connector);
+    } finally {
+      lock.unlock();
+    }
   }
 
   /**
-   * SyncLag represents the difference between the current replica users' write progress and the
-   * minimum synchronization progress of all other replicas. The semantics is how much data the
-   * leader has left to synchronize.
+   * SyncLag represents the biggest difference between the current replica users' write progress and
+   * the synchronization progress of all other replicas. The semantics is how much data the leader
+   * has left to synchronize.
    */
   public long calculateSyncLag() {
-    updateUserWriteProgress();
-    updateReplicateProgress();
-    // if there isn't a consensus pipe task, the syncLag is userWriteProgress - 0
-    if (minReplicateProgress == Long.MAX_VALUE) {
-      return userWriteProgress;
-    } else {
-      // since we first update userWriteProgress then update replicateProgress, there may have some
-      // cases that userWriteProgress is less than replicateProgress. In these cases, we return 0.
-      return Math.max(userWriteProgress - minReplicateProgress, 0);
+    try {
+      lock.lock();
+      // if there isn't a consensus pipe task, the syncLag is 0
+      if (consensusPipeConnectorList.isEmpty()) {
+        return 0;
+      }
+      // else we find the biggest gap between leader and replicas in all consensus pipe task.
+      syncLag = Long.MIN_VALUE;
+      consensusPipeConnectorList.forEach(
+          consensusPipeConnector ->
+              syncLag =
+                  Math.max(syncLag, getSyncLagForSpecificConsensusPipe(consensusPipeConnector)));
+      return syncLag;
+    } finally {
+      lock.unlock();
     }
   }
 

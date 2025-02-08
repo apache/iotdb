@@ -25,7 +25,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
@@ -61,7 +61,7 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegressionMisc.class})
 public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegressionIT {
-  private SubscriptionPushConsumer consumer;
+  private SubscriptionTreePushConsumer consumer;
   private int deviceCount = 3;
   private static final String databasePrefix = "root.DefaultTsfilePushConsumer";
   private static String topicName = "topicDefaultTsfilePushConsumer";
@@ -100,7 +100,7 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegres
     Tablet tablet = new Tablet(device, schemaList, 10);
     int rowIndex = 0;
     for (int row = 0; row < 5; row++) {
-      rowIndex = tablet.rowSize++;
+      rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue("s_0", rowIndex, (1 + row) * 20 + row);
       tablet.addValue("s_1", rowIndex, row + 2.45);
@@ -126,14 +126,14 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegres
     for (int i = 0; i < deviceCount; i++) {
       insert_data(1706659200000L, devices.get(i)); // 2024-01-31 08:00:00+08:00
     }
-    session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush");
     final AtomicInteger onReceiveCount = new AtomicInteger(0);
     List<AtomicInteger> rowCounts = new ArrayList<>(deviceCount);
     for (int i = 0; i < deviceCount; i++) {
       rowCounts.add(new AtomicInteger(0));
     }
     consumer =
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("default_pattern_TsFile_consumer")
@@ -187,7 +187,7 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegres
               + ":"
               + getCount(session_src, "select count(s_0) from " + devices.get(i)));
     }
-    session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush");
     AWAIT.untilAsserted(
         () -> {
           for (int i = 0; i < deviceCount; i++) {
@@ -210,7 +210,7 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegres
               + ":"
               + getCount(session_src, "select count(s_0) from " + devices.get(i)));
     }
-    session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush");
 
     // Unsubscribe, then it will consume all again.
     AWAIT.untilAsserted(

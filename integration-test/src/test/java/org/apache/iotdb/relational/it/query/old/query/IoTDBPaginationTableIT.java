@@ -46,7 +46,7 @@ public class IoTDBPaginationTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE vehicle(device STRING ID, s0 INT32 MEASUREMENT, s1 INT64 MEASUREMENT, s2 FLOAT MEASUREMENT)",
+        "CREATE TABLE vehicle(device STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD)",
         "insert into vehicle(time,device,s0) values(1,'d1',101)",
         "insert into vehicle(time,device,s0) values(2,'d1',198)",
         "insert into vehicle(time,device,s0) values(100,'d1',99)",
@@ -78,7 +78,7 @@ public class IoTDBPaginationTableIT {
         "insert into vehicle(time,device,s2) values(105,'d1',11.11)",
         "insert into vehicle(time,device,s2) values(1000,'d1',1000.11)",
         "insert into vehicle(time,device,s1) values(2000-01-01T08:00:00+08:00, 'd1',100)",
-        "CREATE TABLE db(device STRING ID, s1 INT32 MEASUREMENT)",
+        "CREATE TABLE db(device STRING TAG, s1 INT32 FIELD)",
         "insert into db(time,device,s1) values(0,'d1', 0)",
         "insert into db(time,device,s1) values(1,'d1', 1)",
         "insert into db(time,device,s1) values(2,'d1', 2)",

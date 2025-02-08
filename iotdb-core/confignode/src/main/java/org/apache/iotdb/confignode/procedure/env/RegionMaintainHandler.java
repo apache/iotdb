@@ -97,6 +97,10 @@ public class RegionMaintainHandler {
         location.getDataNodeId(), location.getClientRpcEndPoint());
   }
 
+  public static String simplifiedLocation(TDataNodeLocation dataNodeLocation) {
+    return dataNodeLocation.getDataNodeId() + "@" + dataNodeLocation.getInternalEndPoint().getIp();
+  }
+
   /**
    * Find dest data node.
    *
@@ -157,8 +161,8 @@ public class RegionMaintainHandler {
       currentPeerNodes = Collections.emptyList();
     }
 
-    String storageGroup = configManager.getPartitionManager().getRegionStorageGroup(regionId);
-    TCreatePeerReq req = new TCreatePeerReq(regionId, currentPeerNodes, storageGroup);
+    String database = configManager.getPartitionManager().getRegionDatabase(regionId);
+    TCreatePeerReq req = new TCreatePeerReq(regionId, currentPeerNodes, database);
 
     status =
         (TSStatus)
@@ -336,26 +340,26 @@ public class RegionMaintainHandler {
               MAX_DISCONNECTION_TOLERATE_MS);
       long disconnectionTime = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - lastReportTime);
       if (disconnectionTime > waitTime) {
-        break;
+        LOGGER.warn(
+            "{} task {} cannot get task report from DataNode {}, last report time is {} ago",
+            REGION_MIGRATE_PROCESS,
+            taskId,
+            dataNodeLocation,
+            CommonDateTimeUtils.convertMillisecondToDurationStr(
+                TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - lastReportTime)));
+        TRegionMigrateResult report = new TRegionMigrateResult();
+        report.setTaskStatus(TRegionMaintainTaskStatus.FAIL);
+        report.setFailedNodeAndReason(new HashMap<>());
+        report.getFailedNodeAndReason().put(dataNodeLocation, TRegionMigrateFailedType.Disconnect);
+        return report;
       }
       try {
         TimeUnit.SECONDS.sleep(1);
       } catch (InterruptedException ignore) {
         Thread.currentThread().interrupt();
+        return new TRegionMigrateResult(TRegionMaintainTaskStatus.PROCESSING);
       }
     }
-    LOGGER.warn(
-        "{} task {} cannot get task report from DataNode {}, last report time is {} ago",
-        REGION_MIGRATE_PROCESS,
-        taskId,
-        dataNodeLocation,
-        CommonDateTimeUtils.convertMillisecondToDurationStr(
-            TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - lastReportTime)));
-    TRegionMigrateResult report = new TRegionMigrateResult();
-    report.setTaskStatus(TRegionMaintainTaskStatus.FAIL);
-    report.setFailedNodeAndReason(new HashMap<>());
-    report.getFailedNodeAndReason().put(dataNodeLocation, TRegionMigrateFailedType.Disconnect);
-    return report;
   }
 
   public void addRegionLocation(TConsensusGroupId regionId, TDataNodeLocation newLocation) {
@@ -399,15 +403,30 @@ public class RegionMaintainHandler {
    * @return DataNode locations
    */
   public List<TDataNodeLocation> findRegionLocations(TConsensusGroupId regionId) {
-    Optional<TRegionReplicaSet> regionReplicaSet =
-        configManager.getPartitionManager().getAllReplicaSets().stream()
-            .filter(rg -> rg.regionId.equals(regionId))
-            .findAny();
+    Optional<TRegionReplicaSet> regionReplicaSet = getRegionReplicaSet(regionId);
     if (regionReplicaSet.isPresent()) {
       return regionReplicaSet.get().getDataNodeLocations();
     }
-
     return Collections.emptyList();
+  }
+
+  public Optional<TRegionReplicaSet> getRegionReplicaSet(TConsensusGroupId regionId) {
+    return configManager.getPartitionManager().getAllReplicaSets().stream()
+        .filter(rg -> rg.regionId.equals(regionId))
+        .findAny();
+  }
+
+  public String getRegionReplicaSetString(TConsensusGroupId regionId) {
+    Optional<TRegionReplicaSet> regionReplicaSet = getRegionReplicaSet(regionId);
+    if (!regionReplicaSet.isPresent()) {
+      return "UNKNOWN!";
+    }
+    StringBuilder result = new StringBuilder(regionReplicaSet.get().getRegionId() + ": {");
+    for (TDataNodeLocation dataNodeLocation : regionReplicaSet.get().getDataNodeLocations()) {
+      result.append(simplifiedLocation(dataNodeLocation)).append(", ");
+    }
+    result.append("}");
+    return result.toString();
   }
 
   private Optional<TDataNodeLocation> pickNewReplicaNodeForRegion(
@@ -558,12 +577,19 @@ public class RegionMaintainHandler {
         configManager.getNodeManager().filterDataNodeThroughStatus(allowingStatus).stream()
             .map(TDataNodeConfiguration::getLocation)
             .collect(Collectors.toList());
+    final int leaderId = configManager.getLoadManager().getRegionLeaderMap().get(regionId);
     Collections.shuffle(aliveDataNodes);
+    Optional<TDataNodeLocation> bestChoice = Optional.empty();
     for (TDataNodeLocation aliveDataNode : aliveDataNodes) {
       if (regionLocations.contains(aliveDataNode) && !excludeLocations.contains(aliveDataNode)) {
-        return Optional.of(aliveDataNode);
+        if (leaderId == aliveDataNode.getDataNodeId()) {
+          bestChoice = Optional.of(aliveDataNode);
+          break;
+        } else if (!bestChoice.isPresent()) {
+          bestChoice = Optional.of(aliveDataNode);
+        }
       }
     }
-    return Optional.empty();
+    return bestChoice;
   }
 }

@@ -651,7 +651,6 @@ public class ClusterTemplateManager implements ITemplateManager {
     templateNameMap.put(template.getName(), template.getId());
   }
 
-  @TestOnly
   public void clear() {
     templateIdMap.clear();
     templateNameMap.clear();

@@ -25,7 +25,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
@@ -67,7 +67,7 @@ public class IoTDBTestPushConsumeTsfileIT extends AbstractSubscriptionRegression
   private static final String topicName = "topic_TestPushConsumeTsfile";
   private static List<IMeasurementSchema> schemaList = new ArrayList<>();
   private static final String pattern = database + ".**";
-  private static SubscriptionPushConsumer consumer;
+  private static SubscriptionTreePushConsumer consumer;
 
   @Override
   @Before
@@ -101,14 +101,14 @@ public class IoTDBTestPushConsumeTsfileIT extends AbstractSubscriptionRegression
     Tablet tablet = new Tablet(device, schemaList, 5);
     int rowIndex = 0;
     for (int row = 0; row < 5; row++) {
-      rowIndex = tablet.rowSize++;
+      rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue("s_0", rowIndex, row * 20L + row);
       tablet.addValue("s_1", rowIndex, row + 2.45);
       timestamp += row * 2000;
     }
     session_src.insertTablet(tablet);
-    session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush");
   }
 
   @Test
@@ -124,7 +124,7 @@ public class IoTDBTestPushConsumeTsfileIT extends AbstractSubscriptionRegression
     final AtomicInteger onReceiveCount = new AtomicInteger(0);
     final AtomicInteger rowCount = new AtomicInteger(0);
     consumer =
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("DB_TsFile_specify_target_dir_consumer")

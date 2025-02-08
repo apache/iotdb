@@ -19,6 +19,11 @@
 
 @echo off
 
+@REM DEFAULT_SQL_DIALECT is used to set the default SQL dialect for the CLI.
+@REM empty value means using "tree".
+@REM Optional values: "table" or "tree"
+set DEFAULT_SQL_DIALECT=tree
+
 @REM You can put your env variable here
 @REM set JAVA_HOME=%JAVA_HOME%
 
@@ -73,13 +78,18 @@ set PARAMETERS=%*
 
 @REM if "%PARAMETERS%" == "" set PARAMETERS=-h 127.0.0.1 -p 6667 -u root -pw root
 
+@REM if DEFAULT_SQL_DIALECT is empty, set it to "tree"
+if "%DEFAULT_SQL_DIALECT%" == "" set DEFAULT_SQL_DIALECT=tree
+
 @REM set default parameters
 set pw_parameter=-pw root
 set u_parameter=-u root
 set p_parameter=-p 6667
 set h_parameter=-h 127.0.0.1
+set sql_dialect__parameter=-sql_dialect %DEFAULT_SQL_DIALECT%
 
 @REM Added parameters when default parameters are missing
+echo %PARAMETERS% | findstr /c:"-sql_dialect ">nul && (set PARAMETERS=%PARAMETERS%) || (set PARAMETERS=%sql_dialect__parameter% %PARAMETERS%)
 echo %PARAMETERS% | findstr /c:"-pw ">nul && (set PARAMETERS=%PARAMETERS%) || (set PARAMETERS=%pw_parameter% %PARAMETERS%)
 echo %PARAMETERS% | findstr /c:"-u ">nul && (set PARAMETERS=%PARAMETERS%) || (set PARAMETERS=%u_parameter% %PARAMETERS%)
 echo %PARAMETERS% | findstr /c:"-p ">nul && (set PARAMETERS=%PARAMETERS%) || (set PARAMETERS=%p_parameter% %PARAMETERS%)

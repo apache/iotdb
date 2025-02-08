@@ -23,9 +23,9 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.LoadRuntimeOutOfMemoryException;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
@@ -76,7 +76,7 @@ public class LoadTsFileTreeSchemaCache {
   private Map<IDeviceID, Boolean> tsFileDevice2IsAligned;
   private Set<PartialPath> alreadySetDatabases;
 
-  private Collection<Modification> currentModifications;
+  private Collection<ModEntry> currentModifications;
   private ITimeIndex currentTimeIndex;
 
   private long batchDevice2TimeSeriesSchemasMemoryUsageSizeInBytes = 0;
@@ -154,9 +154,9 @@ public class LoadTsFileTreeSchemaCache {
       TsFileResource resource, TsFileSequenceReader reader) throws IOException {
     clearModificationsAndTimeIndex();
 
-    currentModifications = resource.getModFile().getModifications();
-    for (final Modification modification : currentModifications) {
-      currentModificationsMemoryUsageSizeInBytes += ((Deletion) modification).getSerializedSize();
+    currentModifications = ModificationFile.readAllModifications(resource.getTsFile(), true);
+    for (final ModEntry modification : currentModifications) {
+      currentModificationsMemoryUsageSizeInBytes += modification.serializedSize();
     }
 
     // If there are too many modifications, a larger memory block is needed to avoid frequent

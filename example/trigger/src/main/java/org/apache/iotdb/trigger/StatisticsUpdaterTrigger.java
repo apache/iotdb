@@ -81,16 +81,16 @@ public class StatisticsUpdaterTrigger implements Trigger {
   @Override
   public boolean fire(Tablet tablet) throws Exception {
     ensureSession();
-    if (tablet.bitMaps == null) {
-      cnt.addAndGet((long) tablet.rowSize * tablet.getSchemas().size());
+    if (tablet.getBitMaps() == null) {
+      cnt.addAndGet((long) tablet.getRowSize() * tablet.getSchemas().size());
       return true;
     }
     for (int column = 0; column < tablet.getSchemas().size(); column++) {
-      BitMap bitMap = tablet.bitMaps[column];
+      BitMap bitMap = tablet.getBitMaps()[column];
       if (bitMap == null) {
-        cnt.addAndGet(tablet.rowSize);
+        cnt.addAndGet(tablet.getRowSize());
       } else {
-        for (int row = 0; row < tablet.rowSize; row++) {
+        for (int row = 0; row < tablet.getRowSize(); row++) {
           if (!bitMap.isMarked(row)) {
             cnt.incrementAndGet();
           }

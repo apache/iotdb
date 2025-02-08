@@ -47,6 +47,7 @@ import java.time.format.DateTimeParseException;
 import java.time.format.SignStyle;
 import java.time.temporal.ChronoField;
 import java.util.Calendar;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -781,6 +782,11 @@ public class DateTimeUtils {
     return Instant.ofEpochMilli(timestamp).atZone(zoneId).toLocalDate();
   }
 
+  public static ZonedDateTime convertToZonedDateTime(long timestamp, ZoneId zoneId) {
+    timestamp = CAST_TIMESTAMP_TO_MS.apply(timestamp);
+    return ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId);
+  }
+
   public static ZoneOffset toZoneOffset(ZoneId zoneId) {
     return zoneId.getRules().getOffset(Instant.now());
   }
@@ -839,12 +845,10 @@ public class DateTimeUtils {
 
   public static final long MS_TO_MONTH = 30 * 86400_000L;
 
-  public static long calcPositiveIntervalByMonth(long startTime, TimeDuration duration) {
+  public static long calcPositiveIntervalByMonth(
+      long startTime, TimeDuration duration, ZoneId zoneId) {
     return TimeDuration.calcPositiveIntervalByMonth(
-        startTime,
-        duration,
-        SessionManager.getInstance().getSessionTimeZone(),
-        TimestampPrecisionUtils.currPrecision);
+        startTime, duration, TimeZone.getTimeZone(zoneId), TimestampPrecisionUtils.currPrecision);
   }
 
   /**

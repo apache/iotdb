@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -65,6 +65,14 @@ public class TableDeviceSchemaCacheTest {
   private static final String database2 = "sg2";
   private static final String table1 = "t1";
   private static final String table2 = "t2";
+  private static final String attributeName1 = "type";
+  private static final String attributeName2 = "cycle";
+  private static final String measurement1 = "s0";
+  private static final String measurement2 = "s1";
+  private static final String measurement3 = "s2";
+  private static final String measurement4 = "s3";
+  private static final String measurement5 = "s4";
+  private static final String measurement6 = "s5";
 
   @BeforeClass
   public static void prepareEnvironment() {
@@ -73,19 +81,34 @@ public class TableDeviceSchemaCacheTest {
             new ColumnHeader("hebei", TSDataType.STRING),
             new ColumnHeader("p_1", TSDataType.STRING),
             new ColumnHeader("d_1", TSDataType.STRING));
-    final String attributeName = "attr";
 
     // Prepare tables
     final TsTable testTable1 = new TsTable(table1);
     columnHeaderList.forEach(
         columnHeader ->
             testTable1.addColumnSchema(
-                new IdColumnSchema(columnHeader.getColumnName(), columnHeader.getColumnType())));
-    testTable1.addColumnSchema(new AttributeColumnSchema(attributeName, TSDataType.STRING));
+                new TagColumnSchema(columnHeader.getColumnName(), columnHeader.getColumnType())));
+    testTable1.addColumnSchema(new AttributeColumnSchema(attributeName1, TSDataType.STRING));
+    testTable1.addColumnSchema(new AttributeColumnSchema(attributeName2, TSDataType.STRING));
     testTable1.addColumnSchema(new TimeColumnSchema("time", TSDataType.INT64));
     testTable1.addColumnSchema(
-        new MeasurementColumnSchema(
-            "s1", TSDataType.BOOLEAN, TSEncoding.RLE, CompressionType.GZIP));
+        new FieldColumnSchema(
+            measurement1, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+    testTable1.addColumnSchema(
+        new FieldColumnSchema(
+            measurement2, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+    testTable1.addColumnSchema(
+        new FieldColumnSchema(
+            measurement3, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+    testTable1.addColumnSchema(
+        new FieldColumnSchema(
+            measurement4, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+    testTable1.addColumnSchema(
+        new FieldColumnSchema(
+            measurement5, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+    testTable1.addColumnSchema(
+        new FieldColumnSchema(
+            measurement6, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
     DataNodeTableCache.getInstance().preUpdateTable(database1, testTable1);
     DataNodeTableCache.getInstance().commitUpdateTable(database1, table1);
 
@@ -96,12 +119,28 @@ public class TableDeviceSchemaCacheTest {
     columnHeaderList.forEach(
         columnHeader ->
             testTable2.addColumnSchema(
-                new IdColumnSchema(columnHeader.getColumnName(), columnHeader.getColumnType())));
-    testTable2.addColumnSchema(new AttributeColumnSchema(attributeName, TSDataType.STRING));
+                new TagColumnSchema(columnHeader.getColumnName(), columnHeader.getColumnType())));
+    testTable2.addColumnSchema(new AttributeColumnSchema(attributeName1, TSDataType.STRING));
+    testTable2.addColumnSchema(new AttributeColumnSchema(attributeName2, TSDataType.STRING));
     testTable2.addColumnSchema(new TimeColumnSchema("time", TSDataType.INT64));
     testTable2.addColumnSchema(
-        new MeasurementColumnSchema(
-            "s1", TSDataType.BOOLEAN, TSEncoding.RLE, CompressionType.GZIP));
+        new FieldColumnSchema(
+            measurement1, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+    testTable2.addColumnSchema(
+        new FieldColumnSchema(
+            measurement2, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+    testTable2.addColumnSchema(
+        new FieldColumnSchema(
+            measurement3, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+    testTable2.addColumnSchema(
+        new FieldColumnSchema(
+            measurement4, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+    testTable2.addColumnSchema(
+        new FieldColumnSchema(
+            measurement5, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
+    testTable2.addColumnSchema(
+        new FieldColumnSchema(
+            measurement6, TSDataType.INT32, TSEncoding.RLE, CompressionType.GZIP));
     DataNodeTableCache.getInstance().preUpdateTable(database1, testTable2);
     DataNodeTableCache.getInstance().commitUpdateTable(database1, table2);
 
@@ -126,8 +165,8 @@ public class TableDeviceSchemaCacheTest {
     final TableDeviceSchemaCache cache = TableDeviceSchemaCache.getInstance();
 
     final Map<String, Binary> attributeMap = new HashMap<>();
-    attributeMap.put("type", new Binary("new", TSFileConfig.STRING_CHARSET));
-    attributeMap.put("cycle", new Binary("monthly", TSFileConfig.STRING_CHARSET));
+    attributeMap.put(attributeName1, new Binary("new", TSFileConfig.STRING_CHARSET));
+    attributeMap.put(attributeName2, new Binary("monthly", TSFileConfig.STRING_CHARSET));
     cache.putAttributes(
         database1,
         convertIdValuesToDeviceID(table1, new String[] {"hebei", "p_1", "d_0"}),
@@ -140,7 +179,7 @@ public class TableDeviceSchemaCacheTest {
         cache.getDeviceAttribute(
             database1, convertIdValuesToDeviceID(table1, new String[] {"hebei", "p_1", "d_1"})));
 
-    attributeMap.put("type", new Binary("old", TSFileConfig.STRING_CHARSET));
+    attributeMap.put(attributeName1, new Binary("old", TSFileConfig.STRING_CHARSET));
     cache.putAttributes(
         database1,
         convertIdValuesToDeviceID(table1, new String[] {"hebei", "p_1", "d_1"}),
@@ -150,7 +189,7 @@ public class TableDeviceSchemaCacheTest {
         cache.getDeviceAttribute(
             database1, convertIdValuesToDeviceID(table1, new String[] {"hebei", "p_1", "d_1"})));
 
-    attributeMap.put("cycle", new Binary("daily", TSFileConfig.STRING_CHARSET));
+    attributeMap.put(attributeName2, new Binary("daily", TSFileConfig.STRING_CHARSET));
     cache.putAttributes(
         database1,
         convertIdValuesToDeviceID(table1, new String[] {"shandong", "p_1", "d_1"}),
@@ -164,8 +203,8 @@ public class TableDeviceSchemaCacheTest {
             database1, convertIdValuesToDeviceID(table1, new String[] {"shandong", "p_1", "d_1"})));
 
     final String table2 = "t2";
-    attributeMap.put("type", new Binary("new", TSFileConfig.STRING_CHARSET));
-    attributeMap.put("cycle", new Binary("monthly", TSFileConfig.STRING_CHARSET));
+    attributeMap.put(attributeName1, new Binary("new", TSFileConfig.STRING_CHARSET));
+    attributeMap.put(attributeName2, new Binary("monthly", TSFileConfig.STRING_CHARSET));
     cache.putAttributes(
         database1,
         convertIdValuesToDeviceID(table2, new String[] {"hebei", "p_1", "d_0"}),

@@ -40,6 +40,7 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.region.AddRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.CreateRegionGroupsProcedure;
+import org.apache.iotdb.confignode.procedure.impl.region.ReconstructRegionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
@@ -52,6 +53,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DeleteDevicesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
@@ -123,6 +125,8 @@ public class ProcedureFactory implements IProcedureFactory {
       case CREATE_REGION_GROUPS:
         procedure = new CreateRegionGroupsProcedure();
         break;
+      case RECONSTRUCT_REGION_PROCEDURE:
+        procedure = new ReconstructRegionProcedure();
       case DELETE_TIMESERIES_PROCEDURE:
         procedure = new DeleteTimeSeriesProcedure(false);
         break;
@@ -192,22 +196,25 @@ public class ProcedureFactory implements IProcedureFactory {
         procedure = new UnsetTemplateProcedure(false);
         break;
       case CREATE_TABLE_PROCEDURE:
-        procedure = new CreateTableProcedure();
+        procedure = new CreateTableProcedure(false);
         break;
       case ADD_TABLE_COLUMN_PROCEDURE:
-        procedure = new AddTableColumnProcedure();
+        procedure = new AddTableColumnProcedure(false);
         break;
       case SET_TABLE_PROPERTIES_PROCEDURE:
-        procedure = new SetTablePropertiesProcedure();
+        procedure = new SetTablePropertiesProcedure(false);
         break;
       case RENAME_TABLE_COLUMN_PROCEDURE:
-        procedure = new RenameTableColumnProcedure();
+        procedure = new RenameTableColumnProcedure(false);
         break;
       case DROP_TABLE_COLUMN_PROCEDURE:
-        procedure = new DropTableColumnProcedure();
+        procedure = new DropTableColumnProcedure(false);
         break;
       case DROP_TABLE_PROCEDURE:
-        procedure = new DropTableProcedure();
+        procedure = new DropTableProcedure(false);
+        break;
+      case DELETE_DEVICES_PROCEDURE:
+        procedure = new DeleteDevicesProcedure(false);
         break;
       case CREATE_PIPE_PLUGIN_PROCEDURE:
         procedure = new CreatePipePluginProcedure();
@@ -253,6 +260,27 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case PIPE_ENRICHED_AUTH_OPERATE_PROCEDURE:
         procedure = new AuthOperationProcedure(true);
+        break;
+      case PIPE_ENRICHED_CREATE_TABLE_PROCEDURE:
+        procedure = new CreateTableProcedure(true);
+        break;
+      case PIPE_ENRICHED_DROP_TABLE_PROCEDURE:
+        procedure = new DropTableProcedure(true);
+        break;
+      case PIPE_ENRICHED_ADD_TABLE_COLUMN_PROCEDURE:
+        procedure = new AddTableColumnProcedure(true);
+        break;
+      case PIPE_ENRICHED_SET_TABLE_PROPERTIES_PROCEDURE:
+        procedure = new SetTablePropertiesProcedure(true);
+        break;
+      case PIPE_ENRICHED_RENAME_TABLE_COLUMN_PROCEDURE:
+        procedure = new RenameTableColumnProcedure(true);
+        break;
+      case PIPE_ENRICHED_DROP_TABLE_COLUMN_PROCEDURE:
+        procedure = new DropTableColumnProcedure(true);
+        break;
+      case PIPE_ENRICHED_DELETE_DEVICES_PROCEDURE:
+        procedure = new DeleteDevicesProcedure(true);
         break;
       case REMOVE_AI_NODE_PROCEDURE:
         procedure = new RemoveAINodeProcedure();
@@ -316,7 +344,7 @@ public class ProcedureFactory implements IProcedureFactory {
     return procedure;
   }
 
-  public static ProcedureType getProcedureType(Procedure<?> procedure) {
+  public static ProcedureType getProcedureType(final Procedure<?> procedure) {
     if (procedure instanceof DeleteDatabaseProcedure) {
       return ProcedureType.DELETE_DATABASE_PROCEDURE;
     } else if (procedure instanceof AddConfigNodeProcedure) {
@@ -337,6 +365,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.CREATE_REGION_GROUPS;
     } else if (procedure instanceof DeleteTimeSeriesProcedure) {
       return ProcedureType.DELETE_TIMESERIES_PROCEDURE;
+    } else if (procedure instanceof ReconstructRegionProcedure) {
+      return ProcedureType.RECONSTRUCT_REGION_PROCEDURE;
     } else if (procedure instanceof CreateTriggerProcedure) {
       return ProcedureType.CREATE_TRIGGER_PROCEDURE;
     } else if (procedure instanceof DropTriggerProcedure) {
@@ -369,6 +399,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DROP_TABLE_COLUMN_PROCEDURE;
     } else if (procedure instanceof DropTableProcedure) {
       return ProcedureType.DROP_TABLE_PROCEDURE;
+    } else if (procedure instanceof DeleteDevicesProcedure) {
+      return ProcedureType.DELETE_DEVICES_PROCEDURE;
     } else if (procedure instanceof CreatePipePluginProcedure) {
       return ProcedureType.CREATE_PIPE_PLUGIN_PROCEDURE;
     } else if (procedure instanceof DropPipePluginProcedure) {

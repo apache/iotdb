@@ -21,6 +21,7 @@ package org.apache.iotdb.pipe.it.autocreate;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
@@ -224,7 +225,11 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("p1").getCode());
       showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
-      Assert.assertEquals(0, showPipeResult.size());
+      Assert.assertEquals(
+          0,
+          showPipeResult.stream()
+              .filter(info -> !info.id.startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX))
+              .count());
 
       status =
           client.createPipe(
@@ -261,11 +266,14 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeDualAutoIT {
                   .setExtractorAttributes(extractorAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertEquals(TSStatusCode.PIPE_ERROR.getStatusCode(), client.startPipe("").getCode());
       Assert.assertEquals(
-          TSStatusCode.PIPE_ERROR.getStatusCode(), client.startPipe("p0").getCode());
-      Assert.assertEquals(TSStatusCode.PIPE_ERROR.getStatusCode(), client.startPipe("p").getCode());
-      Assert.assertEquals(TSStatusCode.PIPE_ERROR.getStatusCode(), client.startPipe("*").getCode());
+          TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.startPipe("").getCode());
+      Assert.assertEquals(
+          TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.startPipe("p0").getCode());
+      Assert.assertEquals(
+          TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.startPipe("p").getCode());
+      Assert.assertEquals(
+          TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.startPipe("*").getCode());
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
@@ -276,10 +284,14 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeDualAutoIT {
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
 
-      Assert.assertEquals(TSStatusCode.PIPE_ERROR.getStatusCode(), client.stopPipe("").getCode());
-      Assert.assertEquals(TSStatusCode.PIPE_ERROR.getStatusCode(), client.stopPipe("p0").getCode());
-      Assert.assertEquals(TSStatusCode.PIPE_ERROR.getStatusCode(), client.stopPipe("p").getCode());
-      Assert.assertEquals(TSStatusCode.PIPE_ERROR.getStatusCode(), client.stopPipe("*").getCode());
+      Assert.assertEquals(
+          TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.stopPipe("").getCode());
+      Assert.assertEquals(
+          TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.stopPipe("p0").getCode());
+      Assert.assertEquals(
+          TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.stopPipe("p").getCode());
+      Assert.assertEquals(
+          TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.stopPipe("*").getCode());
       showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));

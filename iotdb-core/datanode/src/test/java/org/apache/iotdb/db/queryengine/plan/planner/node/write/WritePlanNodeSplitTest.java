@@ -268,7 +268,7 @@ public class WritePlanNodeSplitTest {
           new int[] {-20, -10, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100}
         });
     relationalInsertTabletNode.setColumnCategories(
-        new TsTableColumnCategory[] {TsTableColumnCategory.ID, TsTableColumnCategory.MEASUREMENT});
+        new TsTableColumnCategory[] {TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD});
     relationalInsertTabletNode.setRowCount(12);
 
     List<DataPartitionQueryParam> dataPartitionQueryParamList = new ArrayList<>();

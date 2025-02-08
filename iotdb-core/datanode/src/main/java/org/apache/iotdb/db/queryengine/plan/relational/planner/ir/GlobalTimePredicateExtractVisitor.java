@@ -45,7 +45,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator.AND;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator.OR;
@@ -63,9 +62,11 @@ public class GlobalTimePredicateExtractVisitor
    * @return Pair, left is globalTimePredicate, right is if hasValueFilter.
    * @throws UnknownExpressionTypeException unknown expression type
    */
-  public static Pair<Expression, Boolean> extractGlobalTimeFilter(Expression predicate) {
+  public static Pair<Expression, Boolean> extractGlobalTimeFilter(
+      Expression predicate, String timeColumnName) {
     return new GlobalTimePredicateExtractVisitor()
-        .process(predicate, new GlobalTimePredicateExtractVisitor.Context(true, true));
+        .process(
+            predicate, new GlobalTimePredicateExtractVisitor.Context(true, true, timeColumnName));
   }
 
   protected Pair<Expression, Boolean> visitExpression(
@@ -106,7 +107,7 @@ public class GlobalTimePredicateExtractVisitor
 
       List<Pair<Expression, Boolean>> resultPairs = new ArrayList<>();
       for (Expression term : node.getTerms()) {
-        resultPairs.add(process(term, new Context(false, false)));
+        resultPairs.add(process(term, new Context(false, false, context.timeColumnName)));
       }
 
       List<Expression> newTimeFilterTerms = new ArrayList<>();
@@ -159,8 +160,8 @@ public class GlobalTimePredicateExtractVisitor
       ComparisonExpression node, Context context) {
     Expression leftExpression = node.getLeft();
     Expression rightExpression = node.getRight();
-    if (checkIsTimeFilter(leftExpression, rightExpression)
-        || checkIsTimeFilter(rightExpression, leftExpression)) {
+    if (checkIsTimeFilter(leftExpression, context.timeColumnName, rightExpression)
+        || checkIsTimeFilter(rightExpression, context.timeColumnName, leftExpression)) {
       return new Pair<>(node, false);
     }
     return new Pair<>(null, true);
@@ -196,7 +197,7 @@ public class GlobalTimePredicateExtractVisitor
     Expression thirdExpression = node.getMax();
 
     boolean isTimeFilter = false;
-    if (isTimeIdentifier(firstExpression)) {
+    if (isTimeColumn(firstExpression, context.timeColumnName)) {
       isTimeFilter = checkBetweenConstantSatisfy(secondExpression, thirdExpression);
     }
     // TODO After Constant-Folding introduced
@@ -213,7 +214,7 @@ public class GlobalTimePredicateExtractVisitor
 
   @Override
   protected Pair<Expression, Boolean> visitInPredicate(InPredicate node, Context context) {
-    if (isTimeIdentifier(node.getValue())) {
+    if (isTimeColumn(node.getValue(), context.timeColumnName)) {
       return new Pair<>(node, false);
     }
 
@@ -223,7 +224,9 @@ public class GlobalTimePredicateExtractVisitor
   @Override
   protected Pair<Expression, Boolean> visitNotExpression(NotExpression node, Context context) {
     Pair<Expression, Boolean> result =
-        process(node.getValue(), new Context(context.canRewrite, context.isFirstOr));
+        process(
+            node.getValue(),
+            new Context(context.canRewrite, context.isFirstOr, context.timeColumnName));
     if (result.left != null) {
       return new Pair<>(new NotExpression(result.left), result.right);
     }
@@ -261,14 +264,14 @@ public class GlobalTimePredicateExtractVisitor
     throw new IllegalStateException(String.format(NOT_SUPPORTED, node.getClass()));
   }
 
-  private static boolean isTimeIdentifier(Expression e) {
-    return e instanceof SymbolReference && TIME.equalsIgnoreCase(((SymbolReference) e).getName());
+  public static boolean isTimeColumn(Expression e, String timeColumnName) {
+    return e instanceof SymbolReference
+        && ((SymbolReference) e).getName().equalsIgnoreCase(timeColumnName);
   }
 
-  private static boolean checkIsTimeFilter(Expression timeExpression, Expression valueExpression) {
-    return timeExpression instanceof SymbolReference
-        && TIME.equalsIgnoreCase(((SymbolReference) timeExpression).getName())
-        && valueExpression instanceof LongLiteral;
+  private static boolean checkIsTimeFilter(
+      Expression timeExpression, String timeColumnName, Expression valueExpression) {
+    return isTimeColumn(timeExpression, timeColumnName) && valueExpression instanceof LongLiteral;
   }
 
   private static boolean checkBetweenConstantSatisfy(Expression e1, Expression e2) {
@@ -280,10 +283,12 @@ public class GlobalTimePredicateExtractVisitor
   public static class Context {
     boolean canRewrite;
     boolean isFirstOr;
+    String timeColumnName;
 
-    public Context(boolean canRewrite, boolean isFirstOr) {
+    public Context(boolean canRewrite, boolean isFirstOr, String timeColumnName) {
       this.canRewrite = canRewrite;
       this.isFirstOr = isFirstOr;
+      this.timeColumnName = timeColumnName;
     }
   }
 }

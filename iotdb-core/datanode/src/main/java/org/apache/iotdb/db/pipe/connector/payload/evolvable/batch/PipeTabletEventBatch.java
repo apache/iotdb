@@ -25,7 +25,6 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeExcepti
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
-import org.apache.tsfile.exception.write.WriteProcessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,7 +57,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
    * @return {@code true} if the batch can be transferred
    */
   public synchronized boolean onEvent(final TabletInsertionEvent event)
-      throws WALPipeException, IOException, WriteProcessException {
+      throws WALPipeException, IOException {
     if (isClosed || !(event instanceof EnrichedEvent)) {
       return false;
     }
@@ -94,7 +93,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
    *     exceptions and do not return {@code false} here.
    */
   protected abstract boolean constructBatch(final TabletInsertionEvent event)
-      throws WALPipeException, IOException, WriteProcessException;
+      throws WALPipeException, IOException;
 
   public boolean shouldEmit() {
     return totalBufferSize >= getMaxBatchSizeInBytes()

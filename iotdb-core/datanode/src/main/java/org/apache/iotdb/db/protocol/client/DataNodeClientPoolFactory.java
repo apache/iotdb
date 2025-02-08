@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
-import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 
 public class DataNodeClientPoolFactory {
@@ -43,7 +42,7 @@ public class DataNodeClientPoolFactory {
       implements IClientPoolFactory<ConfigRegionId, ConfigNodeClient> {
 
     @Override
-    public KeyedObjectPool<ConfigRegionId, ConfigNodeClient> createClientPool(
+    public GenericKeyedObjectPool<ConfigRegionId, ConfigNodeClient> createClientPool(
         ClientManager<ConfigRegionId, ConfigNodeClient> manager) {
       GenericKeyedObjectPool<ConfigRegionId, ConfigNodeClient> clientPool =
           new GenericKeyedObjectPool<>(
@@ -67,7 +66,7 @@ public class DataNodeClientPoolFactory {
       implements IClientPoolFactory<ConfigRegionId, ConfigNodeClient> {
 
     @Override
-    public KeyedObjectPool<ConfigRegionId, ConfigNodeClient> createClientPool(
+    public GenericKeyedObjectPool<ConfigRegionId, ConfigNodeClient> createClientPool(
         ClientManager<ConfigRegionId, ConfigNodeClient> manager) {
       GenericKeyedObjectPool<ConfigRegionId, ConfigNodeClient> clientPool =
           new GenericKeyedObjectPool<>(

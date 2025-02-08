@@ -19,13 +19,19 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -34,8 +40,12 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.function.BiFunction;
 
 public abstract class AbstractAlterOrDropTableProcedure<T>
     extends StateMachineProcedure<ConfigNodeProcedureEnv, T> {
@@ -48,12 +58,16 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
 
   protected TsTable table;
 
-  protected AbstractAlterOrDropTableProcedure() {
-    super();
+  protected AbstractAlterOrDropTableProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   protected AbstractAlterOrDropTableProcedure(
-      final String database, final String tableName, final String queryId) {
+      final String database,
+      final String tableName,
+      final String queryId,
+      final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
     this.database = database;
     this.tableName = tableName;
     this.queryId = queryId;
@@ -152,6 +166,63 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
 
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
       this.table = TsTable.deserialize(byteBuffer);
+    }
+  }
+
+  protected class TableRegionTaskExecutor<Q> extends DataNodeRegionTaskExecutor<Q, TSStatus> {
+
+    private final String taskName;
+
+    protected TableRegionTaskExecutor(
+        final String taskName,
+        final ConfigNodeProcedureEnv env,
+        final Map<TConsensusGroupId, TRegionReplicaSet> targetRegionGroup,
+        final CnToDnAsyncRequestType dataNodeRequestType,
+        final BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
+      super(env, targetRegionGroup, false, dataNodeRequestType, dataNodeRequestGenerator);
+      this.taskName = taskName;
+    }
+
+    @Override
+    protected List<TConsensusGroupId> processResponseOfOneDataNode(
+        final TDataNodeLocation dataNodeLocation,
+        final List<TConsensusGroupId> consensusGroupIdList,
+        final TSStatus response) {
+      final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
+      if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return failedRegionList;
+      }
+
+      if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+        final List<TSStatus> subStatus = response.getSubStatus();
+        for (int i = 0; i < subStatus.size(); i++) {
+          if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            failedRegionList.add(consensusGroupIdList.get(i));
+          }
+        }
+      } else {
+        failedRegionList.addAll(consensusGroupIdList);
+      }
+      return failedRegionList;
+    }
+
+    @Override
+    protected void onAllReplicasetFailure(
+        final TConsensusGroupId consensusGroupId,
+        final Set<TDataNodeLocation> dataNodeLocationSet) {
+      setFailure(
+          new ProcedureException(
+              new MetadataException(
+                  String.format(
+                      "[%s] for %s.%s failed when [%s] because failed to execute in all replicaset of %s %s. Failure nodes: %s",
+                      this.getClass().getSimpleName(),
+                      database,
+                      tableName,
+                      taskName,
+                      consensusGroupId.type,
+                      consensusGroupId.id,
+                      dataNodeLocationSet))));
+      interruptTask();
     }
   }
 

@@ -39,8 +39,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
 
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.describeTableColumnHeaders;
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showTablesColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTablesColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
@@ -66,12 +67,12 @@ public class IoTDBTableIT {
         final Statement statement = connection.createStatement()) {
 
       statement.execute("create database test1");
-      statement.execute("create database test2");
+      statement.execute("create database test2 with (ttl=3000000)");
 
       // should specify database before create table
       try {
         statement.execute(
-            "create table table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT)");
+            "create table table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD)");
         fail();
       } catch (final SQLException e) {
         assertEquals("701: database is not specified", e.getMessage());
@@ -90,14 +91,14 @@ public class IoTDBTableIT {
 
       // or use full qualified table name
       // test "TTL=INF"
-      // "MEASUREMENT" can be omitted when type is specified
-      // "STRING" can be omitted when id/attribute is specified
+      // "FIELD" can be omitted when type is specified
+      // "STRING" can be omitted when tag/attribute is specified
       statement.execute(
-          "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE) with (TTL='INF')");
+          "create table test1.table1(region_id STRING TAG, plant_id STRING TAG, device_id TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE) with (TTL='INF')");
 
       try {
         statement.execute(
-            "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT)");
+            "create table test1.table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD)");
         fail();
       } catch (final SQLException e) {
         assertEquals("551: Table 'test1.table1' already exists.", e.getMessage());
@@ -128,22 +129,22 @@ public class IoTDBTableIT {
       }
 
       // Alter table properties
-      statement.execute("alter table test1.table1 set properties ttl=1");
-      ttls = new String[] {"1"};
+      statement.execute("alter table test1.table1 set properties ttl=1000000");
+      ttls = new String[] {"1000000"};
 
       // Alter non-exist table
       try {
-        statement.execute("alter table test1.nonExist set properties ttl=1");
+        statement.execute("alter table test1.nonExist set properties ttl=1000000");
       } catch (final SQLException e) {
         assertEquals("550: Table 'test1.nonexist' does not exist", e.getMessage());
       }
 
       // If exists
-      statement.execute("alter table if exists test1.nonExist set properties ttl=1");
+      statement.execute("alter table if exists test1.nonExist set properties ttl=1000000");
 
       // Alter non-supported properties
       try {
-        statement.execute("alter table test1.table1 set properties nonSupport=1");
+        statement.execute("alter table test1.table1 set properties nonSupport=1000000");
       } catch (final SQLException e) {
         assertEquals("701: Table property 'nonsupport' is currently not allowed.", e.getMessage());
       }
@@ -187,20 +188,11 @@ public class IoTDBTableIT {
 
       // Create if not exist
       statement.execute(
-          "create table if not exists test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT)");
+          "create table if not exists test1.table1(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD)");
 
       try {
         statement.execute(
-            "create table table2(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT, time2 INT64 TIME) with (TTL=3600000)");
-        fail();
-      } catch (final SQLException e) {
-        assertEquals(
-            "701: Create table statement shall not specify column category TIME", e.getMessage());
-      }
-
-      try {
-        statement.execute(
-            "create table table2(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (UNKNOWN=3600000)");
+            "create table table2(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (UNKNOWN=3600000)");
         fail();
       } catch (final SQLException e) {
         assertEquals("701: Table property 'unknown' is currently not allowed.", e.getMessage());
@@ -208,7 +200,7 @@ public class IoTDBTableIT {
 
       try {
         statement.execute(
-            "create table table2(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=null)");
+            "create table table2(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (TTL=null)");
         fail();
       } catch (final SQLException e) {
         assertEquals(
@@ -218,7 +210,7 @@ public class IoTDBTableIT {
 
       try {
         statement.execute(
-            "create table table2(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=-1)");
+            "create table table2(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (TTL=-1)");
         fail();
       } catch (final SQLException e) {
         assertEquals(
@@ -227,25 +219,25 @@ public class IoTDBTableIT {
 
       try {
         statement.execute(
-            "create table table2(region_id TEXT ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
+            "create table table2(region_id TEXT TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (TTL=3600000)");
         fail();
       } catch (final SQLException e) {
         assertEquals(
-            "701: DataType of ID Column should only be STRING, current is TEXT", e.getMessage());
+            "701: DataType of TAG Column should only be STRING, current is TEXT", e.getMessage());
       }
 
       try {
         statement.execute(
-            "create table table2(region_id INT32 ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
+            "create table table2(region_id INT32 TAG, plant_id STRING TAG, device_id STRING TAG, model STRING ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (TTL=3600000)");
         fail();
       } catch (final SQLException e) {
         assertEquals(
-            "701: DataType of ID Column should only be STRING, current is INT32", e.getMessage());
+            "701: DataType of TAG Column should only be STRING, current is INT32", e.getMessage());
       }
 
       try {
         statement.execute(
-            "create table table2(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model TEXT ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
+            "create table table2(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model TEXT ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (TTL=3600000)");
         fail();
       } catch (final SQLException e) {
         assertEquals(
@@ -255,7 +247,7 @@ public class IoTDBTableIT {
 
       try {
         statement.execute(
-            "create table table2(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model DOUBLE ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
+            "create table table2(region_id STRING TAG, plant_id STRING TAG, device_id STRING TAG, model DOUBLE ATTRIBUTE, temperature FLOAT FIELD, humidity DOUBLE FIELD) with (TTL=3600000)");
         fail();
       } catch (final SQLException e) {
         assertEquals(
@@ -264,28 +256,31 @@ public class IoTDBTableIT {
       }
 
       statement.execute(
-          "create table table2(region_id STRING ID, plant_id STRING ID, color STRING ATTRIBUTE, temperature FLOAT MEASUREMENT) with (TTL=6600000)");
+          "create table table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD) with (TTL=6600000)");
 
-      statement.execute("alter table table2 add column speed DOUBLE MEASUREMENT");
+      statement.execute("alter table table2 add column speed DOUBLE FIELD");
 
       try {
-        statement.execute("alter table table2 add column speed DOUBLE MEASUREMENT");
+        statement.execute("alter table table2 add column speed DOUBLE FIELD");
       } catch (final SQLException e) {
         assertEquals("552: Column 'speed' already exist", e.getMessage());
       }
 
-      statement.execute("alter table table2 add column if not exists speed DOUBLE MEASUREMENT");
+      statement.execute("alter table table2 add column if not exists speed DOUBLE FIELD");
 
       try {
-        statement.execute("alter table table3 add column speed DOUBLE MEASUREMENT");
+        statement.execute("alter table table3 add column speed DOUBLE FIELD");
       } catch (final SQLException e) {
         assertEquals("550: Table 'test2.table3' does not exist", e.getMessage());
       }
 
-      statement.execute("alter table if exists table3 add column speed DOUBLE MEASUREMENT");
+      statement.execute("alter table if exists table3 add column speed DOUBLE FIELD");
 
-      tableNames = new String[] {"table2"};
-      ttls = new String[] {"6600000"};
+      // Test create table with only time column
+      statement.execute("create table table3()");
+
+      tableNames = new String[] {"table3", "table2"};
+      ttls = new String[] {"3000000", "6600000"};
 
       // show tables from current database
       try (final ResultSet resultSet = statement.executeQuery("SHOW tables")) {
@@ -304,8 +299,30 @@ public class IoTDBTableIT {
         assertEquals(tableNames.length, cnt);
       }
 
-      // Test create table with only time column
-      statement.execute("create table table3()");
+      // Will not affect the manual "6600000"
+      statement.execute("alter database test2 set properties ttl=6600000");
+      statement.execute("alter database test2 set properties ttl=DEFAULT");
+
+      statement.execute("alter table table3 set properties ttl=1000000");
+      statement.execute("alter table table3 set properties ttl=DEFAULT");
+
+      ttls = new String[] {"INF", "6600000"};
+      // The table3's ttl shall be "INF"
+      try (final ResultSet resultSet = statement.executeQuery("SHOW tables")) {
+        int cnt = 0;
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(showTablesColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < showTablesColumnHeaders.size(); i++) {
+          assertEquals(
+              showTablesColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+        }
+        while (resultSet.next()) {
+          assertEquals(tableNames[cnt], resultSet.getString(1));
+          assertEquals(ttls[cnt], resultSet.getString(2));
+          cnt++;
+        }
+        assertEquals(tableNames.length, cnt);
+      }
 
       // show tables from a non-exist database
       try {
@@ -330,7 +347,7 @@ public class IoTDBTableIT {
       String[] dataTypes =
           new String[] {"TIMESTAMP", "STRING", "STRING", "STRING", "STRING", "FLOAT", "DOUBLE"};
       String[] categories =
-          new String[] {"TIME", "ID", "ID", "ID", "ATTRIBUTE", "MEASUREMENT", "MEASUREMENT"};
+          new String[] {"TIME", "TAG", "TAG", "TAG", "ATTRIBUTE", "FIELD", "FIELD"};
 
       try (final ResultSet resultSet = statement.executeQuery("describe test1.table1")) {
         int cnt = 0;
@@ -351,7 +368,7 @@ public class IoTDBTableIT {
 
       columnNames = new String[] {"time", "region_id", "plant_id", "color", "temperature", "speed"};
       dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "STRING", "FLOAT", "DOUBLE"};
-      categories = new String[] {"TIME", "ID", "ID", "ATTRIBUTE", "MEASUREMENT", "MEASUREMENT"};
+      categories = new String[] {"TIME", "TAG", "TAG", "ATTRIBUTE", "FIELD", "FIELD"};
 
       try (final ResultSet resultSet = statement.executeQuery("desc table2")) {
         int cnt = 0;
@@ -372,6 +389,68 @@ public class IoTDBTableIT {
 
       statement.execute(
           "insert into table2(region_id, plant_id, color, temperature, speed) values(1, 1, 1, 1, 1)");
+
+      // Test drop column
+      statement.execute("alter table table2 drop column color");
+
+      columnNames = new String[] {"time", "region_id", "plant_id", "temperature", "speed"};
+      dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "FLOAT", "DOUBLE"};
+      categories = new String[] {"TIME", "TAG", "TAG", "FIELD", "FIELD"};
+      final String[] statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
+      try (final ResultSet resultSet = statement.executeQuery("describe table2 details")) {
+        int cnt = 0;
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(describeTableDetailsColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < describeTableDetailsColumnHeaders.size(); i++) {
+          assertEquals(
+              describeTableDetailsColumnHeaders.get(i).getColumnName(),
+              metaData.getColumnName(i + 1));
+        }
+        while (resultSet.next()) {
+          assertEquals(columnNames[cnt], resultSet.getString(1));
+          assertEquals(dataTypes[cnt], resultSet.getString(2));
+          assertEquals(categories[cnt], resultSet.getString(3));
+          assertEquals(statuses[cnt], resultSet.getString(4));
+          cnt++;
+        }
+        assertEquals(columnNames.length, cnt);
+      }
+
+      statement.execute("alter table table2 drop column speed");
+
+      try {
+        statement.executeQuery("select color from table2");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("616: Column 'color' cannot be resolved", e.getMessage());
+      }
+
+      try {
+        statement.executeQuery("select speed from table2");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("616: Column 'speed' cannot be resolved", e.getMessage());
+      }
+
+      try {
+        statement.execute("alter table table2 drop column speed");
+      } catch (final SQLException e) {
+        assertEquals("616: Column speed in table 'test2.table2' does not exist.", e.getMessage());
+      }
+
+      try {
+        statement.execute("alter table table2 drop column time");
+      } catch (final SQLException e) {
+        assertEquals("701: Dropping tag or time column is not supported.", e.getMessage());
+      }
+
+      // test data deletion by drop column
+      statement.execute("alter table table2 add column speed double");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select speed from table2"),
+          "speed,",
+          Collections.singleton("null,"));
+
       statement.execute("drop table table2");
       try {
         statement.executeQuery("describe table2");
@@ -380,21 +459,27 @@ public class IoTDBTableIT {
         assertEquals("550: Table 'test2.table2' does not exist.", e.getMessage());
       }
       statement.execute(
-          "create table table2(region_id STRING ID, plant_id STRING ID, color STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, speed DOUBLE MEASUREMENT)");
+          "create table table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD, speed DOUBLE FIELD)");
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from table2"),
           "count(devices),",
           Collections.singleton("0,"));
 
+      // Test data deletion by drop table
+      statement.execute(
+          "insert into table2(region_id, plant_id, color, temperature, speed) values(1, 1, 1, 1, 1)");
+      TestUtils.assertResultSetSize(statement.executeQuery("select * from table2"), 1);
+
       try {
         statement.executeQuery("describe test3.table3");
         fail();
       } catch (final SQLException e) {
-        assertEquals("550: Table 'test3.table3' does not exist.", e.getMessage());
+        assertEquals("500: Unknown database test3", e.getMessage());
       }
 
       statement.execute("drop database test1");
 
+      // Test error messages
       try {
         statement.executeQuery("SHOW tables from test1");
         fail();
@@ -402,6 +487,74 @@ public class IoTDBTableIT {
         assertEquals("500: Unknown database test1", e.getMessage());
       }
 
+      try {
+        statement.execute("create table test1.test()");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("500: Unknown database test1", e.getMessage());
+      }
+
+      try {
+        statement.execute("alter table test1.test add column a int32");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("500: Unknown database test1", e.getMessage());
+      }
+
+      try {
+        statement.execute("alter table test1.test drop column a");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("500: Unknown database test1", e.getMessage());
+      }
+
+      try {
+        statement.execute("alter table test1.test set properties ttl=default");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("500: Unknown database test1", e.getMessage());
+      }
+
+      try {
+        statement.execute("desc test1.test");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("500: Unknown database test1", e.getMessage());
+      }
+
+      try {
+        statement.execute("drop table test1.test");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("500: Unknown database test1", e.getMessage());
+      }
+
+      // Test time column
+      statement.execute("create table test100 (time time)");
+      statement.execute("create table test101 (time timestamp time)");
+
+      try {
+        statement.execute("create table test102 (time timestamp tag)");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: The time column category shall be bounded with column name 'time'.",
+            e.getMessage());
+      }
+
+      try {
+        statement.execute("create table test102 (time tag)");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("701: The time column's type shall be 'timestamp'.", e.getMessage());
+      }
+
+      try {
+        statement.execute("create table test102 (time time, time time)");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("701: Columns in table shall not share the same name time.", e.getMessage());
+      }
     } catch (final SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());

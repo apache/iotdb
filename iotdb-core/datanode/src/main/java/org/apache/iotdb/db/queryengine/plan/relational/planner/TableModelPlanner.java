@@ -37,12 +37,15 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzerFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
 import org.apache.iotdb.db.queryengine.plan.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
@@ -63,10 +66,12 @@ public class TableModelPlanner implements IPlanner {
 
   private final SqlParser sqlParser;
   private final Metadata metadata;
+  private final StatementRewrite statementRewrite;
+  private final List<PlanOptimizer> logicalPlanOptimizers;
+  private final List<PlanOptimizer> distributionPlanOptimizers;
   private final SymbolAllocator symbolAllocator = new SymbolAllocator();
 
-  // TODO access control
-  private final AccessControl accessControl = new NopAccessControl();
+  private final AccessControl accessControl;
 
   private final WarningCollector warningCollector = WarningCollector.NOOP;
 
@@ -80,16 +85,24 @@ public class TableModelPlanner implements IPlanner {
   private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
       asyncInternalServiceClientManager;
 
+  private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
+
   public TableModelPlanner(
-      Statement statement,
-      SqlParser sqlParser,
-      Metadata metadata,
-      ExecutorService executor,
-      ExecutorService writeOperationExecutor,
-      ScheduledExecutorService scheduledExecutor,
-      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncInternalServiceClientManager,
-      IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
-          asyncInternalServiceClientManager) {
+      final Statement statement,
+      final SqlParser sqlParser,
+      final Metadata metadata,
+      final ExecutorService executor,
+      final ExecutorService writeOperationExecutor,
+      final ScheduledExecutorService scheduledExecutor,
+      final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
+          syncInternalServiceClientManager,
+      final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
+          asyncInternalServiceClientManager,
+      final StatementRewrite statementRewrite,
+      final List<PlanOptimizer> logicalPlanOptimizers,
+      final List<PlanOptimizer> distributionPlanOptimizers,
+      final AccessControl accessControl,
+      final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier) {
     this.statement = statement;
     this.sqlParser = sqlParser;
     this.metadata = metadata;
@@ -98,45 +111,60 @@ public class TableModelPlanner implements IPlanner {
     this.scheduledExecutor = scheduledExecutor;
     this.syncInternalServiceClientManager = syncInternalServiceClientManager;
     this.asyncInternalServiceClientManager = asyncInternalServiceClientManager;
+    this.statementRewrite = statementRewrite;
+    this.logicalPlanOptimizers = logicalPlanOptimizers;
+    this.distributionPlanOptimizers = distributionPlanOptimizers;
+    this.accessControl = accessControl;
+    this.dataNodeLocationSupplier = dataNodeLocationSupplier;
   }
 
   @Override
-  public IAnalysis analyze(MPPQueryContext context) {
-    StatementAnalyzerFactory statementAnalyzerFactory =
-        new StatementAnalyzerFactory(metadata, sqlParser, accessControl);
-
-    Analyzer analyzer =
-        new Analyzer(
+  public IAnalysis analyze(final MPPQueryContext context) {
+    return new Analyzer(
             context,
             context.getSession(),
-            statementAnalyzerFactory,
+            new StatementAnalyzerFactory(metadata, sqlParser, accessControl),
             Collections.emptyList(),
             Collections.emptyMap(),
-            warningCollector);
-    return analyzer.analyze(statement);
+            statementRewrite,
+            warningCollector)
+        .analyze(statement);
   }
 
   @Override
-  public LogicalQueryPlan doLogicalPlan(IAnalysis analysis, MPPQueryContext context) {
+  public LogicalQueryPlan doLogicalPlan(final IAnalysis analysis, final MPPQueryContext context) {
     return new TableLogicalPlanner(
-            context, metadata, context.getSession(), symbolAllocator, warningCollector)
+            context,
+            metadata,
+            context.getSession(),
+            symbolAllocator,
+            warningCollector,
+            logicalPlanOptimizers)
         .plan((Analysis) analysis);
   }
 
   @Override
-  public DistributedQueryPlan doDistributionPlan(IAnalysis analysis, LogicalQueryPlan logicalPlan) {
-    return new TableDistributedPlanner((Analysis) analysis, symbolAllocator, logicalPlan).plan();
+  public DistributedQueryPlan doDistributionPlan(
+      final IAnalysis analysis, final LogicalQueryPlan logicalPlan) {
+    return new TableDistributedPlanner(
+            (Analysis) analysis,
+            symbolAllocator,
+            logicalPlan,
+            metadata,
+            distributionPlanOptimizers,
+            dataNodeLocationSupplier)
+        .plan();
   }
 
   @Override
   public IScheduler doSchedule(
-      IAnalysis analysis,
-      DistributedQueryPlan distributedPlan,
-      MPPQueryContext context,
-      QueryStateMachine stateMachine) {
-    IScheduler scheduler;
+      final IAnalysis analysis,
+      final DistributedQueryPlan distributedPlan,
+      final MPPQueryContext context,
+      final QueryStateMachine stateMachine) {
+    final IScheduler scheduler;
 
-    boolean isPipeEnrichedTsFileLoad =
+    final boolean isPipeEnrichedTsFileLoad =
         statement instanceof PipeEnriched
             && ((PipeEnriched) statement).getInnerStatement() instanceof LoadTsFile;
     if (statement instanceof LoadTsFile || isPipeEnrichedTsFileLoad) {
@@ -170,12 +198,11 @@ public class TableModelPlanner implements IPlanner {
 
   @Override
   public ScheduledExecutorService getScheduledExecutorService() {
-    return null;
+    return scheduledExecutor;
   }
 
   @Override
-  public void setRedirectInfo(
-      IAnalysis iAnalysis, TEndPoint localEndPoint, TSStatus tsstatus, TSStatusCode statusCode) {
+  public void setRedirectInfo(IAnalysis iAnalysis, TEndPoint localEndPoint, TSStatus tsstatus) {
     Analysis analysis = (Analysis) iAnalysis;
 
     // Get the inner statement of PipeEnriched
@@ -193,7 +220,7 @@ public class TableModelPlanner implements IPlanner {
     if (!analysis.isFinishQueryAfterAnalyze()) {
       // Table Model Session only supports insertTablet
       if (insertStatement instanceof InsertTabletStatement) {
-        if (statusCode == TSStatusCode.SUCCESS_STATUS) {
+        if (tsstatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           boolean needRedirect = false;
           List<TEndPoint> redirectNodeList = analysis.getRedirectNodeList();
           List<TSStatus> subStatus = new ArrayList<>(redirectNodeList.size());
@@ -215,6 +242,4 @@ public class TableModelPlanner implements IPlanner {
       }
     }
   }
-
-  private static class NopAccessControl implements AccessControl {}
 }

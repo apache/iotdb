@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.db.pipe.connector.util.PipeTabletEventSorter;
+import org.apache.iotdb.db.pipe.connector.util.sorter.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -60,7 +60,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
   }
 
   public InsertTabletStatement constructStatement() {
-    new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+    new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
     try {
       if (isTabletEmpty(tablet)) {
@@ -71,7 +71,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
       final TSInsertTabletReq request = new TSInsertTabletReq();
 
       for (final IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-        request.addToMeasurements(measurementSchema.getMeasurementId());
+        request.addToMeasurements(measurementSchema.getMeasurementName());
         request.addToTypes(measurementSchema.getType().ordinal());
       }
 
@@ -79,7 +79,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
       request.setIsAligned(isAligned);
       request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
       request.setValues(SessionUtils.getValueBuffer(tablet));
-      request.setSize(tablet.rowSize);
+      request.setSize(tablet.getRowSize());
       request.setMeasurements(
           PathUtils.checkIsLegalSingleMeasurementsAndUpdate(request.getMeasurements()));
 

@@ -30,4 +30,6 @@ public interface SubscriptionReceiver {
   PipeSubscribeRequestVersion getVersion();
 
   void handleExit();
+
+  long remainingMs();
 }

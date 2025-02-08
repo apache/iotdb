@@ -241,7 +241,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
         for (TsFileResource resource : lastContinuousSkippedResources) {
           long currentFileSize = resource.getTsFileSize();
           if (totalFileSize + currentFileSize > singleFileSizeThreshold
-              || totalFileNum > totalFileNumUpperBound
+              || totalFileNum + 1 > totalFileNumUpperBound
               || !isFileLevelSatisfied(resource.getTsFileID().getInnerCompactionCount())) {
             break;
           }

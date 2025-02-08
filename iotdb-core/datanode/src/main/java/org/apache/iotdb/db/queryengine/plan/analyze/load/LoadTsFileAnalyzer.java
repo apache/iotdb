@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.db.exception.VerifyMetadataException;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
+import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
@@ -31,9 +35,11 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -51,18 +57,21 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileAnalyzer.class);
 
   // These are only used when constructed from tree model SQL
-  private final LoadTsFileStatement loadTsFileStatement;
-
+  private final LoadTsFileStatement loadTsFileTreeStatement;
   // These are only used when constructed from table model SQL
   private final LoadTsFile loadTsFileTableStatement;
 
   private final boolean isTableModelStatement;
+
+  private final boolean isGeneratedByPipe;
 
   protected final List<File> tsFiles;
   protected final String statementString;
   protected final boolean isVerifySchema;
 
   protected final boolean isDeleteAfterLoad;
+
+  protected final boolean isConvertOnTypeMismatch;
 
   protected final boolean isAutoCreateDatabase;
 
@@ -75,33 +84,39 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
   final ISchemaFetcher schemaFetcher = ClusterSchemaFetcher.getInstance();
 
-  LoadTsFileAnalyzer(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
-    this.loadTsFileStatement = loadTsFileStatement;
+  LoadTsFileAnalyzer(
+      LoadTsFileStatement loadTsFileStatement, boolean isGeneratedByPipe, MPPQueryContext context) {
+    this.loadTsFileTreeStatement = loadTsFileStatement;
     this.tsFiles = loadTsFileStatement.getTsFiles();
     this.statementString = loadTsFileStatement.toString();
     this.isVerifySchema = loadTsFileStatement.isVerifySchema();
     this.isDeleteAfterLoad = loadTsFileStatement.isDeleteAfterLoad();
+    this.isConvertOnTypeMismatch = loadTsFileStatement.isConvertOnTypeMismatch();
     this.isAutoCreateDatabase = loadTsFileStatement.isAutoCreateDatabase();
     this.databaseLevel = loadTsFileStatement.getDatabaseLevel();
     this.database = loadTsFileStatement.getDatabase();
 
     this.loadTsFileTableStatement = null;
     this.isTableModelStatement = false;
+    this.isGeneratedByPipe = isGeneratedByPipe;
     this.context = context;
   }
 
-  LoadTsFileAnalyzer(LoadTsFile loadTsFileTableStatement, MPPQueryContext context) {
+  LoadTsFileAnalyzer(
+      LoadTsFile loadTsFileTableStatement, boolean isGeneratedByPipe, MPPQueryContext context) {
     this.loadTsFileTableStatement = loadTsFileTableStatement;
     this.tsFiles = loadTsFileTableStatement.getTsFiles();
     this.statementString = loadTsFileTableStatement.toString();
-    this.isVerifySchema = true;
+    this.isVerifySchema = loadTsFileTableStatement.isVerifySchema();
     this.isDeleteAfterLoad = loadTsFileTableStatement.isDeleteAfterLoad();
+    this.isConvertOnTypeMismatch = loadTsFileTableStatement.isConvertOnTypeMismatch();
     this.isAutoCreateDatabase = loadTsFileTableStatement.isAutoCreateDatabase();
     this.databaseLevel = loadTsFileTableStatement.getDatabaseLevel();
     this.database = loadTsFileTableStatement.getDatabase();
 
-    this.loadTsFileStatement = null;
+    this.loadTsFileTreeStatement = null;
     this.isTableModelStatement = true;
+    this.isGeneratedByPipe = isGeneratedByPipe;
     this.context = context;
   }
 
@@ -134,6 +149,11 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
       } catch (AuthException e) {
         setFailAnalysisForAuthException(analysis, e);
         return false;
+      } catch (LoadAnalyzeException e) {
+        executeTabletConversion(analysis, e);
+        // just return false to STOP the analysis process,
+        // the real result on the conversion will be set in the analysis.
+        return false;
       } catch (BufferUnderflowException e) {
         LOGGER.warn(
             "The file {} is not a valid tsfile. Please check the input file.", tsFile.getPath(), e);
@@ -156,7 +176,44 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   protected abstract void analyzeSingleTsFile(final File tsFile)
-      throws IOException, AuthException, VerifyMetadataException;
+      throws IOException, AuthException, LoadAnalyzeException;
+
+  protected void executeTabletConversion(final IAnalysis analysis, final LoadAnalyzeException e) {
+    final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
+        new LoadTsFileDataTypeConverter(isGeneratedByPipe);
+
+    final TSStatus status =
+        (!(e instanceof LoadAnalyzeTypeMismatchException) || isConvertOnTypeMismatch)
+            ? (isTableModelStatement
+                ? loadTsFileDataTypeConverter
+                    .convertForTableModel(loadTsFileTableStatement)
+                    .orElse(null)
+                : loadTsFileDataTypeConverter
+                    .convertForTreeModel(loadTsFileTreeStatement)
+                    .orElse(null))
+            : null;
+
+    if (status == null) {
+      analysis.setFailStatus(
+          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
+    } else if (!loadTsFileDataTypeConverter.isSuccessful(status)) {
+      analysis.setFailStatus(status);
+    }
+    analysis.setFinishQueryAfterAnalyze(true);
+    setRealStatement(analysis);
+  }
+
+  protected void setRealStatement(IAnalysis analysis) {
+    if (isTableModelStatement) {
+      // Do nothing by now.
+    } else {
+      analysis.setRealStatement(loadTsFileTreeStatement);
+    }
+  }
+
+  protected String getStatementString() {
+    return statementString;
+  }
 
   protected TsFileResource constructTsFileResource(
       final TsFileSequenceReader reader, final File tsFile) throws IOException {
@@ -171,23 +228,11 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     return tsFileResource;
   }
 
-  protected String getStatementString() {
-    return statementString;
-  }
-
-  protected void setRealStatement(IAnalysis analysis) {
-    if (isTableModelStatement) {
-      // Do nothing by now.
-    } else {
-      analysis.setRealStatement(loadTsFileStatement);
-    }
-  }
-
   protected void addTsFileResource(TsFileResource tsFileResource) {
     if (isTableModelStatement) {
       loadTsFileTableStatement.addTsFileResource(tsFileResource);
     } else {
-      loadTsFileStatement.addTsFileResource(tsFileResource);
+      loadTsFileTreeStatement.addTsFileResource(tsFileResource);
     }
   }
 
@@ -195,12 +240,16 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     if (isTableModelStatement) {
       loadTsFileTableStatement.addWritePointCount(writePointCount);
     } else {
-      loadTsFileStatement.addWritePointCount(writePointCount);
+      loadTsFileTreeStatement.addWritePointCount(writePointCount);
     }
   }
 
   protected boolean isVerifySchema() {
     return isVerifySchema;
+  }
+
+  protected boolean isConvertOnTypeMismatch() {
+    return isConvertOnTypeMismatch;
   }
 
   protected boolean isAutoCreateDatabase() {
@@ -222,5 +271,24 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   protected void setFailAnalysisForAuthException(IAnalysis analysis, AuthException e) {
     analysis.setFinishQueryAfterAnalyze(true);
     analysis.setFailStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
+  }
+
+  protected void checkBeforeAnalyzeFileByFile(IAnalysis analysis) {
+    if (TSFileDescriptor.getInstance().getConfig().getEncryptFlag()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.LOAD_FILE_ERROR,
+              "TSFile encryption is enabled, and the Load TSFile function is disabled"));
+      return;
+    }
+
+    // check if the system is read only
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(
+          RpcUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY, LoadReadOnlyException.MESSAGE));
+      return;
+    }
   }
 }

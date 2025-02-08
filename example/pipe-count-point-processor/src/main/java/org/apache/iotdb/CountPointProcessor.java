@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.PipeProcessor;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -37,6 +38,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicLong;
 
+@TreeModel
 public class CountPointProcessor implements PipeProcessor {
   private static final String AGGREGATE_SERIES_KEY = "aggregate-series";
   private static final AtomicLong writePointCount = new AtomicLong(0);
@@ -59,7 +61,7 @@ public class CountPointProcessor implements PipeProcessor {
   public void process(
       final TabletInsertionEvent tabletInsertionEvent, final EventCollector eventCollector) {
     tabletInsertionEvent.processTablet(
-        (tablet, rowCollector) -> writePointCount.addAndGet(tablet.rowSize));
+        (tablet, rowCollector) -> writePointCount.addAndGet(tablet.getRowSize()));
   }
 
   @Override
@@ -71,7 +73,6 @@ public class CountPointProcessor implements PipeProcessor {
               Collections.singletonList(
                   new MeasurementSchema(aggregateSeries.getMeasurement(), TSDataType.INT64)),
               1);
-      tablet.rowSize = 1;
       tablet.addTimestamp(0, System.currentTimeMillis());
       tablet.addValue(aggregateSeries.getMeasurement(), 0, writePointCount.get());
       eventCollector.collect(

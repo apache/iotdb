@@ -28,6 +28,8 @@ import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
+import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.pipe.it.tablemodel.TableModelUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -74,8 +76,8 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
 
     // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
+    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
@@ -118,7 +120,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
   public void testInternalCreateTimeSeriesIdempotent() throws Exception {
     testIdempotent(
         Collections.emptyList(),
-        "insert into root.ln.wf01.wt01(time, status0) values(now(), false);",
+        "insert into root.ln.wf01.wt01(time, status0) values(now(), false); flush;",
         "create timeSeries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
         "count timeSeries",
         "count(timeseries),",
@@ -392,6 +394,38 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
         Collections.singleton("1,"));
   }
 
+  // Table model
+
+  @Test
+  public void testCreateTableIdempotent() throws Exception {
+    testTableConfigIdempotent(Collections.emptyList(), "create table test()");
+  }
+
+  @Test
+  public void testAlterTableAddColumnIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Collections.singletonList("create table test()"), "alter table test add column a id");
+  }
+
+  @Test
+  public void testAlterTableSetPropertiesIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Collections.singletonList("create table test()"),
+        "alter table test set properties ttl=100");
+  }
+
+  @Test
+  public void testAlterTableDropColumnIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Collections.singletonList("create table test(a id, b attribute, c int32)"),
+        "alter table test drop column b");
+  }
+
+  @Test
+  public void testDropTableIdempotent() throws Exception {
+    testTableConfigIdempotent(Collections.singletonList("create table test()"), "drop table test");
+  }
+
   private void testIdempotent(
       final List<String> beforeSqlList,
       final String testSql,
@@ -448,5 +482,64 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
 
     // Assume that the afterSql is executed on receiverEnv
     TestUtils.assertDataEventuallyOnEnv(receiverEnv, afterSqlQuery, expectedHeader, expectedResSet);
+  }
+
+  private void testTableConfigIdempotent(final List<String> beforeSqlList, final String testSql)
+      throws Exception {
+    final String database = "test";
+    TableModelUtils.createDatabase(senderEnv, database);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("extractor.inclusion", "all");
+      extractorAttributes.put("extractor.inclusion.exclusion", "");
+      extractorAttributes.put("extractor.forwarding-pipe-requests", "false");
+      extractorAttributes.put("extractor.capture.table", "true");
+      extractorAttributes.put("extractor.capture.tree", "false");
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
+      connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
+
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("testPipe", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    }
+
+    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+        database, BaseEnv.TABLE_SQL_DIALECT, senderEnv, beforeSqlList)) {
+      return;
+    }
+
+    if (!TestUtils.tryExecuteNonQueryWithRetry(
+        database, BaseEnv.TABLE_SQL_DIALECT, receiverEnv, testSql)) {
+      return;
+    }
+
+    // Create an idempotent conflict
+    if (!TestUtils.tryExecuteNonQueryWithRetry(
+        database, BaseEnv.TABLE_SQL_DIALECT, senderEnv, testSql)) {
+      return;
+    }
+
+    TableModelUtils.createDatabase(senderEnv, "test2");
+
+    // Assume that the "database" is executed on receiverEnv
+    TestUtils.assertDataSizeEventuallyOnEnv(receiverEnv, "show databases", 3, null);
   }
 }

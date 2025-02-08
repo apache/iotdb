@@ -180,7 +180,7 @@ public class MemUtilsTest {
   public void getMemSizeTest() {
     long totalSize = 0;
     IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1");
-    TSRecord record = new TSRecord(0, device);
+    TSRecord record = new TSRecord(device, 0);
 
     DataPoint point1 = new IntDataPoint("s1", 1);
     Assert.assertEquals(MemUtils.getStringMem("s1") + 20, MemUtils.getDataPointMem(point1));

@@ -134,7 +134,7 @@ struct TDataNodeRestartResp {
   1: required common.TSStatus status
   2: required list<common.TConfigNodeLocation> configNodeList
   3: optional TRuntimeConfiguration runtimeConfiguration
-  4: optional list<common.TConsensusGroupId> consensusGroupIds
+  4: optional list<common.TRegionReplicaSet> correctConsensusGroups
 }
 
 struct TDataNodeRemoveReq {
@@ -166,6 +166,7 @@ struct TDeleteDatabaseReq {
 struct TDeleteDatabasesReq {
   1: required list<string> prefixPathList
   2: optional bool isGeneratedByPipe
+  3: optional bool isTableModel
 }
 
 struct TSetSchemaReplicationFactorReq {
@@ -216,7 +217,6 @@ struct TDatabaseSchema {
 // Schema
 struct TSchemaPartitionReq {
   1: required binary pathPatternTree
-  2: optional bool isTableModel
 }
 
 struct TSchemaPartitionTableResp {
@@ -310,6 +310,25 @@ struct TMigrateRegionReq {
     1: required i32 regionId
     2: required i32 fromId
     3: required i32 toId
+    4: required common.Model model
+}
+
+struct TReconstructRegionReq {
+    1: required list<i32> regionIds
+    2: required i32 dataNodeId
+    3: required common.Model model
+}
+
+struct TExtendRegionReq {
+    1: required i32 regionId
+    2: required i32 dataNodeId
+    3: required common.Model model
+}
+
+struct TRemoveRegionReq {
+    1: required i32 regionId
+    2: required i32 dataNodeId
+    3: required common.Model model
 }
 
 // Authorize
@@ -324,6 +343,17 @@ struct TAuthorizerReq {
   8: required binary nodeNameList
 }
 
+struct TAuthorizerRelationalReq {
+   1: required i32 authorType
+   2: required string userName
+   3: required string roleName
+   4: required string password
+   5: required string database
+   6: required string table
+   7: required set<i32> permissions
+   8: required bool grantOpt
+}
+
 struct TAuthorizerResp {
   1: required common.TSStatus status
   2: optional string tag
@@ -332,26 +362,39 @@ struct TAuthorizerResp {
 }
 
 struct TUserResp {
-  1: required string username
+  1: required TRoleResp permissionInfo
   2: required string password
-  3: required list<TPathPrivilege> privilegeList
-  4: required set<i32> sysPriSet
-  5: required set<i32> sysPriSetGrantOpt
-  6: required list<string> roleList
-  7: required bool isOpenIdUser
+  3: required set<string> roleSet
+  4: required bool isOpenIdUser
 }
 
 struct TRoleResp {
-  1: required string roleName
+  1: required string name
   2: required list<TPathPrivilege> privilegeList
   3: required set<i32> sysPriSet
   4: required set<i32> sysPriSetGrantOpt
+  5: required map<string, TDBPrivilege> dbPrivilegeMap
+  6: required set<i32> anyScopeSet
+  7: required set<i32> anyScopeGrantSet
 }
 
 struct TPathPrivilege {
   1: required string path
   2: required set<i32> priSet
   3: required set<i32> priGrantOpt
+}
+
+struct TTablePrivilege {
+    1: required string tableName
+    2: required set<i32> privileges
+    3: required set<i32> grantOption
+}
+
+struct TDBPrivilege {
+    1: required string databaseName
+    2: required set<i32> privileges
+    3: required set<i32> grantOpt
+    4: required map<string, TTablePrivilege> tablePrivilegeMap
 }
 
 struct TPermissionInfoResp {
@@ -374,11 +417,22 @@ struct TLoginReq {
   2: required string password
 }
 
+// reqtype : tree, relational, system
+// to check tree privilege, paths is required
+// to check relational privilege, database or table is required
+// to check system privilege, just spec permission
+
+// if grant opt is true, check grant option of spec permission.
+// if permission is -1, means check visible.
+
 struct TCheckUserPrivilegesReq {
   1: required string username
-  2: required binary paths
-  3: required i32 permission
-  4: optional bool grantOpt
+  2: required i32 reqtype
+  3: optional binary paths
+  4: optional string database
+  5: optional string table
+  6: required i32 permission
+  7: required bool grantOpt
 }
 
 // ConfigNode
@@ -393,8 +447,8 @@ struct TClusterParameters {
   6: required string configNodeConsensusProtocolClass
   7: required i64 timePartitionInterval
   8: required string readConsistencyLevel
-  9: required double schemaRegionPerDataNode
-  10: required double dataRegionPerDataNode
+  9: required i32 schemaRegionPerDataNode
+  10: required i32 dataRegionPerDataNode
   11: required i32 seriesPartitionSlotNum
   12: required string seriesPartitionExecutorClass
   13: required double diskSpaceWarningThreshold
@@ -443,6 +497,7 @@ struct TCreateFunctionReq {
   5: optional binary jarFile
   6: optional string jarMD5
   7: optional common.Model model
+  8: optional common.FunctionType functionType
 }
 
 struct TDropFunctionReq {
@@ -603,12 +658,12 @@ struct TDatabaseInfo {
   10: required i32 minDataRegionNum
   11: required i32 maxDataRegionNum
   12: optional i64 timePartitionOrigin
-  13: optional bool isTableModel
 }
 
 struct TGetDatabaseReq {
   1: required list<string> databasePathPattern
   2: required binary scopePatternTree
+  3: optional bool isTableModel
 }
 
 struct TShowDatabaseResp {
@@ -621,6 +676,7 @@ struct TShowDatabaseResp {
 struct TShowRegionReq {
   1: optional common.TConsensusGroupType consensusGroupType;
   2: optional list<string> databases
+  3: optional bool isTableModel
 }
 
 struct TRegionInfo {
@@ -635,6 +691,7 @@ struct TRegionInfo {
   9: optional string roleType
   10: optional i64 createTime
   11: optional string internalAddress
+  12: optional i64 tsFileSize
 }
 
 struct TShowRegionResp {
@@ -703,12 +760,17 @@ struct TCreatePipePluginReq {
 struct TDropPipePluginReq {
   1: required string pluginName
   2: optional bool ifExistsCondition
+  3: optional bool isTableModel
 }
 
 // Get PipePlugin table from config node
 struct TGetPipePluginTableResp {
   1: required common.TSStatus status
   2: required list<binary> allPipePluginMeta
+}
+
+struct TShowPipePluginReq {
+  1: optional bool isTableModel
 }
 
 // Pipe
@@ -736,6 +798,7 @@ struct TCreatePipeReq {
     3: optional map<string, string> processorAttributes
     4: required map<string, string> connectorAttributes
     5: optional bool ifNotExistsCondition
+    6: optional bool needManuallyStart
 }
 
 struct TAlterPipeReq {
@@ -747,11 +810,23 @@ struct TAlterPipeReq {
     6: optional map<string, string> extractorAttributes
     7: optional bool isReplaceAllExtractorAttributes
     8: optional bool ifExistsCondition
+    9: optional bool isTableModel
+}
+
+struct TStartPipeReq {
+    1: required string pipeName
+    2: optional bool isTableModel
+}
+
+struct TStopPipeReq {
+    1: required string pipeName
+    2: optional bool isTableModel
 }
 
 struct TDropPipeReq {
     1: required string pipeName
     2: optional bool ifExistsCondition
+    3: optional bool isTableModel
 }
 
 // Deprecated, restored for compatibility
@@ -764,6 +839,7 @@ struct TPipeSinkInfo {
 struct TShowPipeReq {
   1: optional string pipeName
   2: optional bool whereClause
+  3: optional bool isTableModel
 }
 
 struct TShowPipeResp {
@@ -1048,9 +1124,44 @@ struct TAlterOrDropTableReq {
     5: required binary updateInfo
 }
 
+struct TDeleteTableDeviceReq {
+    1: required string database
+    2: required string tableName
+    3: required string queryId
+    4: required binary patternInfo
+    5: required binary filterInfo
+    6: required binary modInfo
+}
+
+struct TDeleteTableDeviceResp {
+   1: required common.TSStatus status
+   2: optional i64 deletedNum
+}
+
 struct TShowTableResp {
    1: required common.TSStatus status
    2: optional list<TTableInfo> tableInfoList
+}
+
+struct TShowTable4InformationSchemaResp {
+   1: required common.TSStatus status
+   2: optional map<string, list<TTableInfo>> databaseTableInfoMap
+}
+
+struct TDescTableResp {
+   1: required common.TSStatus status
+   2: optional binary tableInfo
+   3: optional set<string> preDeletedColumns
+}
+
+struct TDescTable4InformationSchemaResp {
+   1: required common.TSStatus status
+   2: optional map<string, map<string, TTableColumnInfo>> tableColumnInfoMap
+}
+
+struct TTableColumnInfo {
+   1: required binary tableInfo
+   2: optional set<string> preDeletedColumns
 }
 
 struct TFetchTableResp {
@@ -1287,6 +1398,7 @@ service IConfigNodeRPCService {
    *         INTERNAL_SERVER_ERROR if the permission type does not exist
    */
   common.TSStatus operatePermission(TAuthorizerReq req)
+  common.TSStatus operateRPermission(TAuthorizerRelationalReq req)
 
   /**
    * Execute permission read operations such as list user
@@ -1297,6 +1409,7 @@ service IConfigNodeRPCService {
    *         INTERNAL_SERVER_ERROR if the permission type does not exist
    */
   TAuthorizerResp queryPermission(TAuthorizerReq req)
+  TAuthorizerResp queryRPermission(TAuthorizerRelationalReq req)
 
   /**
    * Authenticate user login
@@ -1316,8 +1429,6 @@ service IConfigNodeRPCService {
   TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req)
 
   TAuthizedPatternTreeResp fetchAuthizedPatternTree(TCheckUserPrivilegesReq req)
-
-  TPermissionInfoResp checkUserPrivilegeGrantOpt(TCheckUserPrivilegesReq req)
 
   TPermissionInfoResp checkRoleOfUser(TAuthorizerReq req)
 
@@ -1470,6 +1581,11 @@ service IConfigNodeRPCService {
   TGetPipePluginTableResp getPipePluginTable();
 
   /**
+   * Return the pipe plugin table
+   */
+  TGetPipePluginTableResp getPipePluginTableExtended(TShowPipePluginReq req);
+
+  /**
    * Return the pipe plugin jar list of the plugin name list
    */
   TGetJarInListResp getPipePluginJar(TGetJarInListReq req)
@@ -1523,11 +1639,17 @@ service IConfigNodeRPCService {
   /** Migrate a region replica from one dataNode to another */
   common.TSStatus migrateRegion(TMigrateRegionReq req)
 
+  common.TSStatus reconstructRegion(TReconstructRegionReq req)
+
+  common.TSStatus extendRegion(TExtendRegionReq req)
+
+  common.TSStatus removeRegion(TRemoveRegionReq req)
+
   /** Kill query */
   common.TSStatus killQuery(string queryId, i32 dataNodeId)
 
-  /** Get all DataNodeLocations of Running DataNodes */
-  TGetDataNodeLocationsResp getRunningDataNodeLocations()
+  /** Get all DataNodeLocations of Readable DataNodes */
+  TGetDataNodeLocationsResp getReadableDataNodeLocations()
 
   // ======================================================
   // Cluster Tools
@@ -1641,8 +1763,14 @@ service IConfigNodeRPCService {
   /** Start Pipe */
   common.TSStatus startPipe(string pipeName)
 
+  /** Start Pipe */
+  common.TSStatus startPipeExtended(TStartPipeReq req)
+
   /** Stop Pipe */
   common.TSStatus stopPipe(string pipeName)
+
+  /** Stop Pipe */
+  common.TSStatus stopPipeExtended(TStopPipeReq req)
 
   /** Drop Pipe */
   common.TSStatus dropPipe(string pipeName)
@@ -1801,6 +1929,14 @@ service IConfigNodeRPCService {
 
   TShowTableResp showTables(string database, bool isDetails)
 
+  TShowTable4InformationSchemaResp showTables4InformationSchema()
+
+  TDescTableResp describeTable(string database, string tableName, bool isDetails)
+
+  TDescTable4InformationSchemaResp descTables4InformationSchema()
+
   TFetchTableResp fetchTables(map<string, set<string>> fetchTableMap)
+
+  TDeleteTableDeviceResp deleteDevice(TDeleteTableDeviceReq req)
 }
 

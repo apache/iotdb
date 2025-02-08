@@ -199,16 +199,13 @@ public abstract class SystemPropertiesHandler {
   }
 
   public void delete() {
-    try {
-      FileUtils.deleteFile(this.formalFile);
-    } catch (IOException e) {
-      LOGGER.warn("Delete formalFile error, ", e);
-    }
-
-    try {
-      FileUtils.deleteFile(this.tmpFile);
-    } catch (IOException e) {
-      LOGGER.warn("Delete tmpFile error, ", e);
+    this.formalFile.delete();
+    this.tmpFile.delete();
+    if (this.formalFile.exists() || this.tmpFile.exists()) {
+      LOGGER.warn(
+          "Failed to delete system.properties file, you should manually delete them: {}, {}",
+          this.formalFile.getAbsoluteFile(),
+          this.tmpFile.getAbsolutePath());
     }
   }
 }

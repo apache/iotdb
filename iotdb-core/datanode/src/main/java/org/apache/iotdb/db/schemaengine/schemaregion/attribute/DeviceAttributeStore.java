@@ -110,8 +110,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public void loadFromSnapshot(final File snapshotDir, final String sgSchemaDirPath)
-      throws IOException {
+  public void loadFromSnapshot(final File snapshotDir) throws IOException {
     final File snapshot =
         SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT);
     if (!snapshot.exists()) {
@@ -185,15 +184,31 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public Map<String, Binary> removeAttribute(final int pointer) {
+  public void removeAttribute(final int pointer) {
     releaseMemory(
         MAP_SIZE + UpdateDetailContainer.sizeOfMapEntries(deviceAttributeList.get(pointer)));
     deviceAttributeList.set(pointer, null);
-    return null;
   }
 
   @Override
-  public Binary getAttribute(final int pointer, final String name) {
+  public void removeAttribute(final int pointer, final String attributeName) {
+    final Map<String, Binary> attributeMap = deviceAttributeList.get(pointer);
+    if (Objects.isNull(attributeMap)) {
+      return;
+    }
+    final Binary value = attributeMap.remove(attributeName);
+    if (Objects.nonNull(value)) {
+      releaseMemory(UpdateDetailContainer.sizeOfMapEntries(deviceAttributeList.get(pointer)));
+    }
+  }
+
+  @Override
+  public Map<String, Binary> getAttributes(final int pointer) {
+    return deviceAttributeList.get(pointer);
+  }
+
+  @Override
+  public Binary getAttributes(final int pointer, final String name) {
     return deviceAttributeList.get(pointer).get(name);
   }
 

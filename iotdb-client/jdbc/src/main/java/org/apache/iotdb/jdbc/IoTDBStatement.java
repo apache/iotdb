@@ -30,6 +30,7 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileConfig;
 
@@ -545,15 +546,15 @@ public class IoTDBStatement implements Statement {
     throw new SQLException(NOT_SUPPORT_EXECUTE_UPDATE);
   }
 
-  private int executeUpdateSQL(String sql) throws TException, IoTDBSQLException {
-    TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
-    TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
+  private int executeUpdateSQL(final String sql) throws TException, IoTDBSQLException {
+    final TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
+    final TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
     if (execResp.isSetQueryId()) {
       queryId = execResp.getQueryId();
     }
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
-    } catch (StatementExecutionException e) {
+    } catch (final StatementExecutionException e) {
       throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
     return 0;
@@ -765,5 +766,13 @@ public class IoTDBStatement implements Statement {
 
   public int getTimeFactor() {
     return connection.getTimeFactor();
+  }
+
+  public String getSqlDialect() {
+    if (connection != null && StringUtils.isNotBlank(connection.getSqlDialect())) {
+      return connection.getSqlDialect().toLowerCase();
+    } else {
+      return "tree";
+    }
   }
 }

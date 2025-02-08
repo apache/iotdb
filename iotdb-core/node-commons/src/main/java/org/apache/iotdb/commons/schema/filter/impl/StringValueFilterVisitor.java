@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.LikeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
+
 import java.util.Objects;
 
 public class StringValueFilterVisitor extends SchemaFilterVisitor<String> {
@@ -78,7 +80,8 @@ public class StringValueFilterVisitor extends SchemaFilterVisitor<String> {
     if (Objects.isNull(context)) {
       return null;
     }
-    return filter.getPattern().getMatcher().match(context.getBytes(), 0, context.length());
+    final byte[] bytes = context.getBytes(TSFileConfig.STRING_CHARSET);
+    return filter.getPattern().getMatcher().match(bytes, 0, bytes.length);
   }
 
   @Override

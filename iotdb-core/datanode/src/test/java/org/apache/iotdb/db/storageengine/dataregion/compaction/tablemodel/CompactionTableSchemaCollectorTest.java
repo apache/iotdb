@@ -24,7 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.Com
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.TableSchema;
-import org.apache.tsfile.write.record.Tablet.ColumnType;
+import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
@@ -44,12 +44,12 @@ public class CompactionTableSchemaCollectorTest {
     measurementSchemaList1.add(new MeasurementSchema("id3", TSDataType.STRING));
     measurementSchemaList1.add(new MeasurementSchema("s1", TSDataType.INT32));
     measurementSchemaList1.add(new MeasurementSchema("s2", TSDataType.INT32));
-    List<ColumnType> columnTypeList1 = new ArrayList<>();
-    columnTypeList1.add(ColumnType.ID);
-    columnTypeList1.add(ColumnType.ID);
-    columnTypeList1.add(ColumnType.ID);
-    columnTypeList1.add(ColumnType.MEASUREMENT);
-    columnTypeList1.add(ColumnType.MEASUREMENT);
+    List<ColumnCategory> columnTypeList1 = new ArrayList<>();
+    columnTypeList1.add(ColumnCategory.TAG);
+    columnTypeList1.add(ColumnCategory.TAG);
+    columnTypeList1.add(ColumnCategory.TAG);
+    columnTypeList1.add(ColumnCategory.FIELD);
+    columnTypeList1.add(ColumnCategory.FIELD);
     TableSchema tableSchema1 = new TableSchema("t1", measurementSchemaList1, columnTypeList1);
     compactionTableSchema.merge(tableSchema1);
     Assert.assertEquals(3, compactionTableSchema.getColumnSchemas().size());
@@ -60,12 +60,12 @@ public class CompactionTableSchemaCollectorTest {
     measurementSchemaList2.add(new MeasurementSchema("id2", TSDataType.STRING));
     measurementSchemaList2.add(new MeasurementSchema("id3", TSDataType.STRING));
     measurementSchemaList2.add(new MeasurementSchema("s2", TSDataType.INT32));
-    List<ColumnType> columnTypeList2 = new ArrayList<>();
-    columnTypeList2.add(ColumnType.MEASUREMENT);
-    columnTypeList2.add(ColumnType.ID);
-    columnTypeList2.add(ColumnType.ID);
-    columnTypeList2.add(ColumnType.ID);
-    columnTypeList2.add(ColumnType.MEASUREMENT);
+    List<ColumnCategory> columnTypeList2 = new ArrayList<>();
+    columnTypeList2.add(ColumnCategory.FIELD);
+    columnTypeList2.add(ColumnCategory.TAG);
+    columnTypeList2.add(ColumnCategory.TAG);
+    columnTypeList2.add(ColumnCategory.TAG);
+    columnTypeList2.add(ColumnCategory.FIELD);
     TableSchema tableSchema2 = new TableSchema("t1", measurementSchemaList2, columnTypeList2);
     compactionTableSchema.merge(tableSchema2);
     Assert.assertEquals(3, compactionTableSchema.getColumnSchemas().size());
@@ -77,13 +77,13 @@ public class CompactionTableSchemaCollectorTest {
     measurementSchemaList3.add(new MeasurementSchema("id3", TSDataType.STRING));
     measurementSchemaList3.add(new MeasurementSchema("s2", TSDataType.INT32));
     measurementSchemaList3.add(new MeasurementSchema("id4", TSDataType.STRING));
-    List<ColumnType> columnTypeList3 = new ArrayList<>();
-    columnTypeList3.add(ColumnType.MEASUREMENT);
-    columnTypeList3.add(ColumnType.ID);
-    columnTypeList3.add(ColumnType.ID);
-    columnTypeList3.add(ColumnType.ID);
-    columnTypeList3.add(ColumnType.MEASUREMENT);
-    columnTypeList3.add(ColumnType.ID);
+    List<ColumnCategory> columnTypeList3 = new ArrayList<>();
+    columnTypeList3.add(ColumnCategory.FIELD);
+    columnTypeList3.add(ColumnCategory.TAG);
+    columnTypeList3.add(ColumnCategory.TAG);
+    columnTypeList3.add(ColumnCategory.TAG);
+    columnTypeList3.add(ColumnCategory.FIELD);
+    columnTypeList3.add(ColumnCategory.TAG);
     TableSchema tableSchema3 = new TableSchema("t1", measurementSchemaList3, columnTypeList3);
     compactionTableSchema.merge(tableSchema3);
 
@@ -96,13 +96,13 @@ public class CompactionTableSchemaCollectorTest {
     measurementSchemaList4.add(new MeasurementSchema("id4", TSDataType.STRING));
     measurementSchemaList4.add(new MeasurementSchema("s2", TSDataType.INT32));
     measurementSchemaList4.add(new MeasurementSchema("id3", TSDataType.STRING));
-    List<ColumnType> columnTypeList4 = new ArrayList<>();
-    columnTypeList4.add(ColumnType.MEASUREMENT);
-    columnTypeList4.add(ColumnType.ID);
-    columnTypeList4.add(ColumnType.ID);
-    columnTypeList4.add(ColumnType.ID);
-    columnTypeList4.add(ColumnType.MEASUREMENT);
-    columnTypeList4.add(ColumnType.ID);
+    List<ColumnCategory> columnTypeList4 = new ArrayList<>();
+    columnTypeList4.add(ColumnCategory.FIELD);
+    columnTypeList4.add(ColumnCategory.TAG);
+    columnTypeList4.add(ColumnCategory.TAG);
+    columnTypeList4.add(ColumnCategory.TAG);
+    columnTypeList4.add(ColumnCategory.FIELD);
+    columnTypeList4.add(ColumnCategory.TAG);
     TableSchema tableSchema4 = new TableSchema("t1", measurementSchemaList4, columnTypeList4);
     try {
       compactionTableSchema.merge(tableSchema4);

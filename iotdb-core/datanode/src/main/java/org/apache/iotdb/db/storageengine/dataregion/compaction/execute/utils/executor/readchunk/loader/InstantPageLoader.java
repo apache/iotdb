@@ -22,22 +22,28 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 
 import org.apache.tsfile.compress.IUnCompressor;
+import org.apache.tsfile.encrypt.EncryptParameter;
+import org.apache.tsfile.encrypt.IDecryptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.EncryptionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import static org.apache.tsfile.read.reader.chunk.ChunkReader.decryptAndUncompressPageData;
 import static org.apache.tsfile.read.reader.chunk.ChunkReader.uncompressPageData;
 
 public class InstantPageLoader extends PageLoader {
 
   private ByteBuffer pageData;
+
+  private EncryptParameter encryptParam;
 
   public InstantPageLoader() {}
 
@@ -49,9 +55,11 @@ public class InstantPageLoader extends PageLoader {
       TSDataType dataType,
       TSEncoding encoding,
       ChunkMetadata chunkMetadata,
-      ModifiedStatus modifiedStatus) {
+      ModifiedStatus modifiedStatus,
+      EncryptParameter encryptParam) {
     super(file, pageHeader, compressionType, dataType, encoding, chunkMetadata, modifiedStatus);
     this.pageData = pageData;
+    this.encryptParam = encryptParam;
   }
 
   @Override
@@ -62,7 +70,12 @@ public class InstantPageLoader extends PageLoader {
   @Override
   public ByteBuffer getUnCompressedData() throws IOException {
     IUnCompressor unCompressor = IUnCompressor.getUnCompressor(compressionType);
-    return uncompressPageData(pageHeader, unCompressor, pageData);
+    IDecryptor decryptor = IDecryptor.getDecryptor(encryptParam);
+    if (decryptor == null || decryptor.getEncryptionType() == EncryptionType.UNENCRYPTED) {
+      return uncompressPageData(pageHeader, unCompressor, pageData);
+    } else {
+      return decryptAndUncompressPageData(pageHeader, unCompressor, pageData, decryptor);
+    }
   }
 
   @Override

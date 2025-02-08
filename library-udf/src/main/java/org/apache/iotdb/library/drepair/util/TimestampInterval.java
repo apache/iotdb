@@ -44,19 +44,15 @@ public class TimestampInterval {
 
   // get standard interval
   // -1 median -2 mode -3 cluster
-  public long getInterval(int mode) {
-    switch (mode) {
-      case -1:
-        this.deltaT = getIntervalByMedian();
-        break;
-      case -2:
-        this.deltaT = getIntervalByMode();
-        break;
-      case -3:
-        this.deltaT = getIntervalByCluster();
-        break;
-      default:
-        this.deltaT = mode;
+  public long getInterval(long mode) {
+    if (mode == -1L) {
+      this.deltaT = getIntervalByMedian();
+    } else if (mode == -2L) {
+      this.deltaT = getIntervalByMode();
+    } else if (mode == -3L) {
+      this.deltaT = getIntervalByCluster();
+    } else {
+      this.deltaT = mode;
     }
     return this.deltaT;
   }

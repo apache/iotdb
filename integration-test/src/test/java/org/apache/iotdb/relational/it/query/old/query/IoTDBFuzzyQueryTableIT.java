@@ -60,7 +60,7 @@ public class IoTDBFuzzyQueryTableIT {
     sqls.add("CREATE DATABASE TestFuzzyQuery");
     sqls.add("USE TestFuzzyQuery");
     sqls.add(
-        "CREATE TABLE likeTest(device_id STRING ID, s1 TEXT MEASUREMENT, s2 STRING MEASUREMENT, s3 STRING MEASUREMENT)");
+        "CREATE TABLE likeTest(device_id STRING TAG, s1 TEXT FIELD, s2 STRING FIELD, s3 STRING FIELD)");
     sqls.add(
         "INSERT INTO likeTest(time, device_id, s1, s2, s3) VALUES(1,'d1', 'abcdef', 'a%', '\\')");
     sqls.add(

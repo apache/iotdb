@@ -56,15 +56,15 @@ ddlStatement
     | createPipe | alterPipe | dropPipe | startPipe | stopPipe | showPipes
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
-    // TOPIC
-    | createTopic | dropTopic | showTopics
     // Subscription
-    | showSubscriptions
+    | createTopic | dropTopic | showTopics | showSubscriptions
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
-    | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion | verifyConnection
+    | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList
+    | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode
+    | verifyConnection
     // AINode
     | showAINodes | createModel | dropModel | showModels | callInference
     // Quota
@@ -112,8 +112,6 @@ databaseAttributeClause
 
 databaseAttributeKey
     : TTL
-    | SCHEMA_REPLICATION_FACTOR
-    | DATA_REPLICATION_FACTOR
     | TIME_PARTITION_INTERVAL
     | SCHEMA_REGION_GROUP_NUM
     | DATA_REGION_GROUP_NUM
@@ -536,8 +534,25 @@ migrateRegion
     : MIGRATE REGION regionId=INTEGER_LITERAL FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
     ;
 
+reconstructRegion
+    : RECONSTRUCT REGION regionIds+=INTEGER_LITERAL (COMMA regionIds+=INTEGER_LITERAL)* ON targetDataNodeId=INTEGER_LITERAL
+    ;
+
+extendRegion
+    : EXTEND REGION regionId=INTEGER_LITERAL TO targetDataNodeId=INTEGER_LITERAL
+    ;
+
+removeRegion
+    : REMOVE REGION regionId=INTEGER_LITERAL FROM targetDataNodeId=INTEGER_LITERAL
+    ;
+
 verifyConnection
     : VERIFY CONNECTION (DETAILS)?
+    ;
+
+// ---- Remove DataNode
+removeDataNode
+    : REMOVE DATANODE dataNodeId=INTEGER_LITERAL (COMMA dataNodeId=INTEGER_LITERAL)*
     ;
 
 // Pipe Task =========================================================================================
@@ -643,7 +658,8 @@ showPipePlugins
     : SHOW PIPEPLUGINS
     ;
 
-// Topic =========================================================================================
+
+// Subscription =========================================================================================
 createTopic
     : CREATE TOPIC (IF NOT EXISTS)? topicName=identifier topicAttributesClause?
     ;
@@ -664,15 +680,15 @@ showTopics
     : SHOW ((TOPIC topicName=identifier) | TOPICS )
     ;
 
-// Subscriptions =========================================================================================
 showSubscriptions
     : SHOW SUBSCRIPTIONS (ON topicName=identifier)?
     ;
 
+
 // AI Model =========================================================================================
 // ---- Create Model
 createModel
-    : CREATE MODEL modelName=identifier USING URI modelUri=STRING_LITERAL
+    : CREATE MODEL modelName=identifier uriClause
     ;
 
 windowFunction

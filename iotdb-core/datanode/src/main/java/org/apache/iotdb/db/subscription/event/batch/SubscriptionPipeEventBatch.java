@@ -30,12 +30,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 public abstract class SubscriptionPipeEventBatch {
 
@@ -94,7 +91,7 @@ public abstract class SubscriptionPipeEventBatch {
       final @NonNull EnrichedEvent event, final Consumer<SubscriptionEvent> consumer)
       throws Exception {
     if (event instanceof TabletInsertionEvent) {
-      onTabletInsertionEvent((TabletInsertionEvent) event); // no exceptions will be thrown
+      onTabletInsertionEvent((TabletInsertionEvent) event);
       enrichedEvents.add(event);
     } else if (event instanceof TsFileInsertionEvent) {
       onTsFileInsertionEvent((TsFileInsertionEvent) event);
@@ -108,40 +105,13 @@ public abstract class SubscriptionPipeEventBatch {
 
   /////////////////////////////// utility ///////////////////////////////
 
-  protected abstract void onTabletInsertionEvent(final TabletInsertionEvent event) throws Exception;
+  protected abstract void onTabletInsertionEvent(final TabletInsertionEvent event);
 
-  protected abstract void onTsFileInsertionEvent(final TsFileInsertionEvent event) throws Exception;
+  protected abstract void onTsFileInsertionEvent(final TsFileInsertionEvent event);
 
   protected abstract boolean shouldEmit();
 
   protected abstract List<SubscriptionEvent> generateSubscriptionEvents() throws Exception;
-
-  /////////////////////////////// stringify ///////////////////////////////
-
-  protected Map<String, String> coreReportMessage() {
-    final Map<String, String> result = new HashMap<>();
-    result.put("regionId", String.valueOf(regionId));
-    result.put("prefetchingQueue", prefetchingQueue.coreReportMessage().toString());
-    result.put("maxDelayInMs", String.valueOf(maxDelayInMs));
-    result.put("maxBatchSizeInBytes", String.valueOf(maxBatchSizeInBytes));
-    // TODO: stringify subscription events?
-    result.put("enrichedEvents", formatEnrichedEvents(enrichedEvents, 4));
-    return result;
-  }
-
-  private static String formatEnrichedEvents(
-      final List<EnrichedEvent> enrichedEvents, final int threshold) {
-    final List<String> eventMessageList =
-        enrichedEvents.stream()
-            .limit(threshold)
-            .map(EnrichedEvent::coreReportMessage)
-            .collect(Collectors.toList());
-    if (eventMessageList.size() > threshold) {
-      eventMessageList.add(
-          String.format("omit the remaining %s event(s)...", eventMessageList.size() - threshold));
-    }
-    return eventMessageList.toString();
-  }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 

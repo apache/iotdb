@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
@@ -30,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
@@ -37,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
@@ -60,6 +63,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
@@ -75,13 +79,18 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionArgument;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionTableArgument;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
@@ -96,6 +105,7 @@ import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -579,7 +589,7 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitDelete(Delete node, Integer indent) {
+    protected Void visitDelete(final Delete node, final Integer indent) {
       builder.append("DELETE FROM ").append(formatName(node.getTable().getName()));
 
       node.getWhere().ifPresent(where -> builder.append(" WHERE ").append(formatExpression(where)));
@@ -588,9 +598,9 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitCreateDB(CreateDB node, Integer indent) {
+    protected Void visitCreateDB(final CreateDB node, final Integer indent) {
       builder.append("CREATE DATABASE ");
-      if (node.isSetIfNotExists()) {
+      if (node.exists()) {
         builder.append("IF NOT EXISTS ");
       }
       builder.append(node.getDbName()).append(" ");
@@ -601,7 +611,20 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitDropDB(DropDB node, Integer indent) {
+    protected Void visitAlterDB(final AlterDB node, final Integer indent) {
+      builder.append("ALTER DATABASE ");
+      if (node.exists()) {
+        builder.append("IF EXISTS ");
+      }
+      builder.append(node.getDbName()).append(" ");
+
+      builder.append(formatPropertiesMultiLine(node.getProperties()));
+
+      return null;
+    }
+
+    @Override
+    protected Void visitDropDB(final DropDB node, final Integer indent) {
       builder.append("DROP DATABASE ");
       if (node.isExists()) {
         builder.append("IF EXISTS ");
@@ -1055,6 +1078,8 @@ public final class SqlFormatter {
     protected Void visitShowPipes(ShowPipes node, Integer context) {
       builder.append("SHOW PIPES");
 
+      // TODO: consider pipeName and hasWhereClause in node
+
       return null;
     }
 
@@ -1092,6 +1117,291 @@ public final class SqlFormatter {
     @Override
     protected Void visitShowPipePlugins(ShowPipePlugins node, Integer context) {
       builder.append("SHOW PIPEPLUGINS");
+
+      return null;
+    }
+
+    @Override
+    protected Void visitCreateTopic(CreateTopic node, Integer context) {
+      builder.append("CREATE TOPIC ");
+      if (node.hasIfNotExistsCondition()) {
+        builder.append("IF NOT EXISTS ");
+      }
+      builder.append(node.getTopicName());
+      builder.append(" \n");
+
+      if (!node.getTopicAttributes().isEmpty()) {
+        builder
+            .append("WITH (")
+            .append("\n")
+            .append(
+                node.getTopicAttributes().entrySet().stream()
+                    .map(
+                        entry ->
+                            indentString(1)
+                                + "\""
+                                + entry.getKey()
+                                + "\" = \""
+                                + entry.getValue()
+                                + "\"")
+                    .collect(joining(", " + "\n")))
+            .append(")\n");
+      }
+
+      return null;
+    }
+
+    @Override
+    protected Void visitDropTopic(DropTopic node, Integer context) {
+      builder.append("DROP TOPIC ");
+      if (node.hasIfExistsCondition()) {
+        builder.append("IF EXISTS ");
+      }
+      builder.append(node.getTopicName());
+
+      return null;
+    }
+
+    @Override
+    protected Void visitShowTopics(ShowTopics node, Integer context) {
+      if (Objects.isNull(node.getTopicName())) {
+        builder.append("SHOW TOPICS");
+      } else {
+        builder.append("SHOW TOPIC ").append(node.getTopicName());
+      }
+
+      return null;
+    }
+
+    @Override
+    protected Void visitRelationalAuthorPlan(RelationalAuthorStatement node, Integer context) {
+      switch (node.getAuthorType()) {
+        case GRANT_USER_ANY:
+          builder.append(
+              "GRANT "
+                  + node.getPrivilegesString()
+                  + " ON ANY"
+                  + " TO USER "
+                  + node.getUserName()
+                  + (node.isGrantOption() ? " WITH GRANT OPTION" : ""));
+          break;
+        case GRANT_USER_ALL:
+          builder.append(
+              "GRANT ALL TO USER "
+                  + node.getUserName()
+                  + (node.isGrantOption() ? " WITH GRANT OPTION" : ""));
+          break;
+        case GRANT_USER_DB:
+          builder.append(
+              "GRANT "
+                  + node.getPrivilegesString()
+                  + " ON DATABASE "
+                  + node.getDatabase()
+                  + " TO USER "
+                  + node.getUserName()
+                  + (node.isGrantOption() ? " WITH GRANT OPTION" : ""));
+          break;
+        case GRANT_USER_SYS:
+          builder.append(
+              "GRANT "
+                  + node.getPrivilegesString()
+                  + " TO USER "
+                  + node.getUserName()
+                  + (node.isGrantOption() ? " WITH GRANT OPTION" : ""));
+          break;
+        case GRANT_USER_TB:
+          builder.append(
+              "GRANT "
+                  + node.getPrivilegesString()
+                  + " ON TABLE "
+                  + node.getDatabase()
+                  + "."
+                  + node.getTableName()
+                  + " TO USER "
+                  + node.getUserName()
+                  + (node.isGrantOption() ? " WITH GRANT OPTION" : ""));
+          break;
+        case GRANT_ROLE_ANY:
+          builder.append(
+              "GRANT "
+                  + node.getPrivilegesString()
+                  + " ON ANY"
+                  + " TO ROLE "
+                  + node.getRoleName()
+                  + (node.isGrantOption() ? " WITH GRANT OPTION" : ""));
+          break;
+        case GRANT_ROLE_ALL:
+          builder.append(
+              "GRANT ALL TO ROLE "
+                  + node.getRoleName()
+                  + (node.isGrantOption() ? " WITH GRANT OPTION" : ""));
+          break;
+        case GRANT_ROLE_DB:
+          builder.append(
+              "GRANT "
+                  + node.getPrivilegesString()
+                  + " ON DATABASE "
+                  + node.getDatabase()
+                  + " TO ROLE "
+                  + node.getRoleName()
+                  + (node.isGrantOption() ? " WITH GRANT OPTION" : ""));
+          break;
+        case GRANT_ROLE_SYS:
+          builder.append(
+              "GRANT "
+                  + node.getPrivilegesString()
+                  + " TO ROLE "
+                  + node.getRoleName()
+                  + (node.isGrantOption() ? " WITH GRANT OPTION" : ""));
+          break;
+        case GRANT_ROLE_TB:
+          builder.append(
+              "GRANT "
+                  + node.getPrivilegesString()
+                  + " ON TABLE "
+                  + node.getDatabase()
+                  + "."
+                  + node.getTableName()
+                  + " TO ROLE "
+                  + node.getRoleName()
+                  + (node.isGrantOption() ? " WITH GRANT OPTION" : ""));
+          break;
+        case REVOKE_USER_ANY:
+          builder.append(
+              "REVOKE "
+                  + (node.isGrantOption() ? "GRANT OPTION FOR " : "")
+                  + node.getPrivilegesString()
+                  + " ON ANY FROM USER "
+                  + node.getUserName());
+          break;
+        case REVOKE_USER_ALL:
+          builder.append(
+              "REVOKE"
+                  + (node.isGrantOption() ? "GRANT OPTION FOR ALL" : "ALL")
+                  + " FROM USER "
+                  + node.getUserName());
+          break;
+        case REVOKE_USER_DB:
+          builder.append(
+              "REVOKE "
+                  + (node.isGrantOption() ? "GRANT OPTION FOR " : "")
+                  + node.getPrivilegesString()
+                  + " ON DATABASE "
+                  + node.getDatabase()
+                  + " FROM USER "
+                  + node.getUserName());
+          break;
+        case REVOKE_USER_SYS:
+          builder.append(
+              "REVOKE "
+                  + (node.isGrantOption() ? "GRANT OPTION FOR " : "")
+                  + node.getPrivilegesString()
+                  + "FROM USER "
+                  + node.getUserName());
+          break;
+        case REVOKE_USER_TB:
+          builder.append(
+              "REVOKE "
+                  + (node.isGrantOption() ? "GRANT OPTION FOR " : "")
+                  + node.getPrivilegesString()
+                  + " ON TABLE "
+                  + node.getDatabase()
+                  + "."
+                  + node.getTableName()
+                  + " FROM USER "
+                  + node.getUserName());
+          break;
+        case REVOKE_ROLE_ANY:
+          builder.append(
+              "REVOKE "
+                  + (node.isGrantOption() ? "GRANT OPTION FOR " : "")
+                  + node.getPrivilegesString()
+                  + " ON ANY FROM ROLE "
+                  + node.getRoleName());
+          break;
+        case REVOKE_ROLE_ALL:
+          builder.append(
+              "REVOKE "
+                  + (node.isGrantOption() ? "GRANT OPTION FOR ALL" : "ALL")
+                  + " FROM ROLE "
+                  + node.getRoleName());
+          break;
+        case REVOKE_ROLE_DB:
+          builder.append(
+              "REVOKE "
+                  + (node.isGrantOption() ? "GRANT OPTION FOR " : "")
+                  + node.getPrivilegesString()
+                  + " ON DATABASE "
+                  + node.getDatabase()
+                  + " FROM ROLE "
+                  + node.getRoleName());
+          break;
+        case REVOKE_ROLE_SYS:
+          builder.append(
+              "REVOKE "
+                  + (node.isGrantOption() ? "GRANT OPTION FOR " : "")
+                  + node.getPrivilegesString()
+                  + " FROM ROLE "
+                  + node.getRoleName());
+          break;
+        case REVOKE_ROLE_TB:
+          builder.append(
+              "REVOKE "
+                  + (node.isGrantOption() ? "GRANT OPTION FOR " : "")
+                  + node.getPrivilegesString()
+                  + " ON TABLE "
+                  + node.getDatabase()
+                  + "."
+                  + node.getTableName()
+                  + " FROM ROLE "
+                  + node.getRoleName());
+          break;
+        case GRANT_USER_ROLE:
+          builder.append("GRANT ROLE " + node.getRoleName() + " TO " + node.getUserName());
+          break;
+        case REVOKE_USER_ROLE:
+          builder.append("REVOKE ROLE " + node.getRoleName() + " FROM " + node.getUserName());
+          break;
+        case CREATE_USER:
+          builder.append("CREATE USER " + node.getUserName());
+          break;
+        case CREATE_ROLE:
+          builder.append("CREATE ROLE " + node.getRoleName());
+          break;
+        case UPDATE_USER:
+          builder.append("ALTER USER " + node.getUserName() + " SET PASSWORD");
+          break;
+        case LIST_USER:
+          builder.append("LIST USER ");
+          break;
+        case LIST_ROLE:
+          builder.append("LIST ROLE ");
+          break;
+        case LIST_USER_PRIV:
+          builder.append("LIST PRIVILEGES OF USER " + node.getUserName());
+          break;
+        case LIST_ROLE_PRIV:
+          builder.append("LIST PRIVILEGES OF ROLE " + node.getRoleName());
+          break;
+        case DROP_ROLE:
+          builder.append("DROP ROLE " + node.getRoleName());
+          break;
+        case DROP_USER:
+          builder.append("DROP USER " + node.getUserName());
+          break;
+        default:
+          break;
+      }
+      return null;
+    }
+
+    @Override
+    protected Void visitShowSubscriptions(ShowSubscriptions node, Integer context) {
+      if (Objects.isNull(node.getTopicName())) {
+        builder.append("SHOW SUBSCRIPTIONS");
+      } else {
+        builder.append("SHOW SUBSCRIPTIONS ON ").append(node.getTopicName());
+      }
 
       return null;
     }
@@ -1136,6 +1446,96 @@ public final class SqlFormatter {
 
         builder.append(" (").append(formattedColumns).append(')');
       }
+    }
+
+    @Override
+    public Void visitTableFunctionInvocation(TableFunctionInvocation node, Integer indent) {
+      append(indent, "TABLE(");
+      appendTableFunctionInvocation(node, indent + 1);
+      builder.append(")");
+      return null;
+    }
+
+    private void appendTableFunctionInvocation(TableFunctionInvocation node, Integer indent) {
+      builder.append(formatName(node.getName())).append("(\n");
+      appendTableFunctionArguments(node.getArguments(), indent + 1);
+      if (!node.getCopartitioning().isEmpty()) {
+        builder.append("\n");
+        append(indent + 1, "COPARTITION ");
+        builder.append(
+            node.getCopartitioning().stream()
+                .map(
+                    tableList ->
+                        tableList.stream()
+                            .map(SqlFormatter::formatName)
+                            .collect(joining(", ", "(", ")")))
+                .collect(joining(", ")));
+      }
+      builder.append(")");
+    }
+
+    private void appendTableFunctionArguments(List<TableFunctionArgument> arguments, int indent) {
+      for (int i = 0; i < arguments.size(); i++) {
+        TableFunctionArgument argument = arguments.get(i);
+        if (argument.getName().isPresent()) {
+          append(indent, formatName(argument.getName().get()));
+          builder.append(" => ");
+        } else {
+          append(indent, "");
+        }
+        Node value = argument.getValue();
+        if (value instanceof Expression) {
+          builder.append(formatExpression((Expression) value));
+        } else {
+          process(value, indent + 1);
+        }
+        if (i < arguments.size() - 1) {
+          builder.append(",\n");
+        }
+      }
+    }
+
+    @Override
+    public Void visitTableArgument(TableFunctionTableArgument node, Integer indent) {
+      Relation relation = node.getTable();
+      Node unaliased =
+          relation instanceof AliasedRelation
+              ? ((AliasedRelation) relation).getRelation()
+              : relation;
+      if (unaliased instanceof TableSubquery) {
+        // unpack the relation from TableSubquery to avoid adding another pair of parentheses
+        unaliased = ((TableSubquery) unaliased).getQuery();
+      }
+      builder.append("TABLE(");
+      process(unaliased, indent);
+      builder.append(")");
+      if (relation instanceof AliasedRelation) {
+        AliasedRelation aliasedRelation = (AliasedRelation) relation;
+        builder.append(" AS ").append(formatName(aliasedRelation.getAlias()));
+        appendAliasColumns(builder, aliasedRelation.getColumnNames());
+      }
+      if (node.getPartitionBy().isPresent()) {
+        builder.append("\n");
+        append(indent, "PARTITION BY ")
+            .append(
+                node.getPartitionBy().get().stream()
+                    .map(SqlFormatter::formatExpression)
+                    .collect(joining(", ")));
+      }
+      node.getEmptyTableTreatment()
+          .ifPresent(
+              treatment -> {
+                builder.append("\n");
+                append(indent, treatment.getTreatment().name() + " WHEN EMPTY");
+              });
+      node.getOrderBy()
+          .ifPresent(
+              orderBy -> {
+                builder.append("\n");
+                append(indent, formatOrderBy(orderBy));
+              });
+
+      return null;
     }
   }
 }

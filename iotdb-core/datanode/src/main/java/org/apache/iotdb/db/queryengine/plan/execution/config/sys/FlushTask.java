@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config.sys;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
@@ -28,27 +27,20 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class FlushTask implements IConfigTask {
 
   private final FlushStatement flushStatement;
 
-  public FlushTask(FlushStatement flushStatement) {
+  public FlushTask(final FlushStatement flushStatement) {
     this.flushStatement = flushStatement;
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    TFlushReq tFlushReq = new TFlushReq();
-    List<String> storageGroups = new ArrayList<>();
-    if (flushStatement.getStorageGroups() != null) {
-      for (PartialPath partialPath : flushStatement.getStorageGroups()) {
-        storageGroups.add(partialPath.getFullPath());
-      }
-      tFlushReq.setStorageGroups(storageGroups);
+    final TFlushReq tFlushReq = new TFlushReq();
+    if (flushStatement.getDatabases() != null) {
+      tFlushReq.setStorageGroups(flushStatement.getDatabases());
     }
     if (flushStatement.isSeq() != null) {
       tFlushReq.setIsSeq(flushStatement.isSeq().toString());

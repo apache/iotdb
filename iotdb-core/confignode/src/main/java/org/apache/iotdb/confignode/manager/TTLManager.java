@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -126,6 +127,17 @@ public class TTLManager {
 
   public int getTTLCount() {
     return ttlInfo.getTTLCount();
+  }
+
+  /**
+   * Get the maximum ttl of the subtree of the corresponding database.
+   *
+   * @param database the path of the database.
+   * @return the maximum ttl of the subtree of the corresponding database. return NULL_TTL if the
+   *     TTL is not set or the database does not exist.
+   */
+  public long getDatabaseMaxTTL(String database) {
+    return ttlInfo.getDatabaseMaxTTL(database);
   }
 
   /** Only used for upgrading from old database-level ttl to device-level ttl. */

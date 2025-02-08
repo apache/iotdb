@@ -27,12 +27,12 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 public class TsFileProcessorInfoMetrics implements IMetricSet {
-  private final String storageGroupName;
+  private final String databaseName;
   private final TsFileProcessorInfo tsFileProcessorInfo;
 
   public TsFileProcessorInfoMetrics(
       String storageGroupName, TsFileProcessorInfo tsFileProcessorInfo) {
-    this.storageGroupName = storageGroupName;
+    this.databaseName = storageGroupName;
     this.tsFileProcessorInfo = tsFileProcessorInfo;
   }
 
@@ -45,7 +45,7 @@ public class TsFileProcessorInfoMetrics implements IMetricSet {
             tsFileProcessorInfo,
             TsFileProcessorInfo::getMemCost,
             Tag.NAME.toString(),
-            "chunkMetaData_" + storageGroupName);
+            "chunkMetaData_" + databaseName);
   }
 
   @Override
@@ -55,6 +55,6 @@ public class TsFileProcessorInfoMetrics implements IMetricSet {
             MetricType.AUTO_GAUGE,
             Metric.MEM.toString(),
             Tag.NAME.toString(),
-            "chunkMetaData_" + storageGroupName);
+            "chunkMetaData_" + databaseName);
   }
 }

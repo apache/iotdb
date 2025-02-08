@@ -30,20 +30,27 @@ public class CountDatabasePlan extends ConfigPhysicalReadPlan {
 
   private final String[] storageGroupPattern;
   private final PathPatternTree scope;
+  private final boolean isTableModel;
 
-  public CountDatabasePlan(final List<String> storageGroupPattern, final PathPatternTree scope) {
+  public CountDatabasePlan(
+      final List<String> storageGroupPattern,
+      final PathPatternTree scope,
+      final boolean isTableModel) {
     super(ConfigPhysicalPlanType.CountDatabase);
     this.storageGroupPattern = storageGroupPattern.toArray(new String[0]);
     this.scope = scope;
+    this.isTableModel = isTableModel;
   }
 
   public CountDatabasePlan(
       final ConfigPhysicalPlanType type,
       final List<String> storageGroupPattern,
-      final PathPatternTree scope) {
+      final PathPatternTree scope,
+      final boolean isTableModel) {
     super(type);
     this.storageGroupPattern = storageGroupPattern.toArray(new String[0]);
     this.scope = scope;
+    this.isTableModel = isTableModel;
   }
 
   public String[] getDatabasePattern() {
@@ -52,6 +59,10 @@ public class CountDatabasePlan extends ConfigPhysicalReadPlan {
 
   public PathPatternTree getScope() {
     return scope;
+  }
+
+  public boolean isTableModel() {
+    return isTableModel;
   }
 
   @Override

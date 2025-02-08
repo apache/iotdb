@@ -27,11 +27,11 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil;
@@ -127,8 +127,8 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.DEVICE;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer.analyzeExpression;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode.LIMIT_VALUE_USE_TOP_K;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy.LINEAR;
@@ -520,7 +520,7 @@ public class LogicalPlanBuilder {
             ? queryStatement.getRowOffset() + queryStatement.getRowLimit()
             : queryStatement.getRowLimit();
 
-    if (canUseTopKNode(queryStatement, limitValue)) {
+    if (canUseTopKNode(queryStatement, limitValue) && deviceNameToSourceNodesMap.size() > 1) {
       TopKNode topKNode =
           new TopKNode(
               context.getQueryId().genPlanNodeId(),
@@ -552,7 +552,8 @@ public class LogicalPlanBuilder {
 
       analysis.setUseTopKNode();
       this.root = topKNode;
-    } else if (canUseMergeSortNode(queryStatement, deviceNameToSourceNodesMap.size())) {
+    } else if (canUseMergeSortNode(queryStatement, deviceNameToSourceNodesMap.size())
+        && deviceNameToSourceNodesMap.size() > 1) {
       // use MergeSortNode + SingleDeviceViewNode
       MergeSortNode mergeSortNode =
           new MergeSortNode(
@@ -1270,7 +1271,7 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planShowQueries(Analysis analysis) {
-    List<TDataNodeLocation> dataNodeLocations = analysis.getRunningDataNodeLocations();
+    List<TDataNodeLocation> dataNodeLocations = analysis.getReadableDataNodeLocations();
     if (dataNodeLocations.size() == 1) {
       this.root =
           planSingleShowQueries(dataNodeLocations.get(0))

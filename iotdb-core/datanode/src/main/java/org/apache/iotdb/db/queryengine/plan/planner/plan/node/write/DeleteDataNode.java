@@ -38,7 +38,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
-import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 
 import org.apache.tsfile.read.filter.factory.TimeFilterApi;
@@ -60,7 +59,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
-public class DeleteDataNode extends SearchNode implements WALEntryValue {
+public class DeleteDataNode extends AbstractDeleteDataNode {
   private static final Logger LOGGER = LoggerFactory.getLogger(DeleteDataNode.class);
 
   /** byte: type, integer: pathList.size(), long: deleteStartTime, deleteEndTime, searchIndex */
@@ -69,9 +68,6 @@ public class DeleteDataNode extends SearchNode implements WALEntryValue {
   private final List<MeasurementPath> pathList;
   private final long deleteStartTime;
   private final long deleteEndTime;
-
-  private TRegionReplicaSet regionReplicaSet;
-  private ProgressIndex progressIndex;
 
   public DeleteDataNode(
       PlanNodeId id, List<MeasurementPath> pathList, long deleteStartTime, long deleteEndTime) {
@@ -182,9 +178,11 @@ public class DeleteDataNode extends SearchNode implements WALEntryValue {
         planNodeId, pathList, deleteStartTime, deleteEndTime, deserializedIndex);
   }
 
+  @Override
   public ByteBuffer serializeToDAL() {
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      DeleteNodeType.TREE_DELETE_NODE.serialize(outputStream);
       serializeAttributes(outputStream);
       progressIndex.serialize(outputStream);
       id.serialize(outputStream);
@@ -210,24 +208,6 @@ public class DeleteDataNode extends SearchNode implements WALEntryValue {
   }
 
   @Override
-  public ProgressIndex getProgressIndex() {
-    return progressIndex;
-  }
-
-  @Override
-  public void setProgressIndex(ProgressIndex progressIndex) {
-    this.progressIndex = progressIndex;
-  }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return new ArrayList<>();
-  }
-
-  @Override
-  public void addChild(PlanNode child) {}
-
-  @Override
   public PlanNodeType getType() {
     return PlanNodeType.DELETE_DATA;
   }
@@ -235,16 +215,6 @@ public class DeleteDataNode extends SearchNode implements WALEntryValue {
   @Override
   public PlanNode clone() {
     return new DeleteDataNode(getPlanNodeId(), pathList, deleteStartTime, deleteEndTime);
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return NO_CHILD_ALLOWED;
-  }
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
   }
 
   @Override
@@ -392,5 +362,41 @@ public class DeleteDataNode extends SearchNode implements WALEntryValue {
                               .map(d -> (MeasurementPath) d)
                               .collect(Collectors.toList())));
     }
+  }
+
+  @Override
+  public SearchNode merge(List<SearchNode> searchNodes) {
+    List<DeleteDataNode> deleteDataNodes =
+        searchNodes.stream()
+            .map(searchNode -> (DeleteDataNode) searchNode)
+            .collect(Collectors.toList());
+    int size = deleteDataNodes.size();
+    if (size == 0) {
+      throw new IllegalArgumentException("deleteDataNodes is empty");
+    }
+    DeleteDataNode firstOne = deleteDataNodes.get(0);
+    if (size == 1) {
+      return firstOne;
+    }
+    if (!deleteDataNodes.stream()
+        .allMatch(
+            deleteDataNode ->
+                firstOne.getDeleteStartTime() == deleteDataNode.getDeleteStartTime()
+                    && firstOne.getDeleteEndTime() == deleteDataNode.getDeleteEndTime())) {
+      throw new IllegalArgumentException(
+          "DeleteDataNodes which start time or end time are not same cannot be merged");
+    }
+    List<MeasurementPath> pathList =
+        deleteDataNodes.stream()
+            .flatMap(deleteDataNode -> deleteDataNode.getPathList().stream())
+            // Some time the deleteDataNode list contains a path for multiple times, so use
+            // distinct() to clear them
+            .distinct()
+            .collect(Collectors.toList());
+    return new DeleteDataNode(
+        firstOne.getPlanNodeId(),
+        pathList,
+        firstOne.getDeleteStartTime(),
+        firstOne.getDeleteEndTime());
   }
 }

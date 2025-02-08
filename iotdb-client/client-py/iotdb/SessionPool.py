@@ -43,8 +43,7 @@ class PoolConfig(object):
         time_zone: str = DEFAULT_TIME_ZONE,
         max_retry: int = DEFAULT_MAX_RETRY,
         enable_compression: bool = False,
-        sql_dialect: str = SQL_DIALECT,
-        database: str = None,
+        enable_redirection: bool = True,
     ):
         self.host = host
         self.port = port
@@ -61,8 +60,7 @@ class PoolConfig(object):
         self.time_zone = time_zone
         self.max_retry = max_retry
         self.enable_compression = enable_compression
-        self.sql_dialect = sql_dialect
-        self.database = database
+        self.enable_redirection = enable_redirection
 
 
 class SessionPool(object):
@@ -76,6 +74,8 @@ class SessionPool(object):
         self.__queue = Queue(max_pool_size)
         self.__lock = Lock()
         self.__closed = False
+        self.sql_dialect = SQL_DIALECT
+        self.database = None
 
     def __construct_session(self) -> Session:
         if len(self.__pool_config.node_urls) > 0:
@@ -85,10 +85,10 @@ class SessionPool(object):
                 self.__pool_config.password,
                 self.__pool_config.fetch_size,
                 self.__pool_config.time_zone,
-                enable_redirection=True,
-                sql_dialect=self.__pool_config.sql_dialect,
-                database=self.__pool_config.database,
+                enable_redirection=self.__pool_config.enable_redirection,
             )
+            session.sql_dialect = self.sql_dialect
+            session.database = self.database
 
         else:
             session = Session(
@@ -98,10 +98,10 @@ class SessionPool(object):
                 self.__pool_config.password,
                 self.__pool_config.fetch_size,
                 self.__pool_config.time_zone,
-                enable_redirection=True,
-                sql_dialect=self.__pool_config.sql_dialect,
-                database=self.__pool_config.database,
+                enable_redirection=self.__pool_config.enable_redirection,
             )
+            session.sql_dialect = self.sql_dialect
+            session.database = self.database
 
         session.open(self.__pool_config.enable_compression)
         return session

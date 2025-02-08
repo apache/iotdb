@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
@@ -106,6 +107,7 @@ import java.util.function.Function;
 
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.collect.Iterators.getOnlyElement;
 import static java.lang.String.format;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
@@ -137,6 +139,8 @@ public class ExpressionAnalyzer {
   private final Set<NodeRef<ExistsPredicate>> existsSubqueries = new LinkedHashSet<>();
 
   private final Set<NodeRef<InPredicate>> subqueryInPredicates = new LinkedHashSet<>();
+  private final Map<NodeRef<Expression>, Analysis.PredicateCoercions> predicateCoercions =
+      new LinkedHashMap<>();
 
   private final Map<NodeRef<Expression>, ResolvedField> columnReferences = new LinkedHashMap<>();
   private final Map<NodeRef<Expression>, Type> expressionTypes = new LinkedHashMap<>();
@@ -161,6 +165,9 @@ public class ExpressionAnalyzer {
   // Record fields prefixed with labels in row pattern recognition context
   private final Map<NodeRef<DereferenceExpression>, LabelPrefixedReference> labelDereferences =
       new LinkedHashMap<>();
+
+  private static final String SUBQUERY_COLUMN_NUM_CHECK =
+      "Subquery must return only one column for now. Row Type is not supported for now.";
 
   private ExpressionAnalyzer(
       Metadata metadata,
@@ -234,6 +241,10 @@ public class ExpressionAnalyzer {
 
   public Set<NodeRef<InPredicate>> getSubqueryInPredicates() {
     return unmodifiableSet(subqueryInPredicates);
+  }
+
+  public Map<NodeRef<Expression>, Analysis.PredicateCoercions> getPredicateCoercions() {
+    return unmodifiableMap(predicateCoercions);
   }
 
   public Map<NodeRef<Expression>, ResolvedField> getColumnReferences() {
@@ -409,8 +420,7 @@ public class ExpressionAnalyzer {
           return handleResolvedField(node, resolvedField.get(), context);
         }
         if (!scope.isColumnReference(qualifiedName)) {
-          throw new SemanticException(
-              String.format("Column '%s' cannot be resolved", qualifiedName));
+          TableMetadataImpl.throwColumnNotExistsException(qualifiedName);
         }
       }
 
@@ -440,7 +450,7 @@ public class ExpressionAnalyzer {
       }
 
       if (rowFieldType == null) {
-        throw new SemanticException(String.format("Column '%s' cannot be resolved", qualifiedName));
+        TableMetadataImpl.throwColumnNotExistsException(qualifiedName);
       }
 
       return setExpressionType(node, rowFieldType);
@@ -922,6 +932,10 @@ public class ExpressionAnalyzer {
     @Override
     protected Type visitInPredicate(InPredicate node, StackableAstVisitorContext<Context> context) {
       Expression value = node.getValue();
+      // Attention: remove this check after supporting RowType
+      if (value instanceof Row) {
+        throw new SemanticException(SUBQUERY_COLUMN_NUM_CHECK);
+      }
       Expression valueList = node.getValueList();
 
       // When an IN-predicate containing a subquery: `x IN (SELECT ...)` is planned, both `value`
@@ -990,20 +1004,28 @@ public class ExpressionAnalyzer {
         Type declaredValueType,
         SubqueryExpression subquery,
         StackableAstVisitorContext<Context> context) {
+      // For now, we only support one column in subqueries, we have checked this before.
       Type valueRowType = declaredValueType;
-      if (!(declaredValueType instanceof RowType) && !(declaredValueType instanceof UnknownType)) {
+      /*if (!(declaredValueType instanceof RowType) && !(declaredValueType instanceof UnknownType)) {
         valueRowType = RowType.anonymous(ImmutableList.of(declaredValueType));
-      }
+      }*/
 
       Type subqueryType = analyzeSubquery(subquery, context);
       setExpressionType(subquery, subqueryType);
 
-      if (subqueryType.equals(valueRowType)) {
-        throw new SemanticException(
-            String.format(
-                "Value expression and result of subquery must be of the same type: %s vs %s",
-                valueRowType, subqueryType));
-      }
+      Optional<Type> valueCoercion = Optional.empty();
+      //      if (!valueRowType.equals(commonType.get())) {
+      //        valueCoercion = commonType;
+      //      }
+
+      Optional<Type> subQueryCoercion = Optional.empty();
+      //      if (!subqueryType.equals(commonType.get())) {
+      //        subQueryCoercion = commonType;
+      //      }
+
+      predicateCoercions.put(
+          NodeRef.of(node),
+          new Analysis.PredicateCoercions(valueRowType, valueCoercion, subQueryCoercion));
 
       return subqueryType;
     }
@@ -1027,8 +1049,17 @@ public class ExpressionAnalyzer {
         }
       }
 
+      List<RowType.Field> fieldList = fields.build();
+
+      // Attention: remove this check after supporting RowType
+      if (fieldList.size() != 1 || fieldList.get(0).getType() instanceof RowType) {
+        throw new SemanticException(SUBQUERY_COLUMN_NUM_CHECK);
+      }
+
       sourceFields.addAll(queryScope.getRelationType().getVisibleFields());
-      return RowType.from(fields.build());
+      // return RowType.from(fields.build());
+      // For now, we only support one column in subqueries, we have checked this before.
+      return getOnlyElement(fields.build().stream().iterator()).getType();
     }
 
     @Override
@@ -1466,6 +1497,7 @@ public class ExpressionAnalyzer {
     analysis.addColumnReferences(analyzer.getColumnReferences());
     analysis.addTableColumnReferences(
         accessControl, session.getIdentity(), analyzer.getTableColumnReferences());
+    analysis.addPredicateCoercions(analyzer.getPredicateCoercions());
   }
 
   public static ExpressionAnalyzer createConstantAnalyzer(

@@ -25,18 +25,14 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
@@ -46,8 +42,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.DatabaseModelException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -59,6 +53,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.thrift.TException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import javax.annotation.Nullable;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -67,6 +63,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -101,11 +98,6 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public SchemaPartition getSchemaPartition(final PathPatternTree patternTree) {
-    return getSchemaPartitionWithModel(patternTree, false);
-  }
-
-  private SchemaPartition getSchemaPartitionWithModel(
-      final PathPatternTree patternTree, final boolean isTableModel) {
     try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       patternTree.constructTree();
@@ -115,7 +107,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
       if (null == schemaPartition) {
         final TSchemaPartitionTableResp schemaPartitionTableResp =
-            client.getSchemaPartitionTable(constructSchemaPartitionReq(patternTree, isTableModel));
+            client.getSchemaPartitionTable(constructSchemaPartitionReq(patternTree));
         if (schemaPartitionTableResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           schemaPartition = parseSchemaPartitionTableResp(schemaPartitionTableResp);
@@ -129,7 +121,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       }
       return schemaPartition;
-    } catch (final ClientManagerException | TException | DatabaseModelException e) {
+    } catch (final ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getSchemaPartition():" + e.getMessage());
     }
@@ -147,7 +139,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
       if (null == schemaPartition) {
         final TSchemaPartitionTableResp schemaPartitionTableResp =
-            client.getOrCreateSchemaPartitionTable(constructSchemaPartitionReq(patternTree, false));
+            client.getOrCreateSchemaPartitionTable(constructSchemaPartitionReq(patternTree));
         if (schemaPartitionTableResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           schemaPartition = parseSchemaPartitionTableResp(schemaPartitionTableResp);
@@ -161,7 +153,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       }
       return schemaPartition;
-    } catch (final ClientManagerException | TException | DatabaseModelException e) {
+    } catch (final ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getOrCreateSchemaPartition():" + e.getMessage());
     }
@@ -288,7 +280,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
                   dataPartitionTableResp.getStatus().getCode()));
         }
       }
-    } catch (final ClientManagerException | TException | DatabaseModelException e) {
+    } catch (final ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
     }
@@ -311,28 +303,34 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     return getOrCreateSchemaPartition(database, deviceIDs, true, userName);
   }
 
+  // deviceIDs is null if search the whole database, in which case we skip the cache and fetch the
+  // configNode directly
   @Override
   public SchemaPartition getSchemaPartition(
-      final String database, final List<IDeviceID> deviceIDs) {
+      final String database, final @Nullable List<IDeviceID> deviceIDs) {
     return getOrCreateSchemaPartition(database, deviceIDs, false, null);
   }
 
   private SchemaPartition getOrCreateSchemaPartition(
       final String database,
-      final List<IDeviceID> deviceIDs,
+      final @Nullable List<IDeviceID> deviceIDs,
       final boolean isAutoCreate,
       final String userName) {
     try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       partitionCache.checkAndAutoCreateDatabase(database, isAutoCreate, userName);
       SchemaPartition schemaPartition =
-          partitionCache.getSchemaPartition(Collections.singletonMap(database, deviceIDs));
+          Objects.nonNull(deviceIDs)
+              ? partitionCache.getSchemaPartition(Collections.singletonMap(database, deviceIDs))
+              : null;
       if (null == schemaPartition) {
         final List<TSeriesPartitionSlot> partitionSlots =
-            deviceIDs.stream()
-                .map(partitionExecutor::getSeriesPartitionSlot)
-                .distinct()
-                .collect(Collectors.toList());
+            Objects.nonNull(deviceIDs)
+                ? deviceIDs.stream()
+                    .map(partitionExecutor::getSeriesPartitionSlot)
+                    .distinct()
+                    .collect(Collectors.toList())
+                : Collections.emptyList();
         final TSchemaPartitionTableResp schemaPartitionTableResp =
             isAutoCreate
                 ? client.getOrCreateSchemaPartitionTableWithSlots(
@@ -352,31 +350,17 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       }
       return schemaPartition;
-    } catch (final ClientManagerException | TException | DatabaseModelException e) {
+    } catch (final ClientManagerException | TException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getSchemaPartition():" + e.getMessage());
     }
-  }
-
-  @Override
-  public SchemaPartition getSchemaPartition(final String database) {
-    final PathPatternTree patternTree = new PathPatternTree();
-    try {
-      patternTree.appendPathPattern(
-          PartialPath.getDatabasePath(database)
-              .concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
-    } catch (final IllegalPathException e) {
-      throw new SemanticException(e);
-    }
-    return getSchemaPartitionWithModel(patternTree, true);
   }
 
   /** split data partition query param by database */
   private Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParam(
       final List<DataPartitionQueryParam> dataPartitionQueryParams,
       final boolean isAutoCreate,
-      final String userName)
-      throws DatabaseModelException {
+      final String userName) {
     final List<IDeviceID> deviceIDs = new ArrayList<>();
     for (final DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
       deviceIDs.add(dataPartitionQueryParam.getDeviceID());
@@ -404,11 +388,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     return result;
   }
 
-  private TSchemaPartitionReq constructSchemaPartitionReq(
-      final PathPatternTree patternTree, final boolean isTableModel) {
+  private TSchemaPartitionReq constructSchemaPartitionReq(final PathPatternTree patternTree) {
     try {
-      return new TSchemaPartitionReq(patternTree.serialize()).setIsTableModel(isTableModel);
-    } catch (IOException e) {
+      return new TSchemaPartitionReq(patternTree.serialize());
+    } catch (final IOException e) {
       throw new StatementAnalyzeException("An error occurred when serializing pattern tree");
     }
   }
@@ -425,7 +408,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         schemaNodeManagementReq.setLevel(level);
       }
       return schemaNodeManagementReq;
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new StatementAnalyzeException("An error occurred when serializing pattern tree");
     }
   }
@@ -473,8 +456,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
                   k,
                   new TTimeSlotList(
                       new ArrayList<>(v.timeSlotList), v.needLeftAll, v.needRightAll)));
-      partitionSlotsMap.put(
-          PathUtils.qualifyDatabaseName(entry.getKey()), deviceToTimePartitionMap);
+      partitionSlotsMap.put(entry.getKey(), deviceToTimePartitionMap);
     }
     return new TDataPartitionReq(partitionSlotsMap);
   }

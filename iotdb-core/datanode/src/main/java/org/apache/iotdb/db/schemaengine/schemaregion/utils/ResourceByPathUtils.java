@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.utils;
 
 import org.apache.iotdb.commons.path.AlignedFullPath;
@@ -30,18 +31,22 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
+import org.apache.tsfile.file.metadata.TableDeviceChunkMetadata;
+import org.apache.tsfile.file.metadata.TableDeviceTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -83,7 +88,7 @@ public abstract class ResourceByPathUtils {
   public abstract ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
       QueryContext context,
       IMemTable memTable,
-      List<Pair<Modification, IMemTable>> modsToMemtable,
+      List<Pair<ModEntry, IMemTable>> modsToMemtable,
       long timeLowerBound)
       throws QueryProcessException, IOException;
 
@@ -107,7 +112,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
    * have chunkMetadata, but query will use these, so we need to generate it for them.
    */
   @Override
-  public AlignedTimeSeriesMetadata generateTimeSeriesMetadata(
+  public AbstractAlignedTimeSeriesMetadata generateTimeSeriesMetadata(
       List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList) {
     TimeseriesMetadata timeTimeSeriesMetadata = new TimeseriesMetadata();
     timeTimeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
@@ -122,7 +127,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     for (IMeasurementSchema valueChunkMetadata : (alignedFullPath.getSchemaList())) {
       TimeseriesMetadata valueMetadata = new TimeseriesMetadata();
       valueMetadata.setDataSizeOfChunkMetaDataList(-1);
-      valueMetadata.setMeasurementId(valueChunkMetadata.getMeasurementId());
+      valueMetadata.setMeasurementId(valueChunkMetadata.getMeasurementName());
       valueMetadata.setTsDataType(valueChunkMetadata.getType());
       valueMetadata.setStatistics(Statistics.getStatsByType(valueChunkMetadata.getType()));
       valueTimeSeriesMetadataList.add(valueMetadata);
@@ -130,8 +135,11 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
 
     boolean[] exist = new boolean[alignedFullPath.getSchemaList().size()];
     boolean modified = false;
+    boolean isTable = false;
     for (IChunkMetadata chunkMetadata : chunkMetadataList) {
-      AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) chunkMetadata;
+      AbstractAlignedChunkMetadata alignedChunkMetadata =
+          (AbstractAlignedChunkMetadata) chunkMetadata;
+      isTable = isTable || (alignedChunkMetadata instanceof TableDeviceChunkMetadata);
       modified = (modified || alignedChunkMetadata.isModified());
       timeStatistics.mergeStatistics(alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
       for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
@@ -148,8 +156,9 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
 
     for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
       if (!memChunk.isEmpty()) {
-        AlignedChunkMetadata alignedChunkMetadata =
-            (AlignedChunkMetadata) memChunk.getChunkMetaData();
+        AbstractAlignedChunkMetadata alignedChunkMetadata =
+            (AbstractAlignedChunkMetadata) memChunk.getChunkMetaData();
+        isTable = isTable || (alignedChunkMetadata instanceof TableDeviceChunkMetadata);
         timeStatistics.mergeStatistics(alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
         for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
           if (alignedChunkMetadata.getValueChunkMetadataList().get(i) != null) {
@@ -173,14 +182,16 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       }
     }
 
-    return new AlignedTimeSeriesMetadata(timeTimeSeriesMetadata, valueTimeSeriesMetadataList);
+    return isTable
+        ? new TableDeviceTimeSeriesMetadata(timeTimeSeriesMetadata, valueTimeSeriesMetadataList)
+        : new AlignedTimeSeriesMetadata(timeTimeSeriesMetadata, valueTimeSeriesMetadataList);
   }
 
   @Override
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
       QueryContext context,
       IMemTable memTable,
-      List<Pair<Modification, IMemTable>> modsToMemtable,
+      List<Pair<ModEntry, IMemTable>> modsToMemtable,
       long timeLowerBound)
       throws QueryProcessException {
     Map<IDeviceID, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
@@ -267,7 +278,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       QueryContext context,
       long timeLowerBound) {
 
-    List<AlignedChunkMetadata> chunkMetadataList = new ArrayList<>();
+    List<AbstractAlignedChunkMetadata> chunkMetadataList = new ArrayList<>();
     List<ChunkMetadata> timeChunkMetadataList =
         writer.getVisibleMetadataList(
             alignedFullPath.getDeviceId(), AlignedFullPath.VECTOR_PLACEHOLDER, TSDataType.VECTOR);
@@ -284,7 +295,10 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       // only need time column
       if (alignedFullPath.getMeasurementList().isEmpty()) {
         chunkMetadataList.add(
-            new AlignedChunkMetadata(timeChunkMetadataList.get(i), Collections.emptyList()));
+            context.isIgnoreAllNullRows()
+                ? new AlignedChunkMetadata(timeChunkMetadataList.get(i), Collections.emptyList())
+                : new TableDeviceChunkMetadata(
+                    timeChunkMetadataList.get(i), Collections.emptyList()));
       } else {
         List<IChunkMetadata> valueChunkMetadata = new ArrayList<>();
         // if all the sub sensors doesn't exist, it will be false
@@ -297,16 +311,18 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
         }
         if (!context.isIgnoreAllNullRows() || exits) {
           chunkMetadataList.add(
-              new AlignedChunkMetadata(timeChunkMetadataList.get(i), valueChunkMetadata));
+              context.isIgnoreAllNullRows()
+                  ? new AlignedChunkMetadata(timeChunkMetadataList.get(i), valueChunkMetadata)
+                  : new TableDeviceChunkMetadata(timeChunkMetadataList.get(i), valueChunkMetadata));
         }
       }
     }
 
-    List<Modification> timeColumnModifications =
+    List<ModEntry> timeColumnModifications =
         context.getPathModifications(
             tsFileResource, alignedFullPath.getDeviceId(), AlignedFullPath.VECTOR_PLACEHOLDER);
 
-    List<List<Modification>> valueColumnsModifications =
+    List<List<ModEntry>> valueColumnsModifications =
         context.getPathModifications(
             tsFileResource, alignedFullPath.getDeviceId(), alignedFullPath.getMeasurementList());
 
@@ -336,7 +352,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
   public ITimeSeriesMetadata generateTimeSeriesMetadata(
       List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList) {
     TimeseriesMetadata timeSeriesMetadata = new TimeseriesMetadata();
-    timeSeriesMetadata.setMeasurementId(fullPath.getMeasurementSchema().getMeasurementId());
+    timeSeriesMetadata.setMeasurementId(fullPath.getMeasurementSchema().getMeasurementName());
     timeSeriesMetadata.setTsDataType(fullPath.getMeasurementSchema().getType());
     timeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
 
@@ -363,7 +379,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
       QueryContext context,
       IMemTable memTable,
-      List<Pair<Modification, IMemTable>> modsToMemtable,
+      List<Pair<ModEntry, IMemTable>> modsToMemtable,
       long timeLowerBound)
       throws QueryProcessException, IOException {
     Map<IDeviceID, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
@@ -403,7 +419,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
       TsFileResource tsFileResource,
       QueryContext context,
       long timeLowerBound) {
-    List<Modification> modifications =
+    List<ModEntry> modifications =
         context.getPathModifications(
             tsFileResource, fullPath.getDeviceId(), fullPath.getMeasurement());
 

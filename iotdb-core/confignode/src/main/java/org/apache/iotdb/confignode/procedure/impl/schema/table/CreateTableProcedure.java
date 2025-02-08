@@ -19,48 +19,36 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
-import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.CreateTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
-import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.rpc.TSStatusCode.TABLE_ALREADY_EXISTS;
 
 public class CreateTableProcedure
@@ -72,11 +60,13 @@ public class CreateTableProcedure
 
   private TsTable table;
 
-  public CreateTableProcedure() {
-    super();
+  public CreateTableProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
-  public CreateTableProcedure(final String database, final TsTable table) {
+  public CreateTableProcedure(
+      final String database, final TsTable table, final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
     this.database = database;
     this.table = table;
   }
@@ -98,11 +88,6 @@ public class CreateTableProcedure
         case PRE_RELEASE:
           LOGGER.info("Pre release table {}.{}", database, table.getTableName());
           preReleaseTable(env);
-          break;
-        case VALIDATE_TIMESERIES_EXISTENCE:
-          LOGGER.info(
-              "Validate timeseries existence for table {}.{}", database, table.getTableName());
-          validateTimeSeriesExistence(env);
           break;
         case COMMIT_CREATE:
           LOGGER.info("Commit create table {}.{}", database, table.getTableName());
@@ -128,19 +113,28 @@ public class CreateTableProcedure
   }
 
   private void checkTableExistence(final ConfigNodeProcedureEnv env) {
-    if (env.getConfigManager()
-        .getClusterSchemaManager()
-        .getTableIfExists(database, table.getTableName())
-        .isPresent()) {
-      setFailure(
-          new ProcedureException(
-              new IoTDBException(
-                  String.format(
-                      "Table '%s.%s' already exists.",
-                      database.substring(ROOT.length() + 1), table.getTableName()),
-                  TABLE_ALREADY_EXISTS.getStatusCode())));
-    } else {
-      setNextState(CreateTableState.PRE_CREATE);
+    try {
+      if (env.getConfigManager()
+          .getClusterSchemaManager()
+          .getTableIfExists(database, table.getTableName())
+          .isPresent()) {
+        setFailure(
+            new ProcedureException(
+                new IoTDBException(
+                    String.format("Table '%s.%s' already exists.", database, table.getTableName()),
+                    TABLE_ALREADY_EXISTS.getStatusCode())));
+      } else {
+        final TDatabaseSchema schema =
+            env.getConfigManager().getClusterSchemaManager().getDatabaseSchemaByName(database);
+        if (!table.getPropValue(TsTable.TTL_PROPERTY).isPresent()
+            && schema.isSetTTL()
+            && schema.getTTL() != Long.MAX_VALUE) {
+          table.addProp(TsTable.TTL_PROPERTY, String.valueOf(schema.getTTL()));
+        }
+        setNextState(CreateTableState.PRE_CREATE);
+      }
+    } catch (final MetadataException | DatabaseNotExistsException e) {
+      setFailure(new ProcedureException(e));
     }
   }
 
@@ -169,108 +163,17 @@ public class CreateTableProcedure
       return;
     }
 
-    setNextState(CreateTableState.VALIDATE_TIMESERIES_EXISTENCE);
-  }
-
-  private void validateTimeSeriesExistence(final ConfigNodeProcedureEnv env) {
-    final PathPatternTree patternTree = new PathPatternTree();
-    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    final PartialPath path;
-    try {
-      path = new PartialPath(new String[] {ROOT, database.substring(5), table.getTableName()});
-      patternTree.appendPathPattern(path);
-      patternTree.appendPathPattern(path.concatAsMeasurementPath(MULTI_LEVEL_PATH_WILDCARD));
-      patternTree.serialize(dataOutputStream);
-    } catch (final IOException e) {
-      LOGGER.warn("failed to serialize request for table {}.{}", database, table.getTableName(), e);
-    }
-    final ByteBuffer patternTreeBytes = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
-
-    final Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
-        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree);
-
-    if (relatedSchemaRegionGroup.isEmpty()) {
-      setNextState(CreateTableState.COMMIT_CREATE);
-      return;
-    }
-
-    final List<TCheckTimeSeriesExistenceResp> respList = new ArrayList<>();
-    DataNodeRegionTaskExecutor<TCheckTimeSeriesExistenceReq, TCheckTimeSeriesExistenceResp>
-        regionTask =
-            new DataNodeRegionTaskExecutor<
-                TCheckTimeSeriesExistenceReq, TCheckTimeSeriesExistenceResp>(
-                env,
-                relatedSchemaRegionGroup,
-                false,
-                CnToDnAsyncRequestType.CHECK_TIMESERIES_EXISTENCE,
-                ((dataNodeLocation, consensusGroupIdList) ->
-                    new TCheckTimeSeriesExistenceReq(patternTreeBytes, consensusGroupIdList))) {
-
-              @Override
-              protected List<TConsensusGroupId> processResponseOfOneDataNode(
-                  final TDataNodeLocation dataNodeLocation,
-                  final List<TConsensusGroupId> consensusGroupIdList,
-                  final TCheckTimeSeriesExistenceResp response) {
-                respList.add(response);
-                final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
-                if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                  return failedRegionList;
-                }
-
-                if (response.getStatus().getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-                  final List<TSStatus> subStatus = response.getStatus().getSubStatus();
-                  for (int i = 0; i < subStatus.size(); i++) {
-                    if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                        && subStatus.get(i).getCode()
-                            != TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
-                      failedRegionList.add(consensusGroupIdList.get(i));
-                    }
-                  }
-                } else {
-                  failedRegionList.addAll(consensusGroupIdList);
-                }
-                return failedRegionList;
-              }
-
-              @Override
-              protected void onAllReplicasetFailure(
-                  final TConsensusGroupId consensusGroupId,
-                  final Set<TDataNodeLocation> dataNodeLocationSet) {
-                setFailure(
-                    new ProcedureException(
-                        new MetadataException(
-                            String.format(
-                                "Create table %s.%s failed when [check timeseries existence on DataNode] because all replicaset of schemaRegion %s failed. %s",
-                                database,
-                                table.getTableName(),
-                                consensusGroupId.id,
-                                dataNodeLocationSet))));
-                interruptTask();
-              }
-            };
-    regionTask.execute();
-    if (isFailed()) {
-      return;
-    }
-
-    for (final TCheckTimeSeriesExistenceResp resp : respList) {
-      if (resp.isExists()) {
-        setFailure(
-            new ProcedureException(
-                new MetadataException(
-                    String.format(
-                        "Timeseries already exists under root.%s.%s",
-                        database, table.getTableName()))));
-      }
-    }
     setNextState(CreateTableState.COMMIT_CREATE);
   }
 
   private void commitCreateTable(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
         SchemaUtils.executeInConsensusLayer(
-            new CommitCreateTablePlan(database, table.getTableName()), env, LOGGER);
+            isGeneratedByPipe
+                ? new PipeEnrichedPlan(new CommitCreateTablePlan(database, table.getTableName()))
+                : new CommitCreateTablePlan(database, table.getTableName()),
+            env,
+            LOGGER);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(CreateTableState.COMMIT_RELEASE);
     } else {
@@ -367,7 +270,10 @@ public class CreateTableProcedure
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.CREATE_TABLE_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_CREATE_TABLE_PROCEDURE.getTypeCode()
+            : ProcedureType.CREATE_TABLE_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(database, stream);
     table.serialize(stream);

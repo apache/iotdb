@@ -99,4 +99,9 @@ public class MinimumProgressIndex extends ProgressIndex {
   public String toString() {
     return "MinimumProgressIndex{}";
   }
+
+  @Override
+  public long ramBytesUsed() {
+    return 0;
+  }
 }

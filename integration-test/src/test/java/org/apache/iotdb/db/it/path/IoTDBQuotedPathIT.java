@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.it.path;
 
 import org.apache.iotdb.it.env.EnvFactory;

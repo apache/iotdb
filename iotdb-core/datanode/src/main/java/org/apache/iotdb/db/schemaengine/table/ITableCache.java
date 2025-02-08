@@ -37,4 +37,6 @@ public interface ITableCache {
   void invalid(final String database);
 
   void invalid(final String database, final String tableName);
+
+  void invalid(final String database, final String tableName, final String columnName);
 }

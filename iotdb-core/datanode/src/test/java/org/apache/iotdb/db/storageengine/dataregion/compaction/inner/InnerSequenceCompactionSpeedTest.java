@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 public class InnerSequenceCompactionSpeedTest extends AbstractCompactionTest {
@@ -122,5 +123,47 @@ public class InnerSequenceCompactionSpeedTest extends AbstractCompactionTest {
     Assert.assertTrue(task.start());
     Assert.assertTrue(
         TimeUnit.SECONDS.toMillis(tsFileSize / IoTDBConstant.MB + 30) > task.getTimeCost());
+  }
+
+  @Test
+  public void testReadRateLimit() throws IOException, InterruptedException {
+    int compactionReadOperationPerSec =
+        IoTDBDescriptor.getInstance().getConfig().getCompactionReadOperationPerSec();
+    CompactionTaskManager.getInstance().setCompactionReadOperationRate(1);
+    try {
+      TsFileResource resource = createEmptyFileAndResource(true);
+      try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
+        for (int i = 0; i < 100; i++) {
+          writer.startChunkGroup("d" + i);
+          writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+              "s0",
+              new TimeRange[] {new TimeRange(1000, 2000)},
+              TSEncoding.PLAIN,
+              CompressionType.LZ4);
+          writer.endChunkGroup();
+        }
+        writer.endFile();
+      }
+      seqResources.add(resource);
+      tsFileManager.add(resource, true);
+      InnerSpaceCompactionTask task =
+          new InnerSpaceCompactionTask(
+              0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
+      CountDownLatch latch = new CountDownLatch(1);
+      Thread t =
+          new Thread(
+              () -> {
+                task.start();
+                Assert.assertTrue(Thread.currentThread().isInterrupted());
+                latch.countDown();
+              });
+      t.start();
+      Assert.assertFalse(latch.await(5, TimeUnit.SECONDS));
+      t.interrupt();
+      latch.await();
+    } finally {
+      CompactionTaskManager.getInstance()
+          .setCompactionReadOperationRate(compactionReadOperationPerSec);
+    }
   }
 }

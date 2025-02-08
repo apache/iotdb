@@ -105,6 +105,10 @@ public class TableDeviceLastCache {
                   .tryGetInternColumnName(database, tableName, measurement)
               : measurement;
 
+      // Removing table measurement, do not put cache
+      if (Objects.isNull(finalMeasurement)) {
+        continue;
+      }
       final TimeValuePair newPair = isInvalidate ? null : PLACEHOLDER_TIME_VALUE_PAIR;
 
       measurement2CachedLastMap.compute(
@@ -156,20 +160,22 @@ public class TableDeviceLastCache {
         "",
         (time, tvPair) ->
             tvPair.getTimestamp() < finalLastTime
-                ? new TimeValuePair(finalLastTime, null)
+                ? new TimeValuePair(finalLastTime, EMPTY_PRIMITIVE_TYPE)
                 : tvPair);
     return diff.get();
   }
 
-  // TODO: Handle table model invalidation (MeasurementSize = 0)
   @GuardedBy("DataRegionInsertLock#writeLock")
-  int invalidate(final String measurement) {
+  int invalidate(final String measurement, final boolean isTableModel) {
     final AtomicInteger diff = new AtomicInteger();
     final AtomicLong time = new AtomicLong();
     measurement2CachedLastMap.computeIfPresent(
         measurement,
         (s, timeValuePair) -> {
-          diff.set((int) RamUsageEstimator.sizeOf(s) + getTVPairEntrySize(timeValuePair));
+          diff.set(
+              isTableModel
+                  ? 0
+                  : (int) RamUsageEstimator.sizeOf(s) + getTVPairEntrySize(timeValuePair));
           time.set(timeValuePair.getTimestamp());
           return null;
         });

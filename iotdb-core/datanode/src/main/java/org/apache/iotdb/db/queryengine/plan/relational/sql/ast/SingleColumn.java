@@ -109,6 +109,10 @@ public class SingleColumn extends SelectItem {
       return false;
     }
 
+    if (alias == null) {
+      return ((SingleColumn) other).alias == null;
+    }
+
     return alias.equals(((SingleColumn) other).alias);
   }
 }

@@ -23,26 +23,33 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionIncompatibleHandl
 
 import org.apache.tsfile.write.record.Tablet;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
 public class SubscriptionSessionDataSetsHandler
     implements Iterable<SubscriptionSessionDataSet>, SubscriptionMessageHandler {
 
-  private final List<SubscriptionSessionDataSet> dataSets;
-
   private final List<Tablet> tablets;
 
   public SubscriptionSessionDataSetsHandler(final List<Tablet> tablets) {
-    this.dataSets = new ArrayList<>();
     this.tablets = tablets;
-    tablets.forEach((tablet -> this.dataSets.add(new SubscriptionSessionDataSet(tablet))));
   }
 
   @Override
   public Iterator<SubscriptionSessionDataSet> iterator() {
-    return dataSets.iterator();
+    return new Iterator<SubscriptionSessionDataSet>() {
+      final Iterator<Tablet> tabletsIterator = tablets.iterator();
+
+      @Override
+      public boolean hasNext() {
+        return tabletsIterator.hasNext();
+      }
+
+      @Override
+      public SubscriptionSessionDataSet next() {
+        return new SubscriptionSessionDataSet(tabletsIterator.next());
+      }
+    };
   }
 
   public Iterator<Tablet> tabletIterator() {

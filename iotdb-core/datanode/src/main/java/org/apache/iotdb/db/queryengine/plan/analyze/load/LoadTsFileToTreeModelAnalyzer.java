@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.LoadEmptyFileException;
-import org.apache.iotdb.db.exception.LoadReadOnlyException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
+import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -37,7 +37,10 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.encrypt.EncryptParameter;
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.TsFileSequenceReaderTimeseriesMetadataIterator;
@@ -46,6 +49,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -56,24 +60,21 @@ public class LoadTsFileToTreeModelAnalyzer extends LoadTsFileAnalyzer {
   private final TreeSchemaAutoCreatorAndVerifier schemaAutoCreatorAndVerifier;
 
   public LoadTsFileToTreeModelAnalyzer(
-      LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
-    super(loadTsFileStatement, context);
+      LoadTsFileStatement loadTsFileStatement, boolean isGeneratedByPipe, MPPQueryContext context) {
+    super(loadTsFileStatement, isGeneratedByPipe, context);
     this.schemaAutoCreatorAndVerifier = new TreeSchemaAutoCreatorAndVerifier(this);
   }
 
   public LoadTsFileToTreeModelAnalyzer(
-      LoadTsFile loadTsFileTableStatement, MPPQueryContext context) {
-    super(loadTsFileTableStatement, context);
+      LoadTsFile loadTsFileTableStatement, boolean isGeneratedByPipe, MPPQueryContext context) {
+    super(loadTsFileTableStatement, isGeneratedByPipe, context);
     this.schemaAutoCreatorAndVerifier = new TreeSchemaAutoCreatorAndVerifier(this);
   }
 
   @Override
   public IAnalysis analyzeFileByFile(IAnalysis analysis) {
-    // check if the system is read only
-    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-      analysis.setFinishQueryAfterAnalyze(true);
-      analysis.setFailStatus(
-          RpcUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY, LoadReadOnlyException.MESSAGE));
+    checkBeforeAnalyzeFileByFile(analysis);
+    if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
 
@@ -86,6 +87,9 @@ public class LoadTsFileToTreeModelAnalyzer extends LoadTsFileAnalyzer {
       schemaAutoCreatorAndVerifier.flush();
     } catch (AuthException e) {
       setFailAnalysisForAuthException(analysis, e);
+      return analysis;
+    } catch (LoadAnalyzeException e) {
+      executeTabletConversion(analysis, e);
       return analysis;
     } catch (Exception e) {
       final String exceptionMessage =
@@ -107,7 +111,8 @@ public class LoadTsFileToTreeModelAnalyzer extends LoadTsFileAnalyzer {
   }
 
   @Override
-  protected void analyzeSingleTsFile(final File tsFile) throws IOException, AuthException {
+  protected void analyzeSingleTsFile(final File tsFile)
+      throws IOException, AuthException, LoadAnalyzeTypeMismatchException {
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       // can be reused when constructing tsfile resource
       final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =
@@ -118,11 +123,18 @@ public class LoadTsFileToTreeModelAnalyzer extends LoadTsFileAnalyzer {
         throw new LoadEmptyFileException(tsFile.getAbsolutePath());
       }
 
+      // check whether the encrypt type of the tsfile is supported
+      EncryptParameter param = reader.getEncryptParam();
+      if (!Objects.equals(param.getType(), EncryptUtils.encryptParam.getType())
+          || !Arrays.equals(param.getKey(), EncryptUtils.encryptParam.getKey())) {
+        throw new SemanticException("The encryption way of the TsFile is not supported.");
+      }
+
       // check whether the tsfile is tree-model or not
       // TODO: currently, loading a file with both tree-model and table-model data is not supported.
       //  May need to support this and remove this check in the future.
-      if (Objects.nonNull(reader.readFileMetadata().getTableSchemaMap())
-          && reader.readFileMetadata().getTableSchemaMap().size() != 0) {
+      Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
+      if (Objects.nonNull(tableSchemaMap) && !tableSchemaMap.isEmpty()) {
         throw new SemanticException("Attempted to load a table-model TsFile into tree-model.");
       }
 

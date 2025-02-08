@@ -45,15 +45,9 @@ public abstract class AbstractInnerSpaceEstimator extends AbstractCompactionEsti
   }
 
   public long estimateInnerCompactionMemory(List<TsFileResource> resources) throws IOException {
-    if (!CompactionEstimateUtils.addReadLock(resources)) {
-      return -1L;
-    }
+    CompactionEstimateUtils.addReadLock(resources);
     long cost;
     try {
-      if (!isAllSourceFileExist(resources)) {
-        return -1L;
-      }
-
       CompactionTaskInfo taskInfo = calculatingCompactionTaskInfo(resources);
       cost = calculatingMetadataMemoryCost(taskInfo);
       cost += calculatingDataMemoryCost(taskInfo);

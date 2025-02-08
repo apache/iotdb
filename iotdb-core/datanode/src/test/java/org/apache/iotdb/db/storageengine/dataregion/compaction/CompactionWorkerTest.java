@@ -21,9 +21,11 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskQueue;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionWorker;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -42,7 +44,11 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Phaser;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class CompactionWorkerTest {
   @Before
@@ -260,5 +266,32 @@ public class CompactionWorkerTest {
     }
     thread.interrupt();
     thread.join();
+  }
+
+  @Test
+  public void testAbortCompactionTask() {
+    AtomicReference<CompactionWorker.CompactionTaskFuture> compactionTaskSummary =
+        new AtomicReference<>();
+    AtomicBoolean isInterrupted = new AtomicBoolean(false);
+    CountDownLatch latch = new CountDownLatch(1);
+    Phaser phaser = new Phaser(2);
+    Thread t =
+        new Thread(
+            () -> {
+              compactionTaskSummary.set(
+                  new CompactionWorker.CompactionTaskFuture(new CompactionTaskSummary()));
+              phaser.arriveAndAwaitAdvance();
+              try {
+                latch.await();
+              } catch (InterruptedException ignored) {
+                isInterrupted.set(true);
+              }
+              phaser.arriveAndAwaitAdvance();
+            });
+    t.start();
+    phaser.arriveAndAwaitAdvance();
+    compactionTaskSummary.get().cancel(true);
+    phaser.arriveAndAwaitAdvance();
+    Assert.assertTrue(isInterrupted.get());
   }
 }

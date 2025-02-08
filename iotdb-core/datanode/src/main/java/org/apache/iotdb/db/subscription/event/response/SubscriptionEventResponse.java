@@ -28,9 +28,10 @@ public interface SubscriptionEventResponse<E> {
 
   E getCurrentResponse();
 
-  void prefetchRemainingResponses() throws IOException;
+  @Deprecated // TBD.
+  void prefetchRemainingResponses();
 
-  void fetchNextResponse() throws IOException;
+  void fetchNextResponse(final long offset) throws Exception;
 
   /////////////////////////////// byte buffer ///////////////////////////////
 

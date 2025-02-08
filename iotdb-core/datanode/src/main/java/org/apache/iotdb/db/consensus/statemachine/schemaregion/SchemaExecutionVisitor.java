@@ -57,8 +57,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDevicesInBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.RollbackTableDevicesBlackListNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableAttributeColumnDropNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableNodeLocationAddNode;
@@ -84,16 +88,18 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /** Schema write {@link PlanNode} visitor */
 public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion> {
   private static final Logger logger = LoggerFactory.getLogger(SchemaExecutionVisitor.class);
 
   @Override
-  public TSStatus visitCreateTimeSeries(CreateTimeSeriesNode node, ISchemaRegion schemaRegion) {
+  public TSStatus visitCreateTimeSeries(
+      final CreateTimeSeriesNode node, final ISchemaRegion schemaRegion) {
     try {
       schemaRegion.createTimeSeries(node, -1);
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
@@ -102,10 +108,25 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
 
   @Override
   public TSStatus visitCreateAlignedTimeSeries(
-      CreateAlignedTimeSeriesNode node, ISchemaRegion schemaRegion) {
+      final CreateAlignedTimeSeriesNode node, final ISchemaRegion schemaRegion) {
     try {
-      schemaRegion.createAlignedTimeSeries(node);
-    } catch (MetadataException e) {
+      if (node.isGeneratedByPipe()) {
+        final ICreateAlignedTimeSeriesPlan plan =
+            SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
+                node.getDevicePath(),
+                node.getMeasurements(),
+                node.getDataTypes(),
+                node.getEncodings(),
+                node.getCompressors(),
+                node.getAliasList(),
+                node.getTagsList(),
+                node.getAttributesList());
+        ((CreateAlignedTimeSeriesPlanImpl) plan).setWithMerge(true);
+        schemaRegion.createAlignedTimeSeries(plan);
+      } else {
+        schemaRegion.createAlignedTimeSeries(node);
+      }
+    } catch (final MetadataException e) {
       logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
@@ -114,22 +135,24 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
 
   @Override
   public TSStatus visitCreateMultiTimeSeries(
-      CreateMultiTimeSeriesNode node, ISchemaRegion schemaRegion) {
-    Map<PartialPath, MeasurementGroup> measurementGroupMap = node.getMeasurementGroupMap();
-    List<TSStatus> failingStatus = new ArrayList<>();
+      final CreateMultiTimeSeriesNode node, final ISchemaRegion schemaRegion) {
+    final Map<PartialPath, MeasurementGroup> measurementGroupMap = node.getMeasurementGroupMap();
+    final List<TSStatus> failingStatus = new ArrayList<>();
     PartialPath devicePath;
     MeasurementGroup measurementGroup;
     int size;
-    for (Map.Entry<PartialPath, MeasurementGroup> entry : measurementGroupMap.entrySet()) {
+    for (final Map.Entry<PartialPath, MeasurementGroup> entry : measurementGroupMap.entrySet()) {
       devicePath = entry.getKey();
       measurementGroup = entry.getValue();
       size = measurementGroup.getMeasurements().size();
       // todo implement batch creation of one device in SchemaRegion
       for (int i = 0; i < size; i++) {
         try {
-          schemaRegion.createTimeSeries(
-              transformToCreateTimeSeriesPlan(devicePath, measurementGroup, i), -1);
-        } catch (MetadataException e) {
+          final ICreateTimeSeriesPlan createTimeSeriesPlan =
+              transformToCreateTimeSeriesPlan(devicePath, measurementGroup, i);
+          ((CreateTimeSeriesPlanImpl) createTimeSeriesPlan).setWithMerge(node.isGeneratedByPipe());
+          schemaRegion.createTimeSeries(createTimeSeriesPlan, -1);
+        } catch (final MetadataException e) {
           logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
           failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
         }
@@ -143,7 +166,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   }
 
   private ICreateTimeSeriesPlan transformToCreateTimeSeriesPlan(
-      PartialPath devicePath, MeasurementGroup measurementGroup, int index) {
+      final PartialPath devicePath, final MeasurementGroup measurementGroup, final int index) {
     return SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
         devicePath.concatAsMeasurementPath(measurementGroup.getMeasurements().get(index)),
         measurementGroup.getDataTypes().get(index),
@@ -175,7 +198,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
           schemaRegion,
           alreadyExistingTimeSeries,
           failingStatus,
-          false);
+          node.isGeneratedByPipe());
     } else {
       executeInternalCreateTimeSeries(
           devicePath,
@@ -183,7 +206,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
           schemaRegion,
           alreadyExistingTimeSeries,
           failingStatus,
-          false);
+          node.isGeneratedByPipe());
     }
 
     if (!failingStatus.isEmpty()) {
@@ -282,6 +305,10 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     final List<TSDataType> dataTypeList = measurementGroup.getDataTypes();
     final List<TSEncoding> encodingList = measurementGroup.getEncodings();
     final List<CompressionType> compressionTypeList = measurementGroup.getCompressors();
+    final List<String> aliasList = measurementGroup.getAliasList();
+    final List<Map<String, String>> tagsList = measurementGroup.getTagsList();
+    final List<Map<String, String>> attributesList = measurementGroup.getAttributesList();
+
     final ICreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
         SchemaRegionWritePlanFactory.getCreateAlignedTimeSeriesPlan(
             devicePath,
@@ -289,9 +316,10 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
             dataTypeList,
             encodingList,
             compressionTypeList,
-            null,
-            null,
-            null);
+            aliasList,
+            tagsList,
+            attributesList);
+
     // With merge is only true for pipe to upsert the receiver alias/tags/attributes in historical
     // transfer.
     // For normal internal creation, the alias/tags/attributes are not set
@@ -318,6 +346,16 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
         encodingList.remove(index);
         compressionTypeList.remove(index);
 
+        if (Objects.nonNull(aliasList)) {
+          aliasList.remove(index);
+        }
+        if (Objects.nonNull(tagsList)) {
+          tagsList.remove(index);
+        }
+        if (Objects.nonNull(attributesList)) {
+          attributesList.remove(index);
+        }
+
         // If with merge is set, the lists are deep copied and need to be altered here.
         // We still remove the element from the original list to help cascading pipe transfer
         // schema.
@@ -328,6 +366,16 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
           createAlignedTimeSeriesPlan.getDataTypes().remove(index);
           createAlignedTimeSeriesPlan.getEncodings().remove(index);
           createAlignedTimeSeriesPlan.getCompressors().remove(index);
+
+          if (Objects.nonNull(aliasList)) {
+            createAlignedTimeSeriesPlan.getAliasList().remove(index);
+          }
+          if (Objects.nonNull(tagsList)) {
+            createAlignedTimeSeriesPlan.getTagsList().remove(index);
+          }
+          if (Objects.nonNull(attributesList)) {
+            createAlignedTimeSeriesPlan.getAttributesList().remove(index);
+          }
         }
 
         if (measurementList.isEmpty()) {
@@ -343,7 +391,8 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   }
 
   @Override
-  public TSStatus visitAlterTimeSeries(AlterTimeSeriesNode node, ISchemaRegion schemaRegion) {
+  public TSStatus visitAlterTimeSeries(
+      final AlterTimeSeriesNode node, final ISchemaRegion schemaRegion) {
     try {
       switch (node.getAlterType()) {
         case RENAME:
@@ -379,12 +428,14 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   }
 
   @Override
-  public TSStatus visitActivateTemplate(ActivateTemplateNode node, ISchemaRegion schemaRegion) {
+  public TSStatus visitActivateTemplate(
+      final ActivateTemplateNode node, final ISchemaRegion schemaRegion) {
     try {
-      Template template = ClusterTemplateManager.getInstance().getTemplate(node.getTemplateId());
+      final Template template =
+          ClusterTemplateManager.getInstance().getTemplate(node.getTemplateId());
       schemaRegion.activateSchemaTemplate(node, template);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       logger.error(e.getMessage(), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
@@ -392,40 +443,54 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
 
   @Override
   public TSStatus visitBatchActivateTemplate(
-      BatchActivateTemplateNode node, ISchemaRegion schemaRegion) {
-    for (Map.Entry<PartialPath, Pair<Integer, Integer>> entry :
+      final BatchActivateTemplateNode node, final ISchemaRegion schemaRegion) {
+    final List<TSStatus> statusList = new ArrayList<>();
+    final List<PartialPath> alreadyActivatedDeviceList = new ArrayList<>();
+    for (final Map.Entry<PartialPath, Pair<Integer, Integer>> entry :
         node.getTemplateActivationMap().entrySet()) {
-      Template template = ClusterTemplateManager.getInstance().getTemplate(entry.getValue().left);
+      final Template template =
+          ClusterTemplateManager.getInstance().getTemplate(entry.getValue().left);
       try {
         schemaRegion.activateSchemaTemplate(
             SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
                 entry.getKey(), entry.getValue().right, entry.getValue().left),
             template);
-      } catch (MetadataException e) {
-        logger.error(e.getMessage(), e);
-        return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+      } catch (final MetadataException e) {
+        if (e.getErrorCode() == TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
+          alreadyActivatedDeviceList.add(entry.getKey());
+        } else {
+          logger.error(e.getMessage(), e);
+          statusList.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        }
       }
     }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    if (!alreadyActivatedDeviceList.isEmpty()) {
+      final TemplateIsInUseException e =
+          new TemplateIsInUseException(alreadyActivatedDeviceList.toString());
+      logger.error(e.getMessage(), e);
+      statusList.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+    }
+    return statusList.isEmpty() ? RpcUtils.SUCCESS_STATUS : RpcUtils.getStatus(statusList);
   }
 
   @Override
   public TSStatus visitInternalBatchActivateTemplate(
-      InternalBatchActivateTemplateNode node, ISchemaRegion schemaRegion) {
-    for (Map.Entry<PartialPath, Pair<Integer, Integer>> entry :
+      final InternalBatchActivateTemplateNode node, final ISchemaRegion schemaRegion) {
+    for (final Map.Entry<PartialPath, Pair<Integer, Integer>> entry :
         node.getTemplateActivationMap().entrySet()) {
-      Template template = ClusterTemplateManager.getInstance().getTemplate(entry.getValue().left);
+      final Template template =
+          ClusterTemplateManager.getInstance().getTemplate(entry.getValue().left);
       try {
         schemaRegion.activateSchemaTemplate(
             SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
                 entry.getKey(), entry.getValue().right, entry.getValue().left),
             template);
-      } catch (TemplateIsInUseException e) {
+      } catch (final TemplateIsInUseException e) {
         logger.info(
             String.format(
                 "Device Template has already been activated on path %s, there's no need to activate again.",
                 entry.getKey()));
-      } catch (MetadataException e) {
+      } catch (final MetadataException e) {
         logger.error(e.getMessage(), e);
         return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
       }
@@ -452,22 +517,23 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
 
   @Override
   public TSStatus visitRollbackSchemaBlackList(
-      RollbackSchemaBlackListNode node, ISchemaRegion schemaRegion) {
+      final RollbackSchemaBlackListNode node, final ISchemaRegion schemaRegion) {
     try {
       schemaRegion.rollbackSchemaBlackList(node.getPatternTree());
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       logger.error(e.getMessage(), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }
 
   @Override
-  public TSStatus visitDeleteTimeseries(DeleteTimeSeriesNode node, ISchemaRegion schemaRegion) {
+  public TSStatus visitDeleteTimeseries(
+      final DeleteTimeSeriesNode node, final ISchemaRegion schemaRegion) {
     try {
       schemaRegion.deleteTimeseriesInBlackList(node.getPatternTree());
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       logger.error(e.getMessage(), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
@@ -475,11 +541,12 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
 
   @Override
   public TSStatus visitPreDeactivateTemplate(
-      PreDeactivateTemplateNode node, ISchemaRegion schemaRegion) {
+      final PreDeactivateTemplateNode node, final ISchemaRegion schemaRegion) {
     try {
-      long preDeactivateNum = schemaRegion.constructSchemaBlackListWithTemplate(node);
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, String.valueOf(preDeactivateNum));
-    } catch (MetadataException e) {
+      return RpcUtils.getStatus(
+          TSStatusCode.SUCCESS_STATUS,
+          String.valueOf(schemaRegion.constructSchemaBlackListWithTemplate(node)));
+    } catch (final MetadataException e) {
       logger.error(e.getMessage(), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
@@ -487,18 +554,19 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
 
   @Override
   public TSStatus visitRollbackPreDeactivateTemplate(
-      RollbackPreDeactivateTemplateNode node, ISchemaRegion schemaRegion) {
+      final RollbackPreDeactivateTemplateNode node, final ISchemaRegion schemaRegion) {
     try {
       schemaRegion.rollbackSchemaBlackListWithTemplate(node);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       logger.error(e.getMessage(), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
   }
 
   @Override
-  public TSStatus visitDeactivateTemplate(DeactivateTemplateNode node, ISchemaRegion schemaRegion) {
+  public TSStatus visitDeactivateTemplate(
+      final DeactivateTemplateNode node, final ISchemaRegion schemaRegion) {
     try {
       schemaRegion.deactivateTemplateInBlackList(node);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
@@ -509,15 +577,17 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   }
 
   @Override
-  public TSStatus visitCreateLogicalView(CreateLogicalViewNode node, ISchemaRegion schemaRegion) {
-    Map<PartialPath, ViewExpression> viewPathToSourceMap = node.getViewPathToSourceExpressionMap();
-    List<TSStatus> failingStatus = new ArrayList<>();
-    for (Map.Entry<PartialPath, ViewExpression> entry : viewPathToSourceMap.entrySet()) {
+  public TSStatus visitCreateLogicalView(
+      final CreateLogicalViewNode node, final ISchemaRegion schemaRegion) {
+    final Map<PartialPath, ViewExpression> viewPathToSourceMap =
+        node.getViewPathToSourceExpressionMap();
+    final List<TSStatus> failingStatus = new ArrayList<>();
+    for (final Map.Entry<PartialPath, ViewExpression> entry : viewPathToSourceMap.entrySet()) {
       try {
         schemaRegion.createLogicalView(
             SchemaRegionWritePlanFactory.getCreateLogicalViewPlan(
                 entry.getKey(), entry.getValue()));
-      } catch (MetadataException e) {
+      } catch (final MetadataException e) {
         logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
         failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
@@ -529,14 +599,15 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   }
 
   @Override
-  public TSStatus visitAlterLogicalView(AlterLogicalViewNode node, ISchemaRegion schemaRegion) {
-    Map<PartialPath, ViewExpression> viewPathToSourceMap = node.getViewPathToSourceMap();
-    List<TSStatus> failingStatus = new ArrayList<>();
-    for (Map.Entry<PartialPath, ViewExpression> entry : viewPathToSourceMap.entrySet()) {
+  public TSStatus visitAlterLogicalView(
+      final AlterLogicalViewNode node, final ISchemaRegion schemaRegion) {
+    final Map<PartialPath, ViewExpression> viewPathToSourceMap = node.getViewPathToSourceMap();
+    final List<TSStatus> failingStatus = new ArrayList<>();
+    for (final Map.Entry<PartialPath, ViewExpression> entry : viewPathToSourceMap.entrySet()) {
       try {
         schemaRegion.alterLogicalView(
             SchemaRegionWritePlanFactory.getAlterLogicalViewPlan(entry.getKey(), entry.getValue()));
-      } catch (MetadataException e) {
+      } catch (final MetadataException e) {
         logger.warn("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
         failingStatus.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
@@ -549,10 +620,11 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
 
   @Override
   public TSStatus visitConstructLogicalViewBlackList(
-      ConstructLogicalViewBlackListNode node, ISchemaRegion schemaRegion) {
+      final ConstructLogicalViewBlackListNode node, final ISchemaRegion schemaRegion) {
     try {
-      long preDeletedNum = schemaRegion.constructLogicalViewBlackList(node.getPatternTree());
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, String.valueOf(preDeletedNum));
+      return RpcUtils.getStatus(
+          TSStatusCode.SUCCESS_STATUS,
+          String.valueOf(schemaRegion.constructLogicalViewBlackList(node.getPatternTree())));
     } catch (MetadataException e) {
       logger.error(e.getMessage(), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
@@ -561,11 +633,11 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
 
   @Override
   public TSStatus visitRollbackLogicalViewBlackList(
-      RollbackLogicalViewBlackListNode node, ISchemaRegion schemaRegion) {
+      final RollbackLogicalViewBlackListNode node, final ISchemaRegion schemaRegion) {
     try {
       schemaRegion.rollbackLogicalViewBlackList(node.getPatternTree());
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       logger.error(e.getMessage(), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
@@ -636,6 +708,54 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       final DeleteTableDeviceNode node, final ISchemaRegion schemaRegion) {
     try {
       schemaRegion.deleteTableDevice(node);
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } catch (final MetadataException e) {
+      logger.error(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus visitTableAttributeColumnDrop(
+      final TableAttributeColumnDropNode node, final ISchemaRegion schemaRegion) {
+    try {
+      schemaRegion.dropTableAttribute(node);
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } catch (final MetadataException e) {
+      logger.error(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus visitConstructTableDevicesBlackList(
+      final ConstructTableDevicesBlackListNode node, final ISchemaRegion schemaRegion) {
+    try {
+      final long preDeletedNum = schemaRegion.constructTableDevicesBlackList(node);
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, String.valueOf(preDeletedNum));
+    } catch (final MetadataException e) {
+      logger.error(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus visitRollbackTableDevicesBlackList(
+      final RollbackTableDevicesBlackListNode node, final ISchemaRegion schemaRegion) {
+    try {
+      schemaRegion.rollbackTableDevicesBlackList(node);
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } catch (final MetadataException e) {
+      logger.error(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus visitDeleteTableDevicesInBlackList(
+      final DeleteTableDevicesInBlackListNode node, final ISchemaRegion schemaRegion) {
+    try {
+      schemaRegion.deleteTableDevicesInBlackList(node);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (final MetadataException e) {
       logger.error(e.getMessage(), e);

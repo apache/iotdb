@@ -27,7 +27,8 @@ import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopic
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RegisterAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.UpdateAINodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
@@ -48,17 +49,22 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterData
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropTableModelFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropTreeModelFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.UpdateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelInNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.AutoCleanPartitionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
@@ -96,8 +102,10 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessag
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
-import org.apache.iotdb.confignode.consensus.request.write.table.DropTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
@@ -240,6 +248,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case CreateDataPartition:
           plan = new CreateDataPartitionPlan();
           break;
+        case AutoCleanPartitionTable:
+          plan = new AutoCleanPartitionTablePlan();
+          break;
         case DeleteProcedure:
           plan = new DeleteProcedurePlan();
           break;
@@ -275,7 +286,36 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case RevokeRoleFromUser:
         case UpdateUser:
         case CreateUserWithRawPassword:
-          plan = new AuthorPlan(configPhysicalPlanType);
+          plan = new AuthorTreePlan(configPhysicalPlanType);
+          break;
+        case RCreateUser:
+        case RCreateRole:
+        case RUpdateUser:
+        case RDropRole:
+        case RDropUser:
+        case RGrantUserRole:
+        case RRevokeUserRole:
+        case RGrantRoleAny:
+        case RGrantUserAny:
+        case RGrantUserAll:
+        case RGrantRoleAll:
+        case RGrantUserDBPriv:
+        case RGrantUserTBPriv:
+        case RGrantRoleDBPriv:
+        case RGrantRoleTBPriv:
+        case RRevokeRoleAny:
+        case RRevokeUserAny:
+        case RRevokeUserAll:
+        case RRevokeRoleAll:
+        case RRevokeUserDBPriv:
+        case RRevokeUserTBPriv:
+        case RRevokeRoleDBPriv:
+        case RRevokeRoleTBPriv:
+        case RGrantUserSysPri:
+        case RGrantRoleSysPri:
+        case RRevokeUserSysPri:
+        case RRevokeRoleSysPri:
+          plan = new AuthorRelationalPlan(configPhysicalPlanType);
           break;
         case ApplyConfigNode:
           plan = new ApplyConfigNodePlan();
@@ -292,8 +332,14 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case CreateFunction:
           plan = new CreateFunctionPlan();
           break;
-        case DropFunction:
-          plan = new DropFunctionPlan();
+        case UpdateFunction:
+          plan = new UpdateFunctionPlan();
+          break;
+        case DropTreeModelFunction:
+          plan = new DropTreeModelFunctionPlan();
+          break;
+        case DropTableModelFunction:
+          plan = new DropTableModelFunctionPlan();
           break;
         case AddTriggerInTable:
           plan = new AddTriggerInTablePlan();
@@ -332,7 +378,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           plan = new ExtendSchemaTemplatePlan();
           break;
         case PreCreateTable:
-          plan = new PreCreateTablePlan();
+          plan = new PreCreateTablePlan(configPhysicalPlanType);
           break;
         case RollbackCreateTable:
           plan = new RollbackCreateTablePlan();
@@ -352,8 +398,14 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case PreDeleteTable:
           plan = new PreDeleteTablePlan();
           break;
-        case DropTable:
-          plan = new DropTablePlan();
+        case CommitDeleteTable:
+          plan = new CommitDeleteTablePlan();
+          break;
+        case PreDeleteColumn:
+          plan = new PreDeleteColumnPlan();
+          break;
+        case CommitDeleteColumn:
+          plan = new CommitDeleteColumnPlan();
           break;
         case CreatePipeSinkV1:
           plan = new CreatePipeSinkPlanV1();
@@ -435,6 +487,12 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case PipeDeactivateTemplate:
           plan = new PipeDeactivateTemplatePlan();
+          break;
+        case PipeCreateTable:
+          plan = new PipeCreateTablePlan();
+          break;
+        case PipeDeleteDevices:
+          plan = new PipeDeleteDevicesPlan();
           break;
         case UpdateTriggersOnTransferNodes:
           plan = new UpdateTriggersOnTransferNodesPlan();

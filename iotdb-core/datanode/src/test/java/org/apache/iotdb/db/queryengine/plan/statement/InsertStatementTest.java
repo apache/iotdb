@@ -60,11 +60,11 @@ public class InsertStatementTest {
     columnSchemas =
         Arrays.asList(
             new ColumnSchema(
-                "id1", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.ID),
+                "id1", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.TAG),
             new ColumnSchema(
-                "id2", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.ID),
+                "id2", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.TAG),
             new ColumnSchema(
-                "id3", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.ID),
+                "id3", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.TAG),
             new ColumnSchema(
                 "attr1",
                 TypeFactory.getType(TSDataType.STRING),
@@ -76,25 +76,17 @@ public class InsertStatementTest {
                 false,
                 TsTableColumnCategory.ATTRIBUTE),
             new ColumnSchema(
-                "m1",
-                TypeFactory.getType(TSDataType.DOUBLE),
-                false,
-                TsTableColumnCategory.MEASUREMENT),
+                "m1", TypeFactory.getType(TSDataType.DOUBLE), false, TsTableColumnCategory.FIELD),
             new ColumnSchema(
-                "m2",
-                TypeFactory.getType(TSDataType.DOUBLE),
-                false,
-                TsTableColumnCategory.MEASUREMENT),
+                "m2", TypeFactory.getType(TSDataType.DOUBLE), false, TsTableColumnCategory.FIELD),
             new ColumnSchema(
-                "m3",
-                TypeFactory.getType(TSDataType.INT64),
-                false,
-                TsTableColumnCategory.MEASUREMENT));
+                "m3", TypeFactory.getType(TSDataType.INT64), false, TsTableColumnCategory.FIELD));
     tableSchema = new TableSchema("table1", columnSchemas);
     when(metadata.validateTableHeaderSchema(
             any(String.class),
             any(TableSchema.class),
             any(MPPQueryContext.class),
+            any(Boolean.class),
             any(Boolean.class)))
         .thenReturn(Optional.of(tableSchema));
     when(queryContext.getSession()).thenReturn(sessionInfo);
@@ -115,16 +107,16 @@ public class InsertStatementTest {
           TSDataType.STRING,
           TSDataType.STRING,
           TSDataType.DOUBLE,
-          TSDataType.INT64,
+          TSDataType.BLOB,
           TSDataType.STRING
         });
     insertRowStatement.setColumnCategories(
         new TsTableColumnCategory[] {
-          TsTableColumnCategory.ID,
+          TsTableColumnCategory.TAG,
           TsTableColumnCategory.ATTRIBUTE,
-          TsTableColumnCategory.MEASUREMENT,
-          TsTableColumnCategory.MEASUREMENT,
-          TsTableColumnCategory.ID
+          TsTableColumnCategory.FIELD,
+          TsTableColumnCategory.FIELD,
+          TsTableColumnCategory.TAG
         });
     insertRowStatement.setValues(new String[] {"id2", "attr2", "m1", "m2", "id1"});
     InsertRow insertRow = new InsertRow(insertRowStatement, queryContext);
@@ -149,11 +141,11 @@ public class InsertStatementTest {
         insertRowStatement.getDataTypes());
     assertArrayEquals(
         new TsTableColumnCategory[] {
-          TsTableColumnCategory.ID,
-          TsTableColumnCategory.ID,
-          TsTableColumnCategory.ID,
-          TsTableColumnCategory.MEASUREMENT,
-          TsTableColumnCategory.MEASUREMENT,
+          TsTableColumnCategory.TAG,
+          TsTableColumnCategory.TAG,
+          TsTableColumnCategory.TAG,
+          TsTableColumnCategory.FIELD,
+          TsTableColumnCategory.FIELD,
           TsTableColumnCategory.ATTRIBUTE
         },
         insertRowStatement.getColumnCategories());
@@ -167,7 +159,7 @@ public class InsertStatementTest {
     // category is ID in row but ATTRIBUTE in table
     insertRowStatement.setMeasurements(new String[] {"id1"});
     insertRowStatement.setDataTypes(new TSDataType[] {TSDataType.STRING});
-    insertRowStatement.setColumnCategories(new TsTableColumnCategory[] {TsTableColumnCategory.ID});
+    insertRowStatement.setColumnCategories(new TsTableColumnCategory[] {TsTableColumnCategory.TAG});
     insertRowStatement.setValues(new String[] {"id1"});
     InsertRow insertRow = new InsertRow(insertRowStatement, null);
 
@@ -184,6 +176,7 @@ public class InsertStatementTest {
             any(String.class),
             any(TableSchema.class),
             any(MPPQueryContext.class),
+            any(Boolean.class),
             any(Boolean.class)))
         .thenReturn(Optional.of(tableSchema));
 
@@ -199,7 +192,7 @@ public class InsertStatementTest {
     // id1 not in the table
     insertRowStatement.setMeasurements(new String[] {"id1"});
     insertRowStatement.setDataTypes(new TSDataType[] {TSDataType.STRING});
-    insertRowStatement.setColumnCategories(new TsTableColumnCategory[] {TsTableColumnCategory.ID});
+    insertRowStatement.setColumnCategories(new TsTableColumnCategory[] {TsTableColumnCategory.TAG});
     insertRowStatement.setValues(new String[] {"id1"});
     InsertRow insertRow = new InsertRow(insertRowStatement, null);
 
@@ -207,12 +200,13 @@ public class InsertStatementTest {
     columnSchemas =
         Collections.singletonList(
             new ColumnSchema(
-                "id2", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.ID));
+                "id2", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.TAG));
     tableSchema = new TableSchema("table1", columnSchemas);
     when(metadata.validateTableHeaderSchema(
             any(String.class),
             any(TableSchema.class),
             any(MPPQueryContext.class),
+            any(Boolean.class),
             any(Boolean.class)))
         .thenReturn(Optional.of(tableSchema));
 

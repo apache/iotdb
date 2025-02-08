@@ -26,8 +26,6 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.BlobType;
-import org.apache.tsfile.read.common.type.BooleanType;
-import org.apache.tsfile.read.common.type.DateType;
 import org.apache.tsfile.read.common.type.DoubleType;
 import org.apache.tsfile.read.common.type.FloatType;
 import org.apache.tsfile.read.common.type.RowType;
@@ -51,6 +49,8 @@ import static java.lang.Double.doubleToLongBits;
 import static java.lang.Float.floatToIntBits;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.XxHash64.FALSE_XX_HASH;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.XxHash64.TRUE_XX_HASH;
+import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
+import static org.apache.tsfile.read.common.type.DateType.DATE;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.utils.BytesUtils.bytesToDouble;
@@ -97,7 +97,7 @@ public class TypeUtil {
   public static Type getType(TypeEnum typeEnum, List<Type> subTypes) {
     switch (typeEnum) {
       case BOOLEAN:
-        return BooleanType.BOOLEAN;
+        return BOOLEAN;
       case INT32:
         return INT32;
       case INT64:
@@ -115,7 +115,7 @@ public class TypeUtil {
       case TIMESTAMP:
         return TimestampType.TIMESTAMP;
       case DATE:
-        return DateType.DATE;
+        return DATE;
       case ROW:
         return RowType.anonymous(subTypes);
       default:

@@ -40,6 +40,7 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
   public static final String FIRST_PHASE = "first_phase";
   public static final String SECOND_PHASE = "second_phase";
   public static final String LOAD_LOCALLY = "load_locally";
+  public static final String CAST_TABLETS = "cast_tablets";
 
   private LoadTsFileCostMetricsSet() {
     // empty constructor
@@ -49,6 +50,7 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
   private Timer firstPhaseTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer secondPhaseTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer loadLocallyTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer castTabletsTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   private Counter diskIOCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
@@ -65,6 +67,9 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
         break;
       case LOAD_LOCALLY:
         loadLocallyTimer.updateNanos(costTimeInNanos);
+        break;
+      case CAST_TABLETS:
+        castTabletsTimer.updateNanos(costTimeInNanos);
         break;
       default:
         throw new UnsupportedOperationException("Unsupported stage: " + stage);
@@ -98,6 +103,12 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             LOAD_LOCALLY);
+    castTabletsTimer =
+        metricService.getOrCreateTimer(
+            Metric.LOAD_TIME_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            CAST_TABLETS);
 
     diskIOCounter =
         metricService.getOrCreateCounter(
@@ -109,7 +120,7 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    Arrays.asList(ANALYSIS, FIRST_PHASE, SECOND_PHASE, LOAD_LOCALLY)
+    Arrays.asList(ANALYSIS, FIRST_PHASE, SECOND_PHASE, LOAD_LOCALLY, CAST_TABLETS)
         .forEach(
             stage ->
                 metricService.remove(

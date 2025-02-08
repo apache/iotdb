@@ -122,11 +122,8 @@ public interface IWritableMemChunk extends WALEntryValue {
    * reference count
    *
    * <p>This interface should be synchronized for concurrent with getSortedTvListForQuery
-   *
-   * @param ignoreAllNullRows whether to ignore all null rows, true for tree model, false for table
-   *     model
    */
-  void sortTvListForFlush(boolean ignoreAllNullRows);
+  void sortTvListForFlush();
 
   default TVList getTVList() {
     return null;

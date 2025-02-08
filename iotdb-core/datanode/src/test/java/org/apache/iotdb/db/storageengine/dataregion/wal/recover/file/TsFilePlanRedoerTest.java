@@ -105,7 +105,7 @@ public class TsFilePlanRedoerTest {
     if (tsFileResource != null) {
       tsFileResource.close();
     }
-    File modsFile = new File(FILE_NAME.concat(ModificationFile.FILE_SUFFIX));
+    File modsFile = ModificationFile.getExclusiveMods(new File(FILE_NAME));
     if (modsFile.exists()) {
       modsFile.delete();
     }
@@ -604,7 +604,7 @@ public class TsFilePlanRedoerTest {
             Long.MAX_VALUE);
 
     // redo DeleteDataNode, vsg processor is used to test IdTable, don't test IdTable here
-    File modsFile = new File(FILE_NAME.concat(ModificationFile.FILE_SUFFIX));
+    File modsFile = ModificationFile.getExclusiveMods(new File(FILE_NAME));
     assertFalse(modsFile.exists());
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource);
     planRedoer.redoDelete(deleteDataNode);
@@ -753,24 +753,24 @@ public class TsFilePlanRedoerTest {
               new MeasurementSchema("s3", TSDataType.BOOLEAN, TSEncoding.RLE),
               new MeasurementSchema("s4", TSDataType.FLOAT, TSEncoding.RLE),
               new MeasurementSchema("s5", TSDataType.TEXT, TSEncoding.PLAIN)));
-      writer.write(
-          new TSRecord(1, DEVICE1_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE1_NAME, 1)
               .addTuple(new IntDataPoint("s1", 1))
               .addTuple(new LongDataPoint("s2", 1)));
-      writer.write(
-          new TSRecord(2, DEVICE1_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE1_NAME, 2)
               .addTuple(new IntDataPoint("s1", 2))
               .addTuple(new LongDataPoint("s2", 2)));
-      writer.write(
-          new TSRecord(3, DEVICE2_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE2_NAME, 3)
               .addTuple(new FloatDataPoint("s1", 3))
               .addTuple(new DoubleDataPoint("s2", 3)));
-      writer.write(
-          new TSRecord(4, DEVICE2_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE2_NAME, 4)
               .addTuple(new FloatDataPoint("s1", 4))
               .addTuple(new DoubleDataPoint("s2", 4)));
-      writer.writeAligned(
-          new TSRecord(5, DEVICE3_NAME)
+      writer.writeRecord(
+          new TSRecord(DEVICE3_NAME, 5)
               .addTuple(new IntDataPoint("s1", 5))
               .addTuple(new LongDataPoint("s2", 5))
               .addTuple(new BooleanDataPoint("s3", true))

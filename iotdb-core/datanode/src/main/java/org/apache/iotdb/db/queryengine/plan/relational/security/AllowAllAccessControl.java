@@ -19,4 +19,73 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
-public class AllowAllAccessControl implements AccessControl {}
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
+
+public class AllowAllAccessControl implements AccessControl {
+  @Override
+  public void checkCanCreateDatabase(String userName, String databaseName) {
+    // allow anything
+  }
+
+  @Override
+  public void checkCanDropDatabase(String userName, String databaseName) {
+    // allow anything
+  }
+
+  @Override
+  public void checkCanAlterDatabase(String userName, String databaseName) {
+    // allow anything
+  }
+
+  @Override
+  public void checkCanShowOrUseDatabase(String userName, String databaseName) {
+    // allow anything
+  }
+
+  @Override
+  public void checkCanCreateTable(String userName, QualifiedObjectName tableName) {
+    // allow anything
+  }
+
+  @Override
+  public void checkCanDropTable(String userName, QualifiedObjectName tableName) {
+    // allow anything
+  }
+
+  @Override
+  public void checkCanAlterTable(String userName, QualifiedObjectName tableName) {
+    // allow anything
+  }
+
+  @Override
+  public void checkCanInsertIntoTable(String userName, QualifiedObjectName tableName) {
+    // allow anything
+  }
+
+  @Override
+  public void checkCanSelectFromTable(String userName, QualifiedObjectName tableName) {
+    // allow anything
+  }
+
+  @Override
+  public void checkCanDeleteFromTable(String userName, QualifiedObjectName tableName) {
+    // allow anything
+  }
+
+  @Override
+  public void checkCanShowOrDescTable(String userName, QualifiedObjectName tableName) {
+    // allow anything
+  }
+
+  @Override
+  public void checkUserHasMaintainPrivilege(String userName) {
+    // allow anything
+  }
+
+  @Override
+  public void checkUserCanRunRelationalAuthorStatement(
+      String userName, RelationalAuthorStatement statement) {
+    // allow anything
+  }
+}

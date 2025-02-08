@@ -39,6 +39,7 @@ import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -91,6 +92,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_USER_KEY;
 
+@TreeModel
 public class IoTDBLegacyPipeConnector implements PipeConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBLegacyPipeConnector.class);
@@ -235,7 +237,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
       client =
           new IoTDBSyncClient(
               new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs(COMMON_CONFIG.getConnectionTimeoutInMS())
+                  .setConnectionTimeoutMs(COMMON_CONFIG.getDnConnectionTimeoutInMS())
                   .setRpcThriftCompressionEnabled(COMMON_CONFIG.isRpcThriftCompressionEnabled())
                   .build(),
               ipAddress,
@@ -345,7 +347,7 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
     final List<Tablet> tablets = pipeInsertNodeInsertionEvent.convertToTablets();
     for (int i = 0; i < tablets.size(); ++i) {
       final Tablet tablet = tablets.get(i);
-      if (Objects.isNull(tablet) || tablet.rowSize == 0) {
+      if (Objects.isNull(tablet) || tablet.getRowSize() == 0) {
         continue;
       }
       if (pipeInsertNodeInsertionEvent.isAligned(i)) {

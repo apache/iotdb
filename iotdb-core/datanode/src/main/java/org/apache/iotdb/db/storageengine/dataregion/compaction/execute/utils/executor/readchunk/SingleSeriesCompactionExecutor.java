@@ -79,7 +79,7 @@ public class SingleSeriesCompactionExecutor {
       CompactionTsFileWriter fileWriter,
       TsFileResource targetResource) {
     this.device = device;
-    this.measurement = measurementSchema.getMeasurementId();
+    this.measurement = measurementSchema.getMeasurementName();
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
     this.fileWriter = fileWriter;
     this.schema = measurementSchema;

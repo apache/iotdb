@@ -44,8 +44,6 @@ def _parse_uri(uri):
         is_network_path (bool): True if the url is a network path, False otherwise
         parsed_uri (str): parsed uri to get related file
     """
-    # remove quotation mark in uri
-    uri = uri[1:-1]
 
     parse_result = urlparse(uri)
     is_network_path = parse_result.scheme in ('http', 'https')

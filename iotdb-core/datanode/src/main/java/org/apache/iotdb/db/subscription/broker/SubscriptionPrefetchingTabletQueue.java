@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
@@ -145,13 +146,22 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
 
           // 3. Poll next tablets
           try {
-            ev.fetchNextResponse();
-          } catch (final Exception ignored) {
-            // no exceptions will be thrown
+            executeReceiverSubtask(
+                () -> {
+                  ev.fetchNextResponse(offset);
+                  return null;
+                },
+                SubscriptionAgent.receiver().remainingMs());
+            ev.recordLastPolledTimestamp();
+            eventRef.set(ev);
+          } catch (final Exception e) {
+            final String errorMessage =
+                String.format(
+                    "exception occurred when fetching next response: %s, consumer id: %s, commit context: %s, offset: %s, prefetching queue: %s",
+                    e, consumerId, commitContext, offset, this);
+            LOGGER.warn(errorMessage);
+            eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
           }
-
-          ev.recordLastPolledTimestamp();
-          eventRef.set(ev);
 
           return ev;
         });
@@ -163,7 +173,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
 
   @Override
   protected boolean onEvent(final TsFileInsertionEvent event) {
-    return batches.onEvent((EnrichedEvent) event, this::enqueueEventToPrefetchingQueue);
+    return batches.onEvent((EnrichedEvent) event, this::prefetchEvent);
   }
 
   /////////////////////////////// stringify ///////////////////////////////

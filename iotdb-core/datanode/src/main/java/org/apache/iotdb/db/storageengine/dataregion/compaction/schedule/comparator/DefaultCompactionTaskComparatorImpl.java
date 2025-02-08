@@ -21,11 +21,11 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.compara
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionPriority;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -38,6 +38,14 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
   @SuppressWarnings({"squid:S3776", "javabugs:S6320"})
   @Override
   public int compare(AbstractCompactionTask o1, AbstractCompactionTask o2) {
+    if (o1 instanceof RepairUnsortedFileCompactionTask
+        && o2 instanceof RepairUnsortedFileCompactionTask) {
+      return o1.getSerialId() < o2.getSerialId() ? -1 : 1;
+    } else if (o1 instanceof RepairUnsortedFileCompactionTask) {
+      return -1;
+    } else if (o2 instanceof RepairUnsortedFileCompactionTask) {
+      return 1;
+    }
     if (o1 instanceof InsertionCrossSpaceCompactionTask
         && o2 instanceof InsertionCrossSpaceCompactionTask) {
       return o1.getSerialId() < o2.getSerialId() ? -1 : 1;
@@ -82,14 +90,16 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
 
   public int compareInnerSpaceCompactionTask(
       InnerSpaceCompactionTask o1, InnerSpaceCompactionTask o2) {
-    // if compactionTaskType of o1 and o2 are different
-    // we prefer to execute task type with Repair type
-    if (o1.getCompactionTaskType() != o2.getCompactionTaskType()) {
-      return o1.getCompactionTaskType() == CompactionTaskType.REPAIR ? -1 : 1;
+    // If the average file size of the two compaction tasks differs by more than 10%,
+    // we prefer to execute task with smaller avg file size
+    double avgFileSize1 = o1.getAvgFileSize();
+    double avgFileSize2 = o2.getAvgFileSize();
+    if (10 * Math.abs(avgFileSize1 - avgFileSize2) > Math.min(avgFileSize1, avgFileSize2)) {
+      return Double.compare(avgFileSize1, avgFileSize2);
     }
 
-    // if the sum of compaction count of the selected files are different
-    // we prefer to execute task with smaller compaction count
+    // if the avg of compaction count of the selected files are different
+    // we prefer to execute task with smaller avg compaction count
     // this can reduce write amplification
     double avgCompactionCount1 = o1.getAvgCompactionCount();
     double avgCompactionCount2 = o2.getAvgCompactionCount();

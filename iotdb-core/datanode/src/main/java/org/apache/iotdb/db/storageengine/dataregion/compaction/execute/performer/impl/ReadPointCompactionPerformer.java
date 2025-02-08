@@ -103,7 +103,7 @@ public class ReadPointCompactionPerformer
     long queryId = QueryResourceManager.getInstance().assignCompactionQueryId();
     FragmentInstanceContext fragmentInstanceContext =
         FragmentInstanceContext.createFragmentInstanceContextForCompaction(queryId);
-    QueryDataSource queryDataSource = new QueryDataSource(seqFiles, unseqFiles);
+    QueryDataSource queryDataSource = initQueryDataSource();
     QueryResourceManager.getInstance()
         .getQueryFileManager()
         .addUsedFilesForQuery(queryId, queryDataSource);
@@ -142,6 +142,10 @@ public class ReadPointCompactionPerformer
     }
   }
 
+  protected QueryDataSource initQueryDataSource() {
+    return new QueryDataSource(seqFiles, unseqFiles);
+  }
+
   @Override
   public void setTargetFiles(List<TsFileResource> targetFiles) {
     this.targetFiles = targetFiles;
@@ -167,7 +171,7 @@ public class ReadPointCompactionPerformer
     }
     List<String> existedMeasurements =
         measurementSchemas.stream()
-            .map(IMeasurementSchema::getMeasurementId)
+            .map(IMeasurementSchema::getMeasurementName)
             .collect(Collectors.toList());
 
     fragmentInstanceContext.setIgnoreAllNullRows(device.getTableName().startsWith("root."));

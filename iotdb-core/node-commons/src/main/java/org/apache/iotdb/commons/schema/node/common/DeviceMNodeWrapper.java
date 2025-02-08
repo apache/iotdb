@@ -193,12 +193,12 @@ public class DeviceMNodeWrapper<N extends IMNode<N>, BasicNode extends IInternal
   }
 
   @Override
-  public void setUseTemplate(boolean useTemplate) {
+  public void setUseTemplate(final boolean useTemplate) {
     basicMNode.getDeviceInfo().setUseTemplate(useTemplate);
   }
 
   @Override
-  public void setSchemaTemplateId(int schemaTemplateId) {
+  public void setSchemaTemplateId(final int schemaTemplateId) {
     basicMNode.getDeviceInfo().setSchemaTemplateId(schemaTemplateId);
   }
 
@@ -213,18 +213,18 @@ public class DeviceMNodeWrapper<N extends IMNode<N>, BasicNode extends IInternal
   }
 
   @Override
-  public boolean isPreDeactivateTemplate() {
-    return basicMNode.getDeviceInfo().isPreDeactivateTemplate();
+  public boolean isPreDeactivateSelfOrTemplate() {
+    return basicMNode.getDeviceInfo().isPreDeactivateSelfOrTemplate();
   }
 
   @Override
-  public void preDeactivateTemplate() {
-    basicMNode.getDeviceInfo().preDeactivateTemplate();
+  public void preDeactivateSelfOrTemplate() {
+    basicMNode.getDeviceInfo().preDeactivateSelfOrTemplate();
   }
 
   @Override
-  public void rollbackPreDeactivateTemplate() {
-    basicMNode.getDeviceInfo().rollbackPreDeactivateTemplate();
+  public void rollbackPreDeactivateSelfOrTemplate() {
+    basicMNode.getDeviceInfo().rollbackPreDeactivateSelfOrTemplate();
   }
 
   @Override

@@ -103,6 +103,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -252,6 +253,7 @@ public class OperatorMemoryTest {
   public void lastCacheScanOperatorTest() {
     TsBlock tsBlock = Mockito.mock(TsBlock.class);
     Mockito.when(tsBlock.getRetainedSizeInBytes()).thenReturn(1024L);
+    Mockito.when(tsBlock.getSizeInBytes()).thenReturn(1024L);
     LastCacheScanOperator lastCacheScanOperator = new LastCacheScanOperator(null, null, tsBlock);
 
     assertEquals(1024, lastCacheScanOperator.calculateMaxPeekMemory());
@@ -382,6 +384,7 @@ public class OperatorMemoryTest {
   public void lastQuerySortOperatorTest() {
     TsBlock tsBlock = Mockito.mock(TsBlock.class);
     Mockito.when(tsBlock.getRetainedSizeInBytes()).thenReturn(16 * 1024L);
+    Mockito.when(tsBlock.getSizeInBytes()).thenReturn(16 * 1024L);
     Mockito.when(tsBlock.getPositionCount()).thenReturn(16);
     List<Operator> children = new ArrayList<>(4);
 
@@ -1206,7 +1209,8 @@ public class OperatorMemoryTest {
                         true),
                     o.getStep())));
 
-    ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, true, true);
+    ITimeRangeIterator timeRangeIterator =
+        initTimeRangeIterator(groupByTimeParameter, true, true, ZoneId.systemDefault());
     long maxReturnSize =
         AggregationUtil.calculateMaxAggregationResultSize(
             aggregationDescriptors, timeRangeIterator, typeProvider);
@@ -1264,7 +1268,8 @@ public class OperatorMemoryTest {
 
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 1000, new TimeDuration(0, 10), new TimeDuration(0, 10), true);
-    ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, true, false);
+    ITimeRangeIterator timeRangeIterator =
+        initTimeRangeIterator(groupByTimeParameter, true, false, ZoneId.systemDefault());
     long maxReturnSize =
         AggregationUtil.calculateMaxAggregationResultSize(
             aggregationDescriptors, timeRangeIterator, typeProvider);
@@ -1337,7 +1342,8 @@ public class OperatorMemoryTest {
 
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 1000, new TimeDuration(0, 10), new TimeDuration(0, 5), true);
-    ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, true, false);
+    ITimeRangeIterator timeRangeIterator =
+        initTimeRangeIterator(groupByTimeParameter, true, false, ZoneId.systemDefault());
     long maxReturnSize =
         AggregationUtil.calculateMaxAggregationResultSize(
             aggregationDescriptors, timeRangeIterator, typeProvider);
@@ -1351,7 +1357,8 @@ public class OperatorMemoryTest {
             true,
             false,
             groupByTimeParameter,
-            maxReturnSize);
+            maxReturnSize,
+            ZoneId.systemDefault());
 
     long expectedMaxReturnSize =
         200
@@ -1417,7 +1424,8 @@ public class OperatorMemoryTest {
 
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(0, 1000, new TimeDuration(0, 10), new TimeDuration(0, 10), true);
-    ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, true, false);
+    ITimeRangeIterator timeRangeIterator =
+        initTimeRangeIterator(groupByTimeParameter, true, false, ZoneId.systemDefault());
     long maxReturnSize =
         AggregationUtil.calculateMaxAggregationResultSize(
             aggregationDescriptors, timeRangeIterator, typeProvider);

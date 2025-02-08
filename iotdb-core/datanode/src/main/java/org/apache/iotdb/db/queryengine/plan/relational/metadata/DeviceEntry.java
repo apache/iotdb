@@ -45,13 +45,13 @@ import static org.apache.tsfile.utils.ReadWriteIOUtils.write;
  * {@code null}s are trimmed thus will not appear in the {@link IDeviceID}, and it will be like
  * "a.b".
  */
-public class DeviceEntry implements Accountable {
+public abstract class DeviceEntry implements Accountable {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(DeviceEntry.class);
 
-  private final IDeviceID deviceID;
-  private final List<Binary> attributeColumnValues;
+  protected final IDeviceID deviceID;
+  protected final List<Binary> attributeColumnValues;
 
   public DeviceEntry(final IDeviceID deviceID, final List<Binary> attributeColumnValues) {
     this.deviceID = deviceID;
@@ -78,6 +78,11 @@ public class DeviceEntry implements Accountable {
     for (final Binary value : attributeColumnValues) {
       serializeBinary(byteBuffer, value);
     }
+    write(
+        this instanceof AlignedDeviceEntry
+            ? DeviceEntryType.ALIGNED.ordinal()
+            : DeviceEntryType.NON_ALIGNED.ordinal(),
+        byteBuffer);
   }
 
   public void serialize(final DataOutputStream stream) throws IOException {
@@ -86,6 +91,11 @@ public class DeviceEntry implements Accountable {
     for (final Binary value : attributeColumnValues) {
       serializeBinary(stream, value);
     }
+    write(
+        this instanceof AlignedDeviceEntry
+            ? DeviceEntryType.ALIGNED.ordinal()
+            : DeviceEntryType.NON_ALIGNED.ordinal(),
+        stream);
   }
 
   public static DeviceEntry deserialize(final ByteBuffer byteBuffer) {
@@ -95,7 +105,7 @@ public class DeviceEntry implements Accountable {
     while (size-- > 0) {
       attributeColumnValues.add(deserializeBinary(byteBuffer));
     }
-    return new DeviceEntry(iDeviceID, attributeColumnValues);
+    return constructDeviceEntry(iDeviceID, attributeColumnValues, readInt(byteBuffer));
   }
 
   public static void serializeBinary(final ByteBuffer byteBuffer, final Binary binary) {
@@ -124,14 +134,22 @@ public class DeviceEntry implements Accountable {
     return new Binary(bytes);
   }
 
-  @Override
-  public String toString() {
-    return "DeviceEntry{"
-        + "deviceID="
-        + deviceID
-        + ", attributeColumnValues="
-        + attributeColumnValues
-        + '}';
+  public enum DeviceEntryType {
+    ALIGNED,
+    NON_ALIGNED
+  }
+
+  private static DeviceEntry constructDeviceEntry(
+      IDeviceID deviceID, List<Binary> attributeColumnValues, int ordinal) {
+    switch (DeviceEntryType.values()[ordinal]) {
+      case ALIGNED:
+        return new AlignedDeviceEntry(deviceID, attributeColumnValues);
+      case NON_ALIGNED:
+        return new NonAlignedAlignedDeviceEntry(deviceID, attributeColumnValues);
+      default:
+        throw new UnsupportedOperationException(
+            "Unknown AlignedDeviceEntry Type: " + DeviceEntryType.values()[ordinal]);
+    }
   }
 
   @Override

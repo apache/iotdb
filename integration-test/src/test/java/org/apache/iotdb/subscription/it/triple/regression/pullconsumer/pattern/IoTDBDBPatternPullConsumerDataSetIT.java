@@ -23,7 +23,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionConsumer;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
@@ -56,7 +56,7 @@ public class IoTDBDBPatternPullConsumerDataSetIT extends AbstractSubscriptionReg
   private static final String topicName = "topicDBPatternPullConsumerDataSet";
   private static List<IMeasurementSchema> schemaList = new ArrayList<>();
   private String pattern = database + ".**";
-  private static SubscriptionPullConsumer consumer;
+  private static SubscriptionTreePullConsumer consumer;
 
   @Override
   @Before
@@ -106,7 +106,7 @@ public class IoTDBDBPatternPullConsumerDataSetIT extends AbstractSubscriptionReg
     Tablet tablet = new Tablet(device, schemaList, 10);
     int rowIndex = 0;
     for (int row = 0; row < 5; row++) {
-      rowIndex = tablet.rowSize++;
+      rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue("s_0", rowIndex, row * 20L + row);
       tablet.addValue("s_1", rowIndex, row + 2.45);

@@ -19,6 +19,369 @@
 
 -->
 
+# Apache IoTDB 1.3.3
+
+## Features & Improvements
+
+- Storage Engine: Added new data types String, Blob, Date, and Timestamp.
+- Storage Engine: Multi-level storage has added a rate-limiting mechanism.
+- Storage Engine: New merge target file splitting feature, with additional configuration file parameters, and improved memory control performance of the merge module.
+- Data Query: Filter performance optimization, enhancing the speed of aggregate queries and where condition queries.
+- Data Query: New client query requests load balancing optimization.
+- Data Query: New active metadata statistics query added.
+- Data Query: Optimized memory control strategy during the query planning phase.
+- Data Synchronization: The sender supports transferring files to a specified directory, and the receiver automatically loads them into IoTDB.
+- Data Synchronization: The receiver has a new automatic conversion mechanism for data type requests.
+- Data Synchronization: Enhanced observability on the receiver side, supporting ops/latency statistics for multiple internal interfaces, consolidated into a single pipeTransfer display.
+- Data Loading: DataNode actively listens and loads TsFiles, with additional observability metrics.
+- Stream Processing Module: New data subscription capability, supporting subscription to database data in the form of data points or tsfile files.
+- Stream Processing Module: Alter Pipe supports the ability to alter the source.
+- System Management: Optimized configuration files, with the original three configuration files merged into one, reducing user operational costs.
+- System Management: Optimized restart recovery performance, reducing startup time.
+- System Management: Internal addition of monitoring items such as device count, estimated remaining time for data synchronization, size of data to be synchronized, and synchronization speed.
+- Scripts and Tools: The import-tsfile script is expanded to support running the script on a different server from the IoTDB server.
+- Scripts and Tools: New metadata import and export scripts added.
+- Scripts and Tools: New support for Kubernetes Helm added.
+- AINode: AINode module added.
+  ...
+
+## Bugs
+
+- Fixed the issue of NullPointerException (NPE) when merging chunks with modifications and empty pages in the sequential space.
+- Fixed the issue where the wrong parent file was used when reassigning the file position for skipped files during merge, leading to failure in creating hard links.
+- Fixed the issue where the newly added four data types had null values written, and the TsFile handling of the STRING type was incorrect, causing a BufferUnderflowException: null.
+- Fixed the issue in the high availability scenario where stopping the DataNode resulted in a PipeException: Failed to start consensus pipe.
+- Fixed the issue in Stream mode where the first batch of written data points might require a flush to be synchronized.
+- Fixed the compatibility issue with pipe plugin upgrades.
+- Fixed the issue where the `ORDER BY` clause became ineffective when used in combination with `LIMIT` in the last query.
+  ...
+
+# Apache IoTDB 1.3.2
+
+## Features & Improvements
+
+- Storage Module: Performance improvement in the insertRecords interface for writing
+- Query Module: New Explain Analyze statement added (monitoring the time spent on each stage of a single SQL execution)
+- Query Module: New UDAF (User-Defined Aggregate Function) framework added
+- Query Module: New MaxBy/MinBy functions added, supporting the retrieval of maximum/minimum values along with the corresponding timestamps
+- Query Module: Performance improvement in value filtering queries
+- Data Synchronization: Path matching supports path pattern
+- Data Synchronization: Supports metadata synchronization (including time series and related attributes, permissions, etc.)
+- Stream Processing: Added Alter Pipe statement, supporting hot updates of plugins for Pipe tasks
+- System Module: System data point count statistics now include statistics for data imported by loading TsFile
+- Scripts and Tools: New local upgrade backup tool added (backing up original data through hard links)
+- Scripts and Tools: New export-data/import-data scripts added, supporting data export in CSV, TsFile formats or SQL statements
+- Scripts and Tools: Windows environment now supports distinguishing ConfigNode, DataNode, and Cli by window name
+  ...
+- 
+## Bugs
+
+- Optimize the error message when a NullPointerException (NPE) occurs due to a timeout when dropping a database.
+- Add logs for notifyLeaderReady, notifyLeaderChanged, and procedure worker.
+- Add compatibility handling for existing erroneous data during file merging.
+- Fix the deadlock issue caused by flushing empty files during querying.
+- Fix the issue where Ratis becomes unresponsive during read, write, and delete operations.
+- Fix the concurrent bug in load and merge operations.
+- Fix the issue where the system's compression ratio is recorded as a negative number in the file for certain scenarios.
+- Fix the ConcurrentModificationException issue during memory estimation for merge tasks.
+- Fix potential deadlocks that may occur when writing, automatically creating, and deleting databases concurrently.
+  ...
+
+# Apache IoTDB 1.3.1
+
+## Features & Improvements
+- Add cluster script for one-click start-stop (start-all/stop-all.sh & start-all/stop-all.bat)
+- Add script for one-click instance information collection (collect-info.sh & collect-info.bat)
+- Add new statistical aggregators include stddev and variance
+- Add repair tsfile data command
+- Support setting timeout threshold for Fill clause. When time beyond the threshold, do not fill value.
+- Simplify the time range specification for data synchronization, directly set start and end times
+- Improved system observability (adding dispersion monitoring of cluster nodes, observability of distributed task scheduling framework)
+- Optimized default log output strategy
+- Enhance memory control for Load TsFile, covering the entire process
+- Rest API (Version 2) adds column type return.
+- Improve the process of query execution
+- Session automatically fetch all available DataNodes
+  ...
+
+# Apache IoTDB 1.3.0
+
+## Bugs
+
+- Fix issue with abnormal behavior when time precision is not in milliseconds during grouping by month.
+- Fix issue with abnormal behavior when duration contains multiple units during grouping by month.
+- Fix bug where limit and offset cannot be pushed down when there is an order by clause.
+- Fix abnormal behavior in combination scenario of grouping by month + align by device + limit.
+- Fix deserialization errors during IoT protocol synchronization.
+- Fix concurrent exceptions in deleting timeseries.
+- Fix issue where group by level in view sequences does not execute correctly.
+- Fix potential issue of metadata creation failure when increasing election timeout
+
+## Features & Improvements
+
+- Optimize the permission module and support timeseries permission control
+- Optimize heap and off-heap memory configuration in startup script
+- Computed-type view timeseries support LAST queries
+- Add pipe-related monitoring metrics
+- Pipe rename 'Extractor' to 'Source' and 'Connector' to 'Sink'
+- [IOTDB-6138] Support Negative timestamp
+- [IOTDB-6193] Reject Node startup when loading configuration file failed
+- [IOTDB-6194] Rename target_config_node_list to seed_config_node
+- [IOTDB-6200] Change schema template to device template
+- [IOTDB-6207] Add Write Point Metrics for load function
+- [IOTDB-6208] Node error detection through broken thrift pipe
+- [IOTDB-6217] When the number of time series reaches the upper limit, the prompt message should be changed to prioritize using device templates
+- [IOTDB-6218] Rename storage_query_schema_consensus_free_memory_proportion to datanode_memory_proportion
+- [IOTDB-6219] Fix the display problem of explain that the print result is not aligned
+- [IOTDB-6220] Pipe: Add check logic to avoid self-transmission
+- [IOTDB-6222] Optimize the performance of Python client
+- [IOTDB-6230] Add HEAPDUMP configuration in datanode-env.sh
+- [IOTDB-6231]SchemaCache supports precise eviction
+- [IOTDB-6232] Adding SSL function to dn_rpc_port
+
+# Apache IoTDB 1.2.2
+
+## Bugs
+
+- [IOTDB-6160] while using ` in target path, select into will throw error
+- [IOTDB-6167] DataNode can't register to cluster when fetch system configuration throws NPE
+- [IOTDB-6168] ConfigNode register retry logic does not worked
+- [IOTDB-6171] NPE will be thrown while printing FI with debug on
+- [IOTDB-6184] Merge Sort finishes one iterator too long
+- [IOTDB-6191] Fix group by year not considering leap years
+- [IOTDB-6226] Fix the problem of inaccurate GC monitor detection at the beginning and adjusting the alert threshold
+- [IOTDB-6239] Show regions display error create time
+
+## Features & Improvements
+
+- [IOTDB-6029] Implementing flink-sql-iotdb-connector
+- [IOTDB-6084] Pipe: support node-urls in connector-v1
+- [IOTDB-6103] Adding count_time aggregation feature
+- [IOTDB-6112] Limit & Offset push down doesn't take effect while there exist time filter
+- [IOTDB-6115] Limit & Offset push down doesn't take effect while there exist null value
+- [IOTDB-6120] push down limit/offset in query with group by time
+- [IOTDB-6129] ConfigNode restarts without relying on Seed-ConfigNode
+- [IOTDB-6131] Iotdb rest service supports insertRecords function
+- [IOTDB-6151] Move DataNode's system.properties to upper dir
+- [IOTDB-6173] Change default encoder of INT32 and INT64 from RLE to TS_2DIFF
+- Adjust the default thrift timeout parameter to 60s
+- Accelerate the deletion execution
+
+## Bugs
+
+- [IOTDB-6064] Pipe: Fix deadlock in rolling back procedures concurrently
+- [IOTDB-6081] Pipe: use HybridExtractor instead of LogExtractor when realtime mode is set to log to avoid OOM under heavy insertion load
+- [IOTDB-6145] Pipe: can not release TsFile or WAL resource after pipe is dropped
+- [IOTDB-6146] Pipe: can not transfer data after 1000+ pipes' creating and dropping
+- [IOTDB-6082] Improve disk space metrics
+- [IOTDB-6104] tmp directory won't be cleaned after udf query end
+- [IOTDB-6119] Add ConfigNode leader service check
+- [IOTDB-6125] Fix DataPartition allocation bug when insert big batch data
+- [IOTDB-6127] Pipe: buffered events in processor stage can not be consumed by connector
+- [IOTDB-6132] CrossSpaceCompaction: The estimated memory size is too large for cross space compaction task
+- [IOTDB-6133] NullPointerException occurs in unsequence InnerSpaceCompactionTask
+- [IOTDB-6148] Pipe: Fixed the bug that some uncommited progresses may be reported
+- [IOTDB-6156] Fixed TConfiguration invalidly in Thrift AsyncServer For IoTConsensus
+- [IOTDB-6164] Can create illegal path through rest api
+- Fix datanode status is ReadOnly because the disk is full
+- Fix DataPartition allocation bug when insert big batch
+- Fix flush point statistics
+- Fix SchemaFileSketchTool is not found
+- Refactoring DeleteOutdatedFileTask in WalNode
+- Add compression and encoding type check for FastCompactionPerformer
+- Add lazy page reader for aligned page reader to avoid huge memory cost when reading rows of aligned timeseries
+- Pipe: use PipeTaskCoordinatorLock instead of ReentrantLock for multi thread sync
+- Pipe: fix pipe procedure stuck because of data node async request forever waiting for response
+- Pipe: fix NPE when HybridProgressIndex.updateToMinimumIsAfterProgressIndex after system reboot (DR: SimpleConsensus)
+- Pipe: fix pipe coordinator deadlock causing CN election timeout
+- Pipe: Improve performance for 10000+ pipes
+- RATIS-1873. Remove RetryCache assertion that doesn't hold
+
+# Apache IoTDB 1.2.1
+
+## Features & Improvements
+
+- [IOTDB-5557] The metadata query results are inconsistent
+- [IOTDB-5997] Improve efficiency of ConfigNode PartitionInfo loadSnapshot
+- [IOTDB-6019] Fix concurrent update of last query
+- [IOTDB-6036] The mods file is too large, causing Query very slow even OOM problem
+- [IOTDB-6055] Enable auto restart of the pipes stopped by ConfigNode because of critical exception
+- [IOTDB-6066] Add ConfigNode timeslot metric
+- [IOTDB-6073] Add ClientManager metrics
+- [IOTDB-6077] Add force stop
+- [IOTDB-6079] Cluster computing resource balance
+- [IOTDB-6082] Improve disk space metrics
+- [IOTDB-6087] Implement stream interface of Mods read
+- [IOTDB-6090] Add memory estimator on inner space compaction
+- [IOTDB-6092] Factor mods files into memory estimates for cross-space compaction tasks
+- [IOTDB-6093] Add multiple validation methods after compaction
+- [IOTDB-6106] Fixed the timeout parameter not working in thrift asyncClient
+- [IOTDB-6108] AlignedTVList memory calculation is imprecise
+-
+## Bugs
+
+- [IOTDB-5855] DataRegion leader Distribution is same as DataRegion Distribution
+- [IOTDB-5860] Total Number of file is wrong
+- [IOTDB-5996] Incorrect time display of show queries
+- [IOTDB-6057] Resolve the compatibility from 1.1.x to 1.2.0
+- [IOTDB-6065] Considering LastCacheContainer in the memory estimation of SchemaCacheEntry
+- [IOTDB-6074] Ignore error message when TagManager createSnapshot
+- [IOTDB-6075] Pipe: File resource races when different tsfile load operations concurrently modify the same tsfile at receiver
+- [IOTDB-6076] Add duplicate checking when upsert alias
+- [IOTDB-6078] fix timeChunk default compressType
+- [IOTDB-6089] Improve the lock behaviour of the pipe heartbeat
+- [IOTDB-6091] Add compression and encoding type check for FastCompactionPerformer
+- [IOTDB-6094] Load：Fix construct tsFileResource bug
+- [IOTDB-6095] Tsfiles in sequence space may be overlap with each other due to LastFlushTime bug
+- [IOTDB-6096] M4 will output zero while meeting null
+- [IOTDB-6097] ipe subscription running with the pattern option may cause OOM
+- [IOTDB-6098] Flush error when writing aligned timeseries
+- [IOTDB-6100] Pipe: Fix running in hybrid mode will cause wal cannot be deleted & some pipe data lost due to wrong ProducerType of Disruptor
+- [IOTDB-6105] Load: NPE when analyzing tsfile
+
+# Apache IoTDB 1.2.0
+
+## New Feature
+
+* [IOTDB-5567] add SQL for querying seriesslotid and timeslotid
+* [IOTDB-5631] Add a built-in aggregation functions named time_duration
+* [IOTDB-5636] Add round as built-in scalar function
+* [IOTDB-5637] Add substr as built-in scalar function
+* [IOTDB-5638] Support case when syntax in IoTDB
+* [IOTDB-5643] Add REPLACE as a built-in scalar function
+* [IOTDB-5683] Support aggregation function Mode for query
+* [IOTDB-5711] Python API should support connecting multiple nodes
+* [IOTDB-5752] Python Client supports write redirection
+* [IOTDB-5765] Support Order By Expression
+* [IOTDB-5771] add SPRINTZ and RLBE encodor and LZMA2 compressor
+* [IOTDB-5924] Add SessionPool deletion API
+* [IOTDB-5950] Support Dynamic Schema Template
+* [IOTDB-5951] Support show timeseries/device with specific string contained in path
+* [IOTDB-5955] Support create timeseries using schema template in Session API
+
+## Improvements
+
+* [IOTDB-5630] Make function cast a built-in function
+* [IOTDB-5689] Close Isink when ISourceHandle is closed
+* [IOTDB-5715] Improve the performance of query order by time desc
+* [IOTDB-5763] Optimize the memory estimate for INTO operations
+* [IOTDB-5887] Optimize the construction performance of PathPatternTree without wildcards
+* [IOTDB-5888] TTL logs didn' t consider timestamp precision
+* [IOTDB-5896] Failed to execute delete statement
+* [IOTDB-5908] Add more query metrics
+* [IOTDB-5911] print-iotdb-data-dir tool cannot work
+* [IOTDB-5914] Remove redundant debug log in Session
+* [IOTDB-5919] show variables add a variable timestamp_precision
+* [IOTDB-5926] Optimize metric implementation
+* [IOTDB-5929] Enable DataPartition inherit policy
+* [IOTDB-5943] Avoid rpc invoking for SimpleQueryTerminator when endpoint is local address
+* [IOTDB-5944] Follower doesn' t need to update last cache when using IoT_consensus
+* [IOTDB-5945] Add a cache to avoid initialize duplicated device id object in write process
+* [IOTDB-5946] Optimize the implement of tablet in Go client
+* [IOTDB-5949] Support show timeseries with datatype filter
+* [IOTDB-5952] Support FIFO strategy in DataNodeSchemaCache
+* [IOTDB-6022] The WAL piles up when multi-replica iotconsensus is written at high concurrency
+
+
+## Bug Fixes
+
+* [IOTDB-5604] NPE when execute Agg + align by device query without assigned DataRegion
+* [IOTDB-5619] group by tags query NPE
+* [IOTDB-5644] Unexpected result when there are no select expressions after analyzed in query
+* [IOTDB-5657] Limit does not take effect in last query
+* [IOTDB-5700] UDF query did not clean temp file after the query is finished
+* [IOTDB-5716] Wrong dependency when pipeline consumeOneByOneOperator
+* [IOTDB-5717] Incorrect result when querying with limit push-downing & order by time desc
+* [IOTDB-5722] Wrong default execution branch in PlanVisitor
+* [IOTDB-5735] The result of adding the distinct function to the align by device is incorrect
+* [IOTDB-5755] Fix the problem that 123w can not be used in Identifier
+* [IOTDB-5756] NPE when where predicate is NotEqualExpression and one of subExpression is not exist
+* [IOTDB-5757] Not Supported Exception when use like ' s3 || false' in where even Type of s3 is Boolean
+* [IOTDB-5760] Query is blocked because of no memory
+* [IOTDB-5764] Cannot specify alias successfully when the FROM clause contains multiple path suffixes
+* [IOTDB-5769] Offset doesn' t take effect in some special case
+* [IOTDB-5774] The syntax that path nodes start or end with a wildcard to fuzzy match is not supported
+* [IOTDB-5784] Incorrect result when querying with offset push-down and time filter
+* [IOTDB-5815] NPE when using UDF to query
+* [IOTDB-5837] Exceptions for select into using placeholders
+* [IOTDB-5851] Using limit clause in show devices query will throw NPE
+* [IOTDB-5858] Metric doesn' t display the schemaCache hit ratio
+* [IOTDB-5861] Last quey is incomplete
+* [IOTDB-5889] TTL Cannot delete expired tsfiles
+* [IOTDB-5897] NullPointerException In compaction
+* [IOTDB-5905] Some aligned timeseries data point lost after flush
+* [IOTDB-5934] Optimize cluster partition policy
+* [IOTDB-5953] LastCache memory control param does not take effect
+* [IOTDB-5963] Sometimes we may get out-of-order query result
+* [IOTDB-6016] Release file num cost after cross compaction task
+
+
+# Apache IoTDB 1.1.2
+## New Feature
+
+* [IOTDB-5919]show variables add a variable timestamp_precision
+* Add Python SessionPool
+
+## Improvement/Bugfix
+
+* [IOTDB-5901] Load: load tsfile without data will throw NPE
+* [IOTDB-5903] Fix cannot select any inner space compaction task when there is only unsequence data
+* [IOTDB-5878] Allow ratis-client retry when gRPC IO Unavailable
+* [IOTDB-5939] Correct Flusing Task Timeout Detect Thread
+* [IOTDB-5905] Fix aligned timeseries data point lost after flushed in some scenario
+* [IOTDB-5963] Make sure that TsBlock blocked on memory is added in queue before the next TsBlock returned by root operator
+* [IOTDB-5819] Fix npe when booting net metrics
+* [IOTDB-6023] Pipe: Fix load tsfile error while handling empty value chunk
+* [IOTDB-5971] Fix potential QUOTE problem in iotdb reporter
+* [IOTDB-5993] ConfigNode leader changing causes lacking some DataPartition allocation result in the response of getOrCreateDataPartition method
+* [IOTDB-5910] Fix compaction scheduler thread pool is not shutdown when aborting compaction
+* [IOTDB-6056] Pipe: Failed to load tsfile with empty pages (NPE occurs when loading)
+* [IOTDB-5916]Fix exception when file is deleted during compaction selection
+* [IOTDB-5896] Fix the NPE issue when taking snapshot in WAL combined with Aligned Binary
+* [IOTDB-5929] Enable DataPartition inherit policy
+* [IOTDB-5934] Optimize cluster partition policy
+* [IOTDB-5926] Remove Useless Rater in Timer
+* [IOTDB-6030] Improve efficiency of ConfigNode PartitionInfo takeSnapshot
+* [IOTDB-5997] Improve efficiency of ConfigNode PartitionInfo loadSnapshot
+* Fix potential deadlock when freeing memory in MemoryPool
+* Release resource of FI after all drivers have been closed
+* Set default degree of parallelism back to the num of CPU
+* Make SequenceStrategy and MaxDiskUsableSpaceFirstStrategy are allowed in cluster mode
+* Fix npe exception when invalid in metric module
+* Fix CQ does not take effect in ns time_precision
+* Fix storage engine memory config initialization
+* Fix template related schema query
+* add default charset setting in start-datanode.bat and print default charset when starting
+* Fix TsfileResource error after delete device in sequence working memtable
+* load TsFile bugs: Not checking whether the tsfile data loaded locally is in the same time partition during the loading process & LoadTsFilePieceNode error when loading tsfile with empty value chunks
+* Fix alias query failure after restarting DataNode
+
+# Apache IoTDB 1.1.1
+## New Feature
+
+* [IOTDB-2569] ZSTD compression
+
+## Improvement/Bugfix
+
+* [IOTDB-5781] Change the default strategy to SequenceStrategy
+* [IOTDB-5780] Let users know a node was successfully removed and data is recovered
+* [IOTDB-5735] The result of adding the distinct function to the align by device is incorrect
+* [IOTDB-5777] When writing data using non-root users, the permission authentication module takes too long
+* [IOTDB-5835] Fix wal accumulation caused by datanode restart
+* [IOTDB-5828] Optimize the implementation of some metric items in the metric module to prevent Prometheus pull timeouts
+* [IOTDB-5813] ConfigNode restart error due to installSnapshot failed
+* [IOTDB-5657] Limit does not take effect in last query
+* [IOTDB-5717] Incorrect result when querying with limit push-downing & order by time desc
+* [IOTDB-5722] Wrong default execution branch in PlanVisitor
+* [IOTDB-5784] Incorrect result when querying with offset push-down and time filter
+* [IOTDB-5815] NPE when using UDF to query
+* [IOTDB-5829] Query with limit clause will cause other concurrent query break down
+* [IOTDB-5824] show devices with * cannot display satisfied devices
+* [IOTDB-5831] Drop database won't delete totally files in disk
+* [IOTDB-5818] Cross_space compaction of Aligned timeseries is stucked
+* [IOTDB-5859] Compaction error when using Version as first sort dimension
+* [IOTDB-5869] Fix load overlap sequence TsFile
+
 # Apache IoTDB 1.1.0
 
 ## New Features

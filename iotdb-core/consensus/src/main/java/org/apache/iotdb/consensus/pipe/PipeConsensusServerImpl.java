@@ -31,6 +31,8 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
+import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
@@ -65,6 +67,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -97,14 +100,14 @@ public class PipeConsensusServerImpl {
       Peer thisNode,
       IStateMachine stateMachine,
       String storageDir,
-      List<Peer> configuration,
+      List<Peer> peers,
       PipeConsensusConfig config,
       ConsensusPipeManager consensusPipeManager,
       IClientManager<TEndPoint, SyncPipeConsensusServiceClient> syncClientManager)
       throws IOException {
     this.thisNode = thisNode;
     this.stateMachine = stateMachine;
-    this.peerManager = new PipeConsensusPeerManager(storageDir, configuration);
+    this.peerManager = new PipeConsensusPeerManager(storageDir, peers);
     this.active = new AtomicBoolean(true);
     this.isStarted = new AtomicBoolean(false);
     this.consensusGroupId = thisNode.getGroupId().toString();
@@ -114,14 +117,12 @@ public class PipeConsensusServerImpl {
     this.pipeConsensusServerMetrics = new PipeConsensusServerMetrics(this);
     this.replicateMode = config.getReplicateMode();
 
-    if (configuration.isEmpty()) {
+    if (peers.isEmpty()) {
       peerManager.recover();
     } else {
       // create consensus pipes
-      List<Peer> deepCopyPeersWithoutSelf =
-          configuration.stream()
-              .filter(peer -> !peer.equals(thisNode))
-              .collect(Collectors.toList());
+      Set<Peer> deepCopyPeersWithoutSelf =
+          peers.stream().filter(peer -> !peer.equals(thisNode)).collect(Collectors.toSet());
       final List<Peer> successfulPipes = createConsensusPipes(deepCopyPeersWithoutSelf);
       if (successfulPipes.size() < deepCopyPeersWithoutSelf.size()) {
         // roll back
@@ -208,7 +209,7 @@ public class PipeConsensusServerImpl {
     active.set(false);
   }
 
-  private List<Peer> createConsensusPipes(List<Peer> peers) {
+  private List<Peer> createConsensusPipes(Set<Peer> peers) {
     return peers.stream()
         .filter(
             peer -> {
@@ -222,7 +223,8 @@ public class PipeConsensusServerImpl {
                     "{}: cannot create consensus pipe between {} and {}",
                     e.getMessage(),
                     thisNode,
-                    peer);
+                    peer,
+                    e);
                 return false;
               }
             })
@@ -373,14 +375,17 @@ public class PipeConsensusServerImpl {
     return stateMachine.read(request);
   }
 
-  public void setRemotePeerActive(Peer peer, boolean isActive)
+  public void setRemotePeerActive(Peer peer, boolean isActive, boolean isForDeletionPurpose)
       throws ConsensusGroupModifyPeerException {
     try (SyncPipeConsensusServiceClient client =
         syncClientManager.borrowClient(peer.getEndpoint())) {
       try {
         TSetActiveResp res =
             client.setActive(
-                new TSetActiveReq(peer.getGroupId().convertToTConsensusGroupId(), isActive));
+                new TSetActiveReq(
+                    peer.getGroupId().convertToTConsensusGroupId(),
+                    isActive,
+                    isForDeletionPurpose));
         if (!RpcUtils.SUCCESS_STATUS.equals(res.getStatus())) {
           throw new ConsensusGroupModifyPeerException(
               String.format(
@@ -396,11 +401,13 @@ public class PipeConsensusServerImpl {
     }
   }
 
-  public void notifyPeersToCreateConsensusPipes(Peer targetPeer, Peer coordinatorPeer)
+  public void notifyPeersToCreateConsensusPipes(Peer targetPeer)
       throws ConsensusGroupModifyPeerException {
     final List<Peer> otherPeers = peerManager.getOtherPeers(thisNode);
-    Exception exception = null;
     for (Peer peer : otherPeers) {
+      if (peer.equals(targetPeer)) {
+        continue;
+      }
       try (SyncPipeConsensusServiceClient client =
           syncClientManager.borrowClient(peer.getEndpoint())) {
         TNotifyPeerToCreateConsensusPipeResp resp =
@@ -408,32 +415,39 @@ public class PipeConsensusServerImpl {
                 new TNotifyPeerToCreateConsensusPipeReq(
                     targetPeer.getGroupId().convertToTConsensusGroupId(),
                     targetPeer.getEndpoint(),
-                    targetPeer.getNodeId(),
-                    coordinatorPeer.getEndpoint(),
-                    coordinatorPeer.getNodeId()));
+                    targetPeer.getNodeId()));
         if (!RpcUtils.SUCCESS_STATUS.equals(resp.getStatus())) {
           throw new ConsensusGroupModifyPeerException(
               String.format("error when notify peer %s to create consensus pipe", peer));
         }
       } catch (Exception e) {
-        exception = e;
-        LOGGER.warn("{} cannot notify peer {} to create consensus pipe", thisNode, peer, e);
+        LOGGER.warn(
+            "{} cannot notify peer {} to create consensus pipe, may because that peer is unknown currently, please manually check!",
+            thisNode,
+            peer,
+            e);
       }
     }
 
-    // This node which acts as coordinator will transfer complete historical snapshot to new target.
-    createConsensusPipeToTargetPeer(targetPeer, thisNode);
-    if (exception != null) {
-      throw new ConsensusGroupModifyPeerException(exception);
+    try {
+      // This node which acts as coordinator will transfer complete historical snapshot to new
+      // target.
+      createConsensusPipeToTargetPeer(targetPeer, false);
+    } catch (Exception e) {
+      LOGGER.warn(
+          "{} cannot create consensus pipe to {}, may because target peer is unknown currently, please manually check!",
+          thisNode,
+          targetPeer,
+          e);
+      throw new ConsensusGroupModifyPeerException(e);
     }
   }
 
   public synchronized void createConsensusPipeToTargetPeer(
-      Peer targetPeer, Peer regionMigrationCoordinatorPeer)
-      throws ConsensusGroupModifyPeerException {
+      Peer targetPeer, boolean needManuallyStart) throws ConsensusGroupModifyPeerException {
     try {
-      consensusPipeManager.createConsensusPipe(
-          thisNode, targetPeer, regionMigrationCoordinatorPeer);
+      KillPoint.setKillPoint(DataNodeKillPoints.ORIGINAL_ADD_PEER_DONE);
+      consensusPipeManager.createConsensusPipe(thisNode, targetPeer, needManuallyStart);
       peerManager.addAndPersist(targetPeer);
     } catch (IOException e) {
       LOGGER.warn("{} cannot persist peer {}", thisNode, targetPeer, e);
@@ -449,7 +463,6 @@ public class PipeConsensusServerImpl {
   public void notifyPeersToDropConsensusPipe(Peer targetPeer)
       throws ConsensusGroupModifyPeerException {
     final List<Peer> otherPeers = peerManager.getOtherPeers(thisNode);
-    Exception exception = null;
     for (Peer peer : otherPeers) {
       if (peer.equals(targetPeer)) {
         continue;
@@ -467,14 +480,23 @@ public class PipeConsensusServerImpl {
               String.format("error when notify peer %s to drop consensus pipe", peer));
         }
       } catch (Exception e) {
-        exception = e;
-        LOGGER.warn("{} cannot notify peer {} to drop consensus pipe", thisNode, peer, e);
+        LOGGER.warn(
+            "{} cannot notify peer {} to drop consensus pipe, may because that peer is unknown currently, please manually check!",
+            thisNode,
+            peer,
+            e);
       }
     }
 
-    dropConsensusPipeToTargetPeer(targetPeer);
-    if (exception != null) {
-      throw new ConsensusGroupModifyPeerException(exception);
+    try {
+      dropConsensusPipeToTargetPeer(targetPeer);
+    } catch (Exception e) {
+      LOGGER.warn(
+          "{} cannot drop consensus pipe to {}, may because target peer is unknown currently, please manually check!",
+          thisNode,
+          targetPeer,
+          e);
+      throw new ConsensusGroupModifyPeerException(e);
     }
   }
 
@@ -494,22 +516,53 @@ public class PipeConsensusServerImpl {
     }
   }
 
+  public void startOtherConsensusPipesToTargetPeer(Peer targetPeer)
+      throws ConsensusGroupModifyPeerException {
+    final List<Peer> otherPeers = peerManager.getOtherPeers(thisNode);
+    for (Peer peer : otherPeers) {
+      if (peer.equals(targetPeer)) {
+        continue;
+      }
+      try {
+        consensusPipeManager.updateConsensusPipe(
+            new ConsensusPipeName(peer, targetPeer), PipeStatus.RUNNING);
+      } catch (Exception e) {
+        // just warn but not throw exceptions. Because there may exist unknown nodes in consensus
+        // group
+        LOGGER.warn("{} cannot start consensus pipe to {}", peer, targetPeer, e);
+      }
+    }
+  }
+
+  /** Wait for the user written data up to firstCheck to be replicated */
   public void waitPeersToTargetPeerTransmissionCompleted(Peer targetPeer)
       throws ConsensusGroupModifyPeerException {
     boolean isTransmissionCompleted = false;
-    boolean isFirstCheck = true;
+    boolean isFirstCheckForCurrentPeer = true;
+    boolean isFirstCheckForOtherPeers = true;
 
     try {
       while (!isTransmissionCompleted) {
         Thread.sleep(CHECK_TRANSMISSION_COMPLETION_INTERVAL_IN_MILLISECONDS);
-        // Only wait coordinator to transfer snapshot instead of waiting all peers completing data
-        // transfer. Keep consistent with IoTV1.
-        isTransmissionCompleted =
-            isConsensusPipesTransmissionCompleted(
-                Collections.singletonList(new ConsensusPipeName(thisNode, targetPeer).toString()),
-                isFirstCheck);
 
-        isFirstCheck = false;
+        if (isConsensusPipesTransmissionCompleted(
+            Collections.singletonList(new ConsensusPipeName(thisNode, targetPeer).toString()),
+            isFirstCheckForCurrentPeer)) {
+          final List<Peer> otherPeers = peerManager.getOtherPeers(thisNode);
+
+          isTransmissionCompleted = true;
+          for (Peer peer : otherPeers) {
+            if (!peer.equals(targetPeer)) {
+              isTransmissionCompleted &=
+                  isRemotePeerConsensusPipesTransmissionCompleted(
+                      peer,
+                      Collections.singletonList(new ConsensusPipeName(peer, targetPeer).toString()),
+                      isFirstCheckForOtherPeers);
+            }
+          }
+          isFirstCheckForOtherPeers = false;
+        }
+        isFirstCheckForCurrentPeer = false;
       }
     } catch (InterruptedException e) {
       LOGGER.warn("{} is interrupted when waiting for transfer completed", thisNode, e);
@@ -519,6 +572,7 @@ public class PipeConsensusServerImpl {
     }
   }
 
+  /** Wait for the user written data up to firstCheck to be replicated */
   public void waitTargetPeerToPeersTransmissionCompleted(Peer targetPeer)
       throws ConsensusGroupModifyPeerException {
     boolean isTransmissionCompleted = false;
@@ -530,6 +584,7 @@ public class PipeConsensusServerImpl {
 
         final List<String> consensusPipeNames =
             peerManager.getPeers().stream()
+                .filter(peer -> !peer.equals(targetPeer))
                 .map(peer -> new ConsensusPipeName(targetPeer, peer).toString())
                 .collect(Collectors.toList());
         isTransmissionCompleted =

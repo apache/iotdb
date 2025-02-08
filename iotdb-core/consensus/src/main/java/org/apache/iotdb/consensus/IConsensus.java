@@ -37,6 +37,7 @@ import javax.annotation.concurrent.ThreadSafe;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 /** Consensus module base interface. */
 @ThreadSafe
@@ -146,6 +147,15 @@ public interface IConsensus {
   void removeRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException;
 
   /**
+   * Record the correct peer list (likely got from the ConfigNode) for future use in resetPeerList.
+   * Only use this method if necessary. If it is called, it should be called before {@link
+   * #start()}.
+   *
+   * @param correctPeerList The correct consensus group member list
+   */
+  void recordCorrectPeerListBeforeStarting(Map<ConsensusGroupId, List<Peer>> correctPeerList);
+
+  /**
    * Reset the peer list of the corresponding consensus group. Currently only used in the automatic
    * cleanup of region migration as a rollback for {@link #addRemotePeer(ConsensusGroupId, Peer)},
    * so it will only be less but not more.
@@ -225,17 +235,6 @@ public interface IConsensus {
    * @return consensusGroupId list
    */
   List<ConsensusGroupId> getAllConsensusGroupIds();
-
-  /**
-   * Return all consensus group ids from disk.
-   *
-   * <p>We need to parse all the RegionGroupIds from the disk directory before starting the
-   * consensus layer, and {@link #getAllConsensusGroupIds()} returns an empty list, so we need to
-   * add a new interface.
-   *
-   * @return consensusGroupId list
-   */
-  List<ConsensusGroupId> getAllConsensusGroupIdsWithoutStarting();
 
   /**
    * Return the region directory of the corresponding consensus group.

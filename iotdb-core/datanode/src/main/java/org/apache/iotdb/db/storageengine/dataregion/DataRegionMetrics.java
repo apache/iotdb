@@ -29,12 +29,12 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import java.util.Objects;
 
 public class DataRegionMetrics implements IMetricSet {
-  private DataRegion dataRegion;
-  private String storageGroupName;
+  private final DataRegion dataRegion;
+  private final String databaseName;
 
   public DataRegionMetrics(DataRegion dataRegion) {
     this.dataRegion = dataRegion;
-    this.storageGroupName = dataRegion.getDatabaseName();
+    this.databaseName = dataRegion.getDatabaseName();
   }
 
   @Override
@@ -45,7 +45,7 @@ public class DataRegionMetrics implements IMetricSet {
         dataRegion,
         DataRegion::getMemCost,
         Tag.NAME.toString(),
-        "database_" + storageGroupName);
+        "database_" + databaseName);
   }
 
   @Override
@@ -54,7 +54,7 @@ public class DataRegionMetrics implements IMetricSet {
         MetricType.AUTO_GAUGE,
         Metric.MEM.toString(),
         Tag.NAME.toString(),
-        "database_" + storageGroupName);
+        "database_" + databaseName);
   }
 
   @Override
@@ -67,11 +67,11 @@ public class DataRegionMetrics implements IMetricSet {
     }
     DataRegionMetrics that = (DataRegionMetrics) o;
     return Objects.equals(dataRegion, that.dataRegion)
-        && Objects.equals(storageGroupName, that.storageGroupName);
+        && Objects.equals(databaseName, that.databaseName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(dataRegion, storageGroupName);
+    return Objects.hash(dataRegion, databaseName);
   }
 }

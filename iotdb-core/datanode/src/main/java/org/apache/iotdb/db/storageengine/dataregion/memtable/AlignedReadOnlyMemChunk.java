@@ -30,6 +30,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.TableDeviceChunkMetadata;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.TimeRange;
@@ -62,7 +63,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       List<List<TimeRange>> valueColumnsDeletionList)
       throws QueryProcessException {
     super(context);
-    this.timeChunkName = schema.getMeasurementId();
+    this.timeChunkName = schema.getMeasurementName();
     this.valueChunkNames = schema.getSubMeasurementsList();
     this.dataTypes = schema.getSubMeasurementsTSDataTypeList();
     int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
@@ -75,10 +76,11 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
                 timeColumnDeletion,
                 valueColumnsDeletionList,
                 context.isIgnoreAllNullRows());
-    initAlignedChunkMetaFromTsBlock();
+    initAlignedChunkMetaFromTsBlock(context.isIgnoreAllNullRows());
   }
 
-  private void initAlignedChunkMetaFromTsBlock() throws QueryProcessException {
+  private void initAlignedChunkMetaFromTsBlock(boolean ignoreAllNullRows)
+      throws QueryProcessException {
     // Time chunk
     Statistics timeStatistics = Statistics.getStatsByType(TSDataType.VECTOR);
     IChunkMetadata timeChunkMetadata =
@@ -160,7 +162,9 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       }
     }
     IChunkMetadata alignedChunkMetadata =
-        new AlignedChunkMetadata(timeChunkMetadata, valueChunkMetadataList);
+        ignoreAllNullRows
+            ? new AlignedChunkMetadata(timeChunkMetadata, valueChunkMetadataList)
+            : new TableDeviceChunkMetadata(timeChunkMetadata, valueChunkMetadataList);
     alignedChunkMetadata.setChunkLoader(new MemAlignedChunkLoader(context, this));
     alignedChunkMetadata.setVersion(Long.MAX_VALUE);
     cachedMetaData = alignedChunkMetadata;

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.common.header;
 
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+
 public class DatasetHeaderFactory {
 
   private DatasetHeaderFactory() {
@@ -227,6 +229,10 @@ public class DatasetHeaderFactory {
 
   public static DatasetHeader getDescribeTableHeader() {
     return new DatasetHeader(ColumnHeaderConstant.describeTableColumnHeaders, true);
+  }
+
+  public static DatasetHeader getDescribeTableDetailsHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.describeTableDetailsColumnHeaders, true);
   }
 
   public static DatasetHeader getShowTablesHeader() {

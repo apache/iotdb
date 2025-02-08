@@ -290,6 +290,7 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
+  // Please do not delete this method even if is not used for now
   public int getDataNodeCpuCoreCount(int dataNodeId) {
     try {
       return registeredDataNodes.get(dataNodeId).getResource().getCpuCoreNum();

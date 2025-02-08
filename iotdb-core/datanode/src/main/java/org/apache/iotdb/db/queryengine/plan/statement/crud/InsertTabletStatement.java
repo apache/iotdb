@@ -49,8 +49,6 @@ import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -58,10 +56,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class InsertTabletStatement extends InsertBaseStatement implements ISchemaValidation {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(InsertTabletStatement.class);
 
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
 
@@ -69,7 +66,9 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   protected BitMap[] nullBitMaps;
   protected Object[] columns;
 
-  private IDeviceID[] deviceIDs;
+  protected IDeviceID[] deviceIDs;
+
+  protected boolean singleDevice;
 
   protected int rowCount = 0;
 
@@ -193,9 +192,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
-    if (CommonUtils.checkCanCastType(dataTypes[columnIndex], dataType)) {
-      columns[columnIndex] =
-          CommonUtils.castArray(dataTypes[columnIndex], dataType, columns[columnIndex]);
+    if (dataType.isCompatible(dataTypes[columnIndex])) {
+      columns[columnIndex] = dataType.castFromArray(dataTypes[columnIndex], columns[columnIndex]);
       dataTypes[columnIndex] = dataType;
       return true;
     }
@@ -275,7 +273,8 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       for (int i = 0; i < pairList.size(); i++) {
         int realIndex = pairList.get(i).right;
         copiedColumns[i] = this.columns[realIndex];
-        measurements[i] = pairList.get(i).left;
+        measurements[i] =
+            Objects.nonNull(this.measurements[realIndex]) ? pairList.get(i).left : null;
         measurementSchemas[i] = this.measurementSchemas[realIndex];
         dataTypes[i] = this.dataTypes[realIndex];
         if (this.nullBitMaps != null) {
@@ -469,6 +468,18 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     }
 
     return deviceIDs[rowIdx];
+  }
+
+  public IDeviceID[] getRawTableDeviceIDs() {
+    return deviceIDs;
+  }
+
+  public void setSingleDevice() {
+    singleDevice = true;
+  }
+
+  public boolean isSingleDevice() {
+    return singleDevice;
   }
 
   @Override

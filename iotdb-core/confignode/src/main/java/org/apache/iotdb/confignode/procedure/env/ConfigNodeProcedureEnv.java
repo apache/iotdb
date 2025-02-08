@@ -137,9 +137,9 @@ public class ConfigNodeProcedureEnv {
    * @param isGeneratedByPipe whether the deletion is triggered by pipe request
    * @return tsStatus
    */
-  public TSStatus deleteDatabaseConfig(String name, boolean isGeneratedByPipe) {
-    DeleteDatabasePlan deleteDatabasePlan = new DeleteDatabasePlan(name);
-    return getClusterSchemaManager().deleteDatabase(deleteDatabasePlan, isGeneratedByPipe);
+  public TSStatus deleteDatabaseConfig(final String name, final boolean isGeneratedByPipe) {
+    return getClusterSchemaManager()
+        .deleteDatabase(new DeleteDatabasePlan(name), isGeneratedByPipe);
   }
 
   /**
@@ -149,7 +149,7 @@ public class ConfigNodeProcedureEnv {
    * @param deleteSgName database name
    */
   public void preDeleteDatabase(
-      PreDeleteDatabasePlan.PreDeleteType preDeleteType, String deleteSgName) {
+      final PreDeleteDatabasePlan.PreDeleteType preDeleteType, final String deleteSgName) {
     getPartitionManager().preDeleteDatabase(deleteSgName, preDeleteType);
   }
 
@@ -159,7 +159,7 @@ public class ConfigNodeProcedureEnv {
    * @throws IOException IOE
    * @throws TException Thrift IOE
    */
-  public boolean invalidateCache(String storageGroupName) throws IOException, TException {
+  public boolean invalidateCache(final String storageGroupName) throws IOException, TException {
     List<TDataNodeConfiguration> allDataNodes = getNodeManager().getRegisteredDataNodes();
     TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
     invalidateCacheReq.setStorageGroup(true);
@@ -167,16 +167,20 @@ public class ConfigNodeProcedureEnv {
     for (TDataNodeConfiguration dataNodeConfiguration : allDataNodes) {
       int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
 
-      // If the node is not alive, sleep 1 second and try again
+      // If the node is not alive, retry for up to 10 times
       NodeStatus nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
+      int retryNum = 10;
       if (nodeStatus == NodeStatus.Unknown) {
-        try {
-          TimeUnit.MILLISECONDS.sleep(1000);
-        } catch (InterruptedException e) {
-          LOG.error("Sleep failed in ConfigNodeProcedureEnv: ", e);
-          Thread.currentThread().interrupt();
+        for (int i = 0; i < retryNum && nodeStatus == NodeStatus.Unknown; i++) {
+          try {
+            TimeUnit.MILLISECONDS.sleep(500);
+          } catch (InterruptedException e) {
+            LOG.error("Sleep failed in ConfigNodeProcedureEnv: ", e);
+            Thread.currentThread().interrupt();
+            break;
+          }
+          nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
         }
-        nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
       }
 
       if (nodeStatus == NodeStatus.Running) {
@@ -208,6 +212,7 @@ public class ConfigNodeProcedureEnv {
         LOG.warn(
             "Invalidate cache failed, because DataNode {} is Unknown",
             dataNodeConfiguration.getLocation().getInternalEndPoint());
+        return false;
       }
     }
     return true;
@@ -369,7 +374,8 @@ public class ConfigNodeProcedureEnv {
    * @return Those RegionReplicas that failed to create
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> doRegionCreation(
-      TConsensusGroupType consensusGroupType, CreateRegionGroupsPlan createRegionGroupsPlan) {
+      final TConsensusGroupType consensusGroupType,
+      final CreateRegionGroupsPlan createRegionGroupsPlan) {
 
     // Prepare clientHandler
     DataNodeAsyncRequestContext<?, TSStatus> clientHandler;
@@ -395,8 +401,8 @@ public class ConfigNodeProcedureEnv {
     Map<TConsensusGroupId, TRegionReplicaSet> failedRegions = new HashMap<>();
     for (List<TRegionReplicaSet> regionReplicaSets :
         createRegionGroupsPlan.getRegionGroupMap().values()) {
-      for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
-        for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+      for (final TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
+        for (final TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
           if (responseMap.get(requestId).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             failedRegions
                 .computeIfAbsent(

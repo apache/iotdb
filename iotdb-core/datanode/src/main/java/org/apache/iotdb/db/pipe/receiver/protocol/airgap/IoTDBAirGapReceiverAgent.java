@@ -52,7 +52,12 @@ public class IoTDBAirGapReceiverAgent implements IService {
   public void listen() {
     try {
       final Socket socket = serverSocket.accept();
-      new Thread(new IoTDBAirGapReceiver(socket, receiverId.incrementAndGet())).start();
+      final long airGapReceiverId = receiverId.incrementAndGet();
+      final Thread airGapReceiverThread =
+          new Thread(new IoTDBAirGapReceiver(socket, airGapReceiverId));
+      airGapReceiverThread.setName(
+          ThreadName.PIPE_AIR_GAP_RECEIVER.getName() + "-" + airGapReceiverId);
+      airGapReceiverThread.start();
     } catch (final IOException e) {
       LOGGER.warn("Unhandled exception during pipe air gap receiver listening", e);
     }

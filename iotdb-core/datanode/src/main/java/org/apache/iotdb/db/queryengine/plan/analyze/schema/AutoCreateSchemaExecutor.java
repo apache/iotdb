@@ -93,7 +93,8 @@ class AutoCreateSchemaExecutor {
         schemaFetcher,
         context == null || context.getQueryType().equals(QueryType.WRITE)
             ? config.getQueryTimeoutThreshold()
-            : context.getTimeOut());
+            : context.getTimeOut(),
+        false);
   }
 
   // Auto create the missing measurements and merge them into given schemaTree
@@ -203,8 +204,7 @@ class AutoCreateSchemaExecutor {
       if (!AuthorityChecker.SUPER_USER.equals(userName)) {
         TSStatus status =
             AuthorityChecker.getTSStatus(
-                AuthorityChecker.checkSystemPermission(
-                    userName, PrivilegeType.EXTEND_TEMPLATE.ordinal()),
+                AuthorityChecker.checkSystemPermission(userName, PrivilegeType.EXTEND_TEMPLATE),
                 PrivilegeType.EXTEND_TEMPLATE);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
@@ -225,8 +225,7 @@ class AutoCreateSchemaExecutor {
       if (!AuthorityChecker.SUPER_USER.equals(userName)) {
         TSStatus status =
             AuthorityChecker.getTSStatus(
-                AuthorityChecker.checkSystemPermission(
-                    userName, PrivilegeType.EXTEND_TEMPLATE.ordinal()),
+                AuthorityChecker.checkSystemPermission(userName, PrivilegeType.EXTEND_TEMPLATE),
                 PrivilegeType.EXTEND_TEMPLATE);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));

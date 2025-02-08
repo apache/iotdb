@@ -1,23 +1,28 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis.GroupingSetAnalysis;
@@ -87,6 +92,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.GROUP_KEY_SUFFIX;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GapFillStartAndEndTimeExtractVisitor.CAN_NOT_INFER_TIME_RANGE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.groupingSets;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.singleAggregation;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.singleGroupingSet;
 
 public class QueryPlanner {
   private final Analysis analysis;
@@ -153,13 +160,16 @@ public class QueryPlanner {
     builder = builder.appendProjections(outputs, symbolAllocator, queryContext);
 
     return new RelationPlan(
-        builder.getRoot(), analysis.getScope(query), computeOutputs(builder, outputs));
+        builder.getRoot(),
+        analysis.getScope(query),
+        computeOutputs(builder, outputs),
+        outerContext);
   }
 
   public RelationPlan plan(QuerySpecification node) {
     PlanBuilder builder = planFrom(node);
 
-    builder = filter(builder, analysis.getWhere(node));
+    builder = filter(builder, analysis.getWhere(node), node);
     Expression wherePredicate = null;
     if (builder.getRoot() instanceof FilterNode) {
       wherePredicate = ((FilterNode) builder.getRoot()).getPredicate();
@@ -171,7 +181,7 @@ public class QueryPlanner {
       timeColumnForGapFill = builder.translate((Expression) gapFillColumn.getChildren().get(2));
     }
     builder = aggregate(builder, node);
-    builder = filter(builder, analysis.getHaving(node));
+    builder = filter(builder, analysis.getHaving(node), node);
 
     if (gapFillColumn != null) {
       if (wherePredicate == null) {
@@ -187,13 +197,13 @@ public class QueryPlanner {
     }
 
     List<Analysis.SelectExpression> selectExpressions = analysis.getSelectExpressions(node);
+    List<Expression> expressions =
+        selectExpressions.stream()
+            .map(Analysis.SelectExpression::getExpression)
+            .collect(toImmutableList());
+    builder = subqueryPlanner.handleSubqueries(builder, expressions, analysis.getSubqueries(node));
 
     if (hasExpressionsToUnfold(selectExpressions)) {
-      List<Expression> expressions =
-          selectExpressions.stream()
-              .map(Analysis.SelectExpression::getExpression)
-              .collect(toImmutableList());
-
       // pre-project the folded expressions to preserve any non-deterministic semantics of functions
       // that might be referenced
       builder = builder.appendProjections(expressions, symbolAllocator, queryContext);
@@ -246,12 +256,13 @@ public class QueryPlanner {
     }
 
     List<Expression> orderBy = analysis.getOrderByExpressions(node);
-    if (!orderBy.isEmpty()) {
+    if (!orderBy.isEmpty() || node.getSelect().isDistinct()) {
       builder =
           builder.appendProjections(
               Iterables.concat(orderBy, outputs), symbolAllocator, queryContext);
     }
 
+    builder = distinct(builder, node, outputs);
     Optional<OrderingScheme> orderingScheme =
         orderingScheme(builder, node.getOrderBy(), analysis.getOrderByExpressions(node));
     builder = sort(builder, orderingScheme);
@@ -261,7 +272,7 @@ public class QueryPlanner {
     builder = builder.appendProjections(outputs, symbolAllocator, queryContext);
 
     return new RelationPlan(
-        builder.getRoot(), analysis.getScope(node), computeOutputs(builder, outputs));
+        builder.getRoot(), analysis.getScope(node), computeOutputs(builder, outputs), outerContext);
   }
 
   private static boolean hasExpressionsToUnfold(List<Analysis.SelectExpression> selectExpressions) {
@@ -323,13 +334,12 @@ public class QueryPlanner {
     }
   }
 
-  private PlanBuilder filter(PlanBuilder subPlan, Expression predicate) {
+  private PlanBuilder filter(PlanBuilder subPlan, Expression predicate, Node node) {
     if (predicate == null) {
       return subPlan;
     }
 
-    // planBuilder = subqueryPlanner.handleSubqueries(subPlan, predicate,
-    // analysis.getSubqueries(node));
+    subPlan = subqueryPlanner.handleSubqueries(subPlan, predicate, analysis.getSubqueries(node));
     return subPlan.withNewRoot(
         new FilterNode(
             queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), subPlan.rewrite(predicate)));
@@ -366,13 +376,12 @@ public class QueryPlanner {
     inputBuilder.addAll(groupingSetAnalysis.getComplexExpressions());
 
     List<Expression> inputs = inputBuilder.build();
-    // subPlan = subqueryPlanner.handleSubqueries(subPlan, inputs, analysis.getSubqueries(node));
+    subPlan = subqueryPlanner.handleSubqueries(subPlan, inputs, analysis.getSubqueries(node));
     subPlan = subPlan.appendProjections(inputs, symbolAllocator, queryContext);
 
     Function<Expression, Expression> rewrite = subPlan.getTranslations()::rewrite;
 
-    GroupingSetsPlan groupingSets =
-        planGroupingSets(subPlan, node, groupingSetAnalysis, queryContext.getTypeProvider());
+    GroupingSetsPlan groupingSets = planGroupingSets(subPlan, node, groupingSetAnalysis);
 
     return planAggregation(
         groupingSets.getSubPlan(),
@@ -383,10 +392,7 @@ public class QueryPlanner {
   }
 
   private GroupingSetsPlan planGroupingSets(
-      PlanBuilder subPlan,
-      QuerySpecification node,
-      GroupingSetAnalysis groupingSetAnalysis,
-      TypeProvider typeProvider) {
+      PlanBuilder subPlan, QuerySpecification node, GroupingSetAnalysis groupingSetAnalysis) {
     Map<Symbol, Symbol> groupingSetMappings = new LinkedHashMap<>();
 
     // Compute a set of artificial columns that will contain the values of the original columns
@@ -409,7 +415,6 @@ public class QueryPlanner {
             symbolAllocator.newSymbol(expression, analysis.getType(expression), GROUP_KEY_SUFFIX);
         complexExpressions.put(scopeAwareKey(expression, analysis, subPlan.getScope()), output);
         groupingSetMappings.put(output, input);
-        typeProvider.putTableModelType(output, typeProvider.getTableModelType(input));
       }
     }
 
@@ -530,13 +535,6 @@ public class QueryPlanner {
             AggregationNode.Step.SINGLE,
             Optional.empty(),
             groupIdSymbol);
-    aggregationNode
-        .getAggregations()
-        .forEach(
-            (k, v) ->
-                queryContext
-                    .getTypeProvider()
-                    .putTableModelType(k, v.getResolvedFunction().getSignature().getReturnType()));
 
     return new PlanBuilder(
         subPlan
@@ -669,6 +667,26 @@ public class QueryPlanner {
     return new PlanAndMappings(subPlan, mappings);
   }
 
+  public static OrderingScheme translateOrderingScheme(
+      List<SortItem> items, Function<Expression, Symbol> coercions) {
+    List<Symbol> coerced =
+        items.stream().map(SortItem::getSortKey).map(coercions).collect(toImmutableList());
+
+    ImmutableList.Builder<Symbol> symbols = ImmutableList.builder();
+    Map<Symbol, SortOrder> orders = new HashMap<>();
+    for (int i = 0; i < coerced.size(); i++) {
+      Symbol symbol = coerced.get(i);
+      // for multiple sort items based on the same expression, retain the first one:
+      // ORDER BY x DESC, x ASC, y --> ORDER BY x DESC, y
+      if (!orders.containsKey(symbol)) {
+        symbols.add(symbol);
+        orders.put(symbol, OrderingTranslator.sortItemToSortOrder(items.get(i)));
+      }
+    }
+
+    return new OrderingScheme(symbols.build(), orders);
+  }
+
   private PlanBuilder gapFill(
       PlanBuilder subPlan,
       @Nonnull Symbol timeColumn,
@@ -677,6 +695,7 @@ public class QueryPlanner {
       @Nonnull Expression wherePredicate) {
     Symbol gapFillColumnSymbol = subPlan.translate(gapFillColumn);
     List<Symbol> groupingKeys = new ArrayList<>(gapFillGroupingKeys.size());
+    // TODO(UDF): 类似这里添加 sort node
     subPlan = fillGroup(subPlan, gapFillGroupingKeys, groupingKeys, gapFillColumnSymbol);
 
     int monthDuration = (int) ((LongLiteral) gapFillColumn.getChildren().get(0)).getParsedValue();
@@ -804,6 +823,23 @@ public class QueryPlanner {
     return subPlan.withNewRoot(
         new SortNode(
             queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), orderingScheme, false, false));
+  }
+
+  private PlanBuilder distinct(
+      PlanBuilder subPlan, QuerySpecification node, List<Expression> expressions) {
+    if (node.getSelect().isDistinct()) {
+      List<Symbol> symbols =
+          expressions.stream().map(subPlan::translate).collect(Collectors.toList());
+
+      return subPlan.withNewRoot(
+          singleAggregation(
+              queryIdAllocator.genPlanNodeId(),
+              subPlan.getRoot(),
+              ImmutableMap.of(),
+              singleGroupingSet(symbols)));
+    }
+
+    return subPlan;
   }
 
   private Optional<OrderingScheme> orderingScheme(

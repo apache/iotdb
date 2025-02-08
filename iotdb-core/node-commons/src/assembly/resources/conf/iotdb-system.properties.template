@@ -456,7 +456,7 @@ cn_selector_thread_nums_of_client_manager=1
 # for a while, then ClientManager will throw ClientManagerException if there are no clients after the block time.
 # effectiveMode: restart
 # Datatype: int
-cn_max_client_count_for_each_node_in_client_manager=300
+cn_max_client_count_for_each_node_in_client_manager=1000
 
 # The maximum session idle time. unit: ms
 # Idle sessions are the ones that performs neither query or non-query operations for a period of time
@@ -516,7 +516,7 @@ dn_selector_thread_count_of_client_manager=1
 # for a while, then ClientManager will throw ClientManagerException if there are no clients after the block time.
 # effectiveMode: restart
 # Datatype: int
-dn_max_client_count_for_each_node_in_client_manager=300
+dn_max_client_count_for_each_node_in_client_manager=1000
 
 ####################
 ### REST Service Configuration
@@ -620,8 +620,8 @@ default_schema_region_group_num_per_database=1
 # Notice: Since each Database requires at least one SchemaRegionGroup to manage its schema,
 # this parameter doesn't limit the upper bound of cluster SchemaRegions when there are too many Databases.
 # effectiveMode: restart
-# Datatype: Double
-schema_region_per_data_node=1.0
+# Datatype: Integer
+schema_region_per_data_node=1
 
 # The policy of extension DataRegionGroup for each Database.
 # These policies are currently supported:
@@ -641,11 +641,12 @@ default_data_region_group_num_per_database=2
 
 # Only take effect when set data_region_group_extension_policy=AUTO.
 # This parameter is the maximum number of DataRegions expected to be managed by each DataNode.
+# Set to 0 means that each node automatically has the number of CPU cores / 2 regions
 # Notice: Since each Database requires at least two DataRegionGroups to manage its data,
 # this parameter doesn't limit the upper bound of cluster DataRegions when there are too many Databases.
 # effectiveMode: restart
-# Datatype: Double
-data_region_per_data_node=5.0
+# Datatype: Integer
+data_region_per_data_node=0
 
 # Whether to enable auto leader balance for Ratis consensus protocol.
 # The ConfigNode-leader will balance the leader of Ratis-RegionGroups by leader_distribution_policy if set true.
@@ -724,25 +725,30 @@ primitive_array_size=64
 # Datatype: double
 chunk_metadata_size_proportion=0.1
 
-# Ratio of write memory for invoking flush disk, 0.4 by default
+# Ratio of memtable memory for invoking flush disk, 0.4 by default
 # If you have extremely high write load (like batch=1000), it can be set lower than the default value like 0.2
 # effectiveMode: restart
 # Datatype: double
 flush_proportion=0.4
 
-# Ratio of write memory allocated for buffered arrays, 0.6 by default
+# Ratio of memtable memory allocated for buffered arrays, 0.6 by default
 # effectiveMode: restart
 # Datatype: double
 buffered_arrays_memory_proportion=0.6
 
-# Ratio of write memory for rejecting insertion, 0.8 by default
+# Ratio of memtable memory for rejecting insertion, 0.8 by default
 # If you have extremely high write load (like batch=1000) and the physical memory size is large enough,
 # it can be set higher than the default value like 0.9
 # effectiveMode: restart
 # Datatype: double
 reject_proportion=0.8
 
-# Ratio of memory for the DevicePathCache. DevicePathCache is the deviceId cache, keep only one copy of the same deviceId in memory
+# Ratio of memtable memory for controlling the max memory size of WAL buffer queues, 0.1 by default
+# effectiveMode: restart
+# Datatype: double
+wal_buffer_queue_proportion=0.1
+
+# Ratio of memtable memory for the DevicePathCache. DevicePathCache is the deviceId cache, keep only one copy of the same deviceId in memory
 # effectiveMode: restart
 # Datatype: double
 device_path_cache_proportion=0.05
@@ -859,8 +865,13 @@ enable_auto_create_schema=true
 # Database level when creating schema automatically is enabled
 # e.g. root.sg0.d1.s2
 #      we will set root.sg0 as the database if database level is 1
+# If the incoming path is shorter than this value, the creation/insertion will fail.
 # effectiveMode: hot_reload
 # Datatype: int
+# Range: [1, Integer.MAX_VALUE]
+# Default: 1
+# When illegal: report an error and change nothing during hot-reload; use the default value in
+# start-up
 default_storage_group_level=1
 
 # ALL data types: BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT
@@ -1021,6 +1032,13 @@ sort_buffer_size_in_bytes=1048576
 # Datatype: int
 merge_threshold_of_explain_analyze=10
 
+# The limit of query sampling throughput merge can reach per second
+# 0 means no queries will be recorded
+# negative number means no limit, all queries will be recorded.
+# effectiveMode: hot_reload
+# Datatype: int, Unit: bytes
+query_sample_throughput_bytes_per_sec=160
+
 ####################
 ### TTL Configuration
 ####################
@@ -1136,7 +1154,7 @@ flush_thread_count=0
 
 # In one insert (one device, one timestamp, multiple measurements),
 # if enable partial insert, one measurement failure will not impact other measurements
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Datatype: boolean
 enable_partial_insert=true
 
@@ -1196,7 +1214,7 @@ enable_auto_repair_compaction=true
 cross_selector=rewrite
 
 # the compaction performer of cross space compaction task
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Options: read_point, fast
 cross_performer=fast
 
@@ -1206,7 +1224,7 @@ cross_performer=fast
 inner_seq_selector=size_tiered_multi_target
 
 # the performer of inner sequence space compaction task
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Options: read_chunk, fast
 inner_seq_performer=read_chunk
 
@@ -1216,7 +1234,7 @@ inner_seq_performer=read_chunk
 inner_unseq_selector=size_tiered_multi_target
 
 # the performer of inner unsequence space compaction task
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Options: read_point, fast
 inner_unseq_performer=fast
 
@@ -1402,11 +1420,6 @@ wal_sync_mode_fsync_delay_in_ms=3
 # Datatype: int
 wal_buffer_size_in_byte=33554432
 
-# Blocking queue capacity of each wal buffer, restricts maximum number of WALEdits cached in the blocking queue.
-# effectiveMode: restart
-# Datatype: int
-wal_buffer_queue_capacity=500
-
 # Size threshold of each wal file
 # When a wal file's size exceeds this, the wal file will be closed and a new wal file will be created.
 # If it's a value smaller than 0, use the default value 30 * 1024 * 1024 (30MB).
@@ -1444,10 +1457,10 @@ delete_wal_files_period_in_ms=20000
 
 # The minimum size of wal files when throttle down in IoTConsensus
 # If this value is not set, it will be carefully chosen according to the available disk space.
-# If this value is set smaller than 0, it will default to 50 * 1024 * 1024 * 1024 bytes (50GB).
+# If this value is set smaller than 0, it will default to 200 * 1024 * 1024 * 1024 bytes (200GB).
 # effectiveMode: hot_reload
 # Datatype: long
-wal_throttle_threshold_in_byte=53687091200
+wal_throttle_threshold_in_byte=214748364800
 
 # Maximum wait time of write cache in IoTConsensus
 # If this value is less than or equal to 0, use the default value 10 * 1000 ms (10s)
@@ -1491,7 +1504,41 @@ data_region_iot_max_memory_ratio_for_queue = 0.6
 # values less than or equal to 0 means no limit
 # effectiveMode: hot_reload
 # Datatype: long
-region_migration_speed_limit_bytes_per_second = 33554432
+region_migration_speed_limit_bytes_per_second = 50331648
+
+####################
+### Blob Allocator Configuration
+####################
+# Whether to enable binary allocator.
+# For scenarios where large binary streams cause severe GC, enabling this parameter significantly improves performance.
+# effectiveMode: hot_reload
+enable_binary_allocator=true
+
+# The size boundaries that allocator is responsible for
+# lower boundary for allocation size
+# unit: bytes
+# Datatype: int
+# effectiveMode: restart
+small_binary_object=4096
+
+# The size boundaries that allocator is responsible for
+# upper boundary for allocation size
+# unit: bytes
+# Datatype: int
+# effectiveMode: restart
+huge_binary_object=1048576
+
+# Number of arena regions in blob allocator, used to control concurrent performance
+# Datatype: int
+# effectiveMode: restart
+arena_num=4
+
+# Control the number of slabs in allocator
+# The number of different sizes in each power-of-2 interval is 2^LOG2_SIZE_CLASS_GROUP
+# For example: if LOG2_SIZE_CLASS_GROUP=3, between 1024-2048 there will be 8 different sizes
+# Datatype: int
+# effectiveMode: restart
+log2_size_class_group=3
 
 ####################
 ### TsFile Configurations
@@ -1566,6 +1613,12 @@ author_cache_size=1000
 # effectiveMode: restart
 # Datatype: int
 author_cache_expire_time=30
+
+# A regex pattern representing trusted uri by system
+# effectiveMode: hot_reload
+# Datatype: regex
+# If you want to allow all URIs, you can specify it as .*
+trusted_uri_pattern=file:.*
 
 ####################
 ### UDF Configuration
@@ -1838,6 +1891,12 @@ iot_consensus_v2_pipeline_size=5
 # effectiveMode: restart
 # Datatype: string
 iot_consensus_v2_mode=batch
+
+# Blocking queue capacity of each deletion ahead log buffer for iot consensus v2,
+# restricts maximum number of entry in the blocking queue.
+# effectiveMode: restart
+# Datatype: int
+deletion_ahead_log_buffer_queue_capacity=500
 
 ####################
 ### Procedure Configuration

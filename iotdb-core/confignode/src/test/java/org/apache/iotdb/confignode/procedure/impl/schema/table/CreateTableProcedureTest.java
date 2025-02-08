@@ -22,8 +22,8 @@ package org.apache.iotdb.confignode.procedure.impl.schema.table;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -41,13 +41,13 @@ public class CreateTableProcedureTest {
   @Test
   public void serializeDeserializeTest() throws IllegalPathException, IOException {
     final TsTable table = new TsTable("table1");
-    table.addColumnSchema(new IdColumnSchema("Id", TSDataType.STRING));
+    table.addColumnSchema(new TagColumnSchema("Id", TSDataType.STRING));
     table.addColumnSchema(new AttributeColumnSchema("Attr", TSDataType.STRING));
     table.addColumnSchema(
-        new MeasurementColumnSchema(
+        new FieldColumnSchema(
             "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
     final CreateTableProcedure createTableProcedure =
-        new CreateTableProcedure("root.database1", table);
+        new CreateTableProcedure("database1", table, false);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -57,7 +57,7 @@ public class CreateTableProcedureTest {
 
     Assert.assertEquals(ProcedureType.CREATE_TABLE_PROCEDURE.getTypeCode(), byteBuffer.getShort());
 
-    final CreateTableProcedure deserializedProcedure = new CreateTableProcedure();
+    final CreateTableProcedure deserializedProcedure = new CreateTableProcedure(false);
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(createTableProcedure.getDatabase(), deserializedProcedure.getDatabase());

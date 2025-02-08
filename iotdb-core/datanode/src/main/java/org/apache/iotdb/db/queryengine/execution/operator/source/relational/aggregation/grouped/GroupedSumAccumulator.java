@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
 
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.BooleanBigArray;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.DoubleBigArray;
 
@@ -51,20 +52,20 @@ public class GroupedSumAccumulator implements GroupedAccumulator {
   }
 
   @Override
-  public void addInput(int[] groupIds, Column[] arguments) {
+  public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
     checkArgument(arguments.length == 1, "argument of Sum should be one column");
     switch (argumentDataType) {
       case INT32:
-        addIntInput(groupIds, arguments[0]);
+        addIntInput(groupIds, arguments[0], mask);
         return;
       case INT64:
-        addLongInput(groupIds, arguments[0]);
+        addLongInput(groupIds, arguments[0], mask);
         return;
       case FLOAT:
-        addFloatInput(groupIds, arguments[0]);
+        addFloatInput(groupIds, arguments[0], mask);
         return;
       case DOUBLE:
-        addDoubleInput(groupIds, arguments[0]);
+        addDoubleInput(groupIds, arguments[0], mask);
         return;
       case TEXT:
       case BLOB:
@@ -98,42 +99,94 @@ public class GroupedSumAccumulator implements GroupedAccumulator {
     }
   }
 
-  private void addIntInput(int[] groupIds, Column column) {
-    int count = column.getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (!column.isNull(i)) {
-        initResult.set(groupIds[i], true);
-        sumValues.add(groupIds[i], column.getInt(i));
+  private void addIntInput(int[] groupIds, Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column.isNull(i)) {
+          initResult.set(groupIds[i], true);
+          sumValues.add(groupIds[i], column.getInt(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          initResult.set(groupIds[position], true);
+          sumValues.add(groupIds[position], column.getInt(position));
+        }
       }
     }
   }
 
-  private void addLongInput(int[] groupIds, Column column) {
-    int count = column.getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (!column.isNull(i)) {
-        initResult.set(groupIds[i], true);
-        sumValues.add(groupIds[i], column.getLong(i));
+  private void addLongInput(int[] groupIds, Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column.isNull(i)) {
+          initResult.set(groupIds[i], true);
+          sumValues.add(groupIds[i], column.getLong(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          initResult.set(groupIds[position], true);
+          sumValues.add(groupIds[position], column.getLong(position));
+        }
       }
     }
   }
 
-  private void addFloatInput(int[] groupIds, Column column) {
-    int count = column.getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (!column.isNull(i)) {
-        initResult.set(groupIds[i], true);
-        sumValues.add(groupIds[i], column.getFloat(i));
+  private void addFloatInput(int[] groupIds, Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column.isNull(i)) {
+          initResult.set(groupIds[i], true);
+          sumValues.add(groupIds[i], column.getFloat(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          initResult.set(groupIds[position], true);
+          sumValues.add(groupIds[position], column.getFloat(position));
+        }
       }
     }
   }
 
-  private void addDoubleInput(int[] groupIds, Column column) {
-    int count = column.getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (!column.isNull(i)) {
-        initResult.set(groupIds[i], true);
-        sumValues.add(groupIds[i], column.getDouble(i));
+  private void addDoubleInput(int[] groupIds, Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column.isNull(i)) {
+          initResult.set(groupIds[i], true);
+          sumValues.add(groupIds[i], column.getDouble(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          initResult.set(groupIds[position], true);
+          sumValues.add(groupIds[position], column.getDouble(position));
+        }
       }
     }
   }
@@ -149,4 +202,10 @@ public class GroupedSumAccumulator implements GroupedAccumulator {
 
   @Override
   public void prepareFinal() {}
+
+  @Override
+  public void reset() {
+    initResult.reset();
+    sumValues.reset();
+  }
 }

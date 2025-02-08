@@ -27,6 +27,11 @@ else
     cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-confignode.properties)
 fi
 
+if [ -z "$cn_internal_port" ]; then
+    echo "WARNING: cn_internal_port not found in the configuration file. Using default value cn_internal_port=10710"
+    cn_internal_port=10710
+fi
+
 check_config_unique "cn_internal_port" "$cn_internal_port"
 
 echo Check whether the internal_port is used..., port is "$cn_internal_port"

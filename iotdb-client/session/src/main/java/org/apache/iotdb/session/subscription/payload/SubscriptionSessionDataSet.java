@@ -25,6 +25,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
@@ -70,7 +71,7 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
     List<IMeasurementSchema> schemas = tablet.getSchemas();
     columnNameList.addAll(
         schemas.stream()
-            .map((schema) -> deviceId + "." + schema.getMeasurementId())
+            .map((schema) -> deviceId + "." + schema.getMeasurementName())
             .collect(Collectors.toList()));
     return columnNameList;
   }
@@ -103,13 +104,16 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
     final long timestamp = entry.getKey();
     final int rowIndex = entry.getValue();
 
+    BitMap[] bitMaps = tablet.getBitMaps();
     for (int columnIndex = 0; columnIndex < columnSize; ++columnIndex) {
       final Field field;
-      if (tablet.bitMaps[columnIndex].isMarked(rowIndex)) {
+      if (bitMaps != null
+          && bitMaps[columnIndex] != null
+          && bitMaps[columnIndex].isMarked(rowIndex)) {
         field = new Field(null);
       } else {
         final TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();
-        field = generateFieldFromTabletValue(dataType, tablet.values[columnIndex], rowIndex);
+        field = generateFieldFromTabletValue(dataType, tablet.getValues()[columnIndex], rowIndex);
       }
       fields.add(field);
     }
@@ -132,7 +136,7 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
 
   private void generateRowIterator() {
     // timestamp -> row index
-    final long[] timestamps = tablet.timestamps;
+    final long[] timestamps = tablet.getTimestamps();
     final TreeMap<Long, Integer> timestampToRowIndex = new TreeMap<>();
     final int rowSize = timestamps.length;
     for (int rowIndex = 0; rowIndex < rowSize; ++rowIndex) {

@@ -80,6 +80,7 @@ public enum ConfigPhysicalPlanType {
   CreateDataPartition((short) 404),
   GetOrCreateDataPartition((short) 405),
   GetNodePathsPartition((short) 406),
+  AutoCleanPartitionTable((short) 407),
 
   /** Procedure. */
   UpdateProcedure((short) 500),
@@ -131,13 +132,47 @@ public enum ConfigPhysicalPlanType {
   ListRoleUsers((short) 637),
   CreateUserWithRawPassword((short) 638),
 
+  /** Table Author */
+  RCreateUser((short) 641),
+  RCreateRole((short) 642),
+  RUpdateUser((short) 643),
+  RDropUser((short) 644),
+  RDropRole((short) 645),
+  RGrantUserRole((short) 646),
+  RRevokeUserRole((short) 647),
+  RGrantUserAny((short) 648),
+  RGrantRoleAny((short) 649),
+  RGrantUserAll((short) 650),
+  RGrantRoleAll((short) 652),
+  RGrantUserDBPriv((short) 653),
+  RGrantUserTBPriv((short) 654),
+  RGrantRoleDBPriv((short) 655),
+  RGrantRoleTBPriv((short) 656),
+  RRevokeUserAny((short) 657),
+  RRevokeRoleAny((short) 658),
+  RRevokeUserAll((short) 659),
+  RRevokeRoleAll((short) 660),
+  RRevokeUserDBPriv((short) 661),
+  RRevokeUserTBPriv((short) 662),
+  RRevokeRoleDBPriv((short) 663),
+  RRevokeRoleTBPriv((short) 664),
+  RGrantUserSysPri((short) 665),
+  RGrantRoleSysPri((short) 666),
+  RRevokeUserSysPri((short) 667),
+  RRevokeRoleSysPri((short) 668),
+  RListUser((short) 669),
+  RListRole((short) 670),
+  RListUserPrivilege((short) 671),
+  RListRolePrivilege((short) 672),
+
   /** Function. */
   CreateFunction((short) 700),
-  DropFunction((short) 701),
+  DropTreeModelFunction((short) 701),
   GetFunctionTable((short) 702),
   GetFunctionJar((short) 703),
   GetAllFunctionTable((short) 704),
   UpdateFunction((short) 705),
+  DropTableModelFunction((short) 706),
 
   /** Template. */
   CreateSchemaTemplate((short) 800),
@@ -166,7 +201,12 @@ public enum ConfigPhysicalPlanType {
   FetchTable((short) 856),
   RenameTableColumn((short) 857),
   PreDeleteTable((short) 858),
-  DropTable((short) 859),
+  CommitDeleteTable((short) 859),
+  PreDeleteColumn((short) 860),
+  CommitDeleteColumn((short) 861),
+  DescTable((short) 862),
+  ShowTable4InformationSchema((short) 863),
+  DescTable4InformationSchema((short) 864),
 
   /** Deprecated types for sync, restored them for upgrade. */
   @Deprecated
@@ -242,6 +282,8 @@ public enum ConfigPhysicalPlanType {
   PipeDeleteLogicalView((short) 1703),
   PipeDeactivateTemplate((short) 1704),
   PipeSetTTL((short) 1705),
+  PipeCreateTable((short) 1706),
+  PipeDeleteDevices((short) 1707),
 
   /** Subscription */
   CreateTopic((short) 1800),

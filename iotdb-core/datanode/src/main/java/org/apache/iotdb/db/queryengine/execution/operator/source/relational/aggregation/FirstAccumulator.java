@@ -60,30 +60,30 @@ public class FirstAccumulator implements TableAccumulator {
   }
 
   @Override
-  public void addInput(Column[] arguments) {
+  public void addInput(Column[] arguments, AggregationMask mask) {
     // arguments[0] is value column, arguments[1] is time column
     switch (seriesDataType) {
       case INT32:
       case DATE:
-        addIntInput(arguments[0], arguments[1]);
+        addIntInput(arguments[0], arguments[1], mask);
         return;
       case INT64:
       case TIMESTAMP:
-        addLongInput(arguments[0], arguments[1]);
+        addLongInput(arguments[0], arguments[1], mask);
         return;
       case FLOAT:
-        addFloatInput(arguments[0], arguments[1]);
+        addFloatInput(arguments[0], arguments[1], mask);
         return;
       case DOUBLE:
-        addDoubleInput(arguments[0], arguments[1]);
+        addDoubleInput(arguments[0], arguments[1], mask);
         return;
       case TEXT:
       case STRING:
       case BLOB:
-        addBinaryInput(arguments[0], arguments[1]);
+        addBinaryInput(arguments[0], arguments[1], mask);
         return;
       case BOOLEAN:
-        addBooleanInput(arguments[0], arguments[1]);
+        addBooleanInput(arguments[0], arguments[1], mask);
         return;
       default:
         throw new UnSupportedDataTypeException(
@@ -94,7 +94,9 @@ public class FirstAccumulator implements TableAccumulator {
   @Override
   public void addIntermediate(Column argument) {
     checkArgument(
-        argument instanceof BinaryColumn || argument instanceof RunLengthEncodedColumn,
+        argument instanceof BinaryColumn
+            || (argument instanceof RunLengthEncodedColumn
+                && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
         "intermediate input and output of First should be BinaryColumn");
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
@@ -148,7 +150,7 @@ public class FirstAccumulator implements TableAccumulator {
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
     checkArgument(
         columnBuilder instanceof BinaryColumnBuilder,
-        "intermediate input and output of Avg should be BinaryColumn");
+        "intermediate input and output of First should be BinaryColumn");
     if (!initResult) {
       columnBuilder.appendNull();
     } else {
@@ -243,11 +245,25 @@ public class FirstAccumulator implements TableAccumulator {
     this.firstValue.reset();
   }
 
-  private void addIntInput(Column valueColumn, Column timeColumn) {
-    // TODO can add first position optimization if first position is null ?
-    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
-      if (!valueColumn.isNull(i)) {
-        updateIntFirstValue(valueColumn.getInt(i), timeColumn.getLong(i));
+  protected void addIntInput(Column valueColumn, Column timeColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!valueColumn.isNull(i)) {
+          updateIntFirstValue(valueColumn.getInt(i), timeColumn.getLong(i));
+          return;
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!valueColumn.isNull(position)) {
+          updateIntFirstValue(valueColumn.getInt(position), timeColumn.getLong(position));
+          return;
+        }
       }
     }
   }
@@ -260,10 +276,25 @@ public class FirstAccumulator implements TableAccumulator {
     }
   }
 
-  private void addLongInput(Column valueColumn, Column timeColumn) {
-    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
-      if (!valueColumn.isNull(i)) {
-        updateLongFirstValue(valueColumn.getLong(i), timeColumn.getLong(i));
+  protected void addLongInput(Column valueColumn, Column timeColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!valueColumn.isNull(i)) {
+          updateLongFirstValue(valueColumn.getLong(i), timeColumn.getLong(i));
+          return;
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!valueColumn.isNull(position)) {
+          updateLongFirstValue(valueColumn.getLong(position), timeColumn.getLong(position));
+          return;
+        }
       }
     }
   }
@@ -276,10 +307,25 @@ public class FirstAccumulator implements TableAccumulator {
     }
   }
 
-  private void addFloatInput(Column valueColumn, Column timeColumn) {
-    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
-      if (!valueColumn.isNull(i)) {
-        updateFloatFirstValue(valueColumn.getFloat(i), timeColumn.getLong(i));
+  protected void addFloatInput(Column valueColumn, Column timeColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!valueColumn.isNull(i)) {
+          updateFloatFirstValue(valueColumn.getFloat(i), timeColumn.getLong(i));
+          return;
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!valueColumn.isNull(position)) {
+          updateFloatFirstValue(valueColumn.getFloat(position), timeColumn.getLong(position));
+          return;
+        }
       }
     }
   }
@@ -292,10 +338,25 @@ public class FirstAccumulator implements TableAccumulator {
     }
   }
 
-  private void addDoubleInput(Column valueColumn, Column timeColumn) {
-    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
-      if (!valueColumn.isNull(i)) {
-        updateDoubleFirstValue(valueColumn.getDouble(i), timeColumn.getLong(i));
+  protected void addDoubleInput(Column valueColumn, Column timeColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!valueColumn.isNull(i)) {
+          updateDoubleFirstValue(valueColumn.getDouble(i), timeColumn.getLong(i));
+          return;
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!valueColumn.isNull(position)) {
+          updateDoubleFirstValue(valueColumn.getDouble(position), timeColumn.getLong(position));
+          return;
+        }
       }
     }
   }
@@ -308,10 +369,25 @@ public class FirstAccumulator implements TableAccumulator {
     }
   }
 
-  private void addBinaryInput(Column valueColumn, Column timeColumn) {
-    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
-      if (!valueColumn.isNull(i)) {
-        updateBinaryFirstValue(valueColumn.getBinary(i), timeColumn.getLong(i));
+  protected void addBinaryInput(Column valueColumn, Column timeColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!valueColumn.isNull(i)) {
+          updateBinaryFirstValue(valueColumn.getBinary(i), timeColumn.getLong(i));
+          return;
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!valueColumn.isNull(position)) {
+          updateBinaryFirstValue(valueColumn.getBinary(position), timeColumn.getLong(position));
+          return;
+        }
       }
     }
   }
@@ -324,10 +400,25 @@ public class FirstAccumulator implements TableAccumulator {
     }
   }
 
-  private void addBooleanInput(Column valueColumn, Column timeColumn) {
-    for (int i = 0; i < valueColumn.getPositionCount(); i++) {
-      if (!valueColumn.isNull(i)) {
-        updateBooleanFirstValue(valueColumn.getBoolean(i), timeColumn.getLong(i));
+  protected void addBooleanInput(Column valueColumn, Column timeColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!valueColumn.isNull(i)) {
+          updateBooleanFirstValue(valueColumn.getBoolean(i), timeColumn.getLong(i));
+          return;
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!valueColumn.isNull(position)) {
+          updateBooleanFirstValue(valueColumn.getBoolean(position), timeColumn.getLong(position));
+          return;
+        }
       }
     }
   }

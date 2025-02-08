@@ -19,24 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
-import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
-
-abstract class AbstractAlterOrDropTableTask implements IConfigTask {
-
-  protected final String database;
-
-  protected final String tableName;
+abstract class AbstractAlterOrDropTableTask extends AbstractTableTask {
 
   protected final String queryId;
 
   protected final boolean tableIfExists;
 
   protected AbstractAlterOrDropTableTask(
-      String database, final String tableName, final String queryId, final boolean tableIfExists) {
-    database = PathUtils.qualifyDatabaseName(database);
-    this.database = database;
-    this.tableName = tableName;
+      final String database,
+      final String tableName,
+      final String queryId,
+      final boolean tableIfExists) {
+    super(database, tableName);
     this.queryId = queryId;
     this.tableIfExists = tableIfExists;
   }

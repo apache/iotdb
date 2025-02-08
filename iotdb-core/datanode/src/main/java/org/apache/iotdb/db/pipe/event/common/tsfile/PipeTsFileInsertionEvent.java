@@ -38,7 +38,6 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -74,6 +73,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   // This is true iff the modFile exists and should be transferred
   private boolean isWithMod;
   private File modFile;
+  private File sharedModFile;
 
   private final boolean isLoaded;
   private final boolean isGeneratedByPipe;
@@ -142,9 +142,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     this.resource = resource;
     tsFile = resource.getTsFile();
 
-    final ModificationFile modFile = resource.getModFile();
-    this.isWithMod = isWithMod && modFile.exists();
-    this.modFile = this.isWithMod ? new File(modFile.getFilePath()) : null;
+    this.isWithMod = isWithMod && resource.anyModFileExists();
+    this.modFile = this.isWithMod ? resource.getExclusiveModFile().getFile() : null;
+    // TODO: process the shared mod file
+    this.sharedModFile =
+        resource.getSharedModFile() != null ? resource.getSharedModFile().getFile() : null;
 
     this.isLoaded = isLoaded;
     this.isGeneratedByPipe = isGeneratedByPipe;
@@ -231,6 +233,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     return modFile;
   }
 
+  public File getSharedModFile() {
+    return sharedModFile;
+  }
+
   public boolean isWithMod() {
     return isWithMod;
   }
@@ -276,7 +282,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       }
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .increaseTsFileEventCount(pipeName + "_" + creationTime);
+            .increaseTsFileEventCount(pipeName, creationTime);
       }
       return true;
     } catch (final Exception e) {
@@ -307,7 +313,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     } finally {
       if (Objects.nonNull(pipeName)) {
         PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .decreaseTsFileEventCount(pipeName + "_" + creationTime);
+            .decreaseTsFileEventCount(pipeName, creationTime);
       }
     }
   }
@@ -475,52 +481,82 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   /////////////////////////// TsFileInsertionEvent ///////////////////////////
 
   @Override
-  public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
+  public Iterable<TabletInsertionEvent> toTabletInsertionEvents() throws PipeException {
+    return toTabletInsertionEvents(Long.MAX_VALUE);
+  }
+
+  public Iterable<TabletInsertionEvent> toTabletInsertionEvents(final long timeoutMs)
+      throws PipeException {
     try {
       if (!waitForTsFileClose()) {
         LOGGER.warn(
             "Pipe skipping temporary TsFile's parsing which shouldn't be transferred: {}", tsFile);
         return Collections.emptyList();
       }
-      waitForResourceEnough4Parsing();
+      waitForResourceEnough4Parsing(timeoutMs);
       return initEventParser().toTabletInsertionEvents();
-    } catch (final InterruptedException e) {
-      Thread.currentThread().interrupt();
+    } catch (final Exception e) {
       close();
 
+      // close() should be called before re-interrupting the thread
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
+
       final String errorMsg =
-          String.format(
-              "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath());
+          e instanceof InterruptedException
+              ? String.format(
+                  "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath())
+              : String.format(
+                  "Parse TsFile %s error. Because: %s", resource.getTsFilePath(), e.getMessage());
       LOGGER.warn(errorMsg, e);
       throw new PipeException(errorMsg);
     }
   }
 
-  private void waitForResourceEnough4Parsing() throws InterruptedException {
+  private void waitForResourceEnough4Parsing(final long timeoutMs) throws InterruptedException {
     final PipeMemoryManager memoryManager = PipeDataNodeResourceManager.memory();
     if (memoryManager.isEnough4TabletParsing()) {
       return;
     }
 
+    final long startTime = System.currentTimeMillis();
+    long lastRecordTime = startTime;
+
     final long memoryCheckIntervalMs =
         PipeConfig.getInstance().getPipeTsFileParserCheckMemoryEnoughIntervalMs();
-    final long startTime = System.currentTimeMillis();
     while (!memoryManager.isEnough4TabletParsing()) {
       Thread.sleep(memoryCheckIntervalMs);
+
+      final long currentTime = System.currentTimeMillis();
+      final double elapsedRecordTimeSeconds = (currentTime - lastRecordTime) / 1000.0;
+      final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
+      if (elapsedRecordTimeSeconds > 10.0) {
+        LOGGER.info(
+            "Wait for resource enough for parsing {} for {} seconds.",
+            resource != null ? resource.getTsFilePath() : "tsfile",
+            waitTimeSeconds);
+        lastRecordTime = currentTime;
+      } else if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Wait for resource enough for parsing {} for {} seconds.",
+            resource != null ? resource.getTsFilePath() : "tsfile",
+            waitTimeSeconds);
+      }
+
+      if (waitTimeSeconds * 1000 > timeoutMs) {
+        // should contain 'TimeoutException' in exception message
+        throw new PipeException(
+            String.format("TimeoutException: Waited %s seconds", waitTimeSeconds));
+      }
     }
 
-    final double waitTimeSeconds = (System.currentTimeMillis() - startTime) / 1000.0;
-    if (waitTimeSeconds > 1.0) {
-      LOGGER.info(
-          "Wait for resource enough for parsing {} for {} seconds.",
-          resource != null ? resource.getTsFilePath() : "tsfile",
-          waitTimeSeconds);
-    } else if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(
-          "Wait for resource enough for parsing {} for {} seconds.",
-          resource != null ? resource.getTsFilePath() : "tsfile",
-          waitTimeSeconds);
-    }
+    final long currentTime = System.currentTimeMillis();
+    final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
+    LOGGER.info(
+        "Wait for resource enough for parsing {} for {} seconds.",
+        resource != null ? resource.getTsFilePath() : "tsfile",
+        waitTimeSeconds);
   }
 
   /** The method is used to prevent circular replication in PipeConsensus */
@@ -613,7 +649,12 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public PipeEventResource eventResourceBuilder() {
     return new PipeTsFileInsertionEventResource(
-        this.isReleased, this.referenceCount, this.tsFile, this.isWithMod, this.modFile);
+        this.isReleased,
+        this.referenceCount,
+        this.tsFile,
+        this.isWithMod,
+        this.modFile,
+        this.sharedModFile);
   }
 
   private static class PipeTsFileInsertionEventResource extends PipeEventResource {
@@ -621,17 +662,20 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     private final File tsFile;
     private final boolean isWithMod;
     private final File modFile;
+    private final File sharedModFile;
 
     private PipeTsFileInsertionEventResource(
         final AtomicBoolean isReleased,
         final AtomicInteger referenceCount,
         final File tsFile,
         final boolean isWithMod,
-        final File modFile) {
+        final File modFile,
+        File sharedModFile) {
       super(isReleased, referenceCount);
       this.tsFile = tsFile;
       this.isWithMod = isWithMod;
       this.modFile = modFile;
+      this.sharedModFile = sharedModFile;
     }
 
     @Override

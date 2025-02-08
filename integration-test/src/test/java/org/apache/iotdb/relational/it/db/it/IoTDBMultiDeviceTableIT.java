@@ -80,38 +80,38 @@ public class IoTDBMultiDeviceTableIT {
       statement.addBatch("CREATE DATABASE test");
       statement.addBatch("USE \"test\"");
       statement.addBatch(
-          "create table t (id1 string id, id2 string id, s0 int32 measurement, s1 int32 measurement)");
+          "create table t (tag1 string tag, tag2 string tag, s0 int32 field, s1 int32 field)");
 
       // insert of data time range :0-100 into fans
       for (int time = 0; time < 100; time++) {
 
         String sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d0',%s,%s)", time, time % 7);
+                "insert into t(tag1,tag2,time,s0) values('fans','d0',%s,%s)", time, time % 7);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d1',%s,%s)", time, time % 4);
+                "insert into t(tag1,tag2,time,s0) values('fans','d1',%s,%s)", time, time % 4);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d2',%s,%s)", time, time % 7);
+                "insert into t(tag1,tag2,time,s0) values('fans','d2',%s,%s)", time, time % 7);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d3',%s,%s)", time, time % 4);
+                "insert into t(tag1,tag2,time,s0) values('fans','d3',%s,%s)", time, time % 4);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1, id2,time,s0) values('car','d0',%s,%s)", time, time % 7);
+                "insert into t(tag1, tag2,time,s0) values('car','d0',%s,%s)", time, time % 7);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1, id2,time,s0) values('car','d1',%s,%s)", time, time % 4);
+                "insert into t(tag1, tag2,time,s0) values('car','d1',%s,%s)", time, time % 4);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1, id2,time,s0) values('car','d2',%s,%s)", time, time % 4);
+                "insert into t(tag1, tag2,time,s0) values('car','d2',%s,%s)", time, time % 4);
         statement.addBatch(sql);
       }
 
@@ -120,31 +120,31 @@ public class IoTDBMultiDeviceTableIT {
 
         String sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d0',%s,%s)", time, time % 7);
+                "insert into t(tag1,tag2,time,s0) values('fans','d0',%s,%s)", time, time % 7);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d1',%s,%s)", time, time % 4);
+                "insert into t(tag1,tag2,time,s0) values('fans','d1',%s,%s)", time, time % 4);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d2',%s,%s)", time, time % 7);
+                "insert into t(tag1,tag2,time,s0) values('fans','d2',%s,%s)", time, time % 7);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d3',%s,%s)", time, time % 4);
+                "insert into t(tag1,tag2,time,s0) values('fans','d3',%s,%s)", time, time % 4);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1, id2,time,s0) values('car','d0',%s,%s)", time, time % 7);
+                "insert into t(tag1, tag2,time,s0) values('car','d0',%s,%s)", time, time % 7);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1, id2,time,s0) values('car','d1',%s,%s)", time, time % 4);
+                "insert into t(tag1, tag2,time,s0) values('car','d1',%s,%s)", time, time % 4);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1, id2,time,s0) values('car','d2',%s,%s)", time, time % 4);
+                "insert into t(tag1, tag2,time,s0) values('car','d2',%s,%s)", time, time % 4);
         statement.addBatch(sql);
       }
 
@@ -153,31 +153,31 @@ public class IoTDBMultiDeviceTableIT {
         // System.out.println("===" + time);
         String sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d0',%s,%s)", time, time % 7);
+                "insert into t(tag1,tag2,time,s0) values('fans','d0',%s,%s)", time, time % 7);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d1',%s,%s)", time, time % 4);
+                "insert into t(tag1,tag2,time,s0) values('fans','d1',%s,%s)", time, time % 4);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d2',%s,%s)", time, time % 7);
+                "insert into t(tag1,tag2,time,s0) values('fans','d2',%s,%s)", time, time % 7);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d3',%s,%s)", time, time % 4);
+                "insert into t(tag1,tag2,time,s0) values('fans','d3',%s,%s)", time, time % 4);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1, id2,time,s0) values('car','d0',%s,%s)", time, time % 7);
+                "insert into t(tag1, tag2,time,s0) values('car','d0',%s,%s)", time, time % 7);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1, id2,time,s0) values('car','d1',%s,%s)", time, time % 4);
+                "insert into t(tag1, tag2,time,s0) values('car','d1',%s,%s)", time, time % 4);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1, id2,time,s0) values('car','d2',%s,%s)", time, time % 4);
+                "insert into t(tag1, tag2,time,s0) values('car','d2',%s,%s)", time, time % 4);
         statement.addBatch(sql);
       }
 
@@ -188,31 +188,31 @@ public class IoTDBMultiDeviceTableIT {
 
         String sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d0',%s,%s)", time, time % 7);
+                "insert into t(tag1,tag2,time,s0) values('fans','d0',%s,%s)", time, time % 7);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d1',%s,%s)", time, time % 4);
+                "insert into t(tag1,tag2,time,s0) values('fans','d1',%s,%s)", time, time % 4);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d2',%s,%s)", time, time % 7);
+                "insert into t(tag1,tag2,time,s0) values('fans','d2',%s,%s)", time, time % 7);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d3',%s,%s)", time, time % 4);
+                "insert into t(tag1,tag2,time,s0) values('fans','d3',%s,%s)", time, time % 4);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1, id2,time,s0) values('car','d0',%s,%s)", time, time % 7);
+                "insert into t(tag1, tag2,time,s0) values('car','d0',%s,%s)", time, time % 7);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1, id2,time,s0) values('car','d1',%s,%s)", time, time % 4);
+                "insert into t(tag1, tag2,time,s0) values('car','d1',%s,%s)", time, time % 4);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1, id2,time,s0) values('car','d2',%s,%s)", time, time % 4);
+                "insert into t(tag1, tag2,time,s0) values('car','d2',%s,%s)", time, time % 4);
         statement.addBatch(sql);
       }
 
@@ -221,31 +221,31 @@ public class IoTDBMultiDeviceTableIT {
 
         String sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d0',%s,%s)", time, time % 7);
+                "insert into t(tag1,tag2,time,s0) values('fans','d0',%s,%s)", time, time % 7);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d1',%s,%s)", time, time % 4);
+                "insert into t(tag1,tag2,time,s0) values('fans','d1',%s,%s)", time, time % 4);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d2',%s,%s)", time, time % 7);
+                "insert into t(tag1,tag2,time,s0) values('fans','d2',%s,%s)", time, time % 7);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1,id2,time,s0) values('fans','d3',%s,%s)", time, time % 4);
+                "insert into t(tag1,tag2,time,s0) values('fans','d3',%s,%s)", time, time % 4);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1, id2,time,s0) values('car','d0',%s,%s)", time, time % 7);
+                "insert into t(tag1, tag2,time,s0) values('car','d0',%s,%s)", time, time % 7);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1, id2,time,s0) values('car','d1',%s,%s)", time, time % 4);
+                "insert into t(tag1, tag2,time,s0) values('car','d1',%s,%s)", time, time % 4);
         statement.addBatch(sql);
         sql =
             String.format(
-                "insert into t(id1, id2,time,s0) values('car','d2',%s,%s)", time, time % 4);
+                "insert into t(tag1, tag2,time,s0) values('car','d2',%s,%s)", time, time % 4);
         statement.addBatch(sql);
       }
       assertTrue(Arrays.stream(statement.executeBatch()).allMatch(i -> i == 200));
@@ -273,13 +273,13 @@ public class IoTDBMultiDeviceTableIT {
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         int cnt = 0;
         while (resultSet.next()) {
-          String id = resultSet.getString("id1") + "_" + resultSet.getString("id2");
-          long before = lastTimeMap.getOrDefault(id, -1L);
+          String tag = resultSet.getString("tag1") + "_" + resultSet.getString("tag2");
+          long before = lastTimeMap.getOrDefault(tag, -1L);
           long cur = resultSet.getTimestamp("time").getTime();
           if (cur <= before) {
             fail("time order wrong!");
           }
-          lastTimeMap.put(id, cur);
+          lastTimeMap.put(tag, cur);
           cnt++;
         }
         assertEquals(16030, cnt);
@@ -297,10 +297,10 @@ public class IoTDBMultiDeviceTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("USE \"test\"");
 
-      statement.execute("DELETE FROM t WHERE id1='fans' and time <= 100");
-      statement.execute("DELETE FROM t WHERE id1='car' and time <= 100");
-      statement.execute("DELETE FROM t WHERE id1='fans' and time >= 20050 and time < 20100");
-      statement.execute("DELETE FROM t WHERE id1='car' and time >= 20050 and time < 20100");
+      statement.execute("DELETE FROM t WHERE tag1='fans' and time <= 100");
+      statement.execute("DELETE FROM t WHERE tag1='car' and time <= 100");
+      statement.execute("DELETE FROM t WHERE tag1='fans' and time >= 20050 and time < 20100");
+      statement.execute("DELETE FROM t WHERE tag1='car' and time >= 20050 and time < 20100");
 
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         int cnt = 0;
@@ -316,8 +316,8 @@ public class IoTDBMultiDeviceTableIT {
         assertEquals(2140, cnt);
       }
 
-      statement.execute("DELETE FROM t WHERE id1 = 'fans' and time <= 20000");
-      statement.execute("DELETE FROM t WHERE id1 = 'car' and time <= 20000");
+      statement.execute("DELETE FROM t WHERE tag1 = 'fans' and time <= 20000");
+      statement.execute("DELETE FROM t WHERE tag1 = 'car' and time <= 20000");
 
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         int cnt = 0;

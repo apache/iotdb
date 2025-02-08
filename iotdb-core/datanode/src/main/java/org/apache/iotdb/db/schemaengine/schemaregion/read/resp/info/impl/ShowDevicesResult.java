@@ -25,6 +25,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchem
 
 import org.apache.tsfile.utils.Binary;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -97,7 +98,8 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
     return "ShowDevicesResult{"
         + "name='"
         + path
-        + '\''
+        + ", rawNodes = "
+        + Arrays.toString(rawNodes)
         + ", isAligned = "
         + isAligned
         + ", templateId = "

@@ -125,7 +125,14 @@ goto :eof
 
 rem echo CLASSPATH: %CLASSPATH%
 
-"%JAVA_HOME%\bin\java" %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS% %CONF_PARAMS%
+@REM In case the 2g memory is not enough in some scenarios, users can further reduce the memory usage manually.
+@REM on heap memory size
+set ON_HEAP_MEMORY=2G
+
+@REM off heap memory size
+set OFF_HEAP_MEMORY=512M
+
+"%JAVA_HOME%\bin\java" %ILLEGAL_ACCESS_PARAMS%  %JAVA_OPTS% %IOTDB_HEAP_OPTS% -Xms%ON_HEAP_MEMORY% -Xmx%ON_HEAP_MEMORY% -XX:MaxDirectMemorySize=%OFF_HEAP_MEMORY% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS% %CONF_PARAMS%
 goto finally
 
 :err

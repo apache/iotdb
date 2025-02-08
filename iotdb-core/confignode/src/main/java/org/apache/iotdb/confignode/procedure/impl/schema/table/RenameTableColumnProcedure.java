@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -47,8 +48,8 @@ public class RenameTableColumnProcedure
   private String oldName;
   private String newName;
 
-  public RenameTableColumnProcedure() {
-    super();
+  public RenameTableColumnProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   public RenameTableColumnProcedure(
@@ -56,8 +57,9 @@ public class RenameTableColumnProcedure
       final String tableName,
       final String queryId,
       final String oldName,
-      final String newName) {
-    super(database, tableName, queryId);
+      final String newName,
+      final boolean isGeneratedByPipe) {
+    super(database, tableName, queryId, isGeneratedByPipe);
     this.oldName = oldName;
     this.newName = newName;
   }
@@ -105,24 +107,29 @@ public class RenameTableColumnProcedure
   }
 
   private void columnCheck(final ConfigNodeProcedureEnv env) {
-    final Pair<TSStatus, TsTable> result =
-        env.getConfigManager()
-            .getClusterSchemaManager()
-            .tableColumnCheckForColumnRenaming(database, tableName, oldName, newName);
-    final TSStatus status = result.getLeft();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
-      return;
+    try {
+      final Pair<TSStatus, TsTable> result =
+          env.getConfigManager()
+              .getClusterSchemaManager()
+              .tableColumnCheckForColumnRenaming(database, tableName, oldName, newName);
+      final TSStatus status = result.getLeft();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        setFailure(
+            new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+        return;
+      }
+      table = result.getRight();
+      setNextState(RenameTableColumnState.PRE_RELEASE);
+    } catch (final MetadataException e) {
+      setFailure(new ProcedureException(e));
     }
-    table = result.getRight();
-    setNextState(RenameTableColumnState.PRE_RELEASE);
   }
 
   private void renameColumn(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .renameTableColumn(database, tableName, oldName, newName);
+            .renameTableColumn(database, tableName, oldName, newName, isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     } else {
@@ -162,7 +169,7 @@ public class RenameTableColumnProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .renameTableColumn(database, tableName, newName, oldName);
+            .renameTableColumn(database, tableName, newName, oldName, isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
@@ -190,7 +197,10 @@ public class RenameTableColumnProcedure
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_RENAME_TABLE_COLUMN_PROCEDURE.getTypeCode()
+            : ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
     ReadWriteIOUtils.write(oldName, stream);

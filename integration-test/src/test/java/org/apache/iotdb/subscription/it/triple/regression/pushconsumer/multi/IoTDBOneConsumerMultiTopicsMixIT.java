@@ -25,7 +25,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
@@ -72,7 +72,7 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
   private String device2 = database2 + ".d_0";
   private String topicName2 = "topic_OneConsumerMultiTopicsMix_2";
   private List<IMeasurementSchema> schemaList = new ArrayList<>();
-  private SubscriptionPushConsumer consumer;
+  private SubscriptionTreePushConsumer consumer;
 
   @Override
   @Before
@@ -118,7 +118,7 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
     Tablet tablet = new Tablet(device, schemaList, 10);
     int rowIndex = 0;
     for (int row = 0; row < 5; row++) {
-      rowIndex = tablet.rowSize++;
+      rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue("s_0", rowIndex, row + 2.45f);
       tablet.addValue("s_1", rowIndex, "rowIndex" + rowIndex);
@@ -151,7 +151,7 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
     AtomicInteger rowCount2 = new AtomicInteger(0);
     // Subscribe
     consumer =
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("db_mix_consumer_2_topic")

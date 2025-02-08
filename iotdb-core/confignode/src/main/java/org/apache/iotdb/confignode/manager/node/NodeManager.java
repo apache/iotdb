@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -113,6 +112,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /** {@link NodeManager} manages cluster node addition and removal requests. */
@@ -326,7 +326,7 @@ public class NodeManager {
         configManager
             .getClusterManager()
             .getClusterIdWithRetry(
-                CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS() / 2);
+                CommonDescriptor.getInstance().getConfig().getCnConnectionTimeoutInMS() / 2);
     TDataNodeRestartResp resp = new TDataNodeRestartResp();
     resp.setConfigNodeList(getRegisteredConfigNodes());
     if (clusterId == null) {
@@ -362,11 +362,8 @@ public class NodeManager {
 
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_RESTART);
     resp.setRuntimeConfiguration(getRuntimeConfiguration());
-    List<TConsensusGroupId> consensusGroupIds =
-        getPartitionManager().getAllReplicaSets(nodeId).stream()
-            .map(TRegionReplicaSet::getRegionId)
-            .collect(Collectors.toList());
-    resp.setConsensusGroupIds(consensusGroupIds);
+
+    resp.setCorrectConsensusGroups(getPartitionManager().getAllReplicaSets(nodeId));
     return resp;
   }
 
@@ -1083,6 +1080,18 @@ public class NodeManager {
    */
   public List<TDataNodeConfiguration> filterDataNodeThroughStatus(NodeStatus... status) {
     return nodeInfo.getRegisteredDataNodes(getLoadManager().filterDataNodeThroughStatus(status));
+  }
+
+  /**
+   * Filter DataNodes through the NodeStatus predicate.
+   *
+   * @param statusPredicate The NodeStatus predicate
+   * @return Filtered DataNodes with the predicate
+   */
+  public List<TDataNodeConfiguration> filterDataNodeThroughStatus(
+      Function<NodeStatus, Boolean> statusPredicate) {
+    return nodeInfo.getRegisteredDataNodes(
+        getLoadManager().filterDataNodeThroughStatus(statusPredicate));
   }
 
   /**

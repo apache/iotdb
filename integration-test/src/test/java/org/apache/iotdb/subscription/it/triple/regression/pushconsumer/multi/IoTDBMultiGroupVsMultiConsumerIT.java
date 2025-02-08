@@ -24,7 +24,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionCon
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
@@ -76,7 +76,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
   private int consumertCount = 10;
   private static List<IMeasurementSchema> schemaList = new ArrayList<>();
 
-  private List<SubscriptionPushConsumer> consumers = new ArrayList<>(consumertCount);
+  private List<SubscriptionTreePushConsumer> consumers = new ArrayList<>(consumertCount);
   private AtomicInteger rowCount00 = new AtomicInteger(0);
   private AtomicInteger rowCount10 = new AtomicInteger(0);
   private AtomicInteger rowCount70 = new AtomicInteger(0);
@@ -142,7 +142,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
     System.out.println("rowCount70.get()=" + rowCount70.get());
     System.out.println("rowCount90.get()=" + rowCount90.get());
     System.out.println("rowCount6.get()=" + rowCount6.get());
-    for (SubscriptionPushConsumer c : consumers) {
+    for (SubscriptionTreePushConsumer c : consumers) {
       try {
         c.close();
       } catch (Exception e) {
@@ -160,14 +160,14 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
     Tablet tablet = new Tablet(device, schemaList, rows);
     int rowIndex = 0;
     for (int row = 0; row < rows; row++) {
-      rowIndex = tablet.rowSize++;
+      rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
-      tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, (row + 1) * 1400 + row);
-      tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (row + 1) * 100 + 0.5);
+      tablet.addValue(schemaList.get(0).getMeasurementName(), rowIndex, (row + 1) * 1400 + row);
+      tablet.addValue(schemaList.get(1).getMeasurementName(), rowIndex, (row + 1) * 100 + 0.5);
       timestamp += 2000;
     }
     session_src.insertTablet(tablet);
-    session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush");
   }
 
   /***
@@ -190,7 +190,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
           StatementExecutionException,
           InterruptedException {
     consumers.add(
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("consumer_id_0")
@@ -221,7 +221,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
                 })
             .buildPushConsumer());
     consumers.add(
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("consumer_id_1")
@@ -253,7 +253,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
                 })
             .buildPushConsumer());
     consumers.add(
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("consumer_id_2")
@@ -275,7 +275,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
                 })
             .buildPushConsumer());
     consumers.add(
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("consumer_id_3")
@@ -297,7 +297,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
                 })
             .buildPushConsumer());
     consumers.add(
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("consumer_id_4")
@@ -319,7 +319,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
                 })
             .buildPushConsumer());
     consumers.add(
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("consumer_id_5")
@@ -341,7 +341,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
                 })
             .buildPushConsumer());
     consumers.add(
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("consumer_id_6")
@@ -363,7 +363,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
                 })
             .buildPushConsumer());
     consumers.add(
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("consumer_id_7")
@@ -412,7 +412,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
                 })
             .buildPushConsumer());
     consumers.add(
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("consumer_id_8")
@@ -443,7 +443,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
                 })
             .buildPushConsumer());
     consumers.add(
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("consumer_id_9")

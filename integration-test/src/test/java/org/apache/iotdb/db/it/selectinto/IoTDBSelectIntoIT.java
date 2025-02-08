@@ -806,4 +806,53 @@ public class IoTDBSelectIntoIT {
     String expectedQueryHeader = "Time,root.db.d2.s7,root.db.d2.s8,root.db.d2.s9,root.db.d2.s10,";
     resultSetEqualTest("select s7,s8,s9,s10 from root.db.d2;", expectedQueryHeader, resultSet);
   }
+
+  // -------------------------------------- OTHER TEST -------------------------------------
+  @Test
+  public void testRemoveBackQuote() {
+    String[] intoRetArray =
+        new String[] {
+          "count(root.sg.d1.s1),root.sg_agg1.d1.count_s1,1,",
+          "last_value(root.sg.d1.s2),root.sg_agg1.d1.last_value_s2,1,",
+          "count(root.sg.d2.s1),root.sg_agg1.d2.count_s1,1,",
+          "last_value(root.sg.d2.s2),root.sg_agg1.d2.last_value_s2,1,"
+        };
+    resultSetEqualTest(
+        "select count(d1.s1), last_value(d1.s2), count(d2.s1), last_value(d2.s2) "
+            + "into root.sg_agg1.`d1`(`count_s1`, last_value_s2), aligned root.sg_agg1.d2(count_s1, last_value_s2) "
+            + "from root.sg;",
+        selectIntoHeader,
+        intoRetArray);
+
+    String expectedQueryHeader =
+        "Time,root.sg_agg1.d1.count_s1,root.sg_agg1.d2.count_s1,root.sg_agg1.d1.last_value_s2,root.sg_agg1.d2.last_value_s2,";
+    String[] queryRetArray = new String[] {"0,10,7,12.0,11.0,"};
+    resultSetEqualTest(
+        "select count_s1, last_value_s2 from root.sg_agg1.d1, root.sg_agg1.d2;",
+        expectedQueryHeader,
+        queryRetArray);
+  }
+
+  @Test
+  public void testRemoveBackQuoteAlignByDevice() {
+    String[] intoRetArray =
+        new String[] {
+          "root.sg.d1,count(s1),root.sg_abd_agg1.d1.count_s1,1,",
+          "root.sg.d1,last_value(s2),root.sg_abd_agg1.d1.last_value_s2,1,"
+        };
+    resultSetEqualTest(
+        "select count(s1), last_value(s2) "
+            + "into root.sg_abd_agg1.`d1`(`count_s1`, last_value_s2) "
+            + "from root.sg.d1 align by device;",
+        selectIntoAlignByDeviceHeader,
+        intoRetArray);
+
+    String expectedQueryHeader =
+        "Time,root.sg_abd_agg1.d1.count_s1," + "root.sg_abd_agg1.d1.last_value_s2,";
+    String[] queryRetArray = new String[] {"0,10,12.0,"};
+    resultSetEqualTest(
+        "select count_s1, last_value_s2 from root.sg_abd_agg1.d1, root.sg_abd_agg1.d2;",
+        expectedQueryHeader,
+        queryRetArray);
+  }
 }

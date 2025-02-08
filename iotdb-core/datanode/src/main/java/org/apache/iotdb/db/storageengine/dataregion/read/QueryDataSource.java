@@ -45,7 +45,10 @@ public class QueryDataSource implements IQueryDataSource {
 
   private int curSeqIndex = -1;
 
-  // asc: startTime; desc: endTime
+  // asc: startTime, will be Long.MIN_VALUE if current tsfile resource is degraded
+  // desc: endTime, will be Long.MAX_VALUE if current tsfile resource is degraded
+  // if current tsfile resource is degraded, it will always be considered to be overlapping with
+  // current point
   private long curSeqOrderTime = 0;
 
   private Boolean curSeqSatisfied = null;
@@ -109,7 +112,7 @@ public class QueryDataSource implements IQueryDataSource {
     boolean res = ascending ? curIndex < seqResources.size() : curIndex >= 0;
     if (res && curIndex != this.curSeqIndex) {
       this.curSeqIndex = curIndex;
-      this.curSeqOrderTime = seqResources.get(curIndex).getOrderTime(deviceID, ascending);
+      this.curSeqOrderTime = seqResources.get(curIndex).getOrderTimeForSeq(deviceID, ascending);
       this.curSeqSatisfied = null;
     }
     return res;
@@ -151,7 +154,9 @@ public class QueryDataSource implements IQueryDataSource {
     if (res && curIndex != this.curUnSeqIndex) {
       this.curUnSeqIndex = curIndex;
       this.curUnSeqOrderTime =
-          unseqResources.get(unSeqFileOrderIndex[curIndex]).getOrderTime(deviceID, ascending);
+          unseqResources
+              .get(unSeqFileOrderIndex[curIndex])
+              .getOrderTimeForUnseq(deviceID, ascending);
       this.curUnSeqSatisfied = null;
     }
     return res;
@@ -208,7 +213,8 @@ public class QueryDataSource implements IQueryDataSource {
     int index = 0;
     for (TsFileResource resource : unseqResources) {
       orderTimeToIndexMap
-          .computeIfAbsent(resource.getOrderTime(deviceId, ascending), key -> new ArrayList<>())
+          .computeIfAbsent(
+              resource.getOrderTimeForUnseq(deviceId, ascending), key -> new ArrayList<>())
           .add(index++);
     }
 

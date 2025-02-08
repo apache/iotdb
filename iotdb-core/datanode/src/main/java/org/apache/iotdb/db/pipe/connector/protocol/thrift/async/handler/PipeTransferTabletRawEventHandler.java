@@ -24,28 +24,27 @@ import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.thrift.TException;
 
-public class PipeTransferTabletRawEventHandler
-    extends PipeTransferTabletInsertionEventHandler<TPipeTransferResp> {
+public class PipeTransferTabletRawEventHandler extends PipeTransferTabletInsertionEventHandler {
 
   public PipeTransferTabletRawEventHandler(
-      PipeRawTabletInsertionEvent event,
-      TPipeTransferReq req,
-      IoTDBDataRegionAsyncConnector connector) {
+      final PipeRawTabletInsertionEvent event,
+      final TPipeTransferReq req,
+      final IoTDBDataRegionAsyncConnector connector) {
     super(event, req, connector);
   }
 
   @Override
-  protected void doTransfer(AsyncPipeDataTransferServiceClient client, TPipeTransferReq req)
+  protected void doTransfer(
+      final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req)
       throws TException {
     client.pipeTransfer(req, this);
   }
 
   @Override
-  protected void updateLeaderCache(TSStatus status) {
+  protected void updateLeaderCache(final TSStatus status) {
     connector.updateLeaderCache(
         ((PipeRawTabletInsertionEvent) event).getDeviceId(), status.getRedirectNode());
   }

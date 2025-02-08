@@ -21,7 +21,11 @@ package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.table.ColumnNotExistsException;
+import org.apache.iotdb.commons.exception.table.TableAlreadyExistsException;
+import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
@@ -29,24 +33,25 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.factory.ConfigMNodeFactory;
 import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigTableNode;
 import org.apache.iotdb.db.exception.metadata.DatabaseAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.DatabaseConflictException;
-import org.apache.iotdb.db.exception.metadata.DatabaseModelException;
 import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.table.TableAlreadyExistsException;
-import org.apache.iotdb.db.exception.metadata.table.TableNotExistsException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.DatabaseCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MNodeAboveDBCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.counter.DatabaseCounter;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -56,6 +61,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -87,17 +93,22 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
 // MTreeStore.
 public class ConfigMTree {
 
-  private final Logger logger = LoggerFactory.getLogger(ConfigMTree.class);
+  private static final String TABLE_ERROR_MSG =
+      "Failed to recover configNode, because there exists data from an older incompatible version, will shutdown soon. Please delete all data, and then restart again.";
 
+  private final Logger logger = LoggerFactory.getLogger(ConfigMTree.class);
   private IConfigMNode root;
   // this store is only used for traverser invoking
   private final ConfigMTreeStore store;
 
   private final IMNodeFactory<IConfigMNode> nodeFactory = ConfigMNodeFactory.getInstance();
 
-  public ConfigMTree() throws MetadataException {
+  private final boolean isTableModel;
+
+  public ConfigMTree(final boolean isTableModel) throws MetadataException {
     store = new ConfigMTreeStore(nodeFactory);
     root = store.getRoot();
+    this.isTableModel = isTableModel;
   }
 
   public void clear() {
@@ -157,8 +168,8 @@ public class ConfigMTree {
   }
 
   /** Delete a database */
-  public void deleteDatabase(PartialPath path) throws MetadataException {
-    IDatabaseMNode<IConfigMNode> databaseMNode = getDatabaseNodeByDatabasePath(path);
+  public void deleteDatabase(final PartialPath path) throws MetadataException {
+    final IDatabaseMNode<IConfigMNode> databaseMNode = getDatabaseNodeByDatabasePath(path);
     IConfigMNode cur = databaseMNode.getParent();
     // Suppose current system has root.a.b.sg1, root.a.sg2, and delete root.a.b.sg1
     // delete the database node sg1
@@ -181,7 +192,8 @@ public class ConfigMTree {
    * @param pathPattern a path pattern or a full path
    * @return a list contains all databases related to given path
    */
-  public List<PartialPath> getBelongedDatabases(PartialPath pathPattern) throws MetadataException {
+  public List<PartialPath> getBelongedDatabases(final PartialPath pathPattern)
+      throws MetadataException {
     return collectDatabases(pathPattern, ALL_MATCH_SCOPE, false, true);
   }
 
@@ -196,24 +208,24 @@ public class ConfigMTree {
    * @return a list contains all database names under given path pattern
    */
   public List<PartialPath> getMatchedDatabases(
-      PartialPath pathPattern, PathPatternTree scope, boolean isPrefixMatch)
+      final PartialPath pathPattern, final PathPatternTree scope, final boolean isPrefixMatch)
       throws MetadataException {
     return collectDatabases(pathPattern, scope, isPrefixMatch, false);
   }
 
   private List<PartialPath> collectDatabases(
-      PartialPath pathPattern,
-      PathPatternTree scope,
-      boolean isPrefixMatch,
-      boolean collectInternal)
+      final PartialPath pathPattern,
+      final PathPatternTree scope,
+      final boolean isPrefixMatch,
+      final boolean collectInternal)
       throws MetadataException {
-    List<PartialPath> result = new LinkedList<>();
-    try (DatabaseCollector<?, ?> collector =
+    final List<PartialPath> result = new LinkedList<>();
+    try (final DatabaseCollector<?, ?> collector =
         new DatabaseCollector<List<PartialPath>, IConfigMNode>(
             root, pathPattern, store, isPrefixMatch, scope) {
 
           @Override
-          protected void collectDatabase(IDatabaseMNode<IConfigMNode> node) {
+          protected void collectDatabase(final IDatabaseMNode<IConfigMNode> node) {
             result.add(node.getPartialPath());
           }
         }) {
@@ -255,9 +267,10 @@ public class ConfigMTree {
    * @param scope traversing scope
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
-  public int getDatabaseNum(PartialPath pathPattern, PathPatternTree scope, boolean isPrefixMatch)
+  public int getDatabaseNum(
+      final PartialPath pathPattern, final PathPatternTree scope, final boolean isPrefixMatch)
       throws MetadataException {
-    try (DatabaseCounter<IConfigMNode> counter =
+    try (final DatabaseCounter<IConfigMNode> counter =
         new DatabaseCounter<>(root, pathPattern, store, isPrefixMatch, scope)) {
       return (int) counter.count();
     }
@@ -299,9 +312,9 @@ public class ConfigMTree {
    * device], return the MNode of root.sg Get database node, the give path don't need to be database
    * path.
    */
-  public IDatabaseMNode<IConfigMNode> getDatabaseNodeByPath(PartialPath path)
+  public IDatabaseMNode<IConfigMNode> getDatabaseNodeByPath(final PartialPath path)
       throws MetadataException {
-    String[] nodes = path.getNodes();
+    final String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
@@ -480,9 +493,6 @@ public class ConfigMTree {
       if (cur.getSchemaTemplateId() != NON_TEMPLATE) {
         throw new MetadataException("Template already exists on " + cur.getFullPath());
       }
-      if (cur.isDatabase() && cur.getDatabaseSchema().isIsTableModel()) {
-        throw new DatabaseModelException(cur.getFullPath(), true);
-      }
     }
 
     checkTemplateOnSubtree(cur);
@@ -645,9 +655,6 @@ public class ConfigMTree {
   public void preCreateTable(final PartialPath database, final TsTable table)
       throws MetadataException {
     final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
-    if (!databaseNode.getDatabaseSchema().isIsTableModel()) {
-      throw new DatabaseModelException(database.getFullPath(), false);
-    }
     final IConfigMNode node = databaseNode.getChild(table.getTableName());
     if (node == null) {
       final ConfigTableNode tableNode =
@@ -745,6 +752,22 @@ public class ConfigMTree {
     return result;
   }
 
+  public Map<String, List<Pair<TsTable, TableNodeStatus>>> getAllTables() {
+    return getAllDatabasePaths(true).stream()
+        .collect(
+            Collectors.toMap(
+                databasePath -> PathUtils.unQualifyDatabaseName(databasePath.getFullPath()),
+                databasePath -> {
+                  try {
+                    return getAllTablesUnderSpecificDatabase(databasePath);
+                  } catch (final MetadataException ignore) {
+                    // Database path must exist because the "getAllDatabasePaths()" is called in
+                    // databaseReadWriteLock.readLock().
+                  }
+                  return Collections.emptyList();
+                }));
+  }
+
   public Map<String, List<TsTable>> getAllUsingTables() {
     return getAllDatabasePaths(true).stream()
         .collect(
@@ -764,7 +787,7 @@ public class ConfigMTree {
   public Map<String, List<TsTable>> getAllPreCreateTables() throws MetadataException {
     final Map<String, List<TsTable>> result = new HashMap<>();
     final List<PartialPath> databaseList = getAllDatabasePaths(true);
-    for (PartialPath databasePath : databaseList) {
+    for (final PartialPath databasePath : databaseList) {
       final String database = databasePath.getFullPath().substring(ROOT.length() + 1);
       final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(databasePath).getAsMNode();
       for (final IConfigMNode child : databaseNode.getChildren().values()) {
@@ -810,25 +833,77 @@ public class ConfigMTree {
   public void setTableProperties(
       final PartialPath database, final String tableName, final Map<String, String> tableProperties)
       throws MetadataException {
-    final TsTable table = getTable(database, tableName);
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.hasChild(tableName)) {
+      throw new TableNotExistsException(
+          database.getFullPath().substring(ROOT.length() + 1), tableName);
+    }
+    final TsTable table = ((ConfigTableNode) databaseNode.getChild(tableName)).getTable();
     tableProperties.forEach(
         (k, v) -> {
           if (Objects.nonNull(v)) {
             table.addProp(k, v);
+          } else if (k.equals(TsTable.TTL_PROPERTY)
+              && databaseNode.getDatabaseSchema().isSetTTL()
+              && databaseNode.getDatabaseSchema().getTTL() != Long.MAX_VALUE) {
+            table.addProp(k, String.valueOf(databaseNode.getDatabaseSchema().getTTL()));
           } else {
             table.removeProp(k);
           }
         });
   }
 
+  // Return true if removed column is an attribute column
+  // false if measurement column
+  public boolean preDeleteColumn(
+      final PartialPath database, final String tableName, final String columnName)
+      throws MetadataException, SemanticException {
+    final ConfigTableNode node = getTableNode(database, tableName);
+    final TsTableColumnSchema columnSchema = node.getTable().getColumnSchema(columnName);
+    if (Objects.isNull(columnSchema)) {
+      throw new ColumnNotExistsException(
+          PathUtils.unQualifyDatabaseName(database.getFullPath()), tableName, columnName);
+    }
+    if (columnSchema.getColumnCategory() == TsTableColumnCategory.TAG
+        || columnSchema.getColumnCategory() == TsTableColumnCategory.TIME) {
+      throw new SemanticException("Dropping tag or time column is not supported.");
+    }
+
+    node.addPreDeletedColumn(columnName);
+    return columnSchema.getColumnCategory() == TsTableColumnCategory.ATTRIBUTE;
+  }
+
+  public void commitDeleteColumn(
+      final PartialPath database, final String tableName, final String columnName)
+      throws MetadataException {
+    final ConfigTableNode node = getTableNode(database, tableName);
+    final TsTable table = getTable(database, tableName);
+    if (Objects.nonNull(table.getColumnSchema(columnName))) {
+      table.removeColumnSchema(columnName);
+      node.removePreDeletedColumn(columnName);
+    }
+  }
+
+  public TsTable getUsingTableSchema(final PartialPath database, final String tableName)
+      throws MetadataException {
+    final ConfigTableNode node = getTableNode(database, tableName);
+    if (node.getPreDeletedColumns().isEmpty()) {
+      return node.getTable();
+    }
+    final TsTable newTable = TsTable.deserialize(ByteBuffer.wrap(node.getTable().serialize()));
+    node.getPreDeletedColumns().forEach(newTable::removeColumnSchema);
+    return newTable;
+  }
+
+  public Pair<TsTable, Set<String>> getTableSchemaDetails(
+      final PartialPath database, final String tableName) throws MetadataException {
+    final ConfigTableNode node = getTableNode(database, tableName);
+    return new Pair<>(node.getTable(), node.getPreDeletedColumns());
+  }
+
   private TsTable getTable(final PartialPath database, final String tableName)
       throws MetadataException {
-    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
-    if (!databaseNode.hasChild(tableName)) {
-      throw new TableNotExistsException(
-          database.getFullPath().substring(ROOT.length() + 1), tableName);
-    }
-    return ((ConfigTableNode) databaseNode.getChild(tableName)).getTable();
+    return getTableNode(database, tableName).getTable();
   }
 
   public Optional<TsTable> getTableIfExists(final PartialPath database, final String tableName)
@@ -841,15 +916,25 @@ public class ConfigMTree {
     return Optional.of(tableNode.getTable());
   }
 
+  private ConfigTableNode getTableNode(final PartialPath database, final String tableName)
+      throws MetadataException {
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.hasChild(tableName)) {
+      throw new TableNotExistsException(
+          database.getFullPath().substring(ROOT.length() + 1), tableName);
+    }
+    return ((ConfigTableNode) databaseNode.getChild(tableName));
+  }
+
   // endregion
 
   // region Serialization and Deserialization
 
-  public void serialize(OutputStream outputStream) throws IOException {
+  public void serialize(final OutputStream outputStream) throws IOException {
     serializeConfigBasicMNode(this.root, outputStream);
   }
 
-  private void serializeConfigBasicMNode(IConfigMNode node, OutputStream outputStream)
+  private void serializeConfigBasicMNode(final IConfigMNode node, final OutputStream outputStream)
       throws IOException {
     serializeChildren(node, outputStream);
 
@@ -859,8 +944,9 @@ public class ConfigMTree {
     ReadWriteIOUtils.write(node.getChildren().size(), outputStream);
   }
 
-  private void serializeChildren(IConfigMNode node, OutputStream outputStream) throws IOException {
-    for (IConfigMNode child : node.getChildren().values()) {
+  private void serializeChildren(final IConfigMNode node, final OutputStream outputStream)
+      throws IOException {
+    for (final IConfigMNode child : node.getChildren().values()) {
       if (child.isDatabase()) {
         serializeDatabaseNode(child.getAsDatabaseMNode(), outputStream);
       } else if (child instanceof ConfigTableNode) {
@@ -872,7 +958,8 @@ public class ConfigMTree {
   }
 
   private void serializeDatabaseNode(
-      IDatabaseMNode<IConfigMNode> storageGroupNode, OutputStream outputStream) throws IOException {
+      final IDatabaseMNode<IConfigMNode> storageGroupNode, final OutputStream outputStream)
+      throws IOException {
     serializeChildren(storageGroupNode.getAsMNode(), outputStream);
 
     ReadWriteIOUtils.write(STORAGE_GROUP_MNODE_TYPE, outputStream);
@@ -882,20 +969,25 @@ public class ConfigMTree {
         storageGroupNode.getAsMNode().getDatabaseSchema(), outputStream);
   }
 
-  private void serializeTableNode(ConfigTableNode tableNode, OutputStream outputStream)
+  private void serializeTableNode(final ConfigTableNode tableNode, final OutputStream outputStream)
       throws IOException {
     ReadWriteIOUtils.write(TABLE_MNODE_TYPE, outputStream);
     ReadWriteIOUtils.write(tableNode.getName(), outputStream);
     tableNode.getTable().serialize(outputStream);
     tableNode.getStatus().serialize(outputStream);
+    final Set<String> preDeletedColumns = tableNode.getPreDeletedColumns();
+    ReadWriteIOUtils.write(preDeletedColumns.size(), outputStream);
+    for (final String column : preDeletedColumns) {
+      ReadWriteIOUtils.write(column, outputStream);
+    }
   }
 
-  public void deserialize(InputStream inputStream) throws IOException {
+  public void deserialize(final InputStream inputStream) throws IOException {
     byte type = ReadWriteIOUtils.readByte(inputStream);
 
     String name;
     int childNum;
-    Stack<Pair<IConfigMNode, Boolean>> stack = new Stack<>();
+    final Stack<Pair<IConfigMNode, Boolean>> stack = new Stack<>();
     IConfigMNode databaseMNode;
     IConfigMNode internalMNode;
     IConfigMNode tableNode;
@@ -953,27 +1045,39 @@ public class ConfigMTree {
     this.root = stack.peek().left;
   }
 
-  private IConfigMNode deserializeInternalMNode(InputStream inputStream) throws IOException {
-    IConfigMNode basicMNode =
+  private IConfigMNode deserializeInternalMNode(final InputStream inputStream) throws IOException {
+    final IConfigMNode basicMNode =
         nodeFactory.createInternalMNode(null, ReadWriteIOUtils.readString(inputStream));
     basicMNode.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
     return basicMNode;
   }
 
-  private IConfigMNode deserializeDatabaseMNode(InputStream inputStream) throws IOException {
-    IDatabaseMNode<IConfigMNode> databaseMNode =
+  private IConfigMNode deserializeDatabaseMNode(final InputStream inputStream) throws IOException {
+    final IDatabaseMNode<IConfigMNode> databaseMNode =
         nodeFactory.createDatabaseMNode(null, ReadWriteIOUtils.readString(inputStream));
     databaseMNode.getAsMNode().setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
     databaseMNode
         .getAsMNode()
         .setDatabaseSchema(ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(inputStream));
+    if (!isTableModel && databaseMNode.getAsMNode().getDatabaseSchema().isIsTableModel()) {
+      final IoTDBException e =
+          new IoTDBException(TABLE_ERROR_MSG, TSStatusCode.START_UP_ERROR.getStatusCode());
+      logger.error(e.getMessage(), e);
+      Runtime.getRuntime().halt(-1);
+    }
     return databaseMNode.getAsMNode();
   }
 
-  private IConfigMNode deserializeTableMNode(InputStream inputStream) throws IOException {
-    ConfigTableNode tableNode = new ConfigTableNode(null, ReadWriteIOUtils.readString(inputStream));
+  public static ConfigTableNode deserializeTableMNode(final InputStream inputStream)
+      throws IOException {
+    final ConfigTableNode tableNode =
+        new ConfigTableNode(null, ReadWriteIOUtils.readString(inputStream));
     tableNode.setTable(TsTable.deserialize(inputStream));
     tableNode.setStatus(TableNodeStatus.deserialize(inputStream));
+    final int size = ReadWriteIOUtils.readInt(inputStream);
+    for (int i = 0; i < size; ++i) {
+      tableNode.addPreDeletedColumn(ReadWriteIOUtils.readString(inputStream));
+    }
     return tableNode;
   }
 

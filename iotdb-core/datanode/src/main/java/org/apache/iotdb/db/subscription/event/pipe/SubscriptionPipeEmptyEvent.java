@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.subscription.event.pipe;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 public class SubscriptionPipeEmptyEvent implements SubscriptionPipeEvents {
 
   @Override
@@ -31,7 +33,7 @@ public class SubscriptionPipeEmptyEvent implements SubscriptionPipeEvents {
 
   @Override
   public String toString() {
-    return "SubscriptionEmptyPipeEvent";
+    return toStringHelper(this).toString();
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////

@@ -24,7 +24,7 @@ from iotdb.SessionPool import PoolConfig, create_session_pool
 from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.utils.NumpyTablet import NumpyTablet
 from iotdb.utils.Tablet import Tablet
-from iotdb.IoTDBContainer import IoTDBContainer
+from .iotdb_container import IoTDBContainer
 
 
 def test_session():

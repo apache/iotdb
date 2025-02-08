@@ -25,6 +25,7 @@ import pandas as pd
 from thrift.transport import TTransport
 from iotdb.thrift.rpc.IClientRPCService import TSFetchResultsReq, TSCloseOperationReq
 from iotdb.tsfile.utils.DateUtils import parse_int_to_date
+from iotdb.utils.IoTDBConnectionException import IoTDBConnectionException
 from iotdb.utils.IoTDBConstants import TSDataType
 
 logger = logging.getLogger("IoTDB")
@@ -417,6 +418,8 @@ class IoTDBRpcDataSet(object):
         return df
 
     def fetch_results(self):
+        if self.__is_closed:
+            raise IoTDBConnectionException("This DataSet is already closed")
         self.__rows_index = 0
         request = TSFetchResultsReq(
             self.__session_id,

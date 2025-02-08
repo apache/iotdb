@@ -41,6 +41,7 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -60,7 +61,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   // Buffer config keep consistent with WAL.
   private static final int ONE_THIRD_WAL_BUFFER_SIZE = config.getWalBufferSize() / 3;
   private static final double FSYNC_BUFFER_RATIO = 0.95;
-  private static final int QUEUE_CAPACITY = config.getWalBufferQueueCapacity();
+  private static final int QUEUE_CAPACITY = config.getDeletionAheadLogBufferQueueCapacity();
   private static final long MAX_WAIT_CLOSE_TIME_IN_MS = 10000;
 
   // DeletionResources received from storage engine, which is waiting to be persisted.
@@ -142,7 +143,8 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   public boolean isAllDeletionFlushed() {
     buffersLock.lock();
     try {
-      return deletionResources.isEmpty() && serializeBuffer.position() == 0;
+      int pos = Optional.ofNullable(serializeBuffer).map(ByteBuffer::position).orElse(0);
+      return deletionResources.isEmpty() && pos == 0;
     } finally {
       buffersLock.unlock();
     }
@@ -150,7 +152,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
 
   private void allocateBuffers() {
     try {
-      serializeBuffer = ByteBuffer.allocateDirect(ONE_THIRD_WAL_BUFFER_SIZE);
+      serializeBuffer = ByteBuffer.allocate(ONE_THIRD_WAL_BUFFER_SIZE);
     } catch (OutOfMemoryError e) {
       LOGGER.error(
           "Fail to allocate deletionBuffer-group-{}'s buffer because out of memory.",

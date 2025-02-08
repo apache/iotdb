@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -55,16 +56,17 @@ public class SetTablePropertiesProcedure
   private Map<String, String> originalProperties = new HashMap<>();
   private Map<String, String> updatedProperties;
 
-  public SetTablePropertiesProcedure() {
-    super();
+  public SetTablePropertiesProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   public SetTablePropertiesProcedure(
       final String database,
       final String tableName,
       final String queryId,
-      final Map<String, String> properties) {
-    super(database, tableName, queryId);
+      final Map<String, String> properties,
+      final boolean isGeneratedByPipe) {
+    super(database, tableName, queryId, isGeneratedByPipe);
     this.updatedProperties = properties;
   }
 
@@ -115,17 +117,22 @@ public class SetTablePropertiesProcedure
   }
 
   private void validateTable(final ConfigNodeProcedureEnv env) {
-    final Pair<TSStatus, TsTable> result =
-        env.getConfigManager()
-            .getClusterSchemaManager()
-            .updateTableProperties(database, tableName, originalProperties, updatedProperties);
-    final TSStatus status = result.getLeft();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
-      return;
+    try {
+      final Pair<TSStatus, TsTable> result =
+          env.getConfigManager()
+              .getClusterSchemaManager()
+              .updateTableProperties(database, tableName, originalProperties, updatedProperties);
+      final TSStatus status = result.getLeft();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        setFailure(
+            new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+        return;
+      }
+      table = result.getRight();
+      setNextState(PRE_RELEASE);
+    } catch (final MetadataException e) {
+      setFailure(new ProcedureException(e));
     }
-    table = result.getRight();
-    setNextState(PRE_RELEASE);
   }
 
   @Override
@@ -138,7 +145,7 @@ public class SetTablePropertiesProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .setTableProperties(database, tableName, updatedProperties);
+            .setTableProperties(database, tableName, updatedProperties, isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     } else {
@@ -186,7 +193,7 @@ public class SetTablePropertiesProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .setTableProperties(database, tableName, originalProperties);
+            .setTableProperties(database, tableName, originalProperties, isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
@@ -209,7 +216,10 @@ public class SetTablePropertiesProcedure
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode()
+            : ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
     ReadWriteIOUtils.write(originalProperties, stream);

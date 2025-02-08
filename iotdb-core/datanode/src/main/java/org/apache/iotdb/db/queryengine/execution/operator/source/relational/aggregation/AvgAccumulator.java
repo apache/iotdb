@@ -56,20 +56,48 @@ public class AvgAccumulator implements TableAccumulator {
   }
 
   @Override
-  public void addInput(Column[] arguments) {
+  public void addInput(Column[] arguments, AggregationMask mask) {
     checkArgument(arguments.length == 1, "argument of Avg should be one column");
     switch (argumentDataType) {
       case INT32:
-        addIntInput(arguments[0]);
+        addIntInput(arguments[0], mask);
         return;
       case INT64:
-        addLongInput(arguments[0]);
+        addLongInput(arguments[0], mask);
         return;
       case FLOAT:
-        addFloatInput(arguments[0]);
+        addFloatInput(arguments[0], mask);
         return;
       case DOUBLE:
-        addDoubleInput(arguments[0]);
+        addDoubleInput(arguments[0], mask);
+        return;
+      case TEXT:
+      case BLOB:
+      case STRING:
+      case BOOLEAN:
+      case DATE:
+      case TIMESTAMP:
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in aggregation AVG : %s", argumentDataType));
+    }
+  }
+
+  @Override
+  public void removeInput(Column[] arguments) {
+    checkArgument(arguments.length == 1, "argument of Avg should be one column");
+    switch (argumentDataType) {
+      case INT32:
+        removeIntInput(arguments[0]);
+        return;
+      case INT64:
+        removeLongInput(arguments[0]);
+        return;
+      case FLOAT:
+        removeFloatInput(arguments[0]);
+        return;
+      case DOUBLE:
+        removeDoubleInput(arguments[0]);
         return;
       case TEXT:
       case BLOB:
@@ -86,7 +114,9 @@ public class AvgAccumulator implements TableAccumulator {
   @Override
   public void addIntermediate(Column argument) {
     checkArgument(
-        argument instanceof BinaryColumn || argument instanceof RunLengthEncodedColumn,
+        argument instanceof BinaryColumn
+            || (argument instanceof RunLengthEncodedColumn
+                && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
         "intermediate input and output of Avg should be BinaryColumn");
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
@@ -152,6 +182,11 @@ public class AvgAccumulator implements TableAccumulator {
     this.sumValue = 0.0;
   }
 
+  @Override
+  public boolean removable() {
+    return true;
+  }
+
   private byte[] serializeState() {
     byte[] bytes = new byte[16];
     BytesUtils.longToBytes(countValue, bytes, 0);
@@ -159,46 +194,142 @@ public class AvgAccumulator implements TableAccumulator {
     return bytes;
   }
 
-  private void addIntInput(Column column) {
-    int count = column.getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (!column.isNull(i)) {
-        initResult = true;
-        countValue++;
-        sumValue += column.getInt(i);
+  private void addIntInput(Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column.isNull(i)) {
+          initResult = true;
+          countValue++;
+          sumValue += column.getInt(i);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          initResult = true;
+          countValue++;
+          sumValue += column.getInt(position);
+        }
       }
     }
   }
 
-  private void addLongInput(Column column) {
-    int count = column.getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (!column.isNull(i)) {
-        initResult = true;
-        countValue++;
-        sumValue += column.getLong(i);
+  private void addLongInput(Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column.isNull(i)) {
+          initResult = true;
+          countValue++;
+          sumValue += column.getLong(i);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          initResult = true;
+          countValue++;
+          sumValue += column.getLong(position);
+        }
       }
     }
   }
 
-  private void addFloatInput(Column column) {
-    int count = column.getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (!column.isNull(i)) {
-        initResult = true;
-        countValue++;
-        sumValue += column.getFloat(i);
+  private void addFloatInput(Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column.isNull(i)) {
+          initResult = true;
+          countValue++;
+          sumValue += column.getFloat(i);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          initResult = true;
+          countValue++;
+          sumValue += column.getFloat(position);
+        }
       }
     }
   }
 
-  private void addDoubleInput(Column column) {
+  private void addDoubleInput(Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column.isNull(i)) {
+          initResult = true;
+          countValue++;
+          sumValue += column.getDouble(i);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column.isNull(position)) {
+          initResult = true;
+          countValue++;
+          sumValue += column.getDouble(position);
+        }
+      }
+    }
+  }
+
+  private void removeIntInput(Column column) {
     int count = column.getPositionCount();
     for (int i = 0; i < count; i++) {
       if (!column.isNull(i)) {
-        initResult = true;
-        countValue++;
-        sumValue += column.getDouble(i);
+        countValue--;
+        sumValue -= column.getInt(i);
+      }
+    }
+  }
+
+  private void removeLongInput(Column column) {
+    int count = column.getPositionCount();
+    for (int i = 0; i < count; i++) {
+      if (!column.isNull(i)) {
+        countValue--;
+        sumValue -= column.getLong(i);
+      }
+    }
+  }
+
+  private void removeFloatInput(Column column) {
+    int count = column.getPositionCount();
+    for (int i = 0; i < count; i++) {
+      if (!column.isNull(i)) {
+        countValue--;
+        sumValue -= column.getFloat(i);
+      }
+    }
+  }
+
+  private void removeDoubleInput(Column column) {
+    int count = column.getPositionCount();
+    for (int i = 0; i < count; i++) {
+      if (!column.isNull(i)) {
+        countValue--;
+        sumValue -= column.getDouble(i);
       }
     }
   }

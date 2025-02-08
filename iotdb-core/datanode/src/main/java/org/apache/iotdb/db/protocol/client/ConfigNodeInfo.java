@@ -22,6 +22,7 @@ package org.apache.iotdb.db.protocol.client;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemPropertiesHandler;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.DataNodeSystemPropertiesHandler;
@@ -109,7 +110,7 @@ public class ConfigNodeInfo {
         CONFIG_NODE_LIST, NodeUrlUtils.convertTEndPointUrls(new ArrayList<>(onlineConfigNodes)));
   }
 
-  public void loadConfigNodeList() {
+  public void loadConfigNodeList() throws StartupException {
     long startTime = System.currentTimeMillis();
     // properties contain CONFIG_NODE_LIST only when start as Data node
     configNodeInfoReadWriteLock.writeLock().lock();
@@ -120,6 +121,11 @@ public class ConfigNodeInfo {
         onlineConfigNodes.clear();
         onlineConfigNodes.addAll(
             NodeUrlUtils.parseTEndPointUrls(properties.getProperty(CONFIG_NODE_LIST)));
+      }
+      if (onlineConfigNodes.isEmpty()) {
+        throw new StartupException(
+            "Removing is only allowed in an environment where the datanode has been successfully started. "
+                + "Please check whether it is removed on the confignode, or if you have deleted the system.properties file by mistake.");
       }
       long endTime = System.currentTimeMillis();
       logger.info(

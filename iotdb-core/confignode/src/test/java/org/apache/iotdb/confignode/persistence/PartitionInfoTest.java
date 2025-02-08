@@ -203,7 +203,7 @@ public class PartitionInfoTest {
 
       // Create a SchemaRegion
       CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
-      TRegionReplicaSet schemaRegionReplicaSet =
+      final TRegionReplicaSet schemaRegionReplicaSet =
           generateTRegionReplicaSet(
               testFlag.SchemaPartition.getFlag(),
               generateTConsensusGroupId(
@@ -213,7 +213,7 @@ public class PartitionInfoTest {
 
       // Create a DataRegion
       createRegionGroupsPlan = new CreateRegionGroupsPlan();
-      TRegionReplicaSet dataRegionReplicaSet =
+      final TRegionReplicaSet dataRegionReplicaSet =
           generateTRegionReplicaSet(
               testFlag.DataPartition.getFlag(),
               generateTConsensusGroupId(
@@ -221,11 +221,11 @@ public class PartitionInfoTest {
       createRegionGroupsPlan.addRegionGroup("root.test" + i, dataRegionReplicaSet);
       partitionInfo.createRegionGroups(createRegionGroupsPlan);
     }
-    GetRegionInfoListPlan regionReq = new GetRegionInfoListPlan();
-    TShowRegionReq showRegionReq = new TShowRegionReq();
+    final GetRegionInfoListPlan regionReq = new GetRegionInfoListPlan();
+    final TShowRegionReq showRegionReq = new TShowRegionReq();
     showRegionReq.setConsensusGroupType(null);
     regionReq.setShowRegionReq(showRegionReq);
-    RegionInfoListResp regionInfoList1 =
+    final RegionInfoListResp regionInfoList1 =
         (RegionInfoListResp) partitionInfo.getRegionInfoList(regionReq);
     Assert.assertEquals(20, regionInfoList1.getRegionInfoList().size());
     regionInfoList1
@@ -233,7 +233,7 @@ public class PartitionInfoTest {
         .forEach((regionInfo) -> Assert.assertEquals("127.0.0.1", regionInfo.getClientRpcIp()));
 
     showRegionReq.setConsensusGroupType(TConsensusGroupType.SchemaRegion);
-    RegionInfoListResp regionInfoList2 =
+    final RegionInfoListResp regionInfoList2 =
         (RegionInfoListResp) partitionInfo.getRegionInfoList(regionReq);
     Assert.assertEquals(10, regionInfoList2.getRegionInfoList().size());
     regionInfoList2
@@ -244,7 +244,7 @@ public class PartitionInfoTest {
                     TConsensusGroupType.SchemaRegion, regionInfo.getConsensusGroupId().getType()));
 
     showRegionReq.setConsensusGroupType(TConsensusGroupType.DataRegion);
-    RegionInfoListResp regionInfoList3 =
+    final RegionInfoListResp regionInfoList3 =
         (RegionInfoListResp) partitionInfo.getRegionInfoList(regionReq);
     Assert.assertEquals(10, regionInfoList3.getRegionInfoList().size());
     regionInfoList3
@@ -255,7 +255,7 @@ public class PartitionInfoTest {
                     TConsensusGroupType.DataRegion, regionInfo.getConsensusGroupId().getType()));
     showRegionReq.setConsensusGroupType(null);
     showRegionReq.setDatabases(Collections.singletonList("root.test1"));
-    RegionInfoListResp regionInfoList4 =
+    final RegionInfoListResp regionInfoList4 =
         (RegionInfoListResp) partitionInfo.getRegionInfoList(regionReq);
     Assert.assertEquals(10, regionInfoList4.getRegionInfoList().size());
     regionInfoList4

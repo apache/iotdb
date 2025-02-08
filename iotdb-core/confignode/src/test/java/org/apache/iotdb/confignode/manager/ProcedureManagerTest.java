@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -56,6 +57,8 @@ public class ProcedureManagerTest {
   private static ProcedureManager PROCEDURE_MANAGER;
 
   private static RemoveDataNodeHandler REMOVE_DATA_NODE_HANDLER;
+
+  private static LoadManager LOAD_MANAGER;
 
   private static final ConcurrentHashMap<Long, Procedure<ConfigNodeProcedureEnv>> procedureMap =
       new ConcurrentHashMap<>();
@@ -117,6 +120,9 @@ public class ProcedureManagerTest {
     RemoveDataNodeHandler removeDataNodeHandler = ENV.getRemoveDataNodeHandler();
     REMOVE_DATA_NODE_HANDLER = spy(removeDataNodeHandler);
 
+    LoadManager loadManager = CONFIG_MANAGER.getLoadManager();
+    LOAD_MANAGER = spy(loadManager);
+
     when(PROCEDURE_MANAGER.getExecutor()).thenReturn(PROCEDURE_EXECUTOR);
     when(PROCEDURE_EXECUTOR.getProcedures()).thenReturn(procedureMap);
     when(PROCEDURE_MANAGER.getEnv()).thenReturn(ENV);
@@ -167,6 +173,24 @@ public class ProcedureManagerTest {
         new ArrayList<>(Arrays.asList(regionMigrationPlanA, regionMigrationPlanB));
     when(REMOVE_DATA_NODE_HANDLER.getRegionMigrationPlans(removedDataNodes))
         .thenReturn(regionMigrationPlans);
+
+    TSStatus status = PROCEDURE_MANAGER.checkRemoveDataNodes(removedDataNodes);
+    Assert.assertTrue(isFailed(status));
+  }
+
+  @Test
+  public void testCheckRemoveDataNodeWithAnotherUnknownDataNode() {
+    Set<TDataNodeLocation> relatedDataNodes = new HashSet<>();
+    relatedDataNodes.add(removeDataNodeLocationA);
+    relatedDataNodes.add(coordinatorDataNodeLocation);
+
+    when(REMOVE_DATA_NODE_HANDLER.getRelatedDataNodeLocations(removeDataNodeLocationA))
+        .thenReturn(relatedDataNodes);
+
+    when(LOAD_MANAGER.getNodeStatus(removeDataNodeLocationA.getDataNodeId()))
+        .thenReturn(NodeStatus.Running);
+    when(LOAD_MANAGER.getNodeStatus(coordinatorDataNodeLocation.getDataNodeId()))
+        .thenReturn(NodeStatus.Unknown);
 
     TSStatus status = PROCEDURE_MANAGER.checkRemoveDataNodes(removedDataNodes);
     Assert.assertTrue(isFailed(status));

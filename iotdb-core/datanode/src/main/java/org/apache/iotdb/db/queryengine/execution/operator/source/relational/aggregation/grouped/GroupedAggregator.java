@@ -1,18 +1,25 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
 
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 
 import com.google.common.primitives.Ints;
@@ -67,7 +74,10 @@ public class GroupedAggregator {
     }
 
     if (step.isInputRaw()) {
-      accumulator.addInput(groupIds, arguments);
+      // Use select-all AggregationMask here because filter of Agg-Function is not supported now
+      AggregationMask mask = AggregationMask.createSelectAll(block.getPositionCount());
+
+      accumulator.addInput(groupIds, arguments, mask);
     } else {
       accumulator.addIntermediate(groupIds, arguments[0]);
     }
@@ -85,7 +95,15 @@ public class GroupedAggregator {
     accumulator.prepareFinal();
   }
 
+  public void reset() {
+    accumulator.reset();
+  }
+
   public long getEstimatedSize() {
     return accumulator.getEstimatedSize();
+  }
+
+  public void close() {
+    accumulator.close();
   }
 }

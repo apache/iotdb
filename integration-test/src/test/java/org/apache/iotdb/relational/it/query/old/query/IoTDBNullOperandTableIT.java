@@ -43,7 +43,7 @@ public class IoTDBNullOperandTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE sg1(device STRING ID, s1 INT32 MEASUREMENT, s2 INT32 MEASUREMENT, s3 BOOLEAN MEASUREMENT, s4 BOOLEAN MEASUREMENT, s5 TEXT MEASUREMENT)",
+        "CREATE TABLE sg1(device STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD, s3 BOOLEAN FIELD, s4 BOOLEAN FIELD, s5 TEXT FIELD)",
         "INSERT INTO sg1(time,device,s1,s3,s4) values(1, 'd1', 1, true, false)",
         "INSERT INTO sg1(time,device,s1,s3) values(2, 'd1', 2, true)",
         "INSERT INTO sg1(time,device,s1,s4) values(3, 'd1', 3, false)",

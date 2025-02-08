@@ -20,7 +20,7 @@
 package org.apache.iotdb.commons.schema.table.column;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.write.record.Tablet.ColumnType;
+import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,10 +28,10 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 public enum TsTableColumnCategory {
-  ID((byte) 0),
+  TAG((byte) 0),
   ATTRIBUTE((byte) 1),
   TIME((byte) 2),
-  MEASUREMENT((byte) 3);
+  FIELD((byte) 3);
 
   private final byte category;
 
@@ -64,37 +64,37 @@ public enum TsTableColumnCategory {
   public static TsTableColumnCategory deserialize(byte category) {
     switch (category) {
       case 0:
-        return ID;
+        return TAG;
       case 1:
         return ATTRIBUTE;
       case 2:
         return TIME;
       case 3:
-        return MEASUREMENT;
+        return FIELD;
       default:
         throw new IllegalArgumentException();
     }
   }
 
-  public ColumnType toTsFileColumnType() {
+  public ColumnCategory toTsFileColumnType() {
     switch (this) {
-      case ID:
-        return ColumnType.ID;
+      case TAG:
+        return ColumnCategory.TAG;
       case ATTRIBUTE:
-        return ColumnType.ATTRIBUTE;
-      case MEASUREMENT:
-        return ColumnType.MEASUREMENT;
+        return ColumnCategory.ATTRIBUTE;
+      case FIELD:
+        return ColumnCategory.FIELD;
       default:
         throw new IllegalArgumentException("Unsupported column type in TsFile: " + this);
     }
   }
 
-  public static TsTableColumnCategory fromTsFileColumnType(ColumnType columnType) {
+  public static TsTableColumnCategory fromTsFileColumnCategory(ColumnCategory columnType) {
     switch (columnType) {
-      case MEASUREMENT:
-        return MEASUREMENT;
-      case ID:
-        return ID;
+      case FIELD:
+        return FIELD;
+      case TAG:
+        return TAG;
       case ATTRIBUTE:
         return ATTRIBUTE;
       default:

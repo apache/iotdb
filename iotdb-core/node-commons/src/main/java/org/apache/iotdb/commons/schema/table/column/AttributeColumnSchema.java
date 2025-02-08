@@ -28,11 +28,12 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 
 public class AttributeColumnSchema extends TsTableColumnSchema {
-  public AttributeColumnSchema(String columnName, TSDataType dataType) {
+  public AttributeColumnSchema(final String columnName, final TSDataType dataType) {
     super(columnName, dataType);
   }
 
-  public AttributeColumnSchema(String columnName, TSDataType dataType, Map<String, String> props) {
+  public AttributeColumnSchema(
+      final String columnName, final TSDataType dataType, final Map<String, String> props) {
     super(columnName, dataType, props);
   }
 
@@ -41,17 +42,17 @@ public class AttributeColumnSchema extends TsTableColumnSchema {
     return TsTableColumnCategory.ATTRIBUTE;
   }
 
-  static AttributeColumnSchema deserialize(InputStream stream) throws IOException {
-    String columnName = ReadWriteIOUtils.readString(stream);
-    TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
-    Map<String, String> props = ReadWriteIOUtils.readMap(stream);
+  static AttributeColumnSchema deserialize(final InputStream stream) throws IOException {
+    final String columnName = ReadWriteIOUtils.readString(stream);
+    final TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
+    final Map<String, String> props = ReadWriteIOUtils.readMap(stream);
     return new AttributeColumnSchema(columnName, dataType, props);
   }
 
-  static AttributeColumnSchema deserialize(ByteBuffer buffer) {
-    String columnName = ReadWriteIOUtils.readString(buffer);
-    TSDataType dataType = ReadWriteIOUtils.readDataType(buffer);
-    Map<String, String> props = ReadWriteIOUtils.readMap(buffer);
+  static AttributeColumnSchema deserialize(final ByteBuffer buffer) {
+    final String columnName = ReadWriteIOUtils.readString(buffer);
+    final TSDataType dataType = ReadWriteIOUtils.readDataType(buffer);
+    final Map<String, String> props = ReadWriteIOUtils.readMap(buffer);
     return new AttributeColumnSchema(columnName, dataType, props);
   }
 }

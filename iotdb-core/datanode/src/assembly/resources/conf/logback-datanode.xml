@@ -177,6 +177,21 @@
             <level>INFO</level>
         </filter>
     </appender>
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="SAMPLED_QUERIES">
+        <file>${IOTDB_HOME}/logs/log_datanode_sampled_queries.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-sampled-queries-%d{yyyyMMdd}.log.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <append>true</append>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d %m %n</pattern>
+            <charset>utf-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="COMPACTION">
         <file>${IOTDB_HOME}/logs/log_datanode_compaction.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
@@ -244,6 +259,9 @@
     </logger>
     <logger level="info" name="SLOW_SQL">
         <appender-ref ref="SLOW_SQL"/>
+    </logger>
+    <logger level="info" name="SAMPLED_QUERIES">
+        <appender-ref ref="SAMPLED_QUERIES"/>
     </logger>
     <logger level="info" name="QUERY_FREQUENCY">
         <appender-ref ref="QUERY_FREQUENCY"/>

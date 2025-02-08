@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.procedure.env;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -130,30 +129,48 @@ public class RemoveDataNodeHandler {
 
     for (Map.Entry<Integer, TSStatus> entry :
         changeDataNodeStatusContext.getResponseMap().entrySet()) {
-      long currentTime = System.nanoTime();
-
       int dataNodeId = entry.getKey();
       NodeStatus nodeStatus = nodeStatusMap.get(dataNodeId);
       RegionStatus regionStatus = RegionStatus.valueOf(nodeStatus.getStatus());
+
+      if (!isSucceed(entry.getValue())) {
+        LOGGER.error(
+            "{}, Failed to change DataNode status, dataNodeId={}, nodeStatus={}",
+            REMOVE_DATANODE_PROCESS,
+            dataNodeId,
+            nodeStatus);
+        continue;
+      }
+
       // Force updating NodeStatus
+      long currentTime = System.nanoTime();
       configManager
           .getLoadManager()
           .forceUpdateNodeCache(
               NodeType.DataNode, dataNodeId, new NodeHeartbeatSample(currentTime, nodeStatus));
 
-      Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> heartbeatSampleMap =
-          new TreeMap<>();
+      LOGGER.info(
+          "{}, Force update NodeCache: dataNodeId={}, nodeStatus={}, currentTime={}",
+          REMOVE_DATANODE_PROCESS,
+          dataNodeId,
+          nodeStatus,
+          currentTime);
+
       // Force update RegionStatus
-      configManager
-          .getPartitionManager()
-          .getAllReplicaSets(entry.getKey())
-          .forEach(
-              replicaSet ->
-                  heartbeatSampleMap.put(
-                      replicaSet.getRegionId(),
-                      Collections.singletonMap(
-                          dataNodeId, new RegionHeartbeatSample(currentTime, regionStatus))));
-      configManager.getLoadManager().forceUpdateRegionGroupCache(heartbeatSampleMap);
+      if (regionStatus != RegionStatus.Removing) {
+        Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> heartbeatSampleMap =
+            new TreeMap<>();
+        configManager
+            .getPartitionManager()
+            .getAllReplicaSets(dataNodeId)
+            .forEach(
+                replicaSet ->
+                    heartbeatSampleMap.put(
+                        replicaSet.getRegionId(),
+                        Collections.singletonMap(
+                            dataNodeId, new RegionHeartbeatSample(currentTime, regionStatus))));
+        configManager.getLoadManager().forceUpdateRegionGroupCache(heartbeatSampleMap);
+      }
     }
   }
 
@@ -276,14 +293,15 @@ public class RemoveDataNodeHandler {
         .sendAsyncRequestWithRetry(stopDataNodesContext);
 
     for (Map.Entry<Integer, TSStatus> entry : stopDataNodesContext.getResponseMap().entrySet()) {
-      configManager.getLoadManager().removeNodeCache(entry.getKey());
+      int dataNodeId = entry.getKey();
+      configManager.getLoadManager().removeNodeCache(dataNodeId);
       if (!isSucceed(entry.getValue())) {
         LOGGER.error(
             "{}, Stop Data Node meets error, error datanode: {}",
             REMOVE_DATANODE_PROCESS,
             entry.getValue());
       } else {
-        LOGGER.info("{}, Stop Data Node {} success.", REMOVE_DATANODE_PROCESS, entry.getKey());
+        LOGGER.info("{}, Stop Data Node {} success.", REMOVE_DATANODE_PROCESS, dataNodeId);
       }
     }
   }
@@ -456,11 +474,22 @@ public class RemoveDataNodeHandler {
    */
   public List<TConsensusGroupId> getMigratedDataNodeRegions(TDataNodeLocation removedDataNode) {
     return configManager.getPartitionManager().getAllReplicaSets().stream()
-        .filter(
-            replicaSet ->
-                replicaSet.getDataNodeLocations().contains(removedDataNode)
-                    && replicaSet.regionId.getType() != TConsensusGroupType.ConfigRegion)
+        .filter(replicaSet -> replicaSet.getDataNodeLocations().contains(removedDataNode))
         .map(TRegionReplicaSet::getRegionId)
         .collect(Collectors.toList());
+  }
+
+  /**
+   * Retrieves all DataNodes related to the specified DataNode.
+   *
+   * @param removedDataNode the DataNode to be removed
+   * @return a set of TDataNodeLocation representing the DataNodes associated with the specified
+   *     DataNode
+   */
+  public Set<TDataNodeLocation> getRelatedDataNodeLocations(TDataNodeLocation removedDataNode) {
+    return configManager.getPartitionManager().getAllReplicaSets().stream()
+        .filter(replicaSet -> replicaSet.getDataNodeLocations().contains(removedDataNode))
+        .flatMap(replicaSet -> replicaSet.getDataNodeLocations().stream())
+        .collect(Collectors.toSet());
   }
 }

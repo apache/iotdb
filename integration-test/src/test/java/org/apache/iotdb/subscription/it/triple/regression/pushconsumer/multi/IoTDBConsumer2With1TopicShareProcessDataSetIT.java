@@ -25,7 +25,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
@@ -64,8 +64,8 @@ public class IoTDBConsumer2With1TopicShareProcessDataSetIT
   private static List<IMeasurementSchema> schemaList = new ArrayList<>();
 
   private static final String pattern = database + ".**";
-  private static SubscriptionPushConsumer consumer;
-  private static SubscriptionPushConsumer consumer2;
+  private static SubscriptionTreePushConsumer consumer;
+  private static SubscriptionTreePushConsumer consumer2;
 
   @Override
   @Before
@@ -109,7 +109,7 @@ public class IoTDBConsumer2With1TopicShareProcessDataSetIT
     Tablet tablet = new Tablet(device, schemaList, 10);
     int rowIndex = 0;
     for (int row = 0; row < 5; row++) {
-      rowIndex = tablet.rowSize++;
+      rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue("s_0", rowIndex, row * 20L + row);
       tablet.addValue("s_1", rowIndex, row + 2.45);
@@ -143,7 +143,7 @@ public class IoTDBConsumer2With1TopicShareProcessDataSetIT
               }
             });
     consumer =
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("db_dataset_consumer_1")
@@ -167,7 +167,7 @@ public class IoTDBConsumer2With1TopicShareProcessDataSetIT
     consumer.open();
     consumer.subscribe(topicName);
     consumer2 =
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("db_dataset_consumer_2")

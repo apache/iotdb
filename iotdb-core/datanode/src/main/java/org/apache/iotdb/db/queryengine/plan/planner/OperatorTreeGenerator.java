@@ -640,7 +640,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     GroupByTimeParameter groupByTimeParameter = node.getGroupByTimeParameter();
     ITimeRangeIterator timeRangeIterator =
-        initTimeRangeIterator(groupByTimeParameter, ascending, true);
+        initTimeRangeIterator(groupByTimeParameter, ascending, true, context.getZoneId());
     long maxReturnSize =
         AggregationUtil.calculateMaxAggregationResultSize(
             node.getAggregationDescriptorList(), timeRangeIterator, context.getTypeProvider());
@@ -791,7 +791,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     }
 
     ITimeRangeIterator timeRangeIterator =
-        initTimeRangeIterator(groupByTimeParameter, ascending, true);
+        initTimeRangeIterator(groupByTimeParameter, ascending, true, context.getZoneId());
     long maxReturnSize =
         AggregationUtil.calculateMaxAggregationResultSize(
             aggregationDescriptorList, timeRangeIterator, context.getTypeProvider());
@@ -1852,7 +1852,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     GroupByTimeParameter groupByTimeParameter = node.getGroupByTimeParameter();
     ITimeRangeIterator timeRangeIterator =
-        initTimeRangeIterator(groupByTimeParameter, ascending, false);
+        initTimeRangeIterator(groupByTimeParameter, ascending, false, context.getZoneId());
     long maxReturnSize =
         calculateMaxAggregationResultSize(
             aggregationDescriptors, timeRangeIterator, context.getTypeProvider());
@@ -1907,7 +1907,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     }
     GroupByTimeParameter groupByTimeParameter = node.getGroupByTimeParameter();
     ITimeRangeIterator timeRangeIterator =
-        initTimeRangeIterator(groupByTimeParameter, ascending, false);
+        initTimeRangeIterator(groupByTimeParameter, ascending, false, context.getZoneId());
     List<AggregationDescriptor> aggregationDescriptors =
         node.getTagValuesToAggregationDescriptors().values().stream()
             .flatMap(Collection::stream)
@@ -1977,7 +1977,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     GroupByTimeParameter groupByTimeParameter = node.getGroupByTimeParameter();
     ITimeRangeIterator timeRangeIterator =
-        initTimeRangeIterator(groupByTimeParameter, ascending, false);
+        initTimeRangeIterator(groupByTimeParameter, ascending, false, context.getZoneId());
     long maxReturnSize =
         calculateMaxAggregationResultSize(
             aggregationDescriptors, timeRangeIterator, context.getTypeProvider());
@@ -1990,7 +1990,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         ascending,
         node.isOutputEndTime(),
         groupByTimeParameter,
-        maxReturnSize);
+        maxReturnSize,
+        context.getZoneId());
   }
 
   @Override
@@ -2074,7 +2075,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 RawDataAggregationOperator.class.getSimpleName());
 
     ITimeRangeIterator timeRangeIterator =
-        initTimeRangeIterator(groupByTimeParameter, ascending, true);
+        initTimeRangeIterator(groupByTimeParameter, ascending, true, context.getZoneId());
     long maxReturnSize =
         calculateMaxAggregationResultSize(
             aggregationDescriptors, timeRangeIterator, context.getTypeProvider());
@@ -2197,7 +2198,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 AggregationOperator.class.getSimpleName());
 
     ITimeRangeIterator timeRangeIterator =
-        initTimeRangeIterator(node.getGroupByTimeParameter(), ascending, true);
+        initTimeRangeIterator(node.getGroupByTimeParameter(), ascending, true, context.getZoneId());
     long maxReturnSize =
         calculateMaxAggregationResultSize(
             aggregationDescriptors, timeRangeIterator, context.getTypeProvider());
@@ -2852,7 +2853,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     }
   }
 
-  private boolean isFilterGtOrGe(Filter filter) {
+  public static boolean isFilterGtOrGe(Filter filter) {
     return filter instanceof TimeGt || filter instanceof TimeGtEq;
   }
 
@@ -2969,7 +2970,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     // last_time, last_value
     List<TreeAggregator> aggregators = LastQueryUtil.createAggregators(seriesPath.getSeriesType());
-    ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(null, false, false);
+    ITimeRangeIterator timeRangeIterator =
+        initTimeRangeIterator(null, false, false, context.getZoneId());
     long maxReturnSize = calculateMaxAggregationResultSizeForLastQuery(aggregators);
 
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
@@ -3009,7 +3011,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         canUseStatistics = false;
       }
     }
-    ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(null, false, false);
+    ITimeRangeIterator timeRangeIterator =
+        initTimeRangeIterator(null, false, false, context.getZoneId());
     long maxReturnSize = calculateMaxAggregationResultSizeForLastQuery(aggregators);
 
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
@@ -3053,8 +3056,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       final MeasurementPath measurementPath =
           devicePath.concatAsMeasurementPath(measurementList.get(i));
       TimeValuePair timeValuePair = null;
+      context.dataNodeQueryContext.lock();
       try {
-        context.dataNodeQueryContext.lock();
         if (!context.dataNodeQueryContext.unCached(measurementPath)) {
           timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(measurementPath);
           if (timeValuePair == null) {
@@ -3668,7 +3671,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     Operator childOperator = node.getChild().accept(this, context);
     ColumnGeneratorParameter parameter = node.getColumnGeneratorParameter();
-    ColumnGenerator columnGenerator = genColumnGeneratorAccordingToParameter(parameter);
+    ColumnGenerator columnGenerator =
+        genColumnGeneratorAccordingToParameter(parameter, context.getZoneId());
     long maxExtraColumnSize = 0;
     for (TSDataType dataType : node.getGeneratedColumnTypes()) {
       maxExtraColumnSize += getOutputColumnSizePerLine(dataType);
@@ -3680,7 +3684,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   private ColumnGenerator genColumnGeneratorAccordingToParameter(
-      ColumnGeneratorParameter columnGeneratorParameter) {
+      ColumnGeneratorParameter columnGeneratorParameter, ZoneId zoneId) {
     ColumnGeneratorType type = columnGeneratorParameter.getGeneratorType();
     if (type == ColumnGeneratorType.SLIDING_TIME) {
       SlidingTimeColumnGeneratorParameter slidingTimeColumnGeneratorParameter =
@@ -3689,7 +3693,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           initTimeRangeIterator(
               slidingTimeColumnGeneratorParameter.getGroupByTimeParameter(),
               slidingTimeColumnGeneratorParameter.isAscending(),
-              false));
+              false,
+              zoneId));
     } else {
       throw new UnsupportedOperationException("Unsupported column generator type: " + type);
     }

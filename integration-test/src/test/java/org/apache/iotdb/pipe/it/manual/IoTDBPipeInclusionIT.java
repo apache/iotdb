@@ -180,6 +180,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualManualIT {
           senderEnv,
           Arrays.asList(
               "create user `ln_write_user` 'write_pwd'",
+              "grant manage_database,manage_user,manage_role,use_trigger,use_udf,use_cq,use_pipe on root.** to USER ln_write_user with grant option",
               "GRANT READ_DATA, WRITE_DATA ON root.** TO USER ln_write_user;"))) {
         return;
       }
@@ -189,7 +190,16 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualManualIT {
           "LIST PRIVILEGES OF USER ln_write_user",
           "ROLE,PATH,PRIVILEGES,GRANT OPTION,",
           new HashSet<>(
-              Arrays.asList(",root.ln.**,READ_DATA,false,", ",root.ln.**,WRITE_DATA,false,")));
+              Arrays.asList(
+                  ",root.**,MANAGE_USER,true,",
+                  ",root.**,MANAGE_ROLE,true,",
+                  ",root.**,USE_TRIGGER,true,",
+                  ",root.**,USE_UDF,true,",
+                  ",root.**,USE_CQ,true,",
+                  ",root.**,USE_PIPE,true,",
+                  ",root.**,MANAGE_DATABASE,true,",
+                  ",root.ln.**,READ_DATA,false,",
+                  ",root.ln.**,WRITE_DATA,false,")));
     }
   }
 

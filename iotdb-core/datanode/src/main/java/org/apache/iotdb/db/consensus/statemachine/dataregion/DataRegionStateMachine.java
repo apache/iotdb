@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
@@ -34,12 +33,6 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
@@ -50,7 +43,6 @@ import org.apache.iotdb.db.storageengine.dataregion.snapshot.SnapshotLoader;
 import org.apache.iotdb.db.storageengine.dataregion.snapshot.SnapshotTaker;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,7 +50,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class DataRegionStateMachine extends BaseStateMachine {
 
@@ -155,132 +146,37 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   protected PlanNode grabPlanNode(IndexedConsensusRequest indexedRequest) {
-    List<InsertNode> insertNodes = new ArrayList<>(indexedRequest.getRequests().size());
-    List<DeleteDataNode> deleteDataNodes = new ArrayList<>();
+    List<SearchNode> searchNodes = new ArrayList<>();
+    PlanNode onlyOne = null;
     for (IConsensusRequest req : indexedRequest.getRequests()) {
       // PlanNode in IndexedConsensusRequest should always be InsertNode
       PlanNode planNode = getPlanNode(req);
       if (planNode instanceof SearchNode) {
         ((SearchNode) planNode).setSearchIndex(indexedRequest.getSearchIndex());
-      }
-      if (planNode instanceof InsertNode) {
-        insertNodes.add((InsertNode) planNode);
-      } else if (planNode instanceof DeleteDataNode) {
-        deleteDataNodes.add((DeleteDataNode) planNode);
-      } else if (indexedRequest.getRequests().size() == 1) {
-        // If the planNode is not InsertNode, it is expected that the IndexedConsensusRequest only
-        // contains one request
-        return planNode;
+        searchNodes.add((SearchNode) planNode);
       } else {
-        throw new IllegalArgumentException(
-            "PlanNodes in IndexedConsensusRequest are not InsertNode and "
-                + "the size of requests are larger than 1");
+        logger.warn("Unexpected PlanNode type {}, which is not SearchNode", planNode.getClass());
+        if (onlyOne == null) {
+          onlyOne = planNode;
+        } else {
+          throw new IllegalArgumentException(
+              String.format(
+                  "There are two types of PlanNode in one request: %s and %s",
+                  onlyOne.getClass(), planNode.getClass()));
+        }
       }
     }
-    if (!insertNodes.isEmpty()) {
-      if (!deleteDataNodes.isEmpty()) {
+    if (onlyOne != null) {
+      if (!searchNodes.isEmpty()) {
         throw new IllegalArgumentException(
-            "One indexedRequest cannot contain InsertNode and DeleteDataNode at the same time");
+            String.format(
+                "There are two types of PlanNode in one request: %s and SearchNode",
+                onlyOne.getClass()));
       }
-      return mergeInsertNodes(insertNodes);
+      return onlyOne;
     }
-    return mergeDeleteDataNode(deleteDataNodes);
-  }
-
-  private DeleteDataNode mergeDeleteDataNode(List<DeleteDataNode> deleteDataNodes) {
-    int size = deleteDataNodes.size();
-    if (size == 0) {
-      throw new IllegalArgumentException("deleteDataNodes is empty");
-    }
-    DeleteDataNode firstOne = deleteDataNodes.get(0);
-    if (size == 1) {
-      return firstOne;
-    }
-    if (!deleteDataNodes.stream()
-        .allMatch(
-            deleteDataNode ->
-                firstOne.getDeleteStartTime() == deleteDataNode.getDeleteStartTime()
-                    && firstOne.getDeleteEndTime() == deleteDataNode.getDeleteEndTime())) {
-      throw new IllegalArgumentException(
-          "DeleteDataNodes which start time or end time are not same cannot be merged");
-    }
-    List<MeasurementPath> pathList =
-        deleteDataNodes.stream()
-            .flatMap(deleteDataNode -> deleteDataNode.getPathList().stream())
-            // Some time the deleteDataNode list contains a path for multiple times, so use
-            // distinct() to clear them
-            .distinct()
-            .collect(Collectors.toList());
-    return new DeleteDataNode(
-        firstOne.getPlanNodeId(),
-        pathList,
-        firstOne.getDeleteStartTime(),
-        firstOne.getDeleteEndTime());
-  }
-
-  /**
-   * Merge insert nodes sharing same search index ( e.g. tablet-100, tablet-100, tablet-100 will be
-   * merged to one multi-tablet). <br>
-   * Notice: the continuity of insert nodes sharing same search index should be protected by the
-   * upper layer.
-   *
-   * @exception IllegalArgumentException when insertNodes is empty
-   */
-  protected InsertNode mergeInsertNodes(List<InsertNode> insertNodes) {
-    int size = insertNodes.size();
-    if (size == 0) {
-      throw new IllegalArgumentException("insertNodes should never be empty");
-    }
-    if (size == 1) {
-      return insertNodes.get(0);
-    }
-
-    InsertNode result;
-    List<Integer> index = new ArrayList<>();
-    int i = 0;
-    switch (insertNodes.get(0).getType()) {
-      case RELATIONAL_INSERT_TABLET:
-      case INSERT_TABLET:
-        // merge to InsertMultiTabletsNode
-        List<InsertTabletNode> insertTabletNodes = new ArrayList<>(size);
-        for (InsertNode insertNode : insertNodes) {
-          insertTabletNodes.add((InsertTabletNode) insertNode);
-          index.add(i);
-          i++;
-        }
-        result =
-            new InsertMultiTabletsNode(
-                insertNodes.get(0).getPlanNodeId(), index, insertTabletNodes);
-        break;
-      case INSERT_ROW:
-        // merge to InsertRowsNode
-        List<InsertRowNode> insertRowNodes = new ArrayList<>(size);
-        for (InsertNode insertNode : insertNodes) {
-          insertRowNodes.add((InsertRowNode) insertNode);
-          index.add(i);
-          i++;
-        }
-        result = new InsertRowsNode(insertNodes.get(0).getPlanNodeId(), index, insertRowNodes);
-        break;
-      case INSERT_ROWS:
-        // merge to InsertRowsNode
-        List<InsertRowNode> list = new ArrayList<>();
-        for (InsertNode insertNode : insertNodes) {
-          for (InsertRowNode insertRowNode : ((InsertRowsNode) insertNode).getInsertRowNodeList()) {
-            list.add(insertRowNode);
-            index.add(i);
-            i++;
-          }
-        }
-        result = new InsertRowsNode(insertNodes.get(0).getPlanNodeId(), index, list);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            "Unsupported node type " + insertNodes.get(0).getType());
-    }
-    result.setSearchIndex(insertNodes.get(0).getSearchIndex());
-    result.setTargetPath(insertNodes.get(0).getTargetPath());
-    return result;
+    // searchNodes should never be empty here
+    return searchNodes.get(0).merge(searchNodes);
   }
 
   @Override
@@ -349,7 +245,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
       try {
         fragmentInstance = getFragmentInstance(request);
       } catch (IllegalArgumentException e) {
-        logger.error(e.getMessage());
+        logger.error("Get fragment instance failed", e);
         return null;
       }
       return QUERY_INSTANCE_MANAGER.execDataQueryFragmentInstance(fragmentInstance, region);

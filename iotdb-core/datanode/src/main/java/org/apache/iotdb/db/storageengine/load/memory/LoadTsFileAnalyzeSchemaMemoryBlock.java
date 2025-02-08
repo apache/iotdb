@@ -51,7 +51,9 @@ public class LoadTsFileAnalyzeSchemaMemoryBlock extends LoadTsFileAbstractMemory
 
   @Override
   public synchronized void addMemoryUsage(long memoryInBytes) {
-    memoryUsageInBytes.addAndGet(memoryInBytes);
+    if (memoryUsageInBytes.addAndGet(memoryInBytes) > totalMemorySizeInBytes) {
+      LOGGER.warn("{} has exceed total memory size", this);
+    }
 
     MetricService.getInstance()
         .getOrCreateGauge(

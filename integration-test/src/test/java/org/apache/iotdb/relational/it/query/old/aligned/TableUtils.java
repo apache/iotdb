@@ -47,7 +47,7 @@ public class TableUtils {
       new String[] {
         "CREATE DATABASE db",
         "USE db",
-        "CREATE TABLE table0 (device string id, s1 FLOAT measurement, s2 INT32 measurement, s3 INT64 measurement, s4 BOOLEAN measurement, s5 TEXT measurement)",
+        "CREATE TABLE table0 (device string tag, s1 FLOAT field, s2 INT32 field, s3 INT64 field, s4 BOOLEAN field, s5 TEXT field)",
         "insert into table0(device, time, s1, s2, s3, s4, s5) values('d1', 1, 1.0, 1, 1, TRUE, 'aligned_test1')",
         "insert into table0(device, time, s1, s2, s3, s5) values('d1', 2, 2.0, 2, 2, 'aligned_test2')",
         "insert into table0(device, time, s1, s3, s4, s5) values('d1', 3, 3.0, 3, FALSE, 'aligned_test3')",

@@ -27,8 +27,8 @@ from iotdb.utils.IoTDBConstants import TSDataType
 
 @unique
 class ColumnType(IntEnum):
-    ID = 0
-    MEASUREMENT = 1
+    TAG = 0
+    FIELD = 1
     ATTRIBUTE = 2
 
     def n_copy(self, n):
@@ -88,7 +88,7 @@ class Tablet(object):
         self.__column_number = len(column_names)
         if column_types is None:
             self.__column_types = ColumnType.n_copy(
-                ColumnType.MEASUREMENT, self.__column_number
+                ColumnType.FIELD, self.__column_number
             )
         else:
             self.__column_types = column_types

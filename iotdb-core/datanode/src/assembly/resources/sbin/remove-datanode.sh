@@ -73,7 +73,13 @@ launch_service()
 	iotdb_parms="$iotdb_parms -Dname=iotdb\.IoTDB"
 	iotdb_parms="$iotdb_parms -DIOTDB_LOG_DIR=${IOTDB_LOG_DIR}"
 
-	exec "$JAVA" $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" "$class" $PARAMS
+  # In case the 2g memory is not enough in some scenarios, users can further reduce the memory usage manually.
+	# on heap memory size
+  ON_HEAP_MEMORY="2G"
+  # off heap memory size
+  OFF_HEAP_MEMORY="512M"
+
+	exec "$JAVA" $iotdb_parms $illegal_access_params $IOTDB_JMX_OPTS -Xms${ON_HEAP_MEMORY} -Xmx${ON_HEAP_MEMORY} -XX:MaxDirectMemorySize=${OFF_HEAP_MEMORY} -cp "$CLASSPATH" "$class" $PARAMS
 	return $?
 }
 

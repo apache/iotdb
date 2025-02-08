@@ -55,6 +55,21 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setEncryptFlag(boolean encryptFlag) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEncryptType(String encryptType) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEncryptKeyPath(String encryptKeyPath) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs) {
     return this;
   }
@@ -131,6 +146,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy) {
     return this;
   }
@@ -162,6 +182,11 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setTimePartitionInterval(long timePartitionInterval) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTTLCheckInterval(long ttlCheckInterval) {
     return this;
   }
 
@@ -250,6 +275,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate) {
     return this;
   }
@@ -319,7 +349,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs) {
+  public CommonConfig setDnConnectionTimeoutMs(int connectionTimeoutMs) {
     return this;
   }
 
@@ -343,6 +373,11 @@ public class RemoteCommonConfig implements CommonConfig {
   @Override
   public CommonConfig setPipeConnectorRequestSliceThresholdBytes(
       int pipeConnectorRequestSliceThresholdBytes) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
     return this;
   }
 }

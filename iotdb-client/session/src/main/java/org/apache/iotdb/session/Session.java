@@ -71,7 +71,6 @@ import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.record.Tablet.ColumnType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -434,7 +433,7 @@ public class Session implements ISession {
     this.version = version;
   }
 
-  public Session(Builder builder) {
+  public Session(AbstractSessionBuilder builder) {
     if (builder.nodeUrls != null) {
       if (builder.nodeUrls.isEmpty()) {
         throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
@@ -1259,38 +1258,6 @@ public class Session implements ISession {
     }
 
     insertRecord(deviceId, request);
-  }
-
-  /**
-   * insert data in one row to the table model, if you want to improve your performance, please use
-   * insertRecords method or insertTablet method
-   *
-   * @see Session#insertRecords(List, List, List, List, List)
-   * @see Session#insertTablet(Tablet)
-   */
-  @Override
-  public void insertRelationalRecord(
-      String tableName,
-      long time,
-      List<String> measurements,
-      List<TSDataType> types,
-      List<ColumnType> columnCategories,
-      Object... values)
-      throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertRecordReq request;
-    try {
-      request =
-          filterAndGenTSInsertRecordReq(
-              tableName, time, measurements, types, Arrays.asList(values), false);
-      request.setColumnCategoryies(
-          columnCategories.stream().map(c -> (byte) c.ordinal()).collect(Collectors.toList()));
-      request.setIsWriteToTable(true);
-    } catch (NoValidValueException e) {
-      logger.warn(ALL_VALUES_ARE_NULL, tableName, time, measurements);
-      return;
-    }
-
-    insertRecord(tableName, request);
   }
 
   private void insertRecord(String prefixPath, TSInsertRecordReq request)
@@ -2755,18 +2722,20 @@ public class Session implements ISession {
   }
 
   /**
-   * insert a relational Tablet
+   * insert a relational Tablet. Note: This method is for internal use only, we do not guarantee
+   * compatibility with subsequent versions.
    *
    * @param tablet data batch
-   * @param sorted deprecated, whether times in Tablet are in ascending order
    */
-  @Override
-  public void insertRelationalTablet(Tablet tablet, boolean sorted)
+  public void insertRelationalTablet(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
+    if (tablet.getRowSize() == 0) {
+      return;
+    }
     if (enableRedirection) {
       insertRelationalTabletWithLeaderCache(tablet);
     } else {
-      TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
+      TSInsertTabletReq request = genTSInsertTabletReq(tablet, false, false);
       request.setWriteToTable(true);
       request.setColumnCategories(
           tablet.getColumnTypes().stream()
@@ -2779,24 +2748,15 @@ public class Session implements ISession {
     }
   }
 
-  /**
-   * insert a relational Tablet
-   *
-   * @param tablet data batch
-   */
-  @Override
-  public void insertRelationalTablet(Tablet tablet)
-      throws IoTDBConnectionException, StatementExecutionException {
-    insertRelationalTablet(tablet, false);
-  }
-
   private void insertRelationalTabletWithLeaderCache(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
     Map<SessionConnection, Tablet> relationalTabletGroup = new HashMap<>();
     if (tableModelDeviceIdToEndpoint.isEmpty()) {
       relationalTabletGroup.put(defaultSessionConnection, tablet);
+    } else if (SessionUtils.isTabletContainsSingleDevice(tablet)) {
+      relationalTabletGroup.put(getSessionConnection(tablet.getDeviceID(0)), tablet);
     } else {
-      for (int i = 0; i < tablet.rowSize; i++) {
+      for (int i = 0; i < tablet.getRowSize(); i++) {
         IDeviceID iDeviceID = tablet.getDeviceID(i);
         final SessionConnection connection = getSessionConnection(iDeviceID);
         int finalI = i;
@@ -2804,21 +2764,30 @@ public class Session implements ISession {
             connection,
             (k, v) -> {
               if (v == null) {
+                List<String> measurements = new ArrayList<>(tablet.getSchemas().size());
+                List<TSDataType> dataTypes = new ArrayList<>();
+                tablet
+                    .getSchemas()
+                    .forEach(
+                        schema -> {
+                          measurements.add(schema.getMeasurementName());
+                          dataTypes.add(schema.getType());
+                        });
                 v =
                     new Tablet(
                         tablet.getTableName(),
-                        tablet.getSchemas(),
+                        measurements,
+                        dataTypes,
                         tablet.getColumnTypes(),
-                        tablet.rowSize);
+                        tablet.getRowSize());
               }
               for (int j = 0; j < v.getSchemas().size(); j++) {
                 v.addValue(
-                    v.getSchemas().get(j).getMeasurementId(),
-                    v.rowSize,
+                    v.getSchemas().get(j).getMeasurementName(),
+                    v.getRowSize(),
                     tablet.getValue(finalI, j));
               }
-              v.addTimestamp(v.rowSize, tablet.timestamps[finalI]);
-              v.rowSize++;
+              v.addTimestamp(v.getRowSize(), tablet.getTimestamp(finalI));
               return v;
             });
       }
@@ -2991,7 +2960,10 @@ public class Session implements ISession {
     TSInsertTabletReq request = new TSInsertTabletReq();
 
     for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-      request.addToMeasurements(measurementSchema.getMeasurementId());
+      if (measurementSchema.getMeasurementName() == null) {
+        throw new IllegalArgumentException("measurement should be non null value");
+      }
+      request.addToMeasurements(measurementSchema.getMeasurementName());
       request.addToTypes(measurementSchema.getType().ordinal());
     }
 
@@ -2999,7 +2971,7 @@ public class Session implements ISession {
     request.setIsAligned(isAligned);
     request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
     request.setValues(SessionUtils.getValueBuffer(tablet));
-    request.setSize(tablet.rowSize);
+    request.setSize(tablet.getRowSize());
     return request;
   }
 
@@ -3115,14 +3087,17 @@ public class Session implements ISession {
     List<Integer> dataTypes = new ArrayList<>();
     request.setIsAligned(isAligned);
     for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-      measurements.add(measurementSchema.getMeasurementId());
+      if (measurementSchema.getMeasurementName() == null) {
+        throw new IllegalArgumentException("measurement should be non null value");
+      }
+      measurements.add(measurementSchema.getMeasurementName());
       dataTypes.add(measurementSchema.getType().ordinal());
     }
     request.addToMeasurementsList(measurements);
     request.addToTypesList(dataTypes);
     request.addToTimestampsList(SessionUtils.getTimeBuffer(tablet));
     request.addToValuesList(SessionUtils.getValueBuffer(tablet));
-    request.addToSizeList(tablet.rowSize);
+    request.addToSizeList(tablet.getRowSize());
   }
 
   // sample some records and judge weather need to add too many null values to convert to tablet.
@@ -3298,7 +3273,7 @@ public class Session implements ISession {
       List<String> measurements,
       List<Object> values,
       Map<String, Pair<TSDataType, Boolean>> allMeasurementMap) {
-    int row = tablet.rowSize++;
+    int row = tablet.getRowSize();
     tablet.addTimestamp(row, timestamp);
     // tablet without null value
     if (measurements.size() == allMeasurementMap.size()) {
@@ -3528,8 +3503,8 @@ public class Session implements ISession {
    * @return whether the batch has been sorted
    */
   private boolean checkSorted(Tablet tablet) {
-    for (int i = 1; i < tablet.rowSize; i++) {
-      if (tablet.timestamps[i] < tablet.timestamps[i - 1]) {
+    for (int i = 1; i < tablet.getRowSize(); i++) {
+      if (tablet.getTimestamp(i) < tablet.getTimestamp(i - 1)) {
         return false;
       }
     }
@@ -3554,31 +3529,32 @@ public class Session implements ISession {
      * so we can insert continuous data in value list to get a better performance
      */
     // sort to get index, and use index to sort value list
-    Integer[] index = new Integer[tablet.rowSize];
-    for (int i = 0; i < tablet.rowSize; i++) {
+    long[] timestamps = tablet.getTimestamps();
+    Object[] values = tablet.getValues();
+    BitMap[] bitMaps = tablet.getBitMaps();
+    Integer[] index = new Integer[tablet.getRowSize()];
+    for (int i = 0; i < tablet.getRowSize(); i++) {
       index[i] = i;
     }
-    Arrays.sort(index, Comparator.comparingLong(o -> tablet.timestamps[o]));
-    Arrays.sort(tablet.timestamps, 0, tablet.rowSize);
+    Arrays.sort(index, Comparator.comparingLong(o -> timestamps[o]));
+    Arrays.sort(timestamps, 0, tablet.getRowSize());
     int columnIndex = 0;
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
       IMeasurementSchema schema = tablet.getSchemas().get(i);
       if (schema instanceof MeasurementSchema) {
-        tablet.values[columnIndex] = sortList(tablet.values[columnIndex], schema.getType(), index);
-        if (tablet.bitMaps != null && tablet.bitMaps[columnIndex] != null) {
-          tablet.bitMaps[columnIndex] = sortBitMap(tablet.bitMaps[columnIndex], index);
+        values[columnIndex] = sortList(values[columnIndex], schema.getType(), index);
+        if (bitMaps != null && bitMaps[columnIndex] != null) {
+          bitMaps[columnIndex] = sortBitMap(bitMaps[columnIndex], index);
         }
         columnIndex++;
       } else {
         int measurementSize = schema.getSubMeasurementsList().size();
         for (int j = 0; j < measurementSize; j++) {
-          tablet.values[columnIndex] =
+          values[columnIndex] =
               sortList(
-                  tablet.values[columnIndex],
-                  schema.getSubMeasurementsTSDataTypeList().get(j),
-                  index);
-          if (tablet.bitMaps != null && tablet.bitMaps[columnIndex] != null) {
-            tablet.bitMaps[columnIndex] = sortBitMap(tablet.bitMaps[columnIndex], index);
+                  values[columnIndex], schema.getSubMeasurementsTSDataTypeList().get(j), index);
+          if (bitMaps != null && bitMaps[columnIndex] != null) {
+            bitMaps[columnIndex] = sortBitMap(bitMaps[columnIndex], index);
           }
           columnIndex++;
         }
@@ -4180,65 +4156,7 @@ public class Session implements ISession {
     return database;
   }
 
-  public static class Builder {
-
-    private String host = SessionConfig.DEFAULT_HOST;
-    private int rpcPort = SessionConfig.DEFAULT_PORT;
-    private String username = SessionConfig.DEFAULT_USER;
-    private String pw = SessionConfig.DEFAULT_PASSWORD;
-    private int fetchSize = SessionConfig.DEFAULT_FETCH_SIZE;
-    private ZoneId zoneId = null;
-    private int thriftDefaultBufferSize = SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY;
-    private int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
-    // this field only take effect in write request, nothing to do with any other type requests,
-    // like query, load and so on.
-    // if set to true, it means that we may redirect the write request to its corresponding leader
-    // if set to false, it means that we will only send write request to first available DataNode(it
-    // may be changed while current DataNode is not available, for example, we may retry to connect
-    // to another available DataNode)
-    // so even if enableRedirection is set to false, we may also send write request to another
-    // datanode while encountering retriable errors in current DataNode
-    private boolean enableRedirection = SessionConfig.DEFAULT_REDIRECTION_MODE;
-    private boolean enableRecordsAutoConvertTablet =
-        SessionConfig.DEFAULT_RECORDS_AUTO_CONVERT_TABLET;
-    private Version version = SessionConfig.DEFAULT_VERSION;
-    private long timeOut = SessionConfig.DEFAULT_QUERY_TIME_OUT;
-
-    // set to true, means that we will start a background thread to fetch all available (Status is
-    // not Removing) datanodes in cluster, and these available nodes will be used in retrying stage
-    private boolean enableAutoFetch = SessionConfig.DEFAULT_ENABLE_AUTO_FETCH;
-
-    private boolean useSSL = false;
-    private String trustStore;
-    private String trustStorePwd;
-
-    // max retry count, if set to 0, means that we won't do any retry
-    // we can use any available DataNodes(fetched in background thread if enableAutoFetch is true,
-    // or nodeUrls user specified) to retry, even if enableRedirection is false
-    private int maxRetryCount = SessionConfig.MAX_RETRY_COUNT;
-
-    private long retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
-
-    private String sqlDialect = SessionConfig.SQL_DIALECT;
-
-    private String database;
-
-    public Builder useSSL(boolean useSSL) {
-      this.useSSL = useSSL;
-      return this;
-    }
-
-    public Builder trustStore(String keyStore) {
-      this.trustStore = keyStore;
-      return this;
-    }
-
-    public Builder trustStorePwd(String keyStorePwd) {
-      this.trustStorePwd = keyStorePwd;
-      return this;
-    }
-
-    private List<String> nodeUrls = null;
+  public static class Builder extends AbstractSessionBuilder {
 
     public Builder host(String host) {
       this.host = host;
@@ -4330,14 +4248,28 @@ public class Session implements ISession {
       return this;
     }
 
+    public Builder useSSL(boolean useSSL) {
+      this.useSSL = useSSL;
+      return this;
+    }
+
+    public Builder trustStore(String keyStore) {
+      this.trustStore = keyStore;
+      return this;
+    }
+
+    public Builder trustStorePwd(String keyStorePwd) {
+      this.trustStorePwd = keyStorePwd;
+      return this;
+    }
+
     public Session build() {
       if (nodeUrls != null
           && (!SessionConfig.DEFAULT_HOST.equals(host) || rpcPort != SessionConfig.DEFAULT_PORT)) {
         throw new IllegalArgumentException(
             "You should specify either nodeUrls or (host + rpcPort), but not both");
       }
-      Session newSession = new Session(this);
-      return newSession;
+      return new Session(this);
     }
   }
 }

@@ -47,7 +47,7 @@ public class IoTDBAlignByDeviceTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "use " + DATABASE_NAME,
-        "create table vehicle(device_id STRING ID, s0 INT32 MEASUREMENT, s1 INT64 MEASUREMENT, s2 FLOAT MEASUREMENT, s3 STRING MEASUREMENT, s4 BOOLEAN MEASUREMENT)",
+        "create table vehicle(device_id STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 STRING FIELD, s4 BOOLEAN FIELD)",
         "insert into vehicle(time, device_id, s0) values(1,'d0', 101)",
         "insert into vehicle(time, device_id, s0) values(2,'d0', 198)",
         "insert into vehicle(time, device_id, s0) values(100,'d0', 99)",

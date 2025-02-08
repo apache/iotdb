@@ -37,9 +37,10 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CAPTURE_TREE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_GROUP_ID_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_RESTORE_PROGRESS_PIPE_TASK_NAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_KEY;
@@ -61,67 +62,56 @@ public class ConsensusPipeManager {
     this.selector = config.getConsensusPipeSelector();
   }
 
+  /** This method is used except region migration. */
   public void createConsensusPipe(Peer senderPeer, Peer receiverPeer) throws Exception {
     ConsensusPipeName consensusPipeName = new ConsensusPipeName(senderPeer, receiverPeer);
+    // The third parameter is only used when region migration. Since this method is not called by
+    // region migration, just pass senderPeer in to get the correct result.
     Triple<ImmutableMap<String, String>, ImmutableMap<String, String>, ImmutableMap<String, String>>
-        params = buildPipeParams(senderPeer, receiverPeer, null);
+        params = buildPipeParams(senderPeer, receiverPeer);
     dispatcher.createPipe(
-        consensusPipeName.toString(), params.getLeft(), params.getMiddle(), params.getRight());
+        consensusPipeName.toString(),
+        params.getLeft(),
+        params.getMiddle(),
+        params.getRight(),
+        false);
   }
 
-  public void createConsensusPipe(
-      Peer senderPeer, Peer receiverPeer, Peer regionMigrationCoordinatorPeer) throws Exception {
+  /** This method is used when executing region migration */
+  public void createConsensusPipe(Peer senderPeer, Peer receiverPeer, boolean needManuallyStart)
+      throws Exception {
     ConsensusPipeName consensusPipeName = new ConsensusPipeName(senderPeer, receiverPeer);
     Triple<ImmutableMap<String, String>, ImmutableMap<String, String>, ImmutableMap<String, String>>
-        params = buildPipeParams(senderPeer, receiverPeer, regionMigrationCoordinatorPeer);
+        params = buildPipeParams(senderPeer, receiverPeer);
     dispatcher.createPipe(
-        consensusPipeName.toString(), params.getLeft(), params.getMiddle(), params.getRight());
+        consensusPipeName.toString(),
+        params.getLeft(),
+        params.getMiddle(),
+        params.getRight(),
+        needManuallyStart);
   }
 
   public Triple<
           ImmutableMap<String, String>, ImmutableMap<String, String>, ImmutableMap<String, String>>
-      buildPipeParams(Peer senderPeer, Peer receiverPeer, Peer regionMigrationCoordinatorPeer) {
+      buildPipeParams(Peer senderPeer, Peer receiverPeer) {
     ConsensusPipeName consensusPipeName = new ConsensusPipeName(senderPeer, receiverPeer);
-
-    ImmutableMap<String, String> extractorParams;
-    if (senderPeer.equals(regionMigrationCoordinatorPeer)) {
-      extractorParams =
-          ImmutableMap.<String, String>builder()
-              .put(EXTRACTOR_KEY, config.getExtractorPluginName())
-              .put(EXTRACTOR_INCLUSION_KEY, CONSENSUS_EXTRACTOR_INCLUSION_VALUE)
-              .put(
-                  EXTRACTOR_CONSENSUS_GROUP_ID_KEY,
-                  consensusPipeName.getConsensusGroupId().toString())
-              .put(
-                  EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY,
-                  String.valueOf(consensusPipeName.getSenderDataNodeId()))
-              .put(
-                  EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY,
-                  String.valueOf(consensusPipeName.getReceiverDataNodeId()))
-              .put(EXTRACTOR_REALTIME_MODE_KEY, replicateMode.getValue())
-              .put(
-                  EXTRACTOR_CONSENSUS_RESTORE_PROGRESS_PIPE_TASK_NAME_KEY,
-                  String.valueOf(new ConsensusPipeName(senderPeer, regionMigrationCoordinatorPeer)))
-              .build();
-    } else {
-      extractorParams =
-          ImmutableMap.<String, String>builder()
-              .put(EXTRACTOR_KEY, config.getExtractorPluginName())
-              .put(EXTRACTOR_INCLUSION_KEY, CONSENSUS_EXTRACTOR_INCLUSION_VALUE)
-              .put(
-                  EXTRACTOR_CONSENSUS_GROUP_ID_KEY,
-                  consensusPipeName.getConsensusGroupId().toString())
-              .put(
-                  EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY,
-                  String.valueOf(consensusPipeName.getSenderDataNodeId()))
-              .put(
-                  EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY,
-                  String.valueOf(consensusPipeName.getReceiverDataNodeId()))
-              .put(EXTRACTOR_REALTIME_MODE_KEY, replicateMode.getValue())
-              .build();
-    }
     return new ImmutableTriple<>(
-        extractorParams,
+        ImmutableMap.<String, String>builder()
+            .put(EXTRACTOR_KEY, config.getExtractorPluginName())
+            .put(EXTRACTOR_INCLUSION_KEY, CONSENSUS_EXTRACTOR_INCLUSION_VALUE)
+            .put(
+                EXTRACTOR_CONSENSUS_GROUP_ID_KEY,
+                consensusPipeName.getConsensusGroupId().toString())
+            .put(
+                EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY,
+                String.valueOf(consensusPipeName.getSenderDataNodeId()))
+            .put(
+                EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY,
+                String.valueOf(consensusPipeName.getReceiverDataNodeId()))
+            .put(EXTRACTOR_REALTIME_MODE_KEY, replicateMode.getValue())
+            .put(EXTRACTOR_CAPTURE_TABLE_KEY, String.valueOf(true))
+            .put(EXTRACTOR_CAPTURE_TREE_KEY, String.valueOf(true))
+            .build(),
         ImmutableMap.<String, String>builder()
             .put(PROCESSOR_KEY, config.getProcessorPluginName())
             .build(),

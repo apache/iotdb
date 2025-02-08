@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeAsyncClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
@@ -37,7 +38,6 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
-import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,12 +54,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTransferResp> {
+public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTsFileHandler.class);
-
-  // Used to transfer the file
-  private final IoTDBDataRegionAsyncConnector connector;
 
   // Used to rate limit the transfer
   private final Map<Pair<String, Long>, Double> pipeName2WeightMap;
@@ -100,7 +97,7 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
       final boolean transferMod,
       final String dataBaseName)
       throws FileNotFoundException {
-    this.connector = connector;
+    super(connector);
 
     this.pipeName2WeightMap = pipeName2WeightMap;
 
@@ -176,7 +173,9 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
                     client.getEndPoint(),
                     (long) (req.getBody().length * weight)));
 
-        client.pipeTransfer(req, this);
+        if (!tryTransfer(client, req)) {
+          return;
+        }
       }
       return;
     }
@@ -205,13 +204,15 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
                 client.getEndPoint(),
                 (long) (req.getBody().length * weight)));
 
-    client.pipeTransfer(req, this);
+    if (!tryTransfer(client, req)) {
+      return;
+    }
 
     position += readLength;
   }
 
   @Override
-  public void onComplete(final TPipeTransferResp response) {
+  protected boolean onCompleteInternal(final TPipeTransferResp response) {
     if (isSealSignalSent.get()) {
       try {
         final TSStatus status = response.getStatus();
@@ -228,7 +229,7 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
         }
       } catch (final Exception e) {
         onError(e);
-        return;
+        return false;
       }
 
       try {
@@ -238,7 +239,11 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
 
         // Delete current file when using tsFile as batch
         if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
-          FileUtils.delete(currentFile);
+          RetryUtils.retryOnException(
+              () -> {
+                FileUtils.delete(currentFile);
+                return null;
+              });
         }
       } catch (final IOException e) {
         LOGGER.warn(
@@ -270,7 +275,7 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
           client.returnSelf();
         }
       }
-      return;
+      return true;
     }
 
     // If the isSealSignalSent is false, then the response must be a PipeTransferFilePieceResp
@@ -300,11 +305,14 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
       transfer(clientManager, client);
     } catch (final Exception e) {
       onError(e);
+      return false;
     }
+
+    return false; // due to seal transfer not yet completed
   }
 
   @Override
-  public void onError(final Exception exception) {
+  protected void onErrorInternal(final Exception exception) {
     try {
       if (events.size() <= 1 || LOGGER.isDebugEnabled()) {
         LOGGER.warn(
@@ -338,7 +346,11 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
 
       // Delete current file when using tsFile as batch
       if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
-        FileUtils.delete(currentFile);
+        RetryUtils.retryOnException(
+            () -> {
+              FileUtils.delete(currentFile);
+              return null;
+            });
       }
     } catch (final IOException e) {
       LOGGER.warn("Failed to close file reader or delete tsFile when failed to transfer file.", e);
@@ -354,5 +366,17 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
         }
       }
     }
+  }
+
+  @Override
+  protected void doTransfer(
+      final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req)
+      throws TException {
+    client.pipeTransfer(req, this);
+  }
+
+  @Override
+  public void clearEventsReferenceCount() {
+    events.forEach(event -> event.clearReferenceCount(PipeTransferTsFileHandler.class.getName()));
   }
 }

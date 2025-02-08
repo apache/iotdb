@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -35,14 +35,19 @@ import org.apache.tsfile.utils.Pair;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import java.util.Objects;
 
 public class ModificationUtils {
 
   private ModificationUtils() {
     // util class
+  }
+
+  // both ranges are closed
+  public static boolean overlap(long startA, long endA, long startB, long endB) {
+    return endB >= startA && startB <= endA;
   }
 
   /**
@@ -56,15 +61,10 @@ public class ModificationUtils {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void modifyChunkMetaData(
-      List<? extends IChunkMetadata> chunkMetaData, List<Modification> modifications) {
+      List<? extends IChunkMetadata> chunkMetaData, List<ModEntry> modifications) {
     for (IChunkMetadata metaData : chunkMetaData) {
-      for (Modification modification : modifications) {
-        // The case modification.getFileOffset() == metaData.getOffsetOfChunkHeader()
-        // is not supposed to exist as getFileOffset() is offset containing full chunk,
-        // while getOffsetOfChunkHeader() returns the chunk header offset
-        if (modification.getFileOffset() > metaData.getOffsetOfChunkHeader()) {
-          doModifyChunkMetaData(modification, metaData);
-        }
+      for (ModEntry modification : modifications) {
+        doModifyChunkMetaData(modification, metaData);
       }
     }
     // remove chunks that are completely deleted
@@ -86,7 +86,7 @@ public class ModificationUtils {
   }
 
   public static void modifyAlignedChunkMetaData(
-      List<AlignedChunkMetadata> chunkMetaData, List<List<Modification>> modifications) {
+      List<AlignedChunkMetadata> chunkMetaData, List<List<ModEntry>> modifications) {
     for (AlignedChunkMetadata metaData : chunkMetaData) {
       modifyValueColumns(metaData, modifications);
     }
@@ -102,27 +102,22 @@ public class ModificationUtils {
   }
 
   private static void modifyValueColumns(
-      AlignedChunkMetadata metaData, List<List<Modification>> valueColumnsModifications) {
+      AbstractAlignedChunkMetadata metaData, List<List<ModEntry>> valueColumnsModifications) {
     List<IChunkMetadata> valueChunkMetadataList = metaData.getValueChunkMetadataList();
     // deal with each sub sensor
     for (int j = 0; j < valueChunkMetadataList.size(); j++) {
       IChunkMetadata v = valueChunkMetadataList.get(j);
       if (v != null) {
-        List<Modification> modificationList = valueColumnsModifications.get(j);
-        for (Modification modification : modificationList) {
-          // The case modification.getFileOffset() == metaData.getOffsetOfChunkHeader()
-          // is not supposed to exist as getFileOffset() is offset containing full chunk,
-          // while getOffsetOfChunkHeader() returns the chunk header offset
-          if (modification.getFileOffset() > v.getOffsetOfChunkHeader()) {
-            doModifyChunkMetaData(modification, v);
-          }
+        List<ModEntry> modificationList = valueColumnsModifications.get(j);
+        for (ModEntry modification : modificationList) {
+          doModifyChunkMetaData(modification, v);
         }
       }
     }
   }
 
   private static boolean areAllValueColumnsDeleted(
-      AlignedChunkMetadata alignedChunkMetadata, boolean modified) {
+      AbstractAlignedChunkMetadata alignedChunkMetadata, boolean modified) {
 
     // the whole aligned path need to be removed, only set to be true if all the sub sensors
     // are deleted and ignoreAllNullRows is true
@@ -162,20 +157,15 @@ public class ModificationUtils {
   }
 
   public static void modifyAlignedChunkMetaData(
-      List<AlignedChunkMetadata> chunkMetaData,
-      List<Modification> timeColumnModifications,
-      List<List<Modification>> valueColumnsModifications,
+      List<? extends AbstractAlignedChunkMetadata> chunkMetaData,
+      List<ModEntry> timeColumnModifications,
+      List<List<ModEntry>> valueColumnsModifications,
       boolean ignoreAllNullRows) {
-    for (AlignedChunkMetadata metaData : chunkMetaData) {
+    for (AbstractAlignedChunkMetadata metaData : chunkMetaData) {
       IChunkMetadata timeColumnChunkMetadata = metaData.getTimeChunkMetadata();
 
-      for (Modification modification : timeColumnModifications) {
-        // The case modification.getFileOffset() == metaData.getOffsetOfChunkHeader()
-        // is not supposed to exist as getFileOffset() is offset containing full chunk,
-        // while getOffsetOfChunkHeader() returns the chunk header offset
-        if (modification.getFileOffset() > timeColumnChunkMetadata.getOffsetOfChunkHeader()) {
-          doModifyChunkMetaData(modification, timeColumnChunkMetadata);
-        }
+      for (ModEntry modification : timeColumnModifications) {
+        doModifyChunkMetaData(modification, timeColumnChunkMetadata);
       }
       modifyValueColumns(metaData, valueColumnsModifications);
     }
@@ -256,13 +246,10 @@ public class ModificationUtils {
    * There are some slight differences from that in {@link SettleSelectorImpl}.
    */
   public static boolean isAllDeletedByMods(
-      Collection<Modification> modifications, IDeviceID device, long startTime, long endTime)
-      throws IllegalPathException {
-    final MeasurementPath deviceWithWildcard = new MeasurementPath(device, ONE_LEVEL_PATH_WILDCARD);
-    for (Modification modification : modifications) {
-      MeasurementPath path = modification.getPath();
-      if (path.matchFullPath(deviceWithWildcard)
-          && ((Deletion) modification).getTimeRange().contains(startTime, endTime)) {
+      Collection<ModEntry> modifications, IDeviceID device, long startTime, long endTime) {
+    for (ModEntry modification : modifications) {
+      if (modification.affectsAll(device)
+          && modification.getTimeRange().contains(startTime, endTime)) {
         return true;
       }
     }
@@ -270,12 +257,12 @@ public class ModificationUtils {
   }
 
   public static boolean isAllDeletedByMods(
-      Collection<Modification> modifications, long startTime, long endTime) {
+      Collection<ModEntry> modifications, long startTime, long endTime) {
     if (modifications == null || modifications.isEmpty()) {
       return false;
     }
-    for (Modification modification : modifications) {
-      if (((Deletion) modification).getTimeRange().contains(startTime, endTime)) {
+    for (ModEntry modification : modifications) {
+      if ((modification.getTimeRange().contains(startTime, endTime))) {
         return true;
       }
     }
@@ -283,28 +270,23 @@ public class ModificationUtils {
   }
 
   public static boolean isTimeseriesDeletedByMods(
-      Collection<Modification> modifications,
+      Collection<ModEntry> modifications,
       IDeviceID device,
       String timeseriesId,
       long startTime,
-      long endTime)
-      throws IllegalPathException {
-    final MeasurementPath measurementPath = new MeasurementPath(device, timeseriesId);
-    for (Modification modification : modifications) {
-      MeasurementPath path = modification.getPath();
-      if (path.matchFullPath(measurementPath)
-          && ((Deletion) modification).getTimeRange().contains(startTime, endTime)) {
+      long endTime) {
+    for (ModEntry modification : modifications) {
+      if (modification.affects(device)
+          && modification.affects(timeseriesId)
+          && modification.getTimeRange().contains(startTime, endTime)) {
         return true;
       }
     }
     return false;
   }
 
-  private static void doModifyChunkMetaData(Modification modification, IChunkMetadata metaData) {
-    if (modification instanceof Deletion) {
-      Deletion deletion = (Deletion) modification;
-      metaData.insertIntoSortedDeletions(deletion.getTimeRange());
-    }
+  private static void doModifyChunkMetaData(ModEntry modification, IChunkMetadata metaData) {
+    metaData.insertIntoSortedDeletions(modification.getTimeRange());
   }
 
   /** Methods for modification in memory table */
@@ -312,25 +294,23 @@ public class ModificationUtils {
       IDeviceID deviceID,
       List<String> measurementList,
       IMemTable memTable,
-      List<Pair<Modification, IMemTable>> modsToMemtable,
+      List<Pair<ModEntry, IMemTable>> modsToMemtable,
       long timeLowerBound) {
     if (measurementList.isEmpty()) {
       return Collections.emptyList();
     }
-    List<Modification> modifications =
+    List<ModEntry> modifications =
         ModificationUtils.getModificationsForMemtable(memTable, modsToMemtable);
     List<List<TimeRange>> deletionList = new ArrayList<>();
     for (String measurement : measurementList) {
       List<TimeRange> columnDeletionList = new ArrayList<>();
       columnDeletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
-      for (Modification modification : modifications) {
-        if (modification instanceof Deletion) {
-          Deletion deletion = (Deletion) modification;
-          if (deletion.getPath().matchFullPath(deviceID, measurement)
-              && deletion.getEndTime() > timeLowerBound) {
-            long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
-            columnDeletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
-          }
+      for (ModEntry modification : modifications) {
+        if (modification.affects(deviceID)
+            && modification.affects(measurement)
+            && modification.getEndTime() > timeLowerBound) {
+          long lowerBound = Math.max(modification.getStartTime(), timeLowerBound);
+          columnDeletionList.add(new TimeRange(lowerBound, modification.getEndTime()));
         }
       }
       deletionList.add(TimeRange.sortAndMerge(columnDeletionList));
@@ -348,33 +328,75 @@ public class ModificationUtils {
       IDeviceID deviceID,
       String measurement,
       IMemTable memTable,
-      List<Pair<Modification, IMemTable>> modsToMemtable,
+      List<Pair<ModEntry, IMemTable>> modsToMemtable,
       long timeLowerBound) {
     List<TimeRange> deletionList = new ArrayList<>();
     deletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
-    for (Modification modification : getModificationsForMemtable(memTable, modsToMemtable)) {
-      if (modification instanceof Deletion) {
-        Deletion deletion = (Deletion) modification;
-        if (deletion.getPath().matchFullPath(deviceID, measurement)
-            && deletion.getEndTime() > timeLowerBound) {
-          long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
-          deletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
-        }
+    for (ModEntry modification : getModificationsForMemtable(memTable, modsToMemtable)) {
+      if (modification.affects(deviceID)
+          && modification.affects(measurement)
+          && modification.getEndTime() > timeLowerBound) {
+        long lowerBound = Math.max(modification.getStartTime(), timeLowerBound);
+        deletionList.add(new TimeRange(lowerBound, modification.getEndTime()));
       }
     }
     return TimeRange.sortAndMerge(deletionList);
   }
 
-  private static List<Modification> getModificationsForMemtable(
-      IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable) {
-    List<Modification> modifications = new ArrayList<>();
+  private static List<ModEntry> getModificationsForMemtable(
+      IMemTable memTable, List<Pair<ModEntry, IMemTable>> modsToMemtable) {
+    List<ModEntry> modifications = new ArrayList<>();
     boolean foundMemtable = false;
-    for (Pair<Modification, IMemTable> entry : modsToMemtable) {
+    for (Pair<ModEntry, IMemTable> entry : modsToMemtable) {
       if (foundMemtable || entry.right.equals(memTable)) {
         modifications.add(entry.left);
         foundMemtable = true;
       }
     }
     return modifications;
+  }
+
+  public static boolean canMerge(TimeRange left, TimeRange right) {
+    // [1,3] can merge with [4, 5]
+    // [1,3] cannot merge with [5,6]
+    // [Long.MIN,3] can merge with [Long.MIN, 5]
+    long extendedRightMin = right.getMin() == Long.MIN_VALUE ? right.getMin() : right.getMin() - 1;
+    return extendedRightMin <= left.getMax();
+  }
+
+  public static boolean canMerge(ModEntry left, ModEntry right) {
+    if (!Objects.equals(left.getClass(), right.getClass())
+        || !canMerge(left.getTimeRange(), right.getTimeRange())) {
+      return false;
+    }
+
+    if (left instanceof TreeDeletionEntry) {
+      return Objects.equals(
+          ((TreeDeletionEntry) left).getPathPattern(),
+          ((TreeDeletionEntry) right).getPathPattern());
+    } else if (left instanceof TableDeletionEntry) {
+      return Objects.equals(
+          ((TableDeletionEntry) left).getPredicate(), ((TableDeletionEntry) right).getPredicate());
+    }
+    return false;
+  }
+
+  public static List<ModEntry> sortAndMerge(List<ModEntry> modifications) {
+    modifications.sort(Comparator.comparing(ModEntry::getTimeRange));
+    List<ModEntry> result = new ArrayList<>();
+    if (!modifications.isEmpty()) {
+      ModEntry current = modifications.get(0).clone();
+      for (int i = 1; i < modifications.size(); i++) {
+        ModEntry next = modifications.get(i);
+        if (canMerge(current, next)) {
+          current.getTimeRange().merge(next.getTimeRange());
+        } else {
+          result.add(current);
+          current = next.clone();
+        }
+      }
+      result.add(current);
+    }
+    return result;
   }
 }

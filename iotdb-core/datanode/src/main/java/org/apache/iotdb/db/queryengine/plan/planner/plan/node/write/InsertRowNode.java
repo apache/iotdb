@@ -49,6 +49,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -72,6 +73,17 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   public InsertRowNode(PlanNodeId id) {
     super(id);
+  }
+
+  @Override
+  public InsertNode mergeInsertNode(List<InsertNode> insertNodes) {
+    List<Integer> index = new ArrayList<>();
+    List<InsertRowNode> insertRowNodes = new ArrayList<>();
+    for (int i = 0; i < insertNodes.size(); i++) {
+      insertRowNodes.add((InsertRowNode) insertNodes.get(i));
+      index.add(i);
+    }
+    return new InsertRowsNode(this.getPlanNodeId(), index, insertRowNodes);
   }
 
   @TestOnly
@@ -443,7 +455,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       measurementSchemas = new MeasurementSchema[measurementSize];
       for (int i = 0; i < measurementSize; i++) {
         measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
-        measurements[i] = measurementSchemas[i].getMeasurementId();
+        measurements[i] = measurementSchemas[i].getMeasurementName();
       }
     } else {
       for (int i = 0; i < measurementSize; i++) {

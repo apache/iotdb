@@ -23,11 +23,13 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.agent.task.execution.PipeSubtaskExecutorManager;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
-import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeEventBatches;
+import org.apache.iotdb.db.subscription.task.subtask.SubscriptionReceiverSubtask;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -45,7 +47,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -66,7 +68,7 @@ public abstract class SubscriptionPrefetchingQueue {
   private final AtomicLong commitIdGenerator;
 
   /** A queue containing a series of prefetched pollable {@link SubscriptionEvent}. */
-  protected final LinkedBlockingQueue<SubscriptionEvent> prefetchingQueue;
+  protected final PriorityBlockingQueue<SubscriptionEvent> prefetchingQueue;
 
   /**
    * A map that tracks in-flight {@link SubscriptionEvent}, keyed by consumer id and commit context.
@@ -110,7 +112,7 @@ public abstract class SubscriptionPrefetchingQueue {
     this.inputPendingQueue = inputPendingQueue;
     this.commitIdGenerator = commitIdGenerator;
 
-    this.prefetchingQueue = new LinkedBlockingQueue<>();
+    this.prefetchingQueue = new PriorityBlockingQueue<>();
     this.inFlightEvents = new ConcurrentHashMap<>();
     this.batches = new SubscriptionPipeEventBatches(this, maxDelayInMs, maxBatchSizeInBytes);
 
@@ -160,6 +162,15 @@ public abstract class SubscriptionPrefetchingQueue {
     lock.writeLock().unlock();
   }
 
+  /////////////////////////////// subtask ///////////////////////////////
+
+  protected void executeReceiverSubtask(
+      final SubscriptionReceiverSubtask subtask, final long timeoutMs) throws Exception {
+    PipeSubtaskExecutorManager.getInstance()
+        .getSubscriptionExecutor()
+        .executeReceiverSubtask(subtask, timeoutMs);
+  }
+
   /////////////////////////////// poll ///////////////////////////////
 
   public SubscriptionEvent poll(final String consumerId) {
@@ -176,7 +187,15 @@ public abstract class SubscriptionPrefetchingQueue {
 
     if (prefetchingQueue.isEmpty()) {
       states.markMissingPrefetch();
-      tryPrefetch();
+      try {
+        executeReceiverSubtask(
+            () -> {
+              tryPrefetch();
+              return null;
+            },
+            SubscriptionAgent.receiver().remainingMs());
+      } catch (final Exception ignored) {
+      }
     }
 
     if (prefetchingQueue.isEmpty()) {
@@ -240,9 +259,11 @@ public abstract class SubscriptionPrefetchingQueue {
       if (isClosed()) {
         return false;
       }
+      // TODO: more refined behavior (prefetch/serialize/...) control
       if (states.shouldPrefetch()) {
         tryPrefetch();
-        remapInFlightEventsSnapshot(committedCleaner, pollableNacker, responsePrefetcher);
+        remapInFlightEventsSnapshot(
+            committedCleaner, pollableNacker, responsePrefetcher, responseSerializer);
         return true;
       } else {
         remapInFlightEventsSnapshot(committedCleaner, pollableNacker);
@@ -267,9 +288,18 @@ public abstract class SubscriptionPrefetchingQueue {
     }
   }
 
-  protected void enqueueEventToPrefetchingQueue(final SubscriptionEvent event) {
-    event.trySerializeCurrentResponse();
-    prefetchingQueue.add(event);
+  public void prefetchEvent(@NonNull final SubscriptionEvent thisEvent) {
+    final SubscriptionEvent thatEvent = prefetchingQueue.peek();
+    if (Objects.nonNull(thatEvent)) {
+      if (thisEvent.compareTo(thatEvent) < 0) {
+        // disorder causes:
+        // 1. prefetch nacked event
+        // 2. late cross-event of dataset payload
+        states.markDisorderCause();
+      }
+    }
+
+    prefetchingQueue.add(thisEvent);
   }
 
   /**
@@ -323,8 +353,8 @@ public abstract class SubscriptionPrefetchingQueue {
         continue;
       }
 
-      if (event instanceof PipeTsFileInsertionEvent) {
-        if (onEvent((PipeTsFileInsertionEvent) event)) {
+      if (event instanceof TsFileInsertionEvent) {
+        if (onEvent((TsFileInsertionEvent) event)) {
           return;
         }
         continue;
@@ -338,6 +368,8 @@ public abstract class SubscriptionPrefetchingQueue {
           "Subscription: SubscriptionPrefetchingQueue {} ignore EnrichedEvent {} when prefetching.",
           this,
           event);
+      ((EnrichedEvent) event)
+          .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), false);
       if (onEvent()) {
         return;
       }
@@ -355,14 +387,14 @@ public abstract class SubscriptionPrefetchingQueue {
    * @return {@code true} if there are subscription events prefetched.
    */
   protected boolean onEvent(final TabletInsertionEvent event) {
-    return batches.onEvent((EnrichedEvent) event, this::enqueueEventToPrefetchingQueue);
+    return batches.onEvent((EnrichedEvent) event, this::prefetchEvent);
   }
 
   /**
    * @return {@code true} if there are subscription events prefetched.
    */
   protected boolean onEvent() {
-    return batches.onEvent(this::enqueueEventToPrefetchingQueue);
+    return batches.onEvent(this::prefetchEvent);
   }
 
   /////////////////////////////// commit ///////////////////////////////
@@ -634,12 +666,12 @@ public abstract class SubscriptionPrefetchingQueue {
       (ev) -> {
         if (ev.eagerlyPollable()) {
           ev.nack(); // now pollable (the nack operation here is actually unnecessary)
-          enqueueEventToPrefetchingQueue(ev);
+          prefetchEvent(ev);
           // no need to log warn for eagerly pollable event
           return null; // remove this entry
         } else if (ev.pollable()) {
           ev.nack(); // now pollable
-          enqueueEventToPrefetchingQueue(ev);
+          prefetchEvent(ev);
           LOGGER.warn(
               "Subscription: SubscriptionPrefetchingQueue {} recycle event {} from in flight events, nack and enqueue it to prefetching queue",
               this,
@@ -651,9 +683,19 @@ public abstract class SubscriptionPrefetchingQueue {
 
   private final RemappingFunction<SubscriptionEvent> responsePrefetcher =
       (ev) -> {
-        // prefetch and serialize the remaining responses
+        // prefetch the remaining responses
         try {
           ev.prefetchRemainingResponses();
+        } catch (final Exception ignored) {
+        }
+        return ev;
+      };
+
+  private final RemappingFunction<SubscriptionEvent> responseSerializer =
+      (ev) -> {
+        // serialize the responses
+        try {
+          ev.trySerializeCurrentResponse();
           ev.trySerializeRemainingResponses();
         } catch (final Exception ignored) {
         }

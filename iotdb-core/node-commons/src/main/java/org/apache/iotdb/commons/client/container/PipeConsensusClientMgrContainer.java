@@ -39,32 +39,26 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
  */
 public class PipeConsensusClientMgrContainer {
   private static final CommonConfig CONF = CommonDescriptor.getInstance().getConfig();
-  private final IClientManager<TEndPoint, AsyncPipeConsensusServiceClient> asyncClientManager;
-  private final IClientManager<TEndPoint, SyncPipeConsensusServiceClient> syncClientManager;
+  private final PipeConsensusClientProperty config;
 
   private PipeConsensusClientMgrContainer() {
     // load rpc client config
-    PipeConsensusClientProperty config =
+    this.config =
         PipeConsensusClientProperty.newBuilder()
             .setIsRpcThriftCompressionEnabled(CONF.isRpcThriftCompressionEnabled())
             .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
             .setSelectorNumOfClientManager(CONF.getSelectorNumOfClientManager())
             .build();
-
-    this.asyncClientManager =
-        new IClientManager.Factory<TEndPoint, AsyncPipeConsensusServiceClient>()
-            .createClientManager(new AsyncPipeConsensusServiceClientPoolFactory(config));
-    this.syncClientManager =
-        new IClientManager.Factory<TEndPoint, SyncPipeConsensusServiceClient>()
-            .createClientManager(new SyncPipeConsensusServiceClientPoolFactory(config));
   }
 
-  public IClientManager<TEndPoint, AsyncPipeConsensusServiceClient> getAsyncClientManager() {
-    return asyncClientManager;
+  public IClientManager<TEndPoint, AsyncPipeConsensusServiceClient> newAsyncClientManager() {
+    return new IClientManager.Factory<TEndPoint, AsyncPipeConsensusServiceClient>()
+        .createClientManager(new AsyncPipeConsensusServiceClientPoolFactory(config));
   }
 
-  public IClientManager<TEndPoint, SyncPipeConsensusServiceClient> getSyncClientManager() {
-    return syncClientManager;
+  public IClientManager<TEndPoint, SyncPipeConsensusServiceClient> newSyncClientManager() {
+    return new IClientManager.Factory<TEndPoint, SyncPipeConsensusServiceClient>()
+        .createClientManager(new SyncPipeConsensusServiceClientPoolFactory(config));
   }
 
   private static class PipeConsensusClientMgrContainerHolder {

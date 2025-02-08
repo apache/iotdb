@@ -27,9 +27,15 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import java.util.Arrays;
 import java.util.regex.Pattern;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_DATABASE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_DATABASE_NAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_TABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_TABLE_NAME_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_TABLE_NAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_DATABASE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_DATABASE_NAME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_TABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_TABLE_NAME_KEY;
 
 public class TablePattern {
@@ -39,13 +45,21 @@ public class TablePattern {
   private final Pattern databasePattern;
   private final Pattern tablePattern;
 
-  protected TablePattern(
+  public TablePattern(
       final boolean isTableModelDataAllowedToBeCaptured,
       final String databasePatternString,
       final String tablePatternString) {
     this.isTableModelDataAllowedToBeCaptured = isTableModelDataAllowedToBeCaptured;
-    databasePattern = databasePatternString == null ? null : Pattern.compile(databasePatternString);
-    tablePattern = tablePatternString == null ? null : Pattern.compile(tablePatternString);
+    databasePattern =
+        databasePatternString == null
+                || databasePatternString.trim().equals(EXTRACTOR_DATABASE_NAME_DEFAULT_VALUE)
+            ? null
+            : Pattern.compile(databasePatternString);
+    tablePattern =
+        tablePatternString == null
+                || tablePatternString.trim().equals(EXTRACTOR_TABLE_NAME_DEFAULT_VALUE)
+            ? null
+            : Pattern.compile(tablePatternString);
   }
 
   public boolean isTableModelDataAllowedToBeCaptured() {
@@ -72,11 +86,17 @@ public class TablePattern {
   }
 
   public String getDatabasePattern() {
-    return databasePattern == null ? ".*" : databasePattern.pattern();
+    return databasePattern == null
+        ? EXTRACTOR_DATABASE_NAME_DEFAULT_VALUE
+        : databasePattern.pattern();
   }
 
   public String getTablePattern() {
-    return tablePattern == null ? ".*" : tablePattern.pattern();
+    return tablePattern == null ? EXTRACTOR_TABLE_NAME_DEFAULT_VALUE : tablePattern.pattern();
+  }
+
+  public boolean hasTablePattern() {
+    return tablePattern != null;
   }
 
   /**
@@ -87,7 +107,38 @@ public class TablePattern {
   public static TablePattern parsePipePatternFromSourceParameters(
       final PipeParameters sourceParameters) {
     final boolean isTableModelDataAllowedToBeCaptured =
-        sourceParameters.getBooleanOrDefault(
+        isTableModelDataAllowToBeCaptured(sourceParameters);
+    final String databaseNamePattern =
+        sourceParameters.getStringOrDefault(
+            Arrays.asList(
+                EXTRACTOR_DATABASE_NAME_KEY,
+                SOURCE_DATABASE_NAME_KEY,
+                EXTRACTOR_DATABASE_KEY,
+                SOURCE_DATABASE_KEY),
+            EXTRACTOR_DATABASE_NAME_DEFAULT_VALUE);
+    final String tableNamePattern =
+        sourceParameters.getStringOrDefault(
+            Arrays.asList(
+                EXTRACTOR_TABLE_NAME_KEY,
+                SOURCE_TABLE_NAME_KEY,
+                EXTRACTOR_TABLE_KEY,
+                SOURCE_TABLE_KEY),
+            EXTRACTOR_TABLE_NAME_DEFAULT_VALUE);
+    try {
+      return new TablePattern(
+          isTableModelDataAllowedToBeCaptured, databaseNamePattern, tableNamePattern);
+    } catch (final Exception e) {
+      throw new PipeException("Illegal database or table pattern. Detail: " + e.getMessage(), e);
+    }
+  }
+
+  public static boolean isTableModelDataAllowToBeCaptured(final PipeParameters sourceParameters) {
+    return sourceParameters.getBooleanOrDefault(
+            Arrays.asList(
+                PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
+                PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
+            PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE)
+        || sourceParameters.getBooleanOrDefault(
             Arrays.asList(
                 PipeExtractorConstant.EXTRACTOR_CAPTURE_TABLE_KEY,
                 PipeExtractorConstant.SOURCE_CAPTURE_TABLE_KEY),
@@ -95,16 +146,6 @@ public class TablePattern {
                 .getStringOrDefault(
                     SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE)
                 .equals(SystemConstant.SQL_DIALECT_TREE_VALUE));
-    final String databaseNamePattern =
-        sourceParameters.getStringByKeys(EXTRACTOR_DATABASE_NAME_KEY, SOURCE_DATABASE_NAME_KEY);
-    final String tableNamePattern =
-        sourceParameters.getStringByKeys(EXTRACTOR_TABLE_NAME_KEY, SOURCE_TABLE_NAME_KEY);
-    try {
-      return new TablePattern(
-          isTableModelDataAllowedToBeCaptured, databaseNamePattern, tableNamePattern);
-    } catch (final Exception e) {
-      throw new PipeException("Illegal database or table pattern. Detail: " + e.getMessage(), e);
-    }
   }
 
   @Override

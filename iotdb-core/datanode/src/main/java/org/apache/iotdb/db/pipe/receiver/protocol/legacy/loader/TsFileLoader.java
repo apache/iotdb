@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.LoadFileException;
+import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -56,6 +56,7 @@ public class TsFileLoader implements ILoader {
     try {
       LoadTsFileStatement statement = new LoadTsFileStatement(tsFile.getAbsolutePath());
       statement.setDeleteAfterLoad(true);
+      statement.setConvertOnTypeMismatch(true);
       statement.setDatabaseLevel(parseSgLevel());
       statement.setVerifySchema(true);
       statement.setAutoCreateDatabase(false);
@@ -70,7 +71,8 @@ public class TsFileLoader implements ILoader {
                   "",
                   PARTITION_FETCHER,
                   SCHEMA_FETCHER,
-                  IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
+                  IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+                  false);
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error("Load TsFile {} error, statement: {}.", tsFile.getPath(), statement);
         LOGGER.error("Load TsFile result status : {}.", result.status);

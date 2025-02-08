@@ -159,13 +159,13 @@ void insertTablet() {
         tablet.timestamps[row] = time;
 
         bool randVal1 = rand() % 2;
-        tablet.addValue(0, row, &randVal1);
+        tablet.addValue(0, row, randVal1);
 
         int randVal2 = rand();
-        tablet.addValue(1, row, &randVal2);
+        tablet.addValue(1, row, randVal2);
 
         float randVal3 = (float)(rand() / 99.9);
-        tablet.addValue(2, row, &randVal3);
+        tablet.addValue(2, row, randVal3);
 
         if (tablet.rowSize == tablet.maxRowNumber) {
             session->insertTablet(tablet, true);
@@ -236,22 +236,22 @@ void insertTablets() {
         tablet2.timestamps[row2] = time;
 
         int64_t randVal11 = rand();
-        tablet1.addValue(0, row1, &randVal11);
+        tablet1.addValue(0, row1, randVal11);
 
         double randVal12 = rand() / 99.9;
-        tablet1.addValue(1, row1, &randVal12);
+        tablet1.addValue(1, row1, randVal12);
 
         string randVal13 = "string" + to_string(rand());
-        tablet1.addValue(2, row1, &randVal13);
+        tablet1.addValue(2, row1, randVal13);
 
         int64_t randVal21 = rand();
-        tablet2.addValue(0, row2, &randVal21);
+        tablet2.addValue(0, row2, randVal21);
 
         double randVal22 = rand() / 99.9;
-        tablet2.addValue(1, row2, &randVal22);
+        tablet2.addValue(1, row2, randVal22);
 
         string randVal23 = "string" + to_string(rand());
-        tablet2.addValue(2, row2, &randVal23);
+        tablet2.addValue(2, row2, randVal23);
 
         if (tablet1.rowSize == tablet1.maxRowNumber) {
             session->insertTablets(tabletMap, true);
@@ -292,7 +292,7 @@ void insertTabletWithNullValues() {
         tablet.timestamps[row] = time;
         for (int i = 0; i < 3; i++) {
             int64_t randVal = rand();
-            tablet.addValue(i, row, &randVal);
+            tablet.addValue(i, row, randVal);
             // mark null value
             if (row % 3 == (unsigned int) i) {
                 tablet.bitMaps[i].mark(row);

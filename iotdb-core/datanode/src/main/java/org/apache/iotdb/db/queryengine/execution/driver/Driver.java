@@ -51,6 +51,7 @@ import java.util.function.Supplier;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.base.Throwables.throwIfUnchecked;
+import static com.google.common.base.Verify.verify;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static java.lang.Boolean.TRUE;
 import static org.apache.iotdb.db.queryengine.execution.operator.Operator.NOT_BLOCKED;
@@ -325,15 +326,16 @@ public abstract class Driver implements IDriver {
       return Optional.empty();
     }
 
-    Optional<T> result;
+    T result = null;
+    Throwable failure = null;
     try {
-      result = Optional.of(task.get());
+      result = task.get();
+      // opportunistic check to avoid unnecessary lock reacquisition
+      destroyIfNecessary();
+    } catch (Throwable t) {
+      failure = t;
     } finally {
-      try {
-        destroyIfNecessary();
-      } finally {
-        exclusiveLock.unlock();
-      }
+      exclusiveLock.unlock();
     }
 
     // We need to recheck whether the state is NEED_DESTRUCTION, if so, destroy the driver.
@@ -346,12 +348,25 @@ public abstract class Driver implements IDriver {
     if (state.get() == State.NEED_DESTRUCTION && exclusiveLock.tryLock(interruptOnClose)) {
       try {
         destroyIfNecessary();
+      } catch (Throwable t) {
+        if (failure == null) {
+          failure = t;
+        } else if (failure != t) {
+          failure.addSuppressed(t);
+        }
       } finally {
         exclusiveLock.unlock();
       }
     }
 
-    return result;
+    if (failure != null) {
+      throwIfUnchecked(failure);
+      // should never happen
+      throw new AssertionError(failure);
+    }
+
+    verify(result != null, "result is null");
+    return Optional.of(result);
   }
 
   @SuppressWarnings({"squid:S1181", "squid:S112"})

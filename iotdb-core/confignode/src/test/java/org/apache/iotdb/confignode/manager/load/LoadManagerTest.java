@@ -188,7 +188,7 @@ public class LoadManagerTest {
     Assert.assertEquals(
         new Pair<>(
             new RegionGroupStatistics(RegionGroupStatus.Running, allRunningRegionStatisticsMap),
-            new RegionGroupStatistics(RegionGroupStatus.Disabled, oneRemovingRegionStatisticsMap)),
+            new RegionGroupStatistics(RegionGroupStatus.Running, oneRemovingRegionStatisticsMap)),
         differentRegionGroupStatisticsMap.get(regionGroupId));
     // Add and mark Region 3 as Adding
     int addDataNodeId = 3;
@@ -203,8 +203,8 @@ public class LoadManagerTest {
     oneAddingRegionStatisticsMap.put(addDataNodeId, new RegionStatistics(RegionStatus.Adding));
     Assert.assertEquals(
         new Pair<>(
-            new RegionGroupStatistics(RegionGroupStatus.Disabled, oneRemovingRegionStatisticsMap),
-            new RegionGroupStatistics(RegionGroupStatus.Disabled, oneAddingRegionStatisticsMap)),
+            new RegionGroupStatistics(RegionGroupStatus.Running, oneRemovingRegionStatisticsMap),
+            new RegionGroupStatistics(RegionGroupStatus.Running, oneAddingRegionStatisticsMap)),
         differentRegionGroupStatisticsMap.get(regionGroupId));
     // Both Region 0 and 3 can't be updated
     LOAD_CACHE.cacheRegionHeartbeatSample(
@@ -226,8 +226,8 @@ public class LoadManagerTest {
     oneRemovingRegionStatisticsMap.put(addDataNodeId, new RegionStatistics(RegionStatus.Running));
     Assert.assertEquals(
         new Pair<>(
-            new RegionGroupStatistics(RegionGroupStatus.Disabled, oneAddingRegionStatisticsMap),
-            new RegionGroupStatistics(RegionGroupStatus.Disabled, oneRemovingRegionStatisticsMap)),
+            new RegionGroupStatistics(RegionGroupStatus.Running, oneAddingRegionStatisticsMap),
+            new RegionGroupStatistics(RegionGroupStatus.Running, oneRemovingRegionStatisticsMap)),
         differentRegionGroupStatisticsMap.get(regionGroupId));
     // Removing process completed
     LOAD_MANAGER.removeRegionCache(regionGroupId, removeDataNodeId);
@@ -237,7 +237,7 @@ public class LoadManagerTest {
     allRunningRegionStatisticsMap.put(addDataNodeId, new RegionStatistics(RegionStatus.Running));
     Assert.assertEquals(
         new Pair<>(
-            new RegionGroupStatistics(RegionGroupStatus.Disabled, oneRemovingRegionStatisticsMap),
+            new RegionGroupStatistics(RegionGroupStatus.Running, oneRemovingRegionStatisticsMap),
             new RegionGroupStatistics(RegionGroupStatus.Running, allRunningRegionStatisticsMap)),
         differentRegionGroupStatisticsMap.get(regionGroupId));
   }

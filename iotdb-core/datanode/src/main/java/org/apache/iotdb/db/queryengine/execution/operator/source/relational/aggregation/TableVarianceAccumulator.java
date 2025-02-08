@@ -25,10 +25,15 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class TableVarianceAccumulator implements TableAccumulator {
 
@@ -58,19 +63,46 @@ public class TableVarianceAccumulator implements TableAccumulator {
   }
 
   @Override
-  public void addInput(Column[] arguments) {
+  public void addInput(Column[] arguments, AggregationMask mask) {
     switch (seriesDataType) {
       case INT32:
-        addIntInput(arguments[0]);
+        addIntInput(arguments[0], mask);
         return;
       case INT64:
-        addLongInput(arguments[0]);
+        addLongInput(arguments[0], mask);
         return;
       case FLOAT:
-        addFloatInput(arguments[0]);
+        addFloatInput(arguments[0], mask);
         return;
       case DOUBLE:
-        addDoubleInput(arguments[0]);
+        addDoubleInput(arguments[0], mask);
+        return;
+      case TEXT:
+      case BLOB:
+      case BOOLEAN:
+      case DATE:
+      case STRING:
+      case TIMESTAMP:
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in aggregation variance : %s", seriesDataType));
+    }
+  }
+
+  @Override
+  public void removeInput(Column[] arguments) {
+    switch (seriesDataType) {
+      case INT32:
+        removeIntInput(arguments[0]);
+        return;
+      case INT64:
+        removeLongInput(arguments[0]);
+        return;
+      case FLOAT:
+        removeFloatInput(arguments[0]);
+        return;
+      case DOUBLE:
+        removeDoubleInput(arguments[0]);
         return;
       case TEXT:
       case BLOB:
@@ -86,6 +118,12 @@ public class TableVarianceAccumulator implements TableAccumulator {
 
   @Override
   public void addIntermediate(Column argument) {
+    checkArgument(
+        argument instanceof BinaryColumn
+            || (argument instanceof RunLengthEncodedColumn
+                && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
+        "intermediate input and output should be BinaryColumn");
+
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
         continue;
@@ -108,6 +146,10 @@ public class TableVarianceAccumulator implements TableAccumulator {
 
   @Override
   public void evaluateIntermediate(ColumnBuilder columnBuilder) {
+    checkArgument(
+        columnBuilder instanceof BinaryColumnBuilder,
+        "intermediate input and output should be BinaryColumn");
+
     if (count == 0) {
       columnBuilder.appendNull();
     } else {
@@ -173,59 +215,194 @@ public class TableVarianceAccumulator implements TableAccumulator {
     m2 = 0.0;
   }
 
-  private void addIntInput(Column column) {
+  @Override
+  public boolean removable() {
+    return true;
+  }
+
+  private void addIntInput(Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (column.isNull(i)) {
+          continue;
+        }
+
+        int value = column.getInt(i);
+        count++;
+        double delta = value - mean;
+        mean += delta / count;
+        m2 += delta * (value - mean);
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (column.isNull(position)) {
+          continue;
+        }
+
+        int value = column.getInt(position);
+        count++;
+        double delta = value - mean;
+        mean += delta / count;
+        m2 += delta * (value - mean);
+      }
+    }
+  }
+
+  private void addLongInput(Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (column.isNull(i)) {
+          continue;
+        }
+
+        long value = column.getLong(i);
+        count++;
+        double delta = value - mean;
+        mean += delta / count;
+        m2 += delta * (value - mean);
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (column.isNull(position)) {
+          continue;
+        }
+
+        long value = column.getLong(position);
+        count++;
+        double delta = value - mean;
+        mean += delta / count;
+        m2 += delta * (value - mean);
+      }
+    }
+  }
+
+  private void addFloatInput(Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (column.isNull(i)) {
+          continue;
+        }
+
+        float value = column.getFloat(i);
+        count++;
+        double delta = value - mean;
+        mean += delta / count;
+        m2 += delta * (value - mean);
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (column.isNull(position)) {
+          continue;
+        }
+
+        float value = column.getFloat(position);
+        count++;
+        double delta = value - mean;
+        mean += delta / count;
+        m2 += delta * (value - mean);
+      }
+    }
+  }
+
+  private void addDoubleInput(Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (column.isNull(i)) {
+          continue;
+        }
+
+        double value = column.getDouble(i);
+        count++;
+        double delta = value - mean;
+        mean += delta / count;
+        m2 += delta * (value - mean);
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (column.isNull(position)) {
+          continue;
+        }
+
+        double value = column.getDouble(position);
+        count++;
+        double delta = value - mean;
+        mean += delta / count;
+        m2 += delta * (value - mean);
+      }
+    }
+  }
+
+  private void removeIntInput(Column column) {
     for (int i = 0; i < column.getPositionCount(); i++) {
       if (column.isNull(i)) {
         continue;
       }
 
       int value = column.getInt(i);
-      count++;
-      double delta = value - mean;
-      mean += delta / count;
-      m2 += delta * (value - mean);
+      updateStateByRemove(value);
     }
   }
 
-  private void addLongInput(Column column) {
+  private void removeLongInput(Column column) {
     for (int i = 0; i < column.getPositionCount(); i++) {
       if (column.isNull(i)) {
         continue;
       }
 
       long value = column.getLong(i);
-      count++;
-      double delta = value - mean;
-      mean += delta / count;
-      m2 += delta * (value - mean);
+      updateStateByRemove(value);
     }
   }
 
-  private void addFloatInput(Column column) {
+  private void removeFloatInput(Column column) {
     for (int i = 0; i < column.getPositionCount(); i++) {
       if (column.isNull(i)) {
         continue;
       }
 
       float value = column.getFloat(i);
-      count++;
-      double delta = value - mean;
-      mean += delta / count;
-      m2 += delta * (value - mean);
+      updateStateByRemove(value);
     }
   }
 
-  private void addDoubleInput(Column column) {
+  private void removeDoubleInput(Column column) {
     for (int i = 0; i < column.getPositionCount(); i++) {
       if (column.isNull(i)) {
         continue;
       }
 
       double value = column.getDouble(i);
-      count++;
-      double delta = value - mean;
-      mean += delta / count;
-      m2 += delta * (value - mean);
+      updateStateByRemove(value);
     }
+  }
+
+  private void updateStateByRemove(double value) {
+    long newCount = count - 1;
+    double newMean = (count * mean - value) / newCount;
+    double delta = value - mean;
+
+    m2 = m2 - delta * delta * count / newCount;
+    count = newCount;
+    mean = newMean;
   }
 }

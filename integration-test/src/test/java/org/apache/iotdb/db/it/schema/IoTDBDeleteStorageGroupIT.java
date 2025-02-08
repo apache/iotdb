@@ -114,8 +114,8 @@ public class IoTDBDeleteStorageGroupIT extends AbstractSchemaIT {
 
   @Test(expected = SQLException.class)
   public void deleteNonExistStorageGroup() throws Exception {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE root.ln2.wf01.wt01");
       statement.execute("DELETE DATABASE root.ln2.wf01.wt02");
     }

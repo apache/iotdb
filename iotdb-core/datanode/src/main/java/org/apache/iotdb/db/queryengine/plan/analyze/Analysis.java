@@ -286,7 +286,7 @@ public class Analysis implements IAnalysis {
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   // extra message from config node, queries wll be sent to these Running DataNodes
-  private List<TDataNodeLocation> runningDataNodeLocations;
+  private List<TDataNodeLocation> readableDataNodeLocations;
 
   // used for limit and offset push down optimizer, if we select all columns from aligned device, we
   // can use statistics to skip
@@ -436,12 +436,12 @@ public class Analysis implements IAnalysis {
     return globalTimePredicate;
   }
 
-  public void setGlobalTimePredicate(Expression timeFilter) {
+  public void setGlobalTimePredicate(final Expression timeFilter) {
     this.globalTimePredicate = timeFilter;
   }
 
   @Override
-  public TimePredicate getCovertedTimePredicate() {
+  public TimePredicate getConvertedTimePredicate() {
     return globalTimePredicate == null ? null : new TreeModelTimePredicate(globalTimePredicate);
   }
 
@@ -450,11 +450,11 @@ public class Analysis implements IAnalysis {
     return respDatasetHeader;
   }
 
-  public void setRespDatasetHeader(DatasetHeader respDatasetHeader) {
+  public void setRespDatasetHeader(final DatasetHeader respDatasetHeader) {
     this.respDatasetHeader = respDatasetHeader;
   }
 
-  public TSDataType getType(Expression expression) {
+  public TSDataType getType(final Expression expression) {
     // NULL_Operand needn't check
     if (expression.getExpressionType().equals(ExpressionType.NULL)) {
       return null;
@@ -466,13 +466,13 @@ public class Analysis implements IAnalysis {
       return deviceTemplate.getSchemaMap().get(seriesOperand.getPath().getMeasurement()).getType();
     }
 
-    TSDataType type = expressionTypes.get(NodeRef.of(expression));
+    final TSDataType type = expressionTypes.get(NodeRef.of(expression));
     checkArgument(type != null, "Expression is not analyzed: %s", expression);
     return type;
   }
 
   @Override
-  public boolean canSkipExecute(MPPQueryContext context) {
+  public boolean canSkipExecute(final MPPQueryContext context) {
     return isFinishQueryAfterAnalyze()
         || (context.getQueryType() == QueryType.READ && !hasDataSource());
   }
@@ -486,8 +486,8 @@ public class Analysis implements IAnalysis {
   }
 
   @Override
-  public TsBlock constructResultForMemorySource(MPPQueryContext context) {
-    StatementMemorySource memorySource =
+  public TsBlock constructResultForMemorySource(final MPPQueryContext context) {
+    final StatementMemorySource memorySource =
         new StatementMemorySourceVisitor()
             .process(getTreeStatement(), new StatementMemorySourceContext(context, this));
     setRespDatasetHeader(memorySource.getDatasetHeader());
@@ -515,7 +515,8 @@ public class Analysis implements IAnalysis {
     return crossGroupByExpressions;
   }
 
-  public void setCrossGroupByExpressions(Map<Expression, Set<Expression>> crossGroupByExpressions) {
+  public void setCrossGroupByExpressions(
+      final Map<Expression, Set<Expression>> crossGroupByExpressions) {
     this.crossGroupByExpressions = crossGroupByExpressions;
   }
 
@@ -523,7 +524,7 @@ public class Analysis implements IAnalysis {
     return fillDescriptor;
   }
 
-  public void setFillDescriptor(FillDescriptor fillDescriptor) {
+  public void setFillDescriptor(final FillDescriptor fillDescriptor) {
     this.fillDescriptor = fillDescriptor;
   }
 
@@ -531,7 +532,7 @@ public class Analysis implements IAnalysis {
     return hasValueFilter;
   }
 
-  public void setHasValueFilter(boolean hasValueFilter) {
+  public void setHasValueFilter(final boolean hasValueFilter) {
     this.hasValueFilter = hasValueFilter;
   }
 
@@ -539,7 +540,7 @@ public class Analysis implements IAnalysis {
     return whereExpression;
   }
 
-  public void setWhereExpression(Expression whereExpression) {
+  public void setWhereExpression(final Expression whereExpression) {
     this.whereExpression = whereExpression;
   }
 
@@ -547,7 +548,7 @@ public class Analysis implements IAnalysis {
     return deviceToWhereExpression;
   }
 
-  public void setDeviceToWhereExpression(Map<IDeviceID, Expression> deviceToWhereExpression) {
+  public void setDeviceToWhereExpression(final Map<IDeviceID, Expression> deviceToWhereExpression) {
     this.deviceToWhereExpression = deviceToWhereExpression;
   }
 
@@ -804,12 +805,12 @@ public class Analysis implements IAnalysis {
     this.tagValuesToGroupedTimeseriesOperands = tagValuesToGroupedTimeseriesOperands;
   }
 
-  public List<TDataNodeLocation> getRunningDataNodeLocations() {
-    return runningDataNodeLocations;
+  public List<TDataNodeLocation> getReadableDataNodeLocations() {
+    return readableDataNodeLocations;
   }
 
-  public void setRunningDataNodeLocations(List<TDataNodeLocation> runningDataNodeLocations) {
-    this.runningDataNodeLocations = runningDataNodeLocations;
+  public void setReadableDataNodeLocations(List<TDataNodeLocation> readableDataNodeLocations) {
+    this.readableDataNodeLocations = readableDataNodeLocations;
   }
 
   public boolean isVirtualSource() {

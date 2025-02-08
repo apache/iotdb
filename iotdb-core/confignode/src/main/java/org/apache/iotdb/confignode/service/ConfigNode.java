@@ -91,7 +91,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
   private static final int STARTUP_RETRY_NUM = 10;
   private static final long STARTUP_RETRY_INTERVAL_IN_MS = TimeUnit.SECONDS.toMillis(3);
   private static final int SCHEDULE_WAITING_RETRY_NUM =
-      (int) (COMMON_CONFIG.getConnectionTimeoutInMS() / STARTUP_RETRY_INTERVAL_IN_MS);
+      (int) (COMMON_CONFIG.getCnConnectionTimeoutInMS() / STARTUP_RETRY_INTERVAL_IN_MS);
   private static final int SEED_CONFIG_NODE_ID = 0;
 
   private static final int INIT_NON_SEED_CONFIG_NODE_ID = -1;

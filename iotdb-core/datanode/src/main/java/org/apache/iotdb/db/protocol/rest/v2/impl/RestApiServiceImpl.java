@@ -119,7 +119,8 @@ public class RestApiServiceImpl extends RestApiService {
               sql.getSql(),
               partitionFetcher,
               schemaFetcher,
-              config.getQueryTimeoutThreshold());
+              config.getQueryTimeoutThreshold(),
+              false);
       finish = true;
       return responseGenerateHelper(result);
     } catch (Exception e) {
@@ -187,7 +188,8 @@ public class RestApiServiceImpl extends RestApiService {
               sql.getSql(),
               partitionFetcher,
               schemaFetcher,
-              config.getQueryTimeoutThreshold());
+              config.getQueryTimeoutThreshold(),
+              true);
       finish = true;
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
@@ -252,7 +254,8 @@ public class RestApiServiceImpl extends RestApiService {
               "",
               partitionFetcher,
               schemaFetcher,
-              config.getQueryTimeoutThreshold());
+              config.getQueryTimeoutThreshold(),
+              false);
       return responseGenerateHelper(result);
 
     } catch (Exception e) {
@@ -307,7 +310,8 @@ public class RestApiServiceImpl extends RestApiService {
               "",
               partitionFetcher,
               schemaFetcher,
-              config.getQueryTimeoutThreshold());
+              config.getQueryTimeoutThreshold(),
+              false);
       return responseGenerateHelper(result);
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();

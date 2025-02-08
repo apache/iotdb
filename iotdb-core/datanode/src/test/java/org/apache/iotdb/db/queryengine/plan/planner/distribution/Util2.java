@@ -324,11 +324,6 @@ public class Util2 {
       public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
         return null;
       }
-
-      @Override
-      public SchemaPartition getSchemaPartition(String database) {
-        return null;
-      }
     };
   }
 

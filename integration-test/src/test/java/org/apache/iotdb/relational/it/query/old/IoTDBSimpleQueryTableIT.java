@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.relational.it.query.old;
 
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -79,15 +79,14 @@ public class IoTDBSimpleQueryTableIT {
       statement.setFetchSize(5);
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
-      statement.execute("CREATE TABLE table1(device STRING ID, s1 INT32 MEASUREMENT)");
+      statement.execute("CREATE TABLE table1(device STRING TAG, s1 INT32 FIELD)");
 
       try (ResultSet resultSet = statement.executeQuery("describe table1")) {
         if (resultSet.next()
             && resultSet.getString(ColumnHeaderConstant.COLUMN_NAME).equals("s1")) {
           assertEquals("INT32", resultSet.getString(ColumnHeaderConstant.DATATYPE).toUpperCase());
           assertEquals(
-              "MEASUREMENT",
-              resultSet.getString(ColumnHeaderConstant.COLUMN_CATEGORY).toUpperCase());
+              "FIELD", resultSet.getString(ColumnHeaderConstant.COLUMN_CATEGORY).toUpperCase());
         }
       }
 
@@ -202,8 +201,7 @@ public class IoTDBSimpleQueryTableIT {
       statement.setFetchSize(5);
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
-      statement.execute(
-          "CREATE TABLE table1(device STRING ID, s0 INT32 MEASUREMENT, s1 INT32 MEASUREMENT)");
+      statement.execute("CREATE TABLE table1(device STRING TAG, s0 INT32 FIELD, s1 INT32 FIELD)");
       statement.execute("INSERT INTO table1(device, time, s0) VALUES ('d0', 1, 1)");
       statement.execute("INSERT INTO table1(device, time, s0) VALUES ('d0',2, 2)");
       statement.execute("INSERT INTO table1(device, time, s0) VALUES ('d0',3, 3)");
@@ -234,7 +232,7 @@ public class IoTDBSimpleQueryTableIT {
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "CREATE TABLE table1(device STRING ID, s1 INT32 MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT32 MEASUREMENT, s4 INT32 MEASUREMENT, s5 INT32 MEASUREMENT, s6 INT32 MEASUREMENT, s7 INT32 MEASUREMENT, s8 INT32 MEASUREMENT, s9 INT32 MEASUREMENT, s10 INT32 MEASUREMENT)");
+          "CREATE TABLE table1(device STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD, s3 INT32 FIELD, s4 INT32 FIELD, s5 INT32 FIELD, s6 INT32 FIELD, s7 INT32 FIELD, s8 INT32 FIELD, s9 INT32 FIELD, s10 INT32 FIELD)");
 
       statement.execute("flush");
 
@@ -260,7 +258,7 @@ public class IoTDBSimpleQueryTableIT {
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "CREATE TABLE table1(device STRING ID, s1 INT32 MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT32 MEASUREMENT, s4 INT32 MEASUREMENT, s5 INT32 MEASUREMENT, s6 INT32 MEASUREMENT, s7 INT32 MEASUREMENT, s8 INT32 MEASUREMENT, s9 INT32 MEASUREMENT, s10 INT32 MEASUREMENT)");
+          "CREATE TABLE table1(device STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD, s3 INT32 FIELD, s4 INT32 FIELD, s5 INT32 FIELD, s6 INT32 FIELD, s7 INT32 FIELD, s8 INT32 FIELD, s9 INT32 FIELD, s10 INT32 FIELD)");
 
       statement.execute("flush");
 
@@ -286,7 +284,7 @@ public class IoTDBSimpleQueryTableIT {
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "CREATE TABLE table1(device STRING ID, s1 INT32 MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT32 MEASUREMENT, s4 INT32 MEASUREMENT, s5 INT32 MEASUREMENT, s6 INT32 MEASUREMENT, s7 INT32 MEASUREMENT, s8 INT32 MEASUREMENT, s9 INT32 MEASUREMENT, s10 INT32 MEASUREMENT)");
+          "CREATE TABLE table1(device STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD, s3 INT32 FIELD, s4 INT32 FIELD, s5 INT32 FIELD, s6 INT32 FIELD, s7 INT32 FIELD, s8 INT32 FIELD, s9 INT32 FIELD, s10 INT32 FIELD)");
 
       statement.execute("flush");
 
@@ -312,7 +310,7 @@ public class IoTDBSimpleQueryTableIT {
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "CREATE TABLE table1(device STRING ID, s1 INT32 MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT32 MEASUREMENT, s4 INT32 MEASUREMENT, s5 INT32 MEASUREMENT, s6 INT32 MEASUREMENT, s7 INT32 MEASUREMENT, s8 INT32 MEASUREMENT, s9 INT32 MEASUREMENT, s10 INT32 MEASUREMENT)");
+          "CREATE TABLE table1(device STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD, s3 INT32 FIELD, s4 INT32 FIELD, s5 INT32 FIELD, s6 INT32 FIELD, s7 INT32 FIELD, s8 INT32 FIELD, s9 INT32 FIELD, s10 INT32 FIELD)");
 
       statement.execute("flush");
 
@@ -339,7 +337,7 @@ public class IoTDBSimpleQueryTableIT {
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "CREATE TABLE table1(device STRING ID, s1 INT32 MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT32 MEASUREMENT, s4 INT32 MEASUREMENT)");
+          "CREATE TABLE table1(device STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD, s3 INT32 FIELD, s4 INT32 FIELD)");
 
       Set<String> exps = ImmutableSet.of("device", "s1");
       int count = 0;
@@ -407,7 +405,7 @@ public class IoTDBSimpleQueryTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
-      statement.execute("CREATE TABLE table1(device STRING ID, s0 INT32 MEASUREMENT)");
+      statement.execute("CREATE TABLE table1(device STRING TAG, s0 INT32 FIELD)");
 
       // seq chunk : [1,10]
       statement.execute("INSERT INTO table1(time, device, s0) VALUES (1,'d0',1)");
@@ -444,8 +442,7 @@ public class IoTDBSimpleQueryTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
-      statement.execute(
-          "CREATE TABLE table1(device STRING ID, s0 INT32 MEASUREMENT, s1 INT32 MEASUREMENT)");
+      statement.execute("CREATE TABLE table1(device STRING TAG, s0 INT32 FIELD, s1 INT32 FIELD)");
 
       try {
         statement.execute("INSERT INTO table1(time, device, s0, s1) VALUES (1, 'd0', 1, 2.2)");
@@ -469,7 +466,7 @@ public class IoTDBSimpleQueryTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
-      statement.execute("CREATE TABLE table1(device STRING ID, s0 INT32 MEASUREMENT)");
+      statement.execute("CREATE TABLE table1(device STRING TAG, s0 INT32 FIELD)");
 
       // seq chunk : start-end [1000, 1000]
       statement.execute("INSERT INTO table1(time, device, s0) VALUES (1000, 'd0', 0)");
@@ -512,7 +509,7 @@ public class IoTDBSimpleQueryTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
-      statement.execute("CREATE TABLE table1(device STRING ID, s0 INT32 MEASUREMENT)");
+      statement.execute("CREATE TABLE table1(device STRING TAG, s0 INT32 FIELD)");
 
       // seq data
       statement.execute("INSERT INTO table1(time, device, s0) VALUES (1000, 'd0', 1)");
@@ -552,10 +549,10 @@ public class IoTDBSimpleQueryTableIT {
       statement.execute("CREATE DATABASE test");
       statement.execute("USE " + DATABASE_NAME);
       StringBuilder createTableBuilder = new StringBuilder();
-      createTableBuilder.append("CREATE TABLE table1(device STRING ID,");
+      createTableBuilder.append("CREATE TABLE table1(device STRING TAG,");
       for (int i = 0; i < 1000; i++) {
         String columnName = "s" + i;
-        createTableBuilder.append(columnName).append(" INT32 MEASUREMENT,");
+        createTableBuilder.append(columnName).append(" INT32 FIELD,");
       }
       createTableBuilder.deleteCharAt(createTableBuilder.lastIndexOf(",")).append(")");
       statement.execute(createTableBuilder.toString());
@@ -575,8 +572,7 @@ public class IoTDBSimpleQueryTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE test");
       statement.execute("USE " + DATABASE_NAME);
-      statement.execute(
-          "CREATE TABLE table1(device STRING ID, s0 INT32 MEASUREMENT, s1 INT32 MEASUREMENT)");
+      statement.execute("CREATE TABLE table1(device STRING TAG, s0 INT32 FIELD, s1 INT32 FIELD)");
       statement.execute("insert into table1(time,device,s0,s1) values(1,'d0',1,1)");
       statement.execute("insert into table1(time,device,s0,s1) values(1000,'d1',1000,1000)");
       statement.execute("insert into table1(time,device,s0,s1) values(10,'d0',10,10)");
@@ -611,24 +607,28 @@ public class IoTDBSimpleQueryTableIT {
 
   @Test
   public void testStorageGroupWithHyphenInName() {
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
       statement.execute("CREATE DATABASE group_with_hyphen");
     } catch (SQLException e) {
       fail();
     }
 
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          final StringBuilder builder = new StringBuilder();
           builder.append(resultSet.getString(1));
-          Assert.assertEquals(builder.toString(), "group_with_hyphen");
+          Assert.assertTrue(
+              builder.toString().equals("group_with_hyphen")
+                  || builder.toString().equals("information_schema"));
         }
       }
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail();
     }
   }
@@ -639,8 +639,7 @@ public class IoTDBSimpleQueryTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE test");
       statement.execute("USE " + DATABASE_NAME);
-      statement.execute(
-          "CREATE TABLE table1(device STRING ID, s1 INT32 MEASUREMENT, s2 BOOLEAN MEASUREMENT)");
+      statement.execute("CREATE TABLE table1(device STRING TAG, s1 INT32 FIELD, s2 BOOLEAN FIELD)");
       ResultSet resultSet = statement.executeQuery("select time, s1, s2 from table1");
       ResultSetMetaData metaData = resultSet.getMetaData();
       int[] types = {Types.TIMESTAMP, Types.INTEGER, Types.BOOLEAN};
@@ -658,7 +657,7 @@ public class IoTDBSimpleQueryTableIT {
       statement.execute("CREATE DATABASE test");
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "CREATE TABLE table1(device STRING ID, s4 DATE MEASUREMENT, s5 TIMESTAMP MEASUREMENT, s6 BLOB MEASUREMENT, s7 STRING MEASUREMENT)");
+          "CREATE TABLE table1(device STRING TAG, s4 DATE FIELD, s5 TIMESTAMP FIELD, s6 BLOB FIELD, s7 STRING FIELD)");
 
       for (int i = 1; i <= 10; i++) {
         statement.execute(

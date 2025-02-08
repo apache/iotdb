@@ -146,7 +146,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
     Phaser phaser = new Phaser(1);
     int submitTaskNum =
-        CompactionScheduler.scheduleInsertionCompaction(tsFileManager, 0, phaser, context);
+        CompactionScheduler.tryToSubmitInsertionCompactionTask(tsFileManager, 0, phaser, context);
     Assert.assertEquals(1, submitTaskNum);
     // perform insertion compaction
     phaser.awaitAdvanceInterruptibly(phaser.arrive());
@@ -169,7 +169,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     // unseq resource2 d2[10, 20]
 
     submitTaskNum =
-        CompactionScheduler.scheduleInsertionCompaction(tsFileManager, 0, phaser, context);
+        CompactionScheduler.tryToSubmitInsertionCompactionTask(tsFileManager, 0, phaser, context);
     Assert.assertEquals(0, submitTaskNum);
     Assert.assertTrue(
         TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(tsFileManager.getTsFileList(true)));

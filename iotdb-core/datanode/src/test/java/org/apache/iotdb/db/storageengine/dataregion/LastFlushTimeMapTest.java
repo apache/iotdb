@@ -25,7 +25,6 @@ import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
-import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -73,25 +72,23 @@ public class LastFlushTimeMapTest {
   @Test
   public void testDeviceLastFlushTimeMap()
       throws IOException, IllegalPathException, WriteProcessException {
-    TSRecord record = new TSRecord(10000, "root.vehicle.d0");
+    TSRecord record = new TSRecord("root.vehicle.d0", 10000);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
     dataRegion.insert(DataRegionTest.buildInsertRowNodeByTSRecord(record));
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
-    record = new TSRecord(9999, "root.vehicle.d1");
+    record = new TSRecord("root.vehicle.d1", 9999);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
     dataRegion.insert(DataRegionTest.buildInsertRowNodeByTSRecord(record));
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     for (int j = 1; j <= 10; j++) {
-      record = new TSRecord(j, "root.vehicle.d0");
+      record = new TSRecord("root.vehicle.d0", j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(DataRegionTest.buildInsertRowNodeByTSRecord(record));
     }
 
-    for (TsFileProcessor tsfileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
-      tsfileProcessor.syncFlush();
-    }
+    dataRegion.syncCloseWorkingTsFileProcessors(false);
     Assert.assertEquals(
         10000,
         dataRegion
@@ -102,24 +99,20 @@ public class LastFlushTimeMapTest {
   @Test
   public void testPartitionLastFlushTimeMap()
       throws IOException, IllegalPathException, WriteProcessException {
-    TSRecord record = new TSRecord(10000, "root.vehicle.d0");
+    TSRecord record = new TSRecord("root.vehicle.d0", 10000);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
     dataRegion.insert(DataRegionTest.buildInsertRowNodeByTSRecord(record));
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
-    record = new TSRecord(9999, "root.vehicle.d1");
+    record = new TSRecord("root.vehicle.d1", 9999);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
     dataRegion.insert(DataRegionTest.buildInsertRowNodeByTSRecord(record));
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     for (int j = 1; j <= 10; j++) {
-      record = new TSRecord(j, "root.vehicle.d0");
+      record = new TSRecord("root.vehicle.d0", j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(DataRegionTest.buildInsertRowNodeByTSRecord(record));
-    }
-
-    for (TsFileProcessor tsfileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
-      tsfileProcessor.syncFlush();
     }
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertEquals(
@@ -149,24 +142,20 @@ public class LastFlushTimeMapTest {
   @Test
   public void testRecoverLastFlushTimeMap()
       throws IOException, IllegalPathException, WriteProcessException, DataRegionException {
-    TSRecord record = new TSRecord(604_800_000, "root.vehicle.d0");
+    TSRecord record = new TSRecord("root.vehicle.d0", 604_800_000);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
     dataRegion.insert(DataRegionTest.buildInsertRowNodeByTSRecord(record));
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
-    record = new TSRecord(604_799_999, "root.vehicle.d0");
+    record = new TSRecord("root.vehicle.d0", 604_799_999);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
     dataRegion.insert(DataRegionTest.buildInsertRowNodeByTSRecord(record));
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     for (int j = 1; j <= 10; j++) {
-      record = new TSRecord(j, "root.vehicle.d0");
+      record = new TSRecord("root.vehicle.d0", j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(DataRegionTest.buildInsertRowNodeByTSRecord(record));
-    }
-
-    for (TsFileProcessor tsfileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
-      tsfileProcessor.syncFlush();
     }
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertEquals(
@@ -209,7 +198,7 @@ public class LastFlushTimeMapTest {
             + File.separator
             + "0";
     for (int j = 1; j <= 10; j++) {
-      TSRecord record = new TSRecord(j, "root.vehicle.d0");
+      TSRecord record = new TSRecord("root.vehicle.d0", j);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       dataRegion.insert(DataRegionTest.buildInsertRowNodeByTSRecord(record));
     }

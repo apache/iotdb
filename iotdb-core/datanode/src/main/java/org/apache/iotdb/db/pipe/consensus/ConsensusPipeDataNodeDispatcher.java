@@ -37,6 +37,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeRPCMessageConstant.PIPE_ALREADY_EXIST_MSG;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeRPCMessageConstant.PIPE_NOT_EXIST_MSG;
+
 public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(ConsensusPipeDataNodeDispatcher.class);
@@ -49,23 +52,29 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
       String pipeName,
       Map<String, String> extractorAttributes,
       Map<String, String> processorAttributes,
-      Map<String, String> connectorAttributes)
+      Map<String, String> connectorAttributes,
+      boolean needManuallyStart)
       throws Exception {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TCreatePipeReq req =
           new TCreatePipeReq()
               .setPipeName(pipeName)
+              .setNeedManuallyStart(needManuallyStart)
               .setExtractorAttributes(extractorAttributes)
               .setProcessorAttributes(processorAttributes)
               .setConnectorAttributes(connectorAttributes);
       TSStatus status = configNodeClient.createPipe(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
         LOGGER.warn("Failed to create consensus pipe-{}, status: {}", pipeName, status);
+        // ignore idempotence logic
+        if (status.getMessage().contains(PIPE_ALREADY_EXIST_MSG)) {
+          return;
+        }
         throw new PipeException(status.getMessage());
       }
     } catch (Exception e) {
-      LOGGER.warn("Failed to create consensus pipe-{}", pipeName);
+      LOGGER.warn("Failed to create consensus pipe-{}", pipeName, e);
       throw new PipeException("Failed to create consensus pipe", e);
     }
   }
@@ -80,7 +89,7 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
         throw new PipeException(status.getMessage());
       }
     } catch (Exception e) {
-      LOGGER.warn("Failed to start consensus pipe-{}", pipeName);
+      LOGGER.warn("Failed to start consensus pipe-{}", pipeName, e);
       throw new PipeException("Failed to start consensus pipe", e);
     }
   }
@@ -95,7 +104,7 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
         throw new PipeException(status.getMessage());
       }
     } catch (Exception e) {
-      LOGGER.warn("Failed to stop consensus pipe-{}", pipeName);
+      LOGGER.warn("Failed to stop consensus pipe-{}", pipeName, e);
       throw new PipeException("Failed to stop consensus pipe", e);
     }
   }
@@ -109,10 +118,14 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
       final TSStatus status = configNodeClient.dropPipe(pipeName.toString());
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
         LOGGER.warn("Failed to drop consensus pipe-{}, status: {}", pipeName, status);
+        // ignore idempotence logic
+        if (status.getMessage().contains(PIPE_NOT_EXIST_MSG)) {
+          return;
+        }
         throw new PipeException(status.getMessage());
       }
     } catch (Exception e) {
-      LOGGER.warn("Failed to drop consensus pipe-{}", pipeName);
+      LOGGER.warn("Failed to drop consensus pipe-{}", pipeName, e);
       throw new PipeException("Failed to drop consensus pipe", e);
     }
     // Release corresponding receiver's resource

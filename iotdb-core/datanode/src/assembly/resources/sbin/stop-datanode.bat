@@ -44,8 +44,8 @@ for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_rpc_port"
 )
 
 if not defined dn_rpc_port (
-  echo dn_rpc_port not found in the configuration file. Exiting.
-  exit /b 1
+  echo "WARNING: dn_rpc_port not found in the configuration file. Using default value dn_rpc_port = 6667"
+  set dn_rpc_port=6667
 )
 
 echo Check whether the rpc_port is used..., port is %dn_rpc_port%
@@ -56,8 +56,8 @@ for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "dn_rpc_address"
 )
 
 if not defined dn_rpc_address (
-  echo dn_rpc_address not found in the configuration file. Exiting.
-  exit /b 1
+  echo "WARNING: dn_rpc_address not found in the configuration file. Using default value dn_rpc_address = 0.0.0.0"
+  set dn_rpc_address=0.0.0.0
 )
 
 for /f "tokens=5" %%a in ('netstat /ano ^| findstr %dn_rpc_address%:%dn_rpc_port%') do (

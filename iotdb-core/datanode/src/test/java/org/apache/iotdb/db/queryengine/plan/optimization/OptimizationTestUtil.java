@@ -129,6 +129,8 @@ public class OptimizationTestUtil {
     Assert.assertEquals(rawPlan, actualPlan);
 
     PlanNode actualOptPlan = optimizer.optimize(actualPlan, analysis, context);
+    actualOptPlan =
+        new OrderByExpressionWithLimitChangeToTopK().optimize(actualOptPlan, analysis, context);
     Assert.assertEquals(optPlan, actualOptPlan);
   }
 

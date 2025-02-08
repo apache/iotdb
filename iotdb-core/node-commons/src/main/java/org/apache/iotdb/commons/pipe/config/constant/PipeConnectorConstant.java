@@ -167,6 +167,10 @@ public class PipeConnectorConstant {
       "sink.opcua.enable-anonymous-access";
   public static final boolean CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_DEFAULT_VALUE = true;
 
+  public static final String CONNECTOR_OPC_UA_PLACEHOLDER_KEY = "connector.opcua.placeholder";
+  public static final String SINK_OPC_UA_PLACEHOLDER_KEY = "sink.opcua.placeholder";
+  public static final String CONNECTOR_OPC_UA_PLACEHOLDER_DEFAULT_VALUE = "null";
+
   public static final String CONNECTOR_LEADER_CACHE_ENABLE_KEY = "connector.leader-cache.enable";
   public static final String SINK_LEADER_CACHE_ENABLE_KEY = "sink.leader-cache.enable";
   public static final boolean CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE = true;
@@ -237,6 +241,11 @@ public class PipeConnectorConstant {
               Arrays.asList(
                   CONNECTOR_LOAD_TSFILE_STRATEGY_ASYNC_VALUE,
                   CONNECTOR_LOAD_TSFILE_STRATEGY_SYNC_VALUE)));
+
+  public static final String CONNECTOR_LOAD_TSFILE_VALIDATION_KEY =
+      "connector.load-tsfile-validation";
+  public static final String SINK_LOAD_TSFILE_VALIDATION_KEY = "sink.load-tsfile-validation";
+  public static final boolean CONNECTOR_LOAD_TSFILE_VALIDATION_DEFAULT_VALUE = true;
 
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");

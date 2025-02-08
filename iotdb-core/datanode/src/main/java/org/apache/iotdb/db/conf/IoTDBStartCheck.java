@@ -218,12 +218,15 @@ public class IoTDBStartCheck {
 
     if (systemPropertiesHandler.isFirstStart()) {
       if ((config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-              || config
-                  .getDataRegionConsensusProtocolClass()
-                  .equals(ConsensusFactory.IOT_CONSENSUS_V2))
+              || (config
+                      .getDataRegionConsensusProtocolClass()
+                      .equals(ConsensusFactory.IOT_CONSENSUS_V2)
+                  && config
+                      .getIotConsensusV2Mode()
+                      .equals(ConsensusFactory.IOT_CONSENSUS_V2_STREAM_MODE)))
           && config.getWalMode().equals(WALMode.DISABLE)) {
         throw new ConfigurationException(
-            "Configuring the WALMode as disable is not supported under IoTConsensus");
+            "Configuring the WALMode as disable is not supported under IoTConsensus and IoTConsensusV2 stream mode");
       }
     } else {
       // check whether upgrading from <=v0.9

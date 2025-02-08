@@ -217,8 +217,12 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
     }
 
     final ListenableFuture<Boolean> nextFuture = subtaskWorkerThreadPoolExecutor.submit(this);
-    Futures.addCallback(nextFuture, this, subtaskCallbackListeningExecutor);
+    registerCallbackHookAfterSubmit(nextFuture);
     isSubmitted = true;
+  }
+
+  protected void registerCallbackHookAfterSubmit(final ListenableFuture<Boolean> future) {
+    Futures.addCallback(future, this, subtaskCallbackListeningExecutor);
   }
 
   protected synchronized void setLastExceptionEvent(final Event event) {

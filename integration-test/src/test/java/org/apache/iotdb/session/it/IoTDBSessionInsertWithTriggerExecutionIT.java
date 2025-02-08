@@ -306,17 +306,17 @@ public class IoTDBSessionInsertWithTriggerExecutionIT {
 
     long timestamp = 1;
     for (int i = 0; i < rows; i++) {
-      int rowIndex = tablet.rowSize++;
+      int rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
       measurementList.forEach(measurement -> tablet.addValue(measurement, rowIndex, 1));
-      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+      if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet, true);
         tablet.reset();
       }
       timestamp++;
     }
 
-    if (tablet.rowSize != 0) {
+    if (tablet.getRowSize() != 0) {
       session.insertTablet(tablet);
       tablet.reset();
     }

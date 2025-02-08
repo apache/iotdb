@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.relational.it.db.it;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -79,8 +80,8 @@ public class IoTDBRestartTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("create database test");
       statement.execute("use \"test\"");
-      statement.execute("create table turbine (id1 string id, s1 float measurement)");
-      statement.execute("insert into turbine(id1, time,s1) values('d1', 1,1.0)");
+      statement.execute("create table turbine (tag1 string tag, s1 float field)");
+      statement.execute("insert into turbine(tag1, time,s1) values('d1', 1,1.0)");
       statement.execute("flush");
     }
 
@@ -93,7 +94,7 @@ public class IoTDBRestartTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"test\"");
-      statement.execute("insert into turbine(id1, time,s1) values('d1', 2,1.0)");
+      statement.execute("insert into turbine(tag1, time,s1) values('d1', 2,1.0)");
     }
 
     try {
@@ -105,7 +106,7 @@ public class IoTDBRestartTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"test\"");
-      statement.execute("insert into turbine(id1, time,s1) values('d1', 3,1.0)");
+      statement.execute("insert into turbine(tag1, time,s1) values('d1', 3,1.0)");
 
       String[] exp = new String[] {"1,1.0", "2,1.0", "3,1.0"};
       int cnt = 0;
@@ -173,10 +174,9 @@ public class IoTDBRestartTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("create database \"test\"");
       statement.execute("use \"test\"");
-      statement.execute(
-          "create table turbine (id1 string id, s1 int64 measurement, s2 boolean measurement)");
-      statement.execute("insert into turbine(time,id1,s1) values(1,\'d1\',1)");
-      statement.execute("insert into turbine(time,id1,s1) values(2,\'d1\',2)");
+      statement.execute("create table turbine (tag1 string tag, s1 int64 field, s2 boolean field)");
+      statement.execute("insert into turbine(time,tag1,s1) values(1,\'d1\',1)");
+      statement.execute("insert into turbine(time,tag1,s1) values(2,\'d1\',2)");
     }
 
     try {
@@ -188,8 +188,8 @@ public class IoTDBRestartTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"test\"");
-      statement.execute("insert into turbine(time,id1,s1) values(3,\'d1\',1)");
-      statement.execute("insert into turbine(time,id1,s1) values(4,\'d1\',2)");
+      statement.execute("insert into turbine(time,tag1,s1) values(3,\'d1\',1)");
+      statement.execute("insert into turbine(time,tag1,s1) values(4,\'d1\',2)");
     }
 
     try {
@@ -208,7 +208,7 @@ public class IoTDBRestartTableIT {
           };
       int cnt = 0;
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT Time, s1 FROM turbine where time > 3 and id1=\'d1\'")) {
+          statement.executeQuery("SELECT Time, s1 FROM turbine where time > 3 and tag1=\'d1\'")) {
         assertNotNull(resultSet);
         while (resultSet.next()) {
           String result = resultSet.getLong(TIMESTAMP_STR) + "," + resultSet.getString(2);
@@ -226,10 +226,9 @@ public class IoTDBRestartTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("create database \"test\"");
       statement.execute("use \"test\"");
-      statement.execute(
-          "create table turbine (id1 string id, s1 int64 measurement, s2 int64 measurement)");
-      statement.execute("insert into turbine(time,\"id1\",s1) values(1,\'d1\',1)");
-      statement.execute("insert into turbine(time,\"id1\",s1) values(2,\'d1\',2)");
+      statement.execute("create table turbine (tag1 string tag, s1 int64 field, s2 int64 field)");
+      statement.execute("insert into turbine(time,\"tag1\",s1) values(1,\'d1\',1)");
+      statement.execute("insert into turbine(time,\"tag1\",s1) values(2,\'d1\',2)");
     }
 
     try {
@@ -241,8 +240,8 @@ public class IoTDBRestartTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"test\"");
-      statement.execute("insert into turbine(time,id1,s2) values(1,\'d1\',1)");
-      statement.execute("insert into turbine(time,id1,s2) values(2,\'d1\',2)");
+      statement.execute("insert into turbine(time,tag1,s2) values(1,\'d1\',1)");
+      statement.execute("insert into turbine(time,tag1,s2) values(2,\'d1\',2)");
     }
 
     try {
@@ -258,7 +257,7 @@ public class IoTDBRestartTableIT {
       String[] exp = new String[] {"1,1", "2,2"};
       int cnt = 0;
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT Time, s2 FROM turbine where id1=\'d1\'")) {
+          statement.executeQuery("SELECT Time, s2 FROM turbine where tag1=\'d1\'")) {
         assertNotNull(resultSet);
         while (resultSet.next()) {
           String result = resultSet.getLong(TIMESTAMP_STR) + "," + resultSet.getLong(2);
@@ -309,7 +308,7 @@ public class IoTDBRestartTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use \"test\"");
-      statement.execute("insert into turbine1(time,id1,s1,s2) values(1,\'d1\',1.1,2.2)");
+      statement.execute("insert into turbine1(time,tag1,s1,s2) values(1,\'d1\',1.1,2.2)");
       statement.execute("delete timeseries root.turbine1.d1.s1");
     }
 
@@ -348,11 +347,11 @@ public class IoTDBRestartTableIT {
       statement.execute("create database \"test\"");
       statement.execute("use \"test\"");
       statement.execute(
-          "create table turbine1 (id1 string id, s1 int64 measurement, s2 boolean measurement)");
-      statement.execute("insert into turbine1(time,id1,s1) values(1,\'d1\',1)");
-      statement.execute("insert into turbine1(time,id1,s1) values(2,\'d1\',2)");
-      statement.execute("insert into turbine1(time,id1,s2) values(3,\'d1\',true)");
-      statement.execute("insert into turbine1(time,id1,s2) values(4,\'d1\',true)");
+          "create table turbine1 (tag1 string tag, s1 int64 field, s2 boolean field)");
+      statement.execute("insert into turbine1(time,tag1,s1) values(1,\'d1\',1)");
+      statement.execute("insert into turbine1(time,tag1,s1) values(2,\'d1\',2)");
+      statement.execute("insert into turbine1(time,tag1,s2) values(3,\'d1\',true)");
+      statement.execute("insert into turbine1(time,tag1,s2) values(4,\'d1\',true)");
     }
 
     TestUtils.restartDataNodes();
@@ -384,9 +383,8 @@ public class IoTDBRestartTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("create database \"test\"");
       statement.execute("use \"test\"");
-      statement.execute(
-          "create table turbine1 (id1 string id, s1 float measurement, s2 double measurement)");
-      statement.execute("insert into turbine1(time,id1,s1,s2) values(1,\'d1\',1.1,2.2)");
+      statement.execute("create table turbine1 (tag1 string tag, s1 float field, s2 double field)");
+      statement.execute("insert into turbine1(time,tag1,s1,s2) values(1,\'d1\',1.1,2.2)");
     }
 
     TestUtils.restartDataNodes();

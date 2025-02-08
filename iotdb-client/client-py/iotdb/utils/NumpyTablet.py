@@ -91,7 +91,7 @@ class NumpyTablet(object):
         self.bitmaps = bitmaps
         if column_types is None:
             self.__column_types = ColumnType.n_copy(
-                ColumnType.MEASUREMENT, self.__column_number
+                ColumnType.FIELD, self.__column_number
             )
         else:
             self.__column_types = column_types

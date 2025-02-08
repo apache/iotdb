@@ -22,14 +22,16 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.RepairUnsortedFileCompactionWriter;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
+import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Collections;
 import java.util.List;
 
 /** Used for fixing files which contains internal unsorted data */
@@ -52,10 +54,20 @@ public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPe
   public void perform() throws Exception {
     TsFileResource resource = !seqFiles.isEmpty() ? seqFiles.get(0) : unseqFiles.get(0);
     if (resource.getTsFileRepairStatus() == TsFileRepairStatus.NEED_TO_REPAIR_BY_REWRITE) {
+      TsFileResourceManager.getInstance().forceDegradeTsFileResource(resource);
       super.perform();
     } else {
       prepareTargetFile();
     }
+  }
+
+  @Override
+  protected QueryDataSource initQueryDataSource() {
+    // Only a single file is involved here. Regardless of whether this file is sequence
+    // or not, it is passed in as sequence file, which allows us to bypass some logic in
+    // SeriesScanUtils that might fail.
+    return new QueryDataSource(
+        !seqFiles.isEmpty() ? seqFiles : unseqFiles, Collections.emptyList());
   }
 
   private void prepareTargetFile() throws IOException {
@@ -68,10 +80,10 @@ public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPe
     } else {
       targetFile.setTimeIndex(CompactionUtils.buildDeviceTimeIndex(seqSourceFile));
     }
-    if (seqSourceFile.modFileExists()) {
+    if (seqSourceFile.anyModFileExists()) {
       Files.createLink(
-          new File(seqSourceFile.getCompactionModFile().getFilePath()).toPath(),
-          new File(seqSourceFile.getModFile().getFilePath()).toPath());
+          seqSourceFile.getCompactionModFile().getFile().toPath(),
+          seqSourceFile.getExclusiveModFile().getFile().toPath());
     }
   }
 

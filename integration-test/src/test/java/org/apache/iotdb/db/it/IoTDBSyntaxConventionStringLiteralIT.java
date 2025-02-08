@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -255,8 +256,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
 
     String errorMsg1 =
         TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
-            + ": Error occurred while parsing SQL to physical plan: "
-            + "line 1:7 mismatched input 'path' expecting STRING_LITERAL";
+            + ": Error occurred while parsing SQL to physical plan: line 1:7 no viable alternative at input 'REMOVE path'";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("REMOVE path");
@@ -322,7 +322,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
 
       // executed correctly
       try (ResultSet resultSet = statement.executeQuery("show functions")) {
-        assertEquals(3, resultSet.getMetaData().getColumnCount());
+        assertEquals(4, resultSet.getMetaData().getColumnCount());
         int count = 0;
         while (resultSet.next()) {
           StringBuilder stringBuilder = new StringBuilder();

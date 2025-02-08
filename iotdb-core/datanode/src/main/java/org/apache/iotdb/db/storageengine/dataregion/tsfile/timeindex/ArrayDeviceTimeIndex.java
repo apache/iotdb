@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
-import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.exception.load.PartitionViolationException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -86,6 +86,10 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
     this.startTimes = startTimes;
     this.endTimes = endTimes;
     this.deviceToIndex = deviceToIndex;
+
+    // The TSFileResource file is judged to be empty based on MaxEndTime and MinStartTime, so the
+    // construction of TimeIndex needs to update MaxEndTime and MinStartTime.
+    updateMinStartTimeAndMaxEndTime();
   }
 
   @Override
@@ -165,6 +169,18 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
     return deviceToIndex.keySet();
   }
 
+  public Map<IDeviceID, Integer> getDeviceToIndex() {
+    return deviceToIndex;
+  }
+
+  public long[] getEndTimes() {
+    return endTimes;
+  }
+
+  public long[] getStartTimes() {
+    return startTimes;
+  }
+
   /**
    * Deserialize TimeIndex and get devices only.
    *
@@ -222,11 +238,11 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
       index = deviceToIndex.get(deviceId);
     } else {
       index = deviceToIndex.size();
-      deviceToIndex.put(deviceId, index);
       if (startTimes.length <= index) {
         startTimes = enLargeArray(startTimes, Long.MAX_VALUE);
         endTimes = enLargeArray(endTimes, Long.MIN_VALUE);
       }
+      deviceToIndex.put(deviceId, index);
     }
     return index;
   }
@@ -322,6 +338,22 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
       endTimes[index] = time;
     }
     maxEndTime = Math.max(maxEndTime, time);
+  }
+
+  private void updateMinStartTimeAndMaxEndTime() {
+    for (Map.Entry<IDeviceID, Integer> entry : deviceToIndex.entrySet()) {
+      if (entry.getValue() == null) {
+        continue;
+      }
+
+      if (endTimes != null) {
+        maxEndTime = Math.max(maxEndTime, endTimes[entry.getValue()]);
+      }
+
+      if (startTimes != null) {
+        minStartTime = Math.min(minStartTime, startTimes[entry.getValue()]);
+      }
+    }
   }
 
   @Override

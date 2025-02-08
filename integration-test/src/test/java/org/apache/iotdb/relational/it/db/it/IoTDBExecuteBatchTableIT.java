@@ -61,17 +61,17 @@ public class IoTDBExecuteBatchTableIT {
       statement.setFetchSize(5);
       statement.addBatch("create database ln");
       statement.addBatch("USE \"ln\"");
-      statement.addBatch("create table wf01 (id1 string id, temprature double measurement)");
+      statement.addBatch("create table wf01 (tag1 string tag, temprature double field)");
       statement.addBatch(
-          "insert into wf01(id1,time,temperature) values(\'wt01\', 1509465600000,1.2)");
+          "insert into wf01(tag1,time,temperature) values(\'wt01\', 1509465600000,1.2)");
       statement.addBatch(
-          "insert into wf01(id1,time,temperature) values(\'wt01\', 1509465600001,2.3)");
+          "insert into wf01(tag1,time,temperature) values(\'wt01\', 1509465600001,2.3)");
 
       statement.addBatch("drop table wf01");
-      statement.addBatch("create table wf01 (id1 string id, temprature double measurement)");
+      statement.addBatch("create table wf01 (tag1 string tag, temprature double field)");
 
       statement.addBatch(
-          "insert into wf01(id1,time,temperature) values(\'wt01\', 1509465600002,3.4)");
+          "insert into wf01(tag1,time,temperature) values(\'wt01\', 1509465600002,3.4)");
       statement.executeBatch();
       statement.clearBatch();
       ResultSet resultSet = statement.executeQuery("select * from wf01");
@@ -97,21 +97,21 @@ public class IoTDBExecuteBatchTableIT {
       statement.setFetchSize(100);
       statement.execute("create database ln");
       statement.execute("USE \"ln\"");
-      statement.addBatch("create table wf01 (id1 string id, temprature double measurement)");
+      statement.addBatch("create table wf01 (tag1 string tag, temprature double field)");
 
       statement.addBatch(
-          "insert into wf01(id1,time,temperature) values(\'wt01\', 1509465600000,1.2)");
+          "insert into wf01(tag1,time,temperature) values(\'wt01\', 1509465600000,1.2)");
       statement.addBatch(
-          "insert into wf01(id1,time,temperature) values(\'wt01\', 1509465600001,2.3)");
+          "insert into wf01(tag1,time,temperature) values(\'wt01\', 1509465600001,2.3)");
       statement.addBatch("drop table wf01");
 
       statement.addBatch(
-          "create table turbine (id1 string id, attr1 string attribute, attr2 string attribute, s1 boolean measurement, s2 float measurement)");
+          "create table turbine (tag1 string tag, attr1 string attribute, attr2 string attribute, s1 boolean field, s2 float field)");
 
-      statement.addBatch("create table wf01 (id1 string id, temprature double measurement)");
+      statement.addBatch("create table wf01 (tag1 string tag, temprature double field)");
       statement.addBatch(
-          "insert into wf01(id1,time,temperature) values(\'wt01\', 1509465600002,3.4)");
-      statement.addBatch("alter table turbine add column s3 boolean measurement");
+          "insert into wf01(tag1,time,temperature) values(\'wt01\', 1509465600002,3.4)");
+      statement.addBatch("alter table turbine add column s3 boolean field");
       statement.executeBatch();
       statement.clearBatch();
       ResultSet resultSet = statement.executeQuery("select * from wf01");
@@ -128,7 +128,7 @@ public class IoTDBExecuteBatchTableIT {
       String[] keys = {"ColumnName", "DataType", "Category"};
       String[][] value_columns = {
         new String[] {"Time", "TIMESTAMP", "TIME"},
-        new String[] {"id1", "STRING", "ID"},
+        new String[] {"tag1", "STRING", "TAG"},
         new String[] {"attr1", "STRING", "ATTRIBUTE"},
         new String[] {"attr2", "STRING", "ATTRIBUTE"},
         new String[] {"s1", "BOOLEAN", "MEASUREMENT"},

@@ -35,7 +35,7 @@ import java.util.Optional;
 public class LikeFilter extends SchemaFilter {
   private final LikePattern pattern;
 
-  public LikeFilter(final String regex, Optional<Character> escape) {
+  public LikeFilter(final String regex, final Optional<Character> escape) {
     this.pattern = LikePattern.compile(regex, escape);
   }
 

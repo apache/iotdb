@@ -23,6 +23,8 @@ import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
 import org.apache.tsfile.utils.TimeDuration;
 
+import java.time.ZoneId;
+
 public class TimeRangeIteratorFactory {
 
   private TimeRangeIteratorFactory() {}
@@ -40,7 +42,8 @@ public class TimeRangeIteratorFactory {
       TimeDuration slidingStep,
       boolean isAscending,
       boolean leftCRightO,
-      boolean outputPartialTimeWindow) {
+      boolean outputPartialTimeWindow,
+      ZoneId zoneId) {
     if (outputPartialTimeWindow
         && interval.getTotalDuration(TimestampPrecisionUtils.currPrecision)
             > slidingStep.getTotalDuration(TimestampPrecisionUtils.currPrecision)) {
@@ -54,11 +57,11 @@ public class TimeRangeIteratorFactory {
             leftCRightO);
       } else {
         return new PreAggrWindowWithNaturalMonthIterator(
-            startTime, endTime, interval, slidingStep, isAscending, leftCRightO);
+            startTime, endTime, interval, slidingStep, isAscending, leftCRightO, zoneId);
       }
     } else {
       return new AggrWindowIterator(
-          startTime, endTime, interval, slidingStep, isAscending, leftCRightO);
+          startTime, endTime, interval, slidingStep, isAscending, leftCRightO, zoneId);
     }
   }
 }

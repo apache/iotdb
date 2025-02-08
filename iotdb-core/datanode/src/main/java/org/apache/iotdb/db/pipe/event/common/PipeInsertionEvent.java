@@ -23,12 +23,15 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.utils.PathUtils;
+
+import javax.validation.constraints.NotNull;
 
 public abstract class PipeInsertionEvent extends EnrichedEvent {
 
   private Boolean isTableModelEvent; // lazy initialization
 
-  private final String treeModelDatabaseName;
+  private String treeModelDatabaseName;
   private String tableModelDatabaseName; // lazy initialization
 
   protected PipeInsertionEvent(
@@ -45,7 +48,9 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
     super(pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, startTime, endTime);
     this.isTableModelEvent = isTableModelEvent;
     this.treeModelDatabaseName = treeModelDatabaseName;
-    this.tableModelDatabaseName = tableModelDatabaseName;
+    if (tableModelDatabaseName != null) {
+      this.tableModelDatabaseName = tableModelDatabaseName.toLowerCase();
+    }
   }
 
   protected PipeInsertionEvent(
@@ -97,10 +102,14 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
 
   public String getTableModelDatabaseName() {
     return tableModelDatabaseName == null
-        ? tableModelDatabaseName =
-            treeModelDatabaseName != null && treeModelDatabaseName.startsWith("root.")
-                ? treeModelDatabaseName.substring(5)
-                : treeModelDatabaseName
+        ? tableModelDatabaseName = PathUtils.unQualifyDatabaseName(treeModelDatabaseName)
         : tableModelDatabaseName;
+  }
+
+  public void renameTableModelDatabase(@NotNull final String tableModelDatabaseName) {
+    // Please note that if you parse TsFile, you need to use TreeModelDatabaseName, so you need to
+    // rename TreeModelDatabaseName as well.
+    this.tableModelDatabaseName = tableModelDatabaseName.toLowerCase();
+    this.treeModelDatabaseName = "root." + tableModelDatabaseName;
   }
 }

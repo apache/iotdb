@@ -254,7 +254,11 @@ public class IoTDBRpcDataSet {
   }
 
   public boolean fetchResults() throws StatementExecutionException, IoTDBConnectionException {
+    if (isClosed) {
+      throw new IoTDBConnectionException("This DataSet is already closed");
+    }
     TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, fetchSize, queryId, true);
+    req.setStatementId(statementId);
     req.setTimeout(timeout);
     try {
       TSFetchResultsResp resp = client.fetchResultsV2(req);

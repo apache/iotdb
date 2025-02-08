@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -47,9 +47,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
 public class TableDeviceAttributeUpdateNode extends WritePlanNode implements ISchemaRegionPlan {
 
@@ -322,11 +319,7 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode implements ISc
   @Override
   public List<WritePlanNode> splitByPartition(final IAnalysis analysis) {
     return new HashSet<>(
-            analysis
-                .getSchemaPartitionInfo()
-                .getSchemaPartitionMap()
-                .get(PATH_ROOT + PATH_SEPARATOR + database)
-                .values())
+            analysis.getSchemaPartitionInfo().getSchemaPartitionMap().get(database).values())
         .stream()
             .map(
                 replicaSet ->

@@ -37,7 +37,7 @@ public class PipeMeta {
   private final PipeTemporaryMeta temporaryMeta;
 
   public PipeMeta(final PipeStaticMeta staticMeta, final PipeRuntimeMeta runtimeMeta) {
-    this(staticMeta, runtimeMeta, new PipeTemporaryMeta());
+    this(staticMeta, runtimeMeta, new PipeTemporaryMetaInCoordinator());
   }
 
   public PipeMeta(
@@ -79,14 +79,23 @@ public class PipeMeta {
     return new PipeMeta(staticMeta, runtimeMeta);
   }
 
-  public static PipeMeta deserialize(final ByteBuffer byteBuffer) {
+  public static PipeMeta deserialize4TaskAgent(final ByteBuffer byteBuffer) {
+    final PipeStaticMeta staticMeta = PipeStaticMeta.deserialize(byteBuffer);
+    final PipeRuntimeMeta runtimeMeta = PipeRuntimeMeta.deserialize(byteBuffer);
+    return new PipeMeta(
+        staticMeta,
+        runtimeMeta,
+        new PipeTemporaryMetaInAgent(staticMeta.getPipeName(), staticMeta.getCreationTime()));
+  }
+
+  public static PipeMeta deserialize4Coordinator(final ByteBuffer byteBuffer) {
     final PipeStaticMeta staticMeta = PipeStaticMeta.deserialize(byteBuffer);
     final PipeRuntimeMeta runtimeMeta = PipeRuntimeMeta.deserialize(byteBuffer);
     return new PipeMeta(staticMeta, runtimeMeta);
   }
 
-  public PipeMeta deepCopy() throws IOException {
-    return PipeMeta.deserialize(serialize());
+  public PipeMeta deepCopy4TaskAgent() throws IOException {
+    return PipeMeta.deserialize4TaskAgent(serialize());
   }
 
   public String coreReportMessage() {

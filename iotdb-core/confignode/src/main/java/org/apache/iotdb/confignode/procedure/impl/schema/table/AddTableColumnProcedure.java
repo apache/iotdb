@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
@@ -40,6 +41,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Objects;
 
 public class AddTableColumnProcedure
     extends AbstractAlterOrDropTableProcedure<AddTableColumnState> {
@@ -47,16 +49,17 @@ public class AddTableColumnProcedure
   private static final Logger LOGGER = LoggerFactory.getLogger(AddTableColumnProcedure.class);
   private List<TsTableColumnSchema> addedColumnList;
 
-  public AddTableColumnProcedure() {
-    super();
+  public AddTableColumnProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   public AddTableColumnProcedure(
       final String database,
       final String tableName,
       final String queryId,
-      final List<TsTableColumnSchema> addedColumnList) {
-    super(database, tableName, queryId);
+      final List<TsTableColumnSchema> addedColumnList,
+      final boolean isGeneratedByPipe) {
+    super(database, tableName, queryId, isGeneratedByPipe);
     this.addedColumnList = addedColumnList;
   }
 
@@ -98,17 +101,22 @@ public class AddTableColumnProcedure
   }
 
   private void columnCheck(final ConfigNodeProcedureEnv env) {
-    final Pair<TSStatus, TsTable> result =
-        env.getConfigManager()
-            .getClusterSchemaManager()
-            .tableColumnCheckForColumnExtension(database, tableName, addedColumnList);
-    final TSStatus status = result.getLeft();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
-      return;
+    try {
+      final Pair<TSStatus, TsTable> result =
+          env.getConfigManager()
+              .getClusterSchemaManager()
+              .tableColumnCheckForColumnExtension(database, tableName, addedColumnList);
+      final TSStatus status = result.getLeft();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        setFailure(
+            new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+        return;
+      }
+      table = result.getRight();
+      setNextState(AddTableColumnState.PRE_RELEASE);
+    } catch (final MetadataException e) {
+      setFailure(new ProcedureException(e));
     }
-    table = result.getRight();
-    setNextState(AddTableColumnState.PRE_RELEASE);
   }
 
   @Override
@@ -121,7 +129,7 @@ public class AddTableColumnProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .addTableColumn(database, tableName, addedColumnList);
+            .addTableColumn(database, tableName, addedColumnList, isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     } else {
@@ -189,7 +197,10 @@ public class AddTableColumnProcedure
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.ADD_TABLE_COLUMN_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_ADD_TABLE_COLUMN_PROCEDURE.getTypeCode()
+            : ProcedureType.ADD_TABLE_COLUMN_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
     TsTableColumnSchemaUtil.serialize(addedColumnList, stream);
@@ -200,5 +211,16 @@ public class AddTableColumnProcedure
     super.deserialize(byteBuffer);
 
     this.addedColumnList = TsTableColumnSchemaUtil.deserializeColumnSchemaList(byteBuffer);
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    return super.equals(o)
+        && Objects.equals(this.addedColumnList, ((AddTableColumnProcedure) o).addedColumnList);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), addedColumnList);
   }
 }

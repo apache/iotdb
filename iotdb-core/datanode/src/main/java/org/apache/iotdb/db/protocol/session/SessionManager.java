@@ -327,7 +327,9 @@ public class SessionManager implements SessionManagerMBean {
    */
   public void removeCurrSession() {
     IClientSession session = currSession.get();
-    sessions.remove(session);
+    if (session != null) {
+      sessions.remove(session);
+    }
     currSession.remove();
     currSessionIdleTime.remove();
   }

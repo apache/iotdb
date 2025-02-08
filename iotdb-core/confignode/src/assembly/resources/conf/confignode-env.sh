@@ -148,6 +148,37 @@ calculate_memory_sizes()
     OFF_HEAP_MEMORY="${off_heap_memory_size_in_mb}M"
 }
 
+get_cn_system_dir() {
+    local config_file="$1"
+    local cn_system_dir=""
+
+    cn_system_dir=`sed '/^cn_system_dir=/!d;s/.*=//' ${CONFIGNODE_CONF}/${config_file} | tail -n 1`
+
+    if [ -z "$cn_system_dir" ]; then
+        echo ""
+        return 0
+    fi
+
+    if [[ "$cn_system_dir" == /* ]]; then
+        echo "$cn_system_dir"
+    else
+        echo "$CONFIGNODE_HOME/$cn_system_dir"
+    fi
+}
+
+if [ -f "${CONFIGNODE_CONF}/iotdb-system.properties" ]; then
+  	heap_dump_dir=$(get_cn_system_dir "iotdb-system.properties")
+else
+  	heap_dump_dir=$(get_cn_system_dir "iotdb-confignode.properties")
+fi
+
+if [ -z "$heap_dump_dir" ]; then
+  	heap_dump_dir="$CONFIGNODE_HOME/data/confignode/system"
+fi
+
+if [ ! -d "$heap_dump_dir" ]; then
+  	mkdir -p "$heap_dump_dir"
+fi
 
 # find java in JAVA_HOME
 if [ -n "$JAVA_HOME" ]; then
@@ -274,8 +305,8 @@ CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS -Xmx${ON_HEAP_MEMORY}"
 CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS -XX:MaxDirectMemorySize=${OFF_HEAP_MEMORY}"
 CONFIGNODE_JMX_OPTS="$CONFIGNODE_JMX_OPTS -Djdk.nio.maxCachedBufferSize=${MAX_CACHED_BUFFER_SIZE}"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+CrashOnOutOfMemoryError"
-# if you want to dump the heap memory while OOM happening, you can use the following command, remember to replace /tmp/heapdump.hprof with your own file path and the folder where this file is located needs to be created in advance
-#IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/confignode_heapdump.hprof"
+# if you want to dump the heap memory while OOM happening, you can use the following command, remember to replace ${heap_dump_dir}/confignode_heapdump.hprof with your own file path and the folder where this file is located needs to be created in advance
+#IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=${heap_dump_dir}/confignode_heapdump.hprof"
 
 echo "ConfigNode on heap memory size = ${ON_HEAP_MEMORY}B, off heap memory size = ${OFF_HEAP_MEMORY}B"
 echo "If you want to change this configuration, please check conf/confignode-env.sh."

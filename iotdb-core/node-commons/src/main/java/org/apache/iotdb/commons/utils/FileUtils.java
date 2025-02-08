@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -41,8 +42,10 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Objects;
+import java.util.List;
+import java.util.Stack;
 
 public class FileUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(FileUtils.class);
@@ -50,6 +53,29 @@ public class FileUtils {
   private static final int BUFFER_SIZE = 1024;
 
   private FileUtils() {}
+
+  public static List<File> listFilesRecursively(File dir, FileFilter fileFilter) {
+    List<File> result = new ArrayList<>();
+    Stack<File> stack = new Stack<>();
+    if (dir.exists()) {
+      stack.push(dir);
+    }
+    while (!stack.isEmpty()) {
+      File file = stack.pop();
+      if (file.isDirectory()) {
+        File[] files = file.listFiles();
+        if (files != null) {
+          for (File f : files) {
+            stack.push(f);
+          }
+        }
+      }
+      if (fileFilter.accept(file)) {
+        result.add(file);
+      }
+    }
+    return result;
+  }
 
   public static boolean deleteFileIfExist(File file) {
     try {
@@ -87,11 +113,33 @@ public class FileUtils {
     }
   }
 
+  public static void deleteFileOrDirectoryWithRetry(File file) {
+    if (file.isDirectory()) {
+      File[] files = file.listFiles();
+      if (files != null) {
+        for (File subfile : files) {
+          deleteFileOrDirectoryWithRetry(subfile);
+        }
+      }
+    }
+    try {
+      RetryUtils.retryOnException(
+          () -> {
+            Files.delete(file.toPath());
+            return null;
+          });
+    } catch (DirectoryNotEmptyException e) {
+      LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(file.list()), e);
+    } catch (Exception e) {
+      LOGGER.warn("{}: {}", e.getMessage(), file.getName(), e);
+    }
+  }
+
   public static void deleteDirectoryAndEmptyParent(File folder) {
     deleteFileOrDirectory(folder);
     final File parentFolder = folder.getParentFile();
-    if (parentFolder.isDirectory()
-        && Objects.requireNonNull(parentFolder.listFiles()).length == 0) {
+    File[] files = parentFolder.listFiles();
+    if (parentFolder.isDirectory() && (files == null || files.length == 0)) {
       if (!parentFolder.delete()) {
         LOGGER.warn("Delete folder failed: {}", parentFolder.getAbsolutePath());
       }
@@ -105,12 +153,14 @@ public class FileUtils {
           sourceDir.getAbsolutePath());
       return false;
     }
-    if (!targetDir.exists()) {
-      if (!targetDir.mkdirs()) {
-        LOGGER.error(
-            "Failed to copy folder, because failed to create target folder[{}].",
-            targetDir.getAbsolutePath());
-        return false;
+    if (!targetDir.exists() && !targetDir.mkdirs()) {
+      synchronized (FileUtils.class) {
+        if (!targetDir.exists() && !targetDir.mkdirs()) {
+          LOGGER.error(
+              "Failed to copy folder, because failed to create target folder[{}].",
+              targetDir.getAbsolutePath());
+          return false;
+        }
       }
     } else if (!targetDir.isDirectory()) {
       LOGGER.error(
@@ -280,10 +330,14 @@ public class FileUtils {
 
   public static File createHardLink(File sourceFile, File hardlink) throws IOException {
     if (!hardlink.getParentFile().exists() && !hardlink.getParentFile().mkdirs()) {
-      throw new IOException(
-          String.format(
-              "failed to create hardlink %s for file %s: failed to create parent dir %s",
-              hardlink.getPath(), sourceFile.getPath(), hardlink.getParentFile().getPath()));
+      synchronized (FileUtils.class) {
+        if (!hardlink.getParentFile().exists() && !hardlink.getParentFile().mkdirs()) {
+          throw new IOException(
+              String.format(
+                  "failed to create hardlink %s for file %s: failed to create parent dir %s",
+                  hardlink.getPath(), sourceFile.getPath(), hardlink.getParentFile().getPath()));
+        }
+      }
     }
 
     final Path sourcePath = FileSystems.getDefault().getPath(sourceFile.getAbsolutePath());
@@ -294,10 +348,16 @@ public class FileUtils {
 
   public static File copyFile(File sourceFile, File targetFile) throws IOException {
     if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
-      throw new IOException(
-          String.format(
-              "failed to copy file %s to %s: failed to create parent dir %s",
-              sourceFile.getPath(), targetFile.getPath(), targetFile.getParentFile().getPath()));
+      synchronized (FileUtils.class) {
+        if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
+          throw new IOException(
+              String.format(
+                  "failed to copy file %s to %s: failed to create parent dir %s",
+                  sourceFile.getPath(),
+                  targetFile.getPath(),
+                  targetFile.getParentFile().getPath()));
+        }
+      }
     }
 
     Files.copy(sourceFile.toPath(), targetFile.toPath());

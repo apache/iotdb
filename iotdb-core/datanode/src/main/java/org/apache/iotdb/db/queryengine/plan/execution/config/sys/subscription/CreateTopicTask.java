@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -30,12 +31,19 @@ public class CreateTopicTask implements IConfigTask {
 
   private final CreateTopicStatement createTopicStatement;
 
-  public CreateTopicTask(CreateTopicStatement createTopicStatement) {
+  public CreateTopicTask(final CreateTopicStatement createTopicStatement) {
     this.createTopicStatement = createTopicStatement;
   }
 
+  public CreateTopicTask(final CreateTopic createTopic) {
+    this.createTopicStatement = new CreateTopicStatement();
+    this.createTopicStatement.setTopicName(createTopic.getTopicName());
+    this.createTopicStatement.setIfNotExists(createTopic.hasIfNotExistsCondition());
+    this.createTopicStatement.setTopicAttributes(createTopic.getTopicAttributes());
+  }
+
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.createTopic(createTopicStatement);
   }

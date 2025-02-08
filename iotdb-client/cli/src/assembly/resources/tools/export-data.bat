@@ -21,9 +21,9 @@
 
 title IoTDB Export
 
-echo ````````````````````````````````````````````````
-echo Starting IoTDB Client Export Script
-echo ````````````````````````````````````````````````
+@REM echo ````````````````````````````````````````````````
+@REM echo Starting IoTDB Client Export Script
+@REM echo ````````````````````````````````````````````````
 
 if "%OS%" == "Windows_NT" setlocal
 

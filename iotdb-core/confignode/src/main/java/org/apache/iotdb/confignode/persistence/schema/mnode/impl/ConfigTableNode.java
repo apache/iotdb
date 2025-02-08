@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.persistence.schema.mnode.info.ConfigTableInfo
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 
@@ -42,7 +43,7 @@ public class ConfigTableNode implements IConfigMNode {
 
   private transient String fullPath;
 
-  private ConfigTableInfo tableNodeInfo;
+  private final ConfigTableInfo tableNodeInfo;
 
   public ConfigTableNode(final IConfigMNode parent, final String name) {
     this.parent = parent;
@@ -63,6 +64,18 @@ public class ConfigTableNode implements IConfigMNode {
 
   public void setStatus(final TableNodeStatus status) {
     tableNodeInfo.setStatus(status);
+  }
+
+  public Set<String> getPreDeletedColumns() {
+    return tableNodeInfo.getPreDeletedColumns();
+  }
+
+  public void addPreDeletedColumn(final String column) {
+    tableNodeInfo.addPreDeletedColumn(column);
+  }
+
+  public void removePreDeletedColumn(final String column) {
+    tableNodeInfo.removePreDeletedColumn(column);
   }
 
   @Override

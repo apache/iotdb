@@ -41,8 +41,11 @@ public class LoadTsFile extends Statement {
   private final File file;
   private int databaseLevel; // For loading to tree-model only
   private String database; // For loading to table-model only
-  private boolean deleteAfterLoad;
-  private boolean autoCreateDatabase;
+  private boolean deleteAfterLoad = false;
+  private boolean convertOnTypeMismatch = true;
+  private boolean autoCreateDatabase = true;
+  private boolean verify;
+  private boolean isGeneratedByPipe = false;
   private String model = LoadTsFileConfigurator.MODEL_TABLE_VALUE;
 
   private final Map<String, String> loadAttributes;
@@ -58,10 +61,12 @@ public class LoadTsFile extends Statement {
     this.file = new File(filePath);
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
     this.deleteAfterLoad = false;
+    this.convertOnTypeMismatch = true;
+    this.verify = true;
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.resources = new ArrayList<>();
     this.writePointCountList = new ArrayList<>();
-    this.loadAttributes = loadAttributes;
+    this.loadAttributes = loadAttributes == null ? Collections.emptyMap() : loadAttributes;
     initAttributes();
 
     try {
@@ -85,12 +90,20 @@ public class LoadTsFile extends Statement {
     this.autoCreateDatabase = autoCreateDatabase;
   }
 
+  public boolean isAutoCreateDatabase() {
+    return autoCreateDatabase;
+  }
+
   public boolean isDeleteAfterLoad() {
     return deleteAfterLoad;
   }
 
-  public boolean isAutoCreateDatabase() {
-    return autoCreateDatabase;
+  public boolean isConvertOnTypeMismatch() {
+    return convertOnTypeMismatch;
+  }
+
+  public boolean isVerifySchema() {
+    return verify;
   }
 
   public int getDatabaseLevel() {
@@ -101,8 +114,17 @@ public class LoadTsFile extends Statement {
     return database;
   }
 
-  public void setDatabase(String database) {
+  public LoadTsFile setDatabase(String database) {
     this.database = database;
+    return this;
+  }
+
+  public void markIsGeneratedByPipe() {
+    isGeneratedByPipe = true;
+  }
+
+  public boolean isGeneratedByPipe() {
+    return isGeneratedByPipe;
   }
 
   public String getModel() {
@@ -133,6 +155,9 @@ public class LoadTsFile extends Statement {
     this.databaseLevel = LoadTsFileConfigurator.parseOrGetDefaultDatabaseLevel(loadAttributes);
     this.database = LoadTsFileConfigurator.parseDatabaseName(loadAttributes);
     this.deleteAfterLoad = LoadTsFileConfigurator.parseOrGetDefaultOnSuccess(loadAttributes);
+    this.convertOnTypeMismatch =
+        LoadTsFileConfigurator.parseOrGetDefaultConvertOnTypeMismatch(loadAttributes);
+    this.verify = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
     this.model =
         LoadTsFileConfigurator.parseOrGetDefaultModel(
             loadAttributes, LoadTsFileConfigurator.MODEL_TABLE_VALUE);

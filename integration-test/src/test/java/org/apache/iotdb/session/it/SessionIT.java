@@ -26,14 +26,12 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -88,20 +86,13 @@ public class SessionIT {
 
       Tablet tablet = new Tablet("root.sg1.d1", schemaList, 10);
 
-      long[] timestamps = tablet.timestamps;
-      Object[] values = tablet.values;
-
       for (long time = 0; time < 10; time++) {
-        int row = tablet.rowSize++;
-        timestamps[row] = time;
-        long[] sensor = (long[]) values[0];
-        sensor[row] = time;
-        double[] sensor2 = (double[]) values[1];
-        sensor2[row] = 0.1 + time;
-        Binary[] sensor3 = (Binary[]) values[2];
-        sensor3[row] = BytesUtils.valueOf("ha" + time);
-        long[] sensor4 = (long[]) values[3];
-        sensor4[row] = time;
+        int row = tablet.getRowSize();
+        tablet.addTimestamp(row, time);
+        tablet.addValue(row, 0, time);
+        tablet.addValue(row, 1, 0.1d + time);
+        tablet.addValue(row, 2, "ha" + time);
+        tablet.addValue(row, 3, time);
       }
 
       try {
@@ -279,28 +270,26 @@ public class SessionIT {
       byte[] bytes = new byte[2];
       bytes[0] = (byte) Integer.parseInt("BA", 16);
       bytes[1] = (byte) Integer.parseInt("BE", 16);
-      // Method 1 to add tablet data
+
       for (long time = 10; time < 15; time++) {
-        int rowIndex = tablet.rowSize++;
+        int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, time);
         tablet.addValue(
-            schemaList.get(0).getMeasurementId(), rowIndex, LocalDate.of(2024, 1, (int) time));
-        tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, time);
-        tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, new Binary(bytes));
-        tablet.addValue(schemaList.get(3).getMeasurementId(), rowIndex, "" + time);
+            schemaList.get(0).getMeasurementName(), rowIndex, LocalDate.of(2024, 1, (int) time));
+        tablet.addValue(schemaList.get(1).getMeasurementName(), rowIndex, time);
+        tablet.addValue(schemaList.get(2).getMeasurementName(), rowIndex, new Binary(bytes));
+        tablet.addValue(schemaList.get(3).getMeasurementName(), rowIndex, "" + time);
       }
       session.insertTablet(tablet);
       tablet.reset();
-      // Method 2 to add tablet data
-      long[] timestamps = tablet.timestamps;
-      Object[] values = tablet.values;
+
       for (long time = 15; time < 20; time++) {
-        int rowIndex = tablet.rowSize++;
-        timestamps[rowIndex] = time;
-        ((LocalDate[]) values[0])[rowIndex] = LocalDate.of(2024, 1, (int) time);
-        ((long[]) values[1])[rowIndex] = time;
-        ((Binary[]) values[2])[rowIndex] = new Binary(bytes);
-        ((Binary[]) values[3])[rowIndex] = new Binary(time + "", TSFileConfig.STRING_CHARSET);
+        int rowIndex = tablet.getRowSize();
+        tablet.addTimestamp(rowIndex, time);
+        tablet.addValue(rowIndex, 0, LocalDate.of(2024, 1, (int) time));
+        tablet.addValue(rowIndex, 1, time);
+        tablet.addValue(rowIndex, 2, bytes);
+        tablet.addValue(rowIndex, 3, time + "");
       }
       session.insertTablet(tablet);
       tablet.reset();
@@ -309,7 +298,7 @@ public class SessionIT {
         Assert.assertEquals(5, columnNames.size());
         for (int i = 0; i < 4; i++) {
           Assert.assertTrue(
-              columnNames.contains(deviceId + "." + schemaList.get(i).getMeasurementId()));
+              columnNames.contains(deviceId + "." + schemaList.get(i).getMeasurementName()));
         }
         dataSet.setFetchSize(1024); // default is 10000
         int row = 10;

@@ -103,7 +103,7 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TimeDuration;
-import org.apache.tsfile.write.record.Tablet.ColumnType;
+import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
@@ -297,8 +297,8 @@ public class StatementGenerator {
           new TsTableColumnCategory[insertRecordReq.getColumnCategoryies().size()];
       for (int i = 0; i < columnCategories.length; i++) {
         columnCategories[i] =
-            TsTableColumnCategory.fromTsFileColumnType(
-                ColumnType.values()[insertRecordReq.getColumnCategoryies().get(i).intValue()]);
+            TsTableColumnCategory.fromTsFileColumnCategory(
+                ColumnCategory.values()[insertRecordReq.getColumnCategoryies().get(i).intValue()]);
       }
       insertStatement.setColumnCategories(columnCategories);
     }
@@ -366,8 +366,8 @@ public class StatementGenerator {
           new TsTableColumnCategory[insertTabletReq.columnCategories.size()];
       for (int i = 0; i < columnCategories.length; i++) {
         columnCategories[i] =
-            TsTableColumnCategory.fromTsFileColumnType(
-                ColumnType.values()[insertTabletReq.columnCategories.get(i).intValue()]);
+            TsTableColumnCategory.fromTsFileColumnCategory(
+                ColumnCategory.values()[insertTabletReq.columnCategories.get(i).intValue()]);
       }
       insertStatement.setColumnCategories(columnCategories);
     }

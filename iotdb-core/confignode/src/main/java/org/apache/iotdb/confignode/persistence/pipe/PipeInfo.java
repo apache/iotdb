@@ -33,7 +33,7 @@ import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.agent.runtime.PipeConfigRegionListener;
 import org.apache.iotdb.confignode.manager.pipe.agent.task.PipeConfigNodeSubtask;
 import org.apache.iotdb.confignode.manager.pipe.agent.task.PipeConfigNodeTaskAgent;
-import org.apache.iotdb.confignode.manager.pipe.metric.PipeTemporaryMetaMetrics;
+import org.apache.iotdb.confignode.manager.pipe.metric.PipeTemporaryMetaInCoordinatorMetrics;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -90,11 +90,11 @@ public class PipeInfo implements SnapshotProcessor {
                 PipeConfigNodeAgent.runtime()
                     .increaseListenerReference(plan.getPipeStaticMeta().getExtractorParameters());
                 return null;
-              } catch (Exception e) {
+              } catch (final Exception e) {
                 throw new PipeException("Failed to increase listener reference", e);
               }
             });
-        PipeTemporaryMetaMetrics.getInstance()
+        PipeTemporaryMetaInCoordinatorMetrics.getInstance()
             .handleTemporaryMetaChanges(pipeTaskInfo.getPipeMetaList());
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
@@ -114,7 +114,7 @@ public class PipeInfo implements SnapshotProcessor {
 
       PipeConfigNodeAgent.task()
           .handleSinglePipeMetaChanges(pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeName()));
-      PipeTemporaryMetaMetrics.getInstance()
+      PipeTemporaryMetaInCoordinatorMetrics.getInstance()
           .handleTemporaryMetaChanges(pipeTaskInfo.getPipeMetaList());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final Exception e) {
@@ -143,7 +143,7 @@ public class PipeInfo implements SnapshotProcessor {
                 throw new PipeException("Failed to decrease listener reference", e);
               }
             });
-        PipeTemporaryMetaMetrics.getInstance()
+        PipeTemporaryMetaInCoordinatorMetrics.getInstance()
             .handleTemporaryMetaChanges(pipeTaskInfo.getPipeMetaList());
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
@@ -181,7 +181,7 @@ public class PipeInfo implements SnapshotProcessor {
                 throw new PipeException("Failed to decrease listener reference", e);
               }
             });
-        PipeTemporaryMetaMetrics.getInstance()
+        PipeTemporaryMetaInCoordinatorMetrics.getInstance()
             .handleTemporaryMetaChanges(pipeTaskInfo.getPipeMetaList());
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
@@ -206,7 +206,7 @@ public class PipeInfo implements SnapshotProcessor {
   public TSStatus operateMultiplePipes(final OperateMultiplePipesPlanV2 plans) {
     try {
       final TSStatus status = pipeTaskInfo.operateMultiplePipes(plans);
-      PipeTemporaryMetaMetrics.getInstance()
+      PipeTemporaryMetaInCoordinatorMetrics.getInstance()
           .handleTemporaryMetaChanges(pipeTaskInfo.getPipeMetaList());
       return status;
     } catch (final Exception e) {
@@ -225,7 +225,7 @@ public class PipeInfo implements SnapshotProcessor {
         pipeMetaListFromCoordinator.add(pipeMeta);
       }
       PipeConfigNodeAgent.task().handlePipeMetaChanges(pipeMetaListFromCoordinator);
-      PipeTemporaryMetaMetrics.getInstance()
+      PipeTemporaryMetaInCoordinatorMetrics.getInstance()
           .handleTemporaryMetaChanges(pipeTaskInfo.getPipeMetaList());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final Exception e) {
@@ -245,7 +245,7 @@ public class PipeInfo implements SnapshotProcessor {
             pipeTaskInfo.getPipeMetaByPipeName(pipeMeta.getStaticMeta().getPipeName()));
       }
       PipeConfigNodeAgent.task().handlePipeMetaChanges(pipeMetaListFromCoordinator);
-      PipeTemporaryMetaMetrics.getInstance()
+      PipeTemporaryMetaInCoordinatorMetrics.getInstance()
           .handleTemporaryMetaChanges(pipeTaskInfo.getPipeMetaList());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final Exception e) {

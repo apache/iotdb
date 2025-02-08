@@ -143,7 +143,7 @@ public class Cli extends AbstractCli {
               "Require more params input, eg. ./start-cli.sh(start-cli.bat if Windows) "
                   + "-h xxx.xxx.xxx.xxx -p xxxx -u xxx.");
       ctx.getPrinter().println("For more information, please check the following hint.");
-      hf.printHelp(IOTDB_CLI_PREFIX, options, true);
+      hf.printHelp(IOTDB, options, true);
       return false;
     } catch (NumberFormatException e) {
       ctx.getPrinter()
@@ -220,7 +220,7 @@ public class Cli extends AbstractCli {
   private static boolean readerReadLine(CliContext ctx, IoTDBConnection connection) {
     String s;
     try {
-      s = ctx.getLineReader().readLine(IOTDB_CLI_PREFIX + "> ", null);
+      s = ctx.getLineReader().readLine(cliPrefix + "> ", null);
       boolean continues = processCommand(ctx, s, connection);
       if (!continues) {
         return true;

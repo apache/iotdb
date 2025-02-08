@@ -29,8 +29,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.db.utils.MathUtils;
 
@@ -254,9 +254,9 @@ public class PrimitiveMemTableTest {
           i,
           new Object[] {i});
     }
-    List<Pair<Modification, IMemTable>> modsToMemtable = new ArrayList<>();
-    Modification deletion =
-        new Deletion(new MeasurementPath(deviceID, measurementId[0]), Long.MAX_VALUE, 10, dataSize);
+    List<Pair<ModEntry, IMemTable>> modsToMemtable = new ArrayList<>();
+    ModEntry deletion =
+        new TreeDeletionEntry(new MeasurementPath(deviceID, measurementId[0]), 10, dataSize);
     modsToMemtable.add(new Pair<>(deletion, memTable));
     ReadOnlyMemChunk memChunk =
         memTable.query(new QueryContext(), nonAlignedFullPath, Long.MIN_VALUE, modsToMemtable);
@@ -299,9 +299,9 @@ public class PrimitiveMemTableTest {
           new Object[] {i});
     }
 
-    List<Pair<Modification, IMemTable>> modsToMemtable = new ArrayList<>();
-    Modification deletion =
-        new Deletion(new MeasurementPath(deviceID, measurementId[0]), Long.MAX_VALUE, 10, dataSize);
+    List<Pair<ModEntry, IMemTable>> modsToMemtable = new ArrayList<>();
+    ModEntry deletion =
+        new TreeDeletionEntry(new MeasurementPath(deviceID, measurementId[0]), 10, dataSize);
     modsToMemtable.add(new Pair<>(deletion, memTable));
     ReadOnlyMemChunk memChunk =
         memTable.query(new QueryContext(), alignedFullPath, Long.MIN_VALUE, modsToMemtable);

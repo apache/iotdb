@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
@@ -51,6 +52,7 @@ import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProce
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
+import org.apache.iotdb.confignode.procedure.PartitionTableAutoCleaner;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.ProcedureMetrics;
@@ -74,9 +76,13 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.DropPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
+import org.apache.iotdb.confignode.procedure.impl.region.AddRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.CreateRegionGroupsProcedure;
+import org.apache.iotdb.confignode.procedure.impl.region.ReconstructRegionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
+import org.apache.iotdb.confignode.procedure.impl.region.RegionOperationProcedure;
+import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
@@ -88,6 +94,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AbstractAlterOrDropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DeleteDevicesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
@@ -122,16 +129,23 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TRemoveRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.ratis.util.AutoCloseableLock;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -144,7 +158,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -155,8 +168,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REGION_MIGRATE_PROCESS;
-
 public class ProcedureManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ProcedureManager.class);
 
@@ -164,7 +175,7 @@ public class ProcedureManager {
       ConfigNodeDescriptor.getInstance().getConf();
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
-  public static final long PROCEDURE_WAIT_TIME_OUT = COMMON_CONFIG.getConnectionTimeoutInMS();
+  public static final long PROCEDURE_WAIT_TIME_OUT = COMMON_CONFIG.getDnConnectionTimeoutInMS();
   private static final int PROCEDURE_WAIT_RETRY_TIMEOUT = 10;
   private static final String PROCEDURE_TIMEOUT_MESSAGE =
       "Timed out to wait for procedure return. The procedure is still running.";
@@ -177,6 +188,8 @@ public class ProcedureManager {
 
   private final long planSizeLimit;
   private ProcedureMetrics procedureMetrics;
+
+  private final PartitionTableAutoCleaner partitionTableCleaner;
 
   private final ReentrantLock tableLock = new ReentrantLock();
 
@@ -192,6 +205,7 @@ public class ProcedureManager {
                 .getConfigNodeRatisConsensusLogAppenderBufferSize()
             - IoTDBConstant.RAFT_LOG_BASIC_SIZE;
     this.procedureMetrics = new ProcedureMetrics(this);
+    this.partitionTableCleaner = new PartitionTableAutoCleaner<>(configManager);
   }
 
   public void startExecutor() {
@@ -201,6 +215,7 @@ public class ProcedureManager {
       executor.startCompletedCleaner(
           CONFIG_NODE_CONFIG.getProcedureCompletedCleanInterval(),
           CONFIG_NODE_CONFIG.getProcedureCompletedEvictTTL());
+      executor.addInternalProcedure(partitionTableCleaner);
       store.start();
       LOGGER.info("ProcedureManager is started successfully.");
     }
@@ -214,6 +229,7 @@ public class ProcedureManager {
         store.stop();
         LOGGER.info("ProcedureManager is stopped successfully.");
       }
+      executor.removeInternalProcedure(partitionTableCleaner);
     }
   }
 
@@ -231,7 +247,7 @@ public class ProcedureManager {
 
   public TSStatus deleteDatabases(
       final List<TDatabaseSchema> deleteSgSchemaList, final boolean isGeneratedByPipe) {
-    final List<Long> procedureIds = new ArrayList<>();
+    final List<DeleteDatabaseProcedure> procedures = new ArrayList<>();
     final long startCheckTimeForProcedures = System.currentTimeMillis();
     for (final TDatabaseSchema databaseSchema : deleteSgSchemaList) {
       final String database = databaseSchema.getName();
@@ -245,9 +261,10 @@ public class ProcedureManager {
           hasOverlappedTask = procedureIdDuplicatePair.getRight();
 
           if (Boolean.FALSE.equals(procedureIdDuplicatePair.getRight())) {
-            final DeleteDatabaseProcedure deleteDatabaseProcedure =
+            DeleteDatabaseProcedure procedure =
                 new DeleteDatabaseProcedure(databaseSchema, isGeneratedByPipe);
-            procedureIds.add(this.executor.submitProcedure(deleteDatabaseProcedure));
+            this.executor.submitProcedure(procedure);
+            procedures.add(procedure);
             break;
           }
           try {
@@ -265,33 +282,34 @@ public class ProcedureManager {
         }
       }
     }
-    final List<TSStatus> procedureStatus = new ArrayList<>();
-    final boolean isSucceed = waitingProcedureFinished(procedureIds, procedureStatus);
+    List<TSStatus> results = new ArrayList<>(procedures.size());
+    procedures.forEach(procedure -> results.add(waitingProcedureFinished(procedure)));
     // Clear the previously deleted regions
     final PartitionManager partitionManager = getConfigManager().getPartitionManager();
     partitionManager.getRegionMaintainer().submit(partitionManager::maintainRegionReplicas);
-    if (isSucceed) {
+    if (results.stream()
+        .allMatch(result -> result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
       return StatusUtils.OK;
     } else {
-      return RpcUtils.getStatus(procedureStatus);
+      return RpcUtils.getStatus(results);
     }
   }
 
   public TSStatus deleteTimeSeries(
       String queryId, PathPatternTree patternTree, boolean isGeneratedByPipe) {
-    long procedureId = -1;
+    DeleteTimeSeriesProcedure procedure = null;
     synchronized (this) {
       boolean hasOverlappedTask = false;
       ProcedureType type;
       DeleteTimeSeriesProcedure deleteTimeSeriesProcedure;
-      for (Procedure<?> procedure : executor.getProcedures().values()) {
-        type = ProcedureFactory.getProcedureType(procedure);
+      for (Procedure<?> runningProcedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(runningProcedure);
         if (type == null || !type.equals(ProcedureType.DELETE_TIMESERIES_PROCEDURE)) {
           continue;
         }
-        deleteTimeSeriesProcedure = ((DeleteTimeSeriesProcedure) procedure);
+        deleteTimeSeriesProcedure = ((DeleteTimeSeriesProcedure) runningProcedure);
         if (queryId.equals(deleteTimeSeriesProcedure.getQueryId())) {
-          procedureId = deleteTimeSeriesProcedure.getProcId();
+          procedure = deleteTimeSeriesProcedure;
           break;
         }
         if (patternTree.isOverlapWith(deleteTimeSeriesProcedure.getPatternTree())) {
@@ -300,44 +318,36 @@ public class ProcedureManager {
         }
       }
 
-      if (procedureId == -1) {
+      if (procedure == null) {
         if (hasOverlappedTask) {
           return RpcUtils.getStatus(
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
               "Some other task is deleting some target timeseries.");
         }
-        procedureId =
-            this.executor.submitProcedure(
-                new DeleteTimeSeriesProcedure(queryId, patternTree, isGeneratedByPipe));
+        procedure = new DeleteTimeSeriesProcedure(queryId, patternTree, isGeneratedByPipe);
+        this.executor.submitProcedure(procedure);
       }
     }
-    List<TSStatus> procedureStatus = new ArrayList<>();
-    boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
-    if (isSucceed) {
-      return StatusUtils.OK;
-    } else {
-      return procedureStatus.get(0);
-    }
+    return waitingProcedureFinished(procedure);
   }
 
   public TSStatus deleteLogicalView(TDeleteLogicalViewReq req) {
     String queryId = req.getQueryId();
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
-    long procedureId = -1;
+    DeleteLogicalViewProcedure procedure = null;
     synchronized (this) {
       boolean hasOverlappedTask = false;
       ProcedureType type;
       DeleteLogicalViewProcedure deleteLogicalViewProcedure;
-      for (Procedure<?> procedure : executor.getProcedures().values()) {
-        type = ProcedureFactory.getProcedureType(procedure);
+      for (Procedure<?> runningProcedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(runningProcedure);
         if (type == null || !type.equals(ProcedureType.DELETE_LOGICAL_VIEW_PROCEDURE)) {
           continue;
         }
-        deleteLogicalViewProcedure = ((DeleteLogicalViewProcedure) procedure);
+        deleteLogicalViewProcedure = ((DeleteLogicalViewProcedure) runningProcedure);
         if (queryId.equals(deleteLogicalViewProcedure.getQueryId())) {
-          procedureId = deleteLogicalViewProcedure.getProcId();
+          procedure = deleteLogicalViewProcedure;
           break;
         }
         if (patternTree.isOverlapWith(deleteLogicalViewProcedure.getPatternTree())) {
@@ -346,35 +356,26 @@ public class ProcedureManager {
         }
       }
 
-      if (procedureId == -1) {
+      if (procedure == null) {
         if (hasOverlappedTask) {
           return RpcUtils.getStatus(
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
               "Some other task is deleting some target views.");
         }
-        procedureId =
-            this.executor.submitProcedure(
-                new DeleteLogicalViewProcedure(
-                    queryId,
-                    patternTree,
-                    req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()));
+        procedure =
+            new DeleteLogicalViewProcedure(
+                queryId, patternTree, req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
+        this.executor.submitProcedure(procedure);
       }
     }
-    List<TSStatus> procedureStatus = new ArrayList<>();
-    boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
-    if (isSucceed) {
-      return StatusUtils.OK;
-    } else {
-      return procedureStatus.get(0);
-    }
+    return waitingProcedureFinished(procedure);
   }
 
-  public TSStatus alterLogicalView(TAlterLogicalViewReq req) {
-    String queryId = req.getQueryId();
-    ByteBuffer byteBuffer = ByteBuffer.wrap(req.getViewBinary());
-    Map<PartialPath, ViewExpression> viewPathToSourceMap = new HashMap<>();
-    int size = byteBuffer.getInt();
+  public TSStatus alterLogicalView(final TAlterLogicalViewReq req) {
+    final String queryId = req.getQueryId();
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(req.getViewBinary());
+    final Map<PartialPath, ViewExpression> viewPathToSourceMap = new HashMap<>();
+    final int size = byteBuffer.getInt();
     PartialPath path;
     ViewExpression viewExpression;
     for (int i = 0; i < size; i++) {
@@ -383,56 +384,49 @@ public class ProcedureManager {
       viewPathToSourceMap.put(path, viewExpression);
     }
 
-    long procedureId = -1;
+    AlterLogicalViewProcedure procedure = null;
     synchronized (this) {
       ProcedureType type;
       AlterLogicalViewProcedure alterLogicalViewProcedure;
-      for (Procedure<?> procedure : executor.getProcedures().values()) {
-        type = ProcedureFactory.getProcedureType(procedure);
+      for (Procedure<?> runningProcedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(runningProcedure);
         if (type == null || !type.equals(ProcedureType.ALTER_LOGICAL_VIEW_PROCEDURE)) {
           continue;
         }
-        alterLogicalViewProcedure = ((AlterLogicalViewProcedure) procedure);
+        alterLogicalViewProcedure = ((AlterLogicalViewProcedure) runningProcedure);
         if (queryId.equals(alterLogicalViewProcedure.getQueryId())) {
-          procedureId = alterLogicalViewProcedure.getProcId();
+          procedure = alterLogicalViewProcedure;
           break;
         }
       }
 
-      if (procedureId == -1) {
-        procedureId =
-            this.executor.submitProcedure(
-                new AlterLogicalViewProcedure(
-                    queryId,
-                    viewPathToSourceMap,
-                    req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()));
+      if (procedure == null) {
+        procedure =
+            new AlterLogicalViewProcedure(
+                queryId,
+                viewPathToSourceMap,
+                req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
+        this.executor.submitProcedure(procedure);
       }
     }
-    List<TSStatus> procedureStatus = new ArrayList<>();
-    boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
-    if (isSucceed) {
-      return StatusUtils.OK;
-    } else {
-      return procedureStatus.get(0);
-    }
+    return waitingProcedureFinished(procedure);
   }
 
   public TSStatus setSchemaTemplate(
       String queryId, String templateName, String templateSetPath, boolean isGeneratedByPipe) {
-    long procedureId = -1;
+    SetTemplateProcedure procedure = null;
     synchronized (this) {
       boolean hasOverlappedTask = false;
       ProcedureType type;
       SetTemplateProcedure setTemplateProcedure;
-      for (Procedure<?> procedure : executor.getProcedures().values()) {
-        type = ProcedureFactory.getProcedureType(procedure);
+      for (Procedure<?> runningProcedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(runningProcedure);
         if (type == null || !type.equals(ProcedureType.SET_TEMPLATE_PROCEDURE)) {
           continue;
         }
-        setTemplateProcedure = (SetTemplateProcedure) procedure;
+        setTemplateProcedure = (SetTemplateProcedure) runningProcedure;
         if (queryId.equals(setTemplateProcedure.getQueryId())) {
-          procedureId = setTemplateProcedure.getProcId();
+          procedure = setTemplateProcedure;
           break;
         }
         if (templateSetPath.equals(setTemplateProcedure.getTemplateSetPath())) {
@@ -441,43 +435,35 @@ public class ProcedureManager {
         }
       }
 
-      if (procedureId == -1) {
+      if (procedure == null) {
         if (hasOverlappedTask) {
           return RpcUtils.getStatus(
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
               "Some other task is setting template on target path.");
         }
-        procedureId =
-            this.executor.submitProcedure(
-                new SetTemplateProcedure(
-                    queryId, templateName, templateSetPath, isGeneratedByPipe));
+        procedure =
+            new SetTemplateProcedure(queryId, templateName, templateSetPath, isGeneratedByPipe);
+        this.executor.submitProcedure(procedure);
       }
     }
-    List<TSStatus> procedureStatus = new ArrayList<>();
-    boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
-    if (isSucceed) {
-      return StatusUtils.OK;
-    } else {
-      return procedureStatus.get(0);
-    }
+    return waitingProcedureFinished(procedure);
   }
 
   public TSStatus deactivateTemplate(
       String queryId, Map<PartialPath, List<Template>> templateSetInfo, boolean isGeneratedByPipe) {
-    long procedureId = -1;
+    DeactivateTemplateProcedure procedure = null;
     synchronized (this) {
       boolean hasOverlappedTask = false;
       ProcedureType type;
       DeactivateTemplateProcedure deactivateTemplateProcedure;
-      for (Procedure<?> procedure : executor.getProcedures().values()) {
-        type = ProcedureFactory.getProcedureType(procedure);
+      for (Procedure<?> runningProcedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(runningProcedure);
         if (type == null || !type.equals(ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE)) {
           continue;
         }
-        deactivateTemplateProcedure = (DeactivateTemplateProcedure) procedure;
+        deactivateTemplateProcedure = (DeactivateTemplateProcedure) runningProcedure;
         if (queryId.equals(deactivateTemplateProcedure.getQueryId())) {
-          procedureId = deactivateTemplateProcedure.getProcId();
+          procedure = deactivateTemplateProcedure;
           break;
         }
         for (PartialPath pattern : templateSetInfo.keySet()) {
@@ -497,42 +483,34 @@ public class ProcedureManager {
         }
       }
 
-      if (procedureId == -1) {
+      if (procedure == null) {
         if (hasOverlappedTask) {
           return RpcUtils.getStatus(
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
               "Some other task is deactivating some target template from target path.");
         }
-        procedureId =
-            this.executor.submitProcedure(
-                new DeactivateTemplateProcedure(queryId, templateSetInfo, isGeneratedByPipe));
+        procedure = new DeactivateTemplateProcedure(queryId, templateSetInfo, isGeneratedByPipe);
+        this.executor.submitProcedure(procedure);
       }
     }
-    List<TSStatus> procedureStatus = new ArrayList<>();
-    boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
-    if (isSucceed) {
-      return StatusUtils.OK;
-    } else {
-      return procedureStatus.get(0);
-    }
+    return waitingProcedureFinished(procedure);
   }
 
   public TSStatus unsetSchemaTemplate(
       String queryId, Template template, PartialPath path, boolean isGeneratedByPipe) {
-    long procedureId = -1;
+    UnsetTemplateProcedure procedure = null;
     synchronized (this) {
       boolean hasOverlappedTask = false;
       ProcedureType type;
       UnsetTemplateProcedure unsetTemplateProcedure;
-      for (Procedure<?> procedure : executor.getProcedures().values()) {
-        type = ProcedureFactory.getProcedureType(procedure);
+      for (Procedure<?> runningProcedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(runningProcedure);
         if (type == null || !type.equals(ProcedureType.UNSET_TEMPLATE_PROCEDURE)) {
           continue;
         }
-        unsetTemplateProcedure = (UnsetTemplateProcedure) procedure;
+        unsetTemplateProcedure = (UnsetTemplateProcedure) runningProcedure;
         if (queryId.equals(unsetTemplateProcedure.getQueryId())) {
-          procedureId = unsetTemplateProcedure.getProcId();
+          procedure = unsetTemplateProcedure;
           break;
         }
         if (template.getId() == unsetTemplateProcedure.getTemplateId()
@@ -542,26 +520,18 @@ public class ProcedureManager {
         }
       }
 
-      if (procedureId == -1) {
+      if (procedure == null) {
         if (hasOverlappedTask) {
           return RpcUtils.getStatus(
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
               "Some other task is unsetting target template from target path "
                   + path.getFullPath());
         }
-        procedureId =
-            this.executor.submitProcedure(
-                new UnsetTemplateProcedure(queryId, template, path, isGeneratedByPipe));
+        procedure = new UnsetTemplateProcedure(queryId, template, path, isGeneratedByPipe);
+        this.executor.submitProcedure(procedure);
       }
     }
-    List<TSStatus> procedureStatus = new ArrayList<>();
-    boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
-    if (isSucceed) {
-      return StatusUtils.OK;
-    } else {
-      return procedureStatus.get(0);
-    }
+    return waitingProcedureFinished(procedure);
   }
 
   /**
@@ -652,8 +622,7 @@ public class ProcedureManager {
                     if (regionMigrateProcedure.isFinished()) {
                       return false;
                     }
-                    return removedDataNodesRegionSet.contains(
-                            regionMigrateProcedure.getConsensusGroupId())
+                    return removedDataNodesRegionSet.contains(regionMigrateProcedure.getRegionId())
                         || dataNodeLocations.contains(regionMigrateProcedure.getDestDataNode());
                   }
                   return false;
@@ -667,7 +636,7 @@ public class ProcedureManager {
                   + "The RegionMigrateProcedure is migrating the region %s to the DataNode %s. "
                   + "For further information, please search [pid%d] in log. ",
               conflictRegionMigrateProcedure.get().getProcId(),
-              ((RegionMigrateProcedure) conflictRegionMigrateProcedure.get()).getConsensusGroupId(),
+              ((RegionMigrateProcedure) conflictRegionMigrateProcedure.get()).getRegionId(),
               ((RegionMigrateProcedure) conflictRegionMigrateProcedure.get()).getDestDataNode(),
               conflictRegionMigrateProcedure.get().getProcId());
     }
@@ -689,6 +658,30 @@ public class ProcedureManager {
       }
       removedDataNodesRegionSet.add(regionMigrationPlan.getRegionId());
     }
+
+    // 4. Check if there are any other unknown or readonly DataNodes in the consensus group that are
+    // not the remove DataNodes
+
+    for (TDataNodeLocation removeDataNode : dataNodeLocations) {
+      Set<TDataNodeLocation> relatedDataNodes =
+          getEnv().getRemoveDataNodeHandler().getRelatedDataNodeLocations(removeDataNode);
+      relatedDataNodes.remove(removeDataNode);
+
+      for (TDataNodeLocation relatedDataNode : relatedDataNodes) {
+        NodeStatus nodeStatus =
+            getConfigManager().getLoadManager().getNodeStatus(relatedDataNode.getDataNodeId());
+        if (nodeStatus == NodeStatus.Unknown || nodeStatus == NodeStatus.ReadOnly) {
+          failMessage =
+              String.format(
+                  "Submit RemoveDataNodesProcedure failed, "
+                      + "because when there are other unknown or readonly nodes in the consensus group that are not remove nodes, "
+                      + "the remove operation cannot be performed for security reasons. "
+                      + "Please check the status of the node %s and ensure it is running.",
+                  relatedDataNode.getDataNodeId());
+        }
+      }
+    }
+
     if (failMessage != null) {
       LOGGER.warn(failMessage);
       TSStatus failStatus = new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode());
@@ -697,6 +690,8 @@ public class ProcedureManager {
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
+
+  // region region operation related check
 
   /**
    * Checks whether region migration is allowed.
@@ -708,61 +703,22 @@ public class ProcedureManager {
    * @param coordinatorForAddPeer the DataNode location acting as the coordinator for adding a peer
    * @return the status of the migration request (TSStatus)
    */
-  private TSStatus checkRegionMigrate(
+  private TSStatus checkMigrateRegion(
       TMigrateRegionReq migrateRegionReq,
       TConsensusGroupId regionGroupId,
       TDataNodeLocation originalDataNode,
       TDataNodeLocation destDataNode,
       TDataNodeLocation coordinatorForAddPeer) {
-    String failMessage = null;
-    // 1. Check if the RegionMigrateProcedure has conflict with another RegionMigrateProcedure
-    Optional<Procedure<ConfigNodeProcedureEnv>> anotherMigrateProcedure =
-        getExecutor().getProcedures().values().stream()
-            .filter(
-                procedure -> {
-                  if (procedure instanceof RegionMigrateProcedure) {
-                    return !procedure.isFinished()
-                        && ((RegionMigrateProcedure) procedure)
-                            .getConsensusGroupId()
-                            .equals(regionGroupId);
-                  }
-                  return false;
-                })
-            .findAny();
-    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
-    if (TConsensusGroupType.DataRegion == regionGroupId.getType()
-        && ConsensusFactory.SIMPLE_CONSENSUS.equals(conf.getDataRegionConsensusProtocolClass())) {
-      failMessage =
-          "The region you are trying to migrate is using SimpleConsensus, and SimpleConsensus not supports region migration.";
-    } else if (TConsensusGroupType.SchemaRegion == regionGroupId.getType()
-        && ConsensusFactory.SIMPLE_CONSENSUS.equals(conf.getSchemaRegionConsensusProtocolClass())) {
-      failMessage =
-          "The region you are trying to migrate is using SimpleConsensus, and SimpleConsensus not supports region migration.";
-    } else if (anotherMigrateProcedure.isPresent()) {
-      failMessage =
-          String.format(
-              "Submit RegionMigrateProcedure failed, "
-                  + "because another RegionMigrateProcedure of the same consensus group %d is already in processing. "
-                  + "A consensus group is able to have at most 1 RegionMigrateProcedure at the same time. "
-                  + "For further information, please search [pid%d] in log. ",
-              regionGroupId.getId(), anotherMigrateProcedure.get().getProcId());
-    } else if (originalDataNode == null) {
-      failMessage =
-          String.format(
-              "Submit RegionMigrateProcedure failed, because no original DataNode %d",
-              migrateRegionReq.getFromId());
-    } else if (destDataNode == null) {
-      failMessage =
-          String.format(
-              "Submit RegionMigrateProcedure failed, because no target DataNode %s",
-              migrateRegionReq.getToId());
-    } else if (coordinatorForAddPeer == null) {
-      failMessage =
-          String.format(
-              "%s, There are no other DataNodes could be selected to perform the add peer process, "
-                  + "please check RegionGroup: %s by show regions sql command",
-              REGION_MIGRATE_PROCESS, regionGroupId);
-    } else if (configManager
+    String failMessage =
+        regionOperationCommonCheck(
+            regionGroupId,
+            destDataNode,
+            Arrays.asList(
+                new Pair<>("Original DataNode", originalDataNode),
+                new Pair<>("Destination DataNode", destDataNode),
+                new Pair<>("Coordinator for add peer", coordinatorForAddPeer)),
+            migrateRegionReq.getModel());
+    if (configManager
         .getPartitionManager()
         .getAllReplicaSets(originalDataNode.getDataNodeId())
         .stream()
@@ -780,23 +736,184 @@ public class ProcedureManager {
           String.format(
               "Submit RegionMigrateProcedure failed, because the target DataNode %s already contains Region %s",
               migrateRegionReq.getToId(), migrateRegionReq.getRegionId());
-    } else if (!configManager
-        .getNodeManager()
-        .filterDataNodeThroughStatus(NodeStatus.Running)
+    }
+
+    if (failMessage != null) {
+      LOGGER.warn(failMessage);
+      TSStatus failStatus = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      failStatus.setMessage(failMessage);
+      return failStatus;
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  private TSStatus checkReconstructRegion(
+      TReconstructRegionReq req,
+      TConsensusGroupId regionId,
+      TDataNodeLocation targetDataNode,
+      TDataNodeLocation coordinator) {
+    String failMessage =
+        regionOperationCommonCheck(
+            regionId,
+            targetDataNode,
+            Arrays.asList(
+                new Pair<>("Target DataNode", targetDataNode),
+                new Pair<>("Coordinator", coordinator)),
+            req.getModel());
+
+    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+    if (configManager
+            .getPartitionManager()
+            .getAllReplicaSetsMap(regionId.getType())
+            .get(regionId)
+            .getDataNodeLocationsSize()
+        == 1) {
+      failMessage = String.format("%s only has 1 replica, it cannot be reconstructed", regionId);
+    } else if (configManager
+        .getPartitionManager()
+        .getAllReplicaSets(targetDataNode.getDataNodeId())
         .stream()
-        .map(TDataNodeConfiguration::getLocation)
-        .map(TDataNodeLocation::getDataNodeId)
-        .collect(Collectors.toSet())
-        .contains(migrateRegionReq.getToId())) {
+        .noneMatch(replicaSet -> replicaSet.getRegionId().equals(regionId))) {
+      failMessage =
+          String.format(
+              "Submit ReconstructRegionProcedure failed, because the target DataNode %s doesn't contain Region %s",
+              req.getDataNodeId(), regionId);
+    }
+
+    if (failMessage != null) {
+      LOGGER.warn(failMessage);
+      TSStatus failStatus = new TSStatus(TSStatusCode.RECONSTRUCT_REGION_ERROR.getStatusCode());
+      failStatus.setMessage(failMessage);
+      return failStatus;
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  private TSStatus checkExtendRegion(
+      TExtendRegionReq req,
+      TConsensusGroupId regionId,
+      TDataNodeLocation targetDataNode,
+      TDataNodeLocation coordinator) {
+    String failMessage =
+        regionOperationCommonCheck(
+            regionId,
+            targetDataNode,
+            Arrays.asList(
+                new Pair<>("Target DataNode", targetDataNode),
+                new Pair<>("Coordinator", coordinator)),
+            req.getModel());
+    if (configManager
+        .getPartitionManager()
+        .getAllReplicaSets(targetDataNode.getDataNodeId())
+        .stream()
+        .anyMatch(replicaSet -> replicaSet.getRegionId().equals(regionId))) {
+      failMessage =
+          String.format(
+              "Target DataNode %s already contains region %s",
+              targetDataNode.getDataNodeId(), req.getRegionId());
+    }
+
+    if (failMessage != null) {
+      LOGGER.warn(failMessage);
+      TSStatus failStatus = new TSStatus(TSStatusCode.RECONSTRUCT_REGION_ERROR.getStatusCode());
+      failStatus.setMessage(failMessage);
+      return failStatus;
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  private TSStatus checkRemoveRegion(
+      TRemoveRegionReq req,
+      TConsensusGroupId regionId,
+      TDataNodeLocation targetDataNode,
+      TDataNodeLocation coordinator) {
+    String failMessage =
+        regionOperationCommonCheck(
+            regionId,
+            targetDataNode,
+            Arrays.asList(
+                new Pair<>("Target DataNode", targetDataNode),
+                new Pair<>("Coordinator", coordinator)),
+            req.getModel());
+
+    if (configManager
+            .getPartitionManager()
+            .getAllReplicaSetsMap(regionId.getType())
+            .get(regionId)
+            .getDataNodeLocationsSize()
+        == 1) {
+      failMessage = String.format("%s only has 1 replica, it cannot be removed", regionId);
+    } else if (configManager
+        .getPartitionManager()
+        .getAllReplicaSets(targetDataNode.getDataNodeId())
+        .stream()
+        .noneMatch(replicaSet -> replicaSet.getRegionId().equals(regionId))) {
+      failMessage =
+          String.format(
+              "Target DataNode %s doesn't contain Region %s", req.getDataNodeId(), regionId);
+    }
+
+    if (failMessage != null) {
+      LOGGER.warn(failMessage);
+      TSStatus failStatus = new TSStatus(TSStatusCode.REMOVE_REGION_PEER_ERROR.getStatusCode());
+      failStatus.setMessage(failMessage);
+      return failStatus;
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  /**
+   * The common checks of all region operations, include migration, reconstruction, extension,
+   * removing
+   *
+   * @param regionId region group id, also called consensus group id
+   * @param targetDataNode DataNode should in Running status
+   * @param relatedDataNodes Pair<Identity, Node Location>
+   * @return The reason if check failed, or null if check pass
+   */
+  private String regionOperationCommonCheck(
+      TConsensusGroupId regionId,
+      TDataNodeLocation targetDataNode,
+      List<Pair<String, TDataNodeLocation>> relatedDataNodes,
+      Model model) {
+    String failMessage;
+    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+
+    if (TConsensusGroupType.DataRegion == regionId.getType()
+        && ConsensusFactory.SIMPLE_CONSENSUS.equals(conf.getDataRegionConsensusProtocolClass())) {
+      failMessage = "SimpleConsensus not supports region operation.";
+    } else if (TConsensusGroupType.SchemaRegion == regionId.getType()
+        && ConsensusFactory.SIMPLE_CONSENSUS.equals(conf.getSchemaRegionConsensusProtocolClass())) {
+      failMessage = "SimpleConsensus not supports region operation.";
+    } else if ((failMessage = checkRegionOperationDuplication(regionId)) != null) {
+      // need to do nothing more
+    } else if (relatedDataNodes.stream().anyMatch(pair -> pair.getRight() == null)) {
+      Pair<String, TDataNodeLocation> nullPair =
+          relatedDataNodes.stream().filter(pair -> pair.getRight() == null).findAny().get();
+      failMessage = String.format("Cannot find %s", nullPair.getLeft());
+    } else if (targetDataNode != null
+        && !configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running).stream()
+            .map(TDataNodeConfiguration::getLocation)
+            .map(TDataNodeLocation::getDataNodeId)
+            .collect(Collectors.toSet())
+            .contains(targetDataNode.getDataNodeId())) {
       // Here we only check Running DataNode to implement migration, because removing nodes may not
       // exist when add peer is performing
       failMessage =
           String.format(
-              "Submit RegionMigrateProcedure failed, because the destDataNode %s is ReadOnly or Unknown.",
-              migrateRegionReq.getToId());
+              "Target DataNode %s is not in Running status.", targetDataNode.getDataNodeId());
+    } else if ((failMessage = checkRegionOperationWithRemoveDataNode(regionId, targetDataNode))
+        != null) {
+      // need to do nothing more
+    } else if ((failMessage = checkRegionOperationModelCorrectness(regionId, model)) != null) {
+      // need to do nothing more
     }
 
-    // 2. Check if the RegionMigrateProcedure has conflict with RemoveDataNodesProcedure
+    return failMessage;
+  }
+
+  private String checkRegionOperationWithRemoveDataNode(
+      TConsensusGroupId regionId, TDataNodeLocation targetDataNode) {
     Optional<Procedure<ConfigNodeProcedureEnv>> conflictRemoveDataNodesProcedure =
         getExecutor().getProcedures().values().stream()
             .filter(
@@ -814,42 +931,65 @@ public class ProcedureManager {
           ((RemoveDataNodesProcedure) conflictRemoveDataNodesProcedure.get()).getRemovedDataNodes();
       Set<TConsensusGroupId> removedDataNodesRegionSet =
           removeDataNodeHandler.getRemovedDataNodesRegionSet(removedDataNodes);
-      if (removedDataNodesRegionSet.contains(regionGroupId)) {
-        failMessage =
-            String.format(
-                "Submit RegionMigrateProcedure failed, "
-                    + "because another RemoveDataNodesProcedure %s is already in processing which conflicts with this RegionMigrateProcedure. "
-                    + "The RemoveDataNodesProcedure is removing the DataNodes %s which contains the region %s. "
-                    + "For further information, please search [pid%d] in log. ",
-                conflictRemoveDataNodesProcedure.get().getProcId(),
-                removedDataNodes,
-                regionGroupId,
-                conflictRemoveDataNodesProcedure.get().getProcId());
-      } else if (removedDataNodes.contains(destDataNode)) {
-        failMessage =
-            String.format(
-                "Submit RegionMigrateProcedure failed, "
-                    + "because another RemoveDataNodesProcedure %s is already in processing which conflicts with this RegionMigrateProcedure. "
-                    + "The RemoveDataNodesProcedure is removing the target DataNode %s. "
-                    + "For further information, please search [pid%d] in log. ",
-                conflictRemoveDataNodesProcedure.get().getProcId(),
-                destDataNode,
-                conflictRemoveDataNodesProcedure.get().getProcId());
+      if (removedDataNodesRegionSet.contains(regionId)) {
+        return String.format(
+            "Another RemoveDataNodesProcedure %s is already in processing which conflicts with this procedure. "
+                + "The RemoveDataNodesProcedure is removing the DataNodes %s which contains the region %s. "
+                + "For further information, please search [pid%d] in log. ",
+            conflictRemoveDataNodesProcedure.get().getProcId(),
+            removedDataNodes,
+            regionId,
+            conflictRemoveDataNodesProcedure.get().getProcId());
+      } else if (removedDataNodes.contains(targetDataNode)) {
+        return String.format(
+            "Another RemoveDataNodesProcedure %s is already in processing which conflicts with this procedure. "
+                + "The RemoveDataNodesProcedure is removing the target DataNode %s. "
+                + "For further information, please search [pid%d] in log. ",
+            conflictRemoveDataNodesProcedure.get().getProcId(),
+            targetDataNode,
+            conflictRemoveDataNodesProcedure.get().getProcId());
       }
     }
-
-    if (failMessage != null) {
-      LOGGER.warn(failMessage);
-      TSStatus failStatus = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      failStatus.setMessage(failMessage);
-      return failStatus;
-    }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return null;
   }
 
+  private String checkRegionOperationDuplication(TConsensusGroupId regionId) {
+    List<? extends RegionOperationProcedure<?>> otherRegionMemberChangeProcedures =
+        getExecutor().getProcedures().values().stream()
+            .filter(procedure -> !procedure.isFinished())
+            .filter(procedure -> procedure instanceof RegionOperationProcedure)
+            .map(procedure -> (RegionOperationProcedure<?>) procedure)
+            .filter(
+                regionMemberChangeProcedure ->
+                    regionId.equals(regionMemberChangeProcedure.getRegionId()))
+            .collect(Collectors.toList());
+    if (!otherRegionMemberChangeProcedures.isEmpty()) {
+      return String.format(
+          "%s has some other region operation procedures in progress, their procedure id is: %s",
+          regionId, otherRegionMemberChangeProcedures);
+    }
+    return null;
+  }
+
+  private String checkRegionOperationModelCorrectness(TConsensusGroupId regionId, Model model) {
+    String databaseName = configManager.getPartitionManager().getRegionDatabase(regionId);
+    boolean isTreeModelDatabase = databaseName.startsWith(SqlConstant.TREE_MODEL_DATABASE_PREFIX);
+    if (Model.TREE == model && isTreeModelDatabase
+        || Model.TABLE == model && !isTreeModelDatabase) {
+      return null;
+    }
+    return String.format(
+        "The region's database %s is belong to %s model, but the model you are operating is %s",
+        databaseName,
+        isTreeModelDatabase ? Model.TREE.toString() : Model.TABLE.toString(),
+        model.toString());
+  }
+
+  // end region
+
   public TSStatus migrateRegion(TMigrateRegionReq migrateRegionReq) {
-    env.getSubmitRegionMigrateLock().lock();
-    try {
+    try (AutoCloseableLock ignoredLock =
+        AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
       TConsensusGroupId regionGroupId;
       Optional<TConsensusGroupId> optional =
           configManager
@@ -891,7 +1031,7 @@ public class ProcedureManager {
       final TDataNodeLocation coordinatorForRemovePeer = destDataNode;
 
       TSStatus status =
-          checkRegionMigrate(
+          checkMigrateRegion(
               migrateRegionReq,
               regionGroupId,
               originalDataNode,
@@ -910,7 +1050,7 @@ public class ProcedureManager {
               coordinatorForAddPeer,
               coordinatorForRemovePeer));
       LOGGER.info(
-          "Submit RegionMigrateProcedure successfully, Region: {}, Origin DataNode: {}, Dest DataNode: {}, Add Coordinator: {}, Remove Coordinator: {}",
+          "[MigrateRegion] Submit RegionMigrateProcedure successfully, Region: {}, Origin DataNode: {}, Dest DataNode: {}, Add Coordinator: {}, Remove Coordinator: {}",
           regionGroupId,
           originalDataNode,
           destDataNode,
@@ -918,8 +1058,141 @@ public class ProcedureManager {
           coordinatorForRemovePeer);
 
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } finally {
-      env.getSubmitRegionMigrateLock().unlock();
+    }
+  }
+
+  public TSStatus reconstructRegion(TReconstructRegionReq req) {
+    RegionMaintainHandler handler = env.getRegionMaintainHandler();
+    final TDataNodeLocation targetDataNode =
+        configManager.getNodeManager().getRegisteredDataNode(req.getDataNodeId()).getLocation();
+    try (AutoCloseableLock ignoredLock =
+        AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
+      List<ReconstructRegionProcedure> procedures = new ArrayList<>();
+      for (int x : req.getRegionIds()) {
+        TConsensusGroupId regionId =
+            configManager
+                .getPartitionManager()
+                .generateTConsensusGroupIdByRegionId(x)
+                .orElseThrow(() -> new IllegalArgumentException("Region id " + x + " is invalid"));
+        final TDataNodeLocation coordinator =
+            handler
+                .filterDataNodeWithOtherRegionReplica(
+                    regionId,
+                    targetDataNode,
+                    NodeStatus.Running,
+                    NodeStatus.Removing,
+                    NodeStatus.ReadOnly)
+                .orElse(null);
+        TSStatus status = checkReconstructRegion(req, regionId, targetDataNode, coordinator);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
+        procedures.add(new ReconstructRegionProcedure(regionId, targetDataNode, coordinator));
+      }
+      // all checks pass, submit all procedures
+      procedures.forEach(
+          reconstructRegionProcedure -> {
+            this.executor.submitProcedure(reconstructRegionProcedure);
+            LOGGER.info(
+                "[ReconstructRegion] Submit ReconstructRegionProcedure successfully, {}",
+                reconstructRegionProcedure);
+          });
+    }
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  public TSStatus extendRegion(TExtendRegionReq req) {
+    try (AutoCloseableLock ignoredLock =
+        AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
+      TConsensusGroupId regionId;
+      Optional<TConsensusGroupId> optional =
+          configManager
+              .getPartitionManager()
+              .generateTConsensusGroupIdByRegionId(req.getRegionId());
+      if (optional.isPresent()) {
+        regionId = optional.get();
+      } else {
+        LOGGER.error("get region group id fail");
+        return new TSStatus(TSStatusCode.EXTEND_REGION_ERROR.getStatusCode())
+            .setMessage("get region group id fail");
+      }
+
+      // find target dn
+      final TDataNodeLocation targetDataNode =
+          configManager.getNodeManager().getRegisteredDataNode(req.getDataNodeId()).getLocation();
+      // select coordinator for adding peer
+      RegionMaintainHandler handler = env.getRegionMaintainHandler();
+      // TODO: choose the DataNode which has lowest load
+      final TDataNodeLocation coordinator =
+          handler
+              .filterDataNodeWithOtherRegionReplica(
+                  regionId,
+                  targetDataNode,
+                  NodeStatus.Running,
+                  NodeStatus.Removing,
+                  NodeStatus.ReadOnly)
+              .orElse(null);
+      // do the check
+      TSStatus status = checkExtendRegion(req, regionId, targetDataNode, coordinator);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+      // submit procedure
+      AddRegionPeerProcedure procedure =
+          new AddRegionPeerProcedure(regionId, coordinator, targetDataNode);
+      this.executor.submitProcedure(procedure);
+      LOGGER.info("[ExtendRegion] Submit AddRegionPeerProcedure successfully: {}", procedure);
+
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+  }
+
+  public TSStatus removeRegion(TRemoveRegionReq req) {
+    try (AutoCloseableLock ignoredLock =
+        AutoCloseableLock.acquire(env.getSubmitRegionMigrateLock())) {
+      TConsensusGroupId regionId;
+      Optional<TConsensusGroupId> optional =
+          configManager
+              .getPartitionManager()
+              .generateTConsensusGroupIdByRegionId(req.getRegionId());
+      if (optional.isPresent()) {
+        regionId = optional.get();
+      } else {
+        LOGGER.error("get region group id fail");
+        return new TSStatus(TSStatusCode.REMOVE_REGION_PEER_ERROR.getStatusCode())
+            .setMessage("get region group id fail");
+      }
+
+      // find target dn
+      final TDataNodeLocation targetDataNode =
+          configManager.getNodeManager().getRegisteredDataNode(req.getDataNodeId()).getLocation();
+
+      // select coordinator for removing peer
+      RegionMaintainHandler handler = env.getRegionMaintainHandler();
+      final TDataNodeLocation coordinator =
+          handler
+              .filterDataNodeWithOtherRegionReplica(
+                  regionId,
+                  targetDataNode,
+                  NodeStatus.Running,
+                  NodeStatus.Removing,
+                  NodeStatus.ReadOnly)
+              .orElse(null);
+
+      // do the check
+      TSStatus status = checkRemoveRegion(req, regionId, targetDataNode, coordinator);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+
+      // submit procedure
+      RemoveRegionPeerProcedure procedure =
+          new RemoveRegionPeerProcedure(regionId, coordinator, targetDataNode);
+      this.executor.submitProcedure(procedure);
+      LOGGER.info(
+          "[RemoveRegionPeer] Submit RemoveRegionPeerProcedure successfully: {}", procedure);
+
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
   }
 
@@ -932,18 +1205,17 @@ public class ProcedureManager {
    *     {@link TSStatusCode#CREATE_REGION_ERROR} otherwise
    */
   public TSStatus createRegionGroups(
-      TConsensusGroupType consensusGroupType, CreateRegionGroupsPlan createRegionGroupsPlan) {
-    final long procedureId =
-        executor.submitProcedure(
-            new CreateRegionGroupsProcedure(consensusGroupType, createRegionGroupsPlan));
-    final List<TSStatus> statusList = new ArrayList<>();
-    final boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-    if (isSucceed) {
-      return RpcUtils.SUCCESS_STATUS;
+      final TConsensusGroupType consensusGroupType,
+      final CreateRegionGroupsPlan createRegionGroupsPlan) {
+    final CreateRegionGroupsProcedure procedure =
+        new CreateRegionGroupsProcedure(consensusGroupType, createRegionGroupsPlan);
+    executor.submitProcedure(procedure);
+    final TSStatus status = waitingProcedureFinished(procedure);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
     } else {
       return new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode())
-          .setMessage(statusList.get(0).getMessage());
+          .setMessage(status.getMessage());
     }
   }
 
@@ -971,15 +1243,13 @@ public class ProcedureManager {
           .setMessage(e.getMessage());
     }
 
-    final long procedureId = executor.submitProcedure(createTriggerProcedure);
-    final List<TSStatus> statusList = new ArrayList<>();
-    final boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-    if (isSucceed) {
-      return RpcUtils.SUCCESS_STATUS;
+    executor.submitProcedure(createTriggerProcedure);
+    TSStatus status = waitingProcedureFinished(createTriggerProcedure);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
     } else {
       return new TSStatus(TSStatusCode.CREATE_TRIGGER_ERROR.getStatusCode())
-          .setMessage(statusList.get(0).getMessage());
+          .setMessage(status.getMessage());
     }
   }
 
@@ -990,25 +1260,21 @@ public class ProcedureManager {
    *     {@link TSStatusCode#DROP_TRIGGER_ERROR} otherwise
    */
   public TSStatus dropTrigger(String triggerName, boolean isGeneratedByPipe) {
-    long procedureId =
-        executor.submitProcedure(new DropTriggerProcedure(triggerName, isGeneratedByPipe));
-    final List<TSStatus> statusList = new ArrayList<>();
-    final boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-    if (isSucceed) {
-      return RpcUtils.SUCCESS_STATUS;
+    DropTriggerProcedure procedure = new DropTriggerProcedure(triggerName, isGeneratedByPipe);
+    executor.submitProcedure(procedure);
+    TSStatus status = waitingProcedureFinished(procedure);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
     } else {
       return new TSStatus(TSStatusCode.DROP_TRIGGER_ERROR.getStatusCode())
-          .setMessage(statusList.get(0).getMessage());
+          .setMessage(status.getMessage());
     }
   }
 
   public TSStatus createCQ(TCreateCQReq req, ScheduledExecutorService scheduledExecutor) {
-    final long procedureId =
-        executor.submitProcedure(new CreateCQProcedure(req, scheduledExecutor));
-    final List<TSStatus> statusList = new ArrayList<>();
-    waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-    return statusList.get(0);
+    CreateCQProcedure procedure = new CreateCQProcedure(req, scheduledExecutor);
+    executor.submitProcedure(procedure);
+    return waitingProcedureFinished(procedure);
   }
 
   public TSStatus createModel(String modelName, String uri) {
@@ -1018,15 +1284,14 @@ public class ProcedureManager {
   }
 
   public TSStatus dropModel(String modelId) {
-    long procedureId = executor.submitProcedure(new DropModelProcedure(modelId));
-    List<TSStatus> statusList = new ArrayList<>();
-    boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-    if (isSucceed) {
-      return RpcUtils.SUCCESS_STATUS;
+    DropModelProcedure procedure = new DropModelProcedure(modelId);
+    executor.submitProcedure(procedure);
+    TSStatus status = waitingProcedureFinished(procedure);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
     } else {
       return new TSStatus(TSStatusCode.DROP_MODEL_ERROR.getStatusCode())
-          .setMessage(statusList.get(0).getMessage());
+          .setMessage(status.getMessage());
     }
   }
 
@@ -1049,45 +1314,50 @@ public class ProcedureManager {
           .setMessage(e.getMessage());
     }
 
-    final long procedureId = executor.submitProcedure(createPipePluginProcedure);
-    final List<TSStatus> statusList = new ArrayList<>();
-    final boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-    if (isSucceed) {
-      return RpcUtils.SUCCESS_STATUS;
+    executor.submitProcedure(createPipePluginProcedure);
+    TSStatus status = waitingProcedureFinished(createPipePluginProcedure);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
     } else {
       return new TSStatus(TSStatusCode.CREATE_PIPE_PLUGIN_ERROR.getStatusCode())
-          .setMessage(statusList.get(0).getMessage());
+          .setMessage(status.getMessage());
     }
   }
 
   public TSStatus dropPipePlugin(TDropPipePluginReq req) {
-    final long procedureId =
-        executor.submitProcedure(
-            new DropPipePluginProcedure(
-                req.getPluginName(), req.isSetIfExistsCondition() && req.isIfExistsCondition()));
-    final List<TSStatus> statusList = new ArrayList<>();
-    final boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-    if (isSucceed) {
-      return RpcUtils.SUCCESS_STATUS;
+    DropPipePluginProcedure procedure =
+        new DropPipePluginProcedure(
+            req.getPluginName(), req.isSetIfExistsCondition() && req.isIfExistsCondition());
+    executor.submitProcedure(procedure);
+    TSStatus status = waitingProcedureFinished(procedure);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
     } else {
       return new TSStatus(TSStatusCode.DROP_PIPE_PLUGIN_ERROR.getStatusCode())
-          .setMessage(statusList.get(0).getMessage());
+          .setMessage(status.getMessage());
+    }
+  }
+
+  public TSStatus createConsensusPipe(TCreatePipeReq req) {
+    try {
+      CreatePipeProcedureV2 procedure = new CreatePipeProcedureV2(req);
+      executor.submitProcedure(procedure);
+      return handleConsensusPipeProcedure(procedure);
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
   }
 
   public TSStatus createPipe(TCreatePipeReq req) {
     try {
-      final long procedureId = executor.submitProcedure(new CreatePipeProcedureV2(req));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return statusList.get(0);
+      CreatePipeProcedureV2 procedure = new CreatePipeProcedureV2(req);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1096,16 +1366,25 @@ public class ProcedureManager {
 
   public TSStatus alterPipe(TAlterPipeReq req) {
     try {
-      final long procedureId = executor.submitProcedure(new AlterPipeProcedureV2(req));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return statusList.get(0);
+      AlterPipeProcedureV2 procedure = new AlterPipeProcedureV2(req);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+  }
+
+  public TSStatus startConsensusPipe(String pipeName) {
+    try {
+      StartPipeProcedureV2 procedure = new StartPipeProcedureV2(pipeName);
+      executor.submitProcedure(procedure);
+      return handleConsensusPipeProcedure(procedure);
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
@@ -1113,16 +1392,25 @@ public class ProcedureManager {
 
   public TSStatus startPipe(String pipeName) {
     try {
-      final long procedureId = executor.submitProcedure(new StartPipeProcedureV2(pipeName));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return statusList.get(0);
+      StartPipeProcedureV2 procedure = new StartPipeProcedureV2(pipeName);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+  }
+
+  public TSStatus stopConsensusPipe(String pipeName) {
+    try {
+      StopPipeProcedureV2 procedure = new StopPipeProcedureV2(pipeName);
+      executor.submitProcedure(procedure);
+      return handleConsensusPipeProcedure(procedure);
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
@@ -1130,16 +1418,25 @@ public class ProcedureManager {
 
   public TSStatus stopPipe(String pipeName) {
     try {
-      final long procedureId = executor.submitProcedure(new StopPipeProcedureV2(pipeName));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return statusList.get(0);
+      StopPipeProcedureV2 procedure = new StopPipeProcedureV2(pipeName);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
+    } catch (Exception e) {
+      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+  }
+
+  public TSStatus dropConsensusPipe(String pipeName) {
+    try {
+      DropPipeProcedureV2 procedure = new DropPipeProcedureV2(pipeName);
+      executor.submitProcedure(procedure);
+      return handleConsensusPipeProcedure(procedure);
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
@@ -1147,18 +1444,32 @@ public class ProcedureManager {
 
   public TSStatus dropPipe(String pipeName) {
     try {
-      final long procedureId = executor.submitProcedure(new DropPipeProcedureV2(pipeName));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return statusList.get(0);
+      DropPipeProcedureV2 procedure = new DropPipeProcedureV2(pipeName);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+  }
+
+  private TSStatus handleConsensusPipeProcedure(Procedure<?> procedure) {
+    TSStatus status = waitingProcedureFinished(procedure);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    } else {
+      // if time out, optimistically believe that this procedure will execute successfully.
+      if (status.getMessage().equals(PROCEDURE_TIMEOUT_MESSAGE)) {
+        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      }
+      // otherwise, some exceptions must have occurred, throw them.
+      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
+          .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
     }
   }
 
@@ -1190,18 +1501,16 @@ public class ProcedureManager {
   public TSStatus pipeHandleMetaChangeWithBlock(
       boolean needWriteConsensusOnConfigNodes, boolean needPushPipeMetaToDataNodes) {
     try {
-      final long procedureId =
-          executor.submitProcedure(
-              new PipeHandleMetaChangeProcedure(
-                  needWriteConsensusOnConfigNodes, needPushPipeMetaToDataNodes));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return RpcUtils.SUCCESS_STATUS;
+      PipeHandleMetaChangeProcedure procedure =
+          new PipeHandleMetaChangeProcedure(
+              needWriteConsensusOnConfigNodes, needPushPipeMetaToDataNodes);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1210,15 +1519,14 @@ public class ProcedureManager {
 
   public TSStatus pipeMetaSync() {
     try {
-      final long procedureId = executor.submitProcedure(new PipeMetaSyncProcedure());
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return RpcUtils.SUCCESS_STATUS;
+      PipeMetaSyncProcedure procedure = new PipeMetaSyncProcedure();
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1227,15 +1535,14 @@ public class ProcedureManager {
 
   public TSStatus createTopic(TCreateTopicReq req) {
     try {
-      final long procedureId = executor.submitProcedure(new CreateTopicProcedure(req));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return statusList.get(0);
+      CreateTopicProcedure procedure = new CreateTopicProcedure(req);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode())
@@ -1245,15 +1552,14 @@ public class ProcedureManager {
 
   public TSStatus dropTopic(String topicName) {
     try {
-      final long procedureId = executor.submitProcedure(new DropTopicProcedure(topicName));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return statusList.get(0);
+      DropTopicProcedure procedure = new DropTopicProcedure(topicName);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.DROP_TOPIC_ERROR.getStatusCode()).setMessage(e.getMessage());
@@ -1262,15 +1568,14 @@ public class ProcedureManager {
 
   public TSStatus topicMetaSync() {
     try {
-      final long procedureId = executor.submitProcedure(new TopicMetaSyncProcedure());
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return RpcUtils.SUCCESS_STATUS;
+      TopicMetaSyncProcedure procedure = new TopicMetaSyncProcedure();
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.TOPIC_PUSH_META_ERROR.getStatusCode())
@@ -1280,15 +1585,14 @@ public class ProcedureManager {
 
   public TSStatus createConsumer(TCreateConsumerReq req) {
     try {
-      final long procedureId = executor.submitProcedure(new CreateConsumerProcedure(req));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return statusList.get(0);
+      CreateConsumerProcedure procedure = new CreateConsumerProcedure(req);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.CREATE_CONSUMER_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.CREATE_CONSUMER_ERROR.getStatusCode())
@@ -1298,15 +1602,14 @@ public class ProcedureManager {
 
   public TSStatus dropConsumer(TCloseConsumerReq req) {
     try {
-      final long procedureId = executor.submitProcedure(new DropConsumerProcedure(req));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return statusList.get(0);
+      DropConsumerProcedure procedure = new DropConsumerProcedure(req);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.DROP_CONSUMER_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.DROP_CONSUMER_ERROR.getStatusCode())
@@ -1316,15 +1619,14 @@ public class ProcedureManager {
 
   public TSStatus consumerGroupMetaSync() {
     try {
-      final long procedureId = executor.submitProcedure(new ConsumerGroupMetaSyncProcedure());
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return RpcUtils.SUCCESS_STATUS;
+      ConsumerGroupMetaSyncProcedure procedure = new ConsumerGroupMetaSyncProcedure();
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
       } else {
         return new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       }
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.CONSUMER_PUSH_META_ERROR.getStatusCode())
@@ -1334,17 +1636,16 @@ public class ProcedureManager {
 
   public TSStatus createSubscription(TSubscribeReq req) {
     try {
-      final long procedureId = executor.submitProcedure(new CreateSubscriptionProcedure(req));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return statusList.get(0);
-      } else if (PROCEDURE_TIMEOUT_MESSAGE.equals(statusList.get(0).getMessage())) {
+      CreateSubscriptionProcedure procedure = new CreateSubscriptionProcedure(req);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      } else if (PROCEDURE_TIMEOUT_MESSAGE.equals(status.getMessage())) {
         // we assume that a timeout has occurred in the procedure related to the pipe in the
         // subscription procedure
         return new TSStatus(TSStatusCode.SUBSCRIPTION_PIPE_TIMEOUT_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       } else {
         return new TSStatus(TSStatusCode.SUBSCRIPTION_SUBSCRIBE_ERROR.getStatusCode());
       }
@@ -1356,17 +1657,16 @@ public class ProcedureManager {
 
   public TSStatus dropSubscription(TUnsubscribeReq req) {
     try {
-      final long procedureId = executor.submitProcedure(new DropSubscriptionProcedure(req));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return statusList.get(0);
-      } else if (PROCEDURE_TIMEOUT_MESSAGE.equals(statusList.get(0).getMessage())) {
+      DropSubscriptionProcedure procedure = new DropSubscriptionProcedure(req);
+      executor.submitProcedure(procedure);
+      TSStatus status = waitingProcedureFinished(procedure);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      } else if (PROCEDURE_TIMEOUT_MESSAGE.equals(status.getMessage())) {
         // we assume that a timeout has occurred in the procedure related to the pipe in the
         // subscription procedure
         return new TSStatus(TSStatusCode.SUBSCRIPTION_PIPE_TIMEOUT_ERROR.getStatusCode())
-            .setMessage(wrapTimeoutMessageForPipeProcedure(statusList.get(0).getMessage()));
+            .setMessage(wrapTimeoutMessageForPipeProcedure(status.getMessage()));
       } else {
         return new TSStatus(TSStatusCode.SUBSCRIPTION_UNSUBSCRIBE_ERROR.getStatusCode());
       }
@@ -1379,16 +1679,10 @@ public class ProcedureManager {
   public TSStatus operateAuthPlan(
       AuthorPlan authorPlan, List<TDataNodeConfiguration> dns, boolean isGeneratedByPipe) {
     try {
-      final long procedureId =
-          executor.submitProcedure(new AuthOperationProcedure(authorPlan, dns, isGeneratedByPipe));
-      final List<TSStatus> statusList = new ArrayList<>();
-      final boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return RpcUtils.SUCCESS_STATUS;
-      } else {
-        return new TSStatus(statusList.get(0).getCode()).setMessage(statusList.get(0).getMessage());
-      }
+      AuthOperationProcedure procedure =
+          new AuthOperationProcedure(authorPlan, dns, isGeneratedByPipe);
+      executor.submitProcedure(procedure);
+      return waitingProcedureFinished(procedure);
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.AUTH_OPERATE_EXCEPTION.getStatusCode())
           .setMessage(e.getMessage());
@@ -1396,71 +1690,60 @@ public class ProcedureManager {
   }
 
   public TSStatus setTTL(SetTTLPlan setTTLPlan, final boolean isGeneratedByPipe) {
-    long procedureId = executor.submitProcedure(new SetTTLProcedure(setTTLPlan, isGeneratedByPipe));
-
-    List<TSStatus> procedureStatus = new ArrayList<>();
-    boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
-    if (isSucceed) {
-      return RpcUtils.SUCCESS_STATUS;
-    } else {
-      return procedureStatus.get(0);
-    }
+    SetTTLProcedure procedure = new SetTTLProcedure(setTTLPlan, isGeneratedByPipe);
+    executor.submitProcedure(procedure);
+    return waitingProcedureFinished(procedure);
   }
 
   /**
-   * Waiting until the specific procedures finished.
+   * Waiting until the specific procedure finished.
    *
-   * @param procedureIds The specific procedures' index
-   * @param statusList The corresponding running results of these procedures
-   * @return True if all Procedures finished successfully, false otherwise
+   * @param procedure The specific procedure
+   * @return TSStatus the running result of this procedure
    */
-  private boolean waitingProcedureFinished(List<Long> procedureIds, List<TSStatus> statusList) {
-    boolean isSucceed = true;
-    for (long procedureId : procedureIds) {
-      final long startTimeForCurrentProcedure = System.currentTimeMillis();
-      while (executor.isRunning()
-          && !executor.isFinished(procedureId)
-          && System.currentTimeMillis() - startTimeForCurrentProcedure < PROCEDURE_WAIT_TIME_OUT) {
-        sleepWithoutInterrupt(PROCEDURE_WAIT_RETRY_TIMEOUT);
-      }
-      final Procedure<ConfigNodeProcedureEnv> finishedProcedure =
-          executor.getResultOrProcedure(procedureId);
-      if (!finishedProcedure.isFinished()) {
-        // The procedure is still executing
-        statusList.add(
-            RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK, PROCEDURE_TIMEOUT_MESSAGE));
-        isSucceed = false;
-        continue;
-      }
-      if (finishedProcedure.isSuccess()) {
-        if (Objects.nonNull(finishedProcedure.getResult())) {
-          statusList.add(
+  private TSStatus waitingProcedureFinished(Procedure<?> procedure) {
+    if (procedure == null) {
+      LOGGER.error("Unexpected null procedure parameters for waitingProcedureFinished");
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR);
+    }
+    TSStatus status;
+    final long startTimeForCurrentProcedure = System.currentTimeMillis();
+    while (executor.isRunning()
+        && !executor.isFinished(procedure.getProcId())
+        && System.currentTimeMillis() - startTimeForCurrentProcedure < PROCEDURE_WAIT_TIME_OUT) {
+      sleepWithoutInterrupt(PROCEDURE_WAIT_RETRY_TIMEOUT);
+    }
+    if (!procedure.isFinished()) {
+      // The procedure is still executing
+      status =
+          RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK, PROCEDURE_TIMEOUT_MESSAGE);
+    } else {
+      if (procedure.isSuccess()) {
+        if (procedure.getResult() != null) {
+          status =
               RpcUtils.getStatus(
-                  TSStatusCode.SUCCESS_STATUS, Arrays.toString(finishedProcedure.getResult())));
+                  TSStatusCode.SUCCESS_STATUS, Arrays.toString(procedure.getResult()));
         } else {
-          statusList.add(StatusUtils.OK);
+          status = StatusUtils.OK;
         }
       } else {
-        if (finishedProcedure.getException().getCause() instanceof IoTDBException) {
-          final IoTDBException e = (IoTDBException) finishedProcedure.getException().getCause();
+        if (procedure.getException().getCause() instanceof IoTDBException) {
+          final IoTDBException e = (IoTDBException) procedure.getException().getCause();
           if (e instanceof BatchProcessException) {
-            statusList.add(
+            status =
                 RpcUtils.getStatus(
                     Arrays.stream(((BatchProcessException) e).getFailingStatus())
-                        .collect(Collectors.toList())));
+                        .collect(Collectors.toList()));
           } else {
-            statusList.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+            status = RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
           }
         } else {
-          statusList.add(
-              StatusUtils.EXECUTE_STATEMENT_ERROR.setMessage(
-                  finishedProcedure.getException().getMessage()));
+          status =
+              StatusUtils.EXECUTE_STATEMENT_ERROR.setMessage(procedure.getException().getMessage());
         }
-        isSucceed = false;
       }
     }
-    return isSucceed;
+    return status;
   }
 
   private static String wrapTimeoutMessageForPipeProcedure(String message) {
@@ -1495,7 +1778,7 @@ public class ProcedureManager {
         table.getTableName(),
         null,
         ProcedureType.CREATE_TABLE_PROCEDURE,
-        new CreateTableProcedure(database, table));
+        new CreateTableProcedure(database, table, false));
   }
 
   public TSStatus alterTableAddColumn(final TAlterOrDropTableReq req) {
@@ -1509,7 +1792,8 @@ public class ProcedureManager {
             req.database,
             req.tableName,
             req.queryId,
-            TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.updateInfo)));
+            TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.updateInfo),
+            false));
   }
 
   public TSStatus alterTableSetProperties(final TAlterOrDropTableReq req) {
@@ -1520,7 +1804,11 @@ public class ProcedureManager {
         req.queryId,
         ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE,
         new SetTablePropertiesProcedure(
-            req.database, req.tableName, req.queryId, ReadWriteIOUtils.readMap(req.updateInfo)));
+            req.database,
+            req.tableName,
+            req.queryId,
+            ReadWriteIOUtils.readMap(req.updateInfo),
+            false));
   }
 
   public TSStatus alterTableRenameColumn(final TAlterOrDropTableReq req) {
@@ -1535,7 +1823,8 @@ public class ProcedureManager {
             req.tableName,
             req.queryId,
             ReadWriteIOUtils.readString(req.updateInfo),
-            ReadWriteIOUtils.readString(req.updateInfo)));
+            ReadWriteIOUtils.readString(req.updateInfo),
+            false));
   }
 
   public TSStatus alterTableDropColumn(final TAlterOrDropTableReq req) {
@@ -1546,7 +1835,11 @@ public class ProcedureManager {
         req.queryId,
         ProcedureType.DROP_TABLE_COLUMN_PROCEDURE,
         new DropTableColumnProcedure(
-            req.database, req.tableName, req.queryId, ReadWriteIOUtils.readString(req.updateInfo)));
+            req.database,
+            req.tableName,
+            req.queryId,
+            ReadWriteIOUtils.readString(req.updateInfo),
+            false));
   }
 
   public TSStatus dropTable(final TAlterOrDropTableReq req) {
@@ -1556,10 +1849,55 @@ public class ProcedureManager {
         req.tableName,
         req.queryId,
         ProcedureType.DROP_TABLE_PROCEDURE,
-        new DropTableProcedure(req.database, req.tableName, req.queryId));
+        new DropTableProcedure(req.database, req.tableName, req.queryId, false));
   }
 
-  private TSStatus executeWithoutDuplicate(
+  public TDeleteTableDeviceResp deleteDevices(
+      final TDeleteTableDeviceReq req, final boolean isGeneratedByPipe) {
+    long procedureId;
+    DeleteDevicesProcedure procedure = null;
+    synchronized (this) {
+      final Pair<Long, Boolean> procedureIdDuplicatePair =
+          checkDuplicateTableTask(
+              req.database,
+              null,
+              req.tableName,
+              req.queryId,
+              ProcedureType.DELETE_DEVICES_PROCEDURE);
+      procedureId = procedureIdDuplicatePair.getLeft();
+
+      if (procedureId == -1) {
+        if (Boolean.TRUE.equals(procedureIdDuplicatePair.getRight())) {
+          return new TDeleteTableDeviceResp(
+              RpcUtils.getStatus(
+                  TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+                  "Some other task is operating table with same name."));
+        }
+        procedure =
+            new DeleteDevicesProcedure(
+                req.database,
+                req.tableName,
+                req.queryId,
+                req.getPatternInfo(),
+                req.getFilterInfo(),
+                req.getModInfo(),
+                isGeneratedByPipe);
+        this.executor.submitProcedure(procedure);
+      }
+    }
+    TSStatus status = waitingProcedureFinished(procedure);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return new TDeleteTableDeviceResp(StatusUtils.OK)
+          .setDeletedNum(
+              Optional.ofNullable(procedure)
+                  .map(DeleteDevicesProcedure::getDeletedDevicesNum)
+                  .orElse(-1L));
+    } else {
+      return new TDeleteTableDeviceResp(status);
+    }
+  }
+
+  public TSStatus executeWithoutDuplicate(
       final String database,
       final TsTable table,
       final String tableName,
@@ -1578,13 +1916,10 @@ public class ProcedureManager {
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
               "Some other task is operating table with same name.");
         }
-        procedureId = this.executor.submitProcedure(procedure);
+        this.executor.submitProcedure(procedure);
       }
     }
-    final List<TSStatus> procedureStatus = new ArrayList<>();
-    return waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus)
-        ? StatusUtils.OK
-        : procedureStatus.get(0);
+    return waitingProcedureFinished(procedure);
   }
 
   public Pair<Long, Boolean> checkDuplicateTableTask(
@@ -1596,7 +1931,7 @@ public class ProcedureManager {
     ProcedureType type;
     for (final Procedure<?> procedure : executor.getProcedures().values()) {
       type = ProcedureFactory.getProcedureType(procedure);
-      if (type == null) {
+      if (type == null || procedure.isFinished()) {
         continue;
       }
       // A table shall not be concurrently operated or else the dataNode cache
@@ -1619,6 +1954,7 @@ public class ProcedureManager {
         case RENAME_TABLE_COLUMN_PROCEDURE:
         case DROP_TABLE_COLUMN_PROCEDURE:
         case DROP_TABLE_PROCEDURE:
+        case DELETE_DEVICES_PROCEDURE:
           final AbstractAlterOrDropTableProcedure<?> alterTableProcedure =
               (AbstractAlterOrDropTableProcedure<?>) procedure;
           if (type == thisType && queryId.equals(alterTableProcedure.getQueryId())) {

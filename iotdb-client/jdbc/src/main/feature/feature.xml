@@ -18,7 +18,7 @@
 
 -->
 <features xmlns="http://karaf.apache.org/xmlns/features/v1.5.0" name="driver-s7-feature">
-    <feature name="iotdb-feature" description="iotdb-feature" version="1.0.0">
+    <feature name="iotdb-feature" description="iotdb-feature" version="1.3.3">
         <details>Feature to install required Bundle to use IoTDB inside Karaf container</details>
         <feature prerequisite="true">wrap</feature>
         <feature>scr</feature>

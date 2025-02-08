@@ -21,6 +21,7 @@ package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFilePlainEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -143,16 +144,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
                 eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
                 return ev;
               }
-              // check offset
-              if (writingOffset != 0) {
-                final String errorMessage =
-                    String.format(
-                        "inconsistent offset, current: %s, incoming: %s, consumer: %s, file name: %s, prefetching queue: %s",
-                        0, writingOffset, consumerId, fileName, this);
-                LOGGER.warn(errorMessage);
-                eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
-                return ev;
-              }
+              // no need to check offset for resume from breakpoint
               break;
             case FILE_PIECE:
               // check file name
@@ -206,25 +198,22 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
 
           // 3. Poll tsfile piece or tsfile seal
           try {
-            ev.fetchNextResponse();
+            executeReceiverSubtask(
+                () -> {
+                  ev.fetchNextResponse(writingOffset);
+                  return null;
+                },
+                SubscriptionAgent.receiver().remainingMs());
+            ev.recordLastPolledTimestamp();
+            eventRef.set(ev);
           } catch (final Exception e) {
-            LOGGER.warn(
-                "Exception occurred when SubscriptionPrefetchingTsFileQueue {} transferring file (with event {}) to consumer {}",
-                this,
-                ev,
-                consumerId,
-                e);
             final String errorMessage =
                 String.format(
-                    "Exception occurred when SubscriptionPrefetchingTsFileQueue %s transferring file (with event %s) to consumer %s: %s",
-                    this, ev, consumerId, e);
+                    "exception occurred when fetching next response: %s, consumer id: %s, commit context: %s, writing offset: %s, prefetching queue: %s",
+                    e, consumerId, commitContext, writingOffset, this);
             LOGGER.warn(errorMessage);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
-            return ev;
           }
-
-          ev.recordLastPolledTimestamp();
-          eventRef.set(ev);
 
           return ev;
         });
@@ -242,7 +231,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
             new SubscriptionPipeTsFilePlainEvent((PipeTsFileInsertionEvent) event),
             ((PipeTsFileInsertionEvent) event).getTsFile(),
             commitContext);
-    super.enqueueEventToPrefetchingQueue(ev);
+    super.prefetchEvent(ev);
     return true;
   }
 

@@ -30,6 +30,7 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 
 import java.util.List;
+import java.util.Map;
 
 @SuppressWarnings("java:S6548") // do not warn about singleton class
 public class FileMetrics implements IMetricSet {
@@ -92,6 +93,10 @@ public class FileMetrics implements IMetricSet {
   }
 
   // endregion
+
+  public Map<Integer, Long> getRegionSizeMap() {
+    return TS_FILE_METRICS.getRegionSizeMap();
+  }
 
   private static class FileMetricsInstanceHolder {
     private static final FileMetrics INSTANCE = new FileMetrics();

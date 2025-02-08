@@ -30,5 +30,5 @@ import java.lang.annotation.Target;
  * functionality is not guaranteed and may interfere with the normal code.
  */
 @Target({ElementType.FIELD, ElementType.METHOD, ElementType.CONSTRUCTOR, ElementType.TYPE})
-@Retention(RetentionPolicy.SOURCE)
+@Retention(RetentionPolicy.CLASS)
 public @interface TestOnly {}

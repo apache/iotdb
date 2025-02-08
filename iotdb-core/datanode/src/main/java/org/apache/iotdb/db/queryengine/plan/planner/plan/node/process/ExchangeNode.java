@@ -46,8 +46,6 @@ public class ExchangeNode extends SingleChildProcessNode {
 
   private List<String> outputColumnNames = new ArrayList<>();
 
-  private List<Symbol> outputSymbols = null;
-
   /** Exchange needs to know which child of IdentitySinkNode/ShuffleSinkNode it matches */
   private int indexOfUpstreamSinkHandle = 0;
 
@@ -89,11 +87,7 @@ public class ExchangeNode extends SingleChildProcessNode {
 
   @Override
   public List<Symbol> getOutputSymbols() {
-    return outputSymbols;
-  }
-
-  public void setOutputSymbols(List<Symbol> outputSymbols) {
-    this.outputSymbols = outputSymbols;
+    throw new UnsupportedOperationException();
   }
 
   public void setUpstream(TEndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
@@ -120,6 +114,7 @@ public class ExchangeNode extends SingleChildProcessNode {
     exchangeNode.setUpstream(endPoint, fragmentInstanceId, upstreamPlanNodeId);
     exchangeNode.setOutputColumnNames(outputColumnNames);
     exchangeNode.setIndexOfUpstreamSinkHandle(index);
+
     return exchangeNode;
   }
 

@@ -57,8 +57,8 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionPollMaxBlockingTimeMs();
   }
 
-  public int getSubscriptionSerializeMaxBlockingTimeMs() {
-    return COMMON_CONFIG.getSubscriptionSerializeMaxBlockingTimeMs();
+  public int getSubscriptionDefaultTimeoutInMs() {
+    return COMMON_CONFIG.getSubscriptionDefaultTimeoutInMs();
   }
 
   public long getSubscriptionLaunchRetryIntervalMs() {
@@ -81,6 +81,30 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionTsFileDeduplicationWindowSeconds();
   }
 
+  public long getSubscriptionCheckMemoryEnoughIntervalMs() {
+    return COMMON_CONFIG.getSubscriptionCheckMemoryEnoughIntervalMs();
+  }
+
+  public boolean getSubscriptionPrefetchEnabled() {
+    return COMMON_CONFIG.getSubscriptionPrefetchEnabled();
+  }
+
+  public float getSubscriptionPrefetchMemoryThreshold() {
+    return COMMON_CONFIG.getSubscriptionPrefetchMemoryThreshold();
+  }
+
+  public float getSubscriptionPrefetchMissingRateThreshold() {
+    return COMMON_CONFIG.getSubscriptionPrefetchMissingRateThreshold();
+  }
+
+  public int getSubscriptionPrefetchEventLocalCountThreshold() {
+    return COMMON_CONFIG.getSubscriptionPrefetchEventLocalCountThreshold();
+  }
+
+  public int getSubscriptionPrefetchEventGlobalCountThreshold() {
+    return COMMON_CONFIG.getSubscriptionPrefetchEventGlobalCountThreshold();
+  }
+
   public long getSubscriptionMetaSyncerInitialSyncDelayMinutes() {
     return COMMON_CONFIG.getSubscriptionMetaSyncerInitialSyncDelayMinutes();
   }
@@ -96,10 +120,10 @@ public class SubscriptionConfig {
   public void printAllConfigs() {
     LOGGER.info(
         "SubscriptionCacheMemoryUsagePercentage: {}", getSubscriptionCacheMemoryUsagePercentage());
-
     LOGGER.info(
         "SubscriptionSubtaskExecutorMaxThreadNum: {}",
         getSubscriptionSubtaskExecutorMaxThreadNum());
+
     LOGGER.info(
         "SubscriptionPrefetchTabletBatchMaxDelayInMs: {}",
         getSubscriptionPrefetchTabletBatchMaxDelayInMs());
@@ -113,8 +137,7 @@ public class SubscriptionConfig {
         "SubscriptionPrefetchTsFileBatchMaxSizeInBytes: {}",
         getSubscriptionPrefetchTsFileBatchMaxSizeInBytes());
     LOGGER.info("SubscriptionPollMaxBlockingTimeMs: {}", getSubscriptionPollMaxBlockingTimeMs());
-    LOGGER.info(
-        "SubscriptionSerializeMaxBlockingTimeMs: {}", getSubscriptionSerializeMaxBlockingTimeMs());
+    LOGGER.info("SubscriptionDefaultTimeoutInMs: {}", getSubscriptionDefaultTimeoutInMs());
     LOGGER.info("SubscriptionLaunchRetryIntervalMs: {}", getSubscriptionLaunchRetryIntervalMs());
     LOGGER.info(
         "SubscriptionRecycleUncommittedEventIntervalMs: {}",
@@ -124,6 +147,22 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionTsFileDeduplicationWindowSeconds: {}",
         getSubscriptionTsFileDeduplicationWindowSeconds());
+    LOGGER.info(
+        "SubscriptionCheckMemoryEnoughIntervalMs: {}",
+        getSubscriptionCheckMemoryEnoughIntervalMs());
+
+    LOGGER.info("SubscriptionPrefetchEnabled: {}", getSubscriptionPrefetchEnabled());
+    LOGGER.info(
+        "SubscriptionPrefetchMemoryThreshold: {}", getSubscriptionPrefetchMemoryThreshold());
+    LOGGER.info(
+        "SubscriptionPrefetchMissingRateThreshold: {}",
+        getSubscriptionPrefetchMissingRateThreshold());
+    LOGGER.info(
+        "SubscriptionPrefetchEventLocalCountThreshold: {}",
+        getSubscriptionPrefetchEventLocalCountThreshold());
+    LOGGER.info(
+        "SubscriptionPrefetchEventGlobalCountThreshold: {}",
+        getSubscriptionPrefetchEventGlobalCountThreshold());
 
     LOGGER.info(
         "SubscriptionMetaSyncerInitialSyncDelayMinutes: {}",

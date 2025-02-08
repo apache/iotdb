@@ -34,6 +34,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -165,7 +166,8 @@ public class OperatorContext implements Accountable {
 
   public void recordSpecifiedInfo(String key, String value) {
     if (specifiedInfo == null) {
-      specifiedInfo = new HashMap<>();
+      // explain analyze operator fetching and current operator updating may be concurrently
+      specifiedInfo = new ConcurrentHashMap<>();
     }
     specifiedInfo.put(key, value);
   }

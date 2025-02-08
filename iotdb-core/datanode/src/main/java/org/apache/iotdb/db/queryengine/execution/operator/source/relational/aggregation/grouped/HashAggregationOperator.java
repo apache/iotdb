@@ -39,12 +39,11 @@ import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory.NOOP;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.CURRENT_USED_MEMORY;
 
 public class HashAggregationOperator extends AbstractOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(HashAggregationOperator.class);
-
-  private final OperatorContext operatorContext;
 
   private final Operator child;
 
@@ -80,7 +79,7 @@ public class HashAggregationOperator extends AbstractOperator {
       long maxPartialMemory,
       boolean spillEnabled,
       long unspillMemoryLimit) {
-    this.operatorContext = operatorContext;
+    super.operatorContext = operatorContext;
     this.child = child;
     this.groupByTypes = ImmutableList.copyOf(groupByTypes);
     this.groupByChannels = ImmutableList.copyOf(groupByChannels);
@@ -155,6 +154,7 @@ public class HashAggregationOperator extends AbstractOperator {
 
   private void updateOccupiedMemorySize() {
     long memorySize = aggregationBuilder.getEstimatedSize();
+    operatorContext.recordSpecifiedInfo(CURRENT_USED_MEMORY, Long.toString(memorySize));
     long delta = memorySize - previousRetainedSize;
     if (delta > 0) {
       memoryReservationManager.reserveMemoryCumulatively(delta);
@@ -165,15 +165,14 @@ public class HashAggregationOperator extends AbstractOperator {
   }
 
   private TsBlock getOutput() {
-    // only flush if we are finishing or the aggregation builder is full
-    if (aggregationBuilder == null) {
-      return null;
-    }
+    checkState(aggregationBuilder != null);
 
     TsBlock result = aggregationBuilder.buildResult();
 
-    closeAggregationBuilder();
-    finished = true;
+    if (aggregationBuilder.finished()) {
+      closeAggregationBuilder();
+      finished = true;
+    }
     return result;
   }
 
@@ -196,6 +195,7 @@ public class HashAggregationOperator extends AbstractOperator {
   @Override
   public void close() throws Exception {
     child.close();
+    aggregators.forEach(GroupedAggregator::close);
   }
 
   @Override

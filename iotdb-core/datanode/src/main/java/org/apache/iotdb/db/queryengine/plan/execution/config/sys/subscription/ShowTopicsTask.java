@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription;
 
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicInfo;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowTopicsStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -42,18 +43,23 @@ public class ShowTopicsTask implements IConfigTask {
 
   private final ShowTopicsStatement showTopicsStatement;
 
-  public ShowTopicsTask(ShowTopicsStatement showTopicsStatement) {
+  public ShowTopicsTask(final ShowTopicsStatement showTopicsStatement) {
     this.showTopicsStatement = showTopicsStatement;
   }
 
+  public ShowTopicsTask(final ShowTopics showTopics) {
+    this.showTopicsStatement = new ShowTopicsStatement();
+    this.showTopicsStatement.setTopicName(showTopics.getTopicName());
+  }
+
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.showTopics(showTopicsStatement);
   }
 
   public static void buildTSBlock(
-      List<TShowTopicInfo> topicInfoList, SettableFuture<ConfigTaskResult> future) {
+      final List<TShowTopicInfo> topicInfoList, final SettableFuture<ConfigTaskResult> future) {
     final TsBlockBuilder builder =
         new TsBlockBuilder(
             ColumnHeaderConstant.showTopicColumnHeaders.stream()

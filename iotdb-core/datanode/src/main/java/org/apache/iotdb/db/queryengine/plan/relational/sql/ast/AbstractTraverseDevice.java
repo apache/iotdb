@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -41,6 +41,7 @@ import java.util.Optional;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDeviceWithCache.getDeviceColumnHeaderList;
 
 // TODO table metadata: reuse query distinct logic
+// Show, Count, Update, Delete Devices
 public abstract class AbstractTraverseDevice extends Statement {
 
   protected String database;
@@ -60,10 +61,10 @@ public abstract class AbstractTraverseDevice extends Statement {
    * <p>Each inner list represents a device pattern and each expression of it represents one
    * condition on some id column.
    */
-  private List<List<SchemaFilter>> idDeterminedFilterList;
+  protected List<List<SchemaFilter>> idDeterminedFilterList;
 
   /** filters/conditions involving non-id columns and concat by OR to id column filters */
-  private Expression idFuzzyPredicate;
+  protected Expression idFuzzyPredicate;
 
   private List<IDeviceID> partitionKeyList;
 
@@ -99,8 +100,16 @@ public abstract class AbstractTraverseDevice extends Statement {
     return database;
   }
 
+  public void setDatabase(final String database) {
+    this.database = database;
+  }
+
   public String getTableName() {
     return tableName;
+  }
+
+  public void setTableName(final String tableName) {
+    this.tableName = tableName;
   }
 
   public Table getTable() {

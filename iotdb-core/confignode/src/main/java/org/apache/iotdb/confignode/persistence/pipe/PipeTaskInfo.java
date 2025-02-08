@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTemporaryMetaInCoordinator;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
@@ -77,6 +78,8 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeRPCMessageConstant.PIPE_ALREADY_EXIST_MSG;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeRPCMessageConstant.PIPE_NOT_EXIST_MSG;
 
 public class PipeTaskInfo implements SnapshotProcessor {
 
@@ -178,32 +181,28 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
     final String exceptionMessage =
         String.format(
-            "Failed to create pipe %s, the pipe with the same name has been created",
-            createPipeRequest.getPipeName());
+            "Failed to create pipe %s, %s",
+            createPipeRequest.getPipeName(), PIPE_ALREADY_EXIST_MSG);
     LOGGER.warn(exceptionMessage);
     throw new PipeException(exceptionMessage);
   }
 
-  public boolean checkAndUpdateRequestBeforeAlterPipe(final TAlterPipeReq alterPipeRequest)
+  public void checkAndUpdateRequestBeforeAlterPipe(final TAlterPipeReq alterPipeRequest)
       throws PipeException {
     acquireReadLock();
     try {
-      return checkAndUpdateRequestBeforeAlterPipeInternal(alterPipeRequest);
+      checkAndUpdateRequestBeforeAlterPipeInternal(alterPipeRequest);
     } finally {
       releaseReadLock();
     }
   }
 
-  private boolean checkAndUpdateRequestBeforeAlterPipeInternal(final TAlterPipeReq alterPipeRequest)
+  private void checkAndUpdateRequestBeforeAlterPipeInternal(final TAlterPipeReq alterPipeRequest)
       throws PipeException {
     if (!isPipeExisted(alterPipeRequest.getPipeName())) {
-      if (alterPipeRequest.isSetIfExistsCondition() && alterPipeRequest.isIfExistsCondition()) {
-        return false;
-      }
-
       final String exceptionMessage =
           String.format(
-              "Failed to alter pipe %s, the pipe does not exist", alterPipeRequest.getPipeName());
+              "Failed to alter pipe %s, %s", alterPipeRequest.getPipeName(), PIPE_NOT_EXIST_MSG);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
@@ -264,8 +263,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
                 .getAttribute());
       }
     }
-
-    return true;
   }
 
   public void checkBeforeStartPipe(final String pipeName) throws PipeException {
@@ -280,7 +277,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   private void checkBeforeStartPipeInternal(final String pipeName) throws PipeException {
     if (!isPipeExisted(pipeName)) {
       final String exceptionMessage =
-          String.format("Failed to start pipe %s, the pipe does not exist", pipeName);
+          String.format("Failed to start pipe %s, %s", pipeName, PIPE_NOT_EXIST_MSG);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
@@ -306,7 +303,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   private void checkBeforeStopPipeInternal(final String pipeName) throws PipeException {
     if (!isPipeExisted(pipeName)) {
       final String exceptionMessage =
-          String.format("Failed to stop pipe %s, the pipe does not exist", pipeName);
+          String.format("Failed to stop pipe %s, %s", pipeName, PIPE_NOT_EXIST_MSG);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
@@ -343,6 +340,15 @@ public class PipeTaskInfo implements SnapshotProcessor {
     acquireReadLock();
     try {
       return pipeMetaKeeper.containsPipeMeta(pipeName);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public boolean isPipeExisted(final String pipeName, final boolean isTableModel) {
+    acquireReadLock();
+    try {
+      return pipeMetaKeeper.containsPipeMeta(pipeName, isTableModel);
     } finally {
       releaseReadLock();
     }
@@ -434,9 +440,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public TSStatus createPipe(final CreatePipePlanV2 plan) {
     acquireWriteLock();
     try {
-      pipeMetaKeeper.addPipeMeta(
-          plan.getPipeStaticMeta().getPipeName(),
-          new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta()));
+      pipeMetaKeeper.addPipeMeta(new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta()));
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       releaseWriteLock();
@@ -496,7 +500,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
           pipeMetaKeeper.getPipeMeta(plan.getPipeStaticMeta().getPipeName()).getTemporaryMeta();
       pipeMetaKeeper.removePipeMeta(plan.getPipeStaticMeta().getPipeName());
       pipeMetaKeeper.addPipeMeta(
-          plan.getPipeStaticMeta().getPipeName(),
           new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta(), temporaryMeta));
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
@@ -602,7 +605,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
                                   .get(consensusGroupId.getId())
                                   .setLeaderNodeId(newLeader);
                               // New region leader may contain un-transferred events
-                              pipeMeta.getTemporaryMeta().markDataNodeUncompleted(newLeader);
+                              ((PipeTemporaryMetaInCoordinator) pipeMeta.getTemporaryMeta())
+                                  .markDataNodeUncompleted(newLeader);
                             } else {
                               consensusGroupIdToTaskMetaMap.remove(consensusGroupId.getId());
                             }
@@ -656,7 +660,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     plan.getPipeMetaList()
         .forEach(
             pipeMeta -> {
-              pipeMetaKeeper.addPipeMeta(pipeMeta.getStaticMeta().getPipeName(), pipeMeta);
+              pipeMetaKeeper.addPipeMeta(pipeMeta);
               logger.ifPresent(l -> l.info("Recording pipe meta: {}", pipeMeta));
             });
 

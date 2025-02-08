@@ -96,9 +96,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
     // We should execute checkBeforeAlterPipe before checking the pipe plugin. This method will
     // update the alterPipeRequest based on the alterPipeRequest and existing pipe metadata.
-    if (!pipeTaskInfo.get().checkAndUpdateRequestBeforeAlterPipe(alterPipeRequest)) {
-      return false;
-    }
+    pipeTaskInfo.get().checkAndUpdateRequestBeforeAlterPipe(alterPipeRequest);
 
     final PipeManager pipeManager = env.getConfigManager().getPipeManager();
     pipeManager
@@ -144,7 +142,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         .forEach(
             (regionGroupId, regionLeaderNodeId) -> {
               final String databaseName =
-                  env.getConfigManager().getPartitionManager().getRegionStorageGroup(regionGroupId);
+                  env.getConfigManager().getPartitionManager().getRegionDatabase(regionGroupId);
               final PipeTaskMeta currentPipeTaskMeta =
                   currentConsensusGroupId2PipeTaskMeta.get(regionGroupId.getId());
               if (databaseName != null

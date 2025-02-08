@@ -20,10 +20,13 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.queryengine.execution.aggregation.VarianceAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAvgAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountIfAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedExtremeAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedFirstAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedFirstByAccumulator;
@@ -35,19 +38,38 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedMinByAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedModeAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedSumAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedUserDefinedAggregateAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedVarianceAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.UpdateMemory;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.MarkDistinctHash;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
+import org.apache.iotdb.udf.api.relational.AggregateFunction;
 
+import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.common.block.column.IntColumn;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.TypeFactory;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkState;
-import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableBuiltinAggregationFunction.FIRST_BY;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableBuiltinAggregationFunction.LAST_BY;
+import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.FIRST_BY;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST_BY;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
+import static org.apache.tsfile.read.common.type.IntType.INT32;
 
 public class AccumulatorFactory {
 
@@ -57,37 +79,60 @@ public class AccumulatorFactory {
       List<TSDataType> inputDataTypes,
       List<Expression> inputExpressions,
       Map<String, String> inputAttributes,
-      boolean ascending) {
+      boolean ascending,
+      String timeColumnName,
+      boolean distinct) {
+    TableAccumulator result;
+
     if (aggregationType == TAggregationType.UDAF) {
       // If UDAF accumulator receives raw input, it needs to check input's attribute
-      throw new UnsupportedOperationException();
+      result = createUDAFAccumulator(functionName, inputDataTypes, inputAttributes);
     } else if ((LAST_BY.getFunctionName().equals(functionName)
             || FIRST_BY.getFunctionName().equals(functionName))
         && inputExpressions.size() > 1) {
       boolean xIsTimeColumn = false;
       boolean yIsTimeColumn = false;
-      if (isTimeColumn(inputExpressions.get(1))) {
+      if (isTimeColumn(inputExpressions.get(1), timeColumnName)) {
         yIsTimeColumn = true;
-      } else if (isTimeColumn(inputExpressions.get(0))) {
+      } else if (isTimeColumn(inputExpressions.get(0), timeColumnName)) {
         xIsTimeColumn = true;
       }
       if (LAST_BY.getFunctionName().equals(functionName)) {
-        return ascending
-            ? new LastByAccumulator(
-                inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn)
-            : new LastByDescAccumulator(
-                inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn);
+        result =
+            ascending
+                ? new LastByAccumulator(
+                    inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn)
+                : new LastByDescAccumulator(
+                    inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn);
       } else {
-        return ascending
-            ? new FirstByAccumulator(
-                inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn)
-            : new FirstByDescAccumulator(
-                inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn);
+        result =
+            ascending
+                ? new FirstByAccumulator(
+                    inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn)
+                : new FirstByDescAccumulator(
+                    inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn);
       }
+    } else if (LAST.getFunctionName().equals(functionName)) {
+      boolean isTimeColumn = isTimeColumn(inputExpressions.get(0), timeColumnName);
+      return ascending
+          ? new LastAccumulator(inputDataTypes.get(0), isTimeColumn)
+          : new LastDescAccumulator(inputDataTypes.get(0), isTimeColumn);
     } else {
-      return createBuiltinAccumulator(
-          aggregationType, inputDataTypes, inputExpressions, inputAttributes, ascending);
+      result =
+          createBuiltinAccumulator(
+              aggregationType, inputDataTypes, inputExpressions, inputAttributes, ascending);
     }
+
+    if (distinct) {
+      result =
+          new DistinctAccumulator(
+              result,
+              inputDataTypes.stream()
+                  .map(InternalTypeManager::fromTSDataType)
+                  .collect(Collectors.toList()));
+    }
+
+    return result;
   }
 
   public static GroupedAccumulator createGroupedAccumulator(
@@ -96,14 +141,54 @@ public class AccumulatorFactory {
       List<TSDataType> inputDataTypes,
       List<Expression> inputExpressions,
       Map<String, String> inputAttributes,
-      boolean ascending) {
+      boolean ascending,
+      boolean distinct) {
+    GroupedAccumulator result;
+
     if (aggregationType == TAggregationType.UDAF) {
       // If UDAF accumulator receives raw input, it needs to check input's attribute
-      throw new UnsupportedOperationException();
+      result = createGroupedUDAFAccumulator(functionName, inputDataTypes, inputAttributes);
     } else {
-      return createBuiltinGroupedAccumulator(
-          aggregationType, inputDataTypes, inputExpressions, inputAttributes, ascending);
+      result =
+          createBuiltinGroupedAccumulator(
+              aggregationType, inputDataTypes, inputExpressions, inputAttributes, ascending);
     }
+
+    if (distinct) {
+      result =
+          new DistinctGroupedAccumulator(
+              result,
+              inputDataTypes.stream()
+                  .map(InternalTypeManager::fromTSDataType)
+                  .collect(Collectors.toList()));
+    }
+
+    return result;
+  }
+
+  private static TableAccumulator createUDAFAccumulator(
+      String functionName, List<TSDataType> inputDataTypes, Map<String, String> inputAttributes) {
+    AggregateFunction aggregateFunction = TableUDFUtils.getAggregateFunction(functionName);
+    FunctionArguments functionArguments =
+        new FunctionArguments(
+            UDFDataTypeTransformer.transformToUDFDataTypeList(inputDataTypes), inputAttributes);
+    aggregateFunction.beforeStart(functionArguments);
+    return new UserDefinedAggregateFunctionAccumulator(
+        aggregateFunction.analyze(functionArguments),
+        aggregateFunction,
+        inputDataTypes.stream().map(TypeFactory::getType).collect(Collectors.toList()));
+  }
+
+  private static GroupedAccumulator createGroupedUDAFAccumulator(
+      String functionName, List<TSDataType> inputDataTypes, Map<String, String> inputAttributes) {
+    AggregateFunction aggregateFunction = TableUDFUtils.getAggregateFunction(functionName);
+    FunctionArguments functionArguments =
+        new FunctionArguments(
+            UDFDataTypeTransformer.transformToUDFDataTypeList(inputDataTypes), inputAttributes);
+    aggregateFunction.beforeStart(functionArguments);
+    return new GroupedUserDefinedAggregateAccumulator(
+        aggregateFunction,
+        inputDataTypes.stream().map(TypeFactory::getType).collect(Collectors.toList()));
   }
 
   private static GroupedAccumulator createBuiltinGroupedAccumulator(
@@ -115,6 +200,8 @@ public class AccumulatorFactory {
     switch (aggregationType) {
       case COUNT:
         return new GroupedCountAccumulator();
+      case COUNT_IF:
+        return new GroupedCountIfAccumulator();
       case AVG:
         return new GroupedAvgAccumulator(inputDataTypes.get(0));
       case SUM:
@@ -167,14 +254,18 @@ public class AccumulatorFactory {
     switch (aggregationType) {
       case COUNT:
         return new CountAccumulator();
+      case COUNT_ALL:
+        return new CountAllAccumulator();
+      case COUNT_IF:
+        return new CountIfAccumulator();
       case AVG:
         return new AvgAccumulator(inputDataTypes.get(0));
       case SUM:
         return new SumAccumulator(inputDataTypes.get(0));
       case LAST:
         return ascending
-            ? new LastAccumulator(inputDataTypes.get(0))
-            : new LastDescAccumulator(inputDataTypes.get(0));
+            ? new LastAccumulator(inputDataTypes.get(0), false)
+            : new LastDescAccumulator(inputDataTypes.get(0), false);
       case FIRST:
         return ascending
             ? new FirstAccumulator(inputDataTypes.get(0))
@@ -327,8 +418,166 @@ public class AccumulatorFactory {
     boolean apply(long keep);
   }
 
-  public static boolean isTimeColumn(Expression expression) {
-    return expression instanceof SymbolReference
-        && TIME_COLUMN_NAME.equals(((SymbolReference) expression).getName());
+  private static class DistinctAccumulator implements TableAccumulator {
+    private final TableAccumulator accumulator;
+    private MarkDistinctHash hash;
+
+    private final List<Type> inputTypes;
+
+    private DistinctAccumulator(TableAccumulator accumulator, List<Type> inputTypes) {
+      this.accumulator = requireNonNull(accumulator, "accumulator is null");
+      this.hash = new MarkDistinctHash(inputTypes, false, UpdateMemory.NOOP);
+      this.inputTypes = inputTypes;
+    }
+
+    @Override
+    public long getEstimatedSize() {
+      return hash.getEstimatedSize() + accumulator.getEstimatedSize();
+    }
+
+    @Override
+    public TableAccumulator copy() {
+      throw new UnsupportedOperationException(
+          "Distinct aggregation function state can not be copied");
+    }
+
+    @Override
+    public void addInput(Column[] arguments, AggregationMask mask) {
+      // 1. filter out positions based on mask, if present
+      Column[] filtered = mask.filterBlock(arguments);
+
+      // 2. compute a distinct mask column
+      Column distinctMask = hash.markDistinctRows(filtered);
+
+      // 3. update original mask to the new distinct mask
+      mask.reset(filtered[0].getPositionCount());
+      mask.applyMaskBlock(distinctMask);
+      if (mask.isSelectNone()) {
+        return;
+      }
+
+      // 4. feed a TsBlock with a new mask to the underlying aggregation
+      accumulator.addInput(filtered, mask);
+    }
+
+    @Override
+    public void addIntermediate(Column argument) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void evaluateIntermediate(ColumnBuilder columnBuilder) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void evaluateFinal(ColumnBuilder columnBuilder) {
+      accumulator.evaluateFinal(columnBuilder);
+    }
+
+    @Override
+    public boolean hasFinalResult() {
+      return accumulator.hasFinalResult();
+    }
+
+    @Override
+    public void addStatistics(Statistics[] statistics) {
+      throw new UnsupportedOperationException("Distinct aggregation function can not be push down");
+    }
+
+    @Override
+    public void reset() {
+      accumulator.reset();
+      hash = new MarkDistinctHash(inputTypes, false, UpdateMemory.NOOP);
+    }
+  }
+
+  private static class DistinctGroupedAccumulator implements GroupedAccumulator {
+    private final GroupedAccumulator accumulator;
+    private MarkDistinctHash hash;
+
+    private final List<Type> inputTypes;
+
+    private DistinctGroupedAccumulator(GroupedAccumulator accumulator, List<Type> inputTypes) {
+      this.accumulator = requireNonNull(accumulator, "accumulator is null");
+      this.inputTypes =
+          ImmutableList.<Type>builder()
+              .add(INT32) // group id column
+              .addAll(inputTypes)
+              .build();
+      this.hash = new MarkDistinctHash(this.inputTypes, false, UpdateMemory.NOOP);
+    }
+
+    @Override
+    public long getEstimatedSize() {
+      return hash.getEstimatedSize() + accumulator.getEstimatedSize();
+    }
+
+    @Override
+    public void setGroupCount(long groupCount) {
+      accumulator.setGroupCount(groupCount);
+    }
+
+    @Override
+    public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
+      // 1. filter out positions based on mask
+      groupIds = maskGroupIds(groupIds, mask);
+      Column[] filtered = mask.filterBlock(arguments);
+
+      // 2. compute a distinct mask column (including the group id)
+      Column distinctMask =
+          hash.markDistinctRows(
+              Stream.concat(
+                      Stream.of(new IntColumn(groupIds.length, Optional.empty(), groupIds)),
+                      Arrays.stream(filtered))
+                  .toArray(Column[]::new));
+
+      // 3. update original mask to the new distinct mask
+      mask.reset(filtered[0].getPositionCount());
+      mask.applyMaskBlock(distinctMask);
+      if (mask.isSelectNone()) {
+        return;
+      }
+
+      // 4. feed a TsBlock with a new mask to the underlying aggregation
+      accumulator.addInput(groupIds, filtered, mask);
+    }
+
+    private static int[] maskGroupIds(int[] groupIds, AggregationMask mask) {
+      if (mask.isSelectAll() || mask.isSelectNone()) {
+        return groupIds;
+      }
+
+      int[] newGroupIds = new int[mask.getSelectedPositionCount()];
+      int[] selectedPositions = mask.getSelectedPositions();
+      for (int i = 0; i < newGroupIds.length; i++) {
+        newGroupIds[i] = groupIds[selectedPositions[i]];
+      }
+      return newGroupIds;
+    }
+
+    @Override
+    public void addIntermediate(int[] groupIds, Column argument) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void evaluateFinal(int groupId, ColumnBuilder columnBuilder) {
+      accumulator.evaluateFinal(groupId, columnBuilder);
+    }
+
+    @Override
+    public void prepareFinal() {}
+
+    @Override
+    public void reset() {
+      accumulator.reset();
+      hash = new MarkDistinctHash(inputTypes, false, UpdateMemory.NOOP);
+    }
   }
 }

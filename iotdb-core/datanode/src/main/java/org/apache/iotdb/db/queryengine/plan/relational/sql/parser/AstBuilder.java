@@ -20,18 +20,25 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
@@ -44,30 +51,39 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpressio
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentTime;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataTypeParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.EmptyTableTreatment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
@@ -79,7 +95,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Intersect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
@@ -88,12 +103,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinCriteria;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MigrateRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NaturalJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NodeLocation;
@@ -110,7 +127,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedCompari
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QueryBody;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReconstructRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
@@ -130,11 +151,15 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
@@ -142,12 +167,17 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableExpressionType;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionArgument;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionTableArgument;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
@@ -160,15 +190,18 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
+import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
@@ -178,7 +211,10 @@ import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.exception.write.NoTableException;
 import org.apache.tsfile.utils.TimeDuration;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import javax.annotation.Nullable;
 
@@ -200,21 +236,24 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ID;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TAG;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseDateTimeFormat;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.CUBE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.EXPLICIT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.ROLLUP;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName.mapIdentifier;
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction.DATE_BIN;
+import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.currPrecision;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_AGGREGATION;
@@ -228,9 +267,12 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   private final ZoneId zoneId;
 
-  AstBuilder(@Nullable NodeLocation baseLocation, ZoneId zoneId) {
+  private final IClientSession clientSession;
+
+  AstBuilder(@Nullable NodeLocation baseLocation, ZoneId zoneId, IClientSession clientSession) {
     this.baseLocation = baseLocation;
     this.zoneId = zoneId;
+    this.clientSession = clientSession;
   }
 
   @Override
@@ -270,7 +312,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitCreateDbStatement(RelationalSqlParser.CreateDbStatementContext ctx) {
+  public Node visitCreateDbStatement(final RelationalSqlParser.CreateDbStatementContext ctx) {
     List<Property> properties = ImmutableList.of();
     if (ctx.properties() != null) {
       properties = visit(ctx.properties().propertyAssignments().property(), Property.class);
@@ -284,7 +326,21 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitDropDbStatement(RelationalSqlParser.DropDbStatementContext ctx) {
+  public Node visitAlterDbStatement(final RelationalSqlParser.AlterDbStatementContext ctx) {
+    List<Property> properties = ImmutableList.of();
+    if (ctx.propertyAssignments() != null) {
+      properties = visit(ctx.propertyAssignments().property(), Property.class);
+    }
+
+    return new AlterDB(
+        getLocation(ctx),
+        ctx.EXISTS() != null,
+        ((Identifier) visit(ctx.database)).getValue(),
+        properties);
+  }
+
+  @Override
+  public Node visitDropDbStatement(final RelationalSqlParser.DropDbStatementContext ctx) {
     return new DropDB(
         getLocation(ctx), lowerIdentifier((Identifier) visit(ctx.database)), ctx.EXISTS() != null);
   }
@@ -336,7 +392,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitDescTableStatement(final RelationalSqlParser.DescTableStatementContext ctx) {
-    return new DescribeTable(getLocation(ctx), getQualifiedName(ctx.table));
+    return new DescribeTable(
+        getLocation(ctx), getQualifiedName(ctx.table), Objects.nonNull(ctx.DETAILS()));
   }
 
   @Override
@@ -428,26 +485,75 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitInsertStatement(RelationalSqlParser.InsertStatementContext ctx) {
+  public Node visitInsertStatement(final RelationalSqlParser.InsertStatementContext ctx) {
+    final QualifiedName qualifiedName = getQualifiedName(ctx.tableName);
+    String tableName = qualifiedName.getSuffix();
+    String databaseName =
+        qualifiedName
+            .getPrefix()
+            .map(QualifiedName::toString)
+            .orElse(clientSession.getDatabaseName());
+    if (databaseName == null) {
+      throw new SemanticException(DATABASE_NOT_SPECIFIED);
+    }
+    tableName = tableName.toLowerCase();
+    databaseName = databaseName.toLowerCase();
+
+    final Query query = (Query) visit(ctx.query());
     if (ctx.columnAliases() != null) {
-      Query query = (Query) visit(ctx.query());
-      List<Identifier> identifiers = visit(ctx.columnAliases().identifier(), Identifier.class);
+      final List<Identifier> identifiers =
+          visit(ctx.columnAliases().identifier(), Identifier.class);
       if (query.getQueryBody() instanceof Values) {
         return visitInsertValues(
-            getQualifiedName(ctx.tableName), identifiers, ((Values) query.getQueryBody()));
+            databaseName, tableName, identifiers, ((Values) query.getQueryBody()));
+      } else {
+        throw new SemanticException("Only support insert by values.");
       }
-      return new Insert(new Table(getQualifiedName(ctx.tableName)), identifiers, query);
     } else {
-      return new Insert(new Table(getQualifiedName(ctx.tableName)), (Query) visit(ctx.query()));
+      if (query.getQueryBody() instanceof Values) {
+        final TsTable table = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
+        if (table == null) {
+          throw new SemanticException(new NoTableException(tableName));
+        }
+        return visitInsertValues(databaseName, table, ((Values) query.getQueryBody()));
+      } else {
+        throw new SemanticException("Only support insert by values.");
+      }
     }
   }
 
   private Node visitInsertValues(
-      QualifiedName qualifiedTableName, List<Identifier> identifiers, Values queryBody) {
-    Optional<String> databaseName = qualifiedTableName.getPrefix().map(QualifiedName::toString);
-    String tableName = qualifiedTableName.getSuffix();
+      final String databaseName, final TsTable table, final Values queryBody) {
+    final List<Expression> rows = queryBody.getRows();
+    final List<InsertRowStatement> rowStatements =
+        rows.stream()
+            .map(
+                r -> {
+                  List<Expression> expressions;
+                  if (r instanceof Row) {
+                    expressions = ((Row) r).getItems();
+                  } else if (r instanceof Literal) {
+                    expressions = Collections.singletonList(r);
+                  } else {
+                    throw new SemanticException("unexpected expression: " + r);
+                  }
+                  return toInsertRowStatement(expressions, table, databaseName);
+                })
+            .collect(toList());
 
-    List<String> columnNames = identifiers.stream().map(Identifier::getValue).collect(toList());
+    InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
+    insertRowsStatement.setInsertRowStatementList(rowStatements);
+    insertRowsStatement.setWriteToTable(true);
+    return new InsertRows(insertRowsStatement, null);
+  }
+
+  private Node visitInsertValues(
+      final String databaseName,
+      final String tableName,
+      final List<Identifier> identifiers,
+      final Values queryBody) {
+    final List<String> columnNames =
+        identifiers.stream().map(Identifier::getValue).collect(toList());
     int timeColumnIndex = -1;
     for (int i = 0; i < columnNames.size(); i++) {
       if (TIME_COLUMN_NAME.equalsIgnoreCase(columnNames.get(i))) {
@@ -461,6 +567,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     if (timeColumnIndex != -1) {
       columnNames.remove(timeColumnIndex);
     }
+
     String[] columnNameArray = columnNames.toArray(new String[0]);
 
     List<Expression> rows = queryBody.getRows();
@@ -492,11 +599,78 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   private InsertRowStatement toInsertRowStatement(
+      List<Expression> expressions, TsTable table, String databaseName) {
+    InsertRowStatement insertRowStatement = new InsertRowStatement();
+    insertRowStatement.setWriteToTable(true);
+    insertRowStatement.setDevicePath(new PartialPath(new String[] {table.getTableName()}));
+
+    List<TsTableColumnSchema> columnList = table.getColumnList();
+    if (expressions.size() != columnList.size()) {
+      throw new SemanticException(
+          "expressions and columns do not match, expressions size: "
+              + expressions.size()
+              + ", columns size: "
+              + columnList.size());
+    }
+
+    String[] nonTimeColumnNames = new String[columnList.size() - 1];
+    Object[] nonTimeValues = new Object[columnList.size() - 1];
+    TsTableColumnCategory[] nonTimeColumnCategories =
+        new TsTableColumnCategory[columnList.size() - 1];
+    MeasurementSchema[] columnSchemas = new MeasurementSchema[columnList.size() - 1];
+    TSDataType[] dataTypes = new TSDataType[columnList.size() - 1];
+    int nonTimeColumnIndex = 0;
+    long timestamp = -1;
+    for (int i = 0; i < columnList.size(); i++) {
+      TsTableColumnSchema columnSchema = columnList.get(i);
+      Expression expression = expressions.get(i);
+
+      if (columnSchema.getColumnCategory().equals(TIME)) {
+        if (expression instanceof LongLiteral) {
+          timestamp = ((LongLiteral) expression).getParsedValue();
+        } else {
+          timestamp =
+              parseDateTimeFormat(
+                  ((StringLiteral) expression).getValue(),
+                  CommonDateTimeUtils.currentTime(),
+                  zoneId);
+        }
+      } else {
+        Object value = AstUtil.expressionToTsValue(expression);
+        nonTimeValues[nonTimeColumnIndex] = value;
+        nonTimeColumnNames[nonTimeColumnIndex] = columnSchema.getColumnName();
+        dataTypes[nonTimeColumnIndex] = columnSchema.getDataType();
+        nonTimeColumnCategories[nonTimeColumnIndex] = columnSchema.getColumnCategory();
+        columnSchemas[nonTimeColumnIndex] =
+            new MeasurementSchema(columnSchema.getColumnName(), columnSchema.getDataType());
+        nonTimeColumnIndex++;
+      }
+    }
+
+    TimestampPrecisionUtils.checkTimestampPrecision(timestamp);
+    insertRowStatement.setTime(timestamp);
+    insertRowStatement.setMeasurements(nonTimeColumnNames);
+    insertRowStatement.setDataTypes(dataTypes);
+    insertRowStatement.setMeasurementSchemas(columnSchemas);
+    insertRowStatement.setValues(nonTimeValues);
+    insertRowStatement.setColumnCategories(nonTimeColumnCategories);
+    insertRowStatement.setNeedInferType(false);
+    insertRowStatement.setDatabaseName(databaseName);
+
+    try {
+      insertRowStatement.transferType(zoneId);
+    } catch (QueryProcessException e) {
+      throw new SemanticException(e);
+    }
+    return insertRowStatement;
+  }
+
+  private InsertRowStatement toInsertRowStatement(
       List<Expression> expressions,
       int timeColumnIndex,
       String[] nonTimeColumnNames,
       String tableName,
-      Optional<String> databaseName) {
+      String databaseName) {
     InsertRowStatement insertRowStatement = new InsertRowStatement();
     insertRowStatement.setWriteToTable(true);
     insertRowStatement.setDevicePath(new PartialPath(new String[] {tableName}));
@@ -540,8 +714,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
     insertRowStatement.setValues(values);
     insertRowStatement.setNeedInferType(true);
-    databaseName.ifPresent(
-        databaseName1 -> insertRowStatement.setDatabaseName(databaseName1.toLowerCase()));
+    insertRowStatement.setDatabaseName(databaseName);
     return insertRowStatement;
   }
 
@@ -570,6 +743,17 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitDeleteDeviceStatement(
+      final RelationalSqlParser.DeleteDeviceStatementContext ctx) {
+    return new DeleteDevice(
+        getLocation(ctx),
+        new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
+        Objects.nonNull(ctx.booleanExpression())
+            ? (Expression) visit(ctx.booleanExpression())
+            : null);
+  }
+
+  @Override
   public Node visitUpdateAssignment(RelationalSqlParser.UpdateAssignmentContext ctx) {
     return new UpdateAssignment(
         (Identifier) visit(ctx.identifier()), (Expression) visit(ctx.expression()));
@@ -577,7 +761,14 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitCreateFunctionStatement(RelationalSqlParser.CreateFunctionStatementContext ctx) {
-    return super.visitCreateFunctionStatement(ctx);
+    final String udfName = ((Identifier) visit(ctx.udfName)).getValue();
+    final String className = ((Identifier) visit(ctx.className)).getValue();
+    if (ctx.uriClause() == null) {
+      return new CreateFunction(getLocation(ctx), udfName, className);
+    } else {
+      String uriString = parseAndValidateURI(ctx.uriClause());
+      return new CreateFunction(getLocation(ctx), udfName, className, uriString);
+    }
   }
 
   @Override
@@ -587,12 +778,13 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitDropFunctionStatement(RelationalSqlParser.DropFunctionStatementContext ctx) {
-    return super.visitDropFunctionStatement(ctx);
+    final String udfName = ((Identifier) visit(ctx.udfName)).getValue();
+    return new DropFunction(getLocation(ctx), udfName);
   }
 
   @Override
   public Node visitShowFunctionsStatement(RelationalSqlParser.ShowFunctionsStatementContext ctx) {
-    return super.visitShowFunctionsStatement(ctx);
+    return new ShowFunctions();
   }
 
   @Override
@@ -652,13 +844,13 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   private Map<String, String> parseExtractorAttributesClause(
       List<RelationalSqlParser.ExtractorAttributeClauseContext> contexts) {
-    final Map<String, String> collectorMap = new HashMap<>();
+    final Map<String, String> extractorMap = new HashMap<>();
     for (RelationalSqlParser.ExtractorAttributeClauseContext context : contexts) {
-      collectorMap.put(
+      extractorMap.put(
           ((StringLiteral) visit(context.extractorKey)).getValue(),
           ((StringLiteral) visit(context.extractorValue)).getValue());
     }
-    return collectorMap;
+    return extractorMap;
   }
 
   private Map<String, String> parseProcessorAttributesClause(
@@ -801,22 +993,84 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitCreateTopicStatement(RelationalSqlParser.CreateTopicStatementContext ctx) {
+    final String topicName = ((Identifier) visit(ctx.identifier())).getValue();
+    final boolean hasIfNotExistsCondition =
+        ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null;
+
+    final Map<String, String> topicAttributes =
+        ctx.topicAttributesClause() != null
+            ? parseTopicAttributesClause(ctx.topicAttributesClause().topicAttributeClause())
+            : new HashMap<>(); // DO NOT USE Collections.emptyMap() here
+
+    return new CreateTopic(topicName, hasIfNotExistsCondition, topicAttributes);
+  }
+
+  private Map<String, String> parseTopicAttributesClause(
+      List<RelationalSqlParser.TopicAttributeClauseContext> contexts) {
+    final Map<String, String> tppicMap = new HashMap<>();
+    for (RelationalSqlParser.TopicAttributeClauseContext context : contexts) {
+      tppicMap.put(
+          ((StringLiteral) visit(context.topicKey)).getValue(),
+          ((StringLiteral) visit(context.topicValue)).getValue());
+    }
+    return tppicMap;
+  }
+
+  @Override
+  public Node visitDropTopicStatement(RelationalSqlParser.DropTopicStatementContext ctx) {
+    final String topicName = ((Identifier) visit(ctx.identifier())).getValue();
+    final boolean hasIfExistsCondition = ctx.IF() != null && ctx.EXISTS() != null;
+    return new DropTopic(topicName, hasIfExistsCondition);
+  }
+
+  @Override
+  public Node visitShowTopicsStatement(RelationalSqlParser.ShowTopicsStatementContext ctx) {
+    final String topicName =
+        getIdentifierIfPresent(ctx.identifier()).map(Identifier::getValue).orElse(null);
+    return new ShowTopics(topicName);
+  }
+
+  @Override
+  public Node visitShowSubscriptionsStatement(
+      RelationalSqlParser.ShowSubscriptionsStatementContext ctx) {
+    final String topicName =
+        getIdentifierIfPresent(ctx.identifier()).map(Identifier::getValue).orElse(null);
+    return new ShowSubscriptions(topicName);
+  }
+
+  @Override
   public Node visitShowDevicesStatement(final RelationalSqlParser.ShowDevicesStatementContext ctx) {
-    return new ShowDevice(
-        getLocation(ctx),
-        new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
-        visitIfPresent(ctx.where, Expression.class).orElse(null),
-        visitIfPresent(ctx.limitOffsetClause().offset, Offset.class).orElse(null),
-        visitIfPresent(ctx.limitOffsetClause().limit, Node.class).orElse(null));
+    final QualifiedName name = getQualifiedName(ctx.tableName);
+    return InformationSchema.INFORMATION_DATABASE.equals(
+            name.getPrefix().map(QualifiedName::toString).orElse(clientSession.getDatabaseName()))
+        ? new ShowStatement(
+            getLocation(ctx),
+            name.getSuffix(),
+            visitIfPresent(ctx.where, Expression.class),
+            Optional.empty(),
+            visitIfPresent(ctx.limitOffsetClause().offset, Offset.class),
+            visitIfPresent(ctx.limitOffsetClause().limit, Node.class))
+        : new ShowDevice(
+            getLocation(ctx),
+            new Table(getLocation(ctx), name),
+            visitIfPresent(ctx.where, Expression.class).orElse(null),
+            visitIfPresent(ctx.limitOffsetClause().offset, Offset.class).orElse(null),
+            visitIfPresent(ctx.limitOffsetClause().limit, Node.class).orElse(null));
   }
 
   @Override
   public Node visitCountDevicesStatement(
       final RelationalSqlParser.CountDevicesStatementContext ctx) {
-    return new CountDevice(
-        getLocation(ctx),
-        new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
-        visitIfPresent(ctx.where, Expression.class).orElse(null));
+    final QualifiedName name = getQualifiedName(ctx.tableName);
+    return InformationSchema.INFORMATION_DATABASE.equals(
+            name.getPrefix().map(QualifiedName::toString).orElse(clientSession.getDatabaseName()))
+        ? new CountStatement(
+            getLocation(ctx), name.getSuffix(), visitIfPresent(ctx.where, Expression.class))
+        : new CountDevice(
+            getLocation(ctx),
+            new Table(getLocation(ctx), name),
+            visitIfPresent(ctx.where, Expression.class).orElse(null));
   }
 
   @Override
@@ -896,30 +1150,60 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitMigrateRegionStatement(RelationalSqlParser.MigrateRegionStatementContext ctx) {
-    return super.visitMigrateRegionStatement(ctx);
+    return new MigrateRegion(
+        Integer.parseInt(ctx.regionId.getText()),
+        Integer.parseInt(ctx.fromId.getText()),
+        Integer.parseInt(ctx.toId.getText()));
   }
 
   @Override
-  public Node visitFlushStatement(RelationalSqlParser.FlushStatementContext ctx) {
-    FlushStatement flushStatement = new FlushStatement(StatementType.FLUSH);
-    List<PartialPath> storageGroups = null;
+  public Node visitReconstructRegionStatement(
+      RelationalSqlParser.ReconstructRegionStatementContext ctx) {
+    int dataNodeId = Integer.parseInt(ctx.targetDataNodeId.getText());
+    List<Integer> regionIds =
+        ctx.regionIds.stream()
+            .map(Token::getText)
+            .map(Integer::parseInt)
+            .collect(Collectors.toList());
+    return new ReconstructRegion(dataNodeId, regionIds);
+  }
+
+  @Override
+  public Node visitExtendRegionStatement(RelationalSqlParser.ExtendRegionStatementContext ctx) {
+    return new ExtendRegion(
+        Integer.parseInt(ctx.regionId.getText()), Integer.parseInt(ctx.targetDataNodeId.getText()));
+  }
+
+  @Override
+  public Node visitRemoveRegionStatement(RelationalSqlParser.RemoveRegionStatementContext ctx) {
+    return new RemoveRegion(
+        Integer.parseInt(ctx.regionId.getText()), Integer.parseInt(ctx.targetDataNodeId.getText()));
+  }
+
+  @Override
+  public Node visitRemoveDataNodeStatement(RelationalSqlParser.RemoveDataNodeStatementContext ctx) {
+    List<Integer> nodeIds =
+        ctx.INTEGER_VALUE().stream()
+            .map(TerminalNode::getText)
+            .map(Integer::valueOf)
+            .collect(Collectors.toList());
+    return new RemoveDataNode(nodeIds);
+  }
+
+  @Override
+  public Node visitFlushStatement(final RelationalSqlParser.FlushStatementContext ctx) {
+    final FlushStatement flushStatement = new FlushStatement(StatementType.FLUSH);
+    List<String> storageGroups = null;
     if (ctx.booleanValue() != null) {
       flushStatement.setSeq(Boolean.parseBoolean(ctx.booleanValue().getText()));
     }
     flushStatement.setOnCluster(
         ctx.localOrClusterMode() == null || ctx.localOrClusterMode().LOCAL() == null);
     if (ctx.identifier() != null) {
-      storageGroups = new ArrayList<>();
-      List<Identifier> identifiers = getIdentifiers(ctx.identifier());
-      for (Identifier identifier : identifiers) {
-        try {
-          storageGroups.add(new PartialPath(PathUtils.qualifyDatabaseName(identifier.getValue())));
-        } catch (IllegalPathException e) {
-          throw new RuntimeException(e);
-        }
-      }
+      storageGroups =
+          getIdentifiers(ctx.identifier()).stream().map(Identifier::getValue).collect(toList());
     }
-    flushStatement.setStorageGroups(storageGroups);
+    flushStatement.setDatabases(storageGroups);
     return new Flush(flushStatement, null);
   }
 
@@ -946,11 +1230,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         Objects.isNull(ctx.localOrClusterMode())
             || Objects.nonNull(ctx.localOrClusterMode().CLUSTER()),
         options);
-  }
-
-  @Override
-  public Node visitRepairDataStatement(RelationalSqlParser.RepairDataStatementContext ctx) {
-    return super.visitRepairDataStatement(ctx);
   }
 
   @Override
@@ -995,12 +1274,40 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitShowQueriesStatement(RelationalSqlParser.ShowQueriesStatementContext ctx) {
-    return super.visitShowQueriesStatement(ctx);
+    Optional<OrderBy> orderBy = Optional.empty();
+    if (ctx.ORDER() != null) {
+      orderBy =
+          Optional.of(new OrderBy(getLocation(ctx.ORDER()), visit(ctx.sortItem(), SortItem.class)));
+    }
+
+    Optional<Offset> offset = Optional.empty();
+    if (ctx.limitOffsetClause().OFFSET() != null) {
+      offset = visitIfPresent(ctx.limitOffsetClause().offset, Offset.class);
+    }
+
+    Optional<Node> limit = Optional.empty();
+    if (ctx.limitOffsetClause().LIMIT() != null) {
+      if (ctx.limitOffsetClause().limit == null) {
+        throw new IllegalStateException("Missing LIMIT value");
+      }
+      limit = visitIfPresent(ctx.limitOffsetClause().limit, Node.class);
+    }
+
+    return new ShowStatement(
+        getLocation(ctx),
+        InformationSchema.QUERIES,
+        visitIfPresent(ctx.where, Expression.class),
+        orderBy,
+        offset,
+        limit);
   }
 
   @Override
   public Node visitKillQueryStatement(RelationalSqlParser.KillQueryStatementContext ctx) {
-    return super.visitKillQueryStatement(ctx);
+    if (ctx.queryId == null) {
+      return new KillQuery(null, getLocation(ctx));
+    }
+    return new KillQuery(((StringLiteral) visit(ctx.queryId)).getValue(), getLocation(ctx));
   }
 
   @Override
@@ -1037,6 +1344,23 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitStartRepairDataStatement(
+      RelationalSqlParser.StartRepairDataStatementContext ctx) {
+    StartRepairDataStatement startRepairDataStatement =
+        new StartRepairDataStatement(StatementType.START_REPAIR_DATA);
+    startRepairDataStatement.setOnCluster(ctx.localOrClusterMode().LOCAL() == null);
+    return new StartRepairData(startRepairDataStatement, null);
+  }
+
+  @Override
+  public Node visitStopRepairDataStatement(RelationalSqlParser.StopRepairDataStatementContext ctx) {
+    StopRepairDataStatement stopRepairDataStatement =
+        new StopRepairDataStatement(StatementType.STOP_REPAIR_DATA);
+    stopRepairDataStatement.setOnCluster(ctx.localOrClusterMode().LOCAL() == null);
+    return new StopRepairData(stopRepairDataStatement, null);
+  }
+
+  @Override
   public Node visitLocalOrClusterMode(RelationalSqlParser.LocalOrClusterModeContext ctx) {
     return super.visitLocalOrClusterMode(ctx);
   }
@@ -1053,7 +1377,265 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitExplainAnalyze(RelationalSqlParser.ExplainAnalyzeContext ctx) {
-    return super.visitExplainAnalyze(ctx);
+    return new ExplainAnalyze(
+        getLocation(ctx), ctx.VERBOSE() != null, (Statement) visit(ctx.query()));
+  }
+
+  // ********************** author expressions ********************
+
+  private String stripQuotes(String text) {
+    if (text != null && text.length() >= 2 && text.startsWith("'") && text.endsWith("'")) {
+      return text.substring(1, text.length() - 1).replace("''", "'");
+    }
+    return text;
+  }
+
+  @Override
+  public Node visitCreateUserStatement(RelationalSqlParser.CreateUserStatementContext ctx) {
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.CREATE_USER);
+    stmt.setUserName(ctx.userName.getText());
+    stmt.setPassword(stripQuotes(ctx.password.getText()));
+    return stmt;
+  }
+
+  @Override
+  public Node visitCreateRoleStatement(RelationalSqlParser.CreateRoleStatementContext ctx) {
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.CREATE_ROLE);
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitDropUserStatement(RelationalSqlParser.DropUserStatementContext ctx) {
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.DROP_USER);
+    stmt.setUserName(ctx.userName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitDropRoleStatement(RelationalSqlParser.DropRoleStatementContext ctx) {
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.DROP_ROLE);
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitAlterUserStatement(RelationalSqlParser.AlterUserStatementContext ctx) {
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.UPDATE_USER);
+    stmt.setUserName(ctx.userName.getText());
+    stmt.setPassword(stripQuotes(ctx.password.getText()));
+    return stmt;
+  }
+
+  @Override
+  public Node visitGrantUserRoleStatement(RelationalSqlParser.GrantUserRoleStatementContext ctx) {
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.GRANT_USER_ROLE);
+    stmt.setUserName(ctx.userName.getText());
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitRevokeUserRoleStatement(RelationalSqlParser.RevokeUserRoleStatementContext ctx) {
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.REVOKE_USER_ROLE);
+    stmt.setUserName(ctx.userName.getText());
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitListUserPrivilegeStatement(
+      RelationalSqlParser.ListUserPrivilegeStatementContext ctx) {
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.LIST_USER_PRIV);
+    stmt.setUserName(ctx.userName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitListRolePrivilegeStatement(
+      RelationalSqlParser.ListRolePrivilegeStatementContext ctx) {
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.LIST_ROLE_PRIV);
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitListUserStatement(RelationalSqlParser.ListUserStatementContext ctx) {
+    return new RelationalAuthorStatement(AuthorRType.LIST_USER);
+  }
+
+  @Override
+  public Node visitListRoleStatement(RelationalSqlParser.ListRoleStatementContext ctx) {
+    return new RelationalAuthorStatement(AuthorRType.LIST_ROLE);
+  }
+
+  private Set<PrivilegeType> parseSystemPrivilege(RelationalSqlParser.SystemPrivilegesContext ctx) {
+    List<RelationalSqlParser.SystemPrivilegeContext> privilegeContexts = ctx.systemPrivilege();
+    Set<PrivilegeType> privileges = new HashSet<>();
+    for (RelationalSqlParser.SystemPrivilegeContext privilege : privilegeContexts) {
+      privileges.add(PrivilegeType.valueOf(privilege.getText().toUpperCase()));
+    }
+    return privileges;
+  }
+
+  private Set<PrivilegeType> parseRelationalPrivilege(
+      RelationalSqlParser.ObjectPrivilegesContext ctx) {
+    List<RelationalSqlParser.ObjectPrivilegeContext> privilegeContexts = ctx.objectPrivilege();
+    Set<PrivilegeType> privileges = new HashSet<>();
+    for (RelationalSqlParser.ObjectPrivilegeContext privilege : privilegeContexts) {
+      privileges.add(PrivilegeType.valueOf(privilege.getText().toUpperCase()));
+    }
+    return privileges;
+  }
+
+  @Override
+  public Node visitGrantStatement(RelationalSqlParser.GrantStatementContext ctx) {
+    boolean toUser;
+    String name;
+    toUser = ctx.holderType().getText().equalsIgnoreCase("user");
+    name = ctx.holderName.getText();
+    boolean grantOption = ctx.grantOpt() != null;
+    boolean toTable;
+    Set<PrivilegeType> privileges;
+    // SYSTEM PRIVILEGES OR ALL PRIVILEGES
+    if (ctx.privilegeObjectScope().ON() == null) {
+      if (ctx.privilegeObjectScope().ALL() != null) {
+        return new RelationalAuthorStatement(
+            toUser ? AuthorRType.GRANT_USER_ALL : AuthorRType.GRANT_ROLE_ALL,
+            toUser ? name : "",
+            toUser ? "" : name,
+            grantOption);
+      } else {
+        privileges = parseSystemPrivilege(ctx.privilegeObjectScope().systemPrivileges());
+        return new RelationalAuthorStatement(
+            toUser ? AuthorRType.GRANT_USER_SYS : AuthorRType.GRANT_ROLE_SYS,
+            privileges,
+            toUser ? name : "",
+            toUser ? "" : name,
+            grantOption);
+      }
+    } else {
+      privileges = parseRelationalPrivilege(ctx.privilegeObjectScope().objectPrivileges());
+      // ON TABLE / DB
+      if (ctx.privilegeObjectScope().objectType() != null) {
+        toTable = ctx.privilegeObjectScope().objectType().getText().equalsIgnoreCase("table");
+        String databaseName = "";
+        if (toTable) {
+          databaseName = clientSession.getDatabaseName();
+          if (databaseName == null) {
+            throw new SemanticException("Database is not set yet.");
+          }
+        }
+        String obj = ctx.privilegeObjectScope().objectName.getText();
+        return new RelationalAuthorStatement(
+            toUser
+                ? toTable ? AuthorRType.GRANT_USER_TB : AuthorRType.GRANT_USER_DB
+                : toTable ? AuthorRType.GRANT_ROLE_TB : AuthorRType.GRANT_ROLE_DB,
+            toUser ? name : "",
+            toUser ? "" : name,
+            toTable ? databaseName.toLowerCase() : obj.toLowerCase(),
+            toTable ? obj.toLowerCase() : "",
+            privileges,
+            grantOption,
+            null);
+      } else if (ctx.privilegeObjectScope().objectScope() != null) {
+        String db = ctx.privilegeObjectScope().objectScope().dbname.getText().toLowerCase();
+        String tb = ctx.privilegeObjectScope().objectScope().tbname.getText().toLowerCase();
+        return new RelationalAuthorStatement(
+            toUser ? AuthorRType.GRANT_USER_TB : AuthorRType.GRANT_ROLE_TB,
+            toUser ? name : "",
+            toUser ? "" : name,
+            db,
+            tb,
+            privileges,
+            grantOption,
+            null);
+      } else if (ctx.privilegeObjectScope().ANY() != null) {
+        return new RelationalAuthorStatement(
+            toUser ? AuthorRType.GRANT_USER_ANY : AuthorRType.GRANT_ROLE_ANY,
+            privileges,
+            toUser ? name : "",
+            toUser ? "" : name,
+            grantOption);
+      }
+    }
+    // will not get here.
+    throw new SemanticException("author statement parser error");
+  }
+
+  public Node visitRevokeStatement(RelationalSqlParser.RevokeStatementContext ctx) {
+    boolean fromUser;
+    String name;
+    fromUser = ctx.holderType().getText().equalsIgnoreCase("user");
+    name = ctx.holderName.getText();
+    boolean grantOption = ctx.revokeGrantOpt() != null;
+    boolean fromTable;
+    Set<PrivilegeType> privileges = new HashSet<>();
+
+    // SYSTEM PRIVILEGES OR ALL PRIVILEGES
+    if (ctx.privilegeObjectScope().ON() == null) {
+      if (ctx.privilegeObjectScope().ALL() != null) {
+        return new RelationalAuthorStatement(
+            fromUser ? AuthorRType.REVOKE_USER_ALL : AuthorRType.REVOKE_ROLE_ALL,
+            fromUser ? name : "",
+            fromUser ? "" : name,
+            grantOption);
+      } else {
+        privileges = parseSystemPrivilege(ctx.privilegeObjectScope().systemPrivileges());
+        return new RelationalAuthorStatement(
+            fromUser ? AuthorRType.REVOKE_USER_SYS : AuthorRType.REVOKE_ROLE_SYS,
+            privileges,
+            fromUser ? name : "",
+            fromUser ? "" : name,
+            grantOption);
+      }
+    } else {
+      privileges = parseRelationalPrivilege(ctx.privilegeObjectScope().objectPrivileges());
+      // ON TABLE / DB
+      if (ctx.privilegeObjectScope().objectType() != null) {
+        fromTable = ctx.privilegeObjectScope().objectType().getText().equalsIgnoreCase("table");
+        String databaseName = "";
+        if (fromTable) {
+          databaseName = clientSession.getDatabaseName();
+          if (databaseName == null) {
+            throw new SemanticException("Database is not set yet.");
+          }
+        }
+        String obj = ctx.privilegeObjectScope().objectName.getText();
+        return new RelationalAuthorStatement(
+            fromUser
+                ? fromTable ? AuthorRType.REVOKE_USER_TB : AuthorRType.REVOKE_USER_DB
+                : fromTable ? AuthorRType.REVOKE_ROLE_TB : AuthorRType.REVOKE_ROLE_DB,
+            fromUser ? name : "",
+            fromUser ? "" : name,
+            fromTable ? databaseName.toLowerCase() : obj.toLowerCase(),
+            fromTable ? obj.toLowerCase() : "",
+            privileges,
+            grantOption,
+            null);
+      } else if (ctx.privilegeObjectScope().objectScope() != null) {
+        String db = ctx.privilegeObjectScope().objectScope().dbname.getText().toLowerCase();
+        String tb = ctx.privilegeObjectScope().objectScope().tbname.getText().toLowerCase();
+        return new RelationalAuthorStatement(
+            fromUser ? AuthorRType.REVOKE_USER_TB : AuthorRType.REVOKE_ROLE_TB,
+            fromUser ? name : "",
+            fromUser ? "" : name,
+            db,
+            tb,
+            privileges,
+            grantOption,
+            null);
+      } else if (ctx.privilegeObjectScope().ANY() != null) {
+        return new RelationalAuthorStatement(
+            fromUser ? AuthorRType.REVOKE_USER_ANY : AuthorRType.REVOKE_ROLE_ANY,
+            privileges,
+            fromUser ? name : "",
+            fromUser ? "" : name,
+            grantOption);
+      }
+    }
+    // will not get here.
+    throw new SemanticException("author statement parser error");
   }
 
   // ********************** query expressions ********************
@@ -1549,6 +2131,136 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return visit(ctx.relation());
   }
 
+  @Override
+  public Node visitTableFunctionInvocation(
+      RelationalSqlParser.TableFunctionInvocationContext context) {
+    return visit(context.tableFunctionCall());
+  }
+
+  @Override
+  public Node visitTableFunctionCall(RelationalSqlParser.TableFunctionCallContext context) {
+    QualifiedName name = getQualifiedName(context.qualifiedName());
+    List<TableFunctionArgument> arguments =
+        visit(context.tableFunctionArgument(), TableFunctionArgument.class);
+    List<List<QualifiedName>> copartitioning = ImmutableList.of();
+    if (context.COPARTITION() != null) {
+      copartitioning =
+          context.copartitionTables().stream()
+              .map(
+                  tablesList ->
+                      tablesList.qualifiedName().stream()
+                          .map(this::getQualifiedName)
+                          .collect(toImmutableList()))
+              .collect(toImmutableList());
+    }
+
+    return new TableFunctionInvocation(getLocation(context), name, arguments, copartitioning);
+  }
+
+  @Override
+  public Node visitTableFunctionArgument(RelationalSqlParser.TableFunctionArgumentContext context) {
+    Optional<Identifier> name = visitIfPresent(context.identifier(), Identifier.class);
+    Node value;
+    if (context.tableArgument() != null) {
+      value = visit(context.tableArgument());
+    } else {
+      value = visit(context.scalarArgument());
+    }
+
+    return new TableFunctionArgument(getLocation(context), name, value);
+  }
+
+  @Override
+  public Node visitTableArgument(RelationalSqlParser.TableArgumentContext context) {
+    Relation table = (Relation) visit(context.tableArgumentRelation());
+
+    Optional<List<Expression>> partitionBy = Optional.empty();
+    if (context.PARTITION() != null) {
+      partitionBy = Optional.of(visit(context.expression(), Expression.class));
+    }
+
+    Optional<OrderBy> orderBy = Optional.empty();
+    if (context.ORDER() != null) {
+      orderBy =
+          Optional.of(
+              new OrderBy(getLocation(context.ORDER()), visit(context.sortItem(), SortItem.class)));
+    }
+
+    Optional<EmptyTableTreatment> emptyTableTreatment = Optional.empty();
+    if (context.PRUNE() != null) {
+      emptyTableTreatment =
+          Optional.of(
+              new EmptyTableTreatment(
+                  getLocation(context.PRUNE()), EmptyTableTreatment.Treatment.PRUNE));
+    } else if (context.KEEP() != null) {
+      emptyTableTreatment =
+          Optional.of(
+              new EmptyTableTreatment(
+                  getLocation(context.KEEP()), EmptyTableTreatment.Treatment.KEEP));
+    }
+
+    return new TableFunctionTableArgument(
+        getLocation(context), table, partitionBy, orderBy, emptyTableTreatment);
+  }
+
+  @Override
+  public Node visitTableArgumentTable(RelationalSqlParser.TableArgumentTableContext context) {
+    Relation relation =
+        new Table(getLocation(context.TABLE()), getQualifiedName(context.qualifiedName()));
+
+    if (context.identifier() != null) {
+      Identifier alias = (Identifier) visit(context.identifier());
+      if (context.AS() == null) {
+        validateArgumentAlias(alias, context.identifier());
+      }
+      List<Identifier> columnNames = null;
+      if (context.columnAliases() != null) {
+        columnNames = visit(context.columnAliases().identifier(), Identifier.class);
+      }
+      relation = new AliasedRelation(getLocation(context.TABLE()), relation, alias, columnNames);
+    }
+
+    return relation;
+  }
+
+  @Override
+  public Node visitTableArgumentQuery(RelationalSqlParser.TableArgumentQueryContext context) {
+    Relation relation =
+        new TableSubquery(getLocation(context.TABLE()), (Query) visit(context.query()));
+
+    if (context.identifier() != null) {
+      Identifier alias = (Identifier) visit(context.identifier());
+      if (context.AS() == null) {
+        validateArgumentAlias(alias, context.identifier());
+      }
+      List<Identifier> columnNames = null;
+      if (context.columnAliases() != null) {
+        columnNames = visit(context.columnAliases().identifier(), Identifier.class);
+      }
+      relation = new AliasedRelation(getLocation(context.TABLE()), relation, alias, columnNames);
+    }
+
+    return relation;
+  }
+
+  @Override
+  public Node visitScalarArgument(RelationalSqlParser.ScalarArgumentContext ctx) {
+    if (ctx.expression() != null) {
+      return visit(ctx.expression());
+    } else {
+      TimeDuration timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
+
+      if (timeDuration.monthDuration != 0 && timeDuration.nonMonthDuration != 0) {
+        throw new SemanticException(
+            "Simultaneous setting of monthly and non-monthly intervals is not supported.");
+      }
+
+      return new LongLiteral(
+          getLocation(ctx.timeDuration()),
+          String.valueOf(timeDuration.getTotalDuration(currPrecision)));
+    }
+  }
+
   // ********************* predicates *******************
 
   @Override
@@ -1921,6 +2633,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
               new DereferenceExpression(getLocation(ctx.label), (Identifier) visit(ctx.label)));
     }
 
+    // Syntactic sugar: first(s1) => first(s1,time), first_by(s1,s2) => first_by(s1,s2,time)
+    // So do last and last_by.
     if (name.toString().equalsIgnoreCase(FIRST_AGGREGATION)
         || name.toString().equalsIgnoreCase(LAST_AGGREGATION)) {
       if (arguments.size() == 1) {
@@ -1935,8 +2649,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
                 .equalsIgnoreCase(TimestampOperand.TIMESTAMP_EXPRESSION_STRING),
             "The second argument of 'first' or 'last' function must be 'time'",
             ctx);
-      } else {
-        throw parseError("Invalid number of arguments for 'first' or 'last' function", ctx);
       }
     } else if (name.toString().equalsIgnoreCase(FIRST_BY_AGGREGATION)
         || name.toString().equalsIgnoreCase(LAST_BY_AGGREGATION)) {
@@ -1952,8 +2664,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
                 .equalsIgnoreCase(TimestampOperand.TIMESTAMP_EXPRESSION_STRING),
             "The third argument of 'first_by' or 'last_by' function must be 'time'",
             ctx);
-      } else {
-        throw parseError("Invalid number of arguments for 'first_by' or 'last_by' function", ctx);
       }
     }
 
@@ -2271,19 +2981,19 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return Optional.ofNullable(context).map(c -> (Identifier) visit(c));
   }
 
-  private static TsTableColumnCategory getColumnCategory(Token category) {
+  private static TsTableColumnCategory getColumnCategory(final Token category) {
     if (category == null) {
-      return MEASUREMENT;
+      return FIELD;
     }
     switch (category.getType()) {
-      case RelationalSqlLexer.ID:
-        return ID;
+      case RelationalSqlLexer.TAG:
+        return TAG;
       case RelationalSqlLexer.ATTRIBUTE:
         return ATTRIBUTE;
       case RelationalSqlLexer.TIME:
         return TIME;
-      case RelationalSqlLexer.MEASUREMENT:
-        return MEASUREMENT;
+      case RelationalSqlLexer.FIELD:
+        return FIELD;
       default:
         throw new UnsupportedOperationException(
             "Unsupported ColumnCategory: " + category.getText());

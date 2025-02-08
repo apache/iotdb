@@ -78,13 +78,13 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
 
   public static int estimateSize(final SchemaCacheEntry schemaCacheEntry) {
     return INSTANCE_SIZE
-        + 2 * schemaCacheEntry.getSchema().getMeasurementId().length()
+        + 2 * schemaCacheEntry.getSchema().getMeasurementName().length()
         + (int) RamUsageEstimator.sizeOfMap(schemaCacheEntry.getTagMap());
   }
 
   @Override
   public String getName() {
-    return iMeasurementSchema.getMeasurementId();
+    return iMeasurementSchema.getMeasurementName();
   }
 
   @Override

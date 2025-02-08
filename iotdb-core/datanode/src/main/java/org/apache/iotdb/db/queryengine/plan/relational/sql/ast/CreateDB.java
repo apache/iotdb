@@ -19,63 +19,26 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 
 import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public class CreateDB extends Statement {
-
-  private final boolean ifNotExists;
-  private final String dbName;
-  private final List<Property> properties;
-
-  public CreateDB(final boolean ifNotExists, final String dbName) {
-    super(null);
-    this.ifNotExists = ifNotExists;
-    this.dbName = requireNonNull(dbName, "dbName is null").toLowerCase(Locale.ENGLISH);
-    this.properties = null;
-  }
-
-  public CreateDB(final NodeLocation location, final boolean ifNotExists, final String dbName) {
-    super(requireNonNull(location, "location is null"));
-    this.ifNotExists = ifNotExists;
-    this.dbName = requireNonNull(dbName, "dbName is null").toLowerCase(Locale.ENGLISH);
-    this.properties = null;
-  }
-
-  public CreateDB(final boolean ifNotExists, final String dbName, final List<Property> properties) {
-    super(null);
-    this.ifNotExists = ifNotExists;
-    this.dbName = requireNonNull(dbName, "dbName is null").toLowerCase(Locale.ENGLISH);
-    this.properties = ImmutableList.copyOf(requireNonNull(properties, "properties is null"));
-  }
+public class CreateDB extends DatabaseStatement {
 
   public CreateDB(
       final NodeLocation location,
-      final boolean ifNotExists,
+      final boolean exists,
       final String dbName,
       final List<Property> properties) {
-    super(requireNonNull(location, "location is null"));
-    this.ifNotExists = ifNotExists;
-    this.dbName = requireNonNull(dbName, "dbName is null").toLowerCase(Locale.ENGLISH);
-    this.properties = ImmutableList.copyOf(requireNonNull(properties, "properties is null"));
+    super(requireNonNull(location, "location is null"), exists, dbName, properties);
   }
 
-  public String getDbName() {
-    return dbName;
-  }
-
-  public boolean isSetIfNotExists() {
-    return ifNotExists;
-  }
-
-  public List<Property> getProperties() {
-    return properties;
+  @Override
+  public DatabaseSchemaStatement.DatabaseSchemaStatementType getType() {
+    return DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE;
   }
 
   @Override
@@ -84,34 +47,10 @@ public class CreateDB extends Statement {
   }
 
   @Override
-  public List<Node> getChildren() {
-    return ImmutableList.copyOf(properties);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(dbName, ifNotExists, properties);
-  }
-
-  @Override
-  public boolean equals(final Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if ((obj == null) || (getClass() != obj.getClass())) {
-      return false;
-    }
-    final CreateDB o = (CreateDB) obj;
-    return Objects.equals(dbName, o.dbName)
-        && Objects.equals(ifNotExists, o.ifNotExists)
-        && Objects.equals(properties, o.properties);
-  }
-
-  @Override
   public String toString() {
     return toStringHelper(this)
         .add("dbName", dbName)
-        .add("ifNotExists", ifNotExists)
+        .add("ifNotExists", exists)
         .add("properties", properties)
         .toString();
   }

@@ -29,7 +29,7 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionIdentifierSemanti
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
@@ -54,7 +54,7 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegressionMisc.class})
 public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegressionIT {
-  private static SubscriptionPushConsumer consumer;
+  private static SubscriptionTreePushConsumer consumer;
   private static final String topicName = "TestParamPushConsumerTopic1";
   private static final String database = "root.TestParamPushConsumer";
   private static final String device = database + ".d_0";
@@ -83,7 +83,7 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
     subs.getTopics().forEach(System.out::println);
     session_src.executeNonQueryStatement("create user user02 'user02';");
     consumer =
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("consumer_id_default")
@@ -120,7 +120,7 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
     Tablet tablet = new Tablet(device, schemaList, 10);
     int rowIndex = 0;
     for (int row = 0; row < 5; row++) {
-      rowIndex = tablet.rowSize++;
+      rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue("s_0", rowIndex, row * 20L + row);
       tablet.addValue("s_1", rowIndex, row + 2.45);
@@ -135,8 +135,8 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
       throws IoTDBConnectionException, StatementExecutionException {
     long count = getCount(session_src, sql);
     insert_data(1706659200000L);
-    try (final SubscriptionPushConsumer consumer =
-        new SubscriptionPushConsumer.Builder()
+    try (final SubscriptionTreePushConsumer consumer =
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .ackStrategy(AckStrategy.BEFORE_CONSUME)
@@ -170,8 +170,8 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
     String sql = "select count(s_0) from " + device;
     long count = getCount(session_src, sql);
     insert_data(1706669800000L);
-    try (final SubscriptionPushConsumer consumer =
-        new SubscriptionPushConsumer.Builder()
+    try (final SubscriptionTreePushConsumer consumer =
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .ackStrategy(AckStrategy.BEFORE_CONSUME)
@@ -204,20 +204,23 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
 
   @Test(expected = NullPointerException.class)
   public void testCreateConsumer_null() {
-    new SubscriptionPushConsumer(null).open();
+    final Properties properties = null;
+    new SubscriptionTreePushConsumer(properties).open();
   }
 
-  @Test(expected = NullPointerException.class)
+  @Test(
+      expected =
+          SubscriptionConnectionException.class) // connect to TEndPoint(ip:localhost, port:6667)
   public void testCreateConsumer_empty() {
-    new SubscriptionPushConsumer(new Properties()).open();
+    new SubscriptionTreePushConsumer(new Properties()).open();
   }
 
   @Test(expected = SubscriptionConnectionException.class)
   public void testCreateConsumer_empty2() {
-    new SubscriptionPushConsumer.Builder().buildPushConsumer().open();
+    new SubscriptionTreePushConsumer.Builder().buildPushConsumer().open();
   }
 
-  @Test(expected = NullPointerException.class)
+  @Test(expected = SubscriptionIdentifierSemanticException.class)
   public void testSubscribe_null() {
     consumer.subscribe((String) null);
   }
@@ -234,8 +237,8 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
 
   @Test
   public void testSubscribe_dup() {
-    SubscriptionPushConsumer consumer1 =
-        new SubscriptionPushConsumer.Builder()
+    SubscriptionTreePushConsumer consumer1 =
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("consumer_id_default")
@@ -247,7 +250,7 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
     consumer1.close();
   }
 
-  @Test(expected = NullPointerException.class)
+  @Test(expected = SubscriptionIdentifierSemanticException.class)
   public void testUnSubscribe_null() {
     consumer.unsubscribe((String) null);
   }
@@ -264,8 +267,8 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
 
   @Test
   public void testUnSubscribe_dup() {
-    SubscriptionPushConsumer consumer1 =
-        new SubscriptionPushConsumer.Builder()
+    SubscriptionTreePushConsumer consumer1 =
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("consumer_id_1")
@@ -282,8 +285,8 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
   public void testUnSubscribe_notSubs()
       throws IoTDBConnectionException, StatementExecutionException {
     subs.createTopic("t");
-    SubscriptionPushConsumer consumer1 =
-        new SubscriptionPushConsumer.Builder()
+    SubscriptionTreePushConsumer consumer1 =
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("consumer_id_1")
@@ -298,8 +301,8 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
 
   @Test(expected = SubscriptionException.class)
   public void testSubscribe_AfterClose() {
-    SubscriptionPushConsumer consumer1 =
-        new SubscriptionPushConsumer.Builder()
+    SubscriptionTreePushConsumer consumer1 =
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("consumer_id_1")
@@ -313,8 +316,8 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
 
   @Test(expected = SubscriptionException.class)
   public void testUnSubscribe_AfterClose() {
-    SubscriptionPushConsumer consumer1 =
-        new SubscriptionPushConsumer.Builder()
+    SubscriptionTreePushConsumer consumer1 =
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("consumer_id_1")
@@ -328,7 +331,7 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
   @Test(expected = SubscriptionConnectionException.class)
   public void testNoUser() {
     String userName = "user01";
-    new SubscriptionPushConsumer.Builder()
+    new SubscriptionTreePushConsumer.Builder()
         .host(SRC_HOST)
         .username(userName)
         .buildPushConsumer()
@@ -338,8 +341,8 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
   @Test(expected = SubscriptionConnectionException.class)
   public void testErrorPasswd() {
     String userName = "user02";
-    SubscriptionPushConsumer consumer1 =
-        new SubscriptionPushConsumer.Builder()
+    SubscriptionTreePushConsumer consumer1 =
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .username(userName)
             .buildPushConsumer();

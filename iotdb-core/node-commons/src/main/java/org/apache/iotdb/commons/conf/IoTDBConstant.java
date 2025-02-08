@@ -108,6 +108,8 @@ public class IoTDBConstant {
 
   public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
   public static final String SLOW_SQL_LOGGER_NAME = "SLOW_SQL";
+  public static final String SAMPLED_QUERIES_LOGGER_NAME = "SAMPLED_QUERIES";
+
   public static final String COMPACTION_LOGGER_NAME = "COMPACTION";
   public static final String EXPLAIN_ANALYZE_LOGGER_NAME = "EXPLAIN_ANALYZE";
 
@@ -161,6 +163,7 @@ public class IoTDBConstant {
   public static final String COLUMN_CHILD_PATHS_TYPES = "node types";
   public static final String COLUMN_CHILD_NODES = "child nodes";
   public static final String COLUMN_DEVICES = "devices";
+  public static final String COLUMN_DELETED_DEVICE_NUM = "num_of_deleted_devices";
   public static final String COLUMN_COLUMN = "column";
   public static final String COLUMN_COUNT = "count";
   public static final String COLUMN_TAGS = "tags";
@@ -178,12 +181,23 @@ public class IoTDBConstant {
 
   public static final String COLUMN_SCHEMA_TEMPLATE = "template name";
 
+  // for tree model
   public static final String FUNCTION_TYPE_NATIVE = "native";
   public static final String FUNCTION_TYPE_BUILTIN_SCALAR = "built-in scalar";
   public static final String FUNCTION_TYPE_BUILTIN_UDAF = "built-in UDAF";
   public static final String FUNCTION_TYPE_BUILTIN_UDTF = "built-in UDTF";
   public static final String FUNCTION_TYPE_EXTERNAL_UDAF = "external UDAF";
   public static final String FUNCTION_TYPE_EXTERNAL_UDTF = "external UDTF";
+  // for table model
+  public static final String FUNCTION_TYPE_BUILTIN_SCALAR_FUNC = "built-in scalar function";
+  public static final String FUNCTION_TYPE_BUILTIN_AGG_FUNC = "built-in aggregate function";
+  public static final String FUNCTION_TYPE_BUILTIN_TABLE_FUNC = "built-in table function";
+  public static final String FUNCTION_TYPE_USER_DEFINED_SCALAR_FUNC =
+      "user-defined scalar function";
+  public static final String FUNCTION_TYPE_USER_DEFINED_AGG_FUNC =
+      "user-defined aggregate function";
+  public static final String FUNCTION_TYPE_USER_DEFINED_TABLE_FUNC = "user-defined table function";
+  // common
   public static final String FUNCTION_TYPE_UNKNOWN = "UNKNOWN";
   public static final String FUNCTION_STATE_AVAILABLE = "AVAILABLE";
   public static final String FUNCTION_STATE_UNAVAILABLE = "UNAVAILABLE";

@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
@@ -52,6 +54,7 @@ public class RegionScanLogicalPlannerTest {
 
   private static Map<PartialPath, Map<PartialPath, List<TimeseriesContext>>>
       deviceToTimeseriesSchemaInfoMap;
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static Map<PartialPath, Map<PartialPath, List<TimeseriesContext>>>
       getDeviceToTimeseriesSchemaInfoMap() throws IllegalPathException {
@@ -66,17 +69,38 @@ public class RegionScanLogicalPlannerTest {
         new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
         Collections.singletonList(
             new TimeseriesContext(
-                "INT32", null, "PLAIN", "LZ4", "{\"key1\":\"value1\"}", null, null, null)));
+                "INT32",
+                null,
+                config.getDefaultInt32Encoding().toString(),
+                "LZ4",
+                "{\"key1\":\"value1\"}",
+                null,
+                null,
+                null)));
     timeseriesSchemaInfoMap.put(
         new MeasurementPath("root.sg.d1.s2", TSDataType.DOUBLE),
         Collections.singletonList(
             new TimeseriesContext(
-                "DOUBLE", "status", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", null, null, null)));
+                "DOUBLE",
+                "status",
+                config.getDefaultDoubleEncoding().toString(),
+                "LZ4",
+                "{\"key1\":\"value1\"}",
+                null,
+                null,
+                null)));
     timeseriesSchemaInfoMap.put(
         new MeasurementPath("root.sg.d1.s3", TSDataType.BOOLEAN),
         Collections.singletonList(
             new TimeseriesContext(
-                "BOOLEAN", null, "PLAIN", "LZ4", "{\"key1\":\"value2\"}", null, null, null)));
+                "BOOLEAN",
+                null,
+                config.getDefaultBooleanEncoding().toString(),
+                "LZ4",
+                "{\"key1\":\"value2\"}",
+                null,
+                null,
+                null)));
     deviceToTimeseriesSchemaInfoMap.put(new PartialPath("root.sg.d1"), timeseriesSchemaInfoMap);
 
     Map<PartialPath, List<TimeseriesContext>> timeseriesSchemaInfoMap2 = new HashMap<>();
@@ -84,17 +108,38 @@ public class RegionScanLogicalPlannerTest {
         new MeasurementPath("root.sg.d2.s1", TSDataType.INT32),
         Collections.singletonList(
             new TimeseriesContext(
-                "INT32", null, "PLAIN", "LZ4", "{\"key1\":\"value1\"}", null, null, null)));
+                "INT32",
+                null,
+                config.getDefaultInt32Encoding().toString(),
+                "LZ4",
+                "{\"key1\":\"value1\"}",
+                null,
+                null,
+                null)));
     timeseriesSchemaInfoMap2.put(
         new MeasurementPath("root.sg.d2.s2", TSDataType.DOUBLE),
         Collections.singletonList(
             new TimeseriesContext(
-                "DOUBLE", "status", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", null, null, null)));
+                "DOUBLE",
+                "status",
+                config.getDefaultDoubleEncoding().toString(),
+                "LZ4",
+                "{\"key1\":\"value1\"}",
+                null,
+                null,
+                null)));
     timeseriesSchemaInfoMap2.put(
         new MeasurementPath("root.sg.d2.s4", TSDataType.TEXT),
         Collections.singletonList(
             new TimeseriesContext(
-                "TEXT", null, "PLAIN", "LZ4", "{\"key2\":\"value1\"}", null, null, null)));
+                "TEXT",
+                null,
+                config.getDefaultTextEncoding().toString(),
+                "LZ4",
+                "{\"key2\":\"value1\"}",
+                null,
+                null,
+                null)));
     deviceToTimeseriesSchemaInfoMap.put(new PartialPath("root.sg.d2"), timeseriesSchemaInfoMap2);
 
     List<String> schemas = new ArrayList<>();
@@ -104,10 +149,24 @@ public class RegionScanLogicalPlannerTest {
     Map<PartialPath, List<TimeseriesContext>> timeseriesSchemaInfoMap3 = new HashMap<>();
     timeseriesContextList.add(
         new TimeseriesContext(
-            "INT32", null, "PLAIN", "LZ4", "{\"key1\":\"value1\"}", null, null, null));
+            "INT32",
+            null,
+            config.getDefaultInt32Encoding().toString(),
+            "LZ4",
+            "{\"key1\":\"value1\"}",
+            null,
+            null,
+            null));
     timeseriesContextList.add(
         new TimeseriesContext(
-            "DOUBLE", "status", "PLAIN", "LZ4", "{\"key1\":\"value1\"}", null, null, null));
+            "DOUBLE",
+            "status",
+            config.getDefaultDoubleEncoding().toString(),
+            "LZ4",
+            "{\"key1\":\"value1\"}",
+            null,
+            null,
+            null));
     timeseriesSchemaInfoMap3.put(
         new AlignedPath("root.sg.d2.a", schemas, Collections.emptyList()), timeseriesContextList);
     deviceToTimeseriesSchemaInfoMap.put(new PartialPath("root.sg.d2.a"), timeseriesSchemaInfoMap3);

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
 
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.BinaryBigArray;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.BooleanBigArray;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.DoubleBigArray;
@@ -146,30 +147,30 @@ public class GroupedMaxAccumulator implements GroupedAccumulator {
   }
 
   @Override
-  public void addInput(int[] groupIds, Column[] arguments) {
+  public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
 
     switch (seriesDataType) {
       case INT32:
       case DATE:
-        addIntInput(groupIds, arguments[0]);
+        addIntInput(groupIds, arguments[0], mask);
         return;
       case INT64:
       case TIMESTAMP:
-        addLongInput(groupIds, arguments[0]);
+        addLongInput(groupIds, arguments[0], mask);
         return;
       case FLOAT:
-        addFloatInput(groupIds, arguments[0]);
+        addFloatInput(groupIds, arguments[0], mask);
         return;
       case DOUBLE:
-        addDoubleInput(groupIds, arguments[0]);
+        addDoubleInput(groupIds, arguments[0], mask);
         return;
       case TEXT:
       case STRING:
       case BLOB:
-        addBinaryInput(groupIds, arguments[0]);
+        addBinaryInput(groupIds, arguments[0], mask);
         return;
       case BOOLEAN:
-        addBooleanInput(groupIds, arguments[0]);
+        addBooleanInput(groupIds, arguments[0], mask);
         return;
       default:
         throw new UnSupportedDataTypeException(
@@ -289,10 +290,55 @@ public class GroupedMaxAccumulator implements GroupedAccumulator {
   @Override
   public void prepareFinal() {}
 
-  private void addIntInput(int[] groupIds, Column valueColumn) {
-    for (int i = 0; i < groupIds.length; i++) {
-      if (!valueColumn.isNull(i)) {
-        updateIntValue(groupIds[i], valueColumn.getInt(i));
+  @Override
+  public void reset() {
+    inits.reset();
+    switch (seriesDataType) {
+      case INT32:
+      case DATE:
+        intValues.reset();
+        return;
+      case INT64:
+      case TIMESTAMP:
+        longValues.reset();
+        return;
+      case FLOAT:
+        floatValues.reset();
+        return;
+      case DOUBLE:
+        doubleValues.reset();
+        return;
+      case TEXT:
+      case STRING:
+      case BLOB:
+        binaryValues.reset();
+        return;
+      case BOOLEAN:
+        booleanValues.reset();
+        return;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type : %s", seriesDataType));
+    }
+  }
+
+  private void addIntInput(int[] groupIds, Column valueColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!valueColumn.isNull(i)) {
+          updateIntValue(groupIds[i], valueColumn.getInt(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!valueColumn.isNull(position)) {
+          updateIntValue(groupIds[position], valueColumn.getInt(position));
+        }
       }
     }
   }
@@ -305,10 +351,23 @@ public class GroupedMaxAccumulator implements GroupedAccumulator {
     }
   }
 
-  private void addLongInput(int[] groupIds, Column valueColumn) {
-    for (int i = 0; i < groupIds.length; i++) {
-      if (!valueColumn.isNull(i)) {
-        updateLongValue(groupIds[i], valueColumn.getLong(i));
+  private void addLongInput(int[] groupIds, Column valueColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!valueColumn.isNull(i)) {
+          updateLongValue(groupIds[i], valueColumn.getLong(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!valueColumn.isNull(position)) {
+          updateLongValue(groupIds[position], valueColumn.getLong(position));
+        }
       }
     }
   }
@@ -321,10 +380,23 @@ public class GroupedMaxAccumulator implements GroupedAccumulator {
     }
   }
 
-  private void addFloatInput(int[] groupIds, Column valueColumn) {
-    for (int i = 0; i < groupIds.length; i++) {
-      if (!valueColumn.isNull(i)) {
-        updateFloatValue(groupIds[i], valueColumn.getFloat(i));
+  private void addFloatInput(int[] groupIds, Column valueColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!valueColumn.isNull(i)) {
+          updateFloatValue(groupIds[i], valueColumn.getFloat(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!valueColumn.isNull(position)) {
+          updateFloatValue(groupIds[position], valueColumn.getFloat(position));
+        }
       }
     }
   }
@@ -337,10 +409,23 @@ public class GroupedMaxAccumulator implements GroupedAccumulator {
     }
   }
 
-  private void addDoubleInput(int[] groupIds, Column valueColumn) {
-    for (int i = 0; i < groupIds.length; i++) {
-      if (!valueColumn.isNull(i)) {
-        updateDoubleValue(groupIds[i], valueColumn.getDouble(i));
+  private void addDoubleInput(int[] groupIds, Column valueColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!valueColumn.isNull(i)) {
+          updateDoubleValue(groupIds[i], valueColumn.getDouble(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!valueColumn.isNull(position)) {
+          updateDoubleValue(groupIds[position], valueColumn.getDouble(position));
+        }
       }
     }
   }
@@ -353,10 +438,23 @@ public class GroupedMaxAccumulator implements GroupedAccumulator {
     }
   }
 
-  private void addBinaryInput(int[] groupIds, Column valueColumn) {
-    for (int i = 0; i < groupIds.length; i++) {
-      if (!valueColumn.isNull(i)) {
-        updateBinaryValue(groupIds[i], valueColumn.getBinary(i));
+  private void addBinaryInput(int[] groupIds, Column valueColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!valueColumn.isNull(i)) {
+          updateBinaryValue(groupIds[i], valueColumn.getBinary(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!valueColumn.isNull(position)) {
+          updateBinaryValue(groupIds[position], valueColumn.getBinary(position));
+        }
       }
     }
   }
@@ -369,10 +467,23 @@ public class GroupedMaxAccumulator implements GroupedAccumulator {
     }
   }
 
-  private void addBooleanInput(int[] groupIds, Column valueColumn) {
-    for (int i = 0; i < groupIds.length; i++) {
-      if (!valueColumn.isNull(i)) {
-        updateBooleanValue(groupIds[i], valueColumn.getBoolean(i));
+  private void addBooleanInput(int[] groupIds, Column valueColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!valueColumn.isNull(i)) {
+          updateBooleanValue(groupIds[i], valueColumn.getBoolean(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!valueColumn.isNull(position)) {
+          updateBooleanValue(groupIds[position], valueColumn.getBoolean(position));
+        }
       }
     }
   }

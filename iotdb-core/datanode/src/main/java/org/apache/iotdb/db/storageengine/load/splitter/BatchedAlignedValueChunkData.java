@@ -137,7 +137,7 @@ public class BatchedAlignedValueChunkData extends AlignedChunkData {
               chunkHeader.getCompressionType());
       ValueChunkWriter valueChunkWriter =
           new ValueChunkWriter(
-              measurementSchema.getMeasurementId(),
+              measurementSchema.getMeasurementName(),
               measurementSchema.getCompressor(),
               measurementSchema.getType(),
               measurementSchema.getEncodingType(),

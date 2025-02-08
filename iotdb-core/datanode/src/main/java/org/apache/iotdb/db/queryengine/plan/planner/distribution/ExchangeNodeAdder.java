@@ -421,6 +421,10 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     newNode.setChild(exchangeNode);
 
     context.hasExchangeNode = true;
+    context.putNodeDistribution(
+        newNode.getPlanNodeId(),
+        new NodeDistribution(
+            NodeDistributionType.DIFFERENT_FROM_ALL_CHILDREN, DataPartition.NOT_ASSIGNED));
     return newNode;
   }
 

@@ -152,11 +152,21 @@ public class FragmentInstanceStatisticsDrawer {
     }
   }
 
+  private void addLineWithoutValueCheck(
+      List<StatisticLine> singleFragmentInstanceArea, int level, String valueName, long value) {
+    addLine(singleFragmentInstanceArea, level, valueName + String.format(": %s", value));
+  }
+
   private void addLineWithValueCheck(
       List<StatisticLine> singleFragmentInstanceArea, int level, String valueName, double value) {
     if (Math.abs(value) > EPSILON) {
       addLine(singleFragmentInstanceArea, level, valueName + String.format(": %.3f", value));
     }
+  }
+
+  private void addLineWithoutValueCheck(
+      List<StatisticLine> singleFragmentInstanceArea, int level, String valueName, double value) {
+    addLine(singleFragmentInstanceArea, level, valueName + String.format(": %.3f", value));
   }
 
   private void addBlankLine(List<StatisticLine> singleFragmentInstanceArea) {
@@ -166,6 +176,27 @@ public class FragmentInstanceStatisticsDrawer {
   private void renderQueryStatistics(
       TQueryStatistics queryStatistics, List<StatisticLine> singleFragmentInstanceArea) {
     addLine(singleFragmentInstanceArea, 1, "Query Statistics:");
+
+    addLineWithoutValueCheck(
+        singleFragmentInstanceArea,
+        2,
+        "loadBloomFilterFromCacheCount",
+        queryStatistics.loadBloomFilterFromCacheCount);
+    addLineWithoutValueCheck(
+        singleFragmentInstanceArea,
+        2,
+        "loadBloomFilterFromDiskCount",
+        queryStatistics.loadBloomFilterFromDiskCount);
+    addLineWithoutValueCheck(
+        singleFragmentInstanceArea,
+        2,
+        "loadBloomFilterActualIOSize",
+        queryStatistics.loadBloomFilterActualIOSize);
+    addLineWithoutValueCheck(
+        singleFragmentInstanceArea,
+        2,
+        "loadBloomFilterTime",
+        queryStatistics.loadBloomFilterTime * NS_TO_MS_FACTOR);
 
     addLineWithValueCheck(
         singleFragmentInstanceArea,
@@ -248,6 +279,23 @@ public class FragmentInstanceStatisticsDrawer {
         2,
         "loadTimeSeriesMetadataAlignedMemUnSeqTime",
         queryStatistics.loadTimeSeriesMetadataAlignedMemUnSeqTime * NS_TO_MS_FACTOR);
+
+    addLineWithoutValueCheck(
+        singleFragmentInstanceArea,
+        2,
+        "loadTimeSeriesMetadataFromCacheCount",
+        queryStatistics.loadTimeSeriesMetadataFromCacheCount);
+    addLineWithoutValueCheck(
+        singleFragmentInstanceArea,
+        2,
+        "loadTimeSeriesMetadataFromDiskCount",
+        queryStatistics.loadTimeSeriesMetadataFromDiskCount);
+    addLineWithoutValueCheck(
+        singleFragmentInstanceArea,
+        2,
+        "loadTimeSeriesMetadataActualIOSize",
+        queryStatistics.loadTimeSeriesMetadataActualIOSize);
+
     addLineWithValueCheck(
         singleFragmentInstanceArea,
         2,
@@ -310,6 +358,22 @@ public class FragmentInstanceStatisticsDrawer {
         2,
         "constructAlignedChunkReadersMemTime",
         queryStatistics.constructAlignedChunkReadersMemTime * NS_TO_MS_FACTOR);
+
+    addLineWithoutValueCheck(
+        singleFragmentInstanceArea,
+        2,
+        "loadChunkFromCacheCount",
+        queryStatistics.loadChunkFromCacheCount);
+    addLineWithoutValueCheck(
+        singleFragmentInstanceArea,
+        2,
+        "loadChunkFromDiskCount",
+        queryStatistics.loadChunkFromDiskCount);
+    addLineWithoutValueCheck(
+        singleFragmentInstanceArea,
+        2,
+        "loadChunkActualIOSize",
+        queryStatistics.loadChunkActualIOSize);
 
     addLineWithValueCheck(
         singleFragmentInstanceArea,

@@ -38,9 +38,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
@@ -121,6 +126,9 @@ public class IoTDBSetConfigurationIT {
         .until(() -> !EnvFactory.getEnv().getDataNodeWrapper(0).isAlive());
     Assert.assertTrue(
         checkConfigFileContains(EnvFactory.getEnv().getDataNodeWrapper(0), "cluster_name=yy"));
+
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().initClusterEnvironment();
   }
 
   private static boolean checkConfigFileContains(
@@ -137,6 +145,58 @@ public class IoTDBSetConfigurationIT {
       return Arrays.stream(contents).allMatch(fileContent::contains);
     } catch (IOException ignore) {
       return false;
+    }
+  }
+
+  @Test
+  public void testSetDefaultSGLevel() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      // legal value
+      statement.execute("set configuration \"default_storage_group_level\"=\"3\"");
+      statement.execute("INSERT INTO root.a.b.c.d1(timestamp, s1) VALUES (1, 1)");
+      ResultSet databases = statement.executeQuery("show databases");
+      databases.next();
+      Assert.assertEquals("root.a.b.c", databases.getString(1));
+      assertFalse(databases.next());
+
+      // path too short
+      try {
+        statement.execute("INSERT INTO root.fail(timestamp, s1) VALUES (1, 1)");
+      } catch (SQLException e) {
+        assertEquals(
+            "509: root.fail is not a legal path, because it is no longer than default sg level: 3",
+            e.getMessage());
+      }
+
+      // illegal value
+      try {
+        statement.execute("set configuration \"default_storage_group_level\"=\"-1\"");
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("Illegal defaultStorageGroupLevel: -1, should >= 1"));
+      }
+
+      // Failed updates will not change the files.
+      assertFalse(
+          checkConfigFileContains(
+              EnvFactory.getEnv().getDataNodeWrapper(0), "default_storage_group_level=-1"));
+      assertTrue(
+          checkConfigFileContains(
+              EnvFactory.getEnv().getDataNodeWrapper(0), "default_storage_group_level=3"));
+    }
+
+    // can start with an illegal value
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setDefaultStorageGroupLevel(-1);
+    EnvFactory.getEnv().initClusterEnvironment();
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("INSERT INTO root.a.b.c.d1(timestamp, s1) VALUES (1, 1)");
+      ResultSet databases = statement.executeQuery("show databases");
+      databases.next();
+      // the default value should take effect
+      Assert.assertEquals("root.a", databases.getString(1));
+      assertFalse(databases.next());
     }
   }
 }

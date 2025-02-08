@@ -1,31 +1,38 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -70,29 +77,62 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
           .forEach(symbol -> newAssignments.put(symbol, node.getAssignments().get(symbol)));
     }
 
-    // add time entry if TimePredicate exists
-    node.getTimePredicate()
-        .ifPresent(
-            timePredicate -> {
-              Symbol time =
-                  Symbol.of(
-                      TimestampOperand.TIMESTAMP_EXPRESSION_STRING.toLowerCase(Locale.ENGLISH));
-              newAssignments.put(time, node.getAssignments().get(time));
-            });
+    if (node instanceof DeviceTableScanNode) {
+      DeviceTableScanNode deviceTableScanNode = (DeviceTableScanNode) node;
+      // add time entry if TimePredicate exists
+      deviceTableScanNode
+          .getTimePredicate()
+          .ifPresent(
+              timePredicate ->
+                  SymbolsExtractor.extractUnique(timePredicate)
+                      .forEach(
+                          symbol -> newAssignments.put(symbol, node.getAssignments().get(symbol))));
 
-    return Optional.of(
-        new TableScanNode(
-            node.getPlanNodeId(),
-            node.getQualifiedObjectName(),
-            newOutputs,
-            newAssignments,
-            node.getDeviceEntries(),
-            node.getIdAndAttributeIndexMap(),
-            node.getScanOrder(),
-            node.getTimePredicate().orElse(null),
-            node.getPushDownPredicate(),
-            node.getPushDownLimit(),
-            node.getPushDownOffset(),
-            node.isPushLimitToEachDevice()));
+      if (node instanceof TreeDeviceViewScanNode) {
+        TreeDeviceViewScanNode treeDeviceViewScanNode =
+            (TreeDeviceViewScanNode) deviceTableScanNode;
+        return Optional.of(
+            new TreeDeviceViewScanNode(
+                deviceTableScanNode.getPlanNodeId(),
+                deviceTableScanNode.getQualifiedObjectName(),
+                newOutputs,
+                newAssignments,
+                deviceTableScanNode.getDeviceEntries(),
+                deviceTableScanNode.getIdAndAttributeIndexMap(),
+                deviceTableScanNode.getScanOrder(),
+                deviceTableScanNode.getTimePredicate().orElse(null),
+                deviceTableScanNode.getPushDownPredicate(),
+                deviceTableScanNode.getPushDownLimit(),
+                deviceTableScanNode.getPushDownOffset(),
+                deviceTableScanNode.isPushLimitToEachDevice(),
+                deviceTableScanNode.containsNonAlignedDevice(),
+                treeDeviceViewScanNode.getTreeDBName(),
+                treeDeviceViewScanNode.getMeasurementColumnNameMap()));
+      } else {
+        return Optional.of(
+            new DeviceTableScanNode(
+                deviceTableScanNode.getPlanNodeId(),
+                deviceTableScanNode.getQualifiedObjectName(),
+                newOutputs,
+                newAssignments,
+                deviceTableScanNode.getDeviceEntries(),
+                deviceTableScanNode.getIdAndAttributeIndexMap(),
+                deviceTableScanNode.getScanOrder(),
+                deviceTableScanNode.getTimePredicate().orElse(null),
+                deviceTableScanNode.getPushDownPredicate(),
+                deviceTableScanNode.getPushDownLimit(),
+                deviceTableScanNode.getPushDownOffset(),
+                deviceTableScanNode.isPushLimitToEachDevice(),
+                deviceTableScanNode.containsNonAlignedDevice()));
+      }
+    } else if (node instanceof InformationSchemaTableScanNode) {
+      // For the convenience of process in execution stage, column-prune for
+      // InformationSchemaTableScanNode is
+      // not supported now.
+      return Optional.empty();
+    } else {
+      throw new UnsupportedOperationException(
+          "Unknown TableScanNode type: " + node.getClass().getSimpleName());
+    }
   }
 }

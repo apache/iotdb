@@ -42,7 +42,7 @@ public class AdjustMaxRegionGroupNumPlan extends ConfigPhysicalPlan {
     this.maxRegionGroupNumMap = new HashMap<>();
   }
 
-  public void putEntry(String storageGroup, Pair<Integer, Integer> maxRegionGroupNum) {
+  public void putEntry(final String storageGroup, final Pair<Integer, Integer> maxRegionGroupNum) {
     maxRegionGroupNumMap.put(storageGroup, maxRegionGroupNum);
   }
 
@@ -51,11 +51,11 @@ public class AdjustMaxRegionGroupNumPlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
+  protected void serializeImpl(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(getType().getPlanType(), stream);
 
     ReadWriteIOUtils.write(maxRegionGroupNumMap.size(), stream);
-    for (Map.Entry<String, Pair<Integer, Integer>> maxRegionGroupNumEntry :
+    for (final Map.Entry<String, Pair<Integer, Integer>> maxRegionGroupNumEntry :
         maxRegionGroupNumMap.entrySet()) {
       ReadWriteIOUtils.write(maxRegionGroupNumEntry.getKey(), stream);
       ReadWriteIOUtils.write(maxRegionGroupNumEntry.getValue().getLeft(), stream);
@@ -64,27 +64,27 @@ public class AdjustMaxRegionGroupNumPlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    int storageGroupNum = buffer.getInt();
+  protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
+    final int storageGroupNum = buffer.getInt();
 
     for (int i = 0; i < storageGroupNum; i++) {
-      String storageGroup = ReadWriteIOUtils.readString(buffer);
-      int maxSchemaRegionGroupNum = buffer.getInt();
-      int maxDataRegionGroupNum = buffer.getInt();
+      final String storageGroup = ReadWriteIOUtils.readString(buffer);
+      final int maxSchemaRegionGroupNum = buffer.getInt();
+      final int maxDataRegionGroupNum = buffer.getInt();
       maxRegionGroupNumMap.put(
           storageGroup, new Pair<>(maxSchemaRegionGroupNum, maxDataRegionGroupNum));
     }
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    AdjustMaxRegionGroupNumPlan that = (AdjustMaxRegionGroupNumPlan) o;
+    final AdjustMaxRegionGroupNumPlan that = (AdjustMaxRegionGroupNumPlan) o;
     return maxRegionGroupNumMap.equals(that.maxRegionGroupNumMap);
   }
 

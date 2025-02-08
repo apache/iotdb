@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.Com
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogAnalyzer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -274,28 +275,46 @@ public class CompactionRecoverTask {
   private boolean deleteFile(TsFileIdentifier tsFileIdentifier) {
     boolean success = true;
     // delete tsfile
-    File file = tsFileIdentifier.getFileFromDataDirs();
-    if (!checkAndDeleteFile(file)) {
+    File tsFile = tsFileIdentifier.getFileFromDataDirs();
+    if (!checkAndDeleteFile(tsFile)) {
       success = false;
     }
 
     // delete resource file
-    file = getFileFromDataDirs(tsFileIdentifier.getFilePath() + TsFileResource.RESOURCE_SUFFIX);
-    if (!checkAndDeleteFile(file)) {
+    File resourceFile =
+        getFileFromDataDirs(tsFileIdentifier.getFilePath() + TsFileResource.RESOURCE_SUFFIX);
+    if (!checkAndDeleteFile(resourceFile)) {
       success = false;
     }
 
     // delete mods file
-    file = getFileFromDataDirs(tsFileIdentifier.getFilePath() + ModificationFile.FILE_SUFFIX);
-    if (!checkAndDeleteFile(file)) {
+    File exclusiveModFile =
+        getFileFromDataDirs(
+            ModificationFile.getExclusiveMods(new File(tsFileIdentifier.getFilePath())).getPath());
+    if (!checkAndDeleteFile(exclusiveModFile)) {
       success = false;
     }
 
     // delete compaction mods file
-    file =
+    File compactionModFile =
         getFileFromDataDirs(
-            tsFileIdentifier.getFilePath() + ModificationFile.COMPACTION_FILE_SUFFIX);
-    if (!checkAndDeleteFile(file)) {
+            ModificationFile.getCompactionMods(new File(tsFileIdentifier.getFilePath())).getPath());
+    if (!checkAndDeleteFile(compactionModFile)) {
+      success = false;
+    }
+
+    File oldModFile =
+        getFileFromDataDirs(
+            ModificationFileV1.getNormalMods(new File(tsFileIdentifier.getFilePath())).getPath());
+    if (!checkAndDeleteFile(oldModFile)) {
+      success = false;
+    }
+
+    File oldCompactionModFile =
+        getFileFromDataDirs(
+            ModificationFileV1.getCompactionMods(new File(tsFileIdentifier.getFilePath()))
+                .getPath());
+    if (!checkAndDeleteFile(oldCompactionModFile)) {
       success = false;
     }
 

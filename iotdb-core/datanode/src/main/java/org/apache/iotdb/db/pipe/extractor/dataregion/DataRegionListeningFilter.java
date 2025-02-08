@@ -31,17 +31,12 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.apache.tsfile.utils.Pair;
 
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.getExclusionString;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.getInclusionString;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.parseOptions;
 
 /**
@@ -58,6 +53,34 @@ public class DataRegionListeningFilter {
       OPTION_SET.add(new PartialPath("data.delete"));
     } catch (IllegalPathException ignore) {
       // There won't be any exceptions here
+    }
+  }
+
+  public static boolean shouldDatabaseBeListened(
+      final PipeParameters parameters, final boolean isTableModel, final String databaseRawName)
+      throws IllegalPathException {
+    final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
+        parseInsertionDeletionListeningOptionPair(parameters);
+    final boolean hasSpecificListeningOption =
+        insertionDeletionListeningOptionPair.getLeft()
+            || insertionDeletionListeningOptionPair.getRight();
+    if (!hasSpecificListeningOption) {
+      return false;
+    }
+
+    if (isTableModel) {
+      final String databaseTableModel =
+          databaseRawName.startsWith("root.") ? databaseRawName.substring(5) : databaseRawName;
+      final TablePattern tablePattern =
+          TablePattern.parsePipePatternFromSourceParameters(parameters);
+      return tablePattern.isTableModelDataAllowedToBeCaptured()
+          && tablePattern.matchesDatabase(databaseTableModel);
+    } else {
+      final String databaseTreeModel =
+          databaseRawName.startsWith("root.") ? databaseRawName : "root." + databaseRawName;
+      final TreePattern treePattern = TreePattern.parsePipePatternFromSourceParameters(parameters);
+      return treePattern.isTreeModelDataAllowedToBeCaptured()
+          && treePattern.mayOverlapWithDb(databaseTreeModel);
     }
   }
 
@@ -95,16 +118,8 @@ public class DataRegionListeningFilter {
   public static Pair<Boolean, Boolean> parseInsertionDeletionListeningOptionPair(
       PipeParameters parameters) throws IllegalPathException, IllegalArgumentException {
     final Set<String> listeningOptions = new HashSet<>();
-    final Set<PartialPath> inclusionOptions =
-        parseOptions(
-            parameters.getStringOrDefault(
-                Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
-                EXTRACTOR_INCLUSION_DEFAULT_VALUE));
-    final Set<PartialPath> exclusionOptions =
-        parseOptions(
-            parameters.getStringOrDefault(
-                Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
-                EXTRACTOR_EXCLUSION_DEFAULT_VALUE));
+    final Set<PartialPath> inclusionOptions = parseOptions(getInclusionString(parameters));
+    final Set<PartialPath> exclusionOptions = parseOptions(getExclusionString(parameters));
 
     inclusionOptions.forEach(
         inclusion ->

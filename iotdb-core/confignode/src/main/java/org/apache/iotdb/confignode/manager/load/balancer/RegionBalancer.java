@@ -77,42 +77,42 @@ public class RegionBalancer {
    * @throws DatabaseNotExistsException When some StorageGroups don't exist
    */
   public CreateRegionGroupsPlan genRegionGroupsAllocationPlan(
-      Map<String, Integer> allotmentMap, TConsensusGroupType consensusGroupType)
+      final Map<String, Integer> allotmentMap, final TConsensusGroupType consensusGroupType)
       throws NotEnoughDataNodeException, DatabaseNotExistsException {
 
     // Some new RegionGroups will have to occupy unknown DataNodes
     // if the number of online DataNodes is insufficient
-    List<TDataNodeConfiguration> availableDataNodes =
+    final List<TDataNodeConfiguration> availableDataNodes =
         getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.Unknown);
 
     // Make sure the number of available DataNodes is enough for allocating new RegionGroups
-    for (String database : allotmentMap.keySet()) {
-      int replicationFactor =
+    for (final String database : allotmentMap.keySet()) {
+      final int replicationFactor =
           getClusterSchemaManager().getReplicationFactor(database, consensusGroupType);
       if (availableDataNodes.size() < replicationFactor) {
         throw new NotEnoughDataNodeException(availableDataNodes, replicationFactor);
       }
     }
 
-    CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
+    final CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
     // Only considering the specified ConsensusGroupType when doing allocation
-    List<TRegionReplicaSet> allocatedRegionGroups =
+    final List<TRegionReplicaSet> allocatedRegionGroups =
         getPartitionManager().getAllReplicaSets(consensusGroupType);
 
-    for (Map.Entry<String, Integer> entry : allotmentMap.entrySet()) {
-      String database = entry.getKey();
-      int allotment = entry.getValue();
-      int replicationFactor =
+    for (final Map.Entry<String, Integer> entry : allotmentMap.entrySet()) {
+      final String database = entry.getKey();
+      final int allotment = entry.getValue();
+      final int replicationFactor =
           getClusterSchemaManager().getReplicationFactor(database, consensusGroupType);
       // Only considering the specified Database when doing allocation
-      List<TRegionReplicaSet> databaseAllocatedRegionGroups =
+      final List<TRegionReplicaSet> databaseAllocatedRegionGroups =
           getPartitionManager().getAllReplicaSets(database, consensusGroupType);
 
       for (int i = 0; i < allotment; i++) {
         // Prepare input data
-        Map<Integer, TDataNodeConfiguration> availableDataNodeMap =
+        final Map<Integer, TDataNodeConfiguration> availableDataNodeMap =
             new HashMap<>(availableDataNodes.size());
-        Map<Integer, Double> freeDiskSpaceMap = new HashMap<>(availableDataNodes.size());
+        final Map<Integer, Double> freeDiskSpaceMap = new HashMap<>(availableDataNodes.size());
         availableDataNodes.forEach(
             dataNodeConfiguration -> {
               int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
@@ -121,7 +121,7 @@ public class RegionBalancer {
             });
 
         // Generate allocation plan
-        TRegionReplicaSet newRegionGroup =
+        final TRegionReplicaSet newRegionGroup =
             regionGroupAllocator.generateOptimalRegionReplicasDistribution(
                 availableDataNodeMap,
                 freeDiskSpaceMap,

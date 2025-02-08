@@ -60,6 +60,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualAutoIT {
               "insert into root.db2.d1(time, s) values (1, 1)"))) {
         return;
       }
+      awaitUntilFlush(senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -109,6 +110,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualAutoIT {
               "insert into root.db2.d1(time, s) values (1, 1)"))) {
         return;
       }
+      awaitUntilFlush(senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -163,6 +165,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualAutoIT {
               "insert into root.db2.d1(time, s) values (1, 1)"))) {
         return;
       }
+      awaitUntilFlush(senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();

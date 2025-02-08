@@ -20,18 +20,23 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceSourceNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
 
+import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType.DIFFERENT_FROM_ALL_CHILDREN;
+import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType.NO_CHILD;
 import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType.SAME_WITH_ALL_CHILDREN;
 import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType.SAME_WITH_SOME_CHILD;
 
@@ -74,14 +79,15 @@ public class AddExchangeNodes
 
       TRegionReplicaSet region =
           context.nodeDistributionMap.get(rewriteNode.getPlanNodeId()).getRegion();
-      if (!region.equals(context.mostUsedRegion)) {
+      if (region.equals(DataPartition.NOT_ASSIGNED) || region.equals(context.mostUsedRegion)) {
+        // if region equals NOT_ASSIGNED, it can be executed on any node
+        newNode.addChild(rewriteNode);
+      } else {
         ExchangeNode exchangeNode = new ExchangeNode(queryContext.getQueryId().genPlanNodeId());
         exchangeNode.addChild(rewriteNode);
         exchangeNode.setOutputSymbols(rewriteNode.getOutputSymbols());
         newNode.addChild(exchangeNode);
         context.hasExchangeNode = true;
-      } else {
-        newNode.addChild(rewriteNode);
       }
     }
 
@@ -118,6 +124,38 @@ public class AddExchangeNodes
       final TableDeviceQueryCountNode node,
       final TableDistributedPlanGenerator.PlanContext context) {
     return processTableDeviceSourceNode(node, context);
+  }
+
+  @Override
+  public PlanNode visitExplainAnalyze(
+      ExplainAnalyzeNode node, TableDistributedPlanGenerator.PlanContext context) {
+    ExplainAnalyzeNode newNode = (ExplainAnalyzeNode) node.clone();
+
+    PlanNode child = newNode.getChild();
+    child = child.accept(this, context);
+
+    ExchangeNode exchangeNode = new ExchangeNode(queryContext.getQueryId().genPlanNodeId());
+    exchangeNode.setChild(child);
+    exchangeNode.setOutputSymbols(child.getOutputSymbols());
+    newNode.setChild(exchangeNode);
+
+    context.nodeDistributionMap.put(
+        newNode.getPlanNodeId(),
+        new NodeDistribution(DIFFERENT_FROM_ALL_CHILDREN, DataPartition.NOT_ASSIGNED));
+    context.hasExchangeNode = true;
+    return newNode;
+  }
+
+  @Override
+  public PlanNode visitTableFunctionProcessor(
+      TableFunctionProcessorNode node, TableDistributedPlanGenerator.PlanContext context) {
+    if (node.getChildren().isEmpty()) {
+      context.nodeDistributionMap.put(
+          node.getPlanNodeId(), new NodeDistribution(NO_CHILD, DataPartition.NOT_ASSIGNED));
+      return node;
+    } else {
+      return visitPlan(node, context);
+    }
   }
 
   private PlanNode processTableDeviceSourceNode(

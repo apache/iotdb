@@ -35,7 +35,7 @@ public class TimestampRepair {
   protected long deltaT;
   protected long start0;
 
-  public TimestampRepair(RowIterator dataIterator, int intervalMode, int startPointMode)
+  public TimestampRepair(RowIterator dataIterator, long intervalMode, int startPointMode)
       throws Exception {
     ArrayList<Long> timeList = new ArrayList<>();
     ArrayList<Double> originList = new ArrayList<>();

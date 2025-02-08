@@ -20,16 +20,22 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
 
 import org.apache.iotdb.db.queryengine.execution.aggregation.VarianceAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.DoubleBigArray;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class GroupedVarianceAccumulator implements GroupedAccumulator {
 
@@ -61,19 +67,19 @@ public class GroupedVarianceAccumulator implements GroupedAccumulator {
   }
 
   @Override
-  public void addInput(int[] groupIds, Column[] arguments) {
+  public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
     switch (seriesDataType) {
       case INT32:
-        addIntInput(groupIds, arguments[0]);
+        addIntInput(groupIds, arguments[0], mask);
         return;
       case INT64:
-        addLongInput(groupIds, arguments[0]);
+        addLongInput(groupIds, arguments[0], mask);
         return;
       case FLOAT:
-        addFloatInput(groupIds, arguments[0]);
+        addFloatInput(groupIds, arguments[0], mask);
         return;
       case DOUBLE:
-        addDoubleInput(groupIds, arguments[0]);
+        addDoubleInput(groupIds, arguments[0], mask);
         return;
       case TEXT:
       case BLOB:
@@ -89,6 +95,12 @@ public class GroupedVarianceAccumulator implements GroupedAccumulator {
 
   @Override
   public void addIntermediate(int[] groupIds, Column argument) {
+    checkArgument(
+        argument instanceof BinaryColumn
+            || (argument instanceof RunLengthEncodedColumn
+                && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
+        "intermediate input and output should be BinaryColumn");
+
     for (int i = 0; i < argument.getPositionCount(); i++) {
       if (argument.isNull(i)) {
         continue;
@@ -116,6 +128,10 @@ public class GroupedVarianceAccumulator implements GroupedAccumulator {
 
   @Override
   public void evaluateIntermediate(int groupId, ColumnBuilder columnBuilder) {
+    checkArgument(
+        columnBuilder instanceof BinaryColumnBuilder,
+        "intermediate input and output should be BinaryColumn");
+
     if (counts.get(groupId) == 0) {
       columnBuilder.appendNull();
     } else {
@@ -167,59 +183,142 @@ public class GroupedVarianceAccumulator implements GroupedAccumulator {
   @Override
   public void prepareFinal() {}
 
-  private void addIntInput(int[] groupIds, Column column) {
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      if (column.isNull(i)) {
-        continue;
-      }
+  @Override
+  public void reset() {
+    counts.reset();
+    means.reset();
+    m2s.reset();
+  }
 
-      int value = column.getInt(i);
-      counts.increment(groupIds[i]);
-      double delta = value - means.get(groupIds[i]);
-      means.add(groupIds[i], delta / counts.get(groupIds[i]));
-      m2s.add(groupIds[i], delta * (value - means.get(groupIds[i])));
+  private void addIntInput(int[] groupIds, Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (column.isNull(i)) {
+          continue;
+        }
+
+        int value = column.getInt(i);
+        counts.increment(groupIds[i]);
+        double delta = value - means.get(groupIds[i]);
+        means.add(groupIds[i], delta / counts.get(groupIds[i]));
+        m2s.add(groupIds[i], delta * (value - means.get(groupIds[i])));
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (column.isNull(position)) {
+          continue;
+        }
+
+        int value = column.getInt(position);
+        counts.increment(groupIds[position]);
+        double delta = value - means.get(groupIds[position]);
+        means.add(groupIds[position], delta / counts.get(groupIds[position]));
+        m2s.add(groupIds[position], delta * (value - means.get(groupIds[position])));
+      }
     }
   }
 
-  private void addLongInput(int[] groupIds, Column column) {
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      if (column.isNull(i)) {
-        continue;
-      }
+  private void addLongInput(int[] groupIds, Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
 
-      long value = column.getLong(i);
-      counts.increment(groupIds[i]);
-      double delta = value - means.get(groupIds[i]);
-      means.add(groupIds[i], delta / counts.get(groupIds[i]));
-      m2s.add(groupIds[i], delta * (value - means.get(groupIds[i])));
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (column.isNull(i)) {
+          continue;
+        }
+
+        long value = column.getLong(i);
+        counts.increment(groupIds[i]);
+        double delta = value - means.get(groupIds[i]);
+        means.add(groupIds[i], delta / counts.get(groupIds[i]));
+        m2s.add(groupIds[i], delta * (value - means.get(groupIds[i])));
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (column.isNull(position)) {
+          continue;
+        }
+
+        long value = column.getLong(position);
+        counts.increment(groupIds[position]);
+        double delta = value - means.get(groupIds[position]);
+        means.add(groupIds[position], delta / counts.get(groupIds[position]));
+        m2s.add(groupIds[position], delta * (value - means.get(groupIds[position])));
+      }
     }
   }
 
-  private void addFloatInput(int[] groupIds, Column column) {
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      if (column.isNull(i)) {
-        continue;
-      }
+  private void addFloatInput(int[] groupIds, Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
 
-      float value = column.getFloat(i);
-      counts.increment(groupIds[i]);
-      double delta = value - means.get(groupIds[i]);
-      means.add(groupIds[i], delta / counts.get(groupIds[i]));
-      m2s.add(groupIds[i], delta * (value - means.get(groupIds[i])));
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (column.isNull(i)) {
+          continue;
+        }
+
+        float value = column.getFloat(i);
+        counts.increment(groupIds[i]);
+        double delta = value - means.get(groupIds[i]);
+        means.add(groupIds[i], delta / counts.get(groupIds[i]));
+        m2s.add(groupIds[i], delta * (value - means.get(groupIds[i])));
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (column.isNull(position)) {
+          continue;
+        }
+
+        float value = column.getFloat(position);
+        counts.increment(groupIds[position]);
+        double delta = value - means.get(groupIds[position]);
+        means.add(groupIds[position], delta / counts.get(groupIds[position]));
+        m2s.add(groupIds[position], delta * (value - means.get(groupIds[position])));
+      }
     }
   }
 
-  private void addDoubleInput(int[] groupIds, Column column) {
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      if (column.isNull(i)) {
-        continue;
-      }
+  private void addDoubleInput(int[] groupIds, Column column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
 
-      double value = column.getDouble(i);
-      counts.increment(groupIds[i]);
-      double delta = value - means.get(groupIds[i]);
-      means.add(groupIds[i], delta / counts.get(groupIds[i]));
-      m2s.add(groupIds[i], delta * (value - means.get(groupIds[i])));
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (column.isNull(i)) {
+          continue;
+        }
+
+        double value = column.getDouble(i);
+        counts.increment(groupIds[i]);
+        double delta = value - means.get(groupIds[i]);
+        means.add(groupIds[i], delta / counts.get(groupIds[i]));
+        m2s.add(groupIds[i], delta * (value - means.get(groupIds[i])));
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (column.isNull(position)) {
+          continue;
+        }
+
+        double value = column.getDouble(i);
+        counts.increment(groupIds[position]);
+        double delta = value - means.get(groupIds[position]);
+        means.add(groupIds[position], delta / counts.get(groupIds[position]));
+        m2s.add(groupIds[position], delta * (value - means.get(groupIds[position])));
+      }
     }
   }
 }

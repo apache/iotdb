@@ -43,6 +43,7 @@ public class ClusterConstant {
   public static final String DEFAULT_DATA_NODE_PROPERTIES = "DefaultDataNodeProperties";
   public static final String DEFAULT_DATA_NODE_COMMON_PROPERTIES =
       "DefaultDataNodeCommonProperties";
+  public static final String DATA_REGION_PER_DATANODE = "integrationTest.dataRegionPerDataNode";
 
   // Cluster Configurations
   public static final String CLUSTER_CONFIGURATIONS = "ClusterConfigurations";
@@ -52,6 +53,8 @@ public class ClusterConstant {
   public static final String SCALABLE_SINGLE_NODE_MODE = "ScalableSingleNodeMode";
   public static final String HIGH_PERFORMANCE_MODE = "HighPerformanceMode";
   public static final String STRONG_CONSISTENCY_CLUSTER_MODE = "StrongConsistencyClusterMode";
+  public static final String PIPE_CONSENSUS_BATCH_MODE = "PipeConsensusBatchMode";
+  public static final String PIPE_CONSENSUS_STREAM_MODE = "PipeConsensusStreamMode";
 
   // System arguments in pom.xml
   public static final String LIGHT_WEIGHT_STANDALONE_MODE_CONFIG_NODE_NUM =
@@ -114,6 +117,36 @@ public class ClusterConstant {
   public static final String STRONG_CONSISTENCY_CLUSTER_MODE_DATA_REGION_REPLICA_NUM =
       "strongConsistencyClusterMode.dataRegionReplicaNumber";
 
+  public static final String PIPE_CONSENSUS_BATCH_MODE_CONFIG_NODE_NUM =
+      "pipeConsensusBatchMode.configNodeNumber";
+  public static final String PIPE_CONSENSUS_BATCH_MODE_DATA_NODE_NUM =
+      "pipeConsensusBatchMode.dataNodeNumber";
+  public static final String PIPE_CONSENSUS_BATCH_MODE_CONFIG_NODE_CONSENSUS =
+      "pipeConsensusBatchMode.configNodeConsensus";
+  public static final String PIPE_CONSENSUS_BATCH_MODE_SCHEMA_REGION_CONSENSUS =
+      "pipeConsensusBatchMode.schemaRegionConsensus";
+  public static final String PIPE_CONSENSUS_BATCH_MODE_DATA_REGION_CONSENSUS =
+      "pipeConsensusBatchMode.dataRegionConsensus";
+  public static final String PIPE_CONSENSUS_BATCH_MODE_SCHEMA_REGION_REPLICA_NUM =
+      "pipeConsensusBatchMode.schemaRegionReplicaNumber";
+  public static final String PIPE_CONSENSUS_BATCH_MODE_DATA_REGION_REPLICA_NUM =
+      "pipeConsensusBatchMode.dataRegionReplicaNumber";
+
+  public static final String PIPE_CONSENSUS_STREAM_MODE_CONFIG_NODE_NUM =
+      "pipeConsensusStreamMode.configNodeNumber";
+  public static final String PIPE_CONSENSUS_STREAM_MODE_DATA_NODE_NUM =
+      "pipeConsensusStreamMode.dataNodeNumber";
+  public static final String PIPE_CONSENSUS_STREAM_MODE_CONFIG_NODE_CONSENSUS =
+      "pipeConsensusStreamMode.configNodeConsensus";
+  public static final String PIPE_CONSENSUS_STREAM_MODE_SCHEMA_REGION_CONSENSUS =
+      "pipeConsensusStreamMode.schemaRegionConsensus";
+  public static final String PIPE_CONSENSUS_STREAM_MODE_DATA_REGION_CONSENSUS =
+      "pipeConsensusStreamMode.dataRegionConsensus";
+  public static final String PIPE_CONSENSUS_STREAM_MODE_SCHEMA_REGION_REPLICA_NUM =
+      "pipeConsensusStreamMode.schemaRegionReplicaNumber";
+  public static final String PIPE_CONSENSUS_STREAM_MODE_DATA_REGION_REPLICA_NUM =
+      "pipeConsensusStreamMode.dataRegionReplicaNumber";
+
   // Property file names
   public static final String IOTDB_SYSTEM_PROPERTIES_FILE = "iotdb-system.properties";
 
@@ -125,6 +158,7 @@ public class ClusterConstant {
       "schema_region_consensus_protocol_class";
   public static final String DATA_REGION_CONSENSUS_PROTOCOL_CLASS =
       "data_region_consensus_protocol_class";
+  public static final String IOT_CONSENSUS_V2_MODE = "iot_consensus_v2_mode";
   public static final String SCHEMA_REPLICATION_FACTOR = "schema_replication_factor";
   public static final String DATA_REPLICATION_FACTOR = "data_replication_factor";
 
@@ -169,6 +203,7 @@ public class ClusterConstant {
       "schema_region_ratis_log_appender_buffer_size_max";
   public static final String DATA_REGION_RATIS_LOG_APPENDER_BUFFER_SIZE_MAX =
       "data_region_ratis_log_appender_buffer_size_max";
+  public static final String DATA_REGION_PER_DATA_NODE = "data_region_per_data_node";
 
   // Paths
   public static final String USER_DIR = "user.dir";

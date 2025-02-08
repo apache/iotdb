@@ -39,9 +39,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
-import org.apache.iotdb.db.utils.annotations.TableModel;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
@@ -62,6 +62,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class InsertRowStatement extends InsertBaseStatement implements ISchemaValidation {
 
@@ -80,7 +81,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
    */
   protected boolean[] measurementIsAligned;
 
-  private IDeviceID deviceID;
+  protected IDeviceID deviceID;
 
   public InsertRowStatement() {
     super();
@@ -190,9 +191,9 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
-    if (CommonUtils.checkCanCastType(dataTypes[columnIndex], dataType)) {
+    if (dataType.isCompatible(dataTypes[columnIndex])) {
       values[columnIndex] =
-          CommonUtils.castValue(dataTypes[columnIndex], dataType, values[columnIndex]);
+          dataType.castFromSingleValue(dataTypes[columnIndex], values[columnIndex]);
       dataTypes[columnIndex] = dataType;
       return true;
     }
@@ -226,8 +227,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       dataTypes[i] = measurementSchemas[i].getType();
       try {
         // if the type is binary and the value is already binary, do not convert
-        if (values[i] instanceof String
-            || values[i] != null && !(dataTypes[i].isBinary() && values[i] instanceof Binary)) {
+        if (values[i] != null && !(dataTypes[i].isBinary() && values[i] instanceof Binary)) {
           values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString(), zoneId);
         }
       } catch (Exception e) {
@@ -277,11 +277,23 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     }
     failedMeasurementIndex2Info.forEach(
         (index, info) -> {
-          measurements[index] = info.getMeasurement();
-          dataTypes[index] = info.getDataType();
-          values[index] = info.getValue();
+          if (measurements != null) {
+            measurements[index] = info.getMeasurement();
+          }
+
+          if (dataTypes != null) {
+            dataTypes[index] = info.getDataType();
+          }
+
+          if (values != null) {
+            values[index] = info.getValue();
+          }
         });
     failedMeasurementIndex2Info.clear();
+  }
+
+  public Map<Integer, FailedMeasurementInfo> getFailedMeasurementInfoMap() {
+    return failedMeasurementIndex2Info;
   }
 
   @Override
@@ -322,7 +334,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       for (int i = 0; i < pairList.size(); i++) {
         int realIndex = pairList.get(i).right;
         copiedValues[i] = this.values[realIndex];
-        measurements[i] = pairList.get(i).left;
+        measurements[i] =
+            Objects.nonNull(this.measurements[realIndex]) ? pairList.get(i).left : null;
         measurementSchemas[i] = this.measurementSchemas[realIndex];
         dataTypes[i] = this.dataTypes[realIndex];
         if (this.measurementIsAligned != null) {
@@ -485,6 +498,11 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       deviceID = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
     }
 
+    return deviceID;
+  }
+
+  @TableModel
+  public IDeviceID getRawTableDeviceID() {
     return deviceID;
   }
 

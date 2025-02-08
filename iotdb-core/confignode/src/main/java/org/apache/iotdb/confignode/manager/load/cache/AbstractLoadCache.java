@@ -71,7 +71,7 @@ public abstract class AbstractLoadCache {
    *
    * @return The latest heartbeat sample.
    */
-  protected AbstractHeartbeatSample getLastSample() {
+  public AbstractHeartbeatSample getLastSample() {
     return slidingWindow.isEmpty() ? null : slidingWindow.get(slidingWindow.size() - 1);
   }
 

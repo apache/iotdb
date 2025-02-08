@@ -213,11 +213,14 @@ public class PipeTabletInsertionEventTest {
       ((Binary[]) values[9])[r] = BytesUtils.valueOf("string");
     }
 
-    tabletForInsertRowNode = new Tablet(deviceId, Arrays.asList(schemas), 1);
-    tabletForInsertRowNode.values = values;
-    tabletForInsertRowNode.timestamps = new long[] {times[0]};
-    tabletForInsertRowNode.rowSize = 1;
-    tabletForInsertRowNode.bitMaps = bitMapsForInsertRowNode;
+    tabletForInsertRowNode =
+        new Tablet(
+            deviceId,
+            Arrays.asList(schemas),
+            new long[] {times[0]},
+            values,
+            bitMapsForInsertRowNode,
+            1);
 
     // create tablet for insertTabletNode
     BitMap[] bitMapsForInsertTabletNode = new BitMap[schemas.length];
@@ -250,10 +253,14 @@ public class PipeTabletInsertionEventTest {
     }
 
     tabletForInsertTabletNode = new Tablet(deviceId, Arrays.asList(schemas), times.length);
-    tabletForInsertTabletNode.values = values;
-    tabletForInsertTabletNode.timestamps = times;
-    tabletForInsertTabletNode.rowSize = times.length;
-    tabletForInsertTabletNode.bitMaps = bitMapsForInsertTabletNode;
+    tabletForInsertTabletNode =
+        new Tablet(
+            deviceId,
+            Arrays.asList(schemas),
+            times,
+            values,
+            bitMapsForInsertTabletNode,
+            times.length);
   }
 
   @Test
@@ -329,7 +336,7 @@ public class PipeTabletInsertionEventTest {
             insertRowNode,
             new PrefixTreePattern(pattern));
     Tablet tablet1 = container1.convertToTablet();
-    Assert.assertEquals(0, tablet1.rowSize);
+    Assert.assertEquals(0, tablet1.getRowSize());
     boolean isAligned1 = container1.isAligned();
     Assert.assertFalse(isAligned1);
 
@@ -340,7 +347,7 @@ public class PipeTabletInsertionEventTest {
             insertRowNode,
             new PrefixTreePattern(pattern));
     Tablet tablet2 = container2.convertToTablet();
-    Assert.assertEquals(1, tablet2.rowSize);
+    Assert.assertEquals(1, tablet2.getRowSize());
     boolean isAligned2 = container2.isAligned();
     Assert.assertFalse(isAligned2);
 
@@ -351,7 +358,7 @@ public class PipeTabletInsertionEventTest {
             insertTabletNode,
             new PrefixTreePattern(pattern));
     Tablet tablet3 = container3.convertToTablet();
-    Assert.assertEquals(3, tablet3.rowSize);
+    Assert.assertEquals(3, tablet3.getRowSize());
     boolean isAligned3 = container3.isAligned();
     Assert.assertFalse(isAligned3);
 
@@ -362,7 +369,7 @@ public class PipeTabletInsertionEventTest {
             insertTabletNode,
             new PrefixTreePattern(pattern));
     Tablet tablet4 = container4.convertToTablet();
-    Assert.assertEquals(0, tablet4.rowSize);
+    Assert.assertEquals(0, tablet4.getRowSize());
     boolean isAligned4 = container4.isAligned();
     Assert.assertFalse(isAligned4);
   }

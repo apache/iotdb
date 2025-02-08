@@ -30,10 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.Iterator;
 import java.util.Set;
 
 public class TsFileResourceCandidate {
@@ -46,10 +43,10 @@ public class TsFileResourceCandidate {
   @SuppressWarnings("squid:S1104")
   public boolean isValidCandidate;
 
-  private Map<IDeviceID, DeviceInfo> deviceInfoMap;
+  private ArrayDeviceTimeIndex deviceTimeIndex;
 
   private boolean hasDetailedDeviceInfo;
-  private CompactionScheduleContext compactionScheduleContext;
+  private final CompactionScheduleContext compactionScheduleContext;
 
   public TsFileResourceCandidate(TsFileResource tsFileResource, CompactionScheduleContext context) {
     this.resource = tsFileResource;
@@ -73,44 +70,43 @@ public class TsFileResourceCandidate {
 
   private void prepareDeviceInfos() throws IOException {
     boolean canCacheDeviceInfo = resource.getStatus() != TsFileResourceStatus.UNCLOSED;
-    if (deviceInfoMap == null && compactionScheduleContext != null) {
+    if (deviceTimeIndex == null && compactionScheduleContext != null) {
       // get device info from cache
-      deviceInfoMap = compactionScheduleContext.getResourceDeviceInfo(this.resource);
-      hasDetailedDeviceInfo = true;
+      deviceTimeIndex = compactionScheduleContext.getResourceDeviceInfo(this.resource);
     }
-    if (deviceInfoMap != null) {
+    if (deviceTimeIndex != null) {
+      hasDetailedDeviceInfo = true;
       return;
     }
-    deviceInfoMap = new LinkedHashMap<>();
-    if (resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE) {
+    ITimeIndex timeIndex = resource.getTimeIndex();
+    if (timeIndex instanceof ArrayDeviceTimeIndex) {
+      if (resource.isClosed()) {
+        deviceTimeIndex = (ArrayDeviceTimeIndex) timeIndex;
+      } else {
+        deviceTimeIndex = new ArrayDeviceTimeIndex();
+        for (IDeviceID device : ((ArrayDeviceTimeIndex) timeIndex).getDevices()) {
+          deviceTimeIndex.updateStartTime(device, timeIndex.getStartTime(device));
+          deviceTimeIndex.updateEndTime(device, timeIndex.getEndTime(device));
+        }
+      }
+    } else {
       // deserialize resource file
       resource.readLock();
       try {
+        // deleted file with degraded time index
         if (!resource.resourceFileExists()) {
           hasDetailedDeviceInfo = false;
+          deviceTimeIndex = new ArrayDeviceTimeIndex();
           return;
         }
-        ArrayDeviceTimeIndex timeIndex = CompactionUtils.buildDeviceTimeIndex(resource);
-        for (IDeviceID deviceId : timeIndex.getDevices()) {
-          deviceInfoMap.put(
-              deviceId,
-              new DeviceInfo(
-                  deviceId, timeIndex.getStartTime(deviceId), timeIndex.getEndTime(deviceId)));
-        }
+        deviceTimeIndex = CompactionUtils.buildDeviceTimeIndex(resource);
       } finally {
         resource.readUnlock();
-      }
-    } else {
-      for (IDeviceID deviceId : resource.getDevices()) {
-        deviceInfoMap.put(
-            deviceId,
-            new DeviceInfo(
-                deviceId, resource.getStartTime(deviceId), resource.getEndTime(deviceId)));
       }
     }
     hasDetailedDeviceInfo = true;
     if (compactionScheduleContext != null && canCacheDeviceInfo) {
-      compactionScheduleContext.addResourceDeviceTimeIndex(this.resource, deviceInfoMap);
+      compactionScheduleContext.addResourceDeviceTimeIndex(this.resource, deviceTimeIndex);
     }
   }
 
@@ -118,24 +114,40 @@ public class TsFileResourceCandidate {
     this.selected = true;
   }
 
-  public List<DeviceInfo> getDeviceInfoList() throws IOException {
+  public Iterator<DeviceInfo> getDeviceInfoIterator() throws IOException {
     prepareDeviceInfos();
-    return new ArrayList<>(deviceInfoMap.values());
+    return new Iterator<DeviceInfo>() {
+
+      private final Iterator<IDeviceID> deviceIterator = deviceTimeIndex.getDevices().iterator();
+
+      @Override
+      public boolean hasNext() {
+        return deviceIterator.hasNext();
+      }
+
+      @Override
+      public DeviceInfo next() {
+        IDeviceID deviceId = deviceIterator.next();
+        return new DeviceInfo(
+            deviceId, deviceTimeIndex.getStartTime(deviceId), deviceTimeIndex.getEndTime(deviceId));
+      }
+    };
   }
 
   public Set<IDeviceID> getDevices() throws IOException {
     prepareDeviceInfos();
-    return deviceInfoMap.keySet();
+    return deviceTimeIndex.getDevices();
   }
 
   public DeviceInfo getDeviceInfoById(IDeviceID deviceId) throws IOException {
     prepareDeviceInfos();
-    return deviceInfoMap.get(deviceId);
+    return new DeviceInfo(
+        deviceId, deviceTimeIndex.getStartTime(deviceId), deviceTimeIndex.getEndTime(deviceId));
   }
 
   public boolean containsDevice(IDeviceID deviceId) throws IOException {
     prepareDeviceInfos();
-    return deviceInfoMap.containsKey(deviceId);
+    return !deviceTimeIndex.definitelyNotContains(deviceId);
   }
 
   public boolean hasDetailedDeviceInfo() throws IOException {

@@ -26,7 +26,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
@@ -67,7 +67,7 @@ public class IoTDBTimeTsLooseDatasetPushConsumerIT extends AbstractSubscriptionR
   private static List<IMeasurementSchema> schemaList = new ArrayList<>();
 
   private static final String pattern = device + ".s_0";
-  public static SubscriptionPushConsumer consumer;
+  public static SubscriptionTreePushConsumer consumer;
 
   @Override
   @Before
@@ -128,7 +128,7 @@ public class IoTDBTimeTsLooseDatasetPushConsumerIT extends AbstractSubscriptionR
     Tablet tablet = new Tablet(device, schemaList, 5);
     int rowIndex = 0;
     for (int row = 0; row < 5; row++) {
-      rowIndex = tablet.rowSize++;
+      rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue("s_0", rowIndex, (row + 1) * 20L + row);
       tablet.addValue("s_1", rowIndex, row + 2.45);
@@ -149,10 +149,10 @@ public class IoTDBTimeTsLooseDatasetPushConsumerIT extends AbstractSubscriptionR
     insert_data(1704038399000L, device2); // 2023-12-31 23:59:59+08:00
     insert_data(1706659200000L, device); // 2024-01-31 08:00:00+08:00
     insert_data(1706659200000L, device2); // 2024-01-31 08:00:00+08:00
-    session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush");
 
     consumer =
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("push_dataset_ts_dataset_consumer")
@@ -202,7 +202,7 @@ public class IoTDBTimeTsLooseDatasetPushConsumerIT extends AbstractSubscriptionR
 
     insert_data(1707782400000L, device); // 2024-02-13 08:00:00+08:00
     insert_data(1707782400000L, device2); // 2024-02-13 08:00:00+08:00
-    session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush");
 
     // Consumption data: Progress is not retained after canceling and re-subscribing. Full
     // synchronization.

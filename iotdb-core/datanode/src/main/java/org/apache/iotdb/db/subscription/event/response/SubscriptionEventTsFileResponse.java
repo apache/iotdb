@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.db.subscription.event.response;
 
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
+import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.cache.CachedSubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
@@ -39,6 +42,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -52,6 +56,9 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionEventTsFileResponse.class);
+
+  private static final long READ_FILE_BUFFER_SIZE =
+      SubscriptionConfig.getInstance().getSubscriptionReadFileBufferSize();
 
   private final File tsFile;
   private final SubscriptionCommitContext commitContext;
@@ -67,12 +74,18 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
   }
 
   @Override
-  public void prefetchRemainingResponses() throws IOException {
-    if (hasNoMore) {
-      return;
-    }
+  public void prefetchRemainingResponses() {
+    // do nothing
+  }
 
-    generateNextTsFileResponse().ifPresent(super::offer);
+  @Override
+  public void fetchNextResponse(final long offset) throws Exception {
+    generateNextTsFileResponse(offset).ifPresent(super::offer);
+    if (Objects.isNull(poll())) {
+      LOGGER.warn(
+          "SubscriptionEventTsFileResponse {} is empty when fetching next response (broken invariant)",
+          this);
+    }
   }
 
   @Override
@@ -103,8 +116,13 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
             commitContext));
   }
 
+  private synchronized Optional<CachedSubscriptionPollResponse> generateNextTsFileResponse(
+      final long offset) throws SubscriptionException, IOException, InterruptedException {
+    return Optional.of(generateResponseWithPieceOrSealPayload(offset));
+  }
+
   private synchronized Optional<CachedSubscriptionPollResponse> generateNextTsFileResponse()
-      throws IOException {
+      throws SubscriptionException, IOException, InterruptedException {
     final SubscriptionPollResponse previousResponse = peekLast();
     if (Objects.isNull(previousResponse)) {
       LOGGER.warn(
@@ -137,7 +155,8 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
   }
 
   private @NonNull CachedSubscriptionPollResponse generateResponseWithPieceOrSealPayload(
-      final long writingOffset) throws IOException {
+      final long writingOffset)
+      throws IOException, InterruptedException, PipeRuntimeOutOfMemoryCriticalException {
     final long tsFileLength = tsFile.length();
     if (writingOffset >= tsFileLength) {
       // generate subscription poll response with seal payload
@@ -148,17 +167,16 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
           commitContext);
     }
 
-    final long readFileBufferSize =
-        SubscriptionConfig.getInstance().getSubscriptionReadFileBufferSize();
     final long bufferSize;
-    if (writingOffset + readFileBufferSize >= tsFileLength) {
+    if (writingOffset + READ_FILE_BUFFER_SIZE >= tsFileLength) {
       // last piece
       bufferSize = tsFileLength - writingOffset;
     } else {
       // not last piece
-      bufferSize = readFileBufferSize;
+      bufferSize = READ_FILE_BUFFER_SIZE;
     }
 
+    waitForResourceEnough4Slicing(SubscriptionAgent.receiver().remainingMs());
     try (final RandomAccessFile reader = new RandomAccessFile(tsFile, "r")) {
       reader.seek(writingOffset);
 
@@ -181,8 +199,67 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
               SubscriptionPollResponseType.FILE_PIECE.getType(),
               new FilePiecePayload(tsFile.getName(), writingOffset + readLength, readBuffer),
               commitContext);
+
+      // set fixed memory block for response
       response.setMemoryBlock(memoryBlock);
       return response;
     }
+  }
+
+  private void waitForResourceEnough4Slicing(final long timeoutMs) throws InterruptedException {
+    final PipeMemoryManager memoryManager = PipeDataNodeResourceManager.memory();
+    if (memoryManager.isEnough4TsFileSlicing()) {
+      return;
+    }
+
+    final long startTime = System.currentTimeMillis();
+    long lastRecordTime = startTime;
+
+    final long memoryCheckIntervalMs =
+        SubscriptionConfig.getInstance().getSubscriptionCheckMemoryEnoughIntervalMs();
+    while (!memoryManager.isEnough4TsFileSlicing()) {
+      Thread.sleep(memoryCheckIntervalMs);
+
+      final long currentTime = System.currentTimeMillis();
+      final double elapsedRecordTimeSeconds = (currentTime - lastRecordTime) / 1000.0;
+      final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
+      if (elapsedRecordTimeSeconds > 10.0) {
+        LOGGER.info(
+            "Wait for resource enough for slicing tsfile {} for {} seconds.",
+            tsFile,
+            waitTimeSeconds);
+        lastRecordTime = currentTime;
+      } else if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Wait for resource enough for slicing tsfile {} for {} seconds.",
+            tsFile,
+            waitTimeSeconds);
+      }
+
+      if (waitTimeSeconds * 1000 > timeoutMs) {
+        // should contain 'TimeoutException' in exception message
+        // see org.apache.iotdb.rpc.subscription.exception.SubscriptionTimeoutException.KEYWORD
+        throw new SubscriptionException(
+            String.format("TimeoutException: Waited %s seconds", waitTimeSeconds));
+      }
+    }
+
+    final long currentTime = System.currentTimeMillis();
+    final double waitTimeSeconds = (currentTime - startTime) / 1000.0;
+    LOGGER.info(
+        "Wait for resource enough for slicing tsfile {} for {} seconds.", tsFile, waitTimeSeconds);
+  }
+
+  /////////////////////////////// stringify ///////////////////////////////
+
+  @Override
+  public String toString() {
+    return "SubscriptionEventTsFileResponse" + coreReportMessage();
+  }
+
+  protected Map<String, String> coreReportMessage() {
+    final Map<String, String> result = super.coreReportMessage();
+    result.put("tsFile", String.valueOf(tsFile));
+    return result;
   }
 }

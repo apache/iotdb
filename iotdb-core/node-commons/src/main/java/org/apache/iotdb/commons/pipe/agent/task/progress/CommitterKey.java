@@ -32,7 +32,7 @@ public class CommitterKey {
     this(pipeName, creationTime, regionId, -1);
   }
 
-  CommitterKey(
+  public CommitterKey(
       final String pipeName, final long creationTime, final int regionId, final int restartTimes) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;

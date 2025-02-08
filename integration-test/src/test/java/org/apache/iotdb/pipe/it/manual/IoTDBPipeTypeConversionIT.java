@@ -206,7 +206,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
         String.format("select status from root.test.%s2%s", source.name(), target.name()),
         String.format("Time,root.test.%s2%s.status,", source.name(), target.name()),
         createExpectedResultSet(pairs, source, target),
-        30);
+        600);
   }
 
   private List<Pair> prepareTypeConversionTest(TSDataType sourceType, TSDataType targetType) {

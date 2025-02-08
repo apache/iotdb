@@ -21,6 +21,8 @@ package org.apache.iotdb.confignode.manager.pipe.extractor;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
@@ -36,13 +38,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.getExclusionString;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.getInclusionString;
 import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.parseOptions;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.tableOnlySyncPrefix;
+import static org.apache.iotdb.commons.pipe.datastructure.options.PipeInclusionOptions.treeOnlySyncPrefix;
 
 /**
  * {@link ConfigRegionListeningFilter} is to classify the {@link ConfigPhysicalPlan}s to help {@link
@@ -69,6 +69,7 @@ public class ConfigRegionListeningFilter {
           new PartialPath("schema.database.drop"),
           Collections.singletonList(ConfigPhysicalPlanType.DeleteDatabase));
 
+      // Tree model
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.timeseries.template.create"),
           Collections.singletonList(ConfigPhysicalPlanType.CreateSchemaTemplate));
@@ -96,6 +97,25 @@ public class ConfigRegionListeningFilter {
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.timeseries.template.deactivate"),
           Collections.singletonList(ConfigPhysicalPlanType.PipeDeactivateTemplate));
+
+      // Table Model
+      OPTION_PLAN_MAP.put(
+          new PartialPath("schema.table.create"),
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.CommitCreateTable,
+                  ConfigPhysicalPlanType.PipeCreateTable,
+                  ConfigPhysicalPlanType.AddTableColumn)));
+      OPTION_PLAN_MAP.put(
+          new PartialPath("schema.table.alter"),
+          Collections.singletonList(ConfigPhysicalPlanType.SetTableProperties));
+      OPTION_PLAN_MAP.put(
+          new PartialPath("schema.table.drop"),
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.CommitDeleteTable,
+                  ConfigPhysicalPlanType.CommitDeleteColumn,
+                  ConfigPhysicalPlanType.PipeDeleteDevices)));
 
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.ttl"), Collections.singletonList(ConfigPhysicalPlanType.SetTTL));
@@ -135,12 +155,12 @@ public class ConfigRegionListeningFilter {
           Collections.unmodifiableList(
               Arrays.asList(
                   ConfigPhysicalPlanType.RevokeUser, ConfigPhysicalPlanType.RevokeRoleFromUser)));
-    } catch (IllegalPathException ignore) {
+    } catch (final IllegalPathException ignore) {
       // There won't be any exceptions here
     }
   }
 
-  static boolean shouldPlanBeListened(ConfigPhysicalPlan plan) {
+  static boolean shouldPlanBeListened(final ConfigPhysicalPlan plan) {
     final ConfigPhysicalPlanType type = plan.getType();
 
     // Do not transfer roll back set template plan
@@ -156,36 +176,31 @@ public class ConfigRegionListeningFilter {
         || OPTION_PLAN_MAP.values().stream().anyMatch(types -> types.contains(type));
   }
 
-  public static Set<ConfigPhysicalPlanType> parseListeningPlanTypeSet(PipeParameters parameters)
-      throws IllegalPathException {
-    Set<ConfigPhysicalPlanType> planTypes = new HashSet<>();
-    Set<PartialPath> inclusionOptions =
-        parseOptions(
-            parameters.getStringOrDefault(
-                Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
-                EXTRACTOR_INCLUSION_DEFAULT_VALUE));
-    Set<PartialPath> exclusionOptions =
-        parseOptions(
-            parameters.getStringOrDefault(
-                Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
-                EXTRACTOR_EXCLUSION_DEFAULT_VALUE));
-    inclusionOptions.forEach(
-        inclusion ->
-            planTypes.addAll(
-                OPTION_PLAN_MAP.keySet().stream()
-                    .filter(path -> path.overlapWithFullPathPrefix(inclusion))
-                    .map(OPTION_PLAN_MAP::get)
-                    .flatMap(Collection::stream)
-                    .collect(Collectors.toSet())));
-    exclusionOptions.forEach(
-        exclusion ->
-            planTypes.removeAll(
-                OPTION_PLAN_MAP.keySet().stream()
-                    .filter(path -> path.overlapWithFullPathPrefix(exclusion))
-                    .map(OPTION_PLAN_MAP::get)
-                    .flatMap(Collection::stream)
-                    .collect(Collectors.toSet())));
+  public static Set<ConfigPhysicalPlanType> parseListeningPlanTypeSet(
+      final PipeParameters parameters) throws IllegalPathException {
+    final Set<ConfigPhysicalPlanType> planTypes = new HashSet<>();
+    final Set<PartialPath> inclusionOptions = parseOptions(getInclusionString(parameters));
+    final Set<PartialPath> exclusionOptions = parseOptions(getExclusionString(parameters));
+    inclusionOptions.forEach(inclusion -> planTypes.addAll(getOptionsByPrefix(inclusion)));
+    exclusionOptions.forEach(exclusion -> planTypes.removeAll(getOptionsByPrefix(exclusion)));
+
+    if (!TreePattern.isTreeModelDataAllowToBeCaptured(parameters)) {
+      planTypes.removeAll(getOptionsByPrefix(treeOnlySyncPrefix));
+    }
+
+    if (!TablePattern.isTableModelDataAllowToBeCaptured(parameters)) {
+      planTypes.removeAll(getOptionsByPrefix(tableOnlySyncPrefix));
+    }
+
     return planTypes;
+  }
+
+  private static Set<ConfigPhysicalPlanType> getOptionsByPrefix(final PartialPath prefix) {
+    return OPTION_PLAN_MAP.keySet().stream()
+        .filter(path -> path.overlapWithFullPathPrefix(prefix))
+        .map(OPTION_PLAN_MAP::get)
+        .flatMap(Collection::stream)
+        .collect(Collectors.toSet());
   }
 
   private ConfigRegionListeningFilter() {

@@ -25,8 +25,9 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
@@ -57,7 +58,7 @@ public class ConfigMTreeTest {
 
   @Before
   public void setUp() throws Exception {
-    root = new ConfigMTree();
+    root = new ConfigMTree(false);
   }
 
   @After
@@ -272,7 +273,7 @@ public class ConfigMTreeTest {
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     root.serialize(outputStream);
 
-    final ConfigMTree newTree = new ConfigMTree();
+    final ConfigMTree newTree = new ConfigMTree(false);
     final ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
     newTree.deserialize(inputStream);
 
@@ -308,6 +309,8 @@ public class ConfigMTreeTest {
 
   @Test
   public void testTableSerialization() throws Exception {
+    root = new ConfigMTree(true);
+
     final PartialPath[] pathList =
         new PartialPath[] {
           new PartialPath("root.sg"),
@@ -320,6 +323,12 @@ public class ConfigMTreeTest {
       root.setStorageGroup(pathList[i]);
       final IDatabaseMNode<IConfigMNode> storageGroupMNode =
           root.getDatabaseNodeByDatabasePath(pathList[i]);
+      storageGroupMNode
+          .getAsMNode()
+          .getDatabaseSchema()
+          .setName(
+              PathUtils.unQualifyDatabaseName(
+                  storageGroupMNode.getAsMNode().getDatabaseSchema().getName()));
       storageGroupMNode.getAsMNode().getDatabaseSchema().setDataReplicationFactor(i);
       storageGroupMNode.getAsMNode().getDatabaseSchema().setSchemaReplicationFactor(i);
       storageGroupMNode.getAsMNode().getDatabaseSchema().setTimePartitionInterval(i);
@@ -327,10 +336,10 @@ public class ConfigMTreeTest {
 
       final String tableName = "table" + i;
       final TsTable table = new TsTable(tableName);
-      table.addColumnSchema(new IdColumnSchema("Id", TSDataType.STRING));
+      table.addColumnSchema(new TagColumnSchema("Id", TSDataType.STRING));
       table.addColumnSchema(new AttributeColumnSchema("Attr", TSDataType.STRING));
       table.addColumnSchema(
-          new MeasurementColumnSchema(
+          new FieldColumnSchema(
               "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
 
       root.preCreateTable(pathList[i], table);
@@ -340,7 +349,7 @@ public class ConfigMTreeTest {
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     root.serialize(outputStream);
 
-    final ConfigMTree newTree = new ConfigMTree();
+    final ConfigMTree newTree = new ConfigMTree(true);
     final ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
     newTree.deserialize(inputStream);
 

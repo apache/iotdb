@@ -22,14 +22,16 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
 import org.apache.iotdb.db.exception.sql.ColumnCreationFailException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -37,9 +39,13 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterCon
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableAddColumnTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -66,6 +72,7 @@ public class TableHeaderSchemaValidator {
 
   private final ClusterConfigTaskExecutor configTaskExecutor =
       ClusterConfigTaskExecutor.getInstance();
+  private final AccessControl accessControl = Coordinator.getInstance().getAccessControl();
 
   private TableHeaderSchemaValidator() {
     // do nothing
@@ -84,7 +91,11 @@ public class TableHeaderSchemaValidator {
       final String database,
       final TableSchema tableSchema,
       final MPPQueryContext context,
-      final boolean allowCreateTable) {
+      final boolean allowCreateTable,
+      final boolean isStrictIdColumn)
+      throws LoadAnalyzeTableColumnDisorderException {
+    InformationSchemaUtils.checkDBNameInWrite(database);
+
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeSeries will be effective.
     DataNodeSchemaLockManager.getInstance()
@@ -110,14 +121,52 @@ public class TableHeaderSchemaValidator {
       // it's ok that many write requests concurrently auto create same table, the thread safety
       // will be guaranteed by ProcedureManager.createTable in CN
       if (allowCreateTable && isAutoCreateSchemaEnabled) {
-        autoCreateTable(database, tableSchema);
+        autoCreateTable(context, database, tableSchema);
         table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
         if (table == null) {
           throw new IllegalStateException(
               "auto create table succeed, but cannot get table schema in current node's DataNodeTableCache, may be caused by concurrently auto creating table");
         }
       } else {
-        throw new SemanticException("Table " + tableSchema.getTableName() + " does not exist");
+        TableMetadataImpl.throwTableNotExistsException(database, tableSchema.getTableName());
+      }
+    } else {
+      // If table with this name already exists and isStrictIdColumn is true, make sure the existing
+      // id columns are the prefix of the incoming id columns, or vice versa
+      if (isStrictIdColumn) {
+        final List<TsTableColumnSchema> realIdColumns = table.getIdColumnSchemaList();
+        final List<ColumnSchema> incomingIdColumns = tableSchema.getIdColumns();
+        if (realIdColumns.size() <= incomingIdColumns.size()) {
+          // When incoming table has more ID columns, the existing id columns
+          // should be the prefix of the incoming id columns (or equal)
+          for (int indexReal = 0; indexReal < realIdColumns.size(); indexReal++) {
+            final String idName = realIdColumns.get(indexReal).getColumnName();
+            final int indexIncoming = tableSchema.getIndexAmongIdColumns(idName);
+            if (indexIncoming != indexReal) {
+              throw new LoadAnalyzeTableColumnDisorderException(
+                  String.format(
+                      "Can not create table because incoming table has no less id columns than existing table, "
+                          + "and the existing id columns are not the prefix of the incoming id columns. "
+                          + "Existing id column: %s, index in existing table: %s, index in incoming table: %s",
+                      idName, indexReal, indexIncoming));
+            }
+          }
+        } else {
+          // When existing table has more ID columns, the incoming id columns
+          // should be the prefix of the existing id columns
+          for (int indexIncoming = 0; indexIncoming < incomingIdColumns.size(); indexIncoming++) {
+            final String idName = incomingIdColumns.get(indexIncoming).getName();
+            final int indexReal = table.getIdColumnOrdinal(idName);
+            if (indexReal != indexIncoming) {
+              throw new LoadAnalyzeTableColumnDisorderException(
+                  String.format(
+                      "Can not create table because existing table has more id columns than incoming table, "
+                          + "and the incoming id columns are not the prefix of the existing id columns. "
+                          + "Incoming id column: %s, index in existing table: %s, index in incoming table: %s",
+                      idName, indexReal, indexIncoming));
+            }
+          }
+        }
       }
     }
 
@@ -193,9 +242,13 @@ public class TableHeaderSchemaValidator {
     return Optional.of(new TableSchema(tableSchema.getTableName(), resultColumnList));
   }
 
-  private void autoCreateTable(final String database, final TableSchema tableSchema) {
+  private void autoCreateTable(
+      final MPPQueryContext context, final String database, final TableSchema tableSchema) {
     final TsTable tsTable = new TsTable(tableSchema.getTableName());
     addColumnSchema(tableSchema.getColumns(), tsTable);
+    accessControl.checkCanCreateTable(
+        context.getSession().getUserName(),
+        new QualifiedObjectName(database, tableSchema.getTableName()));
     final CreateTableTask createTableTask = new CreateTableTask(tsTable, database, true);
     try {
       final ListenableFuture<ConfigTaskResult> future = createTableTask.execute(configTaskExecutor);
@@ -238,12 +291,12 @@ public class TableHeaderSchemaValidator {
   public static TsTableColumnSchema generateColumnSchema(
       final TsTableColumnCategory category, final String columnName, final TSDataType dataType) {
     switch (category) {
-      case ID:
+      case TAG:
         if (!TSDataType.STRING.equals(dataType)) {
           throw new SemanticException(
-              "DataType of ID Column should only be STRING, current is " + dataType);
+              "DataType of TAG Column should only be STRING, current is " + dataType);
         }
-        return new IdColumnSchema(columnName, dataType);
+        return new TagColumnSchema(columnName, dataType);
       case ATTRIBUTE:
         if (!TSDataType.STRING.equals(dataType)) {
           throw new SemanticException(
@@ -252,9 +305,9 @@ public class TableHeaderSchemaValidator {
         return new AttributeColumnSchema(columnName, dataType);
       case TIME:
         throw new SemanticException(
-            "Create table statement shall not specify column category TIME");
-      case MEASUREMENT:
-        return new MeasurementColumnSchema(
+            "Create table or add column statement shall not specify column category TIME");
+      case FIELD:
+        return new FieldColumnSchema(
             columnName,
             dataType,
             getDefaultEncoding(dataType),
@@ -269,6 +322,8 @@ public class TableHeaderSchemaValidator {
       final String tableName,
       final List<ColumnSchema> inputColumnList,
       final MPPQueryContext context) {
+    accessControl.checkCanAlterTable(
+        context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
     final AlterTableAddColumnTask task =
         new AlterTableAddColumnTask(
             database,
@@ -299,11 +354,11 @@ public class TableHeaderSchemaValidator {
     final List<TsTableColumnSchema> columnSchemaList = new ArrayList<>(inputColumnList.size());
     for (final ColumnSchema inputColumn : inputColumnList) {
       switch (inputColumn.getColumnCategory()) {
-        case ID:
+        case TAG:
           if (!inputColumn.getType().equals(StringType.STRING)) {
-            throw new SemanticException("Id column only support data type STRING.");
+            throw new SemanticException("Tag column only support data type STRING.");
           }
-          columnSchemaList.add(new IdColumnSchema(inputColumn.getName(), TSDataType.STRING));
+          columnSchemaList.add(new TagColumnSchema(inputColumn.getName(), TSDataType.STRING));
           break;
         case ATTRIBUTE:
           if (!inputColumn.getType().equals(StringType.STRING)) {
@@ -311,10 +366,10 @@ public class TableHeaderSchemaValidator {
           }
           columnSchemaList.add(new AttributeColumnSchema(inputColumn.getName(), TSDataType.STRING));
           break;
-        case MEASUREMENT:
+        case FIELD:
           final TSDataType dataType = InternalTypeManager.getTSDataType(inputColumn.getType());
           columnSchemaList.add(
-              new MeasurementColumnSchema(
+              new FieldColumnSchema(
                   inputColumn.getName(),
                   dataType,
                   getDefaultEncoding(dataType),

@@ -56,6 +56,7 @@ import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
 public class Utils {
+
   private static final int TEMP_BUFFER_SIZE = 1024;
   private static final byte PADDING_MAGIC = 0x47;
   private static final String DATA_REGION_GROUP = "group-0001";
@@ -252,6 +253,7 @@ public class Utils {
     GrpcConfigKeys.Server.setLeaderOutstandingAppendsMax(
         properties, config.getGrpc().getLeaderOutstandingAppendsMax());
 
+    RaftServerConfigKeys.setStagingTimeout(properties, TimeDuration.valueOf(240, TimeUnit.SECONDS));
     RaftServerConfigKeys.Rpc.setSlownessTimeout(properties, config.getRpc().getSlownessTimeout());
     RaftServerConfigKeys.Rpc.setTimeoutMin(properties, config.getRpc().getTimeoutMin());
     RaftServerConfigKeys.Rpc.setTimeoutMax(properties, config.getRpc().getTimeoutMax());
@@ -288,9 +290,6 @@ public class Utils {
         properties, config.getThreadPool().getServerSize());
 
     RaftServerConfigKeys.Log.setUseMemory(properties, config.getLog().isUseMemory());
-    RaftServerConfigKeys.Log.setQueueElementLimit(
-        properties, config.getLog().getQueueElementLimit());
-    RaftServerConfigKeys.Log.setQueueByteLimit(properties, config.getLog().getQueueByteLimit());
     RaftServerConfigKeys.Log.setPurgeGap(properties, config.getLog().getPurgeGap());
     RaftServerConfigKeys.Log.setPurgeUptoSnapshotIndex(
         properties, config.getLog().isPurgeUptoSnapshotIndex());
@@ -302,15 +301,21 @@ public class Utils {
     RaftServerConfigKeys.Log.setSegmentCacheSizeMax(
         properties, config.getLog().getSegmentCacheSizeMax());
     RaftServerConfigKeys.Log.setPreallocatedSize(properties, config.getLog().getPreallocatedSize());
-    final SizeInBytes writeBufferSize =
-        SizeInBytes.valueOf(config.getLeaderLogAppender().getBufferByteLimit().getSizeInt() + 8L);
-    RaftServerConfigKeys.Log.setWriteBufferSize(properties, writeBufferSize);
+    RaftServerConfigKeys.Log.setWriteBufferSize(
+        properties,
+        SizeInBytes.valueOf(config.getLeaderLogAppender().getBufferByteLimit().getSizeInt() + 8L));
     RaftServerConfigKeys.Log.setForceSyncNum(properties, config.getLog().getForceSyncNum());
     RaftServerConfigKeys.Log.setUnsafeFlushEnabled(
         properties, config.getLog().isUnsafeFlushEnabled());
     RaftServerConfigKeys.Log.setCorruptionPolicy(
         properties, RaftServerConfigKeys.Log.CorruptionPolicy.WARN_AND_RETURN);
 
+    RaftServerConfigKeys.Write.setByteLimit(
+        properties,
+        SizeInBytes.valueOf(config.getLeaderLogAppender().getBufferByteLimit().getSize() * 10));
+
+    RaftServerConfigKeys.Log.setQueueByteLimit(
+        properties, config.getLeaderLogAppender().getBufferByteLimit());
     RaftServerConfigKeys.Log.Appender.setBufferByteLimit(
         properties, config.getLeaderLogAppender().getBufferByteLimit());
     RaftServerConfigKeys.Log.Appender.setSnapshotChunkSizeMax(
@@ -331,8 +336,12 @@ public class Utils {
     RaftServerConfigKeys.Read.setTimeout(properties, config.getRead().getReadTimeout());
 
     RaftServerConfigKeys.setSleepDeviationThreshold(
-        properties, config.getUtils().getSleepDeviationThresholdMs());
-    RaftServerConfigKeys.setCloseThreshold(properties, config.getUtils().getCloseThresholdMs());
+        properties,
+        TimeDuration.valueOf(
+            config.getUtils().getSleepDeviationThresholdMs(), TimeUnit.MILLISECONDS));
+    RaftServerConfigKeys.setCloseThreshold(
+        properties,
+        TimeDuration.valueOf(config.getUtils().getCloseThresholdMs(), TimeUnit.MILLISECONDS));
 
     final TimeDuration clientMaxRetryGap = getMaxRetrySleepTime(config.getClient());
     RaftServerConfigKeys.RetryCache.setExpiryTime(properties, clientMaxRetryGap);

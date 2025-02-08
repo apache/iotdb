@@ -28,8 +28,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SizeTieredCompactionSelector;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -668,9 +668,9 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
     // mock modification file size must greater than 50M
     MockModiFicationFile mockModiFicationFile =
         new MockModiFicationFile(
-            seqResources.get(0).getTsFilePath() + ModificationFile.FILE_SUFFIX);
-    mockModiFicationFile.write(new Deletion(new MeasurementPath("root.a.b"), 1, 1));
-    seqResources.get(0).setModFile(mockModiFicationFile);
+            ModificationFile.getExclusiveMods(seqResources.get(0).getTsFile()).getPath());
+    mockModiFicationFile.write(new TreeDeletionEntry(new MeasurementPath("root.a.b"), 1));
+    seqResources.get(0).setExclusiveModFile(mockModiFicationFile);
     SizeTieredCompactionSelector selector =
         new SizeTieredCompactionSelector(
             "", "", 0, true, tsFileManager, new CompactionScheduleContext());
@@ -692,9 +692,9 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
     // mock modification file size must greater than 50M
     MockModiFicationFile mockModiFicationFile =
         new MockModiFicationFile(
-            seqResources.get(0).getTsFilePath() + ModificationFile.FILE_SUFFIX);
-    mockModiFicationFile.write(new Deletion(new MeasurementPath("root.a.b"), 1, 1));
-    seqResources.get(0).setModFile(mockModiFicationFile);
+            ModificationFile.getExclusiveMods(seqResources.get(0).getTsFile()).getPath());
+    mockModiFicationFile.write(new TreeDeletionEntry(new MeasurementPath("root.a.b"), 1));
+    seqResources.get(0).setExclusiveModFile(mockModiFicationFile);
     seqResources.get(0).setStatusForTest(TsFileResourceStatus.COMPACTING);
     SizeTieredCompactionSelector selector =
         new SizeTieredCompactionSelector(
@@ -715,12 +715,11 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
      * @param filePath the path of the storage file.
      */
     public MockModiFicationFile(String filePath) {
-      super(filePath);
-      new File(filePath);
+      super(new File(filePath), false);
     }
 
     @Override
-    public long getSize() {
+    public long getFileLength() {
       return 1024 * 1024 * 50 + 1;
     }
   }

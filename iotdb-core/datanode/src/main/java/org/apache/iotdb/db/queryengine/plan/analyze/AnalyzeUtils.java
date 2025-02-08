@@ -19,18 +19,44 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TimeRange;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.And;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.SegmentExactMatch;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -42,12 +68,15 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Queue;
 import java.util.Set;
+import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 
 public class AnalyzeUtils {
 
@@ -86,7 +115,8 @@ public class AnalyzeUtils {
     return realStatement;
   }
 
-  public static String getDatabaseName(InsertBaseStatement statement, MPPQueryContext context) {
+  public static String getDatabaseName(
+      final InsertBaseStatement statement, final MPPQueryContext context) {
     if (statement.getDatabaseName().isPresent()) {
       return statement.getDatabaseName().get();
     }
@@ -96,34 +126,22 @@ public class AnalyzeUtils {
     return null;
   }
 
-  public static String getDatabaseNameForTableWithRoot(
-      InsertBaseStatement statement, MPPQueryContext context) {
-    if (statement.getDatabaseName().isPresent()) {
-      return PATH_ROOT + PATH_SEPARATOR + statement.getDatabaseName().get();
-    }
-    if (context != null && context.getDatabaseName().isPresent()) {
-      return PATH_ROOT + PATH_SEPARATOR + context.getDatabaseName().get();
-    }
-    return null;
-  }
-
   public static List<DataPartitionQueryParam> computeTableDataPartitionParams(
-      InsertBaseStatement statement, MPPQueryContext context) {
+      final InsertBaseStatement statement, final MPPQueryContext context) {
     if (statement instanceof InsertTabletStatement) {
-      InsertTabletStatement insertTabletStatement = (InsertTabletStatement) statement;
-      Map<IDeviceID, Set<TTimePartitionSlot>> timePartitionSlotMap = new HashMap<>();
+      final InsertTabletStatement insertTabletStatement = (InsertTabletStatement) statement;
+      final Map<IDeviceID, Set<TTimePartitionSlot>> timePartitionSlotMap = new HashMap<>();
       for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
         timePartitionSlotMap
             .computeIfAbsent(insertTabletStatement.getTableDeviceID(i), id -> new HashSet<>())
             .add(insertTabletStatement.getTimePartitionSlot(i));
       }
-      return computeDataPartitionParams(
-          timePartitionSlotMap, getDatabaseNameForTableWithRoot(statement, context));
+      return computeDataPartitionParams(timePartitionSlotMap, getDatabaseName(statement, context));
     } else if (statement instanceof InsertMultiTabletsStatement) {
-      InsertMultiTabletsStatement insertMultiTabletsStatement =
+      final InsertMultiTabletsStatement insertMultiTabletsStatement =
           (InsertMultiTabletsStatement) statement;
-      Map<IDeviceID, Set<TTimePartitionSlot>> timePartitionSlotMap = new HashMap<>();
-      for (InsertTabletStatement insertTabletStatement :
+      final Map<IDeviceID, Set<TTimePartitionSlot>> timePartitionSlotMap = new HashMap<>();
+      for (final InsertTabletStatement insertTabletStatement :
           insertMultiTabletsStatement.getInsertTabletStatementList()) {
         for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
           timePartitionSlotMap
@@ -131,26 +149,24 @@ public class AnalyzeUtils {
               .add(insertTabletStatement.getTimePartitionSlot(i));
         }
       }
-      return computeDataPartitionParams(
-          timePartitionSlotMap, getDatabaseNameForTableWithRoot(statement, context));
+      return computeDataPartitionParams(timePartitionSlotMap, getDatabaseName(statement, context));
     } else if (statement instanceof InsertRowStatement) {
-      InsertRowStatement insertRowStatement = (InsertRowStatement) statement;
+      final InsertRowStatement insertRowStatement = (InsertRowStatement) statement;
       return computeDataPartitionParams(
           Collections.singletonMap(
               insertRowStatement.getTableDeviceID(),
               Collections.singleton(insertRowStatement.getTimePartitionSlot())),
-          getDatabaseNameForTableWithRoot(statement, context));
+          getDatabaseName(statement, context));
     } else if (statement instanceof InsertRowsStatement) {
-      InsertRowsStatement insertRowsStatement = (InsertRowsStatement) statement;
-      Map<IDeviceID, Set<TTimePartitionSlot>> timePartitionSlotMap = new HashMap<>();
-      for (InsertRowStatement insertRowStatement :
+      final InsertRowsStatement insertRowsStatement = (InsertRowsStatement) statement;
+      final Map<IDeviceID, Set<TTimePartitionSlot>> timePartitionSlotMap = new HashMap<>();
+      for (final InsertRowStatement insertRowStatement :
           insertRowsStatement.getInsertRowStatementList()) {
         timePartitionSlotMap
             .computeIfAbsent(insertRowStatement.getTableDeviceID(), id -> new HashSet<>())
             .add(insertRowStatement.getTimePartitionSlot());
       }
-      return computeDataPartitionParams(
-          timePartitionSlotMap, getDatabaseNameForTableWithRoot(statement, context));
+      return computeDataPartitionParams(timePartitionSlotMap, getDatabaseName(statement, context));
     }
     throw new UnsupportedOperationException("computeDataPartitionParams for " + statement);
   }
@@ -276,12 +292,12 @@ public class AnalyzeUtils {
 
   /** get analysis according to statement and params */
   public static void analyzeDataPartition(
-      IAnalysis analysis,
-      List<DataPartitionQueryParam> dataPartitionQueryParams,
-      String userName,
-      DataPartitionQueryFunc partitionQueryFunc) {
+      final IAnalysis analysis,
+      final List<DataPartitionQueryParam> dataPartitionQueryParams,
+      final String userName,
+      final DataPartitionQueryFunc partitionQueryFunc) {
 
-    DataPartition dataPartition =
+    final DataPartition dataPartition =
         partitionQueryFunc.queryDataPartition(dataPartitionQueryParams, userName);
     if (dataPartition.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
@@ -294,10 +310,278 @@ public class AnalyzeUtils {
     analysis.setDataPartitionInfo(dataPartition);
   }
 
+  public static void analyzeDelete(final Delete node, final MPPQueryContext queryContext) {
+    queryContext.setQueryType(QueryType.WRITE);
+    validateSchema(node, queryContext);
+
+    try (final ConfigNodeClient configNodeClient =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // TODO: may use time and db/table to filter
+      final TRegionRouteMapResp latestRegionRouteMap = configNodeClient.getLatestRegionRouteMap();
+      final Set<TRegionReplicaSet> replicaSets = new HashSet<>();
+      latestRegionRouteMap.getRegionRouteMap().entrySet().stream()
+          .filter(e -> e.getKey().getType() == TConsensusGroupType.DataRegion)
+          .forEach(e -> replicaSets.add(e.getValue()));
+      node.setReplicaSets(replicaSets);
+    } catch (final Exception e) {
+      throw new IoTDBRuntimeException(e, TSStatusCode.CAN_NOT_CONNECT_CONFIGNODE.getStatusCode());
+    }
+  }
+
+  @SuppressWarnings("java:S3655") // optional is checked
+  private static void validateSchema(final Delete node, final MPPQueryContext queryContext) {
+    final String tableName = node.getTable().getName().getSuffix();
+    final String databaseName;
+    if (node.getTable().getName().getPrefix().isPresent()) {
+      databaseName = node.getTable().getName().getPrefix().get().toString();
+    } else if (queryContext.getDatabaseName().isPresent()) {
+      databaseName = queryContext.getDatabaseName().get();
+    } else {
+      throw new SemanticException(DATABASE_NOT_SPECIFIED);
+    }
+    InformationSchemaUtils.checkDBNameInWrite(databaseName);
+    node.setDatabaseName(databaseName);
+
+    final TsTable table = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
+    if (table == null) {
+      throw new SemanticException("Table " + tableName + " not found");
+    }
+
+    // Maybe set by pipe transfer
+    if (Objects.isNull(node.getTableDeletionEntries())) {
+      node.setTableDeletionEntries(
+          parseExpressions2ModEntries(node.getWhere().orElse(null), table));
+    }
+  }
+
+  public static List<TableDeletionEntry> parseExpressions2ModEntries(
+      final Expression expression, final TsTable table) {
+    return toDisjunctiveNormalForms(expression).stream()
+        .map(disjunctiveNormalForm -> parsePredicate(disjunctiveNormalForm, table))
+        .collect(Collectors.toList());
+  }
+
+  /**
+   * Convert to a disjunctive normal forms.
+   *
+   * <p>For example: ( A | B ) & ( C | D ) => ( A & C ) | ( A & D ) | ( B & C ) | ( B & D)
+   *
+   * <p>Returns the original expression if the expression is null or if the distribution will expand
+   * the expression by too much.
+   */
+  public static List<Expression> toDisjunctiveNormalForms(Expression expression) {
+    if (!(expression instanceof LogicalExpression)) {
+      return Collections.singletonList(expression);
+    }
+
+    LogicalExpression logicalExpression = (LogicalExpression) expression;
+    if (logicalExpression.getOperator() == Operator.AND) {
+      // ( A | B ) & ( C | D ) => ( A & C ) | ( A & D ) | ( B & C ) | ( B & D)
+      List<Expression> results = null;
+      for (Expression term : logicalExpression.getTerms()) {
+        if (results == null) {
+          results = toDisjunctiveNormalForms(term);
+        } else {
+          results =
+              crossProductOfDisjunctiveNormalForms(
+                  results, toDisjunctiveNormalForms(term), Operator.AND);
+        }
+      }
+      return results;
+    } else if (logicalExpression.getOperator() == Operator.OR) {
+      // ( A | B ) | ( C | D ) => A | B | C | D
+      List<Expression> results = new ArrayList<>();
+      for (Expression term : logicalExpression.getTerms()) {
+        results.addAll(toDisjunctiveNormalForms(term));
+      }
+      return results;
+    } else {
+      throw new SemanticException("Unsupported operator: " + logicalExpression.getOperator());
+    }
+  }
+
+  private static List<Expression> crossProductOfDisjunctiveNormalForms(
+      List<Expression> leftList, List<Expression> rightList, Operator operator) {
+    List<Expression> results = new ArrayList<>();
+    for (Expression leftExp : leftList) {
+      for (Expression rightExp : rightList) {
+        List<Expression> terms = new ArrayList<>();
+        if (leftExp instanceof LogicalExpression) {
+          terms.addAll(((LogicalExpression) leftExp).getTerms());
+        } else {
+          terms.add(leftExp);
+        }
+
+        if (rightExp instanceof LogicalExpression) {
+          terms.addAll(((LogicalExpression) rightExp).getTerms());
+        } else {
+          terms.add(rightExp);
+        }
+
+        results.add(new LogicalExpression(operator, terms));
+      }
+    }
+    return results;
+  }
+
+  private static TableDeletionEntry parsePredicate(Expression expression, TsTable table) {
+    if (expression == null) {
+      return new TableDeletionEntry(
+          new DeletionPredicate(table.getTableName()),
+          new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE, true).toTsFileTimeRange());
+    }
+
+    Queue<Expression> expressionQueue = new LinkedList<>();
+    expressionQueue.add(expression);
+    DeletionPredicate predicate = new DeletionPredicate(table.getTableName());
+    IDPredicate idPredicate = null;
+    TimeRange timeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE, true);
+    while (!expressionQueue.isEmpty()) {
+      Expression currExp = expressionQueue.remove();
+      if (currExp instanceof LogicalExpression) {
+        parseAndPredicate(((LogicalExpression) currExp), expressionQueue);
+      } else if (currExp instanceof ComparisonExpression) {
+        idPredicate =
+            parseComparison(((ComparisonExpression) currExp), timeRange, idPredicate, table);
+      } else if (currExp instanceof IsNullPredicate) {
+        idPredicate = parseIsNull((IsNullPredicate) currExp, idPredicate, table);
+      } else {
+        throw new SemanticException("Unsupported expression: " + currExp + " in " + expression);
+      }
+    }
+    if (idPredicate != null) {
+      predicate.setIdPredicate(idPredicate);
+    }
+    if (timeRange.getStartTime() > timeRange.getEndTime()) {
+      throw new SemanticException(
+          String.format(
+              "Start time %d is greater than end time %d",
+              timeRange.getStartTime(), timeRange.getEndTime()));
+    }
+
+    return new TableDeletionEntry(predicate, timeRange.toTsFileTimeRange());
+  }
+
+  private static void parseAndPredicate(
+      LogicalExpression expression, Queue<Expression> expressionQueue) {
+    if (expression.getOperator() != Operator.AND) {
+      throw new SemanticException("Only support AND operator in deletion");
+    }
+    expressionQueue.addAll(expression.getTerms());
+  }
+
+  private static IDPredicate parseIsNull(
+      IsNullPredicate isNullPredicate, IDPredicate oldPredicate, TsTable table) {
+    Expression leftHandExp = isNullPredicate.getValue();
+    if (!(leftHandExp instanceof Identifier)) {
+      throw new SemanticException("Left hand expression is not an identifier: " + leftHandExp);
+    }
+    String columnName = ((Identifier) leftHandExp).getValue();
+    int idColumnOrdinal = table.getIdColumnOrdinal(columnName);
+    if (idColumnOrdinal == -1) {
+      throw new SemanticException(
+          "The column '" + columnName + "' does not exist or is not a tag column");
+    }
+
+    // the first segment is the table name, so + 1
+    IDPredicate newPredicate = new SegmentExactMatch(null, idColumnOrdinal + 1);
+    return combinePredicates(oldPredicate, newPredicate);
+  }
+
+  private static IDPredicate combinePredicates(IDPredicate oldPredicate, IDPredicate newPredicate) {
+    if (oldPredicate == null) {
+      return newPredicate;
+    }
+    if (oldPredicate instanceof IDPredicate.And) {
+      ((And) oldPredicate).add(newPredicate);
+      return oldPredicate;
+    }
+    return new IDPredicate.And(oldPredicate, newPredicate);
+  }
+
+  private static IDPredicate parseComparison(
+      ComparisonExpression comparisonExpression,
+      TimeRange timeRange,
+      IDPredicate oldPredicate,
+      TsTable table) {
+    Expression left = comparisonExpression.getLeft();
+    Expression right = comparisonExpression.getRight();
+    if (!(left instanceof Identifier)) {
+      throw new SemanticException("The left hand value must be an identifier: " + left);
+    }
+    Identifier identifier = (Identifier) left;
+    // time predicate
+    if (identifier.getValue().equalsIgnoreCase("time")) {
+      long rightHandValue;
+      if (right instanceof LongLiteral) {
+        rightHandValue = ((LongLiteral) right).getParsedValue();
+      } else {
+        throw new SemanticException(
+            "The right hand value of time predicate must be a long: " + right);
+      }
+
+      switch (comparisonExpression.getOperator()) {
+        case LESS_THAN:
+          timeRange.setEndTime(Math.min(timeRange.getEndTime(), rightHandValue - 1));
+          break;
+        case LESS_THAN_OR_EQUAL:
+          timeRange.setEndTime(Math.min(timeRange.getEndTime(), rightHandValue));
+          break;
+        case GREATER_THAN:
+          timeRange.setStartTime(Math.max(timeRange.getStartTime(), rightHandValue + 1));
+          break;
+        case GREATER_THAN_OR_EQUAL:
+          timeRange.setStartTime(Math.max(timeRange.getStartTime(), rightHandValue));
+          break;
+        case EQUAL:
+          timeRange.setStartTime(rightHandValue);
+          timeRange.setEndTime(rightHandValue);
+          break;
+        case NOT_EQUAL:
+        case IS_DISTINCT_FROM:
+        default:
+          throw new SemanticException(
+              "The operator of time predicate must be <, <=, >, or >=: " + right);
+      }
+
+      return oldPredicate;
+    }
+    // id predicate
+    String columnName = identifier.getValue();
+    int idColumnOrdinal = table.getIdColumnOrdinal(columnName);
+    if (idColumnOrdinal == -1) {
+      throw new SemanticException(
+          "The column '" + columnName + "' does not exist or is not a tag column");
+    }
+
+    IDPredicate newPredicate = getIdPredicate(comparisonExpression, right, idColumnOrdinal);
+    return combinePredicates(oldPredicate, newPredicate);
+  }
+
+  private static IDPredicate getIdPredicate(
+      ComparisonExpression comparisonExpression, Expression right, int idColumnOrdinal) {
+    if (comparisonExpression.getOperator() != ComparisonExpression.Operator.EQUAL) {
+      throw new SemanticException("The operator of tag predicate must be '=' for " + right);
+    }
+
+    String rightHandValue;
+    if (right instanceof StringLiteral) {
+      rightHandValue = ((StringLiteral) right).getValue();
+    } else if (right instanceof NullLiteral) {
+      throw new SemanticException(
+          "The right hand value of tag predicate cannot be null with '=' operator, please use 'IS NULL' instead");
+    } else {
+      throw new SemanticException(
+          "The right hand value of tag predicate must be a string: " + right);
+    }
+    // the first segment is the table name, so + 1
+    return new SegmentExactMatch(rightHandValue, idColumnOrdinal + 1);
+  }
+
   public interface DataPartitionQueryFunc {
 
     DataPartition queryDataPartition(
-        List<DataPartitionQueryParam> dataPartitionQueryParams, String userName);
+        final List<DataPartitionQueryParam> dataPartitionQueryParams, final String userName);
   }
 
   public interface DataPartitionQueryParamComputation {

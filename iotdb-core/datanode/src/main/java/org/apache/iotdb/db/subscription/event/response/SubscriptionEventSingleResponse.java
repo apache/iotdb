@@ -65,7 +65,7 @@ public class SubscriptionEventSingleResponse
   }
 
   @Override
-  public void fetchNextResponse() {
+  public void fetchNextResponse(final long offset) {
     // do nothing
   }
 
@@ -96,6 +96,7 @@ public class SubscriptionEventSingleResponse
 
   @Override
   public void cleanUp() {
+    response.closeMemoryBlock();
     invalidateCurrentResponseByteBuffer();
   }
 

@@ -26,10 +26,17 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -314,5 +321,74 @@ public class PipeConfigPhysicalPlanTSStatusVisitor
           .setMessage(context.getMessage());
     }
     return super.visitTTL(plan, context);
+  }
+
+  @Override
+  public TSStatus visitPipeCreateTable(
+      final PipeCreateTablePlan pipeCreateTablePlan, final TSStatus context) {
+    if (context.getCode() == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()
+        || context.getCode() == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()
+        || context.getCode() == TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitPipeCreateTable(pipeCreateTablePlan, context);
+  }
+
+  @Override
+  public TSStatus visitAddTableColumn(
+      final AddTableColumnPlan addTableColumnPlan, final TSStatus context) {
+    if (context.getCode() == TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return visitCommonTablePlan(addTableColumnPlan, context);
+  }
+
+  @Override
+  public TSStatus visitSetTableProperties(
+      final SetTablePropertiesPlan setTablePropertiesPlan, final TSStatus context) {
+    return visitCommonTablePlan(setTablePropertiesPlan, context);
+  }
+
+  @Override
+  public TSStatus visitCommitDeleteColumn(
+      final CommitDeleteColumnPlan commitDeleteColumnPlan, final TSStatus context) {
+    if (context.getCode() == TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return visitCommonTablePlan(commitDeleteColumnPlan, context);
+  }
+
+  @Override
+  public TSStatus visitRenameTableColumn(
+      final RenameTableColumnPlan renameTableColumnPlan, final TSStatus context) {
+    if (context.getCode() == TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return visitCommonTablePlan(renameTableColumnPlan, context);
+  }
+
+  @Override
+  public TSStatus visitCommitDeleteTable(
+      final CommitDeleteTablePlan commitDeleteTablePlan, final TSStatus context) {
+    return visitCommonTablePlan(commitDeleteTablePlan, context);
+  }
+
+  @Override
+  public TSStatus visitPipeDeleteDevices(
+      final PipeDeleteDevicesPlan pipeDeleteDevicesPlan, final TSStatus context) {
+    return visitCommonTablePlan(pipeDeleteDevicesPlan, context);
+  }
+
+  private TSStatus visitCommonTablePlan(final ConfigPhysicalPlan plan, final TSStatus context) {
+    if (context.getCode() == TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()
+        || context.getCode() == TSStatusCode.TABLE_NOT_EXISTS.getStatusCode()) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return visitPlan(plan, context);
   }
 }

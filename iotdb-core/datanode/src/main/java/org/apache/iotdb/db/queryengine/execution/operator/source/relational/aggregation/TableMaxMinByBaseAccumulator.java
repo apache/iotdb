@@ -64,30 +64,30 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
 
   // Column should be like: | x | y |
   @Override
-  public void addInput(Column[] arguments) {
+  public void addInput(Column[] arguments, AggregationMask mask) {
     checkArgument(arguments.length == 2, "Length of input Column[] for MaxBy/MinBy should be 2");
     switch (yDataType) {
       case INT32:
       case DATE:
-        addIntInput(arguments);
+        addIntInput(arguments, mask);
         return;
       case INT64:
       case TIMESTAMP:
-        addLongInput(arguments);
+        addLongInput(arguments, mask);
         return;
       case FLOAT:
-        addFloatInput(arguments);
+        addFloatInput(arguments, mask);
         return;
       case DOUBLE:
-        addDoubleInput(arguments);
+        addDoubleInput(arguments, mask);
         return;
       case STRING:
       case TEXT:
       case BLOB:
-        addBinaryInput(arguments);
+        addBinaryInput(arguments, mask);
         return;
       case BOOLEAN:
-        addBooleanInput(arguments);
+        addBooleanInput(arguments, mask);
         return;
       default:
         throw new UnSupportedDataTypeException(String.format(UNSUPPORTED_TYPE_MESSAGE, yDataType));
@@ -97,7 +97,9 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
   @Override
   public void addIntermediate(Column argument) {
     checkArgument(
-        argument instanceof BinaryColumn || argument instanceof RunLengthEncodedColumn,
+        argument instanceof BinaryColumn
+            || (argument instanceof RunLengthEncodedColumn
+                && ((RunLengthEncodedColumn) argument).getValue() instanceof BinaryColumn),
         "intermediate input and output of max_by/min_by should be BinaryColumn");
 
     for (int i = 0; i < argument.getPositionCount(); i++) {
@@ -150,11 +152,23 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
     return false;
   }
 
-  private void addIntInput(Column[] column) {
-    int count = column[1].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (!column[1].isNull(i)) {
-        updateIntResult(column[1].getInt(i), column[0], i);
+  private void addIntInput(Column[] column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column[1].isNull(i)) {
+          updateIntResult(column[1].getInt(i), column[0], i);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column[1].isNull(position)) {
+          updateIntResult(column[1].getInt(position), column[0], position);
+        }
       }
     }
   }
@@ -167,11 +181,23 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
     }
   }
 
-  private void addLongInput(Column[] column) {
-    int count = column[1].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (!column[1].isNull(i)) {
-        updateLongResult(column[1].getLong(i), column[0], i);
+  private void addLongInput(Column[] column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column[1].isNull(i)) {
+          updateLongResult(column[1].getLong(i), column[0], i);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column[1].isNull(position)) {
+          updateLongResult(column[1].getLong(position), column[0], position);
+        }
       }
     }
   }
@@ -184,11 +210,23 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
     }
   }
 
-  private void addFloatInput(Column[] column) {
-    int count = column[1].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (!column[1].isNull(i)) {
-        updateFloatResult(column[1].getFloat(i), column[0], i);
+  private void addFloatInput(Column[] column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column[1].isNull(i)) {
+          updateFloatResult(column[1].getFloat(i), column[0], i);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column[1].isNull(position)) {
+          updateFloatResult(column[1].getFloat(position), column[0], position);
+        }
       }
     }
   }
@@ -201,11 +239,23 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
     }
   }
 
-  private void addDoubleInput(Column[] column) {
-    int count = column[1].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (!column[1].isNull(i)) {
-        updateDoubleResult(column[1].getDouble(i), column[0], i);
+  private void addDoubleInput(Column[] column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column[1].isNull(i)) {
+          updateDoubleResult(column[1].getDouble(i), column[0], i);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column[1].isNull(position)) {
+          updateDoubleResult(column[1].getDouble(position), column[0], position);
+        }
       }
     }
   }
@@ -218,11 +268,23 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
     }
   }
 
-  private void addBinaryInput(Column[] column) {
-    int count = column[1].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (!column[1].isNull(i)) {
-        updateBinaryResult(column[1].getBinary(i), column[0], i);
+  private void addBinaryInput(Column[] column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column[1].isNull(i)) {
+          updateBinaryResult(column[1].getBinary(i), column[0], i);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column[1].isNull(position)) {
+          updateBinaryResult(column[1].getBinary(position), column[0], position);
+        }
       }
     }
   }
@@ -235,11 +297,23 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
     }
   }
 
-  private void addBooleanInput(Column[] column) {
-    int count = column[1].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (!column[1].isNull(i)) {
-        updateBooleanResult(column[1].getBoolean(i), column[0], i);
+  private void addBooleanInput(Column[] column, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!column[1].isNull(i)) {
+          updateBooleanResult(column[1].getBoolean(i), column[0], i);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!column[1].isNull(position)) {
+          updateBooleanResult(column[1].getBoolean(position), column[0], position);
+        }
       }
     }
   }
@@ -322,16 +396,16 @@ public abstract class TableMaxMinByBaseAccumulator implements TableAccumulator {
 
   private byte[] serialize() {
     byte[] valueBytes;
+    int yLength = calcTypeSize(yDataType, yExtremeValue);
     if (xNull) {
-      valueBytes = new byte[calcTypeSize(yDataType, yExtremeValue) + 1];
+      valueBytes = new byte[yLength + 1];
       serializeValue(yDataType, yExtremeValue, valueBytes, 0);
-      BytesUtils.boolToBytes(true, valueBytes, 8);
+      BytesUtils.boolToBytes(true, valueBytes, yLength);
     } else {
-      valueBytes =
-          new byte[calcTypeSize(yDataType, yExtremeValue) + 1 + calcTypeSize(xDataType, xResult)];
+      valueBytes = new byte[yLength + 1 + calcTypeSize(xDataType, xResult)];
       int offset = 0;
       serializeValue(yDataType, yExtremeValue, valueBytes, offset);
-      offset = calcTypeSize(yDataType, yExtremeValue);
+      offset = yLength;
 
       BytesUtils.boolToBytes(false, valueBytes, offset);
       offset += 1;

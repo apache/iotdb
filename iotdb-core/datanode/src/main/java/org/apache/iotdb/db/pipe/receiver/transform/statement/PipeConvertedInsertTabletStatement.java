@@ -22,31 +22,77 @@ package org.apache.iotdb.db.pipe.receiver.transform.statement;
 import org.apache.iotdb.db.pipe.receiver.transform.converter.ArrayConverter;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 
+import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeConvertedInsertTabletStatement.class);
 
-  public PipeConvertedInsertTabletStatement(final InsertTabletStatement insertTabletStatement) {
+  public PipeConvertedInsertTabletStatement(
+      final InsertTabletStatement insertTabletStatement, boolean isCopyMeasurement) {
     super();
     // Statement
     isDebug = insertTabletStatement.isDebug();
     // InsertBaseStatement
-    insertTabletStatement.removeAllFailedMeasurementMarks();
     devicePath = insertTabletStatement.getDevicePath();
     isAligned = insertTabletStatement.isAligned();
-    measurementSchemas = insertTabletStatement.getMeasurementSchemas();
-    measurements = insertTabletStatement.getMeasurements();
-    dataTypes = insertTabletStatement.getDataTypes();
+    columnCategories = insertTabletStatement.getColumnCategories();
+    idColumnIndices = insertTabletStatement.getIdColumnIndices();
+    attrColumnIndices = insertTabletStatement.getAttrColumnIndices();
+    writeToTable = insertTabletStatement.isWriteToTable();
+    databaseName = insertTabletStatement.getDatabaseName().orElse(null);
     // InsertTabletStatement
     times = insertTabletStatement.getTimes();
     nullBitMaps = insertTabletStatement.getBitMaps();
     columns = insertTabletStatement.getColumns();
+    deviceIDs = insertTabletStatement.getRawTableDeviceIDs();
+    singleDevice = insertTabletStatement.isSingleDevice();
     rowCount = insertTabletStatement.getRowCount();
+
+    // To ensure that the measurement remains unchanged during the WAL writing process, the array
+    // needs to be copied before the failed Measurement mark can be deleted.
+    if (isCopyMeasurement) {
+      final MeasurementSchema[] measurementSchemas = insertTabletStatement.getMeasurementSchemas();
+      if (measurementSchemas != null) {
+        this.measurementSchemas = Arrays.copyOf(measurementSchemas, measurementSchemas.length);
+      }
+
+      final String[] measurements = insertTabletStatement.getMeasurements();
+      if (measurements != null) {
+        this.measurements = Arrays.copyOf(measurements, measurements.length);
+      }
+
+      final TSDataType[] dataTypes = insertTabletStatement.getDataTypes();
+      if (dataTypes != null) {
+        this.dataTypes = Arrays.copyOf(dataTypes, dataTypes.length);
+      }
+
+      final Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info =
+          insertTabletStatement.getFailedMeasurementInfoMap();
+      if (failedMeasurementIndex2Info != null) {
+        this.failedMeasurementIndex2Info = new HashMap<>(failedMeasurementIndex2Info);
+      }
+    } else {
+      this.measurementSchemas = insertTabletStatement.getMeasurementSchemas();
+      this.measurements = insertTabletStatement.getMeasurements();
+      this.dataTypes = insertTabletStatement.getDataTypes();
+      this.failedMeasurementIndex2Info = insertTabletStatement.getFailedMeasurementInfoMap();
+    }
+
+    removeAllFailedMeasurementMarks();
+  }
+
+  public PipeConvertedInsertTabletStatement(final InsertTabletStatement insertTabletStatement) {
+    this(insertTabletStatement, true);
   }
 
   @Override
@@ -60,6 +106,16 @@ public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
     columns[columnIndex] =
         ArrayConverter.convert(dataTypes[columnIndex], dataType, columns[columnIndex]);
     dataTypes[columnIndex] = dataType;
+    return true;
+  }
+
+  protected boolean originalCheckAndCastDataType(int columnIndex, TSDataType dataType) {
+    return super.checkAndCastDataType(columnIndex, dataType);
+  }
+
+  @TableModel
+  @Override
+  public boolean isForceTypeConversion() {
     return true;
   }
 }

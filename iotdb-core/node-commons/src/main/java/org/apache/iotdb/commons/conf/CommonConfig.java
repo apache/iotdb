@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.rpc.RpcUtils;
 
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +37,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 
@@ -131,8 +133,14 @@ public class CommonConfig {
   /** The maximum number of TTL rules stored in the system, the default is 1000. */
   private int ttlRuleCapacity = 1000;
 
+  /** The interval of ttl check task in each database. The unit is ms. Default is 2 hours. */
+  private long ttlCheckInterval = 7_200_000L;
+
   /** Thrift socket and connection timeout between data node and config node. */
-  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(60);
+  private int cnConnectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(60);
+
+  /** Thrift socket and connection timeout between data node and config node. */
+  private int dnConnectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(60);
 
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
@@ -243,12 +251,15 @@ public class CommonConfig {
   private boolean pipeAirGapReceiverEnabled = false;
   private int pipeAirGapReceiverPort = 9780;
 
+  private long pipeReceiverLoginPeriodicVerificationIntervalMs = 300000;
+
   private int pipeMaxAllowedHistoricalTsFilePerDataRegion = 100;
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 2;
   private int pipeMaxAllowedPinnedMemTableCount = 50;
   private long pipeMaxAllowedLinkedTsFileCount = 100;
   private float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage = 0.1F;
   private long pipeStuckRestartIntervalSeconds = 120;
+  private long pipeStuckRestartMinIntervalMs = 30 * 60 * 1000L; // 30 minutes
 
   private int pipeMetaReportMaxLogNumPerRound = 10;
   private int pipeMetaReportMaxLogIntervalRounds = 36;
@@ -276,24 +287,30 @@ public class CommonConfig {
   private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000L; // 3 minutes
   private long twoStageAggregateSenderEndPointsCacheInMs = 3 * 60 * 1000L; // 3 minutes
 
-  private float subscriptionCacheMemoryUsagePercentage = 0.2F;
-
   private boolean pipeEventReferenceTrackingEnabled = true;
   private long pipeEventReferenceEliminateIntervalSeconds = 10;
 
-  private int subscriptionSubtaskExecutorMaxThreadNum =
-      Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
+  private float subscriptionCacheMemoryUsagePercentage = 0.2F;
+  private int subscriptionSubtaskExecutorMaxThreadNum = 2;
+
   private int subscriptionPrefetchTabletBatchMaxDelayInMs = 1000; // 1s
   private long subscriptionPrefetchTabletBatchMaxSizeInBytes = 16 * MB;
   private int subscriptionPrefetchTsFileBatchMaxDelayInMs = 5000; // 5s
   private long subscriptionPrefetchTsFileBatchMaxSizeInBytes = 80 * MB;
   private int subscriptionPollMaxBlockingTimeMs = 500;
-  private int subscriptionSerializeMaxBlockingTimeMs = 100;
+  private int subscriptionDefaultTimeoutInMs = 10_000; // 10s
   private long subscriptionLaunchRetryIntervalMs = 1000;
   private int subscriptionRecycleUncommittedEventIntervalMs = 600000; // 600s
   private long subscriptionReadFileBufferSize = 8 * MB;
   private long subscriptionReadTabletBufferSize = 8 * MB;
   private long subscriptionTsFileDeduplicationWindowSeconds = 120; // 120s
+  private volatile long subscriptionCheckMemoryEnoughIntervalMs = 10L;
+
+  private boolean subscriptionPrefetchEnabled = true;
+  private float subscriptionPrefetchMemoryThreshold = 0.5F;
+  private float subscriptionPrefetchMissingRateThreshold = 0.9F;
+  private int subscriptionPrefetchEventLocalCountThreshold = 10;
+  private int subscriptionPrefetchEventGlobalCountThreshold = 100;
 
   private long subscriptionMetaSyncerInitialSyncDelayMinutes = 3;
   private long subscriptionMetaSyncerSyncIntervalMinutes = 3;
@@ -316,6 +333,16 @@ public class CommonConfig {
   private long seriesLimitThreshold = -1;
   private long deviceLimitThreshold = -1;
 
+  private boolean enableBinaryAllocator = true;
+
+  private int arenaNum = 4;
+
+  private int minAllocateSize = 4096;
+
+  private int maxAllocateSize = 1024 * 1024;
+
+  private int log2SizeClassGroup = 3;
+
   // time in nanosecond precision when starting up
   private final long startUpNanosecond = System.nanoTime();
 
@@ -328,6 +355,16 @@ public class CommonConfig {
   private volatile boolean retryForUnknownErrors = false;
 
   private volatile long remoteWriteMaxRetryDurationInMs = 60000;
+
+  private final RateLimiter querySamplingRateLimiter = RateLimiter.create(160);
+  // if querySamplingRateLimiter < 0, means that there is no rate limit, we need to full sample all
+  // the queries
+  private volatile boolean querySamplingHasRateLimit = true;
+  // if querySamplingRateLimiter != 0, enableQuerySampling is true; querySamplingRateLimiter = 0,
+  // enableQuerySampling is false
+  private volatile boolean enableQuerySampling = true;
+
+  private volatile Pattern trustedUriPattern = Pattern.compile("file:.*");
 
   CommonConfig() {
     // Empty constructor
@@ -477,12 +514,28 @@ public class CommonConfig {
     this.ttlRuleCapacity = ttlRuleCapacity;
   }
 
-  public int getConnectionTimeoutInMS() {
-    return connectionTimeoutInMS;
+  public long getTTLCheckInterval() {
+    return ttlCheckInterval;
   }
 
-  public void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
-    this.connectionTimeoutInMS = connectionTimeoutInMS;
+  public void setTTLCheckInterval(long ttlCheckInterval) {
+    this.ttlCheckInterval = ttlCheckInterval;
+  }
+
+  public int getCnConnectionTimeoutInMS() {
+    return cnConnectionTimeoutInMS;
+  }
+
+  public void setCnConnectionTimeoutInMS(int cnConnectionTimeoutInMS) {
+    this.cnConnectionTimeoutInMS = cnConnectionTimeoutInMS;
+  }
+
+  public int getDnConnectionTimeoutInMS() {
+    return dnConnectionTimeoutInMS;
+  }
+
+  public void setDnConnectionTimeoutInMS(int dnConnectionTimeoutInMS) {
+    this.dnConnectionTimeoutInMS = dnConnectionTimeoutInMS;
   }
 
   public int getSelectorNumOfClientManager() {
@@ -565,14 +618,6 @@ public class CommonConfig {
 
   public void setStatusReason(String statusReason) {
     this.statusReason = statusReason;
-  }
-
-  public NodeStatus getStatus() {
-    return status;
-  }
-
-  public void setStatus(NodeStatus status) {
-    this.status = status;
   }
 
   public TEndPoint getTargetAINodeEndPoint() {
@@ -954,6 +999,16 @@ public class CommonConfig {
     return pipeAirGapReceiverPort;
   }
 
+  public void setPipeReceiverLoginPeriodicVerificationIntervalMs(
+      long pipeReceiverLoginPeriodicVerificationIntervalMs) {
+    this.pipeReceiverLoginPeriodicVerificationIntervalMs =
+        pipeReceiverLoginPeriodicVerificationIntervalMs;
+  }
+
+  public long getPipeReceiverLoginPeriodicVerificationIntervalMs() {
+    return pipeReceiverLoginPeriodicVerificationIntervalMs;
+  }
+
   public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
     return pipeMaxAllowedHistoricalTsFilePerDataRegion;
   }
@@ -1003,8 +1058,16 @@ public class CommonConfig {
     return pipeStuckRestartIntervalSeconds;
   }
 
+  public long getPipeStuckRestartMinIntervalMs() {
+    return pipeStuckRestartMinIntervalMs;
+  }
+
   public void setPipeStuckRestartIntervalSeconds(long pipeStuckRestartIntervalSeconds) {
     this.pipeStuckRestartIntervalSeconds = pipeStuckRestartIntervalSeconds;
+  }
+
+  public void setPipeStuckRestartMinIntervalMs(long pipeStuckRestartMinIntervalMs) {
+    this.pipeStuckRestartMinIntervalMs = pipeStuckRestartMinIntervalMs;
   }
 
   public int getPipeMetaReportMaxLogNumPerRound() {
@@ -1251,10 +1314,7 @@ public class CommonConfig {
 
   public void setSubscriptionSubtaskExecutorMaxThreadNum(
       int subscriptionSubtaskExecutorMaxThreadNum) {
-    this.subscriptionSubtaskExecutorMaxThreadNum =
-        Math.min(
-            subscriptionSubtaskExecutorMaxThreadNum,
-            Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
+    this.subscriptionSubtaskExecutorMaxThreadNum = subscriptionSubtaskExecutorMaxThreadNum;
   }
 
   public int getSubscriptionPrefetchTabletBatchMaxDelayInMs() {
@@ -1303,13 +1363,12 @@ public class CommonConfig {
     this.subscriptionPollMaxBlockingTimeMs = subscriptionPollMaxBlockingTimeMs;
   }
 
-  public int getSubscriptionSerializeMaxBlockingTimeMs() {
-    return subscriptionSerializeMaxBlockingTimeMs;
+  public int getSubscriptionDefaultTimeoutInMs() {
+    return subscriptionDefaultTimeoutInMs;
   }
 
-  public void setSubscriptionSerializeMaxBlockingTimeMs(
-      int subscriptionSerializeMaxBlockingTimeMs) {
-    this.subscriptionSerializeMaxBlockingTimeMs = subscriptionSerializeMaxBlockingTimeMs;
+  public void setSubscriptionDefaultTimeoutInMs(final int subscriptionDefaultTimeoutInMs) {
+    this.subscriptionDefaultTimeoutInMs = subscriptionDefaultTimeoutInMs;
   }
 
   public long getSubscriptionLaunchRetryIntervalMs() {
@@ -1354,6 +1413,60 @@ public class CommonConfig {
       long subscriptionTsFileDeduplicationWindowSeconds) {
     this.subscriptionTsFileDeduplicationWindowSeconds =
         subscriptionTsFileDeduplicationWindowSeconds;
+  }
+
+  public long getSubscriptionCheckMemoryEnoughIntervalMs() {
+    return subscriptionCheckMemoryEnoughIntervalMs;
+  }
+
+  public void setSubscriptionCheckMemoryEnoughIntervalMs(
+      long subscriptionCheckMemoryEnoughIntervalMs) {
+    this.subscriptionCheckMemoryEnoughIntervalMs = subscriptionCheckMemoryEnoughIntervalMs;
+  }
+
+  public boolean getSubscriptionPrefetchEnabled() {
+    return subscriptionPrefetchEnabled;
+  }
+
+  public void setSubscriptionPrefetchEnabled(boolean subscriptionPrefetchEnabled) {
+    this.subscriptionPrefetchEnabled = subscriptionPrefetchEnabled;
+  }
+
+  public float getSubscriptionPrefetchMemoryThreshold() {
+    return subscriptionPrefetchMemoryThreshold;
+  }
+
+  public void setSubscriptionPrefetchMemoryThreshold(float subscriptionPrefetchMemoryThreshold) {
+    this.subscriptionPrefetchMemoryThreshold = subscriptionPrefetchMemoryThreshold;
+  }
+
+  public float getSubscriptionPrefetchMissingRateThreshold() {
+    return subscriptionPrefetchMissingRateThreshold;
+  }
+
+  public void setSubscriptionPrefetchMissingRateThreshold(
+      float subscriptionPrefetchMissingRateThreshold) {
+    this.subscriptionPrefetchMissingRateThreshold = subscriptionPrefetchMissingRateThreshold;
+  }
+
+  public int getSubscriptionPrefetchEventLocalCountThreshold() {
+    return subscriptionPrefetchEventLocalCountThreshold;
+  }
+
+  public void setSubscriptionPrefetchEventLocalCountThreshold(
+      int subscriptionPrefetchEventLocalCountThreshold) {
+    this.subscriptionPrefetchEventLocalCountThreshold =
+        subscriptionPrefetchEventLocalCountThreshold;
+  }
+
+  public int getSubscriptionPrefetchEventGlobalCountThreshold() {
+    return subscriptionPrefetchEventGlobalCountThreshold;
+  }
+
+  public void setSubscriptionPrefetchEventGlobalCountThreshold(
+      int subscriptionPrefetchEventGlobalCountThreshold) {
+    this.subscriptionPrefetchEventGlobalCountThreshold =
+        subscriptionPrefetchEventGlobalCountThreshold;
   }
 
   public long getSubscriptionMetaSyncerInitialSyncDelayMinutes() {
@@ -1465,5 +1578,83 @@ public class CommonConfig {
 
   public void setRemoteWriteMaxRetryDurationInMs(long remoteWriteMaxRetryDurationInMs) {
     this.remoteWriteMaxRetryDurationInMs = remoteWriteMaxRetryDurationInMs;
+  }
+
+  public int getArenaNum() {
+    return arenaNum;
+  }
+
+  public void setArenaNum(int arenaNum) {
+    this.arenaNum = arenaNum;
+  }
+
+  public int getMinAllocateSize() {
+    return minAllocateSize;
+  }
+
+  public void setMinAllocateSize(int minAllocateSize) {
+    this.minAllocateSize = minAllocateSize;
+  }
+
+  public int getMaxAllocateSize() {
+    return maxAllocateSize;
+  }
+
+  public void setMaxAllocateSize(int maxAllocateSize) {
+    this.maxAllocateSize = maxAllocateSize;
+  }
+
+  public boolean isEnableBinaryAllocator() {
+    return enableBinaryAllocator;
+  }
+
+  public void setEnableBinaryAllocator(boolean enableBinaryAllocator) {
+    this.enableBinaryAllocator = enableBinaryAllocator;
+  }
+
+  public int getLog2SizeClassGroup() {
+    return log2SizeClassGroup;
+  }
+
+  public void setLog2SizeClassGroup(int log2SizeClassGroup) {
+    this.log2SizeClassGroup = log2SizeClassGroup;
+  }
+
+  /**
+   * @param querySamplingRateLimit query_sample_throughput_bytes_per_sec
+   */
+  public void setQuerySamplingRateLimit(int querySamplingRateLimit) {
+    if (querySamplingRateLimit > 0) {
+      this.querySamplingRateLimiter.setRate(querySamplingRateLimit);
+      this.enableQuerySampling = true;
+      this.querySamplingHasRateLimit = true;
+    } else if (querySamplingRateLimit == 0) {
+      // querySamplingRateLimit = 0, means that we sample no queries
+      this.enableQuerySampling = false;
+    } else {
+      // querySamplingRateLimit < 0, means that we need to full sample all queries
+      this.enableQuerySampling = true;
+      this.querySamplingHasRateLimit = false;
+    }
+  }
+
+  public boolean isQuerySamplingHasRateLimit() {
+    return querySamplingHasRateLimit;
+  }
+
+  public RateLimiter getQuerySamplingRateLimiter() {
+    return querySamplingRateLimiter;
+  }
+
+  public boolean isEnableQuerySampling() {
+    return enableQuerySampling;
+  }
+
+  public Pattern getTrustedUriPattern() {
+    return trustedUriPattern;
+  }
+
+  public void setTrustedUriPattern(Pattern trustedUriPattern) {
+    this.trustedUriPattern = trustedUriPattern;
   }
 }

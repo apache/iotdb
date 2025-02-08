@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -80,7 +79,7 @@ public class PipeTsFileResourceManager {
                 PipeConfig.getInstance().getPipeTsFilePinMaxLogNumPerRound(),
                 PipeConfig.getInstance().getPipeTsFilePinMaxLogIntervalRounds(),
                 hardlinkOrCopiedFileToPipeTsFileResourceMap.size());
-
+    final StringBuilder logBuilder = new StringBuilder();
     while (iterator.hasNext()) {
       final Map.Entry<String, PipeTsFileResource> entry = iterator.next();
 
@@ -97,18 +96,21 @@ public class PipeTsFileResourceManager {
         if (entry.getValue().closeIfOutOfTimeToLive()) {
           iterator.remove();
         } else {
-          logger.ifPresent(
-              l ->
-                  l.info(
-                      "Pipe file (file name: {}) is still referenced {} times",
-                      entry.getKey(),
-                      entry.getValue().getReferenceCount()));
+          logBuilder.append(
+              String.format(
+                  "<%s , %d times, %d bytes> ",
+                  entry.getKey(),
+                  entry.getValue().getReferenceCount(),
+                  entry.getValue().getFileSize()));
         }
       } catch (final IOException e) {
         LOGGER.warn("failed to close PipeTsFileResource when checking TTL: ", e);
       } finally {
         segmentLock.unlock(new File(hardlinkOrCopiedFile));
       }
+    }
+    if (logBuilder.length() > 0) {
+      logger.ifPresent(l -> l.info("Pipe file {}are still referenced", logBuilder));
     }
   }
 
@@ -315,8 +317,8 @@ public class PipeTsFileResourceManager {
   public void pinTsFileResource(final TsFileResource resource, final boolean withMods)
       throws IOException {
     increaseFileReference(resource.getTsFile(), true, resource);
-    if (withMods && resource.getModFile().exists()) {
-      increaseFileReference(new File(resource.getModFile().getFilePath()), false, null);
+    if (withMods && resource.getExclusiveModFile().exists()) {
+      increaseFileReference(resource.getExclusiveModFile().getFile(), false, null);
     }
   }
 
@@ -324,9 +326,8 @@ public class PipeTsFileResourceManager {
     final File pinnedFile = getHardlinkOrCopiedFileInPipeDir(resource.getTsFile());
     decreaseFileReference(pinnedFile);
 
-    final File modFile = new File(pinnedFile + ModificationFile.FILE_SUFFIX);
-    if (modFile.exists()) {
-      decreaseFileReference(modFile);
+    if (resource.sharedModFileExists()) {
+      decreaseFileReference(resource.getSharedModFile().getFile());
     }
   }
 
@@ -355,6 +356,25 @@ public class PipeTsFileResourceManager {
     } catch (final Exception e) {
       LOGGER.warn("failed to get total size of linked but deleted TsFiles: ", e);
       return 0;
+    }
+  }
+
+  public long getTotalLinkedButDeletedTsfileResourceRamSize() {
+    long totalLinkedButDeletedTsfileResourceRamSize = 0;
+    try {
+      for (final Map.Entry<String, PipeTsFileResource> resourceEntry :
+          hardlinkOrCopiedFileToPipeTsFileResourceMap.entrySet()) {
+        final PipeTsFileResource pipeTsFileResource = resourceEntry.getValue();
+        // If the original TsFile is not deleted, the memory of the resource is not counted
+        // because the memory of the resource is controlled by TsFileResourceManager.
+        if (pipeTsFileResource.isOriginalTsFileDeleted()) {
+          totalLinkedButDeletedTsfileResourceRamSize += pipeTsFileResource.getTsFileResourceSize();
+        }
+      }
+      return totalLinkedButDeletedTsfileResourceRamSize;
+    } catch (final Exception e) {
+      LOGGER.warn("failed to get total size of linked but deleted TsFiles resource ram size: ", e);
+      return totalLinkedButDeletedTsfileResourceRamSize;
     }
   }
 }

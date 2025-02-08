@@ -138,7 +138,7 @@ public class MemTableFlushTask {
     for (IDeviceID deviceID : deviceIDList) {
       final Map<String, IWritableMemChunk> value = memTableMap.get(deviceID).getMemChunkMap();
       // skip the empty device/chunk group
-      if (memTableMap.get(deviceID).count() == 0 || value.isEmpty()) {
+      if (memTableMap.get(deviceID).isEmpty() || value.isEmpty()) {
         continue;
       }
       encodingTaskQueue.put(new StartFlushGroupIOTask(deviceID));
@@ -153,7 +153,7 @@ public class MemTableFlushTask {
         /*
          * sort task (first task of flush pipeline)
          */
-        series.sortTvListForFlush(!deviceID.isTableModel());
+        series.sortTvListForFlush();
         long subTaskTime = System.currentTimeMillis() - startTime;
         sortTime += subTaskTime;
         WRITING_METRICS.recordFlushSubTaskCost(WritingMetrics.SORT_TASK, subTaskTime);

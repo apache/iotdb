@@ -47,6 +47,7 @@ import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.Pair;
 
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -73,7 +74,8 @@ public class AggregationUtil {
   public static ITimeRangeIterator initTimeRangeIterator(
       GroupByTimeParameter groupByTimeParameter,
       boolean ascending,
-      boolean outputPartialTimeWindow) {
+      boolean outputPartialTimeWindow,
+      ZoneId zoneId) {
     if (groupByTimeParameter == null) {
       return new SingleTimeWindowIterator(Long.MIN_VALUE, Long.MAX_VALUE);
     } else {
@@ -84,7 +86,8 @@ public class AggregationUtil {
           groupByTimeParameter.getSlidingStep(),
           ascending,
           groupByTimeParameter.isLeftCRightO(),
-          outputPartialTimeWindow);
+          outputPartialTimeWindow,
+          zoneId);
     }
   }
 

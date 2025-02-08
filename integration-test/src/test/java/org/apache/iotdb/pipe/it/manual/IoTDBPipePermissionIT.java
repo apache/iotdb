@@ -76,8 +76,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualManualIT {
         .setDataReplicationFactor(2);
 
     // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
+    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment(3, 3);
@@ -100,7 +100,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualManualIT {
             "create user `thulab` 'passwd'",
             "create role `admin`",
             "grant role `admin` to `thulab`",
-            "grant WRITE, READ, MANAGE_DATABASE on root.** to role `admin`"))) {
+            "grant WRITE, READ, MANAGE_DATABASE, MANAGE_USER on root.** to role `admin`"))) {
       return;
     }
 
@@ -113,12 +113,14 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualManualIT {
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
+              "create user user 'passwd'",
               "create timeseries root.ln.wf02.wt01.temperature with datatype=INT64,encoding=PLAIN",
               "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
               "insert into root.ln.wf02.wt01(time, temperature, status) values (1800000000000, 23, true)"))) {
         fail();
         return;
       }
+      awaitUntilFlush(senderEnv);
 
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
@@ -142,6 +144,11 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualManualIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "list user",
+          "User,",
+          new HashSet<>(Arrays.asList("root,", "user,", "thulab,")));
       final Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add(
           "root.ln.wf02.wt01.temperature,null,root.ln,INT64,PLAIN,LZ4,null,null,null,null,BASE,");
@@ -159,6 +166,69 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualManualIT {
           "select * from root.**",
           "Time,root.ln.wf02.wt01.temperature,root.ln.wf02.wt01.status,",
           Collections.singleton("1800000000000,23,true,"));
+    }
+  }
+
+  @Test
+  public void testNoPermission() throws Exception {
+    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+        receiverEnv,
+        Arrays.asList(
+            "create user `thulab` 'passwd'",
+            "create role `admin`",
+            "grant role `admin` to `thulab`",
+            "grant READ, MANAGE_DATABASE on root.ln.** to role `admin`"))) {
+      return;
+    }
+
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "create user someUser 'passwd'",
+              "create database root.noPermission",
+              "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN"))) {
+        fail();
+        return;
+      }
+      awaitUntilFlush(senderEnv);
+
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("extractor.inclusion", "all");
+
+      connectorAttributes.put("connector", "iotdb-thrift-async-connector");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      connectorAttributes.put("connector.username", "thulab");
+      connectorAttributes.put("connector.password", "passwd");
+
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("testPipe", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv, "count databases", "count,", Collections.singleton("1,"));
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv,
+          "show timeseries",
+          "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
+          Collections.emptySet());
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv, "list user", "User,", Collections.singleton("root,"));
     }
   }
 }

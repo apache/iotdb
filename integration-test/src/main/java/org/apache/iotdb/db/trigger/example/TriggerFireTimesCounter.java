@@ -86,7 +86,7 @@ public class TriggerFireTimesCounter implements Trigger {
           Thread.sleep(100);
         }
       }
-      int rows = tablet.rowSize;
+      int rows = tablet.getRowSize();
       if (fileLock != null && fileLock.isValid()) {
         String records = System.lineSeparator() + rows;
         ByteBuffer byteBuffer = ByteBuffer.allocate(1024);

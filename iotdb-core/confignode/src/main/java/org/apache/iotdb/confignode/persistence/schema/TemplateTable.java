@@ -107,10 +107,10 @@ public class TemplateTable {
     }
   }
 
-  public void createTemplate(Template template) throws MetadataException {
+  public void createTemplate(final Template template) throws MetadataException {
     templateReadWriteLock.writeLock().lock();
     try {
-      Template temp = this.templateMap.get(template.getName());
+      final Template temp = this.templateMap.get(template.getName());
       if (temp != null) {
         LOGGER.error(
             "Failed to create template, because template name {} exists", template.getName());

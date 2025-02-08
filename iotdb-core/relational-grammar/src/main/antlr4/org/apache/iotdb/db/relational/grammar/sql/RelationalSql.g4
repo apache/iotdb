@@ -46,6 +46,7 @@ statement
     | useDatabaseStatement
     | showDatabasesStatement
     | createDbStatement
+    | alterDbStatement
     | dropDbStatement
 
     // Table Statement
@@ -64,6 +65,7 @@ statement
     | insertStatement
     | updateStatement
     | deleteStatement
+    | deleteDeviceStatement
 
     // UDF Statement
     | showFunctionsStatement
@@ -84,6 +86,12 @@ statement
     | dropPipePluginStatement
     | showPipePluginsStatement
 
+    // Subscription Statement
+    | createTopicStatement
+    | dropTopicStatement
+    | showTopicsStatement
+    | showSubscriptionsStatement
+
     // Show Statement
     | showDevicesStatement
     | countDevicesStatement
@@ -100,12 +108,17 @@ statement
     | countTimeSlotListStatement
     | showSeriesSlotListStatement
     | migrateRegionStatement
+    | reconstructRegionStatement
+    | extendRegionStatement
+    | removeRegionStatement
+    | removeDataNodeStatement
 
     // Admin Statement
     | showVariablesStatement
     | flushStatement
     | clearCacheStatement
-    | repairDataStatement
+    | startRepairDataStatement
+    | stopRepairDataStatement
     | setSystemStatusStatement
     | showVersionStatement
     | showQueriesStatement
@@ -118,6 +131,19 @@ statement
     | showCurrentTimestampStatement
 
     // auth Statement
+    | grantStatement
+    | revokeStatement
+    | createUserStatement
+    | createRoleStatement
+    | dropUserStatement
+    | dropRoleStatement
+    | grantUserRoleStatement
+    | revokeUserRoleStatement
+    | alterUserStatement
+    | listUserPrivilegeStatement
+    | listRolePrivilegeStatement
+    | listUserStatement
+    | listRoleStatement
 
     // View, Trigger, pipe, CQ, Quota are not supported yet
     ;
@@ -134,6 +160,10 @@ showDatabasesStatement
 
 createDbStatement
     : CREATE DATABASE (IF NOT EXISTS)? database=identifier (WITH properties)?
+    ;
+
+alterDbStatement
+    : ALTER DATABASE (IF EXISTS)? database=identifier SET PROPERTIES propertyAssignments
     ;
 
 dropDbStatement
@@ -155,8 +185,8 @@ charsetDesc
     ;
 
 columnDefinition
-    : identifier columnCategory=(ID | ATTRIBUTE) charsetName?
-    | identifier type (columnCategory=(ID | ATTRIBUTE | TIME | MEASUREMENT))? charsetName?
+    : identifier columnCategory=(TAG | ATTRIBUTE | TIME) charsetName?
+    | identifier type (columnCategory=(TAG | ATTRIBUTE | TIME | FIELD))? charsetName?
     ;
 
 charsetName
@@ -175,7 +205,7 @@ showTableStatement
     ;
 
 descTableStatement
-    : (DESC | DESCRIBE) table=qualifiedName
+    : (DESC | DESCRIBE) table=qualifiedName (DETAILS)?
     ;
 
 alterTableStatement
@@ -220,7 +250,9 @@ updateStatement
     : UPDATE qualifiedName SET updateAssignment (',' updateAssignment)* (WHERE where=booleanExpression)?
     ;
 
-
+deleteDeviceStatement
+    : DELETE DEVICES FROM tableName=qualifiedName (WHERE booleanExpression)?
+    ;
 
 
 // -------------------------------------------- UDF Statement ----------------------------------------------------------
@@ -363,6 +395,31 @@ showPipePluginsStatement
     ;
 
 
+// -------------------------------------------- Subscription Statement ---------------------------------------------------------
+createTopicStatement
+    : CREATE TOPIC (IF NOT EXISTS)? topicName=identifier topicAttributesClause?
+    ;
+
+topicAttributesClause
+    : WITH '(' topicAttributeClause (',' topicAttributeClause)* ')'
+    ;
+
+topicAttributeClause
+    : topicKey=string EQ topicValue=string
+    ;
+
+dropTopicStatement
+    : DROP TOPIC (IF EXISTS)? topicName=identifier
+    ;
+
+showTopicsStatement
+    : SHOW ((TOPIC topicName=identifier) | TOPICS )
+    ;
+
+showSubscriptionsStatement
+    : SHOW SUBSCRIPTIONS (ON topicName=identifier)?
+    ;
+
 
 // -------------------------------------------- Show Statement ---------------------------------------------------------
 showDevicesStatement
@@ -425,7 +482,21 @@ migrateRegionStatement
     : MIGRATE REGION regionId=INTEGER_VALUE FROM fromId=INTEGER_VALUE TO toId=INTEGER_VALUE
     ;
 
+reconstructRegionStatement
+    : RECONSTRUCT REGION regionIds+=INTEGER_VALUE (COMMA regionIds+=INTEGER_VALUE)* ON targetDataNodeId=INTEGER_VALUE
+    ;
 
+extendRegionStatement
+    : EXTEND REGION regionId=INTEGER_VALUE TO targetDataNodeId=INTEGER_VALUE
+    ;
+
+removeRegionStatement
+    : REMOVE REGION regionId=INTEGER_VALUE FROM targetDataNodeId=INTEGER_VALUE
+    ;
+
+removeDataNodeStatement
+    : REMOVE DATANODE dataNodeId=INTEGER_VALUE (',' dataNodeId=INTEGER_VALUE)*
+    ;
 
 // ------------------------------------------- Admin Statement ---------------------------------------------------------
 showVariablesStatement
@@ -440,9 +511,13 @@ clearCacheStatement
     : CLEAR clearCacheOptions? CACHE localOrClusterMode?
     ;
 
-repairDataStatement
-    : REPAIR DATA localOrClusterMode?
+startRepairDataStatement
+    : START REPAIR DATA localOrClusterMode?
     ;
+
+stopRepairDataStatement
+	: STOP REPAIR DATA localOrClusterMode?
+	;
 
 setSystemStatusStatement
     : SET SYSTEM TO (READONLY | RUNNING) localOrClusterMode?
@@ -500,8 +575,113 @@ showCurrentTimestampStatement
     ;
 
 
+// ------------------------------------------- Authority Statement -----------------------------------------------------
+
+createUserStatement
+    : CREATE USER userName=identifier password=string
+    ;
+
+createRoleStatement
+    : CREATE ROLE roleName=identifier
+    ;
+
+dropUserStatement
+    : DROP USER userName=identifier
+    ;
+
+dropRoleStatement
+    : DROP ROLE roleName=identifier
+    ;
+
+alterUserStatement
+    : ALTER USER userName=identifier SET PASSWORD password=identifier
+    ;
+
+grantUserRoleStatement
+    : GRANT ROLE roleName=identifier TO userName=identifier
+    ;
+
+revokeUserRoleStatement
+    : REVOKE ROLE roleName=identifier FROM userName=identifier
+    ;
 
 
+grantStatement
+    : GRANT privilegeObjectScope TO holderType holderName=identifier (grantOpt)?
+    ;
+
+listUserPrivilegeStatement
+    : LIST PRIVILEGES OF USER userName=identifier
+    ;
+
+listRolePrivilegeStatement
+    : LIST PRIVILEGES OF ROLE roleName=identifier
+    ;
+
+listUserStatement
+    : LIST USER
+    ;
+
+listRoleStatement
+    : LIST ROLE
+    ;
+
+
+revokeStatement
+    : REVOKE (revokeGrantOpt)? privilegeObjectScope FROM holderType holderName=identifier
+    ;
+
+privilegeObjectScope
+    : systemPrivileges
+    | objectPrivileges ON objectType objectName=identifier
+    | objectPrivileges ON objectScope
+    | objectPrivileges ON ANY
+    | ALL
+    ;
+
+systemPrivileges
+    : systemPrivilege (',' systemPrivilege)*
+    ;
+
+objectPrivileges
+    : objectPrivilege (',' objectPrivilege)*
+    ;
+
+objectScope
+    : dbname=identifier '.' tbname=identifier;
+
+systemPrivilege
+    : MANAGE_USER
+    | MANAGE_ROLE
+    | MAINTAIN
+    ;
+
+objectPrivilege
+    : CREATE
+    | DROP
+    | ALTER
+    | SELECT
+    | INSERT
+    | DELETE
+    ;
+
+objectType
+    : TABLE
+    | DATABASE
+    ;
+
+holderType
+    : USER
+    | ROLE
+    ;
+
+grantOpt
+    : WITH GRANT OPTION
+    ;
+
+revokeGrantOpt
+    : GRANT OPTION FOR
+    ;
 
 // ------------------------------------------- Query Statement ---------------------------------------------------------
 queryStatement
@@ -687,6 +867,37 @@ relationPrimary
     : qualifiedName                                                   #tableName
     | '(' query ')'                                                   #subqueryRelation
     | '(' relation ')'                                                #parenthesizedRelation
+    | TABLE '(' tableFunctionCall ')'                                 #tableFunctionInvocation
+    ;
+
+tableFunctionCall
+    : qualifiedName '(' (tableFunctionArgument (',' tableFunctionArgument)*)?
+      (COPARTITION copartitionTables (',' copartitionTables)*)? ')'
+    ;
+
+tableFunctionArgument
+    : (identifier '=>')? (tableArgument | scalarArgument) // descriptor before expression to avoid parsing descriptor as a function call
+    ;
+
+tableArgument
+    : tableArgumentRelation
+        (PARTITION BY ('(' (expression (',' expression)*)? ')' | expression))?
+        (PRUNE WHEN EMPTY | KEEP WHEN EMPTY)?
+        (ORDER BY ('(' sortItem (',' sortItem)* ')' | sortItem))?
+    ;
+
+tableArgumentRelation
+    : TABLE '(' qualifiedName ')' (AS? identifier columnAliases?)?  #tableArgumentTable
+    | TABLE '(' query ')' (AS? identifier columnAliases?)?          #tableArgumentQuery
+    ;
+
+scalarArgument
+    : expression
+    | timeDuration
+    ;
+
+copartitionTables
+    : '(' qualifiedName ',' qualifiedName (',' qualifiedName)* ')'
     ;
 
 expression
@@ -895,24 +1106,24 @@ nonReserved
     : ABSENT | ADD | ADMIN | AFTER | ALL | ANALYZE | ANY | ARRAY | ASC | AT | ATTRIBUTE | AUTHORIZATION
     | BEGIN | BERNOULLI | BOTH
     | CACHE | CALL | CALLED | CASCADE | CATALOG | CATALOGS | CHAR | CHARACTER | CHARSET | CLEAR | CLUSTER | CLUSTERID | COLUMN | COLUMNS | COMMENT | COMMIT | COMMITTED | CONDITION | CONDITIONAL | CONFIGNODES | CONFIGURATION | CONNECTOR | CONSTANT | COPARTITION | COUNT | CURRENT
-    | DATA | DATABASE | DATABASES | DATANODES | DATE | DAY | DECLARE | DEFAULT | DEFINE | DEFINER | DENY | DESC | DESCRIPTOR | DETAILS| DETERMINISTIC | DEVICES | DISTRIBUTED | DO | DOUBLE
+    | DATA | DATABASE | DATABASES | DATANODE | DATANODES | DATE | DAY | DECLARE | DEFAULT | DEFINE | DEFINER | DENY | DESC | DESCRIPTOR | DETAILS| DETERMINISTIC | DEVICES | DISTRIBUTED | DO | DOUBLE
     | ELSEIF | EMPTY | ENCODING | ERROR | EXCLUDING | EXPLAIN | EXTRACTOR
-    | FETCH | FILTER | FINAL | FIRST | FLUSH | FOLLOWING | FORMAT | FUNCTION | FUNCTIONS
+    | FETCH | FIELD | FILTER | FINAL | FIRST | FLUSH | FOLLOWING | FORMAT | FUNCTION | FUNCTIONS
     | GRACE | GRANT | GRANTED | GRANTS | GRAPHVIZ | GROUPS
     | HOUR
-    | ID | INDEX | INDEXES | IF | IGNORE | IMMEDIATE | INCLUDING | INITIAL | INPUT | INTERVAL | INVOKER | IO | ITERATE | ISOLATION
+    | INDEX | INDEXES | IF | IGNORE | IMMEDIATE | INCLUDING | INITIAL | INPUT | INTERVAL | INVOKER | IO | ITERATE | ISOLATION
     | JSON
     | KEEP | KEY | KEYS | KILL
     | LANGUAGE | LAST | LATERAL | LEADING | LEAVE | LEVEL | LIMIT | LINEAR | LOAD | LOCAL | LOGICAL | LOOP
-    | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASUREMENT | MEASURES | METHOD | MERGE | MICROSECOND | MIGRATE | MILLISECOND | MINUTE | MODIFY | MONTH
+    | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASURES | METHOD | MERGE | MICROSECOND | MIGRATE | MILLISECOND | MINUTE | MODIFY | MONTH
     | NANOSECOND | NESTED | NEXT | NFC | NFD | NFKC | NFKD | NO | NODEID | NONE | NULLIF | NULLS
     | OBJECT | OF | OFFSET | OMIT | ONE | ONLY | OPTION | ORDINALITY | OUTPUT | OVER | OVERFLOW
     | PARTITION | PARTITIONS | PASSING | PAST | PATH | PATTERN | PER | PERIOD | PERMUTE | PIPE | PIPEPLUGIN | PIPEPLUGINS | PIPES | PLAN | POSITION | PRECEDING | PRECISION | PRIVILEGES | PREVIOUS | PROCESSLIST | PROCESSOR | PROPERTIES | PRUNE
     | QUERIES | QUERY | QUOTES
-    | RANGE | READ | READONLY | REFRESH | REGION | REGIONID | REGIONS | RENAME | REPAIR | REPEAT  | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | RETURN | RETURNING | RETURNS | REVOKE | ROLE | ROLES | ROLLBACK | ROW | ROWS | RUNNING
+    | RANGE | READ | READONLY | REFRESH | REGION | REGIONID | REGIONS | REMOVE | RENAME | REPAIR | REPEAT  | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | RETURN | RETURNING | RETURNS | REVOKE | ROLE | ROLES | ROLLBACK | ROW | ROWS | RUNNING
     | SERIESSLOTID | SCALAR | SCHEMA | SCHEMAS | SECOND | SECURITY | SEEK | SERIALIZABLE | SESSION | SET | SETS
-    | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | SUBSET | SUBSTRING | SYSTEM
-    | TABLES | TABLESAMPLE | TEXT | TEXT_STRING | TIES | TIME | TIMEPARTITION | TIMESERIES | TIMESLOTID | TIMESTAMP | TO | TRAILING | TRANSACTION | TRUNCATE | TRY_CAST | TYPE
+    | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | SUBSCRIPTIONS | SUBSET | SUBSTRING | SYSTEM
+    | TABLES | TABLESAMPLE | TAG | TEXT | TEXT_STRING | TIES | TIME | TIMEPARTITION | TIMESERIES | TIMESLOTID | TIMESTAMP | TO | TOPIC | TOPICS | TRAILING | TRANSACTION | TRUNCATE | TRY_CAST | TYPE
     | UNBOUNDED | UNCOMMITTED | UNCONDITIONAL | UNIQUE | UNKNOWN | UNMATCHED | UNTIL | UPDATE | URI | USE | USED | USER | UTF16 | UTF32 | UTF8
     | VALIDATE | VALUE | VARIABLES | VARIATION | VERBOSE | VERSION | VIEW
     | WEEK | WHILE | WINDOW | WITHIN | WITHOUT | WORK | WRAPPER | WRITE
@@ -987,6 +1198,7 @@ CURRENT_USER: 'CURRENT_USER';
 DATA: 'DATA';
 DATABASE: 'DATABASE';
 DATABASES: 'DATABASES';
+DATANODE: 'DATANODE';
 DATANODES: 'DATANODES';
 DATE: 'DATE';
 DATE_BIN: 'DATE_BIN';
@@ -1022,10 +1234,12 @@ EXCLUDING: 'EXCLUDING';
 EXECUTE: 'EXECUTE';
 EXISTS: 'EXISTS';
 EXPLAIN: 'EXPLAIN';
+EXTEND: 'EXTEND';
 EXTRACT: 'EXTRACT';
 EXTRACTOR: 'EXTRACTOR';
 FALSE: 'FALSE';
 FETCH: 'FETCH';
+FIELD: 'FIELD';
 FILL: 'FILL';
 FILL_GROUP: 'FILL_GROUP';
 FILTER: 'FILTER';
@@ -1049,7 +1263,6 @@ GROUPING: 'GROUPING';
 GROUPS: 'GROUPS';
 HAVING: 'HAVING';
 HOUR: 'HOUR' | 'H';
-ID: 'ID';
 INDEX: 'INDEX';
 INDEXES: 'INDEXES';
 IF: 'IF';
@@ -1091,6 +1304,7 @@ LEVEL: 'LEVEL';
 LIKE: 'LIKE';
 LIMIT: 'LIMIT';
 LINEAR: 'LINEAR';
+LIST: 'LIST';
 LISTAGG: 'LISTAGG';
 LOAD: 'LOAD';
 LOCAL: 'LOCAL';
@@ -1098,13 +1312,15 @@ LOCALTIME: 'LOCALTIME';
 LOCALTIMESTAMP: 'LOCALTIMESTAMP';
 LOGICAL: 'LOGICAL';
 LOOP: 'LOOP';
+MAINTAIN: 'MAINTAIN';
+MANAGE_ROLE: 'MANAGE_ROLE';
+MANAGE_USER: 'MANAGE_USER';
 MAP: 'MAP';
 MATCH: 'MATCH';
 MATCHED: 'MATCHED';
 MATCHES: 'MATCHES';
 MATCH_RECOGNIZE: 'MATCH_RECOGNIZE';
 MATERIALIZED: 'MATERIALIZED';
-MEASUREMENT: 'MEASUREMENT';
 MEASURES: 'MEASURES';
 METHOD: 'METHOD';
 MERGE: 'MERGE';
@@ -1149,6 +1365,7 @@ OVERFLOW: 'OVERFLOW';
 PARTITION: 'PARTITION';
 PARTITIONS: 'PARTITIONS';
 PASSING: 'PASSING';
+PASSWORD: 'PASSWORD';
 PAST: 'PAST';
 PATH: 'PATH';
 PATTERN: 'PATTERN';
@@ -1181,6 +1398,7 @@ REFRESH: 'REFRESH';
 REGION: 'REGION';
 REGIONID: 'REGIONID';
 REGIONS: 'REGIONS';
+REMOVE: 'REMOVE';
 RENAME: 'RENAME';
 REPAIR: 'REPAIR';
 REPEAT: 'REPEAT';
@@ -1221,12 +1439,14 @@ SOURCE: 'SOURCE';
 START: 'START';
 STATS: 'STATS';
 STOP: 'STOP';
+SUBSCRIPTIONS: 'SUBSCRIPTIONS';
 SUBSET: 'SUBSET';
 SUBSTRING: 'SUBSTRING';
 SYSTEM: 'SYSTEM';
 TABLE: 'TABLE';
 TABLES: 'TABLES';
 TABLESAMPLE: 'TABLESAMPLE';
+TAG: 'TAG';
 TEXT: 'TEXT';
 TEXT_STRING: 'STRING';
 THEN: 'THEN';
@@ -1239,6 +1459,8 @@ TIMESERIES: 'TIMESERIES';
 TIMESLOTID: 'TIMESLOTID';
 TIMESTAMP: 'TIMESTAMP';
 TO: 'TO';
+TOPIC: 'TOPIC';
+TOPICS: 'TOPICS';
 TRAILING: 'TRAILING';
 TRANSACTION: 'TRANSACTION';
 TRIM: 'TRIM';
@@ -1273,7 +1495,7 @@ VARIATION: 'VARIATION';
 VERBOSE: 'VERBOSE';
 VERSION: 'VERSION';
 VIEW: 'VIEW';
-WEEK: 'WEEK';
+WEEK: 'WEEK' | 'W';
 WHEN: 'WHEN';
 WHERE: 'WHERE';
 WHILE: 'WHILE';
@@ -1302,6 +1524,7 @@ PERCENT: '%';
 CONCAT: '||';
 QUESTION_MARK: '?';
 SEMICOLON: ';';
+
 
 STRING
     : '\'' ( ~'\'' | '\'\'' )* '\''

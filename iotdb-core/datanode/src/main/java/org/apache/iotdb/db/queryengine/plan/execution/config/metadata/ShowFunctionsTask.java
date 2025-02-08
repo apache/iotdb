@@ -20,14 +20,17 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
 import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFType;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
+import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
 import org.apache.iotdb.commons.udf.utils.TreeUDFUtils;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -44,6 +47,7 @@ import org.apache.tsfile.utils.BytesUtils;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -52,12 +56,18 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_STATE_AVAILABLE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_STATE_UNAVAILABLE;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_AGG_FUNC;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_SCALAR;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_SCALAR_FUNC;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_TABLE_FUNC;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDTF;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDAF;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDTF;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_NATIVE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_UNKNOWN;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_USER_DEFINED_AGG_FUNC;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_USER_DEFINED_SCALAR_FUNC;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_USER_DEFINED_TABLE_FUNC;
 
 public class ShowFunctionsTask implements IConfigTask {
 
@@ -69,9 +79,27 @@ public class ShowFunctionsTask implements IConfigTask {
     BINARY_MAP.put(FUNCTION_TYPE_EXTERNAL_UDTF, BytesUtils.valueOf(FUNCTION_TYPE_EXTERNAL_UDTF));
     BINARY_MAP.put(FUNCTION_TYPE_EXTERNAL_UDAF, BytesUtils.valueOf(FUNCTION_TYPE_EXTERNAL_UDAF));
     BINARY_MAP.put(FUNCTION_TYPE_BUILTIN_SCALAR, BytesUtils.valueOf(FUNCTION_TYPE_BUILTIN_SCALAR));
+
+    BINARY_MAP.put(
+        FUNCTION_TYPE_BUILTIN_SCALAR_FUNC, BytesUtils.valueOf(FUNCTION_TYPE_BUILTIN_SCALAR_FUNC));
+    BINARY_MAP.put(
+        FUNCTION_TYPE_BUILTIN_AGG_FUNC, BytesUtils.valueOf(FUNCTION_TYPE_BUILTIN_AGG_FUNC));
+    BINARY_MAP.put(
+        FUNCTION_TYPE_BUILTIN_TABLE_FUNC, BytesUtils.valueOf(FUNCTION_TYPE_BUILTIN_TABLE_FUNC));
+    BINARY_MAP.put(
+        FUNCTION_TYPE_USER_DEFINED_SCALAR_FUNC,
+        BytesUtils.valueOf(FUNCTION_TYPE_USER_DEFINED_SCALAR_FUNC));
+    BINARY_MAP.put(
+        FUNCTION_TYPE_USER_DEFINED_AGG_FUNC,
+        BytesUtils.valueOf(FUNCTION_TYPE_USER_DEFINED_AGG_FUNC));
+    BINARY_MAP.put(
+        FUNCTION_TYPE_USER_DEFINED_TABLE_FUNC,
+        BytesUtils.valueOf(FUNCTION_TYPE_USER_DEFINED_TABLE_FUNC));
+
     BINARY_MAP.put(FUNCTION_TYPE_UNKNOWN, BytesUtils.valueOf(FUNCTION_TYPE_UNKNOWN));
     BINARY_MAP.put(FUNCTION_STATE_AVAILABLE, BytesUtils.valueOf(FUNCTION_STATE_AVAILABLE));
     BINARY_MAP.put(FUNCTION_STATE_UNAVAILABLE, BytesUtils.valueOf(FUNCTION_STATE_UNAVAILABLE));
+
     BINARY_MAP.put("", BytesUtils.valueOf(""));
   }
 
@@ -87,6 +115,48 @@ public class ShowFunctionsTask implements IConfigTask {
   }
 
   public static void buildTsBlock(
+      Model model, List<ByteBuffer> allUDFInformation, SettableFuture<ConfigTaskResult> future) {
+    if (Model.TREE.equals(model)) {
+      buildTreeModelTsBlock(allUDFInformation, future);
+    } else {
+      buildTableModelTsBlock(allUDFInformation, future);
+    }
+  }
+
+  private static void buildTableModelTsBlock(
+      List<ByteBuffer> allUDFInformation, SettableFuture<ConfigTaskResult> future) {
+    List<TSDataType> outputDataTypes =
+        ColumnHeaderConstant.showFunctionsColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList());
+    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+    List<UDFInformation> udfInformations = new ArrayList<>();
+    if (allUDFInformation != null && !allUDFInformation.isEmpty()) {
+      for (ByteBuffer udfInformationByteBuffer : allUDFInformation) {
+        UDFInformation udfInformation = UDFInformation.deserialize(udfInformationByteBuffer);
+        udfInformations.add(udfInformation);
+      }
+    }
+
+    udfInformations.sort(Comparator.comparing(UDFInformation::getFunctionName));
+    for (UDFInformation udfInformation : udfInformations) {
+      appendUDFInformation(builder, udfInformation);
+    }
+    appendFunctions(
+        builder,
+        TableBuiltinScalarFunction.getBuiltInScalarFunctionName(),
+        BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_SCALAR_FUNC),
+        BINARY_MAP.get(FUNCTION_STATE_AVAILABLE));
+    appendFunctions(
+        builder,
+        TableBuiltinAggregationFunction.getBuiltInAggregateFunctionName(),
+        BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_AGG_FUNC),
+        BINARY_MAP.get(FUNCTION_STATE_AVAILABLE));
+    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowFunctionsHeader();
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
+  }
+
+  private static void buildTreeModelTsBlock(
       List<ByteBuffer> allUDFInformation, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showFunctionsColumnHeaders.stream()
@@ -118,8 +188,23 @@ public class ShowFunctionsTask implements IConfigTask {
     builder.getColumnBuilder(1).writeBinary(getFunctionType(udfInformation));
     builder.getColumnBuilder(2).writeBinary(BytesUtils.valueOf(udfInformation.getClassName()));
     builder.getColumnBuilder(3).writeBinary(getFunctionState(udfInformation));
-
     builder.declarePosition();
+  }
+
+  private static void appendFunctions(
+      TsBlockBuilder builder,
+      Collection<String> functionNames,
+      Binary functionType,
+      Binary functionState) {
+    final Binary className = BINARY_MAP.get("");
+    for (String functionName : functionNames) {
+      builder.getTimeColumnBuilder().writeLong(0L);
+      builder.getColumnBuilder(0).writeBinary(BytesUtils.valueOf(functionName.toUpperCase()));
+      builder.getColumnBuilder(1).writeBinary(functionType);
+      builder.getColumnBuilder(2).writeBinary(className);
+      builder.getColumnBuilder(3).writeBinary(functionState);
+      builder.declarePosition();
+    }
   }
 
   private static void appendBuiltInTimeSeriesGeneratingFunctions(TsBlockBuilder builder) {
@@ -174,6 +259,14 @@ public class ShowFunctionsTask implements IConfigTask {
           return BINARY_MAP.get(FUNCTION_TYPE_EXTERNAL_UDTF);
         } else if (TreeUDFUtils.isUDAF(udfInformation.getFunctionName())) {
           return BINARY_MAP.get(FUNCTION_TYPE_EXTERNAL_UDAF);
+        }
+      } else {
+        if (TableUDFUtils.isScalarFunction(udfInformation.getFunctionName())) {
+          return BINARY_MAP.get(FUNCTION_TYPE_USER_DEFINED_SCALAR_FUNC);
+        } else if (TableUDFUtils.isAggregateFunction(udfInformation.getFunctionName())) {
+          return BINARY_MAP.get(FUNCTION_TYPE_USER_DEFINED_AGG_FUNC);
+        } else if (TableUDFUtils.isTableFunction(udfInformation.getFunctionName())) {
+          return BINARY_MAP.get(FUNCTION_TYPE_USER_DEFINED_TABLE_FUNC);
         }
       }
     }

@@ -23,7 +23,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionMisc;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
@@ -55,7 +55,7 @@ public class IoTDBOtherUserConsumerIT extends AbstractSubscriptionRegressionIT {
   private static final String pattern = "root.**";
   private static final String userName = "other_user";
   private static final String passwd = "other_user";
-  private static SubscriptionPullConsumer consumer;
+  private static SubscriptionTreePullConsumer consumer;
 
   @Override
   @Before
@@ -95,7 +95,7 @@ public class IoTDBOtherUserConsumerIT extends AbstractSubscriptionRegressionIT {
     Tablet tablet = new Tablet(device, schemaList, 5);
     int rowIndex = 0;
     for (int row = 0; row < 5; row++) {
-      rowIndex = tablet.rowSize++;
+      rowIndex = tablet.getRowSize();
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue("s_0", rowIndex, row * 20L + row);
       tablet.addValue("s_1", rowIndex, row + 2.45);
@@ -122,7 +122,7 @@ public class IoTDBOtherUserConsumerIT extends AbstractSubscriptionRegressionIT {
     session_src.executeNonQueryStatement("create user " + userName + " '" + passwd + "';");
     session_src.executeNonQueryStatement("grant read,write on root.** to user " + userName);
     consumer =
-        new SubscriptionPullConsumer.Builder()
+        new SubscriptionTreePullConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .username(userName)

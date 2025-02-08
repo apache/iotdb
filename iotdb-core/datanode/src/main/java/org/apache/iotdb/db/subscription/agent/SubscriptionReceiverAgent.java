@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.agent;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiver;
 import org.apache.iotdb.db.subscription.receiver.SubscriptionReceiverV1;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -66,6 +67,18 @@ public class SubscriptionReceiverAgent {
           status,
           PipeSubscribeResponseVersion.VERSION_1.getVersion(),
           PipeSubscribeResponseType.ACK.getType());
+    }
+  }
+
+  public long remainingMs() {
+    return remainingMs(PipeSubscribeRequestVersion.VERSION_1.getVersion()); // default to VERSION_1
+  }
+
+  public long remainingMs(final byte reqVersion) {
+    if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
+      return getReceiver(reqVersion).remainingMs();
+    } else {
+      return SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs();
     }
   }
 

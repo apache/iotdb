@@ -28,11 +28,12 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 
 public class TimeColumnSchema extends TsTableColumnSchema {
-  public TimeColumnSchema(String columnName, TSDataType dataType) {
+  public TimeColumnSchema(final String columnName, final TSDataType dataType) {
     super(columnName, dataType);
   }
 
-  public TimeColumnSchema(String columnName, TSDataType dataType, Map<String, String> props) {
+  public TimeColumnSchema(
+      final String columnName, final TSDataType dataType, final Map<String, String> props) {
     super(columnName, dataType, props);
   }
 
@@ -41,17 +42,17 @@ public class TimeColumnSchema extends TsTableColumnSchema {
     return TsTableColumnCategory.TIME;
   }
 
-  static TimeColumnSchema deserialize(InputStream stream) throws IOException {
-    String columnName = ReadWriteIOUtils.readString(stream);
-    TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
-    Map<String, String> props = ReadWriteIOUtils.readMap(stream);
+  static TimeColumnSchema deserialize(final InputStream stream) throws IOException {
+    final String columnName = ReadWriteIOUtils.readString(stream);
+    final TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
+    final Map<String, String> props = ReadWriteIOUtils.readMap(stream);
     return new TimeColumnSchema(columnName, dataType, props);
   }
 
-  static TimeColumnSchema deserialize(ByteBuffer buffer) {
-    String columnName = ReadWriteIOUtils.readString(buffer);
-    TSDataType dataType = ReadWriteIOUtils.readDataType(buffer);
-    Map<String, String> props = ReadWriteIOUtils.readMap(buffer);
+  static TimeColumnSchema deserialize(final ByteBuffer buffer) {
+    final String columnName = ReadWriteIOUtils.readString(buffer);
+    final TSDataType dataType = ReadWriteIOUtils.readDataType(buffer);
+    final Map<String, String> props = ReadWriteIOUtils.readMap(buffer);
     return new TimeColumnSchema(columnName, dataType, props);
   }
 }

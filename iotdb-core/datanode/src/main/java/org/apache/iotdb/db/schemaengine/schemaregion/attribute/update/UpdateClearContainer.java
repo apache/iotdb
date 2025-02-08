@@ -78,6 +78,27 @@ public class UpdateClearContainer implements UpdateContainer {
     return outputStream.toByteArray();
   }
 
+  @Override
+  public long invalidate(final String tableName) {
+    if (tableNames.contains(tableName)) {
+      tableNames.remove(tableName);
+      return RamUsageEstimator.sizeOf(tableName);
+    }
+    return 0;
+  }
+
+  @Override
+  public long invalidate(final String[] pathNodes) {
+    // Do nothing
+    return 0;
+  }
+
+  @Override
+  public long invalidate(final String tableName, final String attributeName) {
+    // Do nothing
+    return 0;
+  }
+
   private void serializeWithLimit(
       final RewritableByteArrayOutputStream outputStream,
       final AtomicInteger limitBytes,

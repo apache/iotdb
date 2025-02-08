@@ -199,7 +199,9 @@ public class PipeRealtimeEvent extends EnrichedEvent {
         event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
             pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, startTime, endTime),
         this.tsFileEpoch,
-        this.device2Measurements,
+        // device2Measurements is not used anymore, so it is not copied.
+        // If null is not passed, the field will not be GCed and may cause OOM.
+        null,
         pipeTaskMeta,
         treePattern,
         tablePattern,

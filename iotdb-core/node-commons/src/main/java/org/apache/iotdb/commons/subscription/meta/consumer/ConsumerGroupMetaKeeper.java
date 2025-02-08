@@ -119,7 +119,7 @@ public class ConsumerGroupMetaKeeper {
 
   public Set<String> getSubscribedConsumerGroupIds(final String topicName) {
     return consumerGroupIdToConsumerGroupMetaMap.entrySet().stream()
-        .filter(entry -> entry.getValue().getTopicsSubscribedByConsumerGroup().contains(topicName))
+        .filter(entry -> entry.getValue().isTopicSubscribedByConsumerGroup(topicName))
         .map(Entry::getKey)
         .collect(Collectors.toSet());
   }
@@ -129,13 +129,12 @@ public class ConsumerGroupMetaKeeper {
     return consumerGroupIdToConsumerGroupMetaMap.containsKey(consumerGroupId)
         && consumerGroupIdToConsumerGroupMetaMap
             .get(consumerGroupId)
-            .getTopicsSubscribedByConsumerGroup()
-            .contains(topicName);
+            .isTopicSubscribedByConsumerGroup(topicName);
   }
 
   public boolean isTopicSubscribedByConsumerGroup(final String topicName) {
     return consumerGroupIdToConsumerGroupMetaMap.values().stream()
-        .anyMatch(meta -> meta.getTopicsSubscribedByConsumerGroup().contains(topicName));
+        .anyMatch(meta -> meta.isTopicSubscribedByConsumerGroup(topicName));
   }
 
   /////////////////////////////////  Snapshot  /////////////////////////////////

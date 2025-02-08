@@ -24,11 +24,10 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -44,10 +43,12 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionParams;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionParams;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,6 +58,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -145,15 +147,7 @@ public class SchemaEngine {
         continue;
       }
 
-      final PartialPath database;
-      try {
-        database = PartialPath.getDatabasePath(file.getName());
-      } catch (IllegalPathException illegalPathException) {
-        // not a legal sg dir
-        continue;
-      }
-
-      final File sgDir = new File(config.getSchemaDir(), database.getFullPath());
+      final File sgDir = new File(config.getSchemaDir(), file.getName());
 
       if (!sgDir.exists()) {
         continue;
@@ -174,7 +168,7 @@ public class SchemaEngine {
         }
         schemaRegionIds.add(schemaRegionId);
       }
-      localSchemaPartitionTable.put(database.getFullPath(), schemaRegionIds);
+      localSchemaPartitionTable.put(file.getName(), schemaRegionIds);
     }
     return localSchemaPartitionTable;
   }
@@ -186,26 +180,19 @@ public class SchemaEngine {
   @SuppressWarnings("java:S2142")
   private void initSchemaRegion() {
     // recover SchemaRegion concurrently
-    Map<String, List<SchemaRegionId>> localSchemaRegionInfo = getLocalSchemaRegionInfo();
+    final Map<String, List<SchemaRegionId>> localSchemaRegionInfo = getLocalSchemaRegionInfo();
     final ExecutorService schemaRegionRecoverPools =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             Runtime.getRuntime().availableProcessors(),
             ThreadName.SCHEMA_REGION_RECOVER_TASK.getName());
     final List<Future<ISchemaRegion>> futures = new ArrayList<>();
     localSchemaRegionInfo.forEach(
-        (k, v) -> {
-          for (SchemaRegionId schemaRegionId : v) {
-            PartialPath database;
-            try {
-              database = PartialPath.getDatabasePath(k);
-            } catch (IllegalPathException e) {
-              logger.warn("Illegal database path: {}", k);
-              continue;
-            }
-            futures.add(
-                schemaRegionRecoverPools.submit(recoverSchemaRegionTask(database, schemaRegionId)));
-          }
-        });
+        (k, v) ->
+            v.forEach(
+                schemaRegionId ->
+                    futures.add(
+                        schemaRegionRecoverPools.submit(
+                            recoverSchemaRegionTask(k, schemaRegionId)))));
     for (final Future<ISchemaRegion> future : futures) {
       try {
         final ISchemaRegion schemaRegion = future.get();
@@ -260,7 +247,7 @@ public class SchemaEngine {
     ClusterTemplateManager.getInstance().clear();
   }
 
-  public ISchemaRegion getSchemaRegion(SchemaRegionId regionId) {
+  public ISchemaRegion getSchemaRegion(final SchemaRegionId regionId) {
     return schemaRegionMap.get(regionId);
   }
 
@@ -273,17 +260,17 @@ public class SchemaEngine {
   }
 
   public synchronized void createSchemaRegion(
-      PartialPath storageGroup, SchemaRegionId schemaRegionId) throws MetadataException {
-    ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
+      final String storageGroup, final SchemaRegionId schemaRegionId) throws MetadataException {
+    final ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
-      if (schemaRegion.getDatabaseFullPath().equals(storageGroup.getFullPath())) {
+      if (schemaRegion.getDatabaseFullPath().equals(storageGroup)) {
         return;
       } else {
         throw new MetadataException(
             String.format(
                 "SchemaRegion [%s] is duplicated between [%s] and [%s], "
                     + "and the former one has been recovered.",
-                schemaRegionId, schemaRegion.getDatabaseFullPath(), storageGroup.getFullPath()));
+                schemaRegionId, schemaRegion.getDatabaseFullPath(), storageGroup));
       }
     }
     schemaRegionMap.put(
@@ -291,7 +278,7 @@ public class SchemaEngine {
   }
 
   private Callable<ISchemaRegion> recoverSchemaRegionTask(
-      PartialPath storageGroup, SchemaRegionId schemaRegionId) {
+      final String storageGroup, final SchemaRegionId schemaRegionId) {
     // this method is called for concurrent recovery of schema regions
     return () -> {
       long timeRecord = System.currentTimeMillis();
@@ -302,24 +289,24 @@ public class SchemaEngine {
         timeRecord = System.currentTimeMillis() - timeRecord;
         logger.info(
             "Recover [{}] spend: {} ms",
-            storageGroup.concatNode(schemaRegionId.toString()),
+            storageGroup + TsFileConstant.PATH_SEPARATOR + schemaRegionId.toString(),
             timeRecord);
         return schemaRegion;
-      } catch (MetadataException e) {
+      } catch (final MetadataException e) {
         logger.error(
             String.format(
                 "SchemaRegion [%d] in StorageGroup [%s] failed to recover.",
-                schemaRegionId.getId(), storageGroup.getFullPath()));
+                schemaRegionId.getId(), storageGroup));
         throw new RuntimeException(e);
       }
     };
   }
 
   private ISchemaRegion createSchemaRegionWithoutExistenceCheck(
-      PartialPath database, SchemaRegionId schemaRegionId) throws MetadataException {
-    ISchemaRegionParams schemaRegionParams =
+      final String database, final SchemaRegionId schemaRegionId) throws MetadataException {
+    final ISchemaRegionParams schemaRegionParams =
         new SchemaRegionParams(database, schemaRegionId, schemaEngineStatistics);
-    ISchemaRegion schemaRegion = schemaRegionLoader.createSchemaRegion(schemaRegionParams);
+    final ISchemaRegion schemaRegion = schemaRegionLoader.createSchemaRegion(schemaRegionParams);
     schemaMetricManager.addSchemaRegionMetric(
         schemaRegionId.getId(), schemaRegion.getSchemaRegionMetric());
     return schemaRegion;
@@ -360,8 +347,8 @@ public class SchemaEngine {
     return schemaRegionMap == null ? 0 : schemaRegionMap.size();
   }
 
-  public Map<Integer, Long> countDeviceNumBySchemaRegion(List<Integer> schemaIds) {
-    Map<Integer, Long> deviceNum = new HashMap<>();
+  public Map<Integer, Long> countDeviceNumBySchemaRegion(final List<Integer> schemaIds) {
+    final Map<Integer, Long> deviceNum = new HashMap<>();
 
     schemaRegionMap.entrySet().stream()
         .filter(
@@ -376,8 +363,8 @@ public class SchemaEngine {
     return deviceNum;
   }
 
-  public Map<Integer, Long> countTimeSeriesNumBySchemaRegion(List<Integer> schemaIds) {
-    Map<Integer, Long> timeSeriesNum = new HashMap<>();
+  public Map<Integer, Long> countTimeSeriesNumBySchemaRegion(final List<Integer> schemaIds) {
+    final Map<Integer, Long> timeSeriesNum = new HashMap<>();
     schemaRegionMap.entrySet().stream()
         .filter(
             entry ->
@@ -385,10 +372,26 @@ public class SchemaEngine {
                     && SchemaRegionConsensusImpl.getInstance().isLeader(entry.getKey()))
         .forEach(
             entry ->
-                timeSeriesNum.put(
-                    entry.getKey().getId(),
-                    entry.getValue().getSchemaRegionStatistics().getSeriesNumber(false)));
+                timeSeriesNum.put(entry.getKey().getId(), getTimeSeriesNumber(entry.getValue())));
     return timeSeriesNum;
+  }
+
+  // not including view number
+  private long getTimeSeriesNumber(ISchemaRegion schemaRegion) {
+    return schemaRegion.getSchemaRegionStatistics().getSeriesNumber(false)
+        + schemaRegion.getSchemaRegionStatistics().getTable2DevicesNumMap().entrySet().stream()
+            .map(
+                tableEntry -> {
+                  final TsTable table =
+                      DataNodeTableCache.getInstance()
+                          .getTable(
+                              PathUtils.unQualifyDatabaseName(schemaRegion.getDatabaseFullPath()),
+                              tableEntry.getKey());
+                  return Objects.nonNull(table)
+                      ? table.getMeasurementNum() * tableEntry.getValue()
+                      : 0;
+                })
+            .reduce(0L, Long::sum);
   }
 
   /**
@@ -399,7 +402,8 @@ public class SchemaEngine {
    * @param req heartbeat request
    * @param resp heartbeat response
    */
-  public void updateAndFillSchemaCountMap(TDataNodeHeartbeatReq req, TDataNodeHeartbeatResp resp) {
+  public void updateAndFillSchemaCountMap(
+      final TDataNodeHeartbeatReq req, final TDataNodeHeartbeatResp resp) {
     // update DataNodeSchemaQuotaManager
     schemaQuotaManager.updateRemain(
         req.getTimeSeriesQuotaRemain(),
@@ -408,7 +412,7 @@ public class SchemaEngine {
       if (resp.getRegionDeviceUsageMap() == null) {
         resp.setRegionDeviceUsageMap(new HashMap<>());
       }
-      Map<Integer, Long> tmp = resp.getRegionDeviceUsageMap();
+      final Map<Integer, Long> tmp = resp.getRegionDeviceUsageMap();
       SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIds().stream()
           .filter(
               consensusGroupId ->
@@ -427,7 +431,7 @@ public class SchemaEngine {
       if (resp.getRegionSeriesUsageMap() == null) {
         resp.setRegionSeriesUsageMap(new HashMap<>());
       }
-      Map<Integer, Long> tmp = resp.getRegionSeriesUsageMap();
+      final Map<Integer, Long> tmp = resp.getRegionSeriesUsageMap();
       SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIds().stream()
           .filter(
               consensusGroupId ->
@@ -437,14 +441,11 @@ public class SchemaEngine {
                   tmp.put(
                       consensusGroupId.getId(),
                       Optional.ofNullable(schemaRegionMap.get(consensusGroupId))
-                          .map(
-                              schemaRegion ->
-                                  schemaRegion.getSchemaRegionStatistics().getSeriesNumber(false))
+                          .map(this::getTimeSeriesNumber)
                           .orElse(0L)));
     }
   }
 
-  @TestOnly
   public ISchemaEngineStatistics getSchemaEngineStatistics() {
     return schemaEngineStatistics;
   }

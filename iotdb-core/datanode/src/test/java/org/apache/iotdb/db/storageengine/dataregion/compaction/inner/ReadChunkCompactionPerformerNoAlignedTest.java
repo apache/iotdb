@@ -154,7 +154,7 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
     }
     for (PartialPath device : devicePath) {
       for (IMeasurementSchema schema : schemas) {
-        fullPathSet.add(device.getFullPath() + "." + schema.getMeasurementId());
+        fullPathSet.add(device.getFullPath() + "." + schema.getMeasurementName());
         paths.add(new NonAlignedFullPath(device.getIDeviceIDAsFullDevice(), schema));
         schemaList.add(schema);
       }

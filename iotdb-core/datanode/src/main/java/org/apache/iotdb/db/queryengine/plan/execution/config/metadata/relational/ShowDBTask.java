@@ -19,15 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
+import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -39,51 +41,72 @@ import org.apache.tsfile.utils.Binary;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class ShowDBTask implements IConfigTask {
 
   private final ShowDB node;
 
-  public ShowDBTask(final ShowDB node) {
+  // judge whether the specific database can be seen, dbName should be without `root.` prefix
+  private final Predicate<String> canSeenDB;
+
+  public ShowDBTask(final ShowDB node, final Predicate<String> canSeenDB) {
     this.node = node;
+    this.canSeenDB = canSeenDB;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showDatabases(node);
+    return configTaskExecutor.showDatabases(node, canSeenDB);
   }
 
   public static void buildTSBlock(
       final Map<String, TDatabaseInfo> storageGroupInfoMap,
       final SettableFuture<ConfigTaskResult> future,
-      final boolean isDetails) {
+      final boolean isDetails,
+      final Predicate<String> canSeenDB) {
     if (isDetails) {
-      buildTSBlockForDetails(storageGroupInfoMap, future);
+      buildTSBlockForDetails(storageGroupInfoMap, future, canSeenDB);
     } else {
-      buildTSBlockForNonDetails(storageGroupInfoMap, future);
+      buildTSBlockForNonDetails(storageGroupInfoMap, future, canSeenDB);
     }
   }
 
   private static void buildTSBlockForNonDetails(
       final Map<String, TDatabaseInfo> storageGroupInfoMap,
-      final SettableFuture<ConfigTaskResult> future) {
+      final SettableFuture<ConfigTaskResult> future,
+      final Predicate<String> canSeenDB) {
     final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showDBColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
 
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+    InformationSchemaUtils.buildDatabaseTsBlock(canSeenDB, builder, false, true);
     for (final Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
-      final String dbName = entry.getKey().substring(5);
+      final String dbName = entry.getKey();
+      if (Boolean.FALSE.equals(canSeenDB.test(dbName))) {
+        continue;
+      }
       final TDatabaseInfo storageGroupInfo = entry.getValue();
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(new Binary(dbName, TSFileConfig.STRING_CHARSET));
 
-      builder.getColumnBuilder(1).writeInt(storageGroupInfo.getSchemaReplicationFactor());
-      builder.getColumnBuilder(2).writeInt(storageGroupInfo.getDataReplicationFactor());
-      builder.getColumnBuilder(3).writeLong(storageGroupInfo.getTimePartitionInterval());
+      if (Long.MAX_VALUE == storageGroupInfo.getTTL()) {
+        builder
+            .getColumnBuilder(1)
+            .writeBinary(new Binary(IoTDBConstant.TTL_INFINITE, TSFileConfig.STRING_CHARSET));
+      } else {
+        builder
+            .getColumnBuilder(1)
+            .writeBinary(
+                new Binary(String.valueOf(storageGroupInfo.getTTL()), TSFileConfig.STRING_CHARSET));
+      }
+      builder.getColumnBuilder(2).writeInt(storageGroupInfo.getSchemaReplicationFactor());
+      builder.getColumnBuilder(3).writeInt(storageGroupInfo.getDataReplicationFactor());
+      builder.getColumnBuilder(4).writeLong(storageGroupInfo.getTimePartitionInterval());
       builder.declarePosition();
     }
 
@@ -93,28 +116,39 @@ public class ShowDBTask implements IConfigTask {
 
   private static void buildTSBlockForDetails(
       final Map<String, TDatabaseInfo> storageGroupInfoMap,
-      final SettableFuture<ConfigTaskResult> future) {
+      final SettableFuture<ConfigTaskResult> future,
+      final Predicate<String> canSeenDB) {
     final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showDBDetailsColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
 
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+    InformationSchemaUtils.buildDatabaseTsBlock(canSeenDB, builder, true, true);
     for (final Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
-      final String dbName = entry.getKey().substring(5);
+      final String dbName = entry.getKey();
+      if (!canSeenDB.test(dbName)) {
+        continue;
+      }
       final TDatabaseInfo storageGroupInfo = entry.getValue();
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(new Binary(dbName, TSFileConfig.STRING_CHARSET));
 
-      builder.getColumnBuilder(1).writeInt(storageGroupInfo.getSchemaReplicationFactor());
-      builder.getColumnBuilder(2).writeInt(storageGroupInfo.getDataReplicationFactor());
-      builder.getColumnBuilder(3).writeLong(storageGroupInfo.getTimePartitionInterval());
-      builder
-          .getColumnBuilder(4)
-          .writeBinary(
-              new Binary(
-                  storageGroupInfo.isIsTableModel() ? "TABLE" : "TREE",
-                  TSFileConfig.STRING_CHARSET));
+      if (Long.MAX_VALUE == storageGroupInfo.getTTL()) {
+        builder
+            .getColumnBuilder(1)
+            .writeBinary(new Binary(IoTDBConstant.TTL_INFINITE, TSFileConfig.STRING_CHARSET));
+      } else {
+        builder
+            .getColumnBuilder(1)
+            .writeBinary(
+                new Binary(String.valueOf(storageGroupInfo.getTTL()), TSFileConfig.STRING_CHARSET));
+      }
+      builder.getColumnBuilder(2).writeInt(storageGroupInfo.getSchemaReplicationFactor());
+      builder.getColumnBuilder(3).writeInt(storageGroupInfo.getDataReplicationFactor());
+      builder.getColumnBuilder(4).writeLong(storageGroupInfo.getTimePartitionInterval());
+      builder.getColumnBuilder(5).writeInt(storageGroupInfo.getSchemaRegionNum());
+      builder.getColumnBuilder(6).writeInt(storageGroupInfo.getDataRegionNum());
       builder.declarePosition();
     }
 

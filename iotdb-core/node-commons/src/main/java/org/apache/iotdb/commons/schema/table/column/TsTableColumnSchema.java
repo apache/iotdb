@@ -24,8 +24,11 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+
+import static com.google.common.base.MoreObjects.toStringHelper;
 
 public abstract class TsTableColumnSchema {
 
@@ -35,12 +38,13 @@ public abstract class TsTableColumnSchema {
 
   protected Map<String, String> props = null;
 
-  TsTableColumnSchema(String columnName, TSDataType dataType) {
+  TsTableColumnSchema(final String columnName, final TSDataType dataType) {
     this.columnName = columnName;
     this.dataType = dataType;
   }
 
-  TsTableColumnSchema(String columnName, TSDataType dataType, Map<String, String> props) {
+  TsTableColumnSchema(
+      final String columnName, final TSDataType dataType, final Map<String, String> props) {
     this.columnName = columnName;
     this.dataType = dataType;
     this.props = props;
@@ -54,16 +58,23 @@ public abstract class TsTableColumnSchema {
     return dataType;
   }
 
+  public Map<String, String> getProps() {
+    if (Objects.isNull(props)) {
+      props = new HashMap<>();
+    }
+    return props;
+  }
+
   public abstract TsTableColumnCategory getColumnCategory();
 
-  void serialize(OutputStream outputStream) throws IOException {
+  void serialize(final OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(columnName, outputStream);
     ReadWriteIOUtils.write(dataType, outputStream);
     ReadWriteIOUtils.write(props, outputStream);
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     return super.equals(o);
   }
 
@@ -72,7 +83,16 @@ public abstract class TsTableColumnSchema {
     return Objects.hash(columnName);
   }
 
-  public void setDataType(TSDataType dataType) {
+  public void setDataType(final TSDataType dataType) {
     this.dataType = dataType;
+  }
+
+  @Override
+  public String toString() {
+    return toStringHelper(this)
+        .add("columnName", columnName)
+        .add("dataType", dataType)
+        .add("props", props)
+        .toString();
   }
 }

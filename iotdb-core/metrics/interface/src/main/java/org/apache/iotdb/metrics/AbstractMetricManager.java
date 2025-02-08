@@ -252,7 +252,7 @@ public abstract class AbstractMetricManager {
         metrics.computeIfAbsent(
             metricInfo,
             key -> {
-              Histogram histogram = createHistogram(metricInfo);
+              Histogram histogram = createHistogram();
               nameToMetaInfo.put(name, metricInfo.getMetaInfo());
               notifyReporterOnAdd(histogram, metricInfo);
               return histogram;
@@ -263,12 +263,8 @@ public abstract class AbstractMetricManager {
     throw new IllegalArgumentException(metricInfo + ALREADY_EXISTS);
   }
 
-  /**
-   * Create histogram according to metric framework.
-   *
-   * @param metricInfo the metricInfo of metric
-   */
-  protected abstract Histogram createHistogram(MetricInfo metricInfo);
+  /** Create histogram according to metric framework. */
+  protected abstract Histogram createHistogram();
 
   /**
    * Get timer. return if exists, create if not.
@@ -466,7 +462,7 @@ public abstract class AbstractMetricManager {
 
   protected abstract boolean stopFramework();
 
-  private boolean invalid(MetricLevel metricLevel, String name, String... tags) {
+  public boolean invalid(MetricLevel metricLevel, String name, String... tags) {
     if (!isEnableMetricInGivenLevel(metricLevel)) {
       return true;
     }

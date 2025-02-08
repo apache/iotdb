@@ -53,7 +53,6 @@ import org.apache.iotdb.consensus.ratis.utils.RetryPolicy;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 import org.apache.ratis.client.RaftClientRpc;
 import org.apache.ratis.conf.Parameters;
@@ -95,19 +94,18 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
@@ -146,6 +144,8 @@ class RatisConsensus implements IConsensus {
 
   private final RatisMetricSet ratisMetricSet;
   private final TConsensusGroupType consensusGroupType;
+
+  private Map<ConsensusGroupId, List<Peer>> correctPeerListBeforeStart = null;
 
   private final ConcurrentHashMap<ConsensusGroupId, AtomicBoolean> canServeStaleRead;
 
@@ -236,6 +236,27 @@ class RatisConsensus implements IConsensus {
     MetricService.getInstance().addMetricSet(this.ratisMetricSet);
     server.get().start();
     registerAndStartDiskGuardian();
+
+    if (correctPeerListBeforeStart != null) {
+      BiConsumer<ConsensusGroupId, List<Peer>> resetPeerListWithoutThrow =
+          (consensusGroupId, peers) -> {
+            try {
+              resetPeerList(consensusGroupId, peers);
+            } catch (ConsensusGroupNotExistException ignore) {
+
+            } catch (Exception e) {
+              logger.warn("Failed to reset peer list while start", e);
+            }
+          };
+      // make peers which are in list correct
+      correctPeerListBeforeStart.forEach(resetPeerListWithoutThrow);
+      // clear peers which are not in the list
+      getAllConsensusGroupIds().stream()
+          .filter(consensusGroupId -> !correctPeerListBeforeStart.containsKey(consensusGroupId))
+          .forEach(
+              consensusGroupId ->
+                  resetPeerListWithoutThrow.accept(consensusGroupId, Collections.emptyList()));
+    }
   }
 
   @Override
@@ -254,7 +275,8 @@ class RatisConsensus implements IConsensus {
   }
 
   /** Launch a consensus write with retry mechanism */
-  private RaftClientReply writeWithRetry(CheckedSupplier<RaftClientReply, IOException> caller)
+  private RaftClientReply writeWithRetry(
+      CheckedSupplier<RaftClientReply, IOException> caller, RaftGroupId groupId)
       throws IOException {
     RaftClientReply reply = null;
     try {
@@ -266,6 +288,9 @@ class RatisConsensus implements IConsensus {
 
     if (reply == null) {
       return RaftClientReply.newBuilder()
+          .setClientId(ClientId.emptyClientId())
+          .setServerId(server.get().getId())
+          .setGroupId(groupId)
           .setSuccess(false)
           .setException(
               new RaftException("null reply received in writeWithRetry for request " + caller))
@@ -274,13 +299,14 @@ class RatisConsensus implements IConsensus {
     return reply;
   }
 
-  private RaftClientReply writeLocallyWithRetry(RaftClientRequest request) throws IOException {
-    return writeWithRetry(() -> server.get().submitClientRequest(request));
+  private RaftClientReply writeLocallyWithRetry(RaftClientRequest request, RaftGroupId groupId)
+      throws IOException {
+    return writeWithRetry(() -> server.get().submitClientRequest(request), groupId);
   }
 
-  private RaftClientReply writeRemotelyWithRetry(RatisClient client, Message message)
-      throws IOException {
-    return writeWithRetry(() -> client.getRaftClient().io().send(message));
+  private RaftClientReply writeRemotelyWithRetry(
+      RatisClient client, Message message, RaftGroupId groupId) throws IOException {
+    return writeWithRetry(() -> client.getRaftClient().io().send(message), groupId);
   }
 
   /**
@@ -302,7 +328,7 @@ class RatisConsensus implements IConsensus {
       try {
         forceStepDownLeader(raftGroup);
       } catch (Exception e) {
-        logger.warn("leader {} read only, force step down failed due to {}", myself, e);
+        logger.warn("leader {} read only, force step down failed due to, ", myself, e);
       }
       return StatusUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY);
     }
@@ -323,7 +349,7 @@ class RatisConsensus implements IConsensus {
         && waitUntilLeaderReady(raftGroupId)) {
       try (AutoCloseable ignored =
           RatisMetricsManager.getInstance().startWriteLocallyTimer(consensusGroupType)) {
-        RaftClientReply localServerReply = writeLocallyWithRetry(clientRequest);
+        RaftClientReply localServerReply = writeLocallyWithRetry(clientRequest, raftGroupId);
         if (localServerReply.isSuccess()) {
           ResponseMessage responseMessage = (ResponseMessage) localServerReply.getMessage();
           return (TSStatus) responseMessage.getContentHolder();
@@ -344,7 +370,7 @@ class RatisConsensus implements IConsensus {
     try (AutoCloseable ignored =
             RatisMetricsManager.getInstance().startWriteRemotelyTimer(consensusGroupType);
         RatisClient client = getRaftClient(raftGroup)) {
-      RaftClientReply reply = writeRemotelyWithRetry(client, message);
+      RaftClientReply reply = writeRemotelyWithRetry(client, message, raftGroupId);
       if (!reply.isSuccess()) {
         throw new RatisRequestFailedException(reply.getException());
       }
@@ -552,7 +578,16 @@ class RatisConsensus implements IConsensus {
 
     RaftPeer peerToAdd = Utils.fromPeerAndPriorityToRaftPeer(peer, DEFAULT_PRIORITY);
     // pre-condition: peer not in this group
-    if (group.getPeers().contains(peerToAdd)) {
+    if (group.getPeers().stream()
+        .anyMatch(
+            p ->
+                p.getId().equals(peerToAdd.getId())
+                    || p.getAddress().equals(peerToAdd.getAddress()))) {
+      logger.warn(
+          "{}: try to add a peer {} with conflicting id or address in {}",
+          this,
+          peerToAdd,
+          group.getPeers());
       throw new PeerAlreadyInConsensusGroupException(groupId, peer);
     }
 
@@ -593,9 +628,15 @@ class RatisConsensus implements IConsensus {
   }
 
   @Override
+  public void recordCorrectPeerListBeforeStarting(
+      Map<ConsensusGroupId, List<Peer>> correctPeerList) {
+    logger.info("Record correct peer list: {}", correctPeerList);
+    this.correctPeerListBeforeStart = correctPeerList;
+  }
+
+  @Override
   public void resetPeerList(ConsensusGroupId groupId, List<Peer> correctPeers)
       throws ConsensusException {
-    logger.info("[RESET PEER LIST] Start to reset peer list to {}", correctPeers);
     final RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
     final RaftGroup group = getGroupInfo(raftGroupId);
 
@@ -611,7 +652,7 @@ class RatisConsensus implements IConsensus {
                         peer.getNodeId(), peer.getEndpoint(), DEFAULT_PRIORITY))
             .anyMatch(
                 raftPeer ->
-                    myself.getId() == raftPeer.getId()
+                    myself.getId().equals(raftPeer.getId())
                         && myself.getAddress().equals(raftPeer.getAddress()));
     if (!myselfInCorrectPeers) {
       logger.info(
@@ -625,6 +666,20 @@ class RatisConsensus implements IConsensus {
         Utils.fromPeersAndPriorityToRaftPeers(correctPeers, DEFAULT_PRIORITY);
     final RaftGroup newGroup = RaftGroup.valueOf(raftGroupId, newGroupPeers);
 
+    Set<RaftPeer> localRaftPeerSet = new HashSet<>(group.getPeers());
+    Set<RaftPeer> correctRaftPeerSet = new HashSet<>(newGroupPeers);
+    if (localRaftPeerSet.equals(correctRaftPeerSet)) {
+      // configurations are the same
+      logger.info(
+          "[RESET PEER LIST] The current peer list is correct, nothing need to be reset: {}",
+          localRaftPeerSet);
+      return;
+    }
+
+    logger.info(
+        "[RESET PEER LIST] Peer list will be reset from {} to {}",
+        localRaftPeerSet,
+        correctRaftPeerSet);
     RaftClientReply reply = sendReconfiguration(newGroup);
     if (reply.isSuccess()) {
       logger.info("[RESET PEER LIST] Peer list has been reset to {}", newGroupPeers);
@@ -793,30 +848,6 @@ class RatisConsensus implements IConsensus {
   }
 
   @Override
-  public List<ConsensusGroupId> getAllConsensusGroupIdsWithoutStarting() {
-    if (!storageDir.exists()) {
-      return Collections.emptyList();
-    }
-    List<ConsensusGroupId> consensusGroupIds = new ArrayList<>();
-    try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
-      for (Path path : stream) {
-        try {
-          RaftGroupId raftGroupId =
-              RaftGroupId.valueOf(UUID.fromString(path.getFileName().toString()));
-          consensusGroupIds.add(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId));
-        } catch (Exception e) {
-          logger.info(
-              "The directory {} is not a group directory;" + " ignoring it. ",
-              path.getFileName().toString());
-        }
-      }
-    } catch (IOException e) {
-      logger.error("Failed to get all consensus group ids from disk", e);
-    }
-    return consensusGroupIds;
-  }
-
-  @Override
   public String getRegionDirFromConsensusGroupId(ConsensusGroupId consensusGroupId) {
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(consensusGroupId);
     return storageDir + File.separator + raftGroupId.getUuid().toString();
@@ -980,7 +1011,7 @@ class RatisConsensus implements IConsensus {
     }
 
     @Override
-    public KeyedObjectPool<RaftGroup, RatisClient> createClientPool(
+    public GenericKeyedObjectPool<RaftGroup, RatisClient> createClientPool(
         ClientManager<RaftGroup, RatisClient> manager) {
       GenericKeyedObjectPool<RaftGroup, RatisClient> clientPool =
           new GenericKeyedObjectPool<>(

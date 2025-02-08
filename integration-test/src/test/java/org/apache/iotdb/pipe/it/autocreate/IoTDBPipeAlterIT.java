@@ -120,6 +120,8 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
       // Check status
       Assert.assertEquals("STOPPED", showPipeResult.get(0).state);
       // Check configurations
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("__system.sql-dialect=tree"));
+      Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source=iotdb-source"));
       Assert.assertTrue(showPipeResult.get(0).pipeExtractor.contains("source.pattern=root.test2"));
       Assert.assertTrue(

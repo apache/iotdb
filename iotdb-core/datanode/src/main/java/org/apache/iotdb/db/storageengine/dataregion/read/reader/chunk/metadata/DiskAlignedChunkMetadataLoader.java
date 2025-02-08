@@ -21,13 +21,13 @@ package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata;
 
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskAlignedChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
 
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
-import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.tsfile.read.controller.IChunkMetadataLoader;
@@ -51,10 +51,10 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
   private final Filter globalTimeFilter;
 
   // time column's modifications, means deletion for entire row
-  private final List<Modification> timeColumnModifications;
+  private final List<ModEntry> timeColumnModifications;
 
   // all sub sensors' modifications
-  private final List<List<Modification>> valueColumnsModifications;
+  private final List<List<ModEntry>> valueColumnsModifications;
 
   // for table model, it will be false
   // for tree model, it will be true
@@ -68,8 +68,8 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
       TsFileResource resource,
       QueryContext context,
       Filter globalTimeFilter,
-      List<Modification> timeModifications,
-      List<List<Modification>> valueColumnsModifications,
+      List<ModEntry> timeModifications,
+      List<List<ModEntry>> valueColumnsModifications,
       boolean ignoreAllNullRows) {
     this.resource = resource;
     this.context = context;
@@ -83,7 +83,7 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
   public List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeSeriesMetadata) {
     final long t1 = System.nanoTime();
     try {
-      List<AlignedChunkMetadata> alignedChunkMetadataList =
+      List<AbstractAlignedChunkMetadata> alignedChunkMetadataList =
           ((AbstractAlignedTimeSeriesMetadata) timeSeriesMetadata).getCopiedChunkMetadataList();
 
       // when alignedChunkMetadataList.size() == 1, it means that the chunk statistics is same as

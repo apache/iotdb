@@ -37,10 +37,13 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showDBColumnHeaders;
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showDBDetailsColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showDBColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showDBDetailsColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -67,7 +70,7 @@ public class IoTDBDatabaseIT {
         final Statement statement = connection.createStatement()) {
 
       // create
-      statement.execute("create database test");
+      statement.execute("create database test with (ttl='INF')");
 
       // create duplicated database without IF NOT EXISTS
       try {
@@ -81,10 +84,10 @@ public class IoTDBDatabaseIT {
       statement.execute("create database IF NOT EXISTS test");
 
       String[] databaseNames = new String[] {"test"};
+      String[] TTLs = new String[] {"INF"};
       int[] schemaReplicaFactors = new int[] {1};
       int[] dataReplicaFactors = new int[] {1};
       int[] timePartitionInterval = new int[] {604800000};
-      String[] model = new String[] {"TABLE"};
 
       // show
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
@@ -95,15 +98,21 @@ public class IoTDBDatabaseIT {
           assertEquals(showDBColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
         }
         while (resultSet.next()) {
+          if (resultSet.getString(1).equals("information_schema")) {
+            continue;
+          }
           assertEquals(databaseNames[cnt], resultSet.getString(1));
-          assertEquals(schemaReplicaFactors[cnt], resultSet.getInt(2));
-          assertEquals(dataReplicaFactors[cnt], resultSet.getInt(3));
-          assertEquals(timePartitionInterval[cnt], resultSet.getLong(4));
+          assertEquals(TTLs[cnt], resultSet.getString(2));
+          assertEquals(schemaReplicaFactors[cnt], resultSet.getInt(3));
+          assertEquals(dataReplicaFactors[cnt], resultSet.getInt(4));
+          assertEquals(timePartitionInterval[cnt], resultSet.getLong(5));
           cnt++;
         }
         assertEquals(databaseNames.length, cnt);
       }
 
+      final int[] schemaRegionGroupNum = new int[] {0};
+      final int[] dataRegionGroupNum = new int[] {0};
       // show
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES DETAILS")) {
         int cnt = 0;
@@ -114,11 +123,16 @@ public class IoTDBDatabaseIT {
               showDBDetailsColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
         }
         while (resultSet.next()) {
+          if (resultSet.getString(1).equals("information_schema")) {
+            continue;
+          }
           assertEquals(databaseNames[cnt], resultSet.getString(1));
-          assertEquals(schemaReplicaFactors[cnt], resultSet.getInt(2));
-          assertEquals(dataReplicaFactors[cnt], resultSet.getInt(3));
-          assertEquals(timePartitionInterval[cnt], resultSet.getLong(4));
-          assertEquals(model[cnt], resultSet.getString(5));
+          assertEquals(TTLs[cnt], resultSet.getString(2));
+          assertEquals(schemaReplicaFactors[cnt], resultSet.getInt(3));
+          assertEquals(dataReplicaFactors[cnt], resultSet.getInt(4));
+          assertEquals(timePartitionInterval[cnt], resultSet.getLong(5));
+          assertEquals(schemaRegionGroupNum[cnt], resultSet.getInt(6));
+          assertEquals(dataRegionGroupNum[cnt], resultSet.getInt(7));
           cnt++;
         }
         assertEquals(databaseNames.length, cnt);
@@ -138,6 +152,8 @@ public class IoTDBDatabaseIT {
       // drop
       statement.execute("drop database test");
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
+        // Information_schema
+        assertTrue(resultSet.next());
         assertFalse(resultSet.next());
       }
 
@@ -154,10 +170,9 @@ public class IoTDBDatabaseIT {
 
       // Test create database with properties
       statement.execute(
-          "create database test_prop with (schema_replication_factor=DEFAULT, data_replication_factor=3, time_partition_interval=100000)");
-
+          "create database test_prop with (ttl=300, schema_region_group_num=DEFAULT, time_partition_interval=100000)");
       databaseNames = new String[] {"test_prop"};
-      dataReplicaFactors = new int[] {3};
+      TTLs = new String[] {"300"};
       timePartitionInterval = new int[] {100000};
 
       // show
@@ -169,10 +184,14 @@ public class IoTDBDatabaseIT {
           assertEquals(showDBColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
         }
         while (resultSet.next()) {
+          if (resultSet.getString(1).equals("information_schema")) {
+            continue;
+          }
           assertEquals(databaseNames[cnt], resultSet.getString(1));
-          assertEquals(schemaReplicaFactors[cnt], resultSet.getInt(2));
-          assertEquals(dataReplicaFactors[cnt], resultSet.getInt(3));
-          assertEquals(timePartitionInterval[cnt], resultSet.getLong(4));
+          assertEquals(TTLs[cnt], resultSet.getString(2));
+          assertEquals(schemaReplicaFactors[cnt], resultSet.getInt(3));
+          assertEquals(dataReplicaFactors[cnt], resultSet.getInt(4));
+          assertEquals(timePartitionInterval[cnt], resultSet.getLong(5));
           cnt++;
         }
         assertEquals(databaseNames.length, cnt);
@@ -267,13 +286,16 @@ public class IoTDBDatabaseIT {
 
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
         assertTrue(resultSet.next());
+        if (resultSet.getString(1).equals("information_schema")) {
+          assertTrue(resultSet.next());
+        }
         assertEquals("````x", resultSet.getString(1));
         assertFalse(resultSet.next());
       }
 
       statement.execute("use \"````x\"");
 
-      statement.execute("create table table0 (a id, b attribute, c int32)");
+      statement.execute("create table table0 (a tag, b attribute, c int32)");
 
       statement.execute("desc table0");
       statement.execute("desc \"````x\".table0");
@@ -300,6 +322,190 @@ public class IoTDBDatabaseIT {
           statement.executeQuery("show devices from table0"),
           "a,b,",
           Collections.singleton("1,4,"));
+    }
+  }
+
+  @Test
+  public void testInformationSchema() throws SQLException {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      // Test unsupported write plans
+      final Set<String> writeSQLs =
+          new HashSet<>(
+              Arrays.asList(
+                  "create database information_schema",
+                  "drop database information_schema",
+                  "create table information_schema.tableA ()",
+                  "alter table information_schema.tableA add column a id",
+                  "alter table information_schema.tableA set properties ttl=default",
+                  "insert into information_schema.tables (database) values('db')",
+                  "update information_schema.tables set status='RUNNING'"));
+
+      for (final String writeSQL : writeSQLs) {
+        try {
+          statement.execute(writeSQL);
+          fail("information_schema does not support write");
+        } catch (final SQLException e) {
+          assertEquals(
+              "701: The database 'information_schema' can only be queried", e.getMessage());
+        }
+      }
+
+      statement.execute("use information_schema");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show databases"),
+          "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
+          Collections.singleton("information_schema,INF,null,null,null,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show tables"),
+          "TableName,TTL(ms),",
+          new HashSet<>(
+              Arrays.asList("databases,INF,", "tables,INF,", "columns,INF,", "queries,INF,")));
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc databases"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "database,STRING,TAG,",
+                  "ttl(ms),STRING,ATTRIBUTE,",
+                  "schema_replication_factor,INT32,ATTRIBUTE,",
+                  "data_replication_factor,INT32,ATTRIBUTE,",
+                  "time_partition_interval,INT64,ATTRIBUTE,",
+                  "schema_region_group_num,INT32,ATTRIBUTE,",
+                  "data_region_group_num,INT32,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc tables"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "database,STRING,TAG,",
+                  "table_name,STRING,TAG,",
+                  "ttl(ms),STRING,ATTRIBUTE,",
+                  "status,STRING,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc columns"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "database,STRING,TAG,",
+                  "table_name,STRING,TAG,",
+                  "column_name,STRING,TAG,",
+                  "datatype,STRING,ATTRIBUTE,",
+                  "category,STRING,ATTRIBUTE,",
+                  "status,STRING,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc queries"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "query_id,STRING,TAG,",
+                  "start_time,TIMESTAMP,ATTRIBUTE,",
+                  "datanode_id,INT32,ATTRIBUTE,",
+                  "elapsed_time,FLOAT,ATTRIBUTE,",
+                  "statement,STRING,ATTRIBUTE,")));
+
+      // Test table query
+      statement.execute("create database test");
+      statement.execute("create table test.test (a tag, b attribute, c int32)");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select * from databases"),
+          "database,ttl(ms),schema_replication_factor,data_replication_factor,time_partition_interval,schema_region_group_num,data_region_group_num,",
+          new HashSet<>(
+              Arrays.asList(
+                  "information_schema,INF,null,null,null,null,null,",
+                  "test,INF,1,1,604800000,0,0,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show devices from tables where status = 'USING'"),
+          "database,table_name,ttl(ms),status,",
+          new HashSet<>(
+              Arrays.asList(
+                  "information_schema,databases,INF,USING,",
+                  "information_schema,tables,INF,USING,",
+                  "information_schema,columns,INF,USING,",
+                  "information_schema,queries,INF,USING,",
+                  "test,test,INF,USING,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("count devices from tables where status = 'USING'"),
+          "count(devices),",
+          Collections.singleton("5,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "select * from columns where table_name = 'queries' or database = 'test'"),
+          "database,table_name,column_name,datatype,category,status,",
+          new HashSet<>(
+              Arrays.asList(
+                  "information_schema,queries,query_id,STRING,TAG,USING,",
+                  "information_schema,queries,start_time,TIMESTAMP,ATTRIBUTE,USING,",
+                  "information_schema,queries,datanode_id,INT32,ATTRIBUTE,USING,",
+                  "information_schema,queries,elapsed_time,FLOAT,ATTRIBUTE,USING,",
+                  "information_schema,queries,statement,STRING,ATTRIBUTE,USING,",
+                  "test,test,time,TIMESTAMP,TIME,USING,",
+                  "test,test,a,STRING,TAG,USING,",
+                  "test,test,b,STRING,ATTRIBUTE,USING,",
+                  "test,test,c,INT32,FIELD,USING,")));
+    }
+  }
+
+  @Test
+  public void testMixedDatabase() throws SQLException {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database test");
+      statement.execute("use test");
+      statement.execute("create table table1(id1 tag, s1 string)");
+      statement.execute("insert into table1 values(0, 'd1', null), (1,'d1', 1)");
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database root.test");
+      statement.execute(
+          "alter database root.test WITH SCHEMA_REGION_GROUP_NUM=2, DATA_REGION_GROUP_NUM=3");
+      statement.execute("insert into root.test.d1 (s1) values(1)");
+      statement.execute("drop database root.test");
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES DETAILS")) {
+        assertTrue(resultSet.next());
+        if (resultSet.getString(1).equals("information_schema")) {
+          assertTrue(resultSet.next());
+        }
+        assertEquals("test", resultSet.getString(1));
+        assertFalse(resultSet.next());
+      }
+
+      // Test adjustMaxRegionGroupNum
+      statement.execute("use test");
+      statement.execute(
+          "create table table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD, speed DOUBLE FIELD)");
+      statement.execute(
+          "insert into table2(region_id, plant_id, color, temperature, speed) values(1, 1, 1, 1, 1)");
+
+      statement.execute("create database test1");
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create database root.test");
+    }
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("drop database test");
+    }
+
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      TestUtils.assertResultSetSize(statement.executeQuery("show databases"), 1);
     }
   }
 }

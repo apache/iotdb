@@ -34,17 +34,11 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeConnectorSubtaskL
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionConnectorSubtaskLifeCycle.class);
 
-  private int runningTaskCount;
-  private int registeredTaskCount;
-
   public SubscriptionConnectorSubtaskLifeCycle(
       final PipeConnectorSubtaskExecutor executor, // SubscriptionSubtaskExecutor
       final PipeConnectorSubtask subtask, // SubscriptionConnectorSubtask
       final UnboundedBlockingPendingQueue<Event> pendingQueue) {
     super(executor, subtask, pendingQueue);
-
-    runningTaskCount = 0;
-    registeredTaskCount = 0;
   }
 
   @Override
@@ -69,7 +63,7 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeConnectorSubtaskL
   }
 
   @Override
-  public synchronized boolean deregister(final String ignored, int regionId) {
+  public synchronized boolean deregister(final String pipeNameToDeregister, int regionId) {
     if (registeredTaskCount <= 0) {
       throw new IllegalStateException("registeredTaskCount <= 0");
     }

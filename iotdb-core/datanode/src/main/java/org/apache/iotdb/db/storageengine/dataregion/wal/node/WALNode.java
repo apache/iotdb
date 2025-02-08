@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -111,6 +112,8 @@ public class WALNode implements IWALNode {
   // insert nodes whose search index are before this value can be deleted safely
   private volatile long safelyDeletedSearchIndex = DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
 
+  private volatile boolean deleted = false;
+
   public WALNode(String identifier, String logDirectory) throws IOException {
     this(identifier, logDirectory, 0, 0L);
   }
@@ -171,6 +174,18 @@ public class WALNode implements IWALNode {
   }
 
   @Override
+  public WALFlushListener log(long memTableId, RelationalDeleteDataNode deleteDataNode) {
+    if (logger.isDebugEnabled()) {
+      logger.debug(
+          "WAL node-{} logs relationalDeleteDataNode, the search index is {}.",
+          identifier,
+          deleteDataNode.getSearchIndex());
+    }
+    WALEntry walEntry = new WALInfoEntry(memTableId, deleteDataNode);
+    return log(walEntry);
+  }
+
+  @Override
   public WALFlushListener log(
       long memTableId, ContinuousSameSearchIndexSeparatorNode separatorNode) {
     WALEntry walEntry = new WALInfoEntry(memTableId, separatorNode);
@@ -218,6 +233,10 @@ public class WALNode implements IWALNode {
     Checkpoint checkpoint =
         new Checkpoint(CheckpointType.CREATE_MEMORY_TABLE, Collections.singletonList(memTableInfo));
     buffer.write(new WALInfoEntry(memTable.getMemTableId(), checkpoint));
+  }
+
+  public void setDeleted(boolean deleted) {
+    this.deleted = deleted;
   }
 
   // region methods for pipe
@@ -397,14 +416,14 @@ public class WALNode implements IWALNode {
                               .getName()),
                       StringUtils.join(successfullyDeleted, ","),
                       fileIndexAfterFilterSafelyDeleteIndex,
-                      System.getProperty("line.separator")));
+                      System.lineSeparator()));
 
           if (!pinnedMemTableIds.isEmpty()) {
             summary
                 .append("- MemTable has been flushed but pinned by PIPE, the MemTableId list is : ")
                 .append(StringUtils.join(pinnedMemTableIds, ","))
                 .append(".")
-                .append(System.getProperty("line.separator"));
+                .append(System.lineSeparator());
           }
           if (fileIndexAfterFilterSafelyDeleteIndex < sortedWalFilesExcludingLast.length) {
             summary.append(
@@ -947,7 +966,7 @@ public class WALNode implements IWALNode {
   public void rollWALFile() {
     WALEntry rollWALFileSignal = new WALSignalEntry(WALEntryType.ROLL_WAL_LOG_WRITER_SIGNAL, true);
     WALFlushListener walFlushListener = log(rollWALFileSignal);
-    if (walFlushListener.waitForResult() == AbstractResultListener.Status.FAILURE) {
+    if (!deleted && walFlushListener.waitForResult() == AbstractResultListener.Status.FAILURE) {
       logger.error(
           "Fail to trigger rolling wal node-{}'s wal file log writer.",
           identifier,

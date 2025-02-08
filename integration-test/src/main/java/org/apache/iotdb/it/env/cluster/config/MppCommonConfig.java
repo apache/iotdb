@@ -98,6 +98,24 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setEncryptFlag(boolean encryptFlag) {
+    setProperty("encrypt_flag", String.valueOf(encryptFlag));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEncryptType(String encryptType) {
+    setProperty("encrypt_type", encryptType);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEncryptKeyPath(String encryptKeyPath) {
+    setProperty("encrypt_key_path", encryptKeyPath);
+    return this;
+  }
+
+  @Override
   public CommonConfig setUdfMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
     // udf_memory_budget_in_mb
     // udf_reader_transformer_collector_memory_proportion
@@ -186,6 +204,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode) {
+    setProperty("iot_consensus_v2_mode", ioTConsensusV2Mode);
+    return this;
+  }
+
+  @Override
   public CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy) {
     setProperty("schema_region_group_extension_policy", schemaRegionGroupExtensionPolicy);
     return this;
@@ -227,6 +251,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setTimePartitionInterval(long timePartitionInterval) {
     setProperty("time_partition_interval", String.valueOf(timePartitionInterval));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTTLCheckInterval(long ttlCheckInterval) {
+    setProperty("ttl_check_interval", String.valueOf(ttlCheckInterval));
     return this;
   }
 
@@ -358,6 +388,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
+    setProperty("series_partition_executor_class", seriesPartitionExecutorClass);
+    return this;
+  }
+
+  @Override
   public CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate) {
     setProperty("schema_memory_proportion", String.valueOf(schemaMemoryAllocate));
     return this;
@@ -443,8 +479,8 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs) {
-    setProperty("cn_connection_timeout_ms", String.valueOf(connectionTimeoutMs));
+  public CommonConfig setDnConnectionTimeoutMs(int connectionTimeoutMs) {
+    setProperty("dn_connection_timeout_ms", String.valueOf(connectionTimeoutMs));
     return this;
   }
 
@@ -481,6 +517,18 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
         "pipe_connector_request_slice_threshold_bytes",
         String.valueOf(pipeConnectorRequestSliceThresholdBytes));
 
+    return this;
+  }
+
+  @Override
+  public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
+    setProperty("chunk_timeseriesmeta_free_memory_proportion", queryMemoryProportion);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+    setProperty("default_storage_group_level", String.valueOf(defaultStorageGroupLevel));
     return this;
   }
 

@@ -60,6 +60,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -344,7 +345,7 @@ public class AggregationOperatorTest {
             scanOptionsBuilder.build(),
             driverContext.getOperatorContexts().get(0),
             aggregators,
-            initTimeRangeIterator(groupByTimeParameter, true, true),
+            initTimeRangeIterator(groupByTimeParameter, true, true, ZoneId.systemDefault()),
             groupByTimeParameter,
             DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
             true);
@@ -369,7 +370,7 @@ public class AggregationOperatorTest {
             scanOptionsBuilder.build(),
             driverContext.getOperatorContexts().get(0),
             aggregators,
-            initTimeRangeIterator(groupByTimeParameter, true, true),
+            initTimeRangeIterator(groupByTimeParameter, true, true, ZoneId.systemDefault()),
             groupByTimeParameter,
             DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
             true);
@@ -403,7 +404,7 @@ public class AggregationOperatorTest {
     return new AggregationOperator(
         driverContext.getOperatorContexts().get(2),
         finalAggregators,
-        initTimeRangeIterator(groupByTimeParameter, true, true),
+        initTimeRangeIterator(groupByTimeParameter, true, true, ZoneId.systemDefault()),
         children,
         false,
         DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);

@@ -69,7 +69,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     partiallyDirtyFiles.forEach(
         x -> {
           partiallyDirtyFileSize += x.getTsFileSize();
-          totalModsFileSize += x.getModFile().getSize();
+          totalModsFileSize += x.getTotalModSizeInByte();
         });
     this.hashCode = this.toString().hashCode();
   }
@@ -212,10 +212,6 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     for (TsFileResource resource : fullyDirtyFiles) {
       if (recoverMemoryStatus) {
         tsFileManager.remove(resource, resource.isSeq());
-        if (resource.getModFile().exists()) {
-          FileMetrics.getInstance().decreaseModFileNum(1);
-          FileMetrics.getInstance().decreaseModFileSize(resource.getModFile().getSize());
-        }
       }
       boolean res = deleteTsFileOnDisk(resource);
       if (res) {
