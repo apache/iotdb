@@ -38,11 +38,7 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   private static final Logger logger = LoggerFactory.getLogger(MemSchemaEngineStatistics.class);
 
   // Total size of schema region
-  private final IMemoryBlock memoryBlock =
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .getSchemaRegionMemoryManager()
-          .forceAllocate("SchemaRegion", MemoryBlockType.FUNCTION);
+  private final IMemoryBlock memoryBlock;
   private final ClusterTemplateManager clusterTemplateManager =
       ClusterTemplateManager.getInstance();
 
@@ -57,6 +53,14 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   // In memory mode, we need log to warn users that the memory capacity has been reached.
   // In pbtree mode, we only need related log for debug.
   protected volatile boolean needLog = true;
+
+  public MemSchemaEngineStatistics() {
+    memoryBlock =
+        IoTDBDescriptor.getInstance()
+            .getConfig()
+            .getSchemaRegionMemoryManager()
+            .forceAllocate("SchemaRegion", MemoryBlockType.FUNCTION);
+  }
 
   @Override
   public boolean isAllowToCreateNewSeries() {

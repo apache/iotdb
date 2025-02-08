@@ -24,9 +24,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.LongUnaryOperator;
 
@@ -61,7 +59,7 @@ public class MemoryManager {
   private final Map<String, MemoryManager> children = new ConcurrentHashMap<>();
 
   /** The allocated memory blocks of this memory manager */
-  private final Set<IMemoryBlock> allocatedMemoryBlocks = new HashSet<>();
+  private final Map<String, IMemoryBlock> allocatedMemoryBlocks = new ConcurrentHashMap<>();
 
   @TestOnly
   public MemoryManager(long totalMemorySizeInBytes) {
@@ -229,19 +227,26 @@ public class MemoryManager {
   /**
    * Try to register memory block with specified size in bytes
    *
-   * @param name the name of memory block
+   * @param name the name of memory block, UNIQUE
    * @param sizeInBytes the size in bytes of memory block
-   * @param type
+   * @param type the type of memory block
    * @return the memory block
    */
   private IMemoryBlock registerMemoryBlock(String name, long sizeInBytes, MemoryBlockType type) {
     if (sizeInBytes <= 0) {
       LOGGER.warn("forceAllocate {}: sizeInBytes should be positive", name);
     }
-    allocatedMemorySizeInBytes += sizeInBytes;
-    final IMemoryBlock memoryBlock = new AtomicLongMemoryBlock(name, this, sizeInBytes, type);
-    allocatedMemoryBlocks.add(memoryBlock);
-    return memoryBlock;
+    return allocatedMemoryBlocks.compute(
+        name,
+        (blockName, block) -> {
+          if (block != null) {
+            LOGGER.warn("register memory block already exists: {}", block);
+            return block;
+          } else {
+            allocatedMemorySizeInBytes += sizeInBytes;
+            return new AtomicLongMemoryBlock(name, this, sizeInBytes, type);
+          }
+        });
   }
 
   /**
@@ -344,7 +349,7 @@ public class MemoryManager {
     // first increase the total memory size of this memory manager
     this.totalMemorySizeInBytes *= ratio;
     // then re-allocate memory for all memory blocks
-    for (IMemoryBlock block : allocatedMemoryBlocks) {
+    for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
       block.setTotalMemorySizeInBytes((long) (block.getTotalMemorySizeInBytes() * ratio));
     }
     // finally re-allocate memory for all child memory managers
@@ -399,7 +404,7 @@ public class MemoryManager {
       child.clearAll();
     }
     children.clear();
-    for (IMemoryBlock block : allocatedMemoryBlocks) {
+    for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
       if (block == null || block.isReleased()) {
         return;
       }
@@ -457,7 +462,7 @@ public class MemoryManager {
   /** Get actual used memory size in bytes of memory manager */
   public long getUsedMemorySizeInBytes() {
     long memorySize =
-        allocatedMemoryBlocks.stream().mapToLong(IMemoryBlock::getUsedMemoryInBytes).sum();
+        allocatedMemoryBlocks.values().stream().mapToLong(IMemoryBlock::getUsedMemoryInBytes).sum();
     for (MemoryManager child : children.values()) {
       memorySize += child.getUsedMemorySizeInBytes();
     }
@@ -507,7 +512,7 @@ public class MemoryManager {
     }
     sb.append(this);
     LOGGER.error(sb.toString());
-    for (IMemoryBlock block : allocatedMemoryBlocks) {
+    for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
       block.print(index + 1);
     }
     for (MemoryManager child : children.values()) {
