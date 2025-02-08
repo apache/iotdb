@@ -72,6 +72,7 @@ public class ColumnHeaderConstant {
   public static final String PATHS = "Paths";
   public static final String PATH = "Path";
   public static final String VARIABLE = "Variable";
+  public static final String SCOPE = "Scope";
 
   // column names for count statement
   public static final String COLUMN = "Column";
@@ -631,10 +632,10 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_TTL, TSDataType.TEXT),
           new ColumnHeader(STATUS, TSDataType.TEXT));
 
-  public static final List<ColumnHeader> LIST_USER_PRIVILEGES_Column_HEADERS =
+  public static final List<ColumnHeader> LIST_USER_OR_ROLE_PRIVILEGES_COLUMN_HEADERS =
       ImmutableList.of(
           new ColumnHeader(ROLE, TSDataType.TEXT),
-          new ColumnHeader(PATH, TSDataType.TEXT),
+          new ColumnHeader(SCOPE, TSDataType.TEXT),
           new ColumnHeader(PRIVILEGES, TSDataType.TEXT),
           new ColumnHeader(GRANT_OPTION, TSDataType.BOOLEAN));
 

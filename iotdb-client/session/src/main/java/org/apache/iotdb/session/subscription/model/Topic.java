@@ -24,7 +24,7 @@ public class Topic {
   private final String topicName;
   private final String topicAttributes;
 
-  public Topic(String topicName, String topicAttributes) {
+  public Topic(final String topicName, final String topicAttributes) {
     this.topicName = topicName;
     this.topicAttributes = topicAttributes;
   }

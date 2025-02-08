@@ -99,6 +99,17 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     super(id);
   }
 
+  @Override
+  public InsertNode mergeInsertNode(List<InsertNode> insertNodes) {
+    List<Integer> index = new ArrayList<>();
+    List<InsertTabletNode> insertTabletNodes = new ArrayList<>();
+    for (int i = 0; i < insertNodes.size(); i++) {
+      insertTabletNodes.add((InsertTabletNode) insertNodes.get(i));
+      index.add(i);
+    }
+    return new InsertMultiTabletsNode(this.getPlanNodeId(), index, insertTabletNodes);
+  }
+
   @TestOnly
   public InsertTabletNode(
       PlanNodeId id,

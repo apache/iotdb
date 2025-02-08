@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
 import java.io.DataOutputStream;
@@ -194,5 +195,17 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
   @Override
   public int serializedSize() {
     return deleteDataNode.serializedSize();
+  }
+
+  @Override
+  public SearchNode merge(List<SearchNode> searchNodes) {
+    List<SearchNode> unrichedDeleteDataNodes =
+        searchNodes.stream()
+            .map(
+                searchNode ->
+                    (SearchNode) ((PipeEnrichedDeleteDataNode) searchNode).getDeleteDataNode())
+            .collect(Collectors.toList());
+    return new PipeEnrichedDeleteDataNode(
+        (DeleteDataNode) deleteDataNode.merge(unrichedDeleteDataNodes));
   }
 }

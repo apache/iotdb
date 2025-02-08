@@ -256,8 +256,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
 
     String errorMsg1 =
         TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
-            + ": Error occurred while parsing SQL to physical plan: "
-            + "line 1:7 mismatched input 'path' expecting STRING_LITERAL";
+            + ": Error occurred while parsing SQL to physical plan: line 1:7 no viable alternative at input 'REMOVE path'";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("REMOVE path");

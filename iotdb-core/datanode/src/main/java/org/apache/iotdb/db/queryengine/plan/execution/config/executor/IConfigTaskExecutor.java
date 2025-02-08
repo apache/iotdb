@@ -35,6 +35,10 @@ import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ExtendRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.RemoveRegionTask;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
@@ -51,7 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.MigrateRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
@@ -249,7 +253,15 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> countTimeSlotList(
       CountTimeSlotListStatement countTimeSlotListStatement);
 
-  SettableFuture<ConfigTaskResult> migrateRegion(MigrateRegionStatement migrateRegionStatement);
+  SettableFuture<ConfigTaskResult> migrateRegion(MigrateRegionTask migrateRegionTask);
+
+  SettableFuture<ConfigTaskResult> reconstructRegion(ReconstructRegionTask reconstructRegionTask);
+
+  SettableFuture<ConfigTaskResult> extendRegion(ExtendRegionTask extendRegionTask);
+
+  SettableFuture<ConfigTaskResult> removeRegion(RemoveRegionTask removeRegionTask);
+
+  SettableFuture<ConfigTaskResult> removeDataNode(RemoveDataNodeStatement removeDataNodeStatement);
 
   SettableFuture<ConfigTaskResult> createContinuousQuery(
       CreateContinuousQueryStatement createContinuousQueryStatement, MPPQueryContext context);
@@ -306,7 +318,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> describeTable(
       final String database, final String tableName, final boolean isDetails);
 
-  SettableFuture<ConfigTaskResult> showTables(final String database, final boolean isDetails);
+  SettableFuture<ConfigTaskResult> showTables(
+      final String database, final Predicate<String> canSeenDB, final boolean isDetails);
 
   TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
 

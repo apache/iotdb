@@ -412,6 +412,10 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitUpdate(final Update node, final Optional<Scope> context) {
       queryContext.setQueryType(QueryType.WRITE);
+      node.parseTable(sessionContext);
+      accessControl.checkCanInsertIntoTable(
+          sessionContext.getUserName(),
+          new QualifiedObjectName(node.getDatabase(), node.getTableName()));
       final TranslationMap translationMap = analyzeTraverseDevice(node, context, true);
       InformationSchemaUtils.checkDBNameInWrite(node.getDatabase());
       final TsTable table =
@@ -466,6 +470,9 @@ public class StatementAnalyzer {
       // Actually write, but will return the result
       queryContext.setQueryType(QueryType.READ);
       node.parseTable(sessionContext);
+      accessControl.checkCanDeleteFromTable(
+          sessionContext.getUserName(),
+          new QualifiedObjectName(node.getDatabase(), node.getTableName()));
       InformationSchemaUtils.checkDBNameInWrite(node.getDatabase());
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
@@ -2932,7 +2939,12 @@ public class StatementAnalyzer {
 
     private void analyzeQueryDevice(
         final AbstractQueryDeviceWithCache node, final Optional<Scope> context) {
+      node.parseTable(sessionContext);
+      accessControl.checkCanSelectFromTable(
+          sessionContext.getUserName(),
+          new QualifiedObjectName(node.getDatabase(), node.getTableName()));
       analyzeTraverseDevice(node, context, node.getWhere().isPresent());
+
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       if (!node.parseRawExpression(
@@ -2958,8 +2970,6 @@ public class StatementAnalyzer {
         final AbstractTraverseDevice node,
         final Optional<Scope> context,
         final boolean shallCreateTranslationMap) {
-      node.parseTable(sessionContext);
-
       final String database = node.getDatabase();
       final String tableName = node.getTableName();
 

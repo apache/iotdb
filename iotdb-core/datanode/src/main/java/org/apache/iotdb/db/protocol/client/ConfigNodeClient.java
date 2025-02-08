@@ -53,6 +53,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerRelationalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
@@ -100,6 +101,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
@@ -131,7 +133,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
+import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRemoveRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
@@ -668,9 +672,21 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSStatus operateRPermission(TAuthorizerRelationalReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.operateRPermission(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
   public TAuthorizerResp queryPermission(TAuthorizerReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.queryPermission(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TAuthorizerResp queryRPermission(TAuthorizerRelationalReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.queryRPermission(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -690,13 +706,6 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       throws TException {
     return executeRemoteCallWithRetry(
         () -> client.fetchAuthizedPatternTree(req), resp -> !updateConfigNodeLeader(resp.status));
-  }
-
-  @Override
-  public TPermissionInfoResp checkUserPrivilegeGrantOpt(TCheckUserPrivilegesReq req)
-      throws TException {
-    return executeRemoteCallWithRetry(
-        () -> client.checkUserPrivilegeGrantOpt(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   public TPermissionInfoResp checkRoleOfUser(TAuthorizerReq req) throws TException {
@@ -1213,6 +1222,24 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus migrateRegion(TMigrateRegionReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.migrateRegion(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus reconstructRegion(TReconstructRegionReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.reconstructRegion(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus extendRegion(TExtendRegionReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.extendRegion(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus removeRegion(TRemoveRegionReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.removeRegion(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override

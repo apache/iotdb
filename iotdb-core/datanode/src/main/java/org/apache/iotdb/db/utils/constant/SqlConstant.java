@@ -36,7 +36,7 @@ public class SqlConstant {
 
   public static final String ROOT = "root";
 
-  public static final String ROOT_DOT = "root.";
+  public static final String TREE_MODEL_DATABASE_PREFIX = "root.";
 
   public static final String QUOTE = "'";
   public static final String DQUOTE = "\"";
@@ -62,6 +62,7 @@ public class SqlConstant {
   public static final String LAST_AGGREGATION = "last";
   public static final String FIRST_AGGREGATION = "first";
   public static final String COUNT = "count";
+  public static final String COUNT_ALL = "count_all";
   public static final String AVG = "avg";
   public static final String SUM = "sum";
   public static final String COUNT_IF = "count_if";

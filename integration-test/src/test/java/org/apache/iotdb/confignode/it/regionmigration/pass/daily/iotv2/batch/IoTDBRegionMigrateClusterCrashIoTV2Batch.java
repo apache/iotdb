@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv2.batch;
 
-import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateReliabilityITFramework;
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
 import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
 import org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -32,7 +32,7 @@ import org.junit.runner.RunWith;
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
 public class IoTDBRegionMigrateClusterCrashIoTV2Batch
-    extends IoTDBRegionMigrateReliabilityITFramework {
+    extends IoTDBRegionOperationReliabilityITFramework {
 
   @Test
   public void clusterCrash1() throws Exception {

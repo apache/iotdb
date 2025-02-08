@@ -25,7 +25,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
@@ -61,7 +61,7 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegressionMisc.class})
 public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegressionIT {
-  private SubscriptionPushConsumer consumer;
+  private SubscriptionTreePushConsumer consumer;
   private int deviceCount = 3;
   private static final String databasePrefix = "root.DefaultTsfilePushConsumer";
   private static String topicName = "topicDefaultTsfilePushConsumer";
@@ -133,7 +133,7 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegres
       rowCounts.add(new AtomicInteger(0));
     }
     consumer =
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("default_pattern_TsFile_consumer")

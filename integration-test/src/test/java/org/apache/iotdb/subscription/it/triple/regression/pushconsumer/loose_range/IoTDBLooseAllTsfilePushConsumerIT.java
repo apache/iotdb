@@ -26,7 +26,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
@@ -71,7 +71,7 @@ public class IoTDBLooseAllTsfilePushConsumerIT extends AbstractSubscriptionRegre
   private String pattern = database + ".**";
   private String topicName = "topic_LooseAllTsfilePushConsumer";
   private List<IMeasurementSchema> schemaList = new ArrayList<>();
-  private SubscriptionPushConsumer consumer;
+  private SubscriptionTreePushConsumer consumer;
 
   @Override
   @Before
@@ -161,7 +161,7 @@ public class IoTDBLooseAllTsfilePushConsumerIT extends AbstractSubscriptionRegre
     paths.add(device2);
 
     consumer =
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("time_range_ts_tsfile_push")

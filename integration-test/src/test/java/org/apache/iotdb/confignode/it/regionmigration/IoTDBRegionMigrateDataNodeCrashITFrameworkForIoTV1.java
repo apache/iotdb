@@ -26,7 +26,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.junit.Before;
 
 public class IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV1
-    extends IoTDBRegionMigrateReliabilityITFramework {
+    extends IoTDBRegionOperationReliabilityITFramework {
 
   @Override
   @Before

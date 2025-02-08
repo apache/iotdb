@@ -41,11 +41,23 @@ public class CountIfAccumulator implements TableAccumulator {
   }
 
   @Override
-  public void addInput(Column[] arguments) {
-    int count = arguments[0].getPositionCount();
-    for (int i = 0; i < count; i++) {
-      if (!arguments[0].isNull(i) && arguments[0].getBoolean(i)) {
-        countState++;
+  public void addInput(Column[] arguments, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!arguments[0].isNull(i) && arguments[0].getBoolean(i)) {
+          countState++;
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!arguments[0].isNull(position) && arguments[0].getBoolean(position)) {
+          countState++;
+        }
       }
     }
   }

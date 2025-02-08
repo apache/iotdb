@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.receiver.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -40,6 +41,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
@@ -257,13 +259,11 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case AlterDatabase:
       case DeleteDatabase:
         return configManager
-            .checkUserPrivileges(
-                username, Collections.emptyList(), PrivilegeType.MANAGE_DATABASE.ordinal())
+            .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE))
             .getStatus();
       case ExtendSchemaTemplate:
         return configManager
-            .checkUserPrivileges(
-                username, Collections.emptyList(), PrivilegeType.EXTEND_TEMPLATE.ordinal())
+            .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.EXTEND_TEMPLATE))
             .getStatus();
       case CreateSchemaTemplate:
       case CommitSetSchemaTemplate:
@@ -276,55 +276,62 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         return configManager
             .checkUserPrivileges(
                 username,
-                new ArrayList<>(
-                    PathPatternTree.deserialize(
-                            ((PipeDeleteTimeSeriesPlan) plan).getPatternTreeBytes())
-                        .getAllPathPatterns()),
-                PrivilegeType.WRITE_SCHEMA.ordinal())
+                new PrivilegeUnion(
+                    new ArrayList<>(
+                        PathPatternTree.deserialize(
+                                ((PipeDeleteTimeSeriesPlan) plan).getPatternTreeBytes())
+                            .getAllPathPatterns()),
+                    PrivilegeType.WRITE_SCHEMA))
             .getStatus();
       case PipeDeleteLogicalView:
         return configManager
             .checkUserPrivileges(
                 username,
-                new ArrayList<>(
-                    PathPatternTree.deserialize(
-                            ((PipeDeleteLogicalViewPlan) plan).getPatternTreeBytes())
-                        .getAllPathPatterns()),
-                PrivilegeType.WRITE_SCHEMA.ordinal())
+                new PrivilegeUnion(
+                    new ArrayList<>(
+                        PathPatternTree.deserialize(
+                                ((PipeDeleteLogicalViewPlan) plan).getPatternTreeBytes())
+                            .getAllPathPatterns()),
+                    PrivilegeType.WRITE_SCHEMA))
             .getStatus();
       case PipeDeactivateTemplate:
         return configManager
             .checkUserPrivileges(
                 username,
-                new ArrayList<>(((PipeDeactivateTemplatePlan) plan).getTemplateSetInfo().keySet()),
-                PrivilegeType.WRITE_SCHEMA.ordinal())
+                new PrivilegeUnion(
+                    new ArrayList<>(
+                        ((PipeDeactivateTemplatePlan) plan).getTemplateSetInfo().keySet()),
+                    PrivilegeType.WRITE_SCHEMA))
             .getStatus();
       case SetTTL:
         return configManager
             .checkUserPrivileges(
                 username,
-                Collections.singletonList(new PartialPath(((SetTTLPlan) plan).getPathPattern())),
-                PrivilegeType.WRITE_SCHEMA.ordinal())
+                new PrivilegeUnion(
+                    Collections.singletonList(
+                        new PartialPath(((SetTTLPlan) plan).getPathPattern())),
+                    PrivilegeType.WRITE_SCHEMA))
             .getStatus();
       case UpdateTriggerStateInTable:
       case DeleteTriggerInTable:
         return configManager
-            .checkUserPrivileges(
-                username, Collections.emptyList(), PrivilegeType.USE_TRIGGER.ordinal())
+            .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.USE_TRIGGER))
             .getStatus();
       case GrantRole:
       case GrantUser:
       case RevokeUser:
       case RevokeRole:
-        for (final int permission : ((AuthorPlan) plan).getPermissions()) {
+        for (final int permission : ((AuthorTreePlan) plan).getPermissions()) {
           final TSStatus status =
               configManager
                   .checkUserPrivilegeGrantOpt(
                       username,
-                      PrivilegeType.isPathRelevant(permission)
-                          ? ((AuthorPlan) plan).getNodeNameList()
-                          : Collections.emptyList(),
-                      permission)
+                      PrivilegeType.values()[permission].isPathPrivilege()
+                          ? new PrivilegeUnion(
+                              ((AuthorTreePlan) plan).getNodeNameList(),
+                              PrivilegeType.values()[permission],
+                              true)
+                          : new PrivilegeUnion(PrivilegeType.values()[permission], true))
                   .getStatus();
           if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return status;
@@ -335,23 +342,20 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         return ((AuthorPlan) plan).getUserName().equals(username)
             ? StatusUtils.OK
             : configManager
-                .checkUserPrivileges(
-                    username, Collections.emptyList(), PrivilegeType.MANAGE_USER.ordinal())
+                .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_USER))
                 .getStatus();
       case CreateUser:
       case CreateUserWithRawPassword:
       case DropUser:
         return configManager
-            .checkUserPrivileges(
-                username, Collections.emptyList(), PrivilegeType.MANAGE_USER.ordinal())
+            .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_USER))
             .getStatus();
       case CreateRole:
       case DropRole:
       case GrantRoleToUser:
       case RevokeRoleFromUser:
         return configManager
-            .checkUserPrivileges(
-                username, Collections.emptyList(), PrivilegeType.MANAGE_ROLE.ordinal())
+            .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
             .getStatus();
       default:
         return StatusUtils.OK;
