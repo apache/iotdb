@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.db.it.query;
 
+import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
+import com.google.common.collect.ImmutableList;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -41,6 +43,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -660,5 +663,27 @@ public class IoTDBQueryDemoIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void selectWithTimeTest() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeRawDataQuery(
+          ImmutableList.of("root.ln.wf01.wt01.time", "root.ln.wf01.wt01.temperature"), 0, 100);
+
+      fail();
+    } catch (Exception e) {
+      e.getMessage().contains("509: root.ln.wf01.wt01.time is not a legal path");
+    }
+
+    String expectedErrMsg =
+        "701: Time column is no need to appear in SELECT Clause explicitly, it will always be returned if possible";
+    assertTestFail("select time from root.ln.wf01.wt01", expectedErrMsg);
+    assertTestFail("select time, temperature from root.ln.wf01.wt01", expectedErrMsg);
+    assertTestFail("select time from root.ln.wf01.wt01 where temperature > 1", expectedErrMsg);
+    // parse error when process 'wt01.time'
+    assertTestFail(
+        "select wt01.time, wt01.temperature from root.ln.wf01",
+        "700: Error occurred while parsing SQL to physical plan");
   }
 }
