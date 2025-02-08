@@ -2078,10 +2078,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (ctx.SGLEVEL() != null) {
       loadTsFileStatement.setDatabaseLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     } else if (ctx.VERIFY() != null) {
-      if (!Boolean.parseBoolean(ctx.boolean_literal().getText())) {
-        throw new SemanticException("Load option VERIFY can only be set to true.");
-      }
-      loadTsFileStatement.setVerifySchema(true);
+      loadTsFileStatement.setVerifySchema(Boolean.parseBoolean(ctx.boolean_literal().getText()));
     } else {
       throw new SemanticException(
           String.format(

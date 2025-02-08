@@ -24,8 +24,6 @@ import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.category.ManualIT;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
@@ -1647,7 +1645,6 @@ public class IoTDBDeletionTableIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void deleteTableOfTheSameNameTest()
       throws IoTDBConnectionException, StatementExecutionException {
     int testNum = 24;
