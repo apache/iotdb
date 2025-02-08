@@ -542,20 +542,20 @@ public class IoTDBDatabaseIT {
           assertEquals(showDBColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
         }
         Assert.assertTrue(resultSet.next());
-        assertEquals("test", resultSet.getString(1));
+        assertEquals("db", resultSet.getString(1));
         Assert.assertFalse(resultSet.next());
       }
 
       Assert.assertThrows(
           SQLException.class,
           () -> {
-            userStmt.execute("alter database test set properties ttl=6600000");
+            userStmt.execute("alter database db set properties ttl=6600000");
           });
 
       Assert.assertThrows(
           SQLException.class,
           () -> {
-            userStmt.execute("drop database test");
+            userStmt.execute("drop database db");
           });
     }
 
@@ -567,7 +567,7 @@ public class IoTDBDatabaseIT {
     try (final Connection userCon =
             EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
-      userStmt.execute("drop database test");
+      userStmt.execute("drop database db");
     }
   }
 }

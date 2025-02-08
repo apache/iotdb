@@ -20,12 +20,14 @@
 package org.apache.iotdb.pipe.it.tablemodel;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2TableModel;
+import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -34,11 +36,20 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTableNonQueryTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTableTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
+import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQueriesWithRetry;
+import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQueryWithRetry;
+import static org.apache.iotdb.db.it.utils.TestUtils.executeQueryWithRetry;
+import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSystemPrivileges;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2TableModel.class})
@@ -51,8 +62,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
     final int receiverPort = receiverDataNode.getPort();
     final Consumer<String> handleFailure =
         o -> {
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+          executeNonQueryWithRetry(senderEnv, "flush");
+          executeNonQueryWithRetry(receiverEnv, "flush");
         };
 
     boolean insertResult = true;
@@ -121,8 +132,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
     final int receiverPort = receiverDataNode.getPort();
     final Consumer<String> handleFailure =
         o -> {
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+          executeNonQueryWithRetry(senderEnv, "flush");
+          executeNonQueryWithRetry(receiverEnv, "flush");
         };
     boolean insertResult = true;
 
@@ -195,8 +206,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
     final int receiverPort = receiverDataNode.getPort();
     final Consumer<String> handleFailure =
         o -> {
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+          executeNonQueryWithRetry(senderEnv, "flush");
+          executeNonQueryWithRetry(receiverEnv, "flush");
         };
     boolean insertResult = true;
 
@@ -257,8 +268,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
     final int receiverPort = receiverDataNode.getPort();
     final Consumer<String> handleFailure =
         o -> {
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+          executeNonQueryWithRetry(senderEnv, "flush");
+          executeNonQueryWithRetry(receiverEnv, "flush");
         };
     boolean insertResult = true;
 
@@ -312,8 +323,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
     final int receiverPort = receiverDataNode.getPort();
     final Consumer<String> handleFailure =
         o -> {
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+          executeNonQueryWithRetry(senderEnv, "flush");
+          executeNonQueryWithRetry(receiverEnv, "flush");
         };
     boolean insertResult = true;
 
@@ -371,8 +382,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
     final int receiverPort = receiverDataNode.getPort();
     final Consumer<String> handleFailure =
         o -> {
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+          executeNonQueryWithRetry(senderEnv, "flush");
+          executeNonQueryWithRetry(receiverEnv, "flush");
         };
     boolean insertResult = true;
 
@@ -440,8 +451,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
     final int receiverPort = receiverDataNode.getPort();
     final Consumer<String> handleFailure =
         o -> {
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+          executeNonQueryWithRetry(senderEnv, "flush");
+          executeNonQueryWithRetry(receiverEnv, "flush");
         };
     boolean insertResult = true;
 
@@ -523,8 +534,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
     final int receiverPort = receiverDataNode.getPort();
     final Consumer<String> handleFailure =
         o -> {
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+          executeNonQueryWithRetry(senderEnv, "flush");
+          executeNonQueryWithRetry(receiverEnv, "flush");
         };
     boolean insertResult = true;
 
@@ -583,8 +594,8 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
     final Consumer<String> handleFailure =
         o -> {
-          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
-          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          executeNonQueryWithRetry(receiverEnv, "flush");
+          executeNonQueryWithRetry(senderEnv, "flush");
         };
 
     final String senderIp = senderDataNode.getIp();
@@ -690,5 +701,114 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
     }
 
     TableModelUtils.assertData("test", "test", 0, 500, receiverEnv, handleFailure);
+  }
+
+  @Test
+  public void testPermission() {
+    createUser(senderEnv, "test", "test123");
+    TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+
+    assertTableNonQueryTestFail(
+        senderEnv,
+        "create pipe testPipe\n"
+            + "with connector (\n"
+            + "  'connector'='iotdb-thrift-connector',\n"
+            + "  'connector.ip'='127.0.0.1',\n"
+            + "  'connector.port'='6668'\n"
+            + ")",
+        "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+        "test",
+        "test123",
+        "test");
+    assertTableNonQueryTestFail(
+        senderEnv,
+        "drop pipe testPipe",
+        "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+        "test",
+        "test123",
+        "test");
+    assertTableTestFail(
+        senderEnv,
+        "show pipes",
+        "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+        "test",
+        "test123",
+        "test");
+    assertTableNonQueryTestFail(
+        senderEnv,
+        "start pipe testPipe",
+        "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+        "test",
+        "test123",
+        "test");
+    assertTableNonQueryTestFail(
+        senderEnv,
+        "stop pipe testPipe",
+        "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+        "test",
+        "test123",
+        "test");
+
+    assertTableNonQueryTestFail(
+        senderEnv,
+        "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI 'xxx'",
+        "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+        "test",
+        "test123",
+        "test");
+    assertTableNonQueryTestFail(
+        senderEnv,
+        "drop pipePlugin TestProcessor",
+        "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+        "test",
+        "test123",
+        "test");
+    assertTableTestFail(
+        senderEnv,
+        "show pipe plugins",
+        "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+        "test",
+        "test123",
+        "test");
+
+    grantUserSystemPrivileges(senderEnv, "test", PrivilegeType.MAINTAIN);
+
+    executeNonQueryWithRetry(
+        senderEnv,
+        "create pipe testPipe\n"
+            + "with connector (\n"
+            + "  'connector'='iotdb-thrift-connector',\n"
+            + "  'connector.ip'='127.0.0.1',\n"
+            + "  'connector.port'='6668'\n"
+            + ")",
+        "test",
+        "test123",
+        "test",
+        BaseEnv.TABLE_SQL_DIALECT);
+    executeQueryWithRetry(
+        senderEnv, "show pipes", "test", "test123", "test", BaseEnv.TABLE_SQL_DIALECT);
+    executeNonQueriesWithRetry(
+        senderEnv,
+        Arrays.asList("start pipe testPipe", "stop pipe testPipe", "drop pipe testPipe"),
+        "test",
+        "test123",
+        "test",
+        BaseEnv.TABLE_SQL_DIALECT);
+
+    assertTableNonQueryTestFail(
+        senderEnv,
+        "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI 'xxx'",
+        "701: Untrusted uri xxx",
+        "test",
+        "test123",
+        "test");
+    executeNonQueryWithRetry(
+        senderEnv,
+        "drop pipePlugin TestProcessor",
+        "test",
+        "test123",
+        "test",
+        BaseEnv.TABLE_SQL_DIALECT);
+    executeQueryWithRetry(senderEnv, "show pipe plugins", "test", "test123");
   }
 }

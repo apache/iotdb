@@ -503,6 +503,24 @@ public class TestUtils {
     }
   }
 
+  public static void assertTableTestFail(
+      final BaseEnv env,
+      final String sql,
+      final String errMsg,
+      final String userName,
+      final String password,
+      final String db) {
+    try (final Connection connection =
+            env.getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("use " + "\"" + db + "\"");
+      statement.executeQuery(sql);
+      fail("No exception!");
+    } catch (final SQLException e) {
+      Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
+    }
+  }
+
   public static void assertNonQueryTestFail(String sql, String errMsg) {
     assertNonQueryTestFail(sql, errMsg, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
   }
@@ -694,13 +712,52 @@ public class TestUtils {
     }
   }
 
-  public static void executeNonQueryWithRetry(BaseEnv env, String sql) {
+  public static void executeNonQueryWithRetry(final BaseEnv env, final String sql) {
+    executeNonQueryWithRetry(
+        env,
+        sql,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        null,
+        TREE_SQL_DIALECT);
+  }
+
+  public static void executeNonQueryWithRetry(
+      final BaseEnv env,
+      final String sql,
+      final String userName,
+      final String password,
+      final String database,
+      final String sqlDialect) {
+    executeNonQueriesWithRetry(
+        env, Collections.singletonList(sql), userName, password, database, sqlDialect);
+  }
+
+  public static void executeNonQueriesWithRetry(
+      final BaseEnv env,
+      final List<String> sqlList,
+      final String userName,
+      final String password,
+      final String database,
+      final String sqlDialect) {
+    int lastIndex = 0;
     for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
-      try (Connection connection = env.getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute(sql);
-        break;
-      } catch (SQLException e) {
+      try (final Connection connection =
+              env.getConnection(
+                  userName,
+                  password,
+                  BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect)
+                      ? BaseEnv.TABLE_SQL_DIALECT
+                      : TREE_SQL_DIALECT);
+          final Statement statement = connection.createStatement()) {
+        if (BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect) && database != null) {
+          statement.execute("use " + database);
+        }
+        for (int i = lastIndex; i < sqlList.size(); ++i) {
+          lastIndex = i;
+          statement.execute(sqlList.get(i));
+        }
+      } catch (final SQLException e) {
         if (retryCountLeft > 0) {
           try {
             Thread.sleep(10000);
@@ -920,27 +977,56 @@ public class TestUtils {
   }
 
   public static void executeQueryWithRetry(
-      BaseEnv env, String sql, String userName, String password) {
-    try (Connection connection = env.getConnection(userName, password);
-        Statement statement = connection.createStatement()) {
-      for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
-        try {
-          statement.executeQuery(sql);
-        } catch (SQLException e) {
-          if (retryCountLeft > 0) {
-            try {
-              Thread.sleep(10000);
-            } catch (InterruptedException ignored) {
-            }
-          } else {
-            e.printStackTrace();
-            fail(e.getMessage());
+      final BaseEnv env, final String sql, final String userName, final String password) {
+    executeQueryWithRetry(env, sql, userName, password, null, TREE_SQL_DIALECT);
+  }
+
+  public static void executeQueryWithRetry(
+      final BaseEnv env,
+      final String sql,
+      final String userName,
+      final String password,
+      final String database,
+      final String sqlDialect) {
+    executeQueriesWithRetry(
+        env, Collections.singletonList(sql), userName, password, database, sqlDialect);
+  }
+
+  public static void executeQueriesWithRetry(
+      final BaseEnv env,
+      final List<String> sqlList,
+      final String userName,
+      final String password,
+      final String database,
+      final String sqlDialect) {
+    int lastIndex = 0;
+    for (int retryCountLeft = 10; retryCountLeft >= 0; retryCountLeft--) {
+      try (final Connection connection =
+              env.getConnection(
+                  userName,
+                  password,
+                  BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect)
+                      ? BaseEnv.TABLE_SQL_DIALECT
+                      : TREE_SQL_DIALECT);
+          final Statement statement = connection.createStatement()) {
+        if (BaseEnv.TABLE_SQL_DIALECT.equals(sqlDialect) && database != null) {
+          statement.execute("use " + database);
+        }
+        for (int i = lastIndex; i < sqlList.size(); ++i) {
+          lastIndex = i;
+          statement.executeQuery(sqlList.get(i));
+        }
+      } catch (final SQLException e) {
+        if (retryCountLeft > 0) {
+          try {
+            Thread.sleep(10000);
+          } catch (InterruptedException ignored) {
           }
+        } else {
+          e.printStackTrace();
+          fail(e.getMessage());
         }
       }
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
     }
   }
 
