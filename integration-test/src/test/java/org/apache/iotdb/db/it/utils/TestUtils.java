@@ -765,6 +765,7 @@ public class TestUtils {
           lastIndex = i;
           statement.execute(sqlList.get(i));
         }
+        return;
       } catch (final SQLException e) {
         if (retryCountLeft > 0) {
           try {
@@ -1024,6 +1025,7 @@ public class TestUtils {
           lastIndex = i;
           statement.executeQuery(sqlList.get(i));
         }
+        return;
       } catch (final SQLException e) {
         if (retryCountLeft > 0) {
           try {
