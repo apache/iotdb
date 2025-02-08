@@ -338,7 +338,8 @@ public class TableDeviceSchemaFetcher {
             attributeColumns,
             fetchPaths,
             isDirectDeviceQuery,
-            idValues)
+            idValues,
+            queryContext)
         : tryGetTreeDeviceInCache(deviceEntryList, tableInstance, check, fetchPaths, idValues);
   }
 
@@ -350,7 +351,8 @@ public class TableDeviceSchemaFetcher {
       final List<String> attributeColumns,
       final List<IDeviceID> fetchPaths,
       final boolean isDirectDeviceQuery,
-      final String[] idValues) {
+      final String[] idValues,
+      final MPPQueryContext queryContext) {
     final IDeviceID deviceID = convertIdValuesToDeviceID(tableInstance.getTableName(), idValues);
     final Map<String, Binary> attributeMap = cache.getDeviceAttribute(database, deviceID);
 
