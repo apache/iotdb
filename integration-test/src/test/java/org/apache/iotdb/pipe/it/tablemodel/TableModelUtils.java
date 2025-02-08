@@ -422,6 +422,21 @@ public class TableModelUtils {
         handleFailure);
   }
 
+  public static void assertCountData(
+      final String database,
+      final String table,
+      final int count,
+      final BaseEnv baseEnv,
+      final DataNodeWrapper wrapper) {
+    TestUtils.assertDataEventuallyOnEnv(
+        baseEnv,
+        wrapper,
+        getQueryCountSql(table),
+        "_col0,",
+        Collections.singleton(count + ","),
+        database);
+  }
+
   public static String getDateStr(final int value) {
     Date date = new Date(value);
     SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");

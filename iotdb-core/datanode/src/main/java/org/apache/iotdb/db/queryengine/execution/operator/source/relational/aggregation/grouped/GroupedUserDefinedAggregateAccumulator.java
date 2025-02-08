@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
 
 import org.apache.iotdb.commons.udf.access.RecordIterator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.MaskedRecordIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.ObjectBigArray;
 import org.apache.iotdb.udf.api.State;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
@@ -74,13 +76,17 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
   }
 
   @Override
-  public void addInput(int[] groupIds, Column[] arguments) {
+  public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
     RecordIterator iterator =
-        new RecordIterator(
-            Arrays.asList(arguments), inputDataTypes, arguments[0].getPositionCount());
+        mask.isSelectAll()
+            ? new RecordIterator(
+                Arrays.asList(arguments), inputDataTypes, arguments[0].getPositionCount())
+            : new MaskedRecordIterator(Arrays.asList(arguments), inputDataTypes, mask);
+    int[] selectedPositions = mask.getSelectedPositions();
     int index = 0;
     while (iterator.hasNext()) {
-      int groupId = groupIds[index++];
+      int groupId = groupIds[selectedPositions[index]];
+      index++;
       State state = getOrCreateState(groupId);
       aggregateFunction.addInput(state, iterator.next());
     }

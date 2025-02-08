@@ -590,7 +590,7 @@ public class TableMetadataImpl implements Metadata {
         if (argumentTypes.size() != 2) {
           throw new SemanticException(
               String.format(
-                  "Aggregate functions [%s] should only have two arguments", functionName));
+                  "Aggregate functions [%s] should only have one or two arguments", functionName));
         } else if (!isTimestampType(argumentTypes.get(1))) {
           throw new SemanticException(
               String.format(
@@ -602,7 +602,8 @@ public class TableMetadataImpl implements Metadata {
         if (argumentTypes.size() != 3) {
           throw new SemanticException(
               String.format(
-                  "Aggregate functions [%s] should only have three arguments", functionName));
+                  "Aggregate functions [%s] should only have two or three arguments",
+                  functionName));
         }
         break;
       case SqlConstant.MAX_BY:
@@ -627,6 +628,7 @@ public class TableMetadataImpl implements Metadata {
     // get return type
     switch (functionName.toLowerCase(Locale.ENGLISH)) {
       case SqlConstant.COUNT:
+      case SqlConstant.COUNT_ALL:
       case SqlConstant.COUNT_IF:
         return INT64;
       case SqlConstant.FIRST_AGGREGATION:

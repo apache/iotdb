@@ -78,6 +78,7 @@ keyWords
     | DATA_REGION_GROUP_NUM
     | DATABASE
     | DATABASES
+    | DATANODE
     | DATANODEID
     | DATANODES
     | DATASET

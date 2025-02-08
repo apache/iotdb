@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.db.auth.entity;
 
+import org.apache.iotdb.commons.auth.entity.DatabasePrivilege;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.auth.entity.TablePrivilege;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -37,39 +39,60 @@ public class RoleTest {
     Role role = new Role("role");
     PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.ln"));
     role.setPrivilegeList(Collections.singletonList(pathPrivilege));
-    role.addPathPrivilege(new PartialPath("root.ln"), 1, false);
-    role.addPathPrivilege(new PartialPath("root.ln"), 2, true);
+    role.grantPathPrivilege(new PartialPath("root.ln"), PrivilegeType.READ_SCHEMA, true);
+    role.grantPathPrivilege(new PartialPath("root.ln"), PrivilegeType.READ_DATA, false);
+
     Assert.assertEquals(
-        "Role{name='role', pathPrivilegeList=[root.ln : WRITE_DATA"
-            + " READ_SCHEMA_with_grant_option], systemPrivilegeSet=[]}",
+        "Role{name='role', pathPrivilegeList=[root.ln : "
+            + "READ_DATA READ_SCHEMA_with_grant_option], systemPrivilegeSet=[], "
+            + "AnyScopePrivilegeMap=[], objectPrivilegeSet={}}",
         role.toString());
     Role role1 = new Role("role1");
     role1.deserialize(role.serialize());
     Assert.assertEquals(
         "Role{name='role', pathPrivilegeList=[root.ln : "
-            + "WRITE_DATA READ_SCHEMA_with_grant_option], systemPrivilegeSet=[]}",
+            + "READ_DATA READ_SCHEMA_with_grant_option], systemPrivilegeSet=[], "
+            + "AnyScopePrivilegeMap=[], objectPrivilegeSet={}}",
         role1.toString());
 
     Role admin = new Role("root");
     PartialPath rootPath = new PartialPath(IoTDBConstant.PATH_ROOT + ".**");
     PathPrivilege pathPri = new PathPrivilege(rootPath);
+    DatabasePrivilege databasePrivilege = new DatabasePrivilege("testDB");
+    TablePrivilege tablePrivilege = new TablePrivilege("testTable");
+    databasePrivilege.getTablePrivilegeMap().put("testTable", tablePrivilege);
     for (PrivilegeType item : PrivilegeType.values()) {
-      if (!item.isPathRelevant()) {
-        admin.getSysPrivilege().add(item.ordinal());
-        admin.getSysPriGrantOpt().add(item.ordinal());
-      } else {
-        pathPri.grantPrivilege(item.ordinal(), true);
+      if (item.isSystemPrivilege()) {
+        admin.getSysPrivilege().add(item);
+        admin.getSysPriGrantOpt().add(item);
+      } else if (item.isPathPrivilege()) {
+        pathPri.grantPrivilege(item, true);
+      } else if (item.isRelationalPrivilege()) {
+        databasePrivilege.grantDBPrivilege(item);
+        databasePrivilege.grantDBGrantOption(item);
+        databasePrivilege.grantTablePrivilege("testTable", item);
+        databasePrivilege.grantTableGrantOption("testTable", item);
+        admin.grantAnyScopePrivilege(item, true);
       }
     }
+    admin.getDBScopePrivilegeMap().put("testDB", databasePrivilege);
     admin.getPathPrivilegeList().add(pathPri);
     Assert.assertEquals(
-        "Role{name='root', pathPrivilegeList=[root.** : READ_DAT"
-            + "A_with_grant_option WRITE_DATA_with_grant_option READ_SCHEMA_with"
-            + "_grant_option WRITE_SCHEMA_with_grant_option], systemPrivilegeSet=[MANAGE_ROLE"
-            + "_with_grant_option , USE_UDF_with_grant_option , USE_CQ_with_grant_option , USE"
-            + "_PIPE_with_grant_option , USE_TRIGGER_with_grant_option , MANAGE_DATABASE_with_g"
-            + "rant_option , MANAGE_USER_with_grant_option , MAINTAIN_with_grant_option , EXTEND"
-            + "_TEMPLATE_with_grant_option , USE_MODEL_with_grant_option ]}",
+        "Role{name='root', pathPrivilegeList=[root.** : READ_DATA_wi"
+            + "th_grant_option WRITE_DATA_with_grant_option READ_SCHEMA"
+            + "_with_grant_option WRITE_SCHEMA_with_grant_option], systemPr"
+            + "ivilegeSet=[MANAGE_USER_with_grant_option, USE_TRIGGER_with_gra"
+            + "nt_option, USE_MODEL_with_grant_option, MAINTAIN_with_grant_option"
+            + ", USE_CQ_with_grant_option, USE_PIPE_with_grant_option, USE_UDF_wit"
+            + "h_grant_option, EXTEND_TEMPLATE_with_grant_option, MANAGE_ROLE_with_gr"
+            + "ant_option, MANAGE_DATABASE_with_grant_option], AnyScopePrivilegeMap=[D"
+            + "ELETE_with_grant_option, DROP_with_grant_option, ALTER_with_grant_optio"
+            + "n, CREATE_with_grant_option, SELECT_with_grant_option, INSERT_with_gran"
+            + "t_option], objectPrivilegeSet={testDB=Database(testDB):{CREATE_with_gran"
+            + "t_option,DROP_with_grant_option,ALTER_with_grant_option,SELECT_with_grant_"
+            + "option,INSERT_with_grant_option,DELETE_with_grant_option,; Tables: [ testTa"
+            + "ble(CREATE_with_grant_option,DROP_with_grant_option,ALTER_with_grant_option"
+            + ",SELECT_with_grant_option,INSERT_with_grant_option,DELETE_with_grant_option,)]}}}",
         admin.toString());
   }
 }

@@ -53,6 +53,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
@@ -700,6 +701,17 @@ public class TableDistributedPlanGenerator
       return Collections.singletonList(node);
     }
 
+    // We cannot do multi-stage Aggregate if any aggregation-function is distinct.
+    // For Aggregation with mask, there is no need to do multi-stage Aggregate because the
+    // MarkDistinctNode will merge all data from different child.
+    if (node.getAggregations().values().stream()
+        .anyMatch(aggregation -> aggregation.isDistinct() || aggregation.hasMask())) {
+      node.setChild(
+          mergeChildrenViaCollectOrMergeSort(
+              nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()), childrenNodes));
+      return Collections.singletonList(node);
+    }
+
     Pair<AggregationNode, AggregationNode> splitResult = split(node, symbolAllocator, queryId);
     AggregationNode intermediate = splitResult.right;
 
@@ -815,6 +827,18 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitEnforceSingleRow(EnforceSingleRowNode node, PlanContext context) {
+    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
+    if (childOrdering != null) {
+      nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
+    }
+
+    node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
+    return Collections.singletonList(node);
+  }
+
+  @Override
+  public List<PlanNode> visitMarkDistinct(MarkDistinctNode node, PlanContext context) {
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
     if (childOrdering != null) {

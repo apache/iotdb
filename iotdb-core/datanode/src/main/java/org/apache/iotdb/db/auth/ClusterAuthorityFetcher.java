@@ -22,7 +22,9 @@ package org.apache.iotdb.db.auth;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.PrivilegeModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.client.IClientManager;
@@ -35,18 +37,21 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerRelationalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -60,7 +65,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
+import java.util.function.BiFunction;
 
 public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterAuthorityFetcher.class);
@@ -69,8 +74,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private boolean cacheOutDate = false;
   private long heartBeatTimeStamp = 0;
 
-  // for test only.
-  private boolean acceptCache = true;
+  private boolean acceptCache = false;
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
@@ -81,9 +85,61 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     this.iAuthorCache = iAuthorCache;
   }
 
+  /** -- check user privileges SYSTEM, TREE, RELATIONAL-- * */
+  private TSStatus checkPrivilege(
+      String username,
+      PrivilegeUnion union,
+      BiFunction<Role, PrivilegeUnion, Boolean> privilegeCheck,
+      TCheckUserPrivilegesReq req) {
+    User user = iAuthorCache.getUserCache(username);
+    if (user != null) {
+      if (privilegeCheck.apply(user, union)) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
+      boolean remoteCheck = false;
+      for (String rolename : user.getRoleSet()) {
+        Role role = iAuthorCache.getRoleCache(rolename);
+        if (role == null) {
+          remoteCheck = true;
+          break;
+        }
+        if (privilegeCheck.apply(role, union)) {
+          return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+        }
+      }
+      if (remoteCheck) {
+        return checkPrivilegeFromConfigNode(req).getStatus();
+      }
+      return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
+    }
+    return checkPrivilegeFromConfigNode(req).getStatus();
+  }
+
+  @Override
+  public TSStatus checkUserSysPrivileges(String username, PrivilegeType permission) {
+    checkCacheAvailable();
+    return checkPrivilege(
+        username,
+        new PrivilegeUnion(permission, false),
+        (role, union) -> role.checkSysPrivilege(union.getPrivilegeType()),
+        new TCheckUserPrivilegesReq(
+            username, PrivilegeModelType.SYSTEM.ordinal(), permission.ordinal(), false));
+  }
+
+  @Override
+  public TSStatus checkUserSysPrivilegesGrantOpt(String username, PrivilegeType permission) {
+    checkCacheAvailable();
+    return checkPrivilege(
+        username,
+        new PrivilegeUnion(permission, true),
+        (role, union) -> role.checkSysPriGrantOpt(union.getPrivilegeType()),
+        new TCheckUserPrivilegesReq(
+            username, PrivilegeModelType.SYSTEM.ordinal(), permission.ordinal(), true));
+  }
+
   @Override
   public List<Integer> checkUserPathPrivileges(
-      String username, List<? extends PartialPath> allPath, int permission) {
+      String username, List<? extends PartialPath> allPath, PrivilegeType permission) {
     checkCacheAvailable();
     List<Integer> posList = new ArrayList<>();
     User user = iAuthorCache.getUserCache(username);
@@ -95,7 +151,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       for (PartialPath path : allPath) {
         if (!user.checkPathPrivilege(path, permission)) {
           boolean checkFromRole = false;
-          for (String rolename : user.getRoleList()) {
+          for (String rolename : user.getRoleSet()) {
             Role cachedRole = iAuthorCache.getRoleCache(rolename);
             if (cachedRole == null) {
               return checkPathFromConfigNode(username, allPath, permission);
@@ -118,30 +174,27 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
-  public boolean checkUserPrivilegeGrantOpt(
-      String username, List<PartialPath> paths, int permission) {
-    checkCacheAvailable();
-    if (PrivilegeType.values()[permission].isPathRelevant()) {
-      return checkUserPathPriGrantOpt(username, paths, permission);
-    } else {
-      return checkUserSysPriGrantOpt(username, permission);
-    }
-  }
-
-  private boolean checkUserPathPriGrantOpt(
-      String username, List<PartialPath> paths, int permission) {
+  public TSStatus checkUserPathPrivilegesGrantOpt(
+      String username, List<? extends PartialPath> paths, PrivilegeType permission) {
     User user = iAuthorCache.getUserCache(username);
     if (user != null) {
       if (user.isOpenIdUser()) {
-        return true;
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
       for (PartialPath path : paths) {
         if (!user.checkPathPrivilegeGrantOpt(path, permission)) {
           boolean checkFromRole = false;
-          for (String roleName : user.getRoleList()) {
+          for (String roleName : user.getRoleSet()) {
             Role role = iAuthorCache.getRoleCache(roleName);
             if (role == null) {
-              return checkUserPrivilegeGrantOptFromConfigNode(username, paths, permission);
+              return checkPrivilegeFromConfigNode(
+                      new TCheckUserPrivilegesReq(
+                              username,
+                              PrivilegeModelType.TREE.ordinal(),
+                              permission.ordinal(),
+                              true)
+                          .setPaths(AuthUtils.serializePartialPathList(paths)))
+                  .getStatus();
             }
             if (role.checkPathPrivilegeGrantOpt(path, permission)) {
               checkFromRole = true;
@@ -149,71 +202,116 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
             }
           }
           if (!checkFromRole) {
-            return false;
+            return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
           }
         }
       }
-      return true;
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } else {
-      return checkUserPrivilegeGrantOptFromConfigNode(username, paths, permission);
-    }
-  }
-
-  private boolean checkUserSysPriGrantOpt(String username, int permission) {
-    User user = iAuthorCache.getUserCache(username);
-    if (user != null) {
-      if (user.isOpenIdUser()) {
-        return true;
-      }
-      if (!user.checkSysPriGrantOpt(permission)) {
-        for (String roleName : user.getRoleList()) {
-          Role role = iAuthorCache.getRoleCache(roleName);
-          if (role == null) {
-            return checkUserPrivilegeGrantOptFromConfigNode(
-                username, Collections.emptyList(), permission);
-          }
-          if (role.checkSysPriGrantOpt(permission)) {
-            return true;
-          }
-        }
-        return false;
-      }
-      return true;
-    } else {
-      return checkUserPrivilegeGrantOptFromConfigNode(
-          username, Collections.emptyList(), permission);
-    }
-  }
-
-  private boolean checkUserPrivilegeGrantOptFromConfigNode(
-      String username, List<PartialPath> paths, int permission) {
-    TCheckUserPrivilegesReq req =
-        new TCheckUserPrivilegesReq(
-            username, AuthUtils.serializePartialPathList(paths), permission);
-    req.setGrantOpt(true);
-    TPermissionInfoResp permissionInfoResp;
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      // Send request to some API server
-      permissionInfoResp = configNodeClient.checkUserPrivilegeGrantOpt(req);
-    } catch (ClientManagerException | TException e) {
-      LOGGER.error(CONNECTERROR);
-      permissionInfoResp = new TPermissionInfoResp();
-      permissionInfoResp.setStatus(
-          RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
-    }
-    if (permissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      if (acceptCache) {
-        iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
-      }
-      return true;
-    } else {
-      return false;
+      return checkPrivilegeFromConfigNode(
+              new TCheckUserPrivilegesReq(
+                      username, PrivilegeModelType.TREE.ordinal(), permission.ordinal(), true)
+                  .setPaths(AuthUtils.serializePartialPathList(paths)))
+          .getStatus();
     }
   }
 
   @Override
-  public PathPatternTree getAuthorizedPatternTree(String username, int permission)
+  public TSStatus checkUserDBPrivileges(
+      String username, String database, PrivilegeType permission) {
+    checkCacheAvailable();
+    return checkPrivilege(
+        username,
+        new PrivilegeUnion(database, permission),
+        (role, union) -> role.checkDatabasePrivilege(union.getDBName(), union.getPrivilegeType()),
+        new TCheckUserPrivilegesReq(
+                username, PrivilegeModelType.RELATIONAL.ordinal(), permission.ordinal(), false)
+            .setDatabase(database));
+  }
+
+  @Override
+  public TSStatus checkUserDBPrivilegesGrantOpt(
+      String username, String database, PrivilegeType permission) {
+    checkCacheAvailable();
+    return checkPrivilege(
+        username,
+        new PrivilegeUnion(database, permission, true),
+        (role, union) ->
+            role.checkDatabasePrivilegeGrantOption(union.getDBName(), union.getPrivilegeType()),
+        new TCheckUserPrivilegesReq(
+                username, PrivilegeModelType.RELATIONAL.ordinal(), permission.ordinal(), true)
+            .setDatabase(database));
+  }
+
+  @Override
+  public TSStatus checkUserTBPrivileges(
+      String username, String database, String table, PrivilegeType permission) {
+    checkCacheAvailable();
+    return checkPrivilege(
+        username,
+        new PrivilegeUnion(database, table, permission),
+        (role, union) ->
+            role.checkTablePrivilege(
+                union.getDBName(), union.getTbName(), union.getPrivilegeType()),
+        new TCheckUserPrivilegesReq(
+                username, PrivilegeModelType.RELATIONAL.ordinal(), permission.ordinal(), false)
+            .setDatabase(database)
+            .setTable(table));
+  }
+
+  @Override
+  public TSStatus checkUserTBPrivilegesGrantOpt(
+      String username, String database, String table, PrivilegeType permission) {
+    checkCacheAvailable();
+    return checkPrivilege(
+        username,
+        new PrivilegeUnion(database, table, permission, true),
+        (role, union) ->
+            role.checkTablePrivilegeGrantOption(
+                union.getDBName(), union.getTbName(), union.getPrivilegeType()),
+        new TCheckUserPrivilegesReq(
+                username, PrivilegeModelType.RELATIONAL.ordinal(), permission.ordinal(), true)
+            .setDatabase(database)
+            .setTable(table));
+  }
+
+  @Override
+  public TSStatus checkUserAnyScopePrivilegeGrantOption(String username, PrivilegeType permission) {
+    checkCacheAvailable();
+    return checkPrivilege(
+        username,
+        new PrivilegeUnion(permission, false, true),
+        (role, union) -> role.checkAnyScopePrivilegeGrantOption(union.getPrivilegeType()),
+        new TCheckUserPrivilegesReq(
+            username, PrivilegeModelType.RELATIONAL.ordinal(), permission.ordinal(), true));
+  }
+
+  /** -- check database/table visible -- * */
+  @Override
+  public TSStatus checkDBVisible(String username, String database) {
+    checkCacheAvailable();
+    return checkPrivilege(
+        username,
+        new PrivilegeUnion(database, null, false),
+        (role, union) -> role.checkDBVisible(union.getDBName()),
+        new TCheckUserPrivilegesReq(username, PrivilegeModelType.RELATIONAL.ordinal(), -1, false)
+            .setDatabase(database));
+  }
+
+  @Override
+  public TSStatus checkTBVisible(String username, String database, String table) {
+    checkCacheAvailable();
+    return checkPrivilege(
+        username,
+        new PrivilegeUnion(database, table, null, false),
+        (role, union) -> role.checkTBVisible(union.getDBName(), union.getTbName()),
+        new TCheckUserPrivilegesReq(username, PrivilegeModelType.RELATIONAL.ordinal(), -1, false)
+            .setDatabase(database)
+            .setTable(table));
+  }
+
+  @Override
+  public PathPatternTree getAuthorizedPatternTree(String username, PrivilegeType permission)
       throws AuthException {
     PathPatternTree patternTree = new PathPatternTree();
     User user = iAuthorCache.getUserCache(username);
@@ -223,7 +321,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           patternTree.appendPathPattern(path.getPath());
         }
       }
-      for (String roleName : user.getRoleList()) {
+      for (String roleName : user.getRoleSet()) {
         Role role = iAuthorCache.getRoleCache(roleName);
         if (role != null) {
           for (PathPrivilege path : role.getPathPrivilegeList()) {
@@ -242,11 +340,11 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     }
   }
 
-  private PathPatternTree fetchAuthizedPatternTree(String username, int permission)
+  private PathPatternTree fetchAuthizedPatternTree(String username, PrivilegeType permission)
       throws AuthException {
     TCheckUserPrivilegesReq req =
         new TCheckUserPrivilegesReq(
-            username, AuthUtils.serializePartialPathList(Collections.emptyList()), permission);
+            username, PrivilegeModelType.TREE.ordinal(), permission.ordinal(), false);
     TAuthizedPatternTreeResp authizedPatternTree = new TAuthizedPatternTreeResp();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -267,99 +365,81 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     }
   }
 
-  @Override
-  public TSStatus checkUserSysPrivileges(String username, int permission) {
-    checkCacheAvailable();
-    User user = iAuthorCache.getUserCache(username);
-    if (user != null) {
-      if (!user.isOpenIdUser() && (!user.checkSysPrivilege(permission))) {
-        if (user.getRoleList().isEmpty()) {
-          return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
-        }
-        boolean status = false;
-        for (String rolename : user.getRoleList()) {
-          Role cacheRole = iAuthorCache.getRoleCache(rolename);
-          if (cacheRole == null) {
-            return checkSysPriFromConfigNode(username, permission);
-          }
-          if (cacheRole.checkSysPrivilege(permission)) {
-            status = true;
-            break;
-          }
-        }
-        if (!status) {
-          return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
-        }
-      }
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-    } else {
-      return checkSysPriFromConfigNode(username, permission);
-    }
-  }
-
-  @Override
-  public SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement) {
+  private SettableFuture<ConfigTaskResult> operatePermissionInternal(
+      Object plan, boolean isRelational) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      // Construct request using statement
-      TAuthorizerReq authorizerReq = statementToAuthorizerReq(authorStatement);
-      // Send request to some API server
-      TSStatus tsStatus = configNodeClient.operatePermission(authorizerReq);
-      // Get response or throw exception
+      TSStatus tsStatus =
+          isRelational
+              ? configNodeClient.operateRPermission(
+                  statementToAuthorizerReq((RelationalAuthorStatement) plan))
+              : configNodeClient.operatePermission(
+                  statementToAuthorizerReq((AuthorStatement) plan));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to execute {} in config node, status is {}.",
-            AuthorType.values()[authorizerReq.getAuthorType()].toString().toLowerCase(Locale.ROOT),
-            tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
+    } catch (AuthException e) {
+      future.setException(e);
     } catch (ClientManagerException | TException e) {
       LOGGER.error(CONNECTERROR);
       future.setException(e);
-    } catch (AuthException e) {
-      future.setException(e);
     }
-    // If the action is executed successfully, return the Future.
-    // If your operation is async, you can return the corresponding future directly.
     return future;
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement) {
+  public SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement) {
+    return operatePermissionInternal(authorStatement, false);
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> operatePermission(
+      RelationalAuthorStatement authorStatement) {
+    return operatePermissionInternal(authorStatement, true);
+  }
+
+  private SettableFuture<ConfigTaskResult> queryPermissionInternal(
+      Object plan, boolean isRelational) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TAuthorizerResp authorizerResp = new TAuthorizerResp();
-
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      // Construct request using statement
-      TAuthorizerReq authorizerReq = statementToAuthorizerReq(authorStatement);
-      // Send request to some API server
-      authorizerResp = configNodeClient.queryPermission(authorizerReq);
-      // Get response or throw exception
+      authorizerResp =
+          isRelational
+              ? configNodeClient.queryRPermission(
+                  statementToAuthorizerReq((RelationalAuthorStatement) plan))
+              : configNodeClient.queryPermission(statementToAuthorizerReq((AuthorStatement) plan));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != authorizerResp.getStatus().getCode()) {
-        LOGGER.error(
-            "Failed to execute {} in config node, status is {}.",
-            AuthorType.values()[authorizerReq.getAuthorType()].toString().toLowerCase(Locale.ROOT),
-            authorizerResp.getStatus());
         future.setException(
             new IoTDBException(
                 authorizerResp.getStatus().message, authorizerResp.getStatus().code));
       } else {
         AuthorityChecker.buildTSBlock(authorizerResp, future);
       }
+    } catch (AuthException e) {
+      future.setException(e);
     } catch (ClientManagerException | TException e) {
       LOGGER.error(CONNECTERROR);
       authorizerResp.setStatus(
           RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
       future.setException(
           new IoTDBException(authorizerResp.getStatus().message, authorizerResp.getStatus().code));
-    } catch (AuthException e) {
-      future.setException(e);
     }
     return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement) {
+    return queryPermissionInternal(authorStatement, false);
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> queryPermission(
+      RelationalAuthorStatement authorStatement) {
+    return queryPermissionInternal(authorStatement, true);
   }
 
   @Override
@@ -385,6 +465,11 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       iAuthorCache.invalidAllCache();
     }
     cacheOutDate = false;
+  }
+
+  @TestOnly
+  public void setAcceptCache(boolean acceptCache) {
+    this.acceptCache = acceptCache;
   }
 
   @Override
@@ -431,16 +516,13 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     checkCacheAvailable();
     User user = iAuthorCache.getUserCache(userName);
     if (user != null) {
-      return user.isOpenIdUser() || user.getRoleList().contains(roleName);
+      return user.isOpenIdUser() || user.getRoleSet().contains(roleName);
     } else {
       return checkRoleFromConfigNode(userName, roleName);
     }
   }
 
-  private TSStatus checkSysPriFromConfigNode(String username, int permission) {
-    TCheckUserPrivilegesReq req =
-        new TCheckUserPrivilegesReq(
-            username, AuthUtils.serializePartialPathList(Collections.emptyList()), permission);
+  private TPermissionInfoResp checkPrivilegeFromConfigNode(TCheckUserPrivilegesReq req) {
     TPermissionInfoResp permissionInfoResp;
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -454,34 +536,19 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     }
     if (permissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       if (acceptCache) {
-        iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
+        iAuthorCache.putUserCache(req.getUsername(), cacheUser(permissionInfoResp));
       }
     }
-    return permissionInfoResp.getStatus();
+    return permissionInfoResp;
   }
 
   private List<Integer> checkPathFromConfigNode(
-      String username, List<? extends PartialPath> allPath, int permission) {
+      String username, List<? extends PartialPath> allPath, PrivilegeType permission) {
     TCheckUserPrivilegesReq req =
         new TCheckUserPrivilegesReq(
-            username, AuthUtils.serializePartialPathList(allPath), permission);
-    TPermissionInfoResp permissionInfoResp;
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      // Send request to some API server
-      permissionInfoResp = configNodeClient.checkUserPrivileges(req);
-    } catch (ClientManagerException | TException e) {
-      LOGGER.error(CONNECTERROR);
-      permissionInfoResp = new TPermissionInfoResp();
-      permissionInfoResp.setStatus(
-          RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
-    }
-    if (permissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      if (acceptCache) {
-        iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
-      }
-    }
-    return permissionInfoResp.getFailPos();
+            username, PrivilegeModelType.TREE.ordinal(), permission.ordinal(), false);
+    req.setPaths(AuthUtils.serializePartialPathList(allPath));
+    return checkPrivilegeFromConfigNode(req).getFailPos();
   }
 
   private boolean checkRoleFromConfigNode(String username, String rolename) {
@@ -525,53 +592,50 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   /** Cache user. */
   public User cacheUser(TPermissionInfoResp tPermissionInfoResp) {
     User user = new User();
-    List<TPathPrivilege> privilegeList = tPermissionInfoResp.getUserInfo().getPrivilegeList();
-    List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
-    user.setName(tPermissionInfoResp.getUserInfo().getUsername());
+    List<TPathPrivilege> privilegeList =
+        tPermissionInfoResp.getUserInfo().getPermissionInfo().getPrivilegeList();
+    user.setName(tPermissionInfoResp.getUserInfo().getPermissionInfo().getName());
     user.setPassword(tPermissionInfoResp.getUserInfo().getPassword());
-    for (TPathPrivilege tPathPrivilege : privilegeList) {
-      try {
-        PathPrivilege pathPri = new PathPrivilege();
-        pathPri.setPath(new PartialPath(tPathPrivilege.getPath()));
-        pathPri.setPrivileges(tPathPrivilege.getPriSet());
-        pathPri.setGrantOpt(tPathPrivilege.getPriGrantOpt());
-        pathPrivilegeList.add(pathPri);
-      } catch (MetadataException e) {
-        LOGGER.error("Failed to parse path {}.", tPathPrivilege.getPath(), e);
-      }
-    }
+    user.loadDatabaseAndTablePrivilegeInfo(
+        tPermissionInfoResp.getUserInfo().getPermissionInfo().getDbPrivilegeMap());
+    user.setAnyScopePrivilegeSetInt(
+        tPermissionInfoResp.getUserInfo().getPermissionInfo().getAnyScopeSet());
+    user.setAnyScopePrivilegeGrantOptSetInt(
+        tPermissionInfoResp.getUserInfo().getPermissionInfo().getAnyScopeGrantSet());
     user.setOpenIdUser(tPermissionInfoResp.getUserInfo().isIsOpenIdUser());
-    user.setPrivilegeList(pathPrivilegeList);
-    user.setRoleList(tPermissionInfoResp.getUserInfo().getRoleList());
-    user.setSysPrivilegeSet(tPermissionInfoResp.getUserInfo().getSysPriSet());
-    user.setSysPriGrantOpt(tPermissionInfoResp.getUserInfo().getSysPriSetGrantOpt());
-    for (String roleName : tPermissionInfoResp.getRoleInfo().keySet()) {
-      iAuthorCache.putRoleCache(roleName, cacheRole(roleName, tPermissionInfoResp));
+    user.setRoleSet(tPermissionInfoResp.getUserInfo().getRoleSet());
+    user.setSysPrivilegeSetInt(
+        tPermissionInfoResp.getUserInfo().getPermissionInfo().getSysPriSet());
+    user.setSysPriGrantOptInt(
+        tPermissionInfoResp.getUserInfo().getPermissionInfo().getSysPriSetGrantOpt());
+    try {
+      user.loadTreePrivilegeInfo(privilegeList);
+    } catch (MetadataException e) {
+      LOGGER.error("cache user's path privileges error", e);
+    }
+    if (tPermissionInfoResp.isSetRoleInfo()) {
+      for (String roleName : tPermissionInfoResp.getRoleInfo().keySet()) {
+        iAuthorCache.putRoleCache(roleName, cacheRole(roleName, tPermissionInfoResp));
+      }
     }
     return user;
   }
 
   /** Cache role. */
   public Role cacheRole(String roleName, TPermissionInfoResp tPermissionInfoResp) {
-    Role role = new Role();
-    List<TPathPrivilege> privilegeList =
-        tPermissionInfoResp.getRoleInfo().get(roleName).getPrivilegeList();
-    List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
-    role.setName(tPermissionInfoResp.getRoleInfo().get(roleName).getRoleName());
-    for (TPathPrivilege tPathPrivilege : privilegeList) {
-      try {
-        PathPrivilege pathPri = new PathPrivilege();
-        pathPri.setPath(new PartialPath(tPathPrivilege.getPath()));
-        pathPri.setPrivileges(tPathPrivilege.getPriSet());
-        pathPri.setGrantOpt(tPathPrivilege.getPriGrantOpt());
-        pathPrivilegeList.add(pathPri);
-      } catch (MetadataException e) {
-        LOGGER.error("Failed to parse path {}.", tPathPrivilege.getPath(), e);
-      }
+    TRoleResp resp = tPermissionInfoResp.getRoleInfo().get(roleName);
+    Role role = new Role(resp.getName());
+    role.setAnyScopePrivilegeSetInt(resp.getAnyScopeSet());
+    role.setAnyScopePrivilegeGrantOptSetInt(resp.getAnyScopeGrantSet());
+    role.loadDatabaseAndTablePrivilegeInfo(resp.getDbPrivilegeMap());
+    role.setSysPriGrantOptInt(
+        tPermissionInfoResp.getRoleInfo().get(roleName).getSysPriSetGrantOpt());
+    role.setSysPrivilegeSetInt(tPermissionInfoResp.getRoleInfo().get(roleName).getSysPriSet());
+    try {
+      role.loadTreePrivilegeInfo(resp.getPrivilegeList());
+    } catch (MetadataException e) {
+      LOGGER.error("cache role's path privileges error", e);
     }
-    role.setSysPriGrantOpt(tPermissionInfoResp.getRoleInfo().get(roleName).getSysPriSetGrantOpt());
-    role.setSysPrivilegeSet(tPermissionInfoResp.getRoleInfo().get(roleName).getSysPriSet());
-    role.setPrivilegeList(pathPrivilegeList);
     return role;
   }
 
@@ -589,5 +653,20 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         AuthUtils.strToPermissions(authorStatement.getPrivilegeList()),
         authorStatement.getGrantOpt(),
         AuthUtils.serializePartialPathList(authorStatement.getNodeNameList()));
+  }
+
+  private TAuthorizerRelationalReq statementToAuthorizerReq(
+      RelationalAuthorStatement authorStatement) {
+    return new TAuthorizerRelationalReq(
+        authorStatement.getAuthorType().ordinal(),
+        authorStatement.getUserName() == null ? "" : authorStatement.getUserName(),
+        authorStatement.getRoleName() == null ? "" : authorStatement.getRoleName(),
+        authorStatement.getPassword() == null ? "" : authorStatement.getPassword(),
+        authorStatement.getDatabase() == null ? "" : authorStatement.getDatabase(),
+        authorStatement.getTableName() == null ? "" : authorStatement.getTableName(),
+        authorStatement.getPrivilegeTypes() == null
+            ? Collections.emptySet()
+            : authorStatement.getPrivilegeIds(),
+        authorStatement.isGrantOption());
   }
 }

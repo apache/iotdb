@@ -32,7 +32,10 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -353,6 +356,131 @@ public class IoTDBSessionInsertNullIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void insertTabletNullTest() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      prepareData(session);
+
+      String deviceId = "root.sg1.clsu.d1";
+      Tablet tablet =
+          new Tablet(
+              deviceId,
+              Arrays.asList(
+                  new MeasurementSchema("s1", TSDataType.BOOLEAN),
+                  new MeasurementSchema("s2", TSDataType.INT32)),
+              3);
+      tablet.addTimestamp(0, 300);
+      tablet.addValue("s1", 0, null);
+      tablet.addValue("s2", 0, null);
+      tablet.addTimestamp(1, 400);
+      tablet.addValue("s1", 1, null);
+      tablet.addValue("s2", 1, null);
+      tablet.addTimestamp(2, 500);
+      tablet.addValue("s1", 2, null);
+      tablet.addValue("s2", 2, null);
+      session.insertTablet(tablet);
+      long nums = queryCountRecords(session, "select count(s1) from " + deviceId);
+      assertEquals(0, nums);
+      session.executeNonQueryStatement("flush");
+      nums = queryCountRecords(session, "select count(s1) from " + deviceId);
+      assertEquals(0, nums);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void insertAlignedTabletNullTest() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      prepareData(session);
+
+      String deviceId = "root.sg1.clsu.aligned_d1";
+      Tablet tablet =
+          new Tablet(
+              deviceId,
+              Arrays.asList(
+                  new MeasurementSchema("s1", TSDataType.BOOLEAN),
+                  new MeasurementSchema("s2", TSDataType.INT32)),
+              3);
+      tablet.addTimestamp(0, 300);
+      tablet.addValue("s1", 0, null);
+      tablet.addValue("s2", 0, null);
+      tablet.addTimestamp(1, 400);
+      tablet.addValue("s1", 1, null);
+      tablet.addValue("s2", 1, null);
+      tablet.addTimestamp(2, 500);
+      tablet.addValue("s1", 2, null);
+      tablet.addValue("s2", 2, null);
+      session.insertAlignedTablet(tablet);
+      long nums = queryCountRecords(session, "select count(s1) from " + deviceId);
+      assertEquals(0, nums);
+      session.executeNonQueryStatement("flush");
+      nums = queryCountRecords(session, "select count(s1) from " + deviceId);
+      assertEquals(0, nums);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void insertTabletNullMeasurementTest() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      String deviceId = "root.sg1.clsu.aligned_d1";
+      Tablet tablet =
+          new Tablet(
+              deviceId,
+              Arrays.asList(
+                  new MeasurementSchema("s1", TSDataType.BOOLEAN),
+                  new MeasurementSchema(null, TSDataType.INT32)),
+              1);
+      tablet.addTimestamp(0, 300);
+      tablet.addValue("s1", 0, true);
+      tablet.addValue(null, 0, 1);
+      session.insertAlignedTablet(tablet);
+      fail();
+    } catch (Exception e) {
+      Assert.assertEquals("measurement should be non null value", e.getMessage());
+    }
+
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      String deviceId = "root.sg1.clsu.aligned_d1";
+      Tablet tablet =
+          new Tablet(
+              deviceId,
+              Arrays.asList(
+                  new MeasurementSchema("s1", TSDataType.BOOLEAN),
+                  new MeasurementSchema(null, TSDataType.INT32)),
+              1);
+      tablet.addTimestamp(0, 300);
+      tablet.addValue(0, 0, true);
+      tablet.addValue(0, 1, 1);
+      session.insertAlignedTablet(tablet);
+      fail();
+    } catch (Exception e) {
+      Assert.assertEquals("measurement should be non null value", e.getMessage());
+    }
+
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      String deviceId = "root.sg1.clsu.aligned_d1";
+      Tablet tablet =
+          new Tablet(
+              deviceId,
+              Arrays.asList(
+                  new MeasurementSchema("s1", TSDataType.BOOLEAN),
+                  new MeasurementSchema(null, TSDataType.INT32)),
+              1);
+      tablet.addTimestamp(0, 300);
+      tablet.addValue("s1", 0, true);
+      // doesn't insert 2nd measurement
+      session.insertAlignedTablet(tablet);
+      fail();
+    } catch (Exception e) {
+      Assert.assertEquals("measurement should be non null value", e.getMessage());
     }
   }
 }

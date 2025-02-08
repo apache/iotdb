@@ -26,7 +26,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
@@ -70,7 +70,7 @@ public class IoTDBTimeLooseTsTsfilePushConsumerIT extends AbstractSubscriptionRe
   private String pattern = device + ".s_0";
   private String topicName = "topic_TimeLooseTsTsfilePushConsumer";
   private List<IMeasurementSchema> schemaList = new ArrayList<>();
-  private SubscriptionPushConsumer consumer;
+  private SubscriptionTreePushConsumer consumer;
 
   @Override
   @Before
@@ -165,7 +165,7 @@ public class IoTDBTimeLooseTsTsfilePushConsumerIT extends AbstractSubscriptionRe
     System.out.println(FORMAT.format(new Date()) + " src: " + getCount(session_src, sql));
 
     consumer =
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("time_range_accurate_ts_tsfile_push")

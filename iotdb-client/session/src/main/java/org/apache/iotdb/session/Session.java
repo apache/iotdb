@@ -2964,6 +2964,9 @@ public class Session implements ISession {
       request.types = Collections.emptyList();
     } else {
       for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+        if (measurementSchema.getMeasurementName() == null) {
+          throw new IllegalArgumentException("measurement should be non null value");
+        }
         request.addToMeasurements(measurementSchema.getMeasurementName());
         request.addToTypes(measurementSchema.getType().ordinal());
       }
@@ -3089,6 +3092,9 @@ public class Session implements ISession {
     List<Integer> dataTypes = new ArrayList<>();
     request.setIsAligned(isAligned);
     for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+      if (measurementSchema.getMeasurementName() == null) {
+        throw new IllegalArgumentException("measurement should be non null value");
+      }
       measurements.add(measurementSchema.getMeasurementName());
       dataTypes.add(measurementSchema.getType().ordinal());
     }
