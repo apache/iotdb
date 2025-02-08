@@ -27,6 +27,7 @@ import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -41,6 +42,7 @@ import java.util.Collections;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showDBColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTablesColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -558,6 +560,61 @@ public class IoTDBTableIT {
     } catch (final SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testTableAuth() throws SQLException {
+    try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("create user test 'password'");
+      adminStmt.execute("create database db");
+      adminStmt.execute("use db");
+      adminStmt.execute("create table test (a tag, b attribute, c int32)");
+    }
+
+    try (final Connection userCon =
+            EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement userStmt = userCon.createStatement()) {
+      Assert.assertThrows(
+          SQLException.class,
+          () -> {
+            userStmt.execute("select * from db.test");
+          });
+    }
+
+    try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("GRANT SELECT ON db.test to user test");
+    }
+
+    try (final Connection userCon =
+            EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement userStmt = userCon.createStatement()) {
+      try (final ResultSet resultSet = userStmt.executeQuery("SHOW DATABASES")) {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(showDBColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < showDBColumnHeaders.size(); i++) {
+          assertEquals(showDBColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+        }
+        Assert.assertTrue(resultSet.next());
+        assertEquals("test", resultSet.getString(1));
+        Assert.assertFalse(resultSet.next());
+      }
+
+      userStmt.execute("select * from db.test");
+    }
+
+    try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("GRANT DROP ON DATABASE DB to user test");
+    }
+
+    try (final Connection userCon =
+            EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement userStmt = userCon.createStatement()) {
+      userStmt.execute("use db");
+      userStmt.execute("drop table test");
     }
   }
 }

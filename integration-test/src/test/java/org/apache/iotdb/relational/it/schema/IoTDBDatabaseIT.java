@@ -536,7 +536,6 @@ public class IoTDBDatabaseIT {
             EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
       try (final ResultSet resultSet = userStmt.executeQuery("SHOW DATABASES")) {
-        int cnt = 0;
         final ResultSetMetaData metaData = resultSet.getMetaData();
         assertEquals(showDBColumnHeaders.size(), metaData.getColumnCount());
         for (int i = 0; i < showDBColumnHeaders.size(); i++) {
