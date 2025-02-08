@@ -21,7 +21,6 @@ package org.apache.iotdb.relational.it.db.it;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
@@ -39,7 +38,7 @@ import java.sql.Statement;
 import java.util.concurrent.TimeUnit;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
+@Category({TableLocalStandaloneIT.class})
 public class IoTDBSetSystemStatusTableIT {
   @BeforeClass
   public static void setUp() throws Exception {
