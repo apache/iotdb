@@ -112,6 +112,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /** {@link NodeManager} manages cluster node addition and removal requests. */
@@ -1079,6 +1080,18 @@ public class NodeManager {
    */
   public List<TDataNodeConfiguration> filterDataNodeThroughStatus(NodeStatus... status) {
     return nodeInfo.getRegisteredDataNodes(getLoadManager().filterDataNodeThroughStatus(status));
+  }
+
+  /**
+   * Filter DataNodes through the NodeStatus predicate.
+   *
+   * @param statusPredicate The NodeStatus predicate
+   * @return Filtered DataNodes with the predicate
+   */
+  public List<TDataNodeConfiguration> filterDataNodeThroughStatus(
+      Function<NodeStatus, Boolean> statusPredicate) {
+    return nodeInfo.getRegisteredDataNodes(
+        getLoadManager().filterDataNodeThroughStatus(statusPredicate));
   }
 
   /**

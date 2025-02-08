@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
@@ -282,10 +283,10 @@ public class StatementAnalyzer {
     private final Optional<UpdateKind> updateKind;
 
     private Visitor(
-        Optional<Scope> outerQueryScope,
-        WarningCollector warningCollector,
-        Optional<UpdateKind> updateKind,
-        boolean isTopLevel) {
+        final Optional<Scope> outerQueryScope,
+        final WarningCollector warningCollector,
+        final Optional<UpdateKind> updateKind,
+        final boolean isTopLevel) {
       this.outerQueryScope = requireNonNull(outerQueryScope, "outerQueryScope is null");
       this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
       this.updateKind = requireNonNull(updateKind, "updateKind is null");
@@ -293,8 +294,11 @@ public class StatementAnalyzer {
     }
 
     @Override
-    public Scope process(final Node node, final Optional<Scope> scope) {
+    public Scope process(Node node, final Optional<Scope> scope) {
       final Scope returnScope = super.process(node, scope);
+      if (node instanceof PipeEnriched) {
+        node = ((PipeEnriched) node).getInnerStatement();
+      }
       if (node instanceof CreateOrUpdateDevice
           || node instanceof FetchDevice
           || node instanceof ShowDevice
@@ -408,6 +412,10 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitUpdate(final Update node, final Optional<Scope> context) {
       queryContext.setQueryType(QueryType.WRITE);
+      node.parseTable(sessionContext);
+      accessControl.checkCanInsertIntoTable(
+          sessionContext.getUserName(),
+          new QualifiedObjectName(node.getDatabase(), node.getTableName()));
       final TranslationMap translationMap = analyzeTraverseDevice(node, context, true);
       InformationSchemaUtils.checkDBNameInWrite(node.getDatabase());
       final TsTable table =
@@ -423,33 +431,37 @@ public class StatementAnalyzer {
               .collect(Collectors.toList()),
           queryContext);
 
-      final Set<SymbolReference> attributeNames = new HashSet<>();
-      node.setAssignments(
-          node.getAssignments().stream()
-              .map(
-                  assignment -> {
-                    final Expression parsedColumn =
-                        analyzeAndRewriteExpression(
-                            translationMap, translationMap.getScope(), assignment.getName());
-                    if (!(parsedColumn instanceof SymbolReference)
-                        || table
-                                .getColumnSchema(((SymbolReference) parsedColumn).getName())
-                                .getColumnCategory()
-                            != TsTableColumnCategory.ATTRIBUTE) {
-                      throw new SemanticException("Update can only specify attribute columns.");
-                    }
-                    if (attributeNames.contains(parsedColumn)) {
-                      throw new SemanticException(
-                          "Update attribute shall specify a attribute only once.");
-                    }
-                    attributeNames.add((SymbolReference) parsedColumn);
+      // If node.location is absent, this is a pipe-transferred update, namely the assignments are
+      // already parsed at the sender
+      if (node.getLocation().isPresent()) {
+        final Set<SymbolReference> attributeNames = new HashSet<>();
+        node.setAssignments(
+            node.getAssignments().stream()
+                .map(
+                    assignment -> {
+                      final Expression parsedColumn =
+                          analyzeAndRewriteExpression(
+                              translationMap, translationMap.getScope(), assignment.getName());
+                      if (!(parsedColumn instanceof SymbolReference)
+                          || table
+                                  .getColumnSchema(((SymbolReference) parsedColumn).getName())
+                                  .getColumnCategory()
+                              != TsTableColumnCategory.ATTRIBUTE) {
+                        throw new SemanticException("Update can only specify attribute columns.");
+                      }
+                      if (attributeNames.contains(parsedColumn)) {
+                        throw new SemanticException(
+                            "Update attribute shall specify a attribute only once.");
+                      }
+                      attributeNames.add((SymbolReference) parsedColumn);
 
-                    return new UpdateAssignment(
-                        parsedColumn,
-                        analyzeAndRewriteExpression(
-                            translationMap, translationMap.getScope(), assignment.getValue()));
-                  })
-              .collect(Collectors.toList()));
+                      return new UpdateAssignment(
+                          parsedColumn,
+                          analyzeAndRewriteExpression(
+                              translationMap, translationMap.getScope(), assignment.getValue()));
+                    })
+                .collect(Collectors.toList()));
+      }
       return null;
     }
 
@@ -458,13 +470,14 @@ public class StatementAnalyzer {
       // Actually write, but will return the result
       queryContext.setQueryType(QueryType.READ);
       node.parseTable(sessionContext);
+      accessControl.checkCanDeleteFromTable(
+          sessionContext.getUserName(),
+          new QualifiedObjectName(node.getDatabase(), node.getTableName()));
       InformationSchemaUtils.checkDBNameInWrite(node.getDatabase());
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       if (Objects.isNull(table)) {
-        throw new SemanticException(
-            String.format(
-                "Table '%s.%s' does not exist.", node.getDatabase(), node.getTableName()));
+        TableMetadataImpl.throwTableNotExistsException(node.getDatabase(), node.getTableName());
       }
       node.parseModEntries(table);
       analyzeTraverseDevice(node, context, node.getWhere().isPresent());
@@ -523,15 +536,18 @@ public class StatementAnalyzer {
       InsertBaseStatement innerInsert = insert.getInnerTreeStatement();
 
       innerInsert.semanticCheck();
+      innerInsert.toLowerCase();
+
       innerInsert =
           AnalyzeUtils.analyzeInsert(
               context,
               innerInsert,
-              () -> SchemaValidator.validate(metadata, insert, context),
+              () -> SchemaValidator.validate(metadata, insert, context, accessControl),
               metadata::getOrCreateDataPartition,
               AnalyzeUtils::computeTableDataPartitionParams,
               analysis,
               false);
+
       insert.setInnerTreeStatement(innerInsert);
       analysis.setScope(insert, ret);
 
@@ -541,21 +557,33 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitDelete(Delete node, Optional<Scope> scope) {
       final Scope ret = Scope.create();
+      accessControl.checkCanDeleteFromTable(
+          sessionContext.getUserName(),
+          new QualifiedObjectName(
+              AnalyzeUtils.getDatabaseName(node, queryContext),
+              node.getTable().getName().getSuffix()));
       AnalyzeUtils.analyzeDelete(node, queryContext);
+
       analysis.setScope(node, ret);
       return ret;
     }
 
     @Override
     protected Scope visitPipeEnriched(PipeEnriched node, Optional<Scope> scope) {
-      Scope ret = node.getInnerStatement().accept(this, scope);
+      // The LoadTsFile statement is a special case, it needs isGeneratedByPipe information
+      // in the analyzer to execute the tsfile-tablet conversion in some cases.
+      if (node.getInnerStatement() instanceof LoadTsFile) {
+        ((LoadTsFile) node.getInnerStatement()).markIsGeneratedByPipe();
+      }
+
+      final Scope ret = node.getInnerStatement().accept(this, scope);
       createAndAssignScope(node, scope);
       analysis.setScope(node, ret);
       return ret;
     }
 
     @Override
-    protected Scope visitLoadTsFile(LoadTsFile node, Optional<Scope> scope) {
+    protected Scope visitLoadTsFile(final LoadTsFile node, final Optional<Scope> scope) {
       queryContext.setQueryType(QueryType.WRITE);
 
       final long startTime = System.nanoTime();
@@ -576,7 +604,7 @@ public class StatementAnalyzer {
       return createAndAssignScope(node, scope);
     }
 
-    private LoadTsFileAnalyzer getAnalyzer(LoadTsFile loadTsFile) {
+    private LoadTsFileAnalyzer getAnalyzer(final LoadTsFile loadTsFile) {
       if (Objects.equals(loadTsFile.getModel(), LoadTsFileConfigurator.MODEL_TABLE_VALUE)) {
         // Load to table-model
         if (Objects.isNull(loadTsFile.getDatabase())) {
@@ -587,10 +615,12 @@ public class StatementAnalyzer {
           }
           loadTsFile.setDatabase(queryContext.getDatabaseName().get());
         }
-        return new LoadTsFileToTableModelAnalyzer(loadTsFile, metadata, queryContext);
+        return new LoadTsFileToTableModelAnalyzer(
+            loadTsFile, loadTsFile.isGeneratedByPipe(), metadata, queryContext);
       } else {
         // Load to tree-model
-        return new LoadTsFileToTreeModelAnalyzer(loadTsFile, queryContext);
+        return new LoadTsFileToTreeModelAnalyzer(
+            loadTsFile, loadTsFile.isGeneratedByPipe(), queryContext);
       }
     }
 
@@ -1757,7 +1787,8 @@ public class StatementAnalyzer {
       Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, name);
       // This can only be a table
       if (!tableSchema.isPresent()) {
-        throw new SemanticException(String.format("Table '%s' does not exist", name));
+        TableMetadataImpl.throwTableNotExistsException(
+            name.getDatabaseName(), name.getObjectName());
       }
       analysis.addEmptyColumnReferencesForTable(accessControl, sessionContext.getIdentity(), name);
 
@@ -2885,7 +2916,7 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitCreateDevice(
+    protected Scope visitCreateOrUpdateDevice(
         final CreateOrUpdateDevice node, final Optional<Scope> context) {
       queryContext.setQueryType(QueryType.WRITE);
       return null;
@@ -2917,7 +2948,12 @@ public class StatementAnalyzer {
 
     private void analyzeQueryDevice(
         final AbstractQueryDeviceWithCache node, final Optional<Scope> context) {
+      node.parseTable(sessionContext);
+      accessControl.checkCanSelectFromTable(
+          sessionContext.getUserName(),
+          new QualifiedObjectName(node.getDatabase(), node.getTableName()));
       analyzeTraverseDevice(node, context, node.getWhere().isPresent());
+
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
       if (!node.parseRawExpression(
@@ -2943,8 +2979,6 @@ public class StatementAnalyzer {
         final AbstractTraverseDevice node,
         final Optional<Scope> context,
         final boolean shallCreateTranslationMap) {
-      node.parseTable(sessionContext);
-
       final String database = node.getDatabase();
       final String tableName = node.getTableName();
 
@@ -2953,8 +2987,7 @@ public class StatementAnalyzer {
       }
 
       if (!metadata.tableExists(new QualifiedObjectName(database, tableName))) {
-        throw new SemanticException(
-            String.format("Table '%s.%s' does not exist.", database, tableName));
+        TableMetadataImpl.throwTableNotExistsException(database, tableName);
       }
       node.setColumnHeaderList();
 
@@ -2964,7 +2997,7 @@ public class StatementAnalyzer {
         final Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, name);
         // This can only be a table
         if (!tableSchema.isPresent()) {
-          throw new SemanticException(String.format("Table '%s' does not exist", name));
+          TableMetadataImpl.throwTableNotExistsException(database, tableName);
         }
 
         final TableSchema originalSchema = tableSchema.get();

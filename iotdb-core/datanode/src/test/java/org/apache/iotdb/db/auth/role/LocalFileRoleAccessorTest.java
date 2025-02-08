@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.auth.role;
 
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
-import org.apache.iotdb.commons.auth.entity.PriPrivilegeType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.role.LocalFileRoleAccessor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -34,8 +34,6 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -69,81 +67,56 @@ public class LocalFileRoleAccessorTest {
       roles[i] = new Role("role" + i);
       for (int j = 0; j <= i; j++) {
         PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.a.b.c" + j));
-        pathPrivilege.getPrivileges().add(j);
+        pathPrivilege.grantPrivilege(PrivilegeType.values()[j], true);
         roles[i].getPathPrivilegeList().add(pathPrivilege);
-        roles[i].getSysPrivilege().add(i + 4);
-        if (i % 2 != 0) {
-          roles[i].getSysPriGrantOpt().add(i + 4);
+      }
+      roles[i].grantSysPrivilege(PrivilegeType.values()[i + 4], false);
+      roles[i].grantDBPrivilege("testdb", PrivilegeType.CREATE, false);
+      roles[i].grantTBPrivilege("testdb", "table", PrivilegeType.ALTER, true);
+      roles[i].grantAnyScopePrivilege(PrivilegeType.INSERT, true);
+      if (i % 2 != 0) {
+        roles[i].grantSysPrivilegeGrantOption(PrivilegeType.values()[i + 4]);
+      }
+    }
+
+    for (Role role : roles) {
+      for (PrivilegeType item : PrivilegeType.values()) {
+        if (item.isRelationalPrivilege()) {
+          role.grantDBPrivilege("testdb", item, true);
+          if (item.ordinal() % 2 == 0) {
+            role.grantTBPrivilege("testdb", "testtb", item, false);
+          }
         }
       }
     }
 
     // save
     for (Role role : roles) {
-      accessor.saveRole(role);
+      accessor.saveEntity(role);
     }
 
     // load
     for (Role role : roles) {
-      Role loadedRole = accessor.loadRole(role.getName());
+      Role loadedRole = accessor.loadEntity(role.getName());
       assertEquals(role, loadedRole);
     }
-    assertNull(accessor.loadRole("not a role"));
+    assertNull(accessor.loadEntity("not a role"));
 
     // delete
-    assertTrue(accessor.deleteRole(roles[roles.length - 1].getName()));
-    assertFalse(accessor.deleteRole(roles[roles.length - 1].getName()));
-    assertNull(accessor.loadRole(roles[roles.length - 1].getName()));
+    assertTrue(accessor.deleteEntity(roles[roles.length - 1].getName()));
+    assertFalse(accessor.deleteEntity(roles[roles.length - 1].getName()));
+    assertNull(accessor.loadEntity(roles[roles.length - 1].getName()));
 
     // list
-    List<String> roleNames = accessor.listAllRoles();
+    List<String> roleNames = accessor.listAllEntities();
     roleNames.sort(null);
     for (int i = 0; i < roleNames.size(); i++) {
       assertEquals(roles[i].getName(), roleNames.get(i));
+      accessor.deleteEntity(roleNames.get(i));
     }
-  }
-
-  @Test
-  public void testLoadOldVersion() throws IOException, IllegalPathException {
-    // In this test, we will store role with old func and role might have illegal path.
-    Role role = new Role();
-    role.setName("root");
-    List<PathPrivilege> pathPriList = new ArrayList<>();
-    PathPrivilege rootPathPriv = new PathPrivilege(new PartialPath("root.**"));
-    PathPrivilege normalPathPriv = new PathPrivilege(new PartialPath("root.b.c.**"));
-    PathPrivilege wroPathPriv = new PathPrivilege(new PartialPath("root.c.*.d"));
-    PathPrivilege wroPathPriv2 = new PathPrivilege(new PartialPath("root.c.*.**"));
-    for (PriPrivilegeType item : PriPrivilegeType.values()) {
-      // ALL will never appear in file.
-      if (item.ordinal() == PriPrivilegeType.ALL.ordinal()) {
-        continue;
-      }
-      if (item.isPrePathRelevant()) {
-        normalPathPriv.grantPrivilege(item.ordinal(), false);
-        wroPathPriv.grantPrivilege(item.ordinal(), false);
-        wroPathPriv2.grantPrivilege(item.ordinal(), false);
-      }
-      rootPathPriv.grantPrivilege(item.ordinal(), false);
-    }
-
-    pathPriList.add(rootPathPriv);
-    pathPriList.add(normalPathPriv);
-    pathPriList.add(wroPathPriv);
-    pathPriList.add(wroPathPriv2);
-    role.setPrivilegeList(pathPriList);
-    role.setSysPriGrantOpt(new HashSet<>());
-    role.setSysPrivilegeSet(new HashSet<>());
-    accessor.saveRoleOldVer(role);
-    Role newRole = accessor.loadRole("root");
-    assertEquals("root", newRole.getName());
-    assertFalse(newRole.getServiceReady());
-    assertEquals(4, newRole.getPathPrivilegeList().size());
-    for (PathPrivilege path : newRole.getPathPrivilegeList()) {
-      if (!path.getPath().equals(new PartialPath("root.**"))) {
-        assertEquals(17, path.getPrivileges().size());
-      } else {
-        assertEquals(33, path.getPrivileges().size());
-      }
+    String[] files = testFolder.list();
+    if (files != null) {
+      assertEquals(0, files.length);
     }
   }
 }

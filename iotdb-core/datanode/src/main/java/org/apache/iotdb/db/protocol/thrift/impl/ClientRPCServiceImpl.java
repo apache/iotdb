@@ -297,6 +297,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private TSExecuteStatementResp executeStatementInternal(
       TSExecuteStatementReq req, SelectResult setResult) {
     boolean finished = false;
+    Long statementId = req.getStatementId();
     long queryId = Long.MIN_VALUE;
     String statement = req.getStatement();
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
@@ -361,10 +362,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               RpcUtils.getStatus(
                   TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
         }
-
-        // TODO: permission check
-
-        // TODO audit log, quota, StatementType
 
         queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
 
@@ -439,7 +436,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         CommonUtils.addQueryLatency(
             statementType, executionTime > 0 ? executionTime : currentOperationCost);
-        COORDINATOR.cleanupQueryExecution(queryId, req, t);
+        clearUp(clientSession, statementId, queryId, req, t);
       }
       SESSION_MANAGER.updateIdleTime();
       if (quota != null) {
@@ -448,9 +445,21 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
   }
 
+  private void clearUp(
+      IClientSession clientSession,
+      Long statementId,
+      Long queryId,
+      org.apache.thrift.TBase<?, ?> req,
+      Throwable t) {
+    COORDINATOR.cleanupQueryExecution(queryId, req, t);
+    // clear up queryId Map in clientSession
+    clientSession.removeQueryId(statementId, queryId);
+  }
+
   private TSExecuteStatementResp executeRawDataQueryInternal(
       TSRawDataQueryReq req, SelectResult setResult) {
     boolean finished = false;
+    Long statementId = req.getStatementId();
     long queryId = Long.MIN_VALUE;
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
     OperationQuota quota = null;
@@ -530,7 +539,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         CommonUtils.addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        COORDINATOR.cleanupQueryExecution(queryId, req, t);
+        clearUp(clientSession, statementId, queryId, req, t);
       }
 
       SESSION_MANAGER.updateIdleTime();
@@ -543,6 +552,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private TSExecuteStatementResp executeLastDataQueryInternal(
       TSLastDataQueryReq req, SelectResult setResult) {
     boolean finished = false;
+    Long statementId = req.getStatementId();
     long queryId = Long.MIN_VALUE;
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
     OperationQuota quota = null;
@@ -623,7 +633,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         CommonUtils.addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        COORDINATOR.cleanupQueryExecution(queryId, req, t);
+        clearUp(clientSession, statementId, queryId, req, t);
       }
 
       SESSION_MANAGER.updateIdleTime();
@@ -636,6 +646,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private TSExecuteStatementResp executeAggregationQueryInternal(
       TSAggregationQueryReq req, SelectResult setResult) {
     boolean finished = false;
+    Long statementId = req.getStatementId();
     long queryId = Long.MIN_VALUE;
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
     OperationQuota quota = null;
@@ -713,7 +724,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         CommonUtils.addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        COORDINATOR.cleanupQueryExecution(queryId, req, t);
+        clearUp(clientSession, statementId, queryId, req, t);
       }
 
       SESSION_MANAGER.updateIdleTime();
@@ -870,6 +881,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public TSExecuteStatementResp executeFastLastDataQueryForOneDeviceV2(
       TSFastLastDataQueryForOneDeviceReq req) {
     boolean finished = false;
+    Long statementId = req.getStatementId();
     long queryId = Long.MIN_VALUE;
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
     OperationQuota quota = null;
@@ -1061,7 +1073,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         CommonUtils.addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        COORDINATOR.cleanupQueryExecution(queryId, req, t);
+        clearUp(clientSession, statementId, queryId, req, t);
       }
       SESSION_MANAGER.updateIdleTime();
       if (quota != null) {
@@ -1178,8 +1190,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     String statementType = null;
     Throwable t = null;
     IQueryExecution queryExecution = null;
+    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    Long statementId = req.isSetStatementId() ? req.getStatementId() : null;
     try {
-      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
         finished = true;
         return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
@@ -1230,7 +1243,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long executionTime = COORDINATOR.getTotalExecutionTime(req.queryId);
         CommonUtils.addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        COORDINATOR.cleanupQueryExecution(req.queryId, req, t);
+        clearUp(clientSession, statementId, req.queryId, req, t);
       }
 
       SESSION_MANAGER.updateIdleTime();
@@ -1786,8 +1799,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     String statementType = null;
     Throwable t = null;
     IQueryExecution queryExecution = null;
+    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    Long statementId = req.isSetStatementId() ? req.getStatementId() : null;
     try {
-      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
         finished = true;
         return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
@@ -1838,7 +1852,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long executionTime = COORDINATOR.getTotalExecutionTime(req.queryId);
         CommonUtils.addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
-        COORDINATOR.cleanupQueryExecution(req.queryId, req, t);
+        clearUp(clientSession, statementId, req.queryId, req, t);
       }
 
       SESSION_MANAGER.updateIdleTime();
@@ -2216,10 +2230,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
 
-      // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return status;
+      // permission check for tree model, table model does this in the analysis stage
+      if (!req.isWriteToTable()) {
+        TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
       }
 
       quota =

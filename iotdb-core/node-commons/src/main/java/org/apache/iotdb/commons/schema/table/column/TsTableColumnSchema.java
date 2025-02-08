@@ -24,8 +24,11 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+
+import static com.google.common.base.MoreObjects.toStringHelper;
 
 public abstract class TsTableColumnSchema {
 
@@ -56,6 +59,9 @@ public abstract class TsTableColumnSchema {
   }
 
   public Map<String, String> getProps() {
+    if (Objects.isNull(props)) {
+      props = new HashMap<>();
+    }
     return props;
   }
 
@@ -79,5 +85,14 @@ public abstract class TsTableColumnSchema {
 
   public void setDataType(final TSDataType dataType) {
     this.dataType = dataType;
+  }
+
+  @Override
+  public String toString() {
+    return toStringHelper(this)
+        .add("columnName", columnName)
+        .add("dataType", dataType)
+        .add("props", props)
+        .toString();
   }
 }

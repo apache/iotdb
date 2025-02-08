@@ -2787,7 +2787,7 @@ public class Session implements ISession {
                     v.getRowSize(),
                     tablet.getValue(finalI, j));
               }
-              v.addTimestamp(v.getRowSize(), tablet.timestamps[finalI]);
+              v.addTimestamp(v.getRowSize(), tablet.getTimestamp(finalI));
               return v;
             });
       }
@@ -2960,6 +2960,9 @@ public class Session implements ISession {
     TSInsertTabletReq request = new TSInsertTabletReq();
 
     for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+      if (measurementSchema.getMeasurementName() == null) {
+        throw new IllegalArgumentException("measurement should be non null value");
+      }
       request.addToMeasurements(measurementSchema.getMeasurementName());
       request.addToTypes(measurementSchema.getType().ordinal());
     }
@@ -3084,6 +3087,9 @@ public class Session implements ISession {
     List<Integer> dataTypes = new ArrayList<>();
     request.setIsAligned(isAligned);
     for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+      if (measurementSchema.getMeasurementName() == null) {
+        throw new IllegalArgumentException("measurement should be non null value");
+      }
       measurements.add(measurementSchema.getMeasurementName());
       dataTypes.add(measurementSchema.getType().ordinal());
     }
@@ -3498,7 +3504,7 @@ public class Session implements ISession {
    */
   private boolean checkSorted(Tablet tablet) {
     for (int i = 1; i < tablet.getRowSize(); i++) {
-      if (tablet.timestamps[i] < tablet.timestamps[i - 1]) {
+      if (tablet.getTimestamp(i) < tablet.getTimestamp(i - 1)) {
         return false;
       }
     }
@@ -3523,31 +3529,32 @@ public class Session implements ISession {
      * so we can insert continuous data in value list to get a better performance
      */
     // sort to get index, and use index to sort value list
+    long[] timestamps = tablet.getTimestamps();
+    Object[] values = tablet.getValues();
+    BitMap[] bitMaps = tablet.getBitMaps();
     Integer[] index = new Integer[tablet.getRowSize()];
     for (int i = 0; i < tablet.getRowSize(); i++) {
       index[i] = i;
     }
-    Arrays.sort(index, Comparator.comparingLong(o -> tablet.timestamps[o]));
-    Arrays.sort(tablet.timestamps, 0, tablet.getRowSize());
+    Arrays.sort(index, Comparator.comparingLong(o -> timestamps[o]));
+    Arrays.sort(timestamps, 0, tablet.getRowSize());
     int columnIndex = 0;
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
       IMeasurementSchema schema = tablet.getSchemas().get(i);
       if (schema instanceof MeasurementSchema) {
-        tablet.values[columnIndex] = sortList(tablet.values[columnIndex], schema.getType(), index);
-        if (tablet.bitMaps != null && tablet.bitMaps[columnIndex] != null) {
-          tablet.bitMaps[columnIndex] = sortBitMap(tablet.bitMaps[columnIndex], index);
+        values[columnIndex] = sortList(values[columnIndex], schema.getType(), index);
+        if (bitMaps != null && bitMaps[columnIndex] != null) {
+          bitMaps[columnIndex] = sortBitMap(bitMaps[columnIndex], index);
         }
         columnIndex++;
       } else {
         int measurementSize = schema.getSubMeasurementsList().size();
         for (int j = 0; j < measurementSize; j++) {
-          tablet.values[columnIndex] =
+          values[columnIndex] =
               sortList(
-                  tablet.values[columnIndex],
-                  schema.getSubMeasurementsTSDataTypeList().get(j),
-                  index);
-          if (tablet.bitMaps != null && tablet.bitMaps[columnIndex] != null) {
-            tablet.bitMaps[columnIndex] = sortBitMap(tablet.bitMaps[columnIndex], index);
+                  values[columnIndex], schema.getSubMeasurementsTSDataTypeList().get(j), index);
+          if (bitMaps != null && bitMaps[columnIndex] != null) {
+            bitMaps[columnIndex] = sortBitMap(bitMaps[columnIndex], index);
           }
           columnIndex++;
         }

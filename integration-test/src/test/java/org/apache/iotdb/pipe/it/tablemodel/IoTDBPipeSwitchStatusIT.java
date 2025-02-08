@@ -303,11 +303,14 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelTestIT {
                   .setExtractorAttributes(extractorAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Assert.assertEquals(TSStatusCode.PIPE_ERROR.getStatusCode(), client.startPipe("").getCode());
       Assert.assertEquals(
-          TSStatusCode.PIPE_ERROR.getStatusCode(), client.startPipe("p0").getCode());
-      Assert.assertEquals(TSStatusCode.PIPE_ERROR.getStatusCode(), client.startPipe("p").getCode());
-      Assert.assertEquals(TSStatusCode.PIPE_ERROR.getStatusCode(), client.startPipe("*").getCode());
+          TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.startPipe("").getCode());
+      Assert.assertEquals(
+          TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.startPipe("p0").getCode());
+      Assert.assertEquals(
+          TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.startPipe("p").getCode());
+      Assert.assertEquals(
+          TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.startPipe("*").getCode());
       List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
@@ -318,10 +321,14 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeTableModelTestIT {
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));
 
-      Assert.assertEquals(TSStatusCode.PIPE_ERROR.getStatusCode(), client.stopPipe("").getCode());
-      Assert.assertEquals(TSStatusCode.PIPE_ERROR.getStatusCode(), client.stopPipe("p0").getCode());
-      Assert.assertEquals(TSStatusCode.PIPE_ERROR.getStatusCode(), client.stopPipe("p").getCode());
-      Assert.assertEquals(TSStatusCode.PIPE_ERROR.getStatusCode(), client.stopPipe("*").getCode());
+      Assert.assertEquals(
+          TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.stopPipe("").getCode());
+      Assert.assertEquals(
+          TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.stopPipe("p0").getCode());
+      Assert.assertEquals(
+          TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.stopPipe("p").getCode());
+      Assert.assertEquals(
+          TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode(), client.stopPipe("*").getCode());
       showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertTrue(
           showPipeResult.stream().anyMatch((o) -> o.id.equals("p1") && o.state.equals("RUNNING")));

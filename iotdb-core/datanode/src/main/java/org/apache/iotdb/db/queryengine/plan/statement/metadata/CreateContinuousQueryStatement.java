@@ -173,7 +173,7 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_CQ.ordinal()),
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_CQ),
         PrivilegeType.USE_CQ);
   }
 

@@ -406,6 +406,47 @@ public class IoTDBDatabaseIT {
                   "datanode_id,INT32,ATTRIBUTE,",
                   "elapsed_time,FLOAT,ATTRIBUTE,",
                   "statement,STRING,ATTRIBUTE,")));
+
+      // Test table query
+      statement.execute("create database test");
+      statement.execute("create table test.test (a tag, b attribute, c int32)");
+
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select * from databases"),
+          "database,ttl(ms),schema_replication_factor,data_replication_factor,time_partition_interval,schema_region_group_num,data_region_group_num,",
+          new HashSet<>(
+              Arrays.asList(
+                  "information_schema,INF,null,null,null,null,null,",
+                  "test,INF,1,1,604800000,0,0,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show devices from tables where status = 'USING'"),
+          "database,table_name,ttl(ms),status,",
+          new HashSet<>(
+              Arrays.asList(
+                  "information_schema,databases,INF,USING,",
+                  "information_schema,tables,INF,USING,",
+                  "information_schema,columns,INF,USING,",
+                  "information_schema,queries,INF,USING,",
+                  "test,test,INF,USING,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("count devices from tables where status = 'USING'"),
+          "count(devices),",
+          Collections.singleton("5,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "select * from columns where table_name = 'queries' or database = 'test'"),
+          "database,table_name,column_name,datatype,category,status,",
+          new HashSet<>(
+              Arrays.asList(
+                  "information_schema,queries,query_id,STRING,TAG,USING,",
+                  "information_schema,queries,start_time,TIMESTAMP,ATTRIBUTE,USING,",
+                  "information_schema,queries,datanode_id,INT32,ATTRIBUTE,USING,",
+                  "information_schema,queries,elapsed_time,FLOAT,ATTRIBUTE,USING,",
+                  "information_schema,queries,statement,STRING,ATTRIBUTE,USING,",
+                  "test,test,time,TIMESTAMP,TIME,USING,",
+                  "test,test,a,STRING,TAG,USING,",
+                  "test,test,b,STRING,ATTRIBUTE,USING,",
+                  "test,test,c,INT32,FIELD,USING,")));
     }
   }
 
@@ -415,6 +456,9 @@ public class IoTDBDatabaseIT {
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute("create database test");
+      statement.execute("use test");
+      statement.execute("create table table1(id1 tag, s1 string)");
+      statement.execute("insert into table1 values(0, 'd1', null), (1,'d1', 1)");
     }
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
@@ -422,6 +466,7 @@ public class IoTDBDatabaseIT {
       statement.execute("create database root.test");
       statement.execute(
           "alter database root.test WITH SCHEMA_REGION_GROUP_NUM=2, DATA_REGION_GROUP_NUM=3");
+      statement.execute("insert into root.test.d1 (s1) values(1)");
       statement.execute("drop database root.test");
     }
 
@@ -434,8 +479,6 @@ public class IoTDBDatabaseIT {
           assertTrue(resultSet.next());
         }
         assertEquals("test", resultSet.getString(1));
-        assertEquals(0, resultSet.getInt(6));
-        assertEquals(0, resultSet.getInt(7));
         assertFalse(resultSet.next());
       }
 

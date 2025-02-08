@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.response.Pi
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.consensus.pipe.PipeConsensusServerImpl;
@@ -87,8 +88,6 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils.generateTsFileResource;
 
 public class PipeConsensusReceiver {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusReceiver.class);
@@ -849,7 +848,7 @@ public class PipeConsensusReceiver {
   private void deleteFile(File file) {
     if (file.exists()) {
       try {
-        FileUtils.delete(file);
+        RetryUtils.retryOnException(() -> FileUtils.delete(file));
         LOGGER.info(
             "PipeConsensus-PipeName-{}: Original writing file {} was deleted.",
             consensusPipeName,
@@ -943,7 +942,11 @@ public class PipeConsensusReceiver {
     if (receiverFileDirWithIdSuffix.get() != null) {
       if (receiverFileDirWithIdSuffix.get().exists()) {
         try {
-          FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());
+          RetryUtils.retryOnException(
+              () -> {
+                FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());
+                return null;
+              });
           LOGGER.info(
               "PipeConsensus-PipeName-{}: Original receiver file dir {} was deleted successfully.",
               consensusPipeName,
@@ -1005,7 +1008,11 @@ public class PipeConsensusReceiver {
     }
     // Remove exists dir
     if (newReceiverDir.exists()) {
-      FileUtils.deleteDirectory(newReceiverDir);
+      RetryUtils.retryOnException(
+          () -> {
+            FileUtils.deleteDirectory(newReceiverDir);
+            return null;
+          });
       LOGGER.info(
           "PipeConsensus-PipeName-{}: Origin receiver file dir {} was deleted.",
           consensusPipeName,
@@ -1036,7 +1043,11 @@ public class PipeConsensusReceiver {
     if (receiverFileDirWithIdSuffix.get() != null) {
       if (receiverFileDirWithIdSuffix.get().exists()) {
         try {
-          FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());
+          RetryUtils.retryOnException(
+              () -> {
+                FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());
+                return null;
+              });
           LOGGER.info(
               "PipeConsensus-PipeName-{}: Receiver exit: Original receiver file dir {} was deleted.",
               consensusPipeName,
@@ -1172,7 +1183,11 @@ public class PipeConsensusReceiver {
       File tsFileWriterDirectory = new File(this.localWritingDirPath);
       // Remove exists dir
       if (tsFileWriterDirectory.exists()) {
-        FileUtils.deleteDirectory(tsFileWriterDirectory);
+        RetryUtils.retryOnException(
+            () -> {
+              FileUtils.deleteDirectory(tsFileWriterDirectory);
+              return null;
+            });
         LOGGER.info(
             "PipeConsensus-PipeName-{}: Origin receiver tsFileWriter-{} file dir {} was deleted.",
             consensusPipeName,
@@ -1267,7 +1282,7 @@ public class PipeConsensusReceiver {
       // close file
       if (writingFile != null) {
         try {
-          FileUtils.delete(writingFile);
+          RetryUtils.retryOnException(() -> FileUtils.delete(writingFile));
           LOGGER.info(
               "PipeConsensus-PipeName-{}: TsFileWriter exit: Writing file {} was deleted.",
               consensusPipeName,
@@ -1443,6 +1458,8 @@ public class PipeConsensusReceiver {
             if (resp != null
                 && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               onSuccess(tCommitId, isTransferTsFileSeal);
+              // signal all other reqs to accelerate dispatch process.
+              condition.signalAll();
             }
             return resp;
           }

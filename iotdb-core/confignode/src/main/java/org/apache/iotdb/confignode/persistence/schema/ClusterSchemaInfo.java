@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -71,14 +72,17 @@ import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaT
 import org.apache.iotdb.confignode.consensus.response.database.CountDatabaseResp;
 import org.apache.iotdb.confignode.consensus.response.database.DatabaseSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.partition.PathInfoResp;
+import org.apache.iotdb.confignode.consensus.response.table.DescTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.table.DescTableResp;
 import org.apache.iotdb.confignode.consensus.response.table.FetchTableResp;
+import org.apache.iotdb.confignode.consensus.response.table.ShowTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.table.ShowTableResp;
 import org.apache.iotdb.confignode.consensus.response.template.AllTemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TTableColumnInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -356,9 +360,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final List<PartialPath> matchedPaths =
           mTree.getMatchedDatabases(patternPath, plan.getScope(), false);
       for (final PartialPath path : matchedPaths) {
-        schemaMap.put(
-            path.getFullPath(),
-            mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema());
+        final TDatabaseSchema schema =
+            mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema();
+        schemaMap.put(schema.getName(), schema);
       }
       result.setSchemaMap(schemaMap);
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
@@ -1233,6 +1237,34 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
+  public ShowTable4InformationSchemaResp showTables4InformationSchema() {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return new ShowTable4InformationSchemaResp(
+          StatusUtils.OK,
+          tableModelMTree.getAllTables().entrySet().stream()
+              .collect(
+                  Collectors.toMap(
+                      Map.Entry::getKey,
+                      entry ->
+                          entry.getValue().stream()
+                              .map(
+                                  pair -> {
+                                    final TTableInfo info =
+                                        new TTableInfo(
+                                            pair.getLeft().getTableName(),
+                                            pair.getLeft()
+                                                .getPropValue(TTL_PROPERTY)
+                                                .orElse(TTL_INFINITE));
+                                    info.setState(pair.getRight().ordinal());
+                                    return info;
+                                  })
+                              .collect(Collectors.toList()))));
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
   public FetchTableResp fetchTables(final FetchTablePlan plan) {
     databaseReadWriteLock.readLock().lock();
     try {
@@ -1269,6 +1301,51 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
           null);
     } catch (final MetadataException e) {
       return new DescTableResp(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()), null, null);
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public DescTable4InformationSchemaResp descTable4InformationSchema() {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return new DescTable4InformationSchemaResp(
+          StatusUtils.OK,
+          tableModelMTree.getAllDatabasePaths(true).stream()
+              .collect(
+                  Collectors.toMap(
+                      databasePath -> PathUtils.unQualifyDatabaseName(databasePath.getFullPath()),
+                      databasePath -> {
+                        try {
+                          return tableModelMTree
+                              .getAllTablesUnderSpecificDatabase(databasePath)
+                              .stream()
+                              .map(
+                                  pair -> {
+                                    try {
+                                      return tableModelMTree.getTableSchemaDetails(
+                                          databasePath, pair.getLeft().getTableName());
+                                    } catch (final MetadataException ignore) {
+                                      // Table path must exist because the "getTableSchemaDetails()"
+                                      // is called in databaseReadWriteLock.readLock().
+                                    }
+                                    return new Pair<TsTable, Set<String>>(null, null);
+                                  })
+                              .collect(
+                                  Collectors.toMap(
+                                      pair -> pair.getLeft().getTableName(),
+                                      pair ->
+                                          new TTableColumnInfo()
+                                              .setTableInfo(
+                                                  TsTableInternalRPCUtil.serializeSingleTsTable(
+                                                      pair.getLeft()))
+                                              .setPreDeletedColumns(pair.getRight())));
+                        } catch (final MetadataException ignore) {
+                          // Database path must exist because the "getAllDatabasePaths()" is called
+                          // in databaseReadWriteLock.readLock().
+                        }
+                        return Collections.emptyMap();
+                      })));
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }

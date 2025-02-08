@@ -89,7 +89,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelTestIT {
         }
       }
 
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
       for (final String pipeName : expectedPipeNames) {
         Assert.assertTrue(
             showPipeResult.stream()
@@ -106,7 +107,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelTestIT {
         }
       }
 
-      showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      showPipeResult = client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
       Assert.assertEquals(0, showPipeResult.size());
     }
   }
@@ -124,7 +125,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelTestIT {
           String.format(
               "create pipe p1"
                   + " with source ( "
-                  + "'capture.table'='test',"
+                  + "'capture.table'='true',"
                   + "'database-name'='test',"
                   + "'table-name'='test',"
                   + "'mode.streaming'='true',"
@@ -177,7 +178,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelTestIT {
       } catch (SQLException ignored) {
       }
 
-      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
       Assert.assertEquals(0, showPipeResult.size());
     }
   }
@@ -249,7 +251,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelTestIT {
         fail(e.getMessage());
       }
 
-      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
       Assert.assertEquals(2, showPipeResult.size());
     }
   }
@@ -315,7 +318,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelTestIT {
       } catch (SQLException ignored) {
       }
 
-      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
     }
   }
@@ -522,7 +526,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelTestIT {
       } catch (Exception ignored) {
       }
 
-      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
       Assert.assertEquals(2, showPipeResult.size());
     }
   }
@@ -540,6 +545,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelTestIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
+      extractorAttributes.put("__system.sql-dialect", "table");
       extractorAttributes.put("extractor.database-name", "test");
       extractorAttributes.put("extractor.table-name", "test.*");
       extractorAttributes.put("extractor.inclusion", "data.insert");
@@ -578,10 +584,12 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelTestIT {
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
       Assert.assertEquals(3, showPipeResult.size());
 
-      showPipeResult = client.showPipe(new TShowPipeReq().setPipeName("p1")).pipeInfoList;
+      showPipeResult =
+          client.showPipe(new TShowPipeReq().setIsTableModel(true).setPipeName("p1")).pipeInfoList;
       Assert.assertTrue(showPipeResult.stream().anyMatch((o) -> o.id.equals("p1")));
       Assert.assertFalse(showPipeResult.stream().anyMatch((o) -> o.id.equals("p2")));
       Assert.assertFalse(showPipeResult.stream().anyMatch((o) -> o.id.equals("p3")));
@@ -589,7 +597,9 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelTestIT {
       // Show all pipes whose connector is also used by p1.
       // p1 and p2 share the same connector parameters, so they have the same connector.
       showPipeResult =
-          client.showPipe(new TShowPipeReq().setPipeName("p1").setWhereClause(true)).pipeInfoList;
+          client.showPipe(
+                  new TShowPipeReq().setIsTableModel(true).setPipeName("p1").setWhereClause(true))
+              .pipeInfoList;
       Assert.assertTrue(showPipeResult.stream().anyMatch((o) -> o.id.equals("p1")));
       Assert.assertTrue(showPipeResult.stream().anyMatch((o) -> o.id.equals("p2")));
       Assert.assertFalse(showPipeResult.stream().anyMatch((o) -> o.id.equals("p3")));
@@ -620,7 +630,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelTestIT {
                     + "'connector.batch.enable'='false')",
                 receiverIp, receiverPort));
         fail();
-      } catch (SQLException ignored) {
+      } catch (final SQLException ignored) {
       }
 
       // Invalid inclusion
@@ -678,7 +688,8 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeTableModelTestIT {
         fail(e.getMessage());
       }
 
-      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setIsTableModel(true)).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
     }
   }

@@ -49,8 +49,8 @@ public class RenameTableColumnProcedure
   private String oldName;
   private String newName;
 
-  public RenameTableColumnProcedure() {
-    super();
+  public RenameTableColumnProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   public RenameTableColumnProcedure(
@@ -58,8 +58,9 @@ public class RenameTableColumnProcedure
       final String tableName,
       final String queryId,
       final String oldName,
-      final String newName) {
-    super(database, tableName, queryId);
+      final String newName,
+      final boolean isGeneratedByPipe) {
+    super(database, tableName, queryId, isGeneratedByPipe);
     this.oldName = oldName;
     this.newName = newName;
   }
@@ -202,7 +203,10 @@ public class RenameTableColumnProcedure
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_RENAME_TABLE_COLUMN_PROCEDURE.getTypeCode()
+            : ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
     ReadWriteIOUtils.write(oldName, stream);

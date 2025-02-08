@@ -46,6 +46,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDFParametersFacto
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.access.Row;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
@@ -104,6 +105,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
  * AbstractWindowingProcessor} and {@link AbstractOperatorProcessor} can be implemented by user and
  * loaded as a normal {@link PipeProcessor}
  */
+@TreeModel
 public class AggregateProcessor implements PipeProcessor {
   private static final String WINDOWING_PROCESSOR_SUFFIX = "-windowing-processor";
 

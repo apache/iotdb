@@ -1214,7 +1214,7 @@ enable_auto_repair_compaction=true
 cross_selector=rewrite
 
 # the compaction performer of cross space compaction task
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Options: read_point, fast
 cross_performer=fast
 
@@ -1224,7 +1224,7 @@ cross_performer=fast
 inner_seq_selector=size_tiered_multi_target
 
 # the performer of inner sequence space compaction task
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Options: read_chunk, fast
 inner_seq_performer=read_chunk
 
@@ -1234,7 +1234,7 @@ inner_seq_performer=read_chunk
 inner_unseq_selector=size_tiered_multi_target
 
 # the performer of inner unsequence space compaction task
-# effectiveMode: restart
+# effectiveMode: hot_reload
 # Options: read_point, fast
 inner_unseq_performer=fast
 
@@ -1457,10 +1457,10 @@ delete_wal_files_period_in_ms=20000
 
 # The minimum size of wal files when throttle down in IoTConsensus
 # If this value is not set, it will be carefully chosen according to the available disk space.
-# If this value is set smaller than 0, it will default to 50 * 1024 * 1024 * 1024 bytes (50GB).
+# If this value is set smaller than 0, it will default to 200 * 1024 * 1024 * 1024 bytes (200GB).
 # effectiveMode: hot_reload
 # Datatype: long
-wal_throttle_threshold_in_byte=53687091200
+wal_throttle_threshold_in_byte=214748364800
 
 # Maximum wait time of write cache in IoTConsensus
 # If this value is less than or equal to 0, use the default value 10 * 1000 ms (10s)
@@ -1504,7 +1504,7 @@ data_region_iot_max_memory_ratio_for_queue = 0.6
 # values less than or equal to 0 means no limit
 # effectiveMode: hot_reload
 # Datatype: long
-region_migration_speed_limit_bytes_per_second = 33554432
+region_migration_speed_limit_bytes_per_second = 50331648
 
 ####################
 ### Blob Allocator Configuration

@@ -25,11 +25,11 @@ import org.apache.iotdb.commons.schema.node.common.AbstractMeasurementMNode;
 
 public abstract class MNodeVisitor<R, C> {
 
-  public abstract R visitBasicMNode(IMNode<?> node, C context);
+  public abstract R visitBasicMNode(final IMNode<?> node, final C context);
 
   public abstract R visitDatabaseMNode(
-      AbstractDatabaseMNode<?, ? extends IMNode<?>> node, C context);
+      final AbstractDatabaseMNode<?, ? extends IMNode<?>> node, final C context);
 
   public abstract R visitMeasurementMNode(
-      AbstractMeasurementMNode<?, ? extends IMNode<?>> node, C context);
+      final AbstractMeasurementMNode<?, ? extends IMNode<?>> node, final C context);
 }

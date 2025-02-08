@@ -55,19 +55,22 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
   private TriggerInformation triggerInformation;
   private Binary jarFile;
 
-  public CreateTriggerProcedure(boolean isGeneratedByPipe) {
+  public CreateTriggerProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
   }
 
   public CreateTriggerProcedure(
-      TriggerInformation triggerInformation, Binary jarFile, boolean isGeneratedByPipe) {
+      final TriggerInformation triggerInformation,
+      final Binary jarFile,
+      final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
     this.triggerInformation = triggerInformation;
     this.jarFile = jarFile;
   }
 
   @Override
-  protected Flow executeFromState(ConfigNodeProcedureEnv env, CreateTriggerState state) {
+  protected Flow executeFromState(
+      final ConfigNodeProcedureEnv env, final CreateTriggerState state) {
     if (triggerInformation == null) {
       return Flow.NO_MORE_STATE;
     }

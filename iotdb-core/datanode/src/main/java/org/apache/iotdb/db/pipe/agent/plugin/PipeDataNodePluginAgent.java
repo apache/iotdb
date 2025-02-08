@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
 import org.apache.iotdb.db.pipe.agent.plugin.schemaregion.PipeSchemaRegionPluginAgent;
 import org.apache.iotdb.pipe.api.PipePlugin;
@@ -151,6 +152,8 @@ public class PipeDataNodePluginAgent {
       final PipePlugin ignored = (PipePlugin) pluginClass.getDeclaredConstructor().newInstance();
 
       pipePluginMetaKeeper.addPipePluginMeta(pluginName, pipePluginMeta);
+      pipePluginMetaKeeper.addPipePluginVisibility(
+          pluginName, VisibilityUtils.calculateFromPluginClass(pluginClass));
       classLoaderManager.addPluginAndClassLoader(pluginName, pipePluginClassLoader);
     } catch (IOException
         | InstantiationException
@@ -183,6 +186,7 @@ public class PipeDataNodePluginAgent {
 
       // remove anyway
       pipePluginMetaKeeper.removePipePluginMeta(pluginName);
+      pipePluginMetaKeeper.removePipePluginVisibility(pluginName);
       PipePluginClassLoaderManager.getInstance().removePluginClassLoader(pluginName);
 
       // if it is needed to delete jar file of the pipe plugin, delete both jar file and md5
@@ -210,21 +214,5 @@ public class PipeDataNodePluginAgent {
         pipeName, extractorAttributes, processorAttributes, connectorAttributes);
     schemaRegionAgent.validate(
         pipeName, extractorAttributes, processorAttributes, connectorAttributes);
-  }
-
-  public void validateExtractor(Map<String, String> extractorAttributes) throws Exception {
-    dataRegionAgent.validateExtractor(extractorAttributes);
-    schemaRegionAgent.validateExtractor(extractorAttributes);
-  }
-
-  public void validateProcessor(Map<String, String> processorAttributes) throws Exception {
-    dataRegionAgent.validateProcessor(processorAttributes);
-    schemaRegionAgent.validateProcessor(processorAttributes);
-  }
-
-  public void validateConnector(String pipeName, Map<String, String> connectorAttributes)
-      throws Exception {
-    dataRegionAgent.validateConnector(pipeName, connectorAttributes);
-    schemaRegionAgent.validateConnector(pipeName, connectorAttributes);
   }
 }

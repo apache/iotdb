@@ -86,6 +86,10 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
     this.startTimes = startTimes;
     this.endTimes = endTimes;
     this.deviceToIndex = deviceToIndex;
+
+    // The TSFileResource file is judged to be empty based on MaxEndTime and MinStartTime, so the
+    // construction of TimeIndex needs to update MaxEndTime and MinStartTime.
+    updateMinStartTimeAndMaxEndTime();
   }
 
   @Override
@@ -334,6 +338,22 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
       endTimes[index] = time;
     }
     maxEndTime = Math.max(maxEndTime, time);
+  }
+
+  private void updateMinStartTimeAndMaxEndTime() {
+    for (Map.Entry<IDeviceID, Integer> entry : deviceToIndex.entrySet()) {
+      if (entry.getValue() == null) {
+        continue;
+      }
+
+      if (endTimes != null) {
+        maxEndTime = Math.max(maxEndTime, endTimes[entry.getValue()]);
+      }
+
+      if (startTimes != null) {
+        minStartTime = Math.min(minStartTime, startTimes[entry.getValue()]);
+      }
+    }
   }
 
   @Override

@@ -52,11 +52,6 @@ public class IncProcedure extends Procedure<TestProcEnv> {
   }
 
   @Override
-  protected boolean abort(TestProcEnv testProcEnv) {
-    return true;
-  }
-
-  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeInt(TestProcedureFactory.TestProcedureType.INC_PROCEDURE.ordinal());
     super.serialize(stream);

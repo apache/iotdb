@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.pipe.datastructure.PersistentResource;
+import org.apache.iotdb.commons.pipe.datastructure.resource.PersistentResource;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -313,7 +313,8 @@ public class TsFileResource implements PersistentResource {
 
       if (inputStream.available() > 0) {
         String modFilePath = ReadWriteIOUtils.readString(inputStream);
-        if (modFilePath != null && !modFilePath.isEmpty()) {
+        // ends with ".mods2" means it is a new version resource file
+        if (modFilePath != null && modFilePath.endsWith(ModificationFile.FILE_SUFFIX)) {
           sharedModFileOffset = ReadWriteIOUtils.readLong(inputStream);
           if (sharedModFilePathFuture != null) {
             sharedModFilePathFuture.complete(modFilePath);
@@ -390,11 +391,23 @@ public class TsFileResource implements PersistentResource {
   }
 
   public void linkModFile(TsFileResource target) throws IOException {
-    if (exclusiveModFileExists()) {
-      Files.createLink(
-          ModificationFile.getExclusiveMods(target.getTsFile()).toPath(),
-          ModificationFile.getExclusiveMods(getTsFile()).toPath());
+    File targetModsFile = ModificationFile.getExclusiveMods(target.getTsFile());
+    ModificationFile sourceModFile = this.getExclusiveModFile();
+    ModificationFile targetModsFileObject;
+    sourceModFile.writeLock();
+    try {
+      if (sourceModFile.exists()) {
+        Files.createLink(
+            targetModsFile.toPath(), ModificationFile.getExclusiveMods(getTsFile()).toPath());
+        targetModsFileObject = new ModificationFile(targetModsFile, true);
+      } else {
+        targetModsFileObject = new ModificationFile(targetModsFile, true);
+        sourceModFile.setCascadeFile(Collections.singleton(targetModsFileObject));
+      }
+    } finally {
+      sourceModFile.writeUnlock();
     }
+    target.setExclusiveModFile(targetModsFileObject);
     if (sharedModFileExists()) {
       modFileManagement.addReference(target, sharedModFile);
       target.setSharedModFile(this.getSharedModFile(), false);
@@ -767,7 +780,6 @@ public class TsFileResource implements PersistentResource {
     if (getExclusiveModFile().exists()) {
       getExclusiveModFile().remove();
     }
-    exclusiveModFile = null;
 
     if (getSharedModFile() != null && modFileManagement != null) {
       modFileManagement.releaseFor(this, sharedModFile);
@@ -1038,7 +1050,6 @@ public class TsFileResource implements PersistentResource {
     return timeIndex.isSpanMultiTimePartitions();
   }
 
-  @TestOnly
   public void setExclusiveModFile(ModificationFile exclusiveModFile) {
     synchronized (this) {
       this.exclusiveModFile = exclusiveModFile;

@@ -80,6 +80,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -93,6 +94,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -1652,6 +1654,9 @@ public class TsFileProcessor {
         // Truncate broken metadata
         try {
           writer.reset();
+        } catch (ClosedChannelException e1) {
+          // the file is closed
+          break;
         } catch (IOException e1) {
           logger.error(
               "{}: {} truncate corrupted data meets error",
@@ -1784,7 +1789,7 @@ public class TsFileProcessor {
 
   private void processAlignedChunkMetaDataFromFlushedMemTable(
       IDeviceID deviceID,
-      AlignedChunkMetadata alignedChunkMetadata,
+      AbstractAlignedChunkMetadata alignedChunkMetadata,
       Map<String, List<IChunkMetadata>> measurementToChunkMetaMap,
       Map<String, List<IChunkHandle>> measurementToChunkHandleMap,
       String filePath) {
@@ -1837,10 +1842,10 @@ public class TsFileProcessor {
       Map<String, List<IChunkMetadata>> measurementToChunkMetaList,
       Map<String, List<IChunkHandle>> measurementToChunkHandleList) {
     for (IChunkMetadata chunkMetadata : chunkMetadataList) {
-      if (chunkMetadata instanceof AlignedChunkMetadata) {
+      if (chunkMetadata instanceof AbstractAlignedChunkMetadata) {
         processAlignedChunkMetaDataFromFlushedMemTable(
             deviceID,
-            (AlignedChunkMetadata) chunkMetadata,
+            (AbstractAlignedChunkMetadata) chunkMetadata,
             measurementToChunkMetaList,
             measurementToChunkHandleList,
             this.tsFileResource.getTsFilePath());

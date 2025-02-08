@@ -200,13 +200,15 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelTestIT {
       }
 
       Set<String> expectedResSet = new java.util.HashSet<>();
-      expectedResSet.add("1970-01-01T00:00:00.002Z,d3,d4,blue2,20,");
-      expectedResSet.add("1970-01-01T00:00:00.001Z,d3,d4,red2,10,");
+      expectedResSet.add("1970-01-01T00:00:00.002Z,d3,d4,blue2,20,null,null,null,null,");
+      expectedResSet.add("1970-01-01T00:00:00.001Z,d3,d4,red2,10,null,null,null,null,");
+      expectedResSet.add("1970-01-01T00:00:00.002Z,null,null,null,null,d1,d2,blue,2,");
+      expectedResSet.add("1970-01-01T00:00:00.001Z,null,null,null,null,d1,d2,red,1,");
       // make sure data are not transferred
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select * from t1",
-          "time,tag3,tag4,s3,s4,",
+          "time,tag3,tag4,s3,s4,tag1,tag2,s1,s2,",
           expectedResSet,
           "db",
           handleFailure);

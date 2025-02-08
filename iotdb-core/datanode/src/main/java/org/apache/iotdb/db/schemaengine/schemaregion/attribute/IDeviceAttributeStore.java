@@ -32,7 +32,7 @@ public interface IDeviceAttributeStore {
 
   boolean createSnapshot(final File targetDir);
 
-  void loadFromSnapshot(final File snapshotDir, final String sgSchemaDirPath) throws IOException;
+  void loadFromSnapshot(final File snapshotDir) throws IOException;
 
   int createAttribute(final List<String> nameList, final Object[] valueList);
 
@@ -44,5 +44,7 @@ public interface IDeviceAttributeStore {
 
   void removeAttribute(final int pointer, final String attributeName);
 
-  Binary getAttribute(final int pointer, final String name);
+  Map<String, Binary> getAttributes(final int pointer);
+
+  Binary getAttributes(final int pointer, final String name);
 }

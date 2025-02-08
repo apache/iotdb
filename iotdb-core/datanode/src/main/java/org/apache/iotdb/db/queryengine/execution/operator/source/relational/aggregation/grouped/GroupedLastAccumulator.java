@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
 
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.BinaryBigArray;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.BooleanBigArray;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.DoubleBigArray;
@@ -154,30 +155,30 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
   }
 
   @Override
-  public void addInput(int[] groupIds, Column[] arguments) {
+  public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
     // arguments[0] is value column, arguments[1] is time column
     switch (seriesDataType) {
       case INT32:
       case DATE:
-        addIntInput(groupIds, arguments[0], arguments[1]);
+        addIntInput(groupIds, arguments[0], arguments[1], mask);
         return;
       case INT64:
       case TIMESTAMP:
-        addLongInput(groupIds, arguments[0], arguments[1]);
+        addLongInput(groupIds, arguments[0], arguments[1], mask);
         return;
       case FLOAT:
-        addFloatInput(groupIds, arguments[0], arguments[1]);
+        addFloatInput(groupIds, arguments[0], arguments[1], mask);
         return;
       case DOUBLE:
-        addDoubleInput(groupIds, arguments[0], arguments[1]);
+        addDoubleInput(groupIds, arguments[0], arguments[1], mask);
         return;
       case TEXT:
       case STRING:
       case BLOB:
-        addBinaryInput(groupIds, arguments[0], arguments[1]);
+        addBinaryInput(groupIds, arguments[0], arguments[1], mask);
         return;
       case BOOLEAN:
-        addBooleanInput(groupIds, arguments[0], arguments[1]);
+        addBooleanInput(groupIds, arguments[0], arguments[1], mask);
         return;
       default:
         throw new UnSupportedDataTypeException(
@@ -373,10 +374,25 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
     }
   }
 
-  private void addIntInput(int[] groupIds, Column valueColumn, Column timeColumn) {
-    for (int i = 0; i < groupIds.length; i++) {
-      if (!valueColumn.isNull(i)) {
-        updateIntValue(groupIds[i], valueColumn.getInt(i), timeColumn.getLong(i));
+  private void addIntInput(
+      int[] groupIds, Column valueColumn, Column timeColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!valueColumn.isNull(i)) {
+          updateIntValue(groupIds[i], valueColumn.getInt(i), timeColumn.getLong(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!valueColumn.isNull(position)) {
+          updateIntValue(
+              groupIds[position], valueColumn.getInt(position), timeColumn.getLong(position));
+        }
       }
     }
   }
@@ -389,10 +405,25 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
     }
   }
 
-  private void addLongInput(int[] groupIds, Column valueColumn, Column timeColumn) {
-    for (int i = 0; i < groupIds.length; i++) {
-      if (!valueColumn.isNull(i)) {
-        updateLongValue(groupIds[i], valueColumn.getLong(i), timeColumn.getLong(i));
+  private void addLongInput(
+      int[] groupIds, Column valueColumn, Column timeColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!valueColumn.isNull(i)) {
+          updateLongValue(groupIds[i], valueColumn.getLong(i), timeColumn.getLong(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!valueColumn.isNull(position)) {
+          updateLongValue(
+              groupIds[position], valueColumn.getLong(position), timeColumn.getLong(position));
+        }
       }
     }
   }
@@ -405,7 +436,8 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
     }
   }
 
-  private void addFloatInput(int[] groupIds, Column valueColumn, Column timeColumn) {
+  private void addFloatInput(
+      int[] groupIds, Column valueColumn, Column timeColumn, AggregationMask mask) {
     for (int i = 0; i < groupIds.length; i++) {
       if (!valueColumn.isNull(i)) {
         updateFloatValue(groupIds[i], valueColumn.getFloat(i), timeColumn.getLong(i));
@@ -421,10 +453,25 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
     }
   }
 
-  private void addDoubleInput(int[] groupIds, Column valueColumn, Column timeColumn) {
-    for (int i = 0; i < groupIds.length; i++) {
-      if (!valueColumn.isNull(i)) {
-        updateDoubleValue(groupIds[i], valueColumn.getDouble(i), timeColumn.getLong(i));
+  private void addDoubleInput(
+      int[] groupIds, Column valueColumn, Column timeColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!valueColumn.isNull(i)) {
+          updateDoubleValue(groupIds[i], valueColumn.getDouble(i), timeColumn.getLong(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!valueColumn.isNull(position)) {
+          updateDoubleValue(
+              groupIds[position], valueColumn.getDouble(position), timeColumn.getLong(position));
+        }
       }
     }
   }
@@ -437,10 +484,25 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
     }
   }
 
-  private void addBinaryInput(int[] groupIds, Column valueColumn, Column timeColumn) {
-    for (int i = 0; i < groupIds.length; i++) {
-      if (!valueColumn.isNull(i)) {
-        updateBinaryValue(groupIds[i], valueColumn.getBinary(i), timeColumn.getLong(i));
+  private void addBinaryInput(
+      int[] groupIds, Column valueColumn, Column timeColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!valueColumn.isNull(i)) {
+          updateBinaryValue(groupIds[i], valueColumn.getBinary(i), timeColumn.getLong(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!valueColumn.isNull(position)) {
+          updateBinaryValue(
+              groupIds[position], valueColumn.getBinary(position), timeColumn.getLong(position));
+        }
       }
     }
   }
@@ -453,10 +515,25 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
     }
   }
 
-  private void addBooleanInput(int[] groupIds, Column valueColumn, Column timeColumn) {
-    for (int i = 0; i < groupIds.length; i++) {
-      if (!valueColumn.isNull(i)) {
-        updateBooleanValue(groupIds[i], valueColumn.getBoolean(i), timeColumn.getLong(i));
+  private void addBooleanInput(
+      int[] groupIds, Column valueColumn, Column timeColumn, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!valueColumn.isNull(i)) {
+          updateBooleanValue(groupIds[i], valueColumn.getBoolean(i), timeColumn.getLong(i));
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!valueColumn.isNull(position)) {
+          updateBooleanValue(
+              groupIds[position], valueColumn.getBoolean(position), timeColumn.getLong(position));
+        }
       }
     }
   }

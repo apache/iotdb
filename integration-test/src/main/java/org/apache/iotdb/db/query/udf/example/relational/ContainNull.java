@@ -19,25 +19,22 @@
 
 package org.apache.iotdb.db.query.udf.example.relational;
 
-import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
-import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
-import org.apache.iotdb.udf.api.exception.UDFException;
-import org.apache.iotdb.udf.api.exception.UDFParameterNotValidException;
+import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
+import org.apache.iotdb.udf.api.exception.UDFArgumentNotValidException;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.type.Type;
 
 public class ContainNull implements ScalarFunction {
-  @Override
-  public void validate(FunctionParameters parameters) throws UDFException {
-    if (parameters.getChildExpressionsSize() < 1) {
-      throw new UDFParameterNotValidException("At least one parameter is required.");
-    }
-  }
 
   @Override
-  public void beforeStart(FunctionParameters parameters, ScalarFunctionConfig configurations) {
-    configurations.setOutputDataType(Type.BOOLEAN);
+  public ScalarFunctionAnalysis analyze(FunctionArguments arguments)
+      throws UDFArgumentNotValidException {
+    if (arguments.getArgumentsSize() < 1) {
+      throw new UDFArgumentNotValidException("At least one parameter is required.");
+    }
+    return new ScalarFunctionAnalysis.Builder().outputDataType(Type.BOOLEAN).build();
   }
 
   @Override

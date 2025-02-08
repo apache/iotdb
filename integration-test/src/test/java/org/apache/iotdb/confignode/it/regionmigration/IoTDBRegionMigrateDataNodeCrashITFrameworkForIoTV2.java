@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.it.regionmigration;
 import org.apache.iotdb.commons.utils.KillPoint.KillNode;
 
 public class IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV2
-    extends IoTDBRegionMigrateReliabilityITFramework {
+    extends IoTDBRegionOperationReliabilityITFramework {
 
   @SafeVarargs
   public final <T extends Enum<T>> void success(T... dataNodeKillPoints) throws Exception {

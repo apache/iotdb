@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.datastructure.options;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,9 +35,21 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_INCLUSION_KEY;
+
 public class PipeInclusionOptions {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeInclusionOptions.class);
+  public static final PartialPath treeOnlySyncPrefix =
+      new PartialPath(new String[] {"schema", "timeseries"});
+  public static final PartialPath tableOnlySyncPrefix =
+      new PartialPath(new String[] {"schema", "table"});
+  public static final String ALL = "all";
 
   private static final Set<PartialPath> OPTIONS = new HashSet<>();
   private static final Map<String, Set<String>> ALIAS_OPTIONS_MAP = new HashMap<>();
@@ -78,12 +91,12 @@ public class PipeInclusionOptions {
       OPTIONS.add(new PartialPath("auth.user.drop"));
       OPTIONS.add(new PartialPath("auth.user.grant"));
       OPTIONS.add(new PartialPath("auth.user.revoke"));
-    } catch (IllegalPathException e) {
+    } catch (final IllegalPathException e) {
       LOGGER.error("Illegal path encountered when initializing LEGAL_OPTIONS.", e);
     }
 
     ALIAS_OPTIONS_MAP.put(
-        "all", Collections.unmodifiableSet(new HashSet<>(Arrays.asList("data", "schema", "auth"))));
+        ALL, Collections.unmodifiableSet(new HashSet<>(Arrays.asList("data", "schema", "auth"))));
     ALIAS_OPTIONS_MAP.put(
         "delete",
         Collections.unmodifiableSet(
@@ -119,7 +132,8 @@ public class PipeInclusionOptions {
                     "auth.role.drop", "auth.role.revoke", "auth.user.drop", "auth.user.revoke"))));
   }
 
-  public static boolean hasAtLeastOneOption(String inclusionString, String exclusionString) {
+  public static boolean hasAtLeastOneOption(
+      final String inclusionString, final String exclusionString) {
     try {
       final Set<PartialPath> inclusion = parseOptions(inclusionString);
       final Set<PartialPath> exclusion = parseOptions(exclusionString);
@@ -138,7 +152,7 @@ public class PipeInclusionOptions {
                       .filter(path -> path.overlapWithFullPathPrefix(option))
                       .collect(Collectors.toSet())));
       return !options.isEmpty();
-    } catch (IllegalPathException e) {
+    } catch (final IllegalPathException e) {
       LOGGER.warn(
           "Illegal options (inclusion: {}, exclusion: {}) parsed "
               + "when checking if at least one option is present: {}",
@@ -150,12 +164,12 @@ public class PipeInclusionOptions {
     }
   }
 
-  public static boolean optionsAreAllLegal(String options) {
+  public static boolean optionsAreAllLegal(final String options) {
     try {
       return parseOptions(options).stream()
           .allMatch(
               prefix -> OPTIONS.stream().anyMatch(path -> path.overlapWithFullPathPrefix(prefix)));
-    } catch (IllegalPathException e) {
+    } catch (final IllegalPathException e) {
       LOGGER.warn(
           "Illegal options {} parsed when checking if all options are legal: {}",
           options,
@@ -165,7 +179,20 @@ public class PipeInclusionOptions {
     }
   }
 
-  public static Set<PartialPath> parseOptions(String optionsString) throws IllegalPathException {
+  public static String getInclusionString(final PipeParameters parameters) {
+    return parameters.getStringOrDefault(
+        Arrays.asList(EXTRACTOR_INCLUSION_KEY, SOURCE_INCLUSION_KEY),
+        EXTRACTOR_INCLUSION_DEFAULT_VALUE);
+  }
+
+  public static String getExclusionString(final PipeParameters parameters) {
+    return parameters.getStringOrDefault(
+        Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
+        EXTRACTOR_EXCLUSION_DEFAULT_VALUE);
+  }
+
+  public static Set<PartialPath> parseOptions(final String optionsString)
+      throws IllegalPathException {
     if (optionsString.isEmpty()) {
       return Collections.emptySet();
     }
@@ -180,7 +207,7 @@ public class PipeInclusionOptions {
                 inclusion -> {
                   try {
                     return new PartialPath(inclusion);
-                  } catch (IllegalPathException e) {
+                  } catch (final IllegalPathException e) {
                     exception.set(e);
                     return new PartialPath();
                   }

@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
@@ -198,8 +199,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       final List<List<SchemaFilter>> idDeterminedPredicateList) {
     final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
     if (Objects.isNull(table)) {
-      throw new SchemaExecutionException(
-          String.format("Table '%s.%s' does not exist.", database, tableName));
+      TableMetadataImpl.throwTableNotExistsException(database, tableName);
     }
     return DeviceFilterUtil.convertToDevicePattern(
         !TreeViewSchema.isTreeViewTable(table)

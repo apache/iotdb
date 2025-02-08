@@ -90,7 +90,7 @@ public class PipeRowCollector implements RowCollector {
         tablet.addValue(measurementSchemaArray[i].getMeasurementName(), rowIndex, value);
       }
       if (row.isNull(i)) {
-        tablet.bitMaps[i].mark(rowIndex);
+        tablet.getBitMaps()[i].mark(rowIndex);
       }
     }
 

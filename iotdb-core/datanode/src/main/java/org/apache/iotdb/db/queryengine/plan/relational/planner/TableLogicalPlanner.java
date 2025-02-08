@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
@@ -173,7 +174,19 @@ public class TableLogicalPlanner {
     return new LogicalQueryPlan(queryContext, planNode);
   }
 
-  private PlanNode planStatement(final Analysis analysis, final Statement statement) {
+  private PlanNode planStatement(final Analysis analysis, Statement statement) {
+    // Schema statements are handled here
+    if (statement instanceof PipeEnriched) {
+      statement = ((PipeEnriched) statement).getInnerStatement();
+      if (statement instanceof CreateOrUpdateDevice) {
+        return new PipeEnrichedWritePlanNode(
+            (WritePlanNode) planCreateOrUpdateDevice((CreateOrUpdateDevice) statement, analysis));
+      }
+      if (statement instanceof Update) {
+        return new PipeEnrichedWritePlanNode(
+            (WritePlanNode) planUpdate((Update) statement, analysis));
+      }
+    }
     if (statement instanceof CreateOrUpdateDevice) {
       return planCreateOrUpdateDevice((CreateOrUpdateDevice) statement, analysis);
     }

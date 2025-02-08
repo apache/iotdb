@@ -52,10 +52,11 @@ public class ShowPipeTask implements IConfigTask {
     this.showPipesStatement = showPipesStatement;
   }
 
-  public ShowPipeTask(ShowPipes node) {
+  public ShowPipeTask(final ShowPipes node) {
     showPipesStatement = new ShowPipesStatement();
     showPipesStatement.setPipeName(node.getPipeName());
     showPipesStatement.setWhereClause(node.hasWhereClause());
+    showPipesStatement.setTableModel(true);
   }
 
   @Override

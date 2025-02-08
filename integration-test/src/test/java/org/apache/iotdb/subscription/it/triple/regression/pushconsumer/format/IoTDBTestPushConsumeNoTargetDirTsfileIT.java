@@ -25,7 +25,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
@@ -69,7 +69,7 @@ public class IoTDBTestPushConsumeNoTargetDirTsfileIT extends AbstractSubscriptio
   private static final String topicName = "topic_TestPushConsumeNoTargetDirTsfile";
   private static List<IMeasurementSchema> schemaList = new ArrayList<>();
   private static final String pattern = database + ".**";
-  private static SubscriptionPushConsumer consumer;
+  private static SubscriptionTreePushConsumer consumer;
 
   @Override
   @Before
@@ -128,7 +128,7 @@ public class IoTDBTestPushConsumeNoTargetDirTsfileIT extends AbstractSubscriptio
     final AtomicInteger onReceiveCount = new AtomicInteger(0);
     final AtomicInteger rowCount = new AtomicInteger(0);
     consumer =
-        new SubscriptionPushConsumer.Builder()
+        new SubscriptionTreePushConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .ackStrategy(AckStrategy.BEFORE_CONSUME)

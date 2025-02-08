@@ -23,6 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.table.ColumnNotExistsException;
+import org.apache.iotdb.commons.exception.table.TableAlreadyExistsException;
+import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
@@ -43,9 +46,6 @@ import org.apache.iotdb.db.exception.metadata.DatabaseConflictException;
 import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.table.ColumnNotExistsException;
-import org.apache.iotdb.db.exception.metadata.table.TableAlreadyExistsException;
-import org.apache.iotdb.db.exception.metadata.table.TableNotExistsException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.DatabaseCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MNodeAboveDBCollector;
@@ -755,6 +755,22 @@ public class ConfigMTree {
     return result;
   }
 
+  public Map<String, List<Pair<TsTable, TableNodeStatus>>> getAllTables() {
+    return getAllDatabasePaths(true).stream()
+        .collect(
+            Collectors.toMap(
+                databasePath -> PathUtils.unQualifyDatabaseName(databasePath.getFullPath()),
+                databasePath -> {
+                  try {
+                    return getAllTablesUnderSpecificDatabase(databasePath);
+                  } catch (final MetadataException ignore) {
+                    // Database path must exist because the "getAllDatabasePaths()" is called in
+                    // databaseReadWriteLock.readLock().
+                  }
+                  return Collections.emptyList();
+                }));
+  }
+
   public Map<String, List<TsTable>> getAllUsingTables() {
     return getAllDatabasePaths().stream()
         .collect(
@@ -851,7 +867,7 @@ public class ConfigMTree {
     }
     if (columnSchema.getColumnCategory() == TsTableColumnCategory.TAG
         || columnSchema.getColumnCategory() == TsTableColumnCategory.TIME) {
-      throw new SemanticException("Dropping id or time column is not supported.");
+      throw new SemanticException("Dropping tag or time column is not supported.");
     }
 
     node.addPreDeletedColumn(columnName);
@@ -972,7 +988,7 @@ public class ConfigMTree {
 
     String name;
     int childNum;
-    Stack<Pair<IConfigMNode, Boolean>> stack = new Stack<>();
+    final Stack<Pair<IConfigMNode, Boolean>> stack = new Stack<>();
     IConfigMNode databaseMNode;
     IConfigMNode internalMNode;
     IConfigMNode tableNode;
@@ -1053,7 +1069,8 @@ public class ConfigMTree {
     return databaseMNode.getAsMNode();
   }
 
-  private IConfigMNode deserializeTableMNode(final InputStream inputStream) throws IOException {
+  public static ConfigTableNode deserializeTableMNode(final InputStream inputStream)
+      throws IOException {
     final ConfigTableNode tableNode =
         new ConfigTableNode(null, ReadWriteIOUtils.readString(inputStream));
     tableNode.setTable(TsTable.deserialize(inputStream));

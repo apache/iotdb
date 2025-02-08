@@ -52,6 +52,8 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.pipe.api.annotation.TableModel;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -77,6 +79,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 
 // TODO: Optimize the network and disk io for TsFile onComplete
 // TODO: support Tablet Batch
+@TreeModel
+@TableModel
 public class PipeConsensusAsyncConnector extends IoTDBConnector implements ConsensusPipeConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusAsyncConnector.class);
   private static final String ENQUEUE_EXCEPTION_MSG =

@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
-import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +36,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 public class SchemaRegionSnapshotParser {
 
@@ -71,8 +71,7 @@ public class SchemaRegionSnapshotParser {
   // In schema snapshot path: datanode/consensus/schema_region/47474747-4747-4747-4747-000200000000
   // this func will get schema region id = 47474747-4747-4747-4747-000200000000's latest snapshot.
   // In one schema region, there is only one snapshot unit.
-  public static Pair<Path, Path> getSnapshotPaths(
-      final String schemaRegionId, final boolean isTmp) {
+  public static List<Path> getSnapshotPaths(final String schemaRegionId, final boolean isTmp) {
     final String snapshotPath = CONFIG.getSchemaRegionConsensusDir();
     final File snapshotDir =
         new File(snapshotPath + File.separator + schemaRegionId + File.separator + "sm");
@@ -98,16 +97,24 @@ public class SchemaRegionSnapshotParser {
       final File tagSnapshot =
           SystemFileFactory.INSTANCE.getFile(
               latestSnapshotPath + File.separator + SchemaConstant.TAG_LOG_SNAPSHOT);
+      final File attributeSnapshot =
+          SystemFileFactory.INSTANCE.getFile(
+              latestSnapshotPath + File.separator + SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT);
       if (mTreeSnapshot.exists()) {
-        return new Pair<>(
-            mTreeSnapshot.toPath(), tagSnapshot.exists() ? tagSnapshot.toPath() : null);
+        return Arrays.asList(
+            mTreeSnapshot.toPath(),
+            tagSnapshot.exists() ? tagSnapshot.toPath() : null,
+            attributeSnapshot.exists() ? attributeSnapshot.toPath() : null);
       }
     }
     return null;
   }
 
   public static SRStatementGenerator translate2Statements(
-      final Path mtreePath, final Path tagFilePath, final PartialPath databasePath)
+      final Path mtreePath,
+      final Path tagFilePath,
+      final Path attributePath,
+      final PartialPath databasePath)
       throws IOException {
     if (mtreePath == null) {
       return null;
@@ -115,6 +122,10 @@ public class SchemaRegionSnapshotParser {
     final File mtreefile = mtreePath.toFile();
     final File tagfile =
         tagFilePath != null && tagFilePath.toFile().exists() ? tagFilePath.toFile() : null;
+    final File attributeFile =
+        Objects.nonNull(attributePath) && attributePath.toFile().exists()
+            ? attributePath.toFile()
+            : null;
 
     if (!mtreefile.exists()) {
       return null;
@@ -132,6 +143,13 @@ public class SchemaRegionSnapshotParser {
               " %s is not allowed, only support %s",
               tagfile.getName(), SchemaConstant.TAG_LOG_SNAPSHOT));
     }
-    return new SRStatementGenerator(mtreefile, tagfile, databasePath);
+    if (attributeFile != null
+        && !attributeFile.getName().equals(SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT)) {
+      throw new IllegalArgumentException(
+          String.format(
+              " %s is not allowed, only support %s",
+              attributeFile.getName(), SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT));
+    }
+    return new SRStatementGenerator(mtreefile, tagfile, attributeFile, databasePath);
   }
 }

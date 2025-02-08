@@ -19,38 +19,40 @@
 
 package org.apache.iotdb.udf.api.relational;
 
-import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
-import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
+import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
+import org.apache.iotdb.udf.api.exception.UDFArgumentNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.access.Record;
 
 public interface ScalarFunction extends SQLFunction {
-
   /**
-   * This method is used to validate {@linkplain FunctionParameters}.
-   *
-   * @param parameters parameters used to validate
-   * @throws UDFException if any parameter is not valid
-   */
-  void validate(FunctionParameters parameters) throws UDFException;
-
-  /**
-   * This method is mainly used to initialize {@linkplain ScalarFunction} and set the output data
-   * type. In this method, the user need to do the following things:
+   * In this method, the user need to do the following things:
    *
    * <ul>
-   *   <li>Use {@linkplain FunctionParameters} to get input data types and infer output data type.
-   *   <li>Use {@linkplain FunctionParameters} to get necessary attributes.
-   *   <li>Set the output data type in {@linkplain ScalarFunctionConfig}.
+   *   <li>Validate {@linkplain FunctionArguments}. Throw {@link UDFArgumentNotValidException} if
+   *       any parameter is not valid.
+   *   <li>Use {@linkplain FunctionArguments} to get input data types and infer output data type.
+   *   <li>Construct and return a {@linkplain ScalarFunctionAnalysis} object.
    * </ul>
    *
-   * <p>This method is called after the ScalarFunction is instantiated and before the beginning of
-   * the transformation process.
-   *
-   * @param parameters used to parse the input parameters entered by the user
-   * @param configurations used to set the required properties in the ScalarFunction
+   * @param arguments arguments used to validate
+   * @throws UDFArgumentNotValidException if any parameter is not valid
+   * @return the analysis result of the scalar function
    */
-  void beforeStart(FunctionParameters parameters, ScalarFunctionConfig configurations);
+  ScalarFunctionAnalysis analyze(FunctionArguments arguments) throws UDFArgumentNotValidException;
+
+  /**
+   * This method is called after the ScalarFunction is instantiated and before the beginning of the
+   * transformation process. This method is mainly used to initialize the resources used in
+   * ScalarFunction.
+   *
+   * @param arguments used to parse the input arguments entered by the user
+   * @throws UDFException the user can throw errors if necessary
+   */
+  default void beforeStart(FunctionArguments arguments) throws UDFException {
+    // do nothing
+  }
 
   /**
    * This method will be called to process the transformation. In a single UDF query, this method
@@ -58,11 +60,10 @@ public interface ScalarFunction extends SQLFunction {
    *
    * @param input original input data row
    * @throws UDFException the user can throw errors if necessary
-   * @throws UnsupportedOperationException if the user does not override this method
    */
   Object evaluate(Record input) throws UDFException;
 
-  /** This method is mainly used to release the resources used in the SQLFunction. */
+  /** This method is mainly used to release the resources used in the ScalarFunction. */
   default void beforeDestroy() {
     // do nothing
   }

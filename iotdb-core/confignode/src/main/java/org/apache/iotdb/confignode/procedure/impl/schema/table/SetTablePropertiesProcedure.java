@@ -57,16 +57,17 @@ public class SetTablePropertiesProcedure
   private Map<String, String> originalProperties = new HashMap<>();
   private Map<String, String> updatedProperties;
 
-  public SetTablePropertiesProcedure() {
-    super();
+  public SetTablePropertiesProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
   public SetTablePropertiesProcedure(
       final String database,
       final String tableName,
       final String queryId,
-      final Map<String, String> properties) {
-    super(database, tableName, queryId);
+      final Map<String, String> properties,
+      final boolean isGeneratedByPipe) {
+    super(database, tableName, queryId, isGeneratedByPipe);
     this.updatedProperties = properties;
   }
 
@@ -216,7 +217,10 @@ public class SetTablePropertiesProcedure
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode()
+            : ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
     ReadWriteIOUtils.write(originalProperties, stream);

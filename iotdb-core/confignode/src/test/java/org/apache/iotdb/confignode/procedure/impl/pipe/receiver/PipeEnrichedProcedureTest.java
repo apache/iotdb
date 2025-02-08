@@ -23,11 +23,15 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.ConstantViewOperand;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
@@ -37,10 +41,18 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedu
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTTLProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DeleteDevicesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.DropTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -307,7 +319,7 @@ public class PipeEnrichedProcedureTest {
 
     AuthOperationProcedure p1 =
         new AuthOperationProcedure(
-            new AuthorPlan(
+            new AuthorTreePlan(
                 ConfigPhysicalPlanType.DropRole,
                 "",
                 "test",
@@ -361,5 +373,187 @@ public class PipeEnrichedProcedureTest {
     assertEquals(proc, proc2);
     buffer.clear();
     byteArrayOutputStream.reset();
+  }
+
+  @Test
+  public void createTableTest() throws IOException {
+    final TsTable table = new TsTable("table1");
+    table.addColumnSchema(new TagColumnSchema("Id", TSDataType.STRING));
+    table.addColumnSchema(new AttributeColumnSchema("Attr", TSDataType.STRING));
+    table.addColumnSchema(
+        new FieldColumnSchema(
+            "Measurement", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY));
+    final CreateTableProcedure createTableProcedure =
+        new CreateTableProcedure("database1", table, true);
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    createTableProcedure.serialize(dataOutputStream);
+
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+
+    Assert.assertEquals(
+        ProcedureType.PIPE_ENRICHED_CREATE_TABLE_PROCEDURE.getTypeCode(), byteBuffer.getShort());
+
+    final CreateTableProcedure deserializedProcedure = new CreateTableProcedure(true);
+    deserializedProcedure.deserialize(byteBuffer);
+
+    Assert.assertEquals(createTableProcedure.getDatabase(), deserializedProcedure.getDatabase());
+    Assert.assertEquals(
+        createTableProcedure.getTable().getTableName(),
+        deserializedProcedure.getTable().getTableName());
+    Assert.assertEquals(
+        createTableProcedure.getTable().getColumnNum(),
+        deserializedProcedure.getTable().getColumnNum());
+    Assert.assertEquals(
+        createTableProcedure.getTable().getIdNums(), deserializedProcedure.getTable().getIdNums());
+  }
+
+  @Test
+  public void addTableColumnTest() throws IOException {
+    final AddTableColumnProcedure addTableColumnProcedure =
+        new AddTableColumnProcedure(
+            "database1",
+            "table1",
+            "0",
+            Collections.singletonList(new TagColumnSchema("Id", TSDataType.STRING)),
+            true);
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    addTableColumnProcedure.serialize(dataOutputStream);
+
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+
+    Assert.assertEquals(
+        ProcedureType.PIPE_ENRICHED_ADD_TABLE_COLUMN_PROCEDURE.getTypeCode(),
+        byteBuffer.getShort());
+
+    final AddTableColumnProcedure deserializedProcedure = new AddTableColumnProcedure(true);
+    deserializedProcedure.deserialize(byteBuffer);
+
+    Assert.assertEquals(addTableColumnProcedure.getDatabase(), deserializedProcedure.getDatabase());
+    Assert.assertEquals(
+        addTableColumnProcedure.getTableName(), deserializedProcedure.getTableName());
+  }
+
+  @Test
+  public void setTablePropertiesTest() throws IOException {
+    final SetTablePropertiesProcedure setTablePropertiesProcedure =
+        new SetTablePropertiesProcedure(
+            "database1",
+            "table1",
+            "0",
+            new HashMap<String, String>() {
+              {
+                put("prop1", "value1");
+                put("ttl", null);
+              }
+            },
+            true);
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    setTablePropertiesProcedure.serialize(dataOutputStream);
+
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+
+    Assert.assertEquals(
+        ProcedureType.PIPE_ENRICHED_SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode(),
+        byteBuffer.getShort());
+
+    final SetTablePropertiesProcedure deserializedProcedure = new SetTablePropertiesProcedure(true);
+    deserializedProcedure.deserialize(byteBuffer);
+
+    Assert.assertEquals(setTablePropertiesProcedure, deserializedProcedure);
+  }
+
+  @Test
+  public void renameTableColumnTest() throws IOException {
+    final RenameTableColumnProcedure renameTableColumnProcedure =
+        new RenameTableColumnProcedure("database1", "table1", "0", "oldName", "newName", true);
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    renameTableColumnProcedure.serialize(dataOutputStream);
+
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+
+    Assert.assertEquals(
+        ProcedureType.PIPE_ENRICHED_RENAME_TABLE_COLUMN_PROCEDURE.getTypeCode(),
+        byteBuffer.getShort());
+
+    final RenameTableColumnProcedure deserializedProcedure = new RenameTableColumnProcedure(true);
+    deserializedProcedure.deserialize(byteBuffer);
+
+    Assert.assertEquals(renameTableColumnProcedure, deserializedProcedure);
+  }
+
+  @Test
+  public void dropTableTest() throws IOException {
+    final DropTableProcedure dropTableProcedure =
+        new DropTableProcedure("database1", "table1", "0", true);
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    dropTableProcedure.serialize(dataOutputStream);
+
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+
+    Assert.assertEquals(
+        ProcedureType.PIPE_ENRICHED_DROP_TABLE_PROCEDURE.getTypeCode(), byteBuffer.getShort());
+
+    final DropTableProcedure deserializedProcedure = new DropTableProcedure(true);
+    deserializedProcedure.deserialize(byteBuffer);
+
+    Assert.assertEquals(dropTableProcedure, deserializedProcedure);
+  }
+
+  @Test
+  public void dropTableColumnTest() throws IOException {
+    final DropTableColumnProcedure dropTableColumnProcedure =
+        new DropTableColumnProcedure("database1", "table1", "0", "columnName", true);
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    dropTableColumnProcedure.serialize(dataOutputStream);
+
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+
+    Assert.assertEquals(
+        ProcedureType.PIPE_ENRICHED_DROP_TABLE_COLUMN_PROCEDURE.getTypeCode(),
+        byteBuffer.getShort());
+
+    final DropTableColumnProcedure deserializedProcedure = new DropTableColumnProcedure(true);
+    deserializedProcedure.deserialize(byteBuffer);
+
+    Assert.assertEquals(dropTableColumnProcedure, deserializedProcedure);
+  }
+
+  @Test
+  public void deleteDevicesProcedureTest() throws IOException {
+    final DeleteDevicesProcedure deleteDevicesProcedure =
+        new DeleteDevicesProcedure(
+            "database1",
+            "table1",
+            "0",
+            new byte[] {0, 1, 2},
+            new byte[] {0, 1, 2},
+            new byte[] {0, 1, 2},
+            true);
+
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    deleteDevicesProcedure.serialize(dataOutputStream);
+
+    final ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+
+    Assert.assertEquals(
+        ProcedureType.PIPE_ENRICHED_DELETE_DEVICES_PROCEDURE.getTypeCode(), byteBuffer.getShort());
+
+    final DeleteDevicesProcedure deserializedProcedure = new DeleteDevicesProcedure(true);
+    deserializedProcedure.deserialize(byteBuffer);
+
+    Assert.assertEquals(deleteDevicesProcedure, deserializedProcedure);
   }
 }

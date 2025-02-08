@@ -42,6 +42,7 @@ import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.BatchActivateTemplateNode;
@@ -147,9 +148,14 @@ public class RegionWriteExecutor {
   @SuppressWarnings("squid:S1181")
   public RegionExecutionResult execute(ConsensusGroupId groupId, PlanNode planNode) {
     try {
-      WritePlanNodeExecutionContext context =
-          new WritePlanNodeExecutionContext(groupId, regionManager.getRegionLock(groupId));
-      return planNode.accept(executionVisitor, context);
+      ReentrantReadWriteLock lock = regionManager.getRegionLock(groupId);
+      if (lock == null) {
+        return RegionExecutionResult.create(
+            false,
+            "Failed to get the lock of the region because the region is not existed.",
+            RpcUtils.getStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP));
+      }
+      return planNode.accept(executionVisitor, new WritePlanNodeExecutionContext(groupId, lock));
     } catch (Throwable e) {
       LOGGER.warn(e.getMessage(), e);
       return RegionExecutionResult.create(
@@ -706,10 +712,10 @@ public class RegionWriteExecutor {
      * @return null if the quota is not exceeded, otherwise return the execution result.
      */
     private RegionExecutionResult checkQuotaBeforeCreatingTimeSeries(
-        ISchemaRegion schemaRegion, PartialPath path, int size) {
+        final ISchemaRegion schemaRegion, final PartialPath path, final int size) {
       try {
         schemaRegion.checkSchemaQuota(path, size);
-      } catch (SchemaQuotaExceededException e) {
+      } catch (final SchemaQuotaExceededException e) {
         return RegionExecutionResult.create(
             false, e.getMessage(), RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
@@ -770,7 +776,7 @@ public class RegionWriteExecutor {
 
     @Override
     public RegionExecutionResult visitAlterTimeSeries(
-        AlterTimeSeriesNode node, WritePlanNodeExecutionContext context) {
+        final AlterTimeSeriesNode node, final WritePlanNodeExecutionContext context) {
       return executeAlterTimeSeries(node, context, false);
     }
 
@@ -928,7 +934,7 @@ public class RegionWriteExecutor {
 
     @Override
     public RegionExecutionResult visitCreateLogicalView(
-        CreateLogicalViewNode node, WritePlanNodeExecutionContext context) {
+        final CreateLogicalViewNode node, final WritePlanNodeExecutionContext context) {
       return executeCreateLogicalView(node, context, false);
     }
 
@@ -936,29 +942,30 @@ public class RegionWriteExecutor {
         final CreateLogicalViewNode node,
         final WritePlanNodeExecutionContext context,
         final boolean receivedFromPipe) {
-      ISchemaRegion schemaRegion =
+      final ISchemaRegion schemaRegion =
           schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
       if (CONFIG.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
           // step 1. make sure all target paths do NOT exist.
-          List<PartialPath> targetPaths = node.getViewPathList();
-          List<MetadataException> failingMetadataException = new ArrayList<>();
-          for (PartialPath thisPath : targetPaths) {
+          final List<PartialPath> targetPaths = node.getViewPathList();
+          final List<MetadataException> failingMetadataException = new ArrayList<>();
+          for (final PartialPath thisPath : targetPaths) {
             // no alias list for a view, so the third parameter is null
-            Map<Integer, MetadataException> failingMeasurementMap =
+            final Map<Integer, MetadataException> failingMeasurementMap =
                 schemaRegion.checkMeasurementExistence(
                     thisPath.getDevicePath(),
                     Collections.singletonList(thisPath.getMeasurement()),
                     null);
             // merge all exceptions into one map
-            for (Map.Entry<Integer, MetadataException> entry : failingMeasurementMap.entrySet()) {
+            for (final Map.Entry<Integer, MetadataException> entry :
+                failingMeasurementMap.entrySet()) {
               failingMetadataException.add(entry.getValue());
             }
           }
           // if there are some exceptions, handle each exception and return first of them.
           if (!failingMetadataException.isEmpty()) {
-            MetadataException metadataException = failingMetadataException.get(0);
+            final MetadataException metadataException = failingMetadataException.get(0);
             LOGGER.warn(METADATA_ERROR_MSG, metadataException);
             return RegionExecutionResult.create(
                 false,
@@ -1006,7 +1013,7 @@ public class RegionWriteExecutor {
 
     @Override
     public RegionExecutionResult visitPipeEnrichedWritePlanNode(
-        PipeEnrichedWritePlanNode node, WritePlanNodeExecutionContext context) {
+        final PipeEnrichedWritePlanNode node, final WritePlanNodeExecutionContext context) {
       return node.getWritePlanNode().accept(pipeExecutionVisitor, context);
     }
   }
@@ -1016,73 +1023,74 @@ public class RegionWriteExecutor {
 
     WritePlanNodeExecutionVisitor visitor;
 
-    private PipeEnrichedWriteSchemaNodeExecutionVisitor(WritePlanNodeExecutionVisitor visitor) {
+    private PipeEnrichedWriteSchemaNodeExecutionVisitor(
+        final WritePlanNodeExecutionVisitor visitor) {
       this.visitor = visitor;
     }
 
     @Override
-    public RegionExecutionResult visitPlan(PlanNode node, WritePlanNodeExecutionContext context) {
-      throw new UnsupportedOperationException(
-          "PipeEnrichedWriteSchemaNodeExecutionVisitor does not support visiting general plan.");
+    public RegionExecutionResult visitPlan(
+        final PlanNode node, final WritePlanNodeExecutionContext context) {
+      return visitor.visitPlan(new PipeEnrichedWritePlanNode((WritePlanNode) node), context);
     }
 
     @Override
     public RegionExecutionResult visitCreateTimeSeries(
-        CreateTimeSeriesNode node, WritePlanNodeExecutionContext context) {
+        final CreateTimeSeriesNode node, final WritePlanNodeExecutionContext context) {
       return visitor.executeCreateTimeSeries(node, context, true);
     }
 
     @Override
     public RegionExecutionResult visitCreateAlignedTimeSeries(
-        CreateAlignedTimeSeriesNode node, WritePlanNodeExecutionContext context) {
+        final CreateAlignedTimeSeriesNode node, final WritePlanNodeExecutionContext context) {
       return visitor.executeCreateAlignedTimeSeries(node, context, true);
     }
 
     @Override
     public RegionExecutionResult visitCreateMultiTimeSeries(
-        CreateMultiTimeSeriesNode node, WritePlanNodeExecutionContext context) {
+        final CreateMultiTimeSeriesNode node, final WritePlanNodeExecutionContext context) {
       return visitor.executeCreateMultiTimeSeries(node, context, true);
     }
 
     @Override
     public RegionExecutionResult visitInternalCreateTimeSeries(
-        InternalCreateTimeSeriesNode node, WritePlanNodeExecutionContext context) {
+        final InternalCreateTimeSeriesNode node, final WritePlanNodeExecutionContext context) {
       return visitor.executeInternalCreateTimeSeries(node, context, true);
     }
 
     @Override
     public RegionExecutionResult visitInternalCreateMultiTimeSeries(
-        InternalCreateMultiTimeSeriesNode node, WritePlanNodeExecutionContext context) {
+        final InternalCreateMultiTimeSeriesNode node, final WritePlanNodeExecutionContext context) {
       return visitor.executeInternalCreateMultiTimeSeries(node, context, true);
     }
 
     @Override
     public RegionExecutionResult visitAlterTimeSeries(
-        AlterTimeSeriesNode node, WritePlanNodeExecutionContext context) {
+        final AlterTimeSeriesNode node, final WritePlanNodeExecutionContext context) {
       return visitor.executeAlterTimeSeries(node, context, true);
     }
 
     @Override
     public RegionExecutionResult visitActivateTemplate(
-        ActivateTemplateNode node, WritePlanNodeExecutionContext context) {
+        final ActivateTemplateNode node, final WritePlanNodeExecutionContext context) {
       return visitor.executeActivateTemplate(node, context, true);
     }
 
     @Override
     public RegionExecutionResult visitBatchActivateTemplate(
-        BatchActivateTemplateNode node, WritePlanNodeExecutionContext context) {
+        final BatchActivateTemplateNode node, final WritePlanNodeExecutionContext context) {
       return visitor.executeBatchActivateTemplate(node, context, true);
     }
 
     @Override
     public RegionExecutionResult visitInternalBatchActivateTemplate(
-        InternalBatchActivateTemplateNode node, WritePlanNodeExecutionContext context) {
+        final InternalBatchActivateTemplateNode node, final WritePlanNodeExecutionContext context) {
       return visitor.executeInternalBatchActivateTemplate(node, context, true);
     }
 
     @Override
     public RegionExecutionResult visitCreateLogicalView(
-        CreateLogicalViewNode node, WritePlanNodeExecutionContext context) {
+        final CreateLogicalViewNode node, final WritePlanNodeExecutionContext context) {
       return visitor.executeCreateLogicalView(node, context, true);
     }
 

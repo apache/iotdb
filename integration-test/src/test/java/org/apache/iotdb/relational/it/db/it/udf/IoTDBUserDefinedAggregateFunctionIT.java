@@ -119,6 +119,8 @@ public class IoTDBUserDefinedAggregateFunctionIT {
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
+    SQLFunctionUtils.createUDF(
+        "my_count", "org.apache.iotdb.db.query.udf.example.relational.MyCount");
   }
 
   @AfterClass
@@ -145,8 +147,6 @@ public class IoTDBUserDefinedAggregateFunctionIT {
 
   @Test
   public void testMyCount() {
-    SQLFunctionUtils.createUDF(
-        "my_count", "org.apache.iotdb.db.query.udf.example.relational.MyCount");
     String[] expectedHeader = new String[] {"_col0"};
     String[] retArray =
         new String[] {
@@ -683,6 +683,55 @@ public class IoTDBUserDefinedAggregateFunctionIT {
         DATABASE_NAME);
     tableResultSetEqualTest(
         "select device_id, first_two_sum(s1, s2, s9) as sum from table1 group by device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDistinct() {
+    String[] expectedHeader =
+        new String[] {
+          "_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
+          "_col10", "_col11", "_col12", "_col13"
+        };
+    String[] retArray =
+        new String[] {
+          "2,2,4,16,5,5,5,5,2,24,32,5,10,1,",
+        };
+    // global Aggregation
+    tableResultSetEqualTest(
+        "select my_count(distinct province), my_count(distinct city), my_count(distinct region), my_count(distinct device_id), my_count(distinct s1), my_count(distinct s2), my_count(distinct s3), my_count(distinct s4), my_count(distinct s5), my_count(distinct s6), my_count(distinct s7), my_count(distinct s8), my_count(distinct s9), my_count(distinct s10) from table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "province",
+          "city",
+          "region",
+          "_col3",
+          "_col4",
+          "_col5",
+          "_col6",
+          "_col7",
+          "_col8",
+          "_col9",
+          "_col10",
+          "_col11",
+          "_col12"
+        };
+    retArray =
+        new String[] {
+          "beijing,beijing,chaoyang,5,5,5,5,2,6,8,5,10,1,",
+          "beijing,beijing,haidian,5,5,5,5,2,6,8,5,10,1,",
+          "shanghai,shanghai,huangpu,5,5,5,5,2,6,8,5,10,1,",
+          "shanghai,shanghai,pudong,5,5,5,5,2,6,8,5,10,1,"
+        };
+    // group by Aggregation
+    tableResultSetEqualTest(
+        "select province,city,region, my_count(distinct s1), my_count(distinct s2), my_count(distinct s3), my_count(distinct s4), my_count(distinct s5), my_count(distinct s6), my_count(distinct s7), my_count(distinct s8), my_count(distinct s9), my_count(distinct s10) from table1 group by 1,2,3 order by 1,2,3",
         expectedHeader,
         retArray,
         DATABASE_NAME);

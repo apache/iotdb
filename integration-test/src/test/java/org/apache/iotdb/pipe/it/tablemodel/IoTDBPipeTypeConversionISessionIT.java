@@ -56,12 +56,13 @@ import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2TableModel.class})
 public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTestIT {
-  private static final int generateDataSize = 100;
+  private static final int generateDataSize = 1000;
 
   @Test
   public void insertTablet() {
@@ -90,8 +91,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
       param.append(schema.getMeasurementName());
       param.append(',');
     }
-    sql = sql + param.substring(0, param.length() - 1);
-    sql = sql + " from " + tableName + " ORDER BY time ASC";
+
+    sql = sql + param + "time from " + tableName + " ORDER BY time ASC";
     session.executeNonQueryStatement("use test");
     return session.executeQueryStatement(sql);
   }
@@ -106,7 +107,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
     createDatabaseAndTable(measurementSchemas, false, tablet.getColumnTypes(), receiverEnv);
     try (ITableSession senderSession = senderEnv.getTableSessionConnection();
         ITableSession receiverSession = receiverEnv.getTableSessionConnection()) {
-
+      senderSession.executeNonQueryStatement("use test");
+      receiverSession.executeNonQueryStatement("use test");
       if (isTsFile) {
         // Send TsFile data to receiver
         executeDataWriteOperation.accept(senderSession, receiverSession, tablet);
@@ -121,7 +123,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
       }
 
       // Verify receiver data
-      long timeoutSeconds = 30;
+      long timeoutSeconds = 600;
       List<List<Object>> expectedValues =
           generateTabletResultSetForTable(tablet, measurementSchemas);
       await()
@@ -135,15 +137,15 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
                   validateResultSet(
                       query(receiverSession, tablet.getSchemas(), tablet.getTableName()),
                       expectedValues,
-                      tablet.timestamps);
+                      tablet.getTimestamps());
                 } catch (Exception e) {
                   fail(e.getMessage());
                 }
               });
-      tablet.reset();
     } catch (Exception e) {
       fail(e.getMessage());
     }
+    tablet.reset();
   }
 
   private void createDatabaseAndTable(
@@ -174,16 +176,15 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
     String sql =
         String.format(
             "create pipe test"
-                + " with source ('source'='iotdb-source','realtime.mode'='%s','realtime.enable'='%s','history.enable'='%s')"
+                + " with source ('source'='iotdb-source','realtime.mode'='%s')"
                 + " with processor ('processor'='do-nothing-processor')"
                 + " with sink ('node-urls'='%s:%s','batch.enable'='false','sink.format'='%s')",
             isTSFile ? "file" : "forced-log",
-            !isTSFile,
-            isTSFile,
             receiverEnv.getIP(),
             receiverEnv.getPort(),
             isTSFile ? "tsfile" : "tablet");
-    TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList(sql));
+    TestUtils.tryExecuteNonQueriesWithRetry(
+        null, BaseEnv.TABLE_SQL_DIALECT, senderEnv, Collections.singletonList(sql));
   }
 
   private void validateResultSet(
@@ -193,11 +194,13 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
       List<Field> fields = record.getFields();
-
-      assertEquals(record.getTimestamp(), timestamps[index]);
       List<Object> rowValues = values.get(index++);
       for (int i = 0; i < fields.size(); i++) {
         Field field = fields.get(i);
+        if (field.getDataType() == null) {
+          assertNull(rowValues.get(i));
+          continue;
+        }
         switch (field.getDataType()) {
           case INT64:
           case TIMESTAMP:
@@ -207,11 +210,9 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
             assertEquals(field.getDateV(), rowValues.get(i));
             break;
           case BLOB:
-            assertEquals(field.getBinaryV(), rowValues.get(i));
-            break;
           case TEXT:
           case STRING:
-            assertEquals(field.getStringValue(), rowValues.get(i));
+            assertEquals(field.getBinaryV(), rowValues.get(i));
             break;
           case INT32:
             assertEquals(field.getIntV(), (int) rowValues.get(i));
@@ -283,13 +284,11 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
     }
   }
 
-  private long[] createTestDataForTimestamp() {
+  private void createTestDataForTimeColumn(Tablet tablet) {
     long time = new Date().getTime();
-    long[] data = new long[generateDataSize];
-    for (int i = 0; i < data.length; i++) {
-      data[i] = time++;
+    for (int i = 0; i < generateDataSize; i++) {
+      tablet.addTimestamp(i, time++);
     }
-    return data;
   }
 
   private void createTestDataForDate(Tablet tablet, int j) {
@@ -336,7 +335,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
       final Tablet tablet, List<Pair<MeasurementSchema, MeasurementSchema>> pairs) {
     List<List<Object>> insertRecords = new ArrayList<>(tablet.getRowSize());
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
-    final Object[] values = tablet.values;
+    final Object[] values = tablet.getValues();
     for (int i = 0; i < tablet.getRowSize(); i++) {
       List<Object> insertRecord = new ArrayList<>();
       for (int j = 0; j < schemas.size(); j++) {
@@ -346,19 +345,35 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
         switch (sourceType) {
           case INT64:
           case TIMESTAMP:
-            value = ValueConverter.convert(sourceType, targetType, ((long[]) values[j])[i]);
+            value =
+                ValueConverter.convert(
+                    sourceType,
+                    targetType,
+                    tablet.getBitMaps()[j].isMarked(i) ? null : ((long[]) values[j])[i]);
             insertRecord.add(convert(value, targetType));
             break;
           case INT32:
-            value = ValueConverter.convert(sourceType, targetType, ((int[]) values[j])[i]);
+            value =
+                ValueConverter.convert(
+                    sourceType,
+                    targetType,
+                    tablet.getBitMaps()[j].isMarked(i) ? null : ((int[]) values[j])[i]);
             insertRecord.add(convert(value, targetType));
             break;
           case DOUBLE:
-            value = ValueConverter.convert(sourceType, targetType, ((double[]) values[j])[i]);
+            value =
+                ValueConverter.convert(
+                    sourceType,
+                    targetType,
+                    tablet.getBitMaps()[j].isMarked(i) ? null : ((double[]) values[j])[i]);
             insertRecord.add(convert(value, targetType));
             break;
           case FLOAT:
-            value = ValueConverter.convert(sourceType, targetType, ((float[]) values[j])[i]);
+            value =
+                ValueConverter.convert(
+                    sourceType,
+                    targetType,
+                    tablet.getBitMaps()[j].isMarked(i) ? null : ((float[]) values[j])[i]);
             insertRecord.add(convert(value, targetType));
             break;
           case DATE:
@@ -366,24 +381,39 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
                 ValueConverter.convert(
                     sourceType,
                     targetType,
-                    DateUtils.parseDateExpressionToInt(((LocalDate[]) values[j])[i]));
+                    tablet.getBitMaps()[j].isMarked(i)
+                        ? null
+                        : DateUtils.parseDateExpressionToInt(((LocalDate[]) values[j])[i]));
             insertRecord.add(convert(value, targetType));
             break;
           case TEXT:
           case STRING:
-            value = ValueConverter.convert(sourceType, targetType, ((Binary[]) values[j])[i]);
+            value =
+                ValueConverter.convert(
+                    sourceType,
+                    targetType,
+                    tablet.getBitMaps()[j].isMarked(i) ? null : ((Binary[]) values[j])[i]);
             insertRecord.add(convert(value, targetType));
             break;
           case BLOB:
-            value = ValueConverter.convert(sourceType, targetType, ((Binary[]) values[j])[i]);
+            value =
+                ValueConverter.convert(
+                    sourceType,
+                    targetType,
+                    tablet.getBitMaps()[j].isMarked(i) ? null : ((Binary[]) values[j])[i]);
             insertRecord.add(convert(value, targetType));
             break;
           case BOOLEAN:
-            value = ValueConverter.convert(sourceType, targetType, ((boolean[]) values[j])[i]);
+            value =
+                ValueConverter.convert(
+                    sourceType,
+                    targetType,
+                    tablet.getBitMaps()[j].isMarked(i) ? null : ((boolean[]) values[j])[i]);
             insertRecord.add(convert(value, targetType));
             break;
         }
       }
+      insertRecord.add(tablet.getTimestamp(i));
       insertRecords.add(insertRecord);
     }
 
@@ -391,12 +421,15 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
   }
 
   private Object convert(Object value, TSDataType targetType) {
+    if (value == null) {
+      return null;
+    }
     switch (targetType) {
       case DATE:
         return DateUtils.parseIntToLocalDate((Integer) value);
       case TEXT:
       case STRING:
-        return new String(((Binary) value).getValues(), TSFileConfig.STRING_CHARSET);
+        return value;
     }
     return value;
   }
@@ -417,7 +450,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelTes
             columnTypes,
             generateDataSize);
     tablet.initBitMaps();
-    tablet.timestamps = createTestDataForTimestamp();
+    createTestDataForTimeColumn(tablet);
     for (int i = 0; i < pairs.size(); i++) {
       MeasurementSchema schema = pairs.get(i).left;
       switch (schema.getType()) {

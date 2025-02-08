@@ -22,8 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.analyze.load;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.exception.VerifyMetadataException;
-import org.apache.iotdb.db.exception.VerifyMetadataTypeMismatchException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -63,6 +63,8 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
 
   private final boolean isTableModelStatement;
 
+  private final boolean isGeneratedByPipe;
+
   protected final List<File> tsFiles;
   protected final String statementString;
   protected final boolean isVerifySchema;
@@ -82,9 +84,8 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
   final ISchemaFetcher schemaFetcher = ClusterSchemaFetcher.getInstance();
 
-  protected final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter;
-
-  LoadTsFileAnalyzer(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
+  LoadTsFileAnalyzer(
+      LoadTsFileStatement loadTsFileStatement, boolean isGeneratedByPipe, MPPQueryContext context) {
     this.loadTsFileTreeStatement = loadTsFileStatement;
     this.tsFiles = loadTsFileStatement.getTsFiles();
     this.statementString = loadTsFileStatement.toString();
@@ -94,27 +95,28 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     this.isAutoCreateDatabase = loadTsFileStatement.isAutoCreateDatabase();
     this.databaseLevel = loadTsFileStatement.getDatabaseLevel();
     this.database = loadTsFileStatement.getDatabase();
-    this.loadTsFileDataTypeConverter = new LoadTsFileDataTypeConverter();
 
     this.loadTsFileTableStatement = null;
     this.isTableModelStatement = false;
+    this.isGeneratedByPipe = isGeneratedByPipe;
     this.context = context;
   }
 
-  LoadTsFileAnalyzer(LoadTsFile loadTsFileTableStatement, MPPQueryContext context) {
+  LoadTsFileAnalyzer(
+      LoadTsFile loadTsFileTableStatement, boolean isGeneratedByPipe, MPPQueryContext context) {
     this.loadTsFileTableStatement = loadTsFileTableStatement;
     this.tsFiles = loadTsFileTableStatement.getTsFiles();
     this.statementString = loadTsFileTableStatement.toString();
-    this.isVerifySchema = true;
+    this.isVerifySchema = loadTsFileTableStatement.isVerifySchema();
     this.isDeleteAfterLoad = loadTsFileTableStatement.isDeleteAfterLoad();
     this.isConvertOnTypeMismatch = loadTsFileTableStatement.isConvertOnTypeMismatch();
     this.isAutoCreateDatabase = loadTsFileTableStatement.isAutoCreateDatabase();
     this.databaseLevel = loadTsFileTableStatement.getDatabaseLevel();
     this.database = loadTsFileTableStatement.getDatabase();
-    this.loadTsFileDataTypeConverter = new LoadTsFileDataTypeConverter();
 
     this.loadTsFileTreeStatement = null;
     this.isTableModelStatement = true;
+    this.isGeneratedByPipe = isGeneratedByPipe;
     this.context = context;
   }
 
@@ -147,8 +149,8 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
       } catch (AuthException e) {
         setFailAnalysisForAuthException(analysis, e);
         return false;
-      } catch (VerifyMetadataTypeMismatchException e) {
-        executeDataTypeConversionOnTypeMismatch(analysis, e);
+      } catch (LoadAnalyzeException e) {
+        executeTabletConversion(analysis, e);
         // just return false to STOP the analysis process,
         // the real result on the conversion will be set in the analysis.
         return false;
@@ -174,23 +176,27 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   protected abstract void analyzeSingleTsFile(final File tsFile)
-      throws IOException, AuthException, VerifyMetadataException;
+      throws IOException, AuthException, LoadAnalyzeException;
 
-  protected void executeDataTypeConversionOnTypeMismatch(
-      final IAnalysis analysis, final VerifyMetadataTypeMismatchException e) {
+  protected void executeTabletConversion(final IAnalysis analysis, final LoadAnalyzeException e) {
+    final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
+        new LoadTsFileDataTypeConverter(isGeneratedByPipe);
+
     final TSStatus status =
-        isConvertOnTypeMismatch
+        (!(e instanceof LoadAnalyzeTypeMismatchException) || isConvertOnTypeMismatch)
             ? (isTableModelStatement
-                ? loadTsFileDataTypeConverter.convertForTableModel(loadTsFileTableStatement)
-                : loadTsFileDataTypeConverter.convertForTreeModel(loadTsFileTreeStatement))
+                ? loadTsFileDataTypeConverter
+                    .convertForTableModel(loadTsFileTableStatement)
+                    .orElse(null)
+                : loadTsFileDataTypeConverter
+                    .convertForTreeModel(loadTsFileTreeStatement)
+                    .orElse(null))
             : null;
 
     if (status == null) {
       analysis.setFailStatus(
           new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
-    } else if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
-        && status.getCode() != TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()) {
+    } else if (!loadTsFileDataTypeConverter.isSuccessful(status)) {
       analysis.setFailStatus(status);
     }
     analysis.setFinishQueryAfterAnalyze(true);

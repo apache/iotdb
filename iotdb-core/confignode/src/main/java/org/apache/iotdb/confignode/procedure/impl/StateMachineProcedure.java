@@ -32,9 +32,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Procedure described by a series of steps.
@@ -51,24 +50,21 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
 
   private static final int EOF_STATE = Integer.MIN_VALUE;
 
-  private final AtomicBoolean aborted = new AtomicBoolean(false);
-
   private Flow stateFlow = Flow.HAS_MORE_STATE;
-  protected int stateCount = 0;
-  private int[] states = null;
+  private final LinkedList<Integer> states = new LinkedList<>();
 
-  private List<Procedure<Env>> subProcList = null;
+  private final List<Procedure<?>> subProcList = new ArrayList<>();
 
-  /** Cycles on same state. Good for figuring if we are stuck. */
+  /** Cycles on the same state. Good for figuring if we are stuck. */
   private int cycles = 0;
 
-  /** Ordinal of the previous state. So we can tell if we are progressing or not. */
-  private int previousState;
+  private static final int NO_NEXT_STATE = -1;
+  private int nextState = NO_NEXT_STATE;
 
   /** Mark whether this procedure is called by a pipe forwarded request. */
   protected boolean isGeneratedByPipe;
 
-  private boolean stateDeserialized = false;
+  private boolean isStateDeserialized = false;
 
   protected StateMachineProcedure() {
     this(false);
@@ -136,20 +132,6 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
    */
   protected void setNextState(final TState state) {
     setNextState(getStateId(state));
-    failIfAborted();
-  }
-
-  /**
-   * By default, the executor will try ro run all the steps of the procedure start to finish. Return
-   * true to make the executor yield between execution steps to give other procedures time to run
-   * their steps.
-   *
-   * @param state the state we are going to execute next.
-   * @return Return true if the executor should yield before the execution of the specified step.
-   *     Defaults to return false.
-   */
-  protected boolean isYieldBeforeExecuteFromState(Env env, TState state) {
-    return false;
   }
 
   /**
@@ -158,105 +140,84 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
    * @param childProcedure the child procedure
    */
   protected void addChildProcedure(Procedure<Env> childProcedure) {
-    if (childProcedure == null) {
-      return;
-    }
-    if (subProcList == null) {
-      subProcList = new ArrayList<>();
-    }
     subProcList.add(childProcedure);
   }
 
   @Override
-  protected Procedure[] execute(final Env env)
+  protected Procedure<Env>[] execute(final Env env)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
     updateTimestamp();
     try {
-      failIfAborted();
-
-      if (!hasMoreState() || isFailed()) {
+      if (noMoreState() || isFailed()) {
         return null;
       }
 
       TState state = getCurrentState();
-      if (stateCount == 0) {
+      if (states.isEmpty()) {
         setNextState(getStateId(state));
-      }
-
-      LOG.debug("{} {}; cycles={}", state, this, cycles);
-      // Keep running count of cycles
-      if (getStateId(state) != this.previousState) {
-        this.previousState = getStateId(state);
-        this.cycles = 0;
-      } else {
-        this.cycles++;
       }
 
       LOG.trace("{}", this);
       stateFlow = executeFromState(env, state);
+      addNextStateAndCalculateCycles();
       setStateDeserialized(false);
-      if (!hasMoreState()) {
-        setNextState(EOF_STATE);
-      }
 
-      if (subProcList != null && !subProcList.isEmpty()) {
-        Procedure[] subProcedures = subProcList.toArray(new Procedure[subProcList.size()]);
-        subProcList = null;
+      if (!subProcList.isEmpty()) {
+        Procedure<Env>[] subProcedures = subProcList.toArray(new Procedure[0]);
+        subProcList.clear();
         return subProcedures;
       }
-      return (isWaiting() || isFailed() || !hasMoreState()) ? null : new Procedure[] {this};
+      return (isWaiting() || isFailed() || noMoreState()) ? null : new Procedure[] {this};
     } finally {
       updateTimestamp();
     }
+  }
+
+  private void addNextStateAndCalculateCycles() {
+    int stateToBeAdded = EOF_STATE;
+    if (Flow.HAS_MORE_STATE == stateFlow) {
+      if (nextState == NO_NEXT_STATE) {
+        LOG.error(
+            "StateMachineProcedure pid={} not set next state, but return HAS_MORE_STATE",
+            getProcId());
+      } else {
+        stateToBeAdded = nextState;
+      }
+    } else {
+      if (nextState != NO_NEXT_STATE) {
+        LOG.warn(
+            "StateMachineProcedure pid={} set next state to {}, but return NO_MORE_STATE",
+            getProcId(),
+            nextState);
+      }
+    }
+    if (getStateId(getCurrentState()) == stateToBeAdded) {
+      cycles++;
+    } else {
+      cycles = 0;
+    }
+    states.add(stateToBeAdded);
+    nextState = NO_NEXT_STATE;
   }
 
   @Override
   protected void rollback(final Env env)
       throws IOException, InterruptedException, ProcedureException {
     if (isEofState()) {
-      stateCount--;
+      states.removeLast();
     }
 
     try {
       updateTimestamp();
       rollbackState(env, getCurrentState());
     } finally {
-      stateCount--;
+      states.removeLast();
       updateTimestamp();
     }
   }
 
   protected boolean isEofState() {
-    return stateCount > 0 && states[stateCount - 1] == EOF_STATE;
-  }
-
-  @Override
-  protected boolean abort(final Env env) {
-    LOG.debug("Abort requested for {}", this);
-    if (!hasMoreState()) {
-      LOG.warn("Ignore abort request on {} because it has already been finished", this);
-      return false;
-    }
-    if (!isRollbackSupported(getCurrentState())) {
-      LOG.warn("Ignore abort request on {} because it does not support rollback", this);
-      return false;
-    }
-    aborted.set(true);
-    return true;
-  }
-
-  /**
-   * If procedure has more states then abort it otherwise procedure is finished and abort can be
-   * ignored.
-   */
-  protected final void failIfAborted() {
-    if (aborted.get()) {
-      if (hasMoreState()) {
-        setAbortFailure(getClass().getSimpleName(), "abort requested");
-      } else {
-        LOG.warn("Ignoring abort request on state='{}' for {}", getCurrentState(), this);
-      }
-    }
+    return !states.isEmpty() && states.getLast() == EOF_STATE;
   }
 
   /**
@@ -267,33 +228,19 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
     return false;
   }
 
-  @Override
-  protected boolean isYieldAfterExecution(final Env env) {
-    return isYieldBeforeExecuteFromState(env, getCurrentState());
-  }
-
-  private boolean hasMoreState() {
-    return stateFlow != Flow.NO_MORE_STATE;
+  private boolean noMoreState() {
+    return stateFlow == Flow.NO_MORE_STATE;
   }
 
   @Nullable
   protected TState getCurrentState() {
-    if (stateCount > 0) {
-      if (states[stateCount - 1] == EOF_STATE) {
+    if (!states.isEmpty()) {
+      if (states.getLast() == EOF_STATE) {
         return null;
       }
-      return getState(states[stateCount - 1]);
+      return getState(states.getLast());
     }
     return getInitialState();
-  }
-
-  /**
-   * This method is used from test code as it cannot be assumed that state transition will happen
-   * sequentially. Some procedures may skip steps/ states, some may add intermediate steps in
-   * future.
-   */
-  public int getCurrentStateId() {
-    return getStateId(getCurrentState());
   }
 
   /**
@@ -302,15 +249,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
    * @param stateId the ordinal() of the state enum (or state id)
    */
   private void setNextState(final int stateId) {
-    if (states == null || states.length == stateCount) {
-      int newCapacity = stateCount + 8;
-      if (states != null) {
-        states = Arrays.copyOf(states, newCapacity);
-      } else {
-        states = new int[newCapacity];
-      }
-    }
-    states[stateCount++] = stateId;
+    nextState = stateId;
   }
 
   @Override
@@ -324,26 +263,24 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     super.serialize(stream);
-    stream.writeInt(stateCount);
-    for (int i = 0; i < stateCount; ++i) {
-      stream.writeInt(states[i]);
+    stream.writeInt(states.size());
+    for (int state : states) {
+      stream.writeInt(state);
     }
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
-    stateCount = byteBuffer.getInt();
+    int stateCount = byteBuffer.getInt();
+    states.clear();
     if (stateCount > 0) {
-      states = new int[stateCount];
       for (int i = 0; i < stateCount; ++i) {
-        states[i] = byteBuffer.getInt();
+        states.add(byteBuffer.getInt());
       }
       if (isEofState()) {
         stateFlow = Flow.NO_MORE_STATE;
       }
-    } else {
-      states = null;
     }
     this.setStateDeserialized(true);
   }
@@ -355,10 +292,10 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
    * the code in this stage, which is the purpose of this variable.
    */
   public boolean isStateDeserialized() {
-    return stateDeserialized;
+    return isStateDeserialized;
   }
 
   private void setStateDeserialized(boolean isDeserialized) {
-    this.stateDeserialized = isDeserialized;
+    this.isStateDeserialized = isDeserialized;
   }
 }
