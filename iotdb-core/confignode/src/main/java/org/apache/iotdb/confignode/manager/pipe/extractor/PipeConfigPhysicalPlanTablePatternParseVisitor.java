@@ -166,24 +166,32 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitRGrantUserTB(
       final AuthorRelationalPlan plan, final TablePattern pattern) {
-    return visitPlan(plan, pattern);
+    return visitAuthorTBPlan(plan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRGrantRoleTB(
       final AuthorRelationalPlan plan, final TablePattern pattern) {
-    return visitPlan(plan, pattern);
+    return visitAuthorTBPlan(plan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRRevokeUserTBPrivilege(
       final AuthorRelationalPlan plan, final TablePattern pattern) {
-    return visitPlan(plan, pattern);
+    return visitAuthorTBPlan(plan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRRevokeRoleTBPrivilege(
       final AuthorRelationalPlan plan, final TablePattern pattern) {
-    return visitPlan(plan, pattern);
+    return visitAuthorTBPlan(plan, pattern);
+  }
+
+  private Optional<ConfigPhysicalPlan> visitAuthorTBPlan(
+      final AuthorRelationalPlan plan, final TablePattern pattern) {
+    return pattern.matchesDatabase(plan.getDatabaseName())
+            && pattern.matchesTable(plan.getTableName())
+        ? Optional.of(plan)
+        : Optional.empty();
   }
 }
