@@ -235,7 +235,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
           "list privileges of role `admin`",
           ColumnHeaderConstant.ROLE
               + ","
-              + ColumnHeaderConstant.PATH
+              + ColumnHeaderConstant.SCOPE
               + ","
               + ColumnHeaderConstant.PRIVILEGES
               + ","
@@ -243,13 +243,13 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
               + ",",
           new HashSet<>(
               Arrays.asList(
-                  "admin,root.**,MANAGE_USER,false,",
-                  "admin,root.**,MANAGE_ROLE,false,",
-                  "admin,root.**,USE_TRIGGER,false,",
-                  "admin,root.**,USE_UDF,false,",
-                  "admin,root.**,USE_CQ,false,",
-                  "admin,root.**,USE_PIPE,false,",
-                  "admin,root.**,MANAGE_DATABASE,false,",
+                  "admin,,MANAGE_USER,false,",
+                  "admin,,MANAGE_ROLE,false,",
+                  "admin,,USE_TRIGGER,false,",
+                  "admin,,USE_UDF,false,",
+                  "admin,,USE_CQ,false,",
+                  "admin,,USE_PIPE,false,",
+                  "admin,,MANAGE_DATABASE,false,",
                   "admin,root.**,READ_DATA,false,",
                   "admin,root.**,READ_SCHEMA,false,")));
 

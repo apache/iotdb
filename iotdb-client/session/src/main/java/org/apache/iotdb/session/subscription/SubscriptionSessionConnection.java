@@ -46,14 +46,14 @@ public class SubscriptionSessionConnection extends SessionConnection {
   private static final String REMOVING_STATUS = "Removing";
 
   public SubscriptionSessionConnection(
-      Session session,
-      TEndPoint endPoint,
-      ZoneId zoneId,
-      Supplier<List<TEndPoint>> availableNodes,
-      int maxRetryCount,
-      long retryIntervalInMs,
-      String sqlDialect,
-      String database)
+      final Session session,
+      final TEndPoint endPoint,
+      final ZoneId zoneId,
+      final Supplier<List<TEndPoint>> availableNodes,
+      final int maxRetryCount,
+      final long retryIntervalInMs,
+      final String sqlDialect,
+      final String database)
       throws IoTDBConnectionException {
     super(
         session,
@@ -69,16 +69,16 @@ public class SubscriptionSessionConnection extends SessionConnection {
   // from org.apache.iotdb.session.NodesSupplier.updateDataNodeList
   public Map<Integer, TEndPoint> fetchAllEndPoints()
       throws IoTDBConnectionException, StatementExecutionException {
-    SessionDataSet dataSet = session.executeQueryStatement(SHOW_DATA_NODES_COMMAND);
-    SessionDataSet.DataIterator iterator = dataSet.iterator();
-    Map<Integer, TEndPoint> endPoints = new HashMap<>();
+    final SessionDataSet dataSet = session.executeQueryStatement(SHOW_DATA_NODES_COMMAND);
+    final SessionDataSet.DataIterator iterator = dataSet.iterator();
+    final Map<Integer, TEndPoint> endPoints = new HashMap<>();
     while (iterator.next()) {
       // ignore removing DN
       if (REMOVING_STATUS.equals(iterator.getString(STATUS_COLUMN_NAME))) {
         continue;
       }
-      String ip = iterator.getString(IP_COLUMN_NAME);
-      String port = iterator.getString(PORT_COLUMN_NAME);
+      final String ip = iterator.getString(IP_COLUMN_NAME);
+      final String port = iterator.getString(PORT_COLUMN_NAME);
       if (ip != null && port != null) {
         endPoints.put(
             iterator.getInt(NODE_ID_COLUMN_NAME), new TEndPoint(ip, Integer.parseInt(port)));

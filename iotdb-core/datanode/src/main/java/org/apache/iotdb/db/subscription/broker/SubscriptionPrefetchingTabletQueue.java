@@ -173,7 +173,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
 
   @Override
   protected boolean onEvent(final TsFileInsertionEvent event) {
-    return batches.onEvent((EnrichedEvent) event, this::enqueueEventToPrefetchingQueue);
+    return batches.onEvent((EnrichedEvent) event, this::prefetchEvent);
   }
 
   /////////////////////////////// stringify ///////////////////////////////

@@ -55,6 +55,9 @@ public class LoadTsFileConfigurator {
       case CONVERT_ON_TYPE_MISMATCH_KEY:
         validateConvertOnTypeMismatchParam(value);
         break;
+      case VERIFY_KEY:
+        validateVerifyParam(value);
+        break;
       default:
         throw new SemanticException("Invalid parameter '" + key + "' for LOAD TSFILE command.");
     }
@@ -134,6 +137,23 @@ public class LoadTsFileConfigurator {
     return Boolean.parseBoolean(
         loadAttributes.getOrDefault(
             CONVERT_ON_TYPE_MISMATCH_KEY, String.valueOf(CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE)));
+  }
+
+  public static final String VERIFY_KEY = "verify";
+  private static final boolean VERIFY_DEFAULT_VALUE = true;
+
+  public static void validateVerifyParam(final String verify) {
+    if (!"true".equalsIgnoreCase(verify) && !"false".equalsIgnoreCase(verify)) {
+      throw new SemanticException(
+          String.format(
+              "Given %s value '%s' is not supported, please input a valid boolean value.",
+              VERIFY_KEY, verify));
+    }
+  }
+
+  public static boolean parseOrGetDefaultVerify(final Map<String, String> loadAttributes) {
+    return Boolean.parseBoolean(
+        loadAttributes.getOrDefault(VERIFY_KEY, String.valueOf(VERIFY_DEFAULT_VALUE)));
   }
 
   public static final String MODEL_KEY = "model";
