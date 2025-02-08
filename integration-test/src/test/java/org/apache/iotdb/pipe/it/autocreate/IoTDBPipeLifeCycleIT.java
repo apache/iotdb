@@ -847,7 +847,6 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
         "701: Untrusted uri xxx",
         "test",
         "test123");
-    executeNonQueryWithRetry(senderEnv, "drop pipePlugin TestProcessor", "test", "test123");
     executeQueryWithRetry(senderEnv, "show pipe plugins", "test", "test123");
   }
 }

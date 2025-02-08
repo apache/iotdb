@@ -675,7 +675,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
         BaseEnv.TABLE_SQL_DIALECT);
     executeQueriesWithRetry(
         EnvFactory.getEnv(),
-        Arrays.asList("show topic", "show subscriptions"),
+        Arrays.asList("show topics", "show subscriptions"),
         "test",
         "test123",
         null,

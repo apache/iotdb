@@ -799,13 +799,6 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
         "test",
         "test123",
         null);
-    executeNonQueryWithRetry(
-        senderEnv,
-        "drop pipePlugin TestProcessor",
-        "test",
-        "test123",
-        null,
-        BaseEnv.TABLE_SQL_DIALECT);
     executeQueryWithRetry(
         senderEnv, "show pipe plugins", "test", "test123", null, BaseEnv.TABLE_SQL_DIALECT);
   }

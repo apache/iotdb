@@ -497,6 +497,100 @@ public class IoTDBLoadTsFileIT {
   }
 
   @Test
+  public void testTableAuth() throws Exception {
+    createUser("test", "test123");
+
+    // device 0, device 1, sg 0
+    try (final TsFileGenerator generator =
+        new TsFileGenerator(new File(tmpDir, "test1-0-0-0.tsfile"))) {
+      generator.registerTimeseries(
+          SchemaConfig.DEVICE_0,
+          Arrays.asList(
+              SchemaConfig.MEASUREMENT_00,
+              SchemaConfig.MEASUREMENT_01,
+              SchemaConfig.MEASUREMENT_02,
+              SchemaConfig.MEASUREMENT_03,
+              SchemaConfig.MEASUREMENT_04,
+              SchemaConfig.MEASUREMENT_05,
+              SchemaConfig.MEASUREMENT_06,
+              SchemaConfig.MEASUREMENT_07));
+      generator.registerAlignedTimeseries(
+          SchemaConfig.DEVICE_1,
+          Arrays.asList(
+              SchemaConfig.MEASUREMENT_10,
+              SchemaConfig.MEASUREMENT_11,
+              SchemaConfig.MEASUREMENT_12,
+              SchemaConfig.MEASUREMENT_13,
+              SchemaConfig.MEASUREMENT_14,
+              SchemaConfig.MEASUREMENT_15,
+              SchemaConfig.MEASUREMENT_16,
+              SchemaConfig.MEASUREMENT_17));
+      generator.generateData(SchemaConfig.DEVICE_0, 10000, PARTITION_INTERVAL / 10_000, false);
+      generator.generateData(SchemaConfig.DEVICE_1, 10000, PARTITION_INTERVAL / 10_000, true);
+    }
+
+    // device 2, device 3, device4, sg 1
+    try (final TsFileGenerator generator =
+        new TsFileGenerator(new File(tmpDir, "test2-0-0-0.tsfile"))) {
+      generator.registerTimeseries(
+          SchemaConfig.DEVICE_2, Collections.singletonList(SchemaConfig.MEASUREMENT_20));
+      generator.registerTimeseries(
+          SchemaConfig.DEVICE_3, Collections.singletonList(SchemaConfig.MEASUREMENT_30));
+      generator.registerAlignedTimeseries(
+          SchemaConfig.DEVICE_4, Collections.singletonList(SchemaConfig.MEASUREMENT_40));
+      generator.generateData(SchemaConfig.DEVICE_2, 10000, PARTITION_INTERVAL / 10_000, false);
+      generator.generateData(SchemaConfig.DEVICE_3, 10000, PARTITION_INTERVAL / 10_000, false);
+      generator.generateData(SchemaConfig.DEVICE_4, 10000, PARTITION_INTERVAL / 10_000, true);
+    }
+
+    try (final Connection userCon =
+            EnvFactory.getEnv().getConnection("test", "test123", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement userStmt = userCon.createStatement()) {
+      Assert.assertThrows(
+          SQLException.class,
+          () -> {
+            userStmt.execute(
+                String.format(
+                    "load '%s' with ('database-level'='2', 'database-name'='test')",
+                    tmpDir.getAbsolutePath()));
+          });
+    }
+
+    try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("grant create on database test to user test");
+    }
+
+    try (final Connection userCon =
+            EnvFactory.getEnv().getConnection("test", "test123", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement userStmt = userCon.createStatement()) {
+      Assert.assertThrows(
+          SQLException.class,
+          () -> {
+            userStmt.execute(
+                String.format(
+                    "load '%s' with ('database-level'='2', 'database-name'='test')",
+                    tmpDir.getAbsolutePath()));
+          });
+    }
+
+    try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("grant insert on any to user test");
+    }
+
+    try (final Connection userCon =
+            EnvFactory.getEnv().getConnection("test", "test123", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement userStmt = userCon.createStatement()) {
+
+      userStmt.execute(
+          String.format(
+              "load '%s' with ('database-level'='2', 'database-name'='test')",
+              tmpDir.getAbsolutePath()));
+    }
+  }
+
+  @Test
   public void testLoadWithOnSuccess() throws Exception {
     final File file1 = new File(tmpDir, "1-0-0-0.tsfile");
     final File file2 = new File(tmpDir, "2-0-0-0.tsfile");
