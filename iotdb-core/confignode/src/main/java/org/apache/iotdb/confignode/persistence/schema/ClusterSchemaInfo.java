@@ -501,12 +501,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       final List<String> results = new ArrayList<>();
       if (!Boolean.TRUE.equals(isTableModel)) {
-        treeModelMTree.getAllDatabasePaths().stream()
+        treeModelMTree.getAllDatabasePaths(isTableModel).stream()
             .map(PartialPath::getFullPath)
             .forEach(results::add);
       }
       if (!Boolean.FALSE.equals(isTableModel)) {
-        tableModelMTree.getAllDatabasePaths().stream()
+        tableModelMTree.getAllDatabasePaths(isTableModel).stream()
             .map(path -> path.getNodes()[1])
             .forEach(results::add);
       }
