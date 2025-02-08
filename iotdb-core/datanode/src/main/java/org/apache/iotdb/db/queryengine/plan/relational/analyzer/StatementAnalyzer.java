@@ -3534,6 +3534,9 @@ public class StatementAnalyzer {
                 || argumentSpecification.getType().equals(org.apache.iotdb.udf.api.type.Type.TEXT))
             && constantValue instanceof Binary) {
           constantValue = ((Binary) constantValue).getStringValue(TSFileConfig.STRING_CHARSET);
+        } else if (argumentSpecification.getType().equals(org.apache.iotdb.udf.api.type.Type.INT32)
+            && constantValue instanceof Long) {
+          constantValue = ((Long) constantValue).intValue();
         } else {
           throw new SemanticException(
               String.format(

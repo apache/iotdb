@@ -32,7 +32,7 @@ import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpe
 import java.util.List;
 import java.util.Map;
 
-public interface TableFunction {
+public interface TableFunction extends SQLFunction {
 
   /**
    * This method is used to define the specification of the arguments required by the table

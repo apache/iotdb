@@ -170,7 +170,14 @@ public class TableFunctionOperator implements ProcessOperator {
     List<ColumnBuilder> passThroughColumnBuilders =
         Arrays.asList(blockBuilder.getValueColumnBuilders())
             .subList(properChannelCount, blockBuilder.getValueColumnBuilders().length);
-    int positionCount = properColumnBuilders.get(0).getPositionCount();
+    int positionCount = 0;
+    if (properChannelCount > 0) {
+      // if there is proper column, use its position count
+      positionCount = properColumnBuilders.get(0).getPositionCount();
+    } else if (needPassThrough) {
+      // if there is no proper column, use pass through column's position count
+      positionCount = passThroughIndexBuilder.getPositionCount();
+    }
     blockBuilder.declarePositions(positionCount);
     if (needPassThrough) {
       // handle pass through column only if needed

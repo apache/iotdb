@@ -33,9 +33,6 @@ import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderExceptio
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.execution.function.table.ExcludeColumnFunction;
-import org.apache.iotdb.db.queryengine.execution.function.table.HOPTableFunction;
-import org.apache.iotdb.db.queryengine.execution.function.table.SplitFunction;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
@@ -796,15 +793,7 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public TableFunction getTableFunction(String functionName) {
-    if ("HOP".equalsIgnoreCase(functionName)) {
-      return new HOPTableFunction();
-    } else if ("EXCLUDE".equalsIgnoreCase(functionName)) {
-      return new ExcludeColumnFunction();
-    } else if ("SPLIT".equalsIgnoreCase(functionName)) {
-      return new SplitFunction();
-    } else {
-      return null;
-    }
+    return TableUDFUtils.getTableFunction(functionName);
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {
