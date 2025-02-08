@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
@@ -65,8 +66,9 @@ public class PipeConfigPhysicalPlanTableScopeParseVisitor
   private Optional<ConfigPhysicalPlan> visitTableAuthorPlan(
       final AuthorRelationalPlan authorRelationalPlan, final ConfigPhysicalPlanType type) {
     final Set<Integer> permissions =
-        authorRelationalPlan.getPermissions().stream()
-            .filter(permission -> PrivilegeType.values()[permission].forRelationalSys())
+        Arrays.stream(PrivilegeType.values())
+            .filter(PrivilegeType::forRelationalSys)
+            .map(Enum::ordinal)
             .collect(Collectors.toSet());
     return !permissions.isEmpty()
         ? Optional.of(
