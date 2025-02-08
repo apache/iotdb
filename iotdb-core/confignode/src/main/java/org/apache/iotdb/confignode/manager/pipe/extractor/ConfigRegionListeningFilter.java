@@ -143,20 +143,16 @@ public class ConfigRegionListeningFilter {
           new PartialPath("auth.role.grant.table"),
           Collections.unmodifiableList(
               Arrays.asList(
-                  ConfigPhysicalPlanType.RGrantRoleAll,
                   ConfigPhysicalPlanType.RGrantRoleAny,
                   ConfigPhysicalPlanType.RGrantRoleDBPriv,
-                  ConfigPhysicalPlanType.RGrantRoleTBPriv,
-                  ConfigPhysicalPlanType.RGrantRoleSysPri)));
+                  ConfigPhysicalPlanType.RGrantRoleTBPriv)));
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.role.revoke.table"),
           Collections.unmodifiableList(
               Arrays.asList(
-                  ConfigPhysicalPlanType.RRevokeRoleAll,
                   ConfigPhysicalPlanType.RRevokeRoleAny,
                   ConfigPhysicalPlanType.RRevokeRoleDBPriv,
-                  ConfigPhysicalPlanType.RRevokeRoleTBPriv,
-                  ConfigPhysicalPlanType.RRevokeRoleSysPri)));
+                  ConfigPhysicalPlanType.RRevokeRoleTBPriv)));
 
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.user.create"),
@@ -192,14 +188,14 @@ public class ConfigRegionListeningFilter {
 
       // Table
       OPTION_PLAN_MAP.put(
-          new PartialPath("auth.role.grant.table"),
+          new PartialPath("auth.user.grant.table"),
           Collections.unmodifiableList(
               Arrays.asList(
                   ConfigPhysicalPlanType.RGrantUserAny,
                   ConfigPhysicalPlanType.RGrantUserDBPriv,
                   ConfigPhysicalPlanType.RGrantUserTBPriv)));
       OPTION_PLAN_MAP.put(
-          new PartialPath("auth.role.revoke.table"),
+          new PartialPath("auth.user.revoke.table"),
           Collections.unmodifiableList(
               Arrays.asList(
                   ConfigPhysicalPlanType.RRevokeUserAny,
