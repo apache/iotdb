@@ -706,7 +706,6 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
   @Test
   public void testPermission() {
     createUser(senderEnv, "test", "test123");
-    TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
 
     assertTableNonQueryTestFail(
         senderEnv,
@@ -719,35 +718,35 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
         "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
         "test",
         "test123",
-        "test");
+        null);
     assertTableNonQueryTestFail(
         senderEnv,
         "drop pipe testPipe",
         "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
         "test",
         "test123",
-        "test");
+        null);
     assertTableTestFail(
         senderEnv,
         "show pipes",
         "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
         "test",
         "test123",
-        "test");
+        null);
     assertTableNonQueryTestFail(
         senderEnv,
         "start pipe testPipe",
         "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
         "test",
         "test123",
-        "test");
+        null);
     assertTableNonQueryTestFail(
         senderEnv,
         "stop pipe testPipe",
         "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
         "test",
         "test123",
-        "test");
+        null);
 
     assertTableNonQueryTestFail(
         senderEnv,
@@ -755,21 +754,21 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
         "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
         "test",
         "test123",
-        "test");
+        null);
     assertTableNonQueryTestFail(
         senderEnv,
         "drop pipePlugin TestProcessor",
         "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
         "test",
         "test123",
-        "test");
+        null);
     assertTableTestFail(
         senderEnv,
         "show pipe plugins",
         "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
         "test",
         "test123",
-        "test");
+        null);
 
     grantUserSystemPrivileges(senderEnv, "test", PrivilegeType.MAINTAIN);
 
@@ -783,16 +782,16 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
             + ")",
         "test",
         "test123",
-        "test",
+        null,
         BaseEnv.TABLE_SQL_DIALECT);
     executeQueryWithRetry(
-        senderEnv, "show pipes", "test", "test123", "test", BaseEnv.TABLE_SQL_DIALECT);
+        senderEnv, "show pipes", "test", "test123", null, BaseEnv.TABLE_SQL_DIALECT);
     executeNonQueriesWithRetry(
         senderEnv,
         Arrays.asList("start pipe testPipe", "stop pipe testPipe", "drop pipe testPipe"),
         "test",
         "test123",
-        "test",
+        null,
         BaseEnv.TABLE_SQL_DIALECT);
 
     assertTableNonQueryTestFail(
@@ -801,14 +800,15 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
         "701: Untrusted uri xxx",
         "test",
         "test123",
-        "test");
+        null);
     executeNonQueryWithRetry(
         senderEnv,
         "drop pipePlugin TestProcessor",
         "test",
         "test123",
-        "test",
+        null,
         BaseEnv.TABLE_SQL_DIALECT);
-    executeQueryWithRetry(senderEnv, "show pipe plugins", "test", "test123");
+    executeQueryWithRetry(
+        senderEnv, "show pipe plugins", "test", "test123", null, BaseEnv.TABLE_SQL_DIALECT);
   }
 }

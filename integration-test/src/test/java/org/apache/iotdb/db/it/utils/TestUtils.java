@@ -513,7 +513,9 @@ public class TestUtils {
     try (final Connection connection =
             env.getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      statement.execute("use " + "\"" + db + "\"");
+      if (Objects.nonNull(db)) {
+        statement.execute("use " + "\"" + db + "\"");
+      }
       statement.executeQuery(sql);
       fail("No exception!");
     } catch (final SQLException e) {
@@ -555,7 +557,9 @@ public class TestUtils {
       BaseEnv env, String sql, String errMsg, String userName, String password, String db) {
     try (Connection connection = env.getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("use " + "\"" + db + "\"");
+      if (Objects.nonNull(db)) {
+        statement.execute("use " + "\"" + db + "\"");
+      }
       statement.execute(sql);
       fail("No exception!");
     } catch (SQLException e) {
