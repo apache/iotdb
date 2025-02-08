@@ -21,6 +21,8 @@ package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.tablemodel.CompactionTableModelTestFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.it.utils.TsFileGenerator;
@@ -31,8 +33,10 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -500,47 +504,23 @@ public class IoTDBLoadTsFileIT {
   public void testTableAuth() throws Exception {
     createUser("test", "test123");
 
-    // device 0, device 1, sg 0
-    try (final TsFileGenerator generator =
-        new TsFileGenerator(new File(tmpDir, "test1-0-0-0.tsfile"))) {
-      generator.registerTimeseries(
-          SchemaConfig.DEVICE_0,
-          Arrays.asList(
-              SchemaConfig.MEASUREMENT_00,
-              SchemaConfig.MEASUREMENT_01,
-              SchemaConfig.MEASUREMENT_02,
-              SchemaConfig.MEASUREMENT_03,
-              SchemaConfig.MEASUREMENT_04,
-              SchemaConfig.MEASUREMENT_05,
-              SchemaConfig.MEASUREMENT_06,
-              SchemaConfig.MEASUREMENT_07));
-      generator.registerAlignedTimeseries(
-          SchemaConfig.DEVICE_1,
-          Arrays.asList(
-              SchemaConfig.MEASUREMENT_10,
-              SchemaConfig.MEASUREMENT_11,
-              SchemaConfig.MEASUREMENT_12,
-              SchemaConfig.MEASUREMENT_13,
-              SchemaConfig.MEASUREMENT_14,
-              SchemaConfig.MEASUREMENT_15,
-              SchemaConfig.MEASUREMENT_16,
-              SchemaConfig.MEASUREMENT_17));
-      generator.generateData(SchemaConfig.DEVICE_0, 10000, PARTITION_INTERVAL / 10_000, false);
-      generator.generateData(SchemaConfig.DEVICE_1, 10000, PARTITION_INTERVAL / 10_000, true);
-    }
-
-    // device 2, device 3, device4, sg 1
-    try (final TsFileGenerator generator =
-        new TsFileGenerator(new File(tmpDir, "test2-0-0-0.tsfile"))) {
-      generator.registerTimeseries(
-          SchemaConfig.DEVICE_2, Collections.singletonList(SchemaConfig.MEASUREMENT_20));
-      generator.registerTimeseries(
-          SchemaConfig.DEVICE_3, Collections.singletonList(SchemaConfig.MEASUREMENT_30));
-      generator.registerAlignedTimeseries(
-          SchemaConfig.DEVICE_4, Collections.singletonList(SchemaConfig.MEASUREMENT_40));
-      generator.generateData(SchemaConfig.DEVICE_2, 10000, PARTITION_INTERVAL / 10_000, false);
-      generator.generateData(SchemaConfig.DEVICE_3, 10000, PARTITION_INTERVAL / 10_000, false);
-      generator.generateData(SchemaConfig.DEVICE_4, 10000, PARTITION_INTERVAL / 10_000, true);
+    final TsFileResource resource4 = new TsFileResource(new File(tmpDir, "test1-0-0-0.tsfile"));
+    try (final CompactionTableModelTestFileWriter writer =
+        new CompactionTableModelTestFileWriter(resource4)) {
+      writer.registerTableSchema("t2", Arrays.asList("id1", "id2", "id3"));
+      writer.startChunkGroup("t2", Arrays.asList("id_field1", "id_field2", "id_field3"));
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1",
+          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(20, 22)}}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s2",
+          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(20, 22)}}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
     }
 
     try (final Connection userCon =
@@ -574,15 +554,14 @@ public class IoTDBLoadTsFileIT {
           });
     }
 
-    try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement adminStmt = adminCon.createStatement()) {
+    try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("grant insert on any to user test");
     }
 
     try (final Connection userCon =
             EnvFactory.getEnv().getConnection("test", "test123", BaseEnv.TABLE_SQL_DIALECT);
         final Statement userStmt = userCon.createStatement()) {
-
       userStmt.execute(
           String.format(
               "load '%s' with ('database-level'='2', 'database-name'='test')",
