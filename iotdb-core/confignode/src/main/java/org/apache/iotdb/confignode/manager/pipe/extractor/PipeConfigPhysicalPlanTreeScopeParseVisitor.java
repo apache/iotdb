@@ -47,6 +47,18 @@ public class PipeConfigPhysicalPlanTreeScopeParseVisitor
     return visitTreeAuthorPlan(grantUserPlan);
   }
 
+  @Override
+  public Optional<ConfigPhysicalPlan> visitRevokeUser(
+      final AuthorTreePlan revokeUserPlan, final Void context) {
+    return visitTreeAuthorPlan(revokeUserPlan);
+  }
+
+  @Override
+  public Optional<ConfigPhysicalPlan> visitRevokeRole(
+      final AuthorTreePlan revokeRolePlan, final Void context) {
+    return visitTreeAuthorPlan(revokeRolePlan);
+  }
+
   private Optional<ConfigPhysicalPlan> visitTreeAuthorPlan(final AuthorTreePlan authorTreePlan) {
     final Set<Integer> permissions =
         authorTreePlan.getPermissions().stream()

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.consensus.request;
 
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
@@ -370,7 +369,7 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
   }
 
   public R visitRGrantRoleSysPrivilege(
-      final AuthorPlan rGrantRoleSysPrivilegePlan, final C context) {
+      final AuthorRelationalPlan rGrantRoleSysPrivilegePlan, final C context) {
     return visitPlan(rGrantRoleSysPrivilegePlan, context);
   }
 
