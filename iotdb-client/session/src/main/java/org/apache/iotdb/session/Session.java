@@ -2687,6 +2687,9 @@ public class Session implements ISession {
     TSInsertTabletReq request = new TSInsertTabletReq();
 
     for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+      if (measurementSchema.getMeasurementId() == null) {
+        throw new IllegalArgumentException("measurement should be non null value");
+      }
       request.addToMeasurements(measurementSchema.getMeasurementId());
       request.addToTypes(measurementSchema.getType().ordinal());
     }
@@ -2807,6 +2810,9 @@ public class Session implements ISession {
     List<Integer> dataTypes = new ArrayList<>();
     request.setIsAligned(isAligned);
     for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+      if (measurementSchema.getMeasurementId() == null) {
+        throw new IllegalArgumentException("measurement should be non null value");
+      }
       measurements.add(measurementSchema.getMeasurementId());
       dataTypes.add(measurementSchema.getType().ordinal());
     }
