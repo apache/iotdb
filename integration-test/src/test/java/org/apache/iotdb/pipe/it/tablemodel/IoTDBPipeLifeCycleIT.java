@@ -776,7 +776,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
         senderEnv,
         "create pipe testPipe\n"
             + "with connector (\n"
-            + "  'connector'='write-back-connector',\n"
+            + "  'connector'='write-back-connector'\n"
             + ")",
         "test",
         "test123",
