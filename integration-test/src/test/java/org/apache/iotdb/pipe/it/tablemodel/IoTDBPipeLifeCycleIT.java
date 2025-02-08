@@ -776,9 +776,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
         senderEnv,
         "create pipe testPipe\n"
             + "with connector (\n"
-            + "  'connector'='iotdb-thrift-connector',\n"
-            + "  'connector.ip'='127.0.0.1',\n"
-            + "  'connector.port'='6668'\n"
+            + "  'connector'='write-back-connector',\n"
             + ")",
         "test",
         "test123",
