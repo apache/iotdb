@@ -22,11 +22,14 @@ package org.apache.iotdb.db.queryengine.plan.relational.security;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.rpc.TSStatusCode;
+
+import static org.apache.iotdb.db.auth.AuthorityChecker.ONLY_ADMIN_ALLOWED;
 
 public class AccessControlImpl implements AccessControl {
 
@@ -303,6 +306,13 @@ public class AccessControlImpl implements AccessControl {
         }
       default:
         break;
+    }
+  }
+
+  @Override
+  public void checkUserIsAdmin(String userName) {
+    if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+      throw new AccessDeniedException(ONLY_ADMIN_ALLOWED);
     }
   }
 }
