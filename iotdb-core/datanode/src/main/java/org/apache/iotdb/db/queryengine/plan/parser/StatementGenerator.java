@@ -297,7 +297,11 @@ public class StatementGenerator {
           new TsTableColumnCategory[insertRecordReq.getColumnCategoryies().size()];
       for (int i = 0; i < columnCategories.length; i++) {
         columnCategories[i] =
+<<<<<<< HEAD
             TsTableColumnCategory.fromTsFileColumnCategory(
+=======
+            TsTableColumnCategory.fromTsFileColumnType(
+>>>>>>> master
                 ColumnCategory.values()[insertRecordReq.getColumnCategoryies().get(i).intValue()]);
       }
       insertStatement.setColumnCategories(columnCategories);
@@ -366,7 +370,11 @@ public class StatementGenerator {
           new TsTableColumnCategory[insertTabletReq.columnCategories.size()];
       for (int i = 0; i < columnCategories.length; i++) {
         columnCategories[i] =
+<<<<<<< HEAD
             TsTableColumnCategory.fromTsFileColumnCategory(
+=======
+            TsTableColumnCategory.fromTsFileColumnType(
+>>>>>>> master
                 ColumnCategory.values()[insertTabletReq.columnCategories.get(i).intValue()]);
       }
       insertStatement.setColumnCategories(columnCategories);

@@ -76,6 +76,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinct
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
@@ -867,6 +868,13 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("ValueFill-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("FilledValue: %s", node.getFilledValue()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitTableExchange(ExchangeNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Exchange-%s", node.getPlanNodeId().getId()));
     return render(node, boxValue, context);
   }
 

@@ -89,7 +89,7 @@ public enum TsTableColumnCategory {
     }
   }
 
-  public static TsTableColumnCategory fromTsFileColumnCategory(ColumnCategory columnType) {
+  public static TsTableColumnCategory fromTsFileColumnType(ColumnCategory columnType) {
     switch (columnType) {
       case FIELD:
         return FIELD;

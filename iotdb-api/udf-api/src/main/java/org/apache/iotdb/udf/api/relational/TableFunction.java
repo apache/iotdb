@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.udf.api.relational;
 
+<<<<<<< HEAD
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
@@ -85,3 +86,6 @@ public interface TableFunction extends SQLFunction {
    */
   TableFunctionProcessorProvider getProcessorProvider(Map<String, Argument> arguments);
 }
+=======
+public interface TableFunction extends SQLFunction {}
+>>>>>>> master

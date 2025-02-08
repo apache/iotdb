@@ -131,6 +131,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFill
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
@@ -615,6 +616,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitDeleteData(DeleteDataNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitDeleteData(RelationalDeleteDataNode node, C context) {
     return visitPlan(node, context);
   }
 

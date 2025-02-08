@@ -152,8 +152,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
+<<<<<<< HEAD
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
+=======
+>>>>>>> master
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
@@ -2334,6 +2337,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         operatorContext, operator, node.getQueryId(), node.isVerbose(), node.getTimeout());
   }
 
+<<<<<<< HEAD
   @Override
   public Operator visitTableFunctionProcessor(
       TableFunctionProcessorNode node, LocalExecutionPlanContext context) {
@@ -2406,6 +2410,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     }
   }
 
+=======
+>>>>>>> master
   private boolean[] checkStatisticAndScanOrder(
       AggregationTableScanNode node, String timeColumnName) {
     boolean canUseStatistic = true;

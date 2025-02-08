@@ -346,6 +346,22 @@ public class TestMatadata implements Metadata {
             new AlignedDeviceEntry(
                 new StringArrayDeviceID(DEVICE_5.split("\\.")), DEVICE_5_ATTRIBUTES));
       }
+      if (compareNotEqualsMatch(expressionList.get(0), "tag1", "shenzhen")) {
+        return Arrays.asList(
+            new AlignedDeviceEntry(
+                new StringArrayDeviceID(DEVICE_4.split("\\.")), DEVICE_4_ATTRIBUTES),
+            new AlignedDeviceEntry(
+                new StringArrayDeviceID(DEVICE_1.split("\\.")), DEVICE_1_ATTRIBUTES),
+            new AlignedDeviceEntry(
+                new StringArrayDeviceID(DEVICE_3.split("\\.")), DEVICE_3_ATTRIBUTES),
+            new AlignedDeviceEntry(
+                new StringArrayDeviceID(DEVICE_2.split("\\.")), DEVICE_2_ATTRIBUTES));
+      }
+      if (compareEqualsMatch(expressionList.get(0), "tag2", "B2")) {
+        return Collections.singletonList(
+            new AlignedDeviceEntry(
+                new StringArrayDeviceID(DEVICE_5.split("\\.")), DEVICE_5_ATTRIBUTES));
+      }
     }
 
     return Arrays.asList(
@@ -443,18 +459,18 @@ public class TestMatadata implements Metadata {
     return TREE_DB1.equals(database) ? TREE_VIEW_DATA_PARTITION : TABLE_DATA_PARTITION;
   }
 
-  @Override
-  public TableFunction getTableFunction(String functionName) {
-    if ("HOP".equalsIgnoreCase(functionName)) {
-      return new HOPTableFunction();
-    } else if ("EXCLUDE".equalsIgnoreCase(functionName)) {
-      return new ExcludeColumnFunction();
-    } else if ("SPLIT".equalsIgnoreCase(functionName)) {
-      return new SplitFunction();
-    } else {
-      return null;
+    @Override
+    public TableFunction getTableFunction(String functionName) {
+        if ("HOP".equalsIgnoreCase(functionName)) {
+            return new HOPTableFunction();
+        } else if ("EXCLUDE".equalsIgnoreCase(functionName)) {
+            return new ExcludeColumnFunction();
+        } else if ("SPLIT".equalsIgnoreCase(functionName)) {
+            return new SplitFunction();
+        } else {
+            return null;
+        }
     }
-  }
 
   private static final DataPartition TABLE_DATA_PARTITION =
       MockTableModelDataPartition.constructDataPartition(DB1);

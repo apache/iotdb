@@ -61,7 +61,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
+<<<<<<< HEAD
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
+=======
+>>>>>>> master
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
@@ -685,7 +688,10 @@ public class TableDistributedPlanGenerator
     return resultTableScanNodeList;
   }
 
+<<<<<<< HEAD
   // TODO(UDF): 参考 visitAggregation 和 visitSort
+=======
+>>>>>>> master
   @Override
   public List<PlanNode> visitAggregation(AggregationNode node, PlanContext context) {
     if (node.isStreamable()) {
@@ -851,6 +857,7 @@ public class TableDistributedPlanGenerator
     return Collections.singletonList(node);
   }
 
+<<<<<<< HEAD
   @Override
   public List<PlanNode> visitTableFunctionProcessor(
       TableFunctionProcessorNode node, PlanContext context) {
@@ -869,6 +876,8 @@ public class TableDistributedPlanGenerator
     return Collections.singletonList(node);
   }
 
+=======
+>>>>>>> master
   private void buildRegionNodeMap(
       AggregationTableScanNode originalAggTableScanNode,
       List<List<TRegionReplicaSet>> regionReplicaSetsList,
