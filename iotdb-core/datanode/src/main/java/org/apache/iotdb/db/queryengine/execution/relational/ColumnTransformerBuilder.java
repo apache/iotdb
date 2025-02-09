@@ -981,18 +981,14 @@ public class ColumnTransformerBuilder
     } else if (TableBuiltinScalarFunction.GREATEST
         .getFunctionName()
         .equalsIgnoreCase(functionName)) {
-      List<ColumnTransformer> columnTransformers = new ArrayList<>();
-      for (Expression child : children) {
-        columnTransformers.add(this.process(child, context));
-      }
+      List<ColumnTransformer> columnTransformers =
+          children.stream().map(child -> this.process(child, context)).collect(Collectors.toList());
       Type returnType = columnTransformers.get(0).getType();
       return AbstractGreatestLeastColumnTransformer.getGreatestColumnTransformer(
           returnType, columnTransformers);
     } else if (TableBuiltinScalarFunction.LEAST.getFunctionName().equalsIgnoreCase(functionName)) {
-      List<ColumnTransformer> columnTransformers = new ArrayList<>();
-      for (Expression child : children) {
-        columnTransformers.add(this.process(child, context));
-      }
+      List<ColumnTransformer> columnTransformers =
+          children.stream().map(child -> this.process(child, context)).collect(Collectors.toList());
       Type returnType = columnTransformers.get(0).getType();
       return AbstractGreatestLeastColumnTransformer.getLeastColumnTransformer(
           returnType, columnTransformers);
