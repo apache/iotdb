@@ -905,17 +905,6 @@ public class TableMetadataImpl implements Metadata {
     return argumentTypes.stream().allMatch(type -> type.equals(firstType));
   }
 
-  public static boolean isAllTypeComparable(List<? extends Type> argumentTypes) {
-    Type firstType = argumentTypes.get(0);
-    boolean flag = true;
-    for (Type type : argumentTypes) {
-      if (!isTwoTypeComparable(Arrays.asList(firstType, type))) {
-        flag = false;
-      }
-    }
-    return flag;
-  }
-
   public static boolean isArithmeticType(Type type) {
     return INT32.equals(type)
         || INT64.equals(type)
