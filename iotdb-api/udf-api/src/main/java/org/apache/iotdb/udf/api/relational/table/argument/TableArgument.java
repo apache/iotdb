@@ -21,6 +21,10 @@ package org.apache.iotdb.udf.api.relational.table.argument;
 
 import org.apache.iotdb.udf.api.type.Type;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -71,5 +75,103 @@ public class TableArgument implements Argument {
 
   public int size() {
     return fieldTypes.size();
+  }
+
+  @Override
+  public void serialize(ByteBuffer buffer) {
+    buffer.putInt(ArgumentType.TABLE_ARGUMENT.ordinal());
+    buffer.putInt(fieldNames.size());
+    for (Optional<String> fieldName : fieldNames) {
+      if (fieldName.isPresent()) {
+        buffer.put((byte) 1);
+        byte[] bytes = fieldName.get().getBytes();
+        buffer.putInt(bytes.length);
+        buffer.put(bytes);
+      } else {
+        buffer.put((byte) 0);
+      }
+    }
+    for (Type fieldType : fieldTypes) {
+      buffer.put(fieldType.getType());
+    }
+    buffer.putInt(partitionBy.size());
+    for (String partition : partitionBy) {
+      byte[] bytes = partition.getBytes();
+      buffer.putInt(bytes.length);
+      buffer.put(bytes);
+    }
+    buffer.putInt(orderBy.size());
+    for (String order : orderBy) {
+      byte[] bytes = order.getBytes();
+      buffer.putInt(bytes.length);
+      buffer.put(bytes);
+    }
+    buffer.put((byte) (rowSemantics ? 1 : 0));
+  }
+
+  @Override
+  public void serialize(DataOutputStream buffer) throws IOException {
+    buffer.writeInt(ArgumentType.TABLE_ARGUMENT.ordinal());
+    buffer.writeInt(fieldNames.size());
+    for (Optional<String> fieldName : fieldNames) {
+      if (fieldName.isPresent()) {
+        buffer.writeByte((byte) 1);
+        byte[] bytes = fieldName.get().getBytes();
+        buffer.writeInt(bytes.length);
+        buffer.write(bytes);
+      } else {
+        buffer.writeByte((byte) 0);
+      }
+    }
+    for (Type fieldType : fieldTypes) {
+      buffer.writeByte(fieldType.getType());
+    }
+    buffer.writeInt(partitionBy.size());
+    for (String partition : partitionBy) {
+      byte[] bytes = partition.getBytes();
+      buffer.writeInt(bytes.length);
+      buffer.write(bytes);
+    }
+    buffer.writeInt(orderBy.size());
+    for (String order : orderBy) {
+      byte[] bytes = order.getBytes();
+      buffer.writeInt(bytes.length);
+      buffer.write(bytes);
+    }
+    buffer.writeByte((byte) (rowSemantics ? 1 : 0));
+  }
+
+  public static TableArgument deserialize(ByteBuffer buffer) {
+    int size = buffer.getInt();
+    List<Optional<String>> fieldNames = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      if (buffer.get() == 1) {
+        byte[] bytes = new byte[buffer.getInt()];
+        buffer.get(bytes);
+        fieldNames.add(Optional.of(new String(bytes)));
+      } else {
+        fieldNames.add(Optional.empty());
+      }
+    }
+    List<Type> fieldTypes = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      fieldTypes.add(Type.valueOf(buffer.get()));
+    }
+    size = buffer.getInt();
+    List<String> partitionBy = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      byte[] bytes = new byte[buffer.getInt()];
+      buffer.get(bytes);
+      partitionBy.add(new String(bytes));
+    }
+    size = buffer.getInt();
+    List<String> orderBy = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      byte[] bytes = new byte[buffer.getInt()];
+      buffer.get(bytes);
+      orderBy.add(new String(bytes));
+    }
+    boolean rowSemantics = buffer.get() == 1;
+    return new TableArgument(fieldNames, fieldTypes, partitionBy, orderBy, rowSemantics);
   }
 }

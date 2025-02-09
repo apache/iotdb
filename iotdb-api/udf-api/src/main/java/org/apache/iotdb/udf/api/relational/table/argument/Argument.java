@@ -19,4 +19,30 @@
 
 package org.apache.iotdb.udf.api.relational.table.argument;
 
-public interface Argument {}
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
+public interface Argument {
+
+  void serialize(ByteBuffer buffer);
+
+  void serialize(DataOutputStream buffer) throws IOException;
+
+  static Argument deserialize(ByteBuffer buffer) {
+    ArgumentType type = ArgumentType.values()[buffer.getInt()];
+    switch (type) {
+      case TABLE_ARGUMENT:
+        return TableArgument.deserialize(buffer);
+      case SCALAR_ARGUMENT:
+        return ScalarArgument.deserialize(buffer);
+      default:
+        throw new IllegalArgumentException("Unknown argument type: " + type);
+    }
+  }
+
+  enum ArgumentType {
+    TABLE_ARGUMENT,
+    SCALAR_ARGUMENT
+  }
+}

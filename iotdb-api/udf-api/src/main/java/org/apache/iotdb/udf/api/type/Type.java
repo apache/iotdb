@@ -65,6 +65,15 @@ public enum Type {
     return dataType;
   }
 
+  public static Type valueOf(byte type) {
+    for (Type t : Type.values()) {
+      if (t.dataType == type) {
+        return t;
+      }
+    }
+    throw new IllegalArgumentException("Unsupported type: " + type);
+  }
+
   public boolean checkObjectType(Object o) {
     switch (this) {
       case BOOLEAN:

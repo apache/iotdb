@@ -20,7 +20,11 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -43,6 +47,47 @@ public class DataOrganizationSpecification {
 
   public Optional<OrderingScheme> getOrderingScheme() {
     return orderingScheme;
+  }
+
+  public void serialize(DataOutputStream dataOutputStream) throws IOException {
+    ReadWriteIOUtils.write(partitionBy.size(), dataOutputStream);
+    for (Symbol symbol : partitionBy) {
+      Symbol.serialize(symbol, dataOutputStream);
+    }
+    if (orderingScheme.isPresent()) {
+      ReadWriteIOUtils.write(true, dataOutputStream);
+      orderingScheme.get().serialize(dataOutputStream);
+    } else {
+      ReadWriteIOUtils.write(false, dataOutputStream);
+    }
+  }
+
+  public void serialize(ByteBuffer buffer) {
+    ReadWriteIOUtils.write(partitionBy.size(), buffer);
+    for (Symbol symbol : partitionBy) {
+      Symbol.serialize(symbol, buffer);
+    }
+    if (orderingScheme.isPresent()) {
+      ReadWriteIOUtils.write(true, buffer);
+      orderingScheme.get().serialize(buffer);
+    } else {
+      ReadWriteIOUtils.write(false, buffer);
+    }
+  }
+
+  public static DataOrganizationSpecification deserialize(ByteBuffer buffer) {
+    int partitionBySize = ReadWriteIOUtils.readInt(buffer);
+    ImmutableList.Builder<Symbol> partitionBy = ImmutableList.builder();
+    for (int i = 0; i < partitionBySize; i++) {
+      partitionBy.add(Symbol.deserialize(buffer));
+    }
+    Optional<OrderingScheme> orderingScheme;
+    if (ReadWriteIOUtils.readBoolean(buffer)) {
+      orderingScheme = Optional.of(OrderingScheme.deserialize(buffer));
+    } else {
+      orderingScheme = Optional.empty();
+    }
+    return new DataOrganizationSpecification(partitionBy.build(), orderingScheme);
   }
 
   @Override

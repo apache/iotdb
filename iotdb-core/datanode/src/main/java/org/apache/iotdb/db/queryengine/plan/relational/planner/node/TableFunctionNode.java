@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.DataOrganizationSpecification;
@@ -29,6 +30,7 @@ import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -133,12 +135,108 @@ public class TableFunctionNode extends MultiChildProcessNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    // TODO(UDF)
+    PlanNodeType.TABLE_FUNCTION_NODE.serialize(byteBuffer);
+    ReadWriteIOUtils.write(name, byteBuffer);
+    ReadWriteIOUtils.write(arguments.size(), byteBuffer);
+    for (Map.Entry<String, Argument> entry : arguments.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), byteBuffer);
+      entry.getValue().serialize(byteBuffer);
+    }
+    ReadWriteIOUtils.write(properOutputs.size(), byteBuffer);
+    properOutputs.forEach(symbol -> Symbol.serialize(symbol, byteBuffer));
+    ReadWriteIOUtils.write(tableArgumentProperties.size(), byteBuffer);
+    tableArgumentProperties.forEach(
+        properties -> {
+          ReadWriteIOUtils.write(properties.getArgumentName(), byteBuffer);
+          ReadWriteIOUtils.write(properties.isRowSemantics(), byteBuffer);
+          ReadWriteIOUtils.write(properties.isPruneWhenEmpty(), byteBuffer);
+          properties.getPassThroughSpecification().serialize(byteBuffer);
+          ReadWriteIOUtils.write(properties.getRequiredColumns().size(), byteBuffer);
+          properties.getRequiredColumns().forEach(symbol -> Symbol.serialize(symbol, byteBuffer));
+          properties
+              .getDataOrganizationSpecification()
+              .ifPresent(specification -> specification.serialize(byteBuffer));
+        });
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    // TODO(UDF)
+    PlanNodeType.TABLE_FUNCTION_NODE.serialize(stream);
+    ReadWriteIOUtils.write(name, stream);
+    ReadWriteIOUtils.write(arguments.size(), stream);
+    for (Map.Entry<String, Argument> entry : arguments.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), stream);
+      entry.getValue().serialize(stream);
+    }
+    ReadWriteIOUtils.write(properOutputs.size(), stream);
+    for (Symbol symbol : properOutputs) {
+      Symbol.serialize(symbol, stream);
+    }
+    ReadWriteIOUtils.write(tableArgumentProperties.size(), stream);
+    for (TableArgumentProperties properties : tableArgumentProperties) {
+      ReadWriteIOUtils.write(properties.getArgumentName(), stream);
+      ReadWriteIOUtils.write(properties.isRowSemantics(), stream);
+      ReadWriteIOUtils.write(properties.isPruneWhenEmpty(), stream);
+      properties.getPassThroughSpecification().serialize(stream);
+      ReadWriteIOUtils.write(properties.getRequiredColumns().size(), stream);
+      for (Symbol symbol : properties.getRequiredColumns()) {
+        Symbol.serialize(symbol, stream);
+      }
+      if (properties.getDataOrganizationSpecification().isPresent()) {
+        properties.getDataOrganizationSpecification().get().serialize(stream);
+      }
+    }
+  }
+
+  public static TableFunctionNode deserialize(ByteBuffer byteBuffer) {
+    String name = ReadWriteIOUtils.readString(byteBuffer);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    ImmutableMap.Builder<String, Argument> arguments = ImmutableMap.builder();
+    for (int i = 0; i < size; i++) {
+      String key = ReadWriteIOUtils.readString(byteBuffer);
+      Argument value = Argument.deserialize(byteBuffer);
+      arguments.put(key, value);
+    }
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    ImmutableList.Builder<Symbol> properOutputs = ImmutableList.builder();
+    for (int i = 0; i < size; i++) {
+      properOutputs.add(Symbol.deserialize(byteBuffer));
+    }
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    ImmutableList.Builder<TableArgumentProperties> tableArgumentProperties =
+        ImmutableList.builder();
+    for (int i = 0; i < size; i++) {
+      String argumentName = ReadWriteIOUtils.readString(byteBuffer);
+      boolean rowSemantics = ReadWriteIOUtils.readBoolean(byteBuffer);
+      boolean pruneWhenEmpty = ReadWriteIOUtils.readBoolean(byteBuffer);
+      PassThroughSpecification passThroughSpecification =
+          PassThroughSpecification.deserialize(byteBuffer);
+      int requiredColumnsSize = ReadWriteIOUtils.readInt(byteBuffer);
+      ImmutableList.Builder<Symbol> requiredColumns = ImmutableList.builder();
+      for (int j = 0; j < requiredColumnsSize; j++) {
+        requiredColumns.add(Symbol.deserialize(byteBuffer));
+      }
+      Optional<DataOrganizationSpecification> dataOrganizationSpecification = Optional.empty();
+      if (byteBuffer.hasRemaining()) {
+        dataOrganizationSpecification =
+            Optional.of(DataOrganizationSpecification.deserialize(byteBuffer));
+      }
+      tableArgumentProperties.add(
+          new TableArgumentProperties(
+              argumentName,
+              rowSemantics,
+              pruneWhenEmpty,
+              passThroughSpecification,
+              requiredColumns.build(),
+              dataOrganizationSpecification));
+    }
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new TableFunctionNode(
+        planNodeId,
+        name,
+        arguments.build(),
+        properOutputs.build(),
+        tableArgumentProperties.build());
   }
 
   @Override
@@ -218,6 +316,36 @@ public class TableFunctionNode extends MultiChildProcessNode {
 
     public List<PassThroughColumn> getColumns() {
       return columns;
+    }
+
+    public void serialize(DataOutputStream stream) throws IOException {
+      ReadWriteIOUtils.write(declaredAsPassThrough, stream);
+      ReadWriteIOUtils.write(columns.size(), stream);
+      for (PassThroughColumn column : columns) {
+        ReadWriteIOUtils.write(column.isPartitioningColumn, stream);
+        Symbol.serialize(column.getSymbol(), stream);
+      }
+    }
+
+    public void serialize(ByteBuffer buffer) {
+      ReadWriteIOUtils.write(declaredAsPassThrough, buffer);
+      ReadWriteIOUtils.write(columns.size(), buffer);
+      for (PassThroughColumn column : columns) {
+        ReadWriteIOUtils.write(column.isPartitioningColumn, buffer);
+        Symbol.serialize(column.getSymbol(), buffer);
+      }
+    }
+
+    public static PassThroughSpecification deserialize(ByteBuffer byteBuffer) {
+      boolean declaredAsPassThrough = ReadWriteIOUtils.readBoolean(byteBuffer);
+      int size = ReadWriteIOUtils.readInt(byteBuffer);
+      ImmutableList.Builder<PassThroughColumn> columns = ImmutableList.builder();
+      for (int i = 0; i < size; i++) {
+        boolean isPartitioningColumn = ReadWriteIOUtils.readBoolean(byteBuffer);
+        Symbol symbol = Symbol.deserialize(byteBuffer);
+        columns.add(new PassThroughColumn(symbol, isPartitioningColumn));
+      }
+      return new PassThroughSpecification(declaredAsPassThrough, columns.build());
     }
   }
 

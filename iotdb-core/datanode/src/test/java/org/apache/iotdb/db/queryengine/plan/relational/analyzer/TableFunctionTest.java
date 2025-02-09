@@ -119,8 +119,8 @@ public class TableFunctionTest {
         tableScan(
             "testdb.table1",
             ImmutableMap.of(
-                "time_0", "time", "tag1_1", "tag1", "tag2_2", "tag2", "tag3_3", "tag3", "attr1",
-                "attr1", "attr2_4", "attr2", "s1_5", "s1", "s2_6", "s2", "s3_7", "s3"));
+                "time_0", "time", "tag1_1", "tag1", "tag2_2", "tag2", "tag3_3", "tag3", "attr2_4",
+                "attr2", "s1_5", "s1", "s2_6", "s2", "s3_7", "s3"));
 
     Consumer<TableFunctionProcessorMatcher.Builder> tableFunctionMatcher =
         builder ->
@@ -220,8 +220,8 @@ public class TableFunctionTest {
         tableScan(
             "testdb.table1",
             ImmutableMap.of(
-                "time_0", "time", "tag1_1", "tag1", "tag2_2", "tag2", "tag3_3", "tag3", "attr1",
-                "attr1", "attr2_4", "attr2", "s1_5", "s1", "s2_6", "s2", "s3_7", "s3"));
+                "time_0", "time", "tag1_1", "tag1", "tag2_2", "tag2", "tag3_3", "tag3", "attr2_4",
+                "attr2", "s1_5", "s1", "s2_6", "s2", "s3_7", "s3"));
     Consumer<TableFunctionProcessorMatcher.Builder> excludeMatcher =
         builder ->
             builder
@@ -255,17 +255,16 @@ public class TableFunctionTest {
                                 ImmutableList.of("tag1", "tag2", "tag3"),
                                 ImmutableList.of(),
                                 ImmutableMap.of()))
-                        .passThroughSymbols(
-                            "time", "tag1", "tag2", "tag3", "attr2", "s1", "s2", "s3"));
+                        .passThroughSymbols("tag1", "tag2", "tag3"));
     // Verify full LogicalPlan
-    // Output - Aggregation - Project - HOP - Sort - EXCLUDE - TableScan
+    // Output - Aggregation - HOP - Sort - Project - EXCLUDE - TableScan
     assertPlan(
         logicalQueryPlan,
         anyTree(
             aggregation(
                 ImmutableMap.of("count", aggregationFunction("count", ImmutableList.of())),
-                project(
-                    tableFunctionProcessor(
-                        hopMatcher, sort(tableFunctionProcessor(excludeMatcher, tableScan)))))));
+                tableFunctionProcessor(
+                    hopMatcher,
+                    sort(project(tableFunctionProcessor(excludeMatcher, tableScan)))))));
   }
 }

@@ -995,11 +995,6 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("ProperOutputs: %s", node.getProperOutputs()));
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
     boxValue.add(String.format("RequiredSymbols: %s", node.getRequiredSymbols()));
-    if (node.isPruneWhenEmpty()) {
-      boxValue.add("Prune when empty");
-    } else {
-      boxValue.add("Keep when empty");
-    }
     node.getDataOrganizationSpecification()
         .ifPresent(
             specification -> {
@@ -1034,7 +1029,9 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   private String formatTableArgument(String argumentName, TableArgument argument) {
-    return format("%s => TableArgument", argumentName);
+    return format(
+        "%s => TableArgument{%s}",
+        argumentName, argument.isRowSemantics() ? "row semantics" : "set semantics");
   }
 
   private String printRegion(TRegionReplicaSet regionReplicaSet) {
