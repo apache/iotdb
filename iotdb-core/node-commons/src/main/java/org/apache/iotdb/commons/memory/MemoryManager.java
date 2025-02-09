@@ -406,7 +406,7 @@ public class MemoryManager {
     children.clear();
     for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
       if (block == null || block.isReleased()) {
-        return;
+        continue;
       }
 
       block.markAsReleased();
