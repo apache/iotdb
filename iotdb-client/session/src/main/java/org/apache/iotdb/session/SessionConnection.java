@@ -85,8 +85,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
-import static org.apache.iotdb.common.rpc.thrift.Model.TABLE;
-import static org.apache.iotdb.common.rpc.thrift.Model.TREE;
+import static org.apache.iotdb.session.Session.TABLE;
+import static org.apache.iotdb.session.Session.TREE;
 
 @SuppressWarnings("java:S2142")
 public class SessionConnection {
@@ -474,7 +474,7 @@ public class SessionConnection {
       session.changeDatabase(dbName);
       this.database = dbName;
     }
-    String sqlDialect = resp.tableModel ? TABLE.name() : TREE.name();
+    String sqlDialect = resp.tableModel ? TABLE : TREE;
     if (!sqlDialect.equalsIgnoreCase(this.sqlDialect)) {
       session.changeSqlDialect(sqlDialect);
       this.sqlDialect = sqlDialect;

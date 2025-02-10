@@ -215,6 +215,9 @@ public class Session implements ISession {
       "All values are null and this submission is ignored,deviceIds are [{}],times are [{}],measurements are [{}]";
   private static final String ALL_INSERT_DATA_IS_NULL = "All inserted data is null.";
 
+  protected static final String TABLE = "table";
+  protected static final String TREE = "tree";
+
   public Session(String host, int rpcPort) {
     this(
         host,
