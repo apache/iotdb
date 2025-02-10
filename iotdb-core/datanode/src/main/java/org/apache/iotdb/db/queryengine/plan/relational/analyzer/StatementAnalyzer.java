@@ -2116,7 +2116,7 @@ public class StatementAnalyzer {
         analysis.recordSubqueries(node, expressionAnalysis);
         analysis.setJoinCriteria(node, expression);
         if (criteria instanceof AsofJoinOn) {
-          analysis.setAsofJoinCriteria(node, ((AsofJoinOn) criteria).getToleranceValue());
+          analysis.setAsofJoinTolerance(node, ((AsofJoinOn) criteria).getToleranceValue());
         }
       } else {
         throw new UnsupportedOperationException(

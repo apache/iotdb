@@ -547,12 +547,16 @@ public class Analysis implements IAnalysis {
     joins.put(NodeRef.of(node), criteria);
   }
 
-  public void setAsofJoinCriteria(Join node, List<LongLiteral> tolerance) {
+  public Expression getJoinCriteria(Join join) {
+    return joins.get(NodeRef.of(join));
+  }
+
+  public void setAsofJoinTolerance(Join node, List<LongLiteral> tolerance) {
     asofJoinTolerances.put(NodeRef.of(node), tolerance);
   }
 
-  public Expression getJoinCriteria(Join join) {
-    return joins.get(NodeRef.of(join));
+  public List<LongLiteral> getAsofJoinTolerance(Join node) {
+    return asofJoinTolerances.get(NodeRef.of(node));
   }
 
   public boolean hasJoinNode() {

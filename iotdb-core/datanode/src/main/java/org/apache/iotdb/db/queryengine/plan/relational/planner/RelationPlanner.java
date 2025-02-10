@@ -68,6 +68,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
@@ -277,7 +278,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
         analysis.getScope(node),
         leftPlan,
         rightPlan,
-        analysis.getSubqueries(node));
+        analysis.getSubqueries(node),
+        analysis.getAsofJoinTolerance(node));
   }
 
   private RelationPlan planJoinUsing(Join node, RelationPlan left, RelationPlan right) {
@@ -407,7 +409,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       Scope scope,
       RelationPlan leftPlan,
       RelationPlan rightPlan,
-      Analysis.SubqueryAnalysis subqueries) {
+      Analysis.SubqueryAnalysis subqueries,
+      List<LongLiteral> asofJoinTolerance) {
     // NOTE: symbols must be in the same order as the outputDescriptor
     List<Symbol> outputSymbols =
         ImmutableList.<Symbol>builder()
