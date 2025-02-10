@@ -1075,7 +1075,7 @@ timestamp_precision=ms
 
 # When the timestamp precision check is enabled, the timestamps those are over 13 digits for ms precision, or over 16 digits for us precision are not allowed to be inserted.
 # For all precisions, ms, us and ns, the timestamps cannot exceed the range of [-9223372036854775808, 9223372036854775807], regardless of whether the check is enabled or not.
-# effectiveMode: first_start
+# effectiveMode: hot_reload
 # Datatype: Boolean
 timestamp_precision_check_enabled=true
 

@@ -588,9 +588,9 @@ public class TsFileResource implements PersistentResource {
     }
   }
 
-  public long getStartTime(IDeviceID deviceId) {
+  public Optional<Long> getStartTime(IDeviceID deviceId) {
     try {
-      return deviceId == null ? getFileStartTime() : timeIndex.getStartTime(deviceId);
+      return deviceId == null ? Optional.of(getFileStartTime()) : timeIndex.getStartTime(deviceId);
     } catch (Exception e) {
       LOGGER.error(
           "meet error when getStartTime of {} in file {}", deviceId, file.getAbsolutePath(), e);
@@ -602,9 +602,9 @@ public class TsFileResource implements PersistentResource {
   }
 
   /** open file's end time is Long.MIN_VALUE */
-  public long getEndTime(IDeviceID deviceId) {
+  public Optional<Long> getEndTime(IDeviceID deviceId) {
     try {
-      return deviceId == null ? getFileEndTime() : timeIndex.getEndTime(deviceId);
+      return deviceId == null ? Optional.of(getFileEndTime()) : timeIndex.getEndTime(deviceId);
     } catch (Exception e) {
       LOGGER.error(
           "meet error when getEndTime of {} in file {}", deviceId, file.getAbsolutePath(), e);
@@ -617,8 +617,10 @@ public class TsFileResource implements PersistentResource {
 
   // cannot use FileTimeIndex
   public long getOrderTimeForSeq(IDeviceID deviceId, boolean ascending) {
-    if (timeIndex instanceof ArrayDeviceTimeIndex) {
-      return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
+    if (timeIndex instanceof ArrayDeviceTimeIndex && !definitelyNotContains(deviceId)) {
+      // checked above
+      //noinspection OptionalGetWithoutIsPresent
+      return ascending ? getStartTime(deviceId).get() : getEndTime(deviceId).get();
     } else {
       return ascending ? Long.MIN_VALUE : Long.MAX_VALUE;
     }
@@ -626,7 +628,13 @@ public class TsFileResource implements PersistentResource {
 
   // can use FileTimeIndex
   public long getOrderTimeForUnseq(IDeviceID deviceId, boolean ascending) {
-    return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
+    if (!definitelyNotContains(deviceId)) {
+      // checked above
+      //noinspection OptionalGetWithoutIsPresent
+      return ascending ? getStartTime(deviceId).get() : getEndTime(deviceId).get();
+    } else {
+      return ascending ? Long.MIN_VALUE : Long.MAX_VALUE;
+    }
   }
 
   @Override
@@ -957,6 +965,7 @@ public class TsFileResource implements PersistentResource {
   /**
    * @return true if the device is contained in the TsFile
    */
+  @SuppressWarnings("OptionalGetWithoutIsPresent")
   public boolean isSatisfied(IDeviceID deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
     if (deviceId != null && definitelyNotContains(deviceId)) {
       if (debug) {
@@ -966,8 +975,9 @@ public class TsFileResource implements PersistentResource {
       return false;
     }
 
-    long startTime = getStartTime(deviceId);
-    long endTime = isClosed() || !isSeq ? getEndTime(deviceId) : Long.MAX_VALUE;
+    // check above
+    long startTime = getStartTime(deviceId).get();
+    long endTime = isClosed() || !isSeq ? getEndTime(deviceId).get() : Long.MAX_VALUE;
     if (startTime > endTime) {
       // startTime > endTime indicates that there is something wrong with this TsFile. Return false
       // directly, or it may lead to infinite loop in GroupByMonthFilter#getTimePointPosition.
@@ -1308,8 +1318,13 @@ public class TsFileResource implements PersistentResource {
   public void deleteRemovedDeviceAndUpdateEndTime(Map<IDeviceID, Long> lastTimeForEachDevice) {
     ITimeIndex newTimeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
     for (Map.Entry<IDeviceID, Long> entry : lastTimeForEachDevice.entrySet()) {
-      newTimeIndex.updateStartTime(entry.getKey(), timeIndex.getStartTime(entry.getKey()));
-      newTimeIndex.updateEndTime(entry.getKey(), entry.getValue());
+      timeIndex
+          .getStartTime(entry.getKey())
+          .ifPresent(
+              startTime -> {
+                newTimeIndex.updateStartTime(entry.getKey(), startTime);
+                newTimeIndex.updateEndTime(entry.getKey(), entry.getValue());
+              });
     }
     timeIndex = newTimeIndex;
   }

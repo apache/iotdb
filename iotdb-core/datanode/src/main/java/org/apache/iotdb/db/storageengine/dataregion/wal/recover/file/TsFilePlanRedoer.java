@@ -42,6 +42,7 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * This class helps redo wal logs into a TsFile. Notice: You should update time map in {@link
@@ -88,14 +89,14 @@ public class TsFilePlanRedoer {
     if (tsFileResource != null) {
       // orders of insert node is guaranteed by storage engine, just check time in the file
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
-      long lastEndTime = tsFileResource.getEndTime(node.getDeviceID());
+      Optional<Long> lastEndTime = tsFileResource.getEndTime(node.getDeviceID());
       long minTimeInNode;
       if (node instanceof InsertRowNode) {
         minTimeInNode = ((InsertRowNode) node).getTime();
       } else {
         minTimeInNode = ((InsertTabletNode) node).getTimes()[0];
       }
-      if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTimeInNode) {
+      if (lastEndTime.isPresent() && lastEndTime.get() >= minTimeInNode) {
         return;
       }
     }
@@ -131,10 +132,10 @@ public class TsFilePlanRedoer {
         // orders of insert node is guaranteed by storage engine, just check time in the file
         // the last chunk group may contain the same data with the logs, ignore such logs in seq
         // file
-        long lastEndTime = tsFileResource.getEndTime(node.getDeviceID());
+        Optional<Long> lastEndTime = tsFileResource.getEndTime(node.getDeviceID());
         long minTimeInNode;
         minTimeInNode = node.getTime();
-        if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTimeInNode) {
+        if (lastEndTime.isPresent() && lastEndTime.get() >= minTimeInNode) {
           continue;
         }
       }

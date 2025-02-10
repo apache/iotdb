@@ -215,13 +215,17 @@ public class AlignedChunkData implements ChunkData {
     pageNumbers.set(pageNumbers.size() - 1, pageNumbers.get(pageNumbers.size() - 1) + 1);
     satisfiedLengthQueue.offer(satisfiedLength);
     final long startTime = timePartitionSlot.getStartTime();
-    final long endTime = startTime + TimePartitionUtils.getTimePartitionInterval();
+    // beware of overflow
+    long endTime = startTime + TimePartitionUtils.getTimePartitionInterval() - 1;
+    if (endTime <= startTime) {
+      endTime = Long.MAX_VALUE;
+    }
     // serialize needDecode==true
     dataSize += ReadWriteIOUtils.write(true, stream);
     dataSize += ReadWriteIOUtils.write(satisfiedLength, stream);
 
     for (final long time : times) {
-      if (time >= endTime) {
+      if (time > endTime) {
         break;
       }
       if (time >= startTime) {
@@ -235,7 +239,11 @@ public class AlignedChunkData implements ChunkData {
       throws IOException {
     pageNumbers.set(pageNumbers.size() - 1, pageNumbers.get(pageNumbers.size() - 1) + 1);
     final long startTime = timePartitionSlot.getStartTime();
-    final long endTime = startTime + TimePartitionUtils.getTimePartitionInterval();
+    // beware of overflow
+    long endTime = startTime + TimePartitionUtils.getTimePartitionInterval() - 1;
+    if (endTime <= startTime) {
+      endTime = Long.MAX_VALUE;
+    }
     final int satisfiedLength = satisfiedLengthQueue.poll();
     // serialize needDecode==true
     dataSize += ReadWriteIOUtils.write(true, stream);
@@ -243,7 +251,7 @@ public class AlignedChunkData implements ChunkData {
     satisfiedLengthQueue.offer(satisfiedLength);
 
     for (int i = 0; i < times.length; i++) {
-      if (times[i] >= endTime) {
+      if (times[i] > endTime) {
         break;
       }
       if (times[i] >= startTime) {
