@@ -511,7 +511,7 @@ public class MemoryManager {
       sb.append("  ");
     }
     sb.append(this);
-    LOGGER.error(sb.toString());
+    LOGGER.info(sb.toString());
     for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
       block.print(index + 1);
     }
