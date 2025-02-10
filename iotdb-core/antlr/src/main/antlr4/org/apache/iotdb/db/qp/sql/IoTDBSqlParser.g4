@@ -88,7 +88,7 @@ utilityStatement
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueries | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
     | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
-    | removeFile | unloadFile
+    | removeFile | unloadFile | setSqlDialectStatement
     ;
 
 /**
@@ -1181,6 +1181,10 @@ removeFile
 // Unload TsFile
 unloadFile
     : UNLOAD srcFileName=STRING_LITERAL dstFileDir=STRING_LITERAL
+    ;
+
+setSqlDialectStatement
+    : SET SQL_DIALECT OPERATOR_SEQ (TABLE | TREE)
     ;
 
 // attribute clauses

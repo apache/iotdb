@@ -122,6 +122,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
@@ -658,5 +659,9 @@ public abstract class StatementVisitor<R, C> {
   public R visitShowCurrentTimestamp(
       ShowCurrentTimestampStatement showCurrentTimestampStatement, C context) {
     return visitStatement(showCurrentTimestampStatement, context);
+  }
+
+  public R visitSetSqlDialect(SetSqlDialectStatement setSqlDialectStatement, C context) {
+    return visitStatement(setSqlDialectStatement, context);
   }
 }

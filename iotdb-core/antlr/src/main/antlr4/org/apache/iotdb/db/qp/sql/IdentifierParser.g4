@@ -214,6 +214,7 @@ keyWords
     | SOFFSET
     | SOURCE
     | SPACE
+    | SQL_DIALECT
     | STORAGE
     | START
     | STARTTIME
@@ -224,6 +225,7 @@ keyWords
     | SUBSCRIPTIONS
     | SUBSTRING
     | SYSTEM
+    | TABLE
     | TAGS
     | TAIL
     | TASK
@@ -242,6 +244,7 @@ keyWords
     | TOPIC
     | TOPICS
     | TRACING
+    | TREE
     | TRIGGER
     | TRIGGERS
     | TRUE
