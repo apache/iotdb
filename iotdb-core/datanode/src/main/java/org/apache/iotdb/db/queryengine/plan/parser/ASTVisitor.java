@@ -1522,10 +1522,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     Map<String, Expression> aliasToColumnMap = new HashMap<>();
     for (IoTDBSqlParser.ResultColumnContext resultColumnContext : ctx.resultColumn()) {
       ResultColumn resultColumn = parseResultColumn(resultColumnContext);
+      String columnName = resultColumn.getExpression().getExpressionString();
       // __endTime shouldn't be included in resultColumns
-      if (resultColumn.getExpression().getExpressionString().equals(ColumnHeaderConstant.ENDTIME)) {
+      if (columnName.equals(ColumnHeaderConstant.ENDTIME)) {
         queryStatement.setOutputEndTime(true);
         continue;
+      }
+      // don't support pure time in select
+      if (columnName.equals(ColumnHeaderConstant.TIME)) {
+        throw new SemanticException(
+            "Time column is no need to appear in SELECT Clause explicitly, it will always be returned if possible");
       }
       if (resultColumn.hasAlias()) {
         String alias = resultColumn.getAlias();

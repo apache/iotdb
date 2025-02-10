@@ -362,7 +362,16 @@ public class IoTDBDatabaseIT {
           statement.executeQuery("show tables"),
           "TableName,TTL(ms),",
           new HashSet<>(
-              Arrays.asList("databases,INF,", "tables,INF,", "columns,INF,", "queries,INF,")));
+              Arrays.asList(
+                  "databases,INF,",
+                  "tables,INF,",
+                  "columns,INF,",
+                  "queries,INF,",
+                  "regions,INF,",
+                  "topics,INF,",
+                  "pipe_plugins,INF,",
+                  "pipes,INF,",
+                  "subscriptions,INF,")));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc databases"),
@@ -405,7 +414,44 @@ public class IoTDBDatabaseIT {
                   "start_time,TIMESTAMP,ATTRIBUTE,",
                   "datanode_id,INT32,ATTRIBUTE,",
                   "elapsed_time,FLOAT,ATTRIBUTE,",
-                  "statement,STRING,ATTRIBUTE,")));
+                  "statement,STRING,ATTRIBUTE,",
+                  "user,STRING,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc pipes"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "id,STRING,TAG,",
+                  "creation_time,TIMESTAMP,ATTRIBUTE,",
+                  "state,STRING,ATTRIBUTE,",
+                  "pipe_source,STRING,ATTRIBUTE,",
+                  "pipe_processor,STRING,ATTRIBUTE,",
+                  "pipe_sink,STRING,ATTRIBUTE,",
+                  "exception_message,STRING,ATTRIBUTE,",
+                  "remaining_event_count,INT64,ATTRIBUTE,",
+                  "estimated_remaining_seconds,DOUBLE,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc pipe_plugins"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "plugin_name,STRING,TAG,",
+                  "plugin_type,STRING,ATTRIBUTE,",
+                  "class_name,STRING,ATTRIBUTE,",
+                  "plugin_jar,STRING,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc topics"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList("topic_name,STRING,TAG,", "topic_configs,STRING,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc subscriptions"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "topic_name,STRING,TAG,",
+                  "consumer_group_name,STRING,TAG,",
+                  "subscribed_consumers,STRING,ATTRIBUTE,")));
 
       // Test table query
       statement.execute("create database test");
@@ -427,11 +473,16 @@ public class IoTDBDatabaseIT {
                   "information_schema,tables,INF,USING,",
                   "information_schema,columns,INF,USING,",
                   "information_schema,queries,INF,USING,",
+                  "information_schema,regions,INF,USING,",
+                  "information_schema,topics,INF,USING,",
+                  "information_schema,pipe_plugins,INF,USING,",
+                  "information_schema,pipes,INF,USING,",
+                  "information_schema,subscriptions,INF,USING,",
                   "test,test,INF,USING,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from tables where status = 'USING'"),
           "count(devices),",
-          Collections.singleton("5,"));
+          Collections.singleton("10,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "select * from columns where table_name = 'queries' or database = 'test'"),
@@ -443,10 +494,36 @@ public class IoTDBDatabaseIT {
                   "information_schema,queries,datanode_id,INT32,ATTRIBUTE,USING,",
                   "information_schema,queries,elapsed_time,FLOAT,ATTRIBUTE,USING,",
                   "information_schema,queries,statement,STRING,ATTRIBUTE,USING,",
+                  "information_schema,queries,user,STRING,ATTRIBUTE,USING,",
                   "test,test,time,TIMESTAMP,TIME,USING,",
                   "test,test,a,STRING,TAG,USING,",
                   "test,test,b,STRING,ATTRIBUTE,USING,",
                   "test,test,c,INT32,FIELD,USING,")));
+
+      statement.execute(
+          "create pipe a2b with source('double-living'='true') with sink ('sink'='write-back-sink')");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select id, pipe_sink from pipes where creation_time > 0"),
+          "id,pipe_sink,",
+          Collections.singleton("a2b,{sink=write-back-sink},"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select * from pipe_plugins"),
+          "plugin_name,plugin_type,class_name,plugin_jar,",
+          new HashSet<>(
+              Arrays.asList(
+                  "IOTDB-THRIFT-SSL-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBThriftSslConnector,null,",
+                  "IOTDB-AIR-GAP-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.airgap.IoTDBAirGapConnector,null,",
+                  "DO-NOTHING-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.donothing.DoNothingConnector,null,",
+                  "DO-NOTHING-PROCESSOR,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.donothing.DoNothingProcessor,null,",
+                  "IOTDB-THRIFT-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.iotdb.thrift.IoTDBThriftConnector,null,",
+                  "IOTDB-SOURCE,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.iotdb.IoTDBExtractor,null,")));
+
+      statement.execute("create topic tp with ('start-time'='2025-01-13T10:03:19.229+08:00')");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select * from topics where topic_name = 'tp'"),
+          "topic_name,topic_configs,",
+          Collections.singleton(
+              "tp,{__system.sql-dialect=table, start-time=2025-01-13T10:03:19.229+08:00},"));
     }
   }
 

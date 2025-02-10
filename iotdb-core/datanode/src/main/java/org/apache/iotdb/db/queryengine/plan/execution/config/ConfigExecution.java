@@ -310,4 +310,9 @@ public class ConfigExecution implements IQueryExecution {
   public IClientSession.SqlDialect getSQLDialect() {
     return context.getSession().getSqlDialect();
   }
+
+  @Override
+  public String getUser() {
+    return context.getSession().getUserName();
+  }
 }
