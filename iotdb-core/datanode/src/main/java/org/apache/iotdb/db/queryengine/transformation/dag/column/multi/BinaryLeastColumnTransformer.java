@@ -37,9 +37,9 @@ public class BinaryLeastColumnTransformer extends AbstractGreatestLeastColumnTra
     for (int i = 1; i < childrenColumns.size(); i++) {
       Column column = childrenColumns.get(i);
       if (!column.isNull(index)) {
-        allNull = false;
         Binary value = column.getBinary(index);
-        if (minValue == null || value.compareTo(minValue) < 0) {
+        if (allNull || value.compareTo(minValue) < 0) {
+          allNull = false;
           minValue = value;
         }
       }

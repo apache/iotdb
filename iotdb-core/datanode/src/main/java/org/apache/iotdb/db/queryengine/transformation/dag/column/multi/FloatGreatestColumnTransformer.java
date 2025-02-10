@@ -36,9 +36,9 @@ public class FloatGreatestColumnTransformer extends AbstractGreatestLeastColumnT
     for (int i = 1; i < childrenColumns.size(); i++) {
       Column column = childrenColumns.get(i);
       if (!column.isNull(index)) {
-        allNull = false;
         float value = column.getFloat(index);
-        if (value > maxValue) {
+        if (allNull || value > maxValue) {
+          allNull = false;
           maxValue = value;
         }
       }

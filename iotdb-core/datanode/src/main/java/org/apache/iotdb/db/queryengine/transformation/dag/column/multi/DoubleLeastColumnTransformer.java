@@ -36,9 +36,9 @@ public class DoubleLeastColumnTransformer extends AbstractGreatestLeastColumnTra
     for (int i = 1; i < childrenColumns.size(); i++) {
       Column column = childrenColumns.get(i);
       if (!column.isNull(index)) {
-        allNull = false;
         double value = column.getDouble(index);
-        if (value < minValue) {
+        if (allNull || value < minValue) {
+          allNull = false;
           minValue = value;
         }
       }

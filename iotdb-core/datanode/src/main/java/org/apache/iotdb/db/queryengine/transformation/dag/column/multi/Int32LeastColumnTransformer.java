@@ -36,9 +36,9 @@ public class Int32LeastColumnTransformer extends AbstractGreatestLeastColumnTran
     for (int i = 1; i < childrenColumns.size(); i++) {
       Column column = childrenColumns.get(i);
       if (!column.isNull(index)) {
-        allNull = false;
         int value = column.getInt(index);
-        if (value < minValue) {
+        if (allNull || value < minValue) {
+          allNull = false;
           minValue = value;
         }
       }
