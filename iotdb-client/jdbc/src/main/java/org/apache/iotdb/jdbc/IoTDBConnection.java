@@ -20,6 +20,7 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.jdbc.relational.IoTDBRelationalDatabaseMetadata;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -299,6 +300,9 @@ public class IoTDBConnection implements Connection {
     if (isClosed) {
       throw new SQLException("Cannot create statement because connection is closed");
     }
+    if (getSqlDialect().equals("table")) {
+      return new IoTDBRelationalDatabaseMetadata(this, getClient(), sessionId, zoneId);
+    }
     return new IoTDBDatabaseMetadata(this, getClient(), sessionId, zoneId);
   }
 
@@ -309,12 +313,22 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public String getSchema() throws SQLException {
-    throw new SQLException("Does not support getSchema");
+    return getDatabase();
   }
 
   @Override
   public void setSchema(String arg0) throws SQLException {
-    throw new SQLException("Does not support setSchema");
+    // changeDefaultDatabase(arg0);
+    Statement stmt = this.createStatement();
+    String sql = "USE " + arg0;
+    boolean rs;
+    try {
+      rs = stmt.execute(sql);
+    } catch (SQLException e) {
+      stmt.close();
+      logger.error("Use database error: {}", e.getMessage());
+      throw e;
+    }
   }
 
   @Override
@@ -562,7 +576,7 @@ public class IoTDBConnection implements Connection {
     isClosed = false;
   }
 
-  boolean reconnect() {
+  public boolean reconnect() {
     boolean flag = false;
     for (int i = 1; i <= Config.RETRY_NUM; i++) {
       try {
@@ -619,5 +633,9 @@ public class IoTDBConnection implements Connection {
 
   public int getTimeFactor() {
     return timeFactor;
+  }
+
+  public String getDatabase() {
+    return params.getDb().orElse(null);
   }
 }
