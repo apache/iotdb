@@ -320,8 +320,13 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     if (Objects.nonNull(dataRegion)) {
       final String databaseName = dataRegion.getDatabaseName();
       if (Objects.nonNull(databaseName)) {
-        isDbNameCoveredByPattern =
-            treePattern.coversDb(databaseName) && tablePattern.coversDb(databaseName);
+        isTableModel = !databaseName.startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX);
+        isModelDetected = true;
+        if (isTableModel) {
+          isDbNameCoveredByPattern = tablePattern.coversDb(databaseName);
+        } else {
+          isDbNameCoveredByPattern = treePattern.coversDb(databaseName);
+        }
       }
     }
 

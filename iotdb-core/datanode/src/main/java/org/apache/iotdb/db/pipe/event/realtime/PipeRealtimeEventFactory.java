@@ -35,23 +35,27 @@ public class PipeRealtimeEventFactory {
   private static final TsFileEpochManager TS_FILE_EPOCH_MANAGER = new TsFileEpochManager();
 
   public static PipeRealtimeEvent createRealtimeEvent(
-      final String databaseName,
+      final Boolean isTableModel,
+      final String databaseNameFromDataRegion,
       final TsFileResource resource,
       final boolean isLoaded,
       final boolean isGeneratedByPipe) {
     return TS_FILE_EPOCH_MANAGER.bindPipeTsFileInsertionEvent(
-        new PipeTsFileInsertionEvent(databaseName, resource, isLoaded, isGeneratedByPipe, false),
+        new PipeTsFileInsertionEvent(
+            isTableModel, databaseNameFromDataRegion, resource, isLoaded, isGeneratedByPipe, false),
         resource);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(
-      final String databaseName,
+      final Boolean isTableModel,
+      final String databaseNameFromDataRegion,
       final WALEntryHandler walEntryHandler,
       final InsertNode insertNode,
       final TsFileResource resource) {
     return TS_FILE_EPOCH_MANAGER.bindPipeInsertNodeTabletInsertionEvent(
         new PipeInsertNodeTabletInsertionEvent(
-            databaseName,
+            isTableModel,
+            databaseNameFromDataRegion,
             walEntryHandler,
             insertNode.getTargetPath(),
             insertNode.getProgressIndex(),
