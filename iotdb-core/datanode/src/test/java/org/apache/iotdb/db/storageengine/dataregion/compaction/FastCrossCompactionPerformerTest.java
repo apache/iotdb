@@ -4671,7 +4671,7 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         SystemInfo.getInstance().getTotalFileLimitForCompaction();
     SystemInfo.getInstance().setTotalFileLimitForCompactionTask(15);
     SystemInfo.getInstance().getCompactionFileNumCost().set(0);
-    SystemInfo.getInstance().getCompactionMemoryCost().set(0);
+    SystemInfo.getInstance().getCompactionMemoryBlock().setUsedMemoryInBytes(0);
     try {
       createFiles(6, 2, 3, 300, 0, 0, 50, 50, false, true);
       createFiles(6, 2, 3, 300, 0, 0, 50, 50, false, false);
@@ -4696,7 +4696,8 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
       Assert.assertNotNull(takeTask);
       worker.processOneCompactionTask(takeTask);
       Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
-      Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
+      Assert.assertEquals(
+          0, SystemInfo.getInstance().getCompactionMemoryBlock().getUsedMemoryInBytes());
     } finally {
       SystemInfo.getInstance()
           .setTotalFileLimitForCompactionTask(oldMaxCrossCompactionCandidateFileNum);
