@@ -74,6 +74,6 @@ public class SetSqlDialect extends Statement {
 
   @Override
   public String toString() {
-    return "SET SQL_DIALECT " + sqlDialect;
+    return "SET SQL_DIALECT=" + sqlDialect;
   }
 }

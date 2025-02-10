@@ -51,7 +51,7 @@ public class SetSqlDialectStatement extends Statement implements IConfigStatemen
 
   @Override
   public String toString() {
-    return "SET SQL_DIALECT " + sqlDialect;
+    return "SET SQL_DIALECT=" + sqlDialect;
   }
 
   @Override
