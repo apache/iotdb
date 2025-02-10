@@ -38,10 +38,10 @@ public class LoadTsFileNodeTest {
 
   @Test
   public void testLoadSingleTsFileNode() {
-    TsFileResource resource = new TsFileResource(new File("1"));
-    String database = "root.db";
-    LoadSingleTsFileNode node =
-        new LoadSingleTsFileNode(new PlanNodeId(""), resource, false, database, true, 0L);
+    final TsFileResource resource = new TsFileResource(new File("1"));
+    final String database = "root.db";
+    final LoadSingleTsFileNode node =
+        new LoadSingleTsFileNode(new PlanNodeId(""), resource, false, database, true, 0L, true);
     Assert.assertTrue(node.isDeleteAfterLoad());
     Assert.assertEquals(resource, node.getTsFileResource());
     Assert.assertEquals(database, node.getDatabase());
@@ -52,12 +52,12 @@ public class LoadTsFileNodeTest {
     try {
       node.clone();
       Assert.fail();
-    } catch (NotImplementedException ignored) {
+    } catch (final NotImplementedException ignored) {
     }
     try {
       node.splitByPartition(new Analysis());
       Assert.fail();
-    } catch (NotImplementedException ignored) {
+    } catch (final NotImplementedException ignored) {
     }
     Assert.assertEquals(0, node.allowedChildCount());
     Assert.assertEquals("LoadSingleTsFileNode{tsFile=1, needDecodeTsFile=false}", node.toString());
@@ -66,7 +66,7 @@ public class LoadTsFileNodeTest {
 
   @Test
   public void testLoadTsFilePieceNode() {
-    LoadTsFilePieceNode node = new LoadTsFilePieceNode(new PlanNodeId(""), new File("1"));
+    final LoadTsFilePieceNode node = new LoadTsFilePieceNode(new PlanNodeId(""), new File("1"));
     Assert.assertEquals(0, node.getDataSize());
     Assert.assertEquals(new ArrayList<>(), node.getAllTsFileData());
     Assert.assertEquals(node.getTsFile(), new File("1"));
@@ -75,18 +75,18 @@ public class LoadTsFileNodeTest {
     try {
       node.clone();
       Assert.fail();
-    } catch (NotImplementedException ignored) {
+    } catch (final NotImplementedException ignored) {
     }
     try {
       node.splitByPartition(new Analysis());
       Assert.fail();
-    } catch (NotImplementedException ignored) {
+    } catch (final NotImplementedException ignored) {
     }
     Assert.assertEquals(0, node.allowedChildCount());
     Assert.assertEquals("LoadTsFilePieceNode{tsFile=1, dataSize=0}", node.toString());
-    ByteBuffer buffer = ByteBuffer.allocate(1024);
+    final ByteBuffer buffer = ByteBuffer.allocate(1024);
     node.serialize(buffer);
-    LoadTsFilePieceNode node1 = (LoadTsFilePieceNode) LoadTsFilePieceNode.deserialize(buffer);
+    final LoadTsFilePieceNode node1 = (LoadTsFilePieceNode) LoadTsFilePieceNode.deserialize(buffer);
     Assert.assertEquals(node.getTsFile(), node1.getTsFile());
   }
 }

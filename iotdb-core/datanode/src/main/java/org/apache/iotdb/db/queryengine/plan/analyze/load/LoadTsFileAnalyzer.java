@@ -74,7 +74,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   protected final boolean isConvertOnTypeMismatch;
 
   protected final boolean isAutoCreateDatabase;
-
+  protected final boolean isLoadWithMods;
   protected final int databaseLevel;
 
   protected final String database;
@@ -93,6 +93,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     this.isDeleteAfterLoad = loadTsFileStatement.isDeleteAfterLoad();
     this.isConvertOnTypeMismatch = loadTsFileStatement.isConvertOnTypeMismatch();
     this.isAutoCreateDatabase = loadTsFileStatement.isAutoCreateDatabase();
+    this.isLoadWithMods = loadTsFileStatement.isLoadWithMods();
     this.databaseLevel = loadTsFileStatement.getDatabaseLevel();
     this.database = loadTsFileStatement.getDatabase();
 
@@ -103,7 +104,9 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   LoadTsFileAnalyzer(
-      LoadTsFile loadTsFileTableStatement, boolean isGeneratedByPipe, MPPQueryContext context) {
+      final LoadTsFile loadTsFileTableStatement,
+      final boolean isGeneratedByPipe,
+      final MPPQueryContext context) {
     this.loadTsFileTableStatement = loadTsFileTableStatement;
     this.tsFiles = loadTsFileTableStatement.getTsFiles();
     this.statementString = loadTsFileTableStatement.toString();
@@ -113,6 +116,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     this.isAutoCreateDatabase = loadTsFileTableStatement.isAutoCreateDatabase();
     this.databaseLevel = loadTsFileTableStatement.getDatabaseLevel();
     this.database = loadTsFileTableStatement.getDatabase();
+    this.isLoadWithMods = loadTsFileTableStatement.isLoadWithMods();
 
     this.loadTsFileTreeStatement = null;
     this.isTableModelStatement = true;
@@ -120,9 +124,9 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     this.context = context;
   }
 
-  public abstract IAnalysis analyzeFileByFile(IAnalysis analysis);
+  public abstract IAnalysis analyzeFileByFile(final IAnalysis analysis);
 
-  protected boolean doAnalyzeFileByFile(IAnalysis analysis) {
+  protected boolean doAnalyzeFileByFile(final IAnalysis analysis) {
     // analyze tsfile metadata file by file
     for (int i = 0, tsfileNum = tsFiles.size(); i < tsfileNum; i++) {
       final File tsFile = tsFiles.get(i);
@@ -146,7 +150,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
               "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
               i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
         }
-      } catch (AuthException e) {
+      } catch (final AuthException e) {
         setFailAnalysisForAuthException(analysis, e);
         return false;
       } catch (LoadAnalyzeException e) {
@@ -154,14 +158,14 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
         // just return false to STOP the analysis process,
         // the real result on the conversion will be set in the analysis.
         return false;
-      } catch (BufferUnderflowException e) {
+      } catch (final BufferUnderflowException e) {
         LOGGER.warn(
             "The file {} is not a valid tsfile. Please check the input file.", tsFile.getPath(), e);
         throw new SemanticException(
             String.format(
                 "The file %s is not a valid tsfile. Please check the input file.",
                 tsFile.getPath()));
-      } catch (Exception e) {
+      } catch (final Exception e) {
         final String exceptionMessage =
             String.format(
                 "Loading file %s failed. Detail: %s",
@@ -236,7 +240,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
     }
   }
 
-  protected void addWritePointCount(long writePointCount) {
+  protected void addWritePointCount(final long writePointCount) {
     if (isTableModelStatement) {
       loadTsFileTableStatement.addWritePointCount(writePointCount);
     } else {
@@ -261,19 +265,19 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   protected long getWritePointCount(
-      Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata) {
-    return device2TimeseriesMetadata.values().stream()
+      final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeSeriesMetadata) {
+    return device2TimeSeriesMetadata.values().stream()
         .flatMap(List::stream)
         .mapToLong(t -> t.getStatistics().getCount())
         .sum();
   }
 
-  protected void setFailAnalysisForAuthException(IAnalysis analysis, AuthException e) {
+  protected void setFailAnalysisForAuthException(final IAnalysis analysis, final AuthException e) {
     analysis.setFinishQueryAfterAnalyze(true);
     analysis.setFailStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
   }
 
-  protected void checkBeforeAnalyzeFileByFile(IAnalysis analysis) {
+  protected void checkBeforeAnalyzeFileByFile(final IAnalysis analysis) {
     if (TSFileDescriptor.getInstance().getConfig().getEncryptFlag()) {
       analysis.setFinishQueryAfterAnalyze(true);
       analysis.setFailStatus(
