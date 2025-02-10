@@ -2230,10 +2230,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
 
-      // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return status;
+      // permission check for tree model, table model does this in the analysis stage
+      if (!req.isWriteToTable()) {
+        TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
       }
 
       quota =
