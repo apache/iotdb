@@ -73,6 +73,8 @@ keyWords
     | CQ
     | CQS
     | CREATE
+    | CURRENT_SQL_DIALECT
+    | CURRENT_USER
     | DATA
     | DATA_REPLICATION_FACTOR
     | DATA_REGION_GROUP_NUM

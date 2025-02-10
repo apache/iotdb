@@ -216,6 +216,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationState
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
@@ -4550,8 +4552,18 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   @Override
-  public Statement visitSetSqlDialectStatement(IoTDBSqlParser.SetSqlDialectStatementContext ctx) {
+  public Statement visitSetSqlDialect(IoTDBSqlParser.SetSqlDialectContext ctx) {
     return new SetSqlDialectStatement(
         ctx.TABLE() == null ? IClientSession.SqlDialect.TREE : IClientSession.SqlDialect.TABLE);
+  }
+
+  @Override
+  public Statement visitShowCurrentSqlDialect(IoTDBSqlParser.ShowCurrentSqlDialectContext ctx) {
+    return new ShowCurrentSqlDialectStatement();
+  }
+
+  @Override
+  public Statement visitShowCurrentUser(IoTDBSqlParser.ShowCurrentUserContext ctx) {
+    return new ShowCurrentUserStatement();
   }
 }

@@ -20,57 +20,26 @@
 package org.apache.iotdb.db.queryengine.plan.statement.sys;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
 
 import static org.apache.iotdb.db.auth.AuthorityChecker.SUCCEED;
 
-public class SetSqlDialectStatement extends Statement implements IConfigStatement {
-  private final IClientSession.SqlDialect sqlDialect;
-
-  public SetSqlDialectStatement(IClientSession.SqlDialect sqlDialect) {
-    this.sqlDialect = sqlDialect;
-  }
-
-  public IClientSession.SqlDialect getSqlDialect() {
-    return sqlDialect;
+public class ShowCurrentSqlDialectStatement extends ShowStatement implements IConfigStatement {
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowCurrentSqlDialect(this, context);
   }
 
   @Override
-  public int hashCode() {
-    return Objects.hash(sqlDialect);
-  }
-
-  @Override
-  public String toString() {
-    return "SET SQL_DIALECT " + sqlDialect;
-  }
-
-  @Override
-  public List<? extends PartialPath> getPaths() {
-    return Collections.emptyList();
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    return SUCCEED;
   }
 
   @Override
   public QueryType getQueryType() {
-    return QueryType.WRITE;
-  }
-
-  @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitSetSqlDialect(this, context);
-  }
-
-  @Override
-  public TSStatus checkPermissionBeforeProcess(final String userName) {
-    return SUCCEED;
+    return QueryType.READ;
   }
 }

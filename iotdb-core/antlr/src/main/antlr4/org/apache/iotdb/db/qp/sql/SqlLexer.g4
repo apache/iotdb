@@ -205,6 +205,14 @@ CREATE
     : C R E A T E
     ;
 
+CURRENT_SQL_DIALECT
+    : C U R R E N T '_' S Q L '_' D I A L E C T
+    ;
+
+CURRENT_USER
+    : C U R R E N T '_' U S E R
+    ;
+
 DATA
     : D A T A
     ;

@@ -46,6 +46,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -1252,5 +1254,16 @@ public class IoTDBAuthIT {
     adminStmt.execute("create user head 'password'");
     adminStmt.execute("create role tail");
     adminStmt.execute("create user tail 'password'");
+  }
+
+  @Test
+  public void noNeedPrivilegeTest() {
+    createUser("tempuser", "temppw");
+    String[] expectedHeader = new String[] {"CurrentUser"};
+    String[] retArray =
+        new String[] {
+          "tempuser,",
+        };
+    resultSetEqualTest("show current_user", expectedHeader, retArray, "tempuser", "temppw");
   }
 }
