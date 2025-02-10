@@ -40,7 +40,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -167,11 +166,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       throw new AuthException(
           TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", userName));
     }
-    user.setObjectPrivilegeMap(new HashMap<>());
-    user.getSysPrivilege().removeIf(PrivilegeType::forRelationalSys);
-    user.getSysPriGrantOpt().removeIf(PrivilegeType::forRelationalSys);
-    user.setAnyScopePrivilegeSet(new HashSet<>());
-    user.setAnyScopePrivilegeGrantOptSet(new HashSet<>());
+    user.revokeAllPrivileges();
   }
 
   @Override
@@ -222,10 +217,9 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     Role role = roleManager.getEntity(roleName);
     if (role == null) {
       throw new AuthException(
-          TSStatusCode.USER_NOT_EXIST, String.format("Role %s does not exist", roleName));
+          TSStatusCode.ROLE_NOT_EXIST, String.format("Role %s does not exist", roleName));
     }
-    role.setObjectPrivilegeMap(new HashMap<>());
-    role.getSysPrivilege().removeIf(PrivilegeType::forRelationalSys);
+    role.revokeAllPrivileges();
   }
 
   @Override

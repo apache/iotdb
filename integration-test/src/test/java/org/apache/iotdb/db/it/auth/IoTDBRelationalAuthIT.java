@@ -296,12 +296,12 @@ public class IoTDBRelationalAuthIT {
     // In this IT:
     // grant
     // 1. grant all on table tb1 with grant option
-    // 2. grant all on database db1
+    // 2. grant all on database testdb
     // 3. grant all on any
     // revoke
     // 1. revoke grant option for all on table tb1
     // 2. revoke all on table tb1
-    // 3. revoke all on database db1
+    // 3. revoke all on database testdb
     // 4. revoke all on any
     // grant and revoke
     // 1. grant all on user/role
@@ -332,7 +332,7 @@ public class IoTDBRelationalAuthIT {
         TestUtils.assertResultSetEqual(
             resultSet, "Role,Scope,Privileges,GrantOption,", listPrivilegeResult);
 
-        // 2. grant all on database db1
+        // 2. grant all on database testdb
         adminStmt.execute(
             "grant all on database testdb to " + (isUser ? "user test" : "role test"));
         for (PrivilegeType privilegeType : PrivilegeType.values()) {
@@ -388,7 +388,7 @@ public class IoTDBRelationalAuthIT {
         TestUtils.assertResultSetEqual(
             resultSet, "Role,Scope,Privileges,GrantOption,", listPrivilegeResult);
 
-        // 3. revoke all on database db1
+        // 3. revoke all on database testdb
         adminStmt.execute(
             "revoke all on database testdb from " + (isUser ? "user test" : "role test"));
         for (PrivilegeType privilegeType : PrivilegeType.values()) {
