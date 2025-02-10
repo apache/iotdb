@@ -693,6 +693,11 @@ public class QueryExecution implements IQueryExecution {
     return context.getSession().getSqlDialect();
   }
 
+  @Override
+  public String getUser() {
+    return context.getSession().getUserName();
+  }
+
   public MPPQueryContext getContext() {
     return context;
   }

@@ -182,7 +182,7 @@ public class IoTDBMaintainAuthIT {
     // case 12: show queries
     // user1 with select on information_schema.queries
     expectedHeader =
-        new String[] {"query_id", "start_time", "datanode_id", "elapsed_time", "statement"};
+        new String[] {"query_id", "start_time", "datanode_id", "elapsed_time", "statement", "user"};
     tableQueryNoVerifyResultTest("SHOW QUERIES", expectedHeader, USER_1, PASSWORD);
     // user2 without select on information_schema.queries
     tableAssertTestFail(
