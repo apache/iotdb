@@ -39,7 +39,7 @@ public class BinaryLeastColumnTransformer extends AbstractGreatestLeastColumnTra
       if (!column.isNull(index)) {
         allNull = false;
         Binary value = column.getBinary(index);
-        if (value.compareTo(minValue) < 0) {
+        if (minValue == null || value.compareTo(minValue) < 0) {
           minValue = value;
         }
       }

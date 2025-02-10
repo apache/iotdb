@@ -39,7 +39,7 @@ public class BinaryGreatestColumnTransformer extends AbstractGreatestLeastColumn
       if (!column.isNull(index)) {
         allNull = false;
         Binary value = column.getBinary(index);
-        if (value.compareTo(maxValue) > 0) {
+        if (maxValue == null || value.compareTo(maxValue) > 0) {
           maxValue = value;
         }
       }

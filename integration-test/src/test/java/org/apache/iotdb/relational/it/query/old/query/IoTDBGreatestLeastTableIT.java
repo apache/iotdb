@@ -48,13 +48,15 @@ public class IoTDBGreatestLeastTableIT {
         "CREATE TABLE mix_type_table(device_id STRING TAG, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 BOOLEAN FIELD, s6 STRING FIELD, s7 TEXT FIELD)",
         "CREATE TABLE null_table(device_id STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD)",
         "CREATE TABLE any_null_table(device_id STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD)",
+        "CREATE TABLE string_null_table(device_id STRING TAG, s1 TEXT FIELD, S2 TEXT FIELD, S3 STRING FIELD, S4 STRING FIELD)",
         // normal case
         "INSERT INTO number_table(time, device_id, int1, int2, long1, long2, float1, float2, double1, double2) VALUES (10, 'd1', 1000000, 2000000, 1000000, 2000000, 10.1, 20.2, 10.1, 20.2)",
         "INSERT INTO string_table(time, device_id, string1, string2, text1, text2) VALUES(10, 'd1', 'aaa', 'bbb', 'aaa', 'bbb')",
         "INSERT INTO boolean_table(time, device_id, bool1, bool2) VALUES(10, 'd1', true, false)",
         "INSERT INTO mix_type_table(time, device_id, s1, s2, s3, s4, s5, s6, s7) VALUES(10, 'd1', 1, 1, 1.0, 1.0, true, 'a', 'a')",
         "INSERT INTO null_table(time, device_id) VALUES(10, 'd1')",
-        "INSERT INTO any_null_table(time, device_id, s1) VALUES(10, 'd1', 1)"
+        "INSERT INTO any_null_table(time, device_id, s1) VALUES(10, 'd1', 1)",
+        "INSERT INTO string_null_table(time, device_id, s2, s4) VALUES(10, 'd1', 'test', 'test')",
       };
 
   @BeforeClass
@@ -162,6 +164,33 @@ public class IoTDBGreatestLeastTableIT {
         "SELECT LEAST(text1, text2) FROM string_table",
         new String[] {"_col0"},
         new String[] {"aaa,"},
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testStringTypeNullExist() {
+    tableResultSetEqualTest(
+        "SELECT GREATEST(s1, s2) FROM string_null_table",
+        new String[] {"_col0"},
+        new String[] {"test,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT LEAST(s1, s2) FROM string_null_table",
+        new String[] {"_col0"},
+        new String[] {"test,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT GREATEST(s3, s4) FROM string_null_table",
+        new String[] {"_col0"},
+        new String[] {"test,"},
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT LEAST(s3, s4) FROM string_null_table",
+        new String[] {"_col0"},
+        new String[] {"test,"},
         DATABASE_NAME);
   }
 
