@@ -59,6 +59,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
+import static org.apache.iotdb.rpc.RpcUtils.isSetSqlDialect;
 import static org.apache.iotdb.rpc.RpcUtils.isUseDatabase;
 
 /**
@@ -3080,8 +3081,8 @@ public class SessionPool implements ISessionPool {
   public void executeNonQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
 
-    // use XXX is forbidden in SessionPool.executeNonQueryStatement
-    if (isUseDatabase(sql)) {
+    // 'use XXX' and 'set sql_dialect' is forbidden in SessionPool.executeNonQueryStatement
+    if (isUseDatabase(sql) || isSetSqlDialect(sql)) {
       throw new IllegalArgumentException(
           String.format("SessionPool doesn't support executing %s directly", sql));
     }

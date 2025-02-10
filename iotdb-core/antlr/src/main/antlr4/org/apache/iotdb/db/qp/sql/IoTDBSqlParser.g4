@@ -88,7 +88,7 @@ utilityStatement
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueries | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
     | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
-    | removeFile | unloadFile
+    | removeFile | unloadFile | setSqlDialect | showCurrentSqlDialect | showCurrentUser
     ;
 
 /**
@@ -1181,6 +1181,18 @@ removeFile
 // Unload TsFile
 unloadFile
     : UNLOAD srcFileName=STRING_LITERAL dstFileDir=STRING_LITERAL
+    ;
+
+setSqlDialect
+    : SET SQL_DIALECT OPERATOR_SEQ (TABLE | TREE)
+    ;
+
+showCurrentSqlDialect
+    : SHOW CURRENT_SQL_DIALECT
+    ;
+
+showCurrentUser
+    : SHOW CURRENT_USER
     ;
 
 // attribute clauses

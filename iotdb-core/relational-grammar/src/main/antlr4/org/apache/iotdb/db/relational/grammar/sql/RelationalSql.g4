@@ -126,6 +126,7 @@ statement
     | loadConfigurationStatement
     | setConfigurationStatement
     | showCurrentSqlDialectStatement
+    | setSqlDialectStatement
     | showCurrentUserStatement
     | showCurrentDatabaseStatement
     | showCurrentTimestampStatement
@@ -560,6 +561,10 @@ localOrClusterMode
 
 showCurrentSqlDialectStatement
     : SHOW CURRENT_SQL_DIALECT
+    ;
+
+setSqlDialectStatement
+    : SET SQL_DIALECT EQ (TABLE | TREE)
     ;
 
 showCurrentUserStatement
@@ -1405,6 +1410,7 @@ SINK: 'SINK';
 SKIP_TOKEN: 'SKIP';
 SOME: 'SOME';
 SOURCE: 'SOURCE';
+SQL_DIALECT: 'SQL_DIALECT';
 START: 'START';
 STATS: 'STATS';
 STOP: 'STOP';
@@ -1432,6 +1438,7 @@ TOPIC: 'TOPIC';
 TOPICS: 'TOPICS';
 TRAILING: 'TRAILING';
 TRANSACTION: 'TRANSACTION';
+TREE: 'TREE';
 TRIM: 'TRIM';
 TRUE: 'TRUE';
 TRUNCATE: 'TRUNCATE';
