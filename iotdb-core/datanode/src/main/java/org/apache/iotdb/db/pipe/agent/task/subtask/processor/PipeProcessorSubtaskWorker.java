@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.agent.task.subtask.processor;
 
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
 public class PipeProcessorSubtaskWorker extends WrappedRunnable {
@@ -44,14 +46,30 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
   private final Set<PipeProcessorSubtask> subtasks =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
 
+  private Semaphore running = new Semaphore(1);
+
   @Override
   @SuppressWarnings("squid:S2189")
   public void runMayThrow() {
-    while (true) {
-      cleanupClosedSubtasksIfNecessary();
-      final boolean canSleepBeforeNextRound = runSubtasks();
-      sleepIfNecessary(canSleepBeforeNextRound);
-      adjustSleepingTimeIfNecessary();
+    // The current exception capture will not affect the operation of the Pipe kernel Processor. The
+    // running variable is to ensure that the Worker will not be executed by two threads at the same
+    // time. It only affects the user-defined Pipe Processor.
+    try {
+      running.acquire();
+      while (true) {
+        cleanupClosedSubtasksIfNecessary();
+        final boolean canSleepBeforeNextRound = runSubtasks();
+        sleepIfNecessary(canSleepBeforeNextRound);
+        adjustSleepingTimeIfNecessary();
+      }
+    } catch (PipeException ignored) {
+      // This exception is to exit While true, and the SubTask provided by the Pipe kernel will not
+      // exit the thread
+    } catch (InterruptedException e) {
+      LOGGER.warn(
+          "The thread interrupt status is not cleared and the Worker {} is terminated.", this);
+    } finally {
+      running.release();
     }
   }
 
@@ -86,6 +104,17 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
         } else {
           subtask.onFailure(e);
         }
+      }
+
+      if (subtask.isTimeout()) {
+        // Clean up the timeout status and exit the current thread
+        subtask.markTimeoutStatus(false);
+        final String message =
+            String.format(
+                "Pipe %s@%s processor subtask exits the current thread",
+                subtask.pipeName, subtask.regionId);
+        LOGGER.info(message);
+        throw new PipeException(message);
       }
     }
 
@@ -125,5 +154,9 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
 
   public void schedule(final PipeProcessorSubtask pipeProcessorSubtask) {
     subtasks.add(pipeProcessorSubtask);
+  }
+
+  public Set<PipeProcessorSubtask> getAllProcessorSubtasks() {
+    return subtasks;
   }
 }
