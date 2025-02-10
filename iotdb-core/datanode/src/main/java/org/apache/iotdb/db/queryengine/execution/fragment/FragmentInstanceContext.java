@@ -58,6 +58,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -375,19 +376,32 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public FragmentInstanceInfo getInstanceInfo() {
-    return getErrorCode()
-        .map(
-            s ->
-                new FragmentInstanceInfo(
-                    stateMachine.getState(),
-                    getEndTime(),
-                    getFailedCause(),
-                    getFailureInfoList(),
-                    s))
-        .orElseGet(
-            () ->
-                new FragmentInstanceInfo(
-                    stateMachine.getState(), getEndTime(), getFailedCause(), getFailureInfoList()));
+    FragmentInstanceState state = stateMachine.getState();
+    long endTime = getEndTime();
+    LinkedBlockingQueue<Throwable> failures = stateMachine.getFailureCauses();
+    String failureCause = "";
+    List<FragmentInstanceFailureInfo> failureInfoList = new ArrayList<>();
+    TSStatus status = null;
+
+    for (Throwable failure : failures) {
+      if (failureCause.isEmpty()) {
+        failureCause = failure.getMessage();
+      }
+      failureInfoList.add(FragmentInstanceFailureInfo.toFragmentInstanceFailureInfo(failure));
+      if (failure instanceof IoTDBException) {
+        status = new TSStatus(((IoTDBException) failure).getErrorCode());
+        status.setMessage(failure.getMessage());
+      } else if (failure instanceof IoTDBRuntimeException) {
+        status = new TSStatus(((IoTDBRuntimeException) failure).getErrorCode());
+        status.setMessage(failure.getMessage());
+      }
+    }
+
+    if (status == null) {
+      return new FragmentInstanceInfo(state, endTime, failureCause, failureInfoList);
+    } else {
+      return new FragmentInstanceInfo(state, endTime, failureCause, failureInfoList, status);
+    }
   }
 
   public FragmentInstanceStateMachine getStateMachine() {
