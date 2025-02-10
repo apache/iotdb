@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -204,7 +205,7 @@ public class DeviceTableScanNode extends TableScanNode {
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     List<DeviceEntry> deviceEntries = new ArrayList<>(size);
     while (size-- > 0) {
-      deviceEntries.add(DeviceEntry.deserialize(byteBuffer));
+      deviceEntries.add(AlignedDeviceEntry.deserialize(byteBuffer));
     }
     node.deviceEntries = deviceEntries;
 

@@ -93,7 +93,7 @@ import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
-public class TestMatadata implements Metadata {
+public class TestMetadata implements Metadata {
 
   private final TypeManager typeManager = new InternalTypeManager();
 
@@ -154,8 +154,8 @@ public class TestMatadata implements Metadata {
                   ColumnSchema.builder(S2_CM)
                       .setColumnCategory(TsTableColumnCategory.FIELD)
                       .build()));
-      Mockito.when(treeDeviceViewSchema.getTreeDBName()).thenReturn(TREE_DB1);
-      Mockito.when(treeDeviceViewSchema.getMeasurementColumnNameMap())
+      Mockito.when(treeDeviceViewSchema.getTreePathPatternName()).thenReturn(TREE_DB1);
+      Mockito.when(treeDeviceViewSchema.getColumn2OriginalNameMap())
           .thenReturn(ImmutableMap.of(TAG1, "province", TAG2, "city"));
       return Optional.of(treeDeviceViewSchema);
     }

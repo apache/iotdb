@@ -23,77 +23,73 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
-import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.state.schema.AddTableColumnState;
+import org.apache.iotdb.confignode.procedure.state.schema.RenameTableState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
-import java.util.Objects;
 
-public class AddTableColumnProcedure
-    extends AbstractAlterOrDropTableProcedure<AddTableColumnState> {
+public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<RenameTableState> {
+  private static final Logger LOGGER = LoggerFactory.getLogger(RenameTableProcedure.class);
+  private String newName;
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AddTableColumnProcedure.class);
-  private List<TsTableColumnSchema> addedColumnList;
-
-  public AddTableColumnProcedure(final boolean isGeneratedByPipe) {
+  public RenameTableProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
   }
 
-  public AddTableColumnProcedure(
+  public RenameTableProcedure(
       final String database,
       final String tableName,
       final String queryId,
-      final List<TsTableColumnSchema> addedColumnList,
+      final String newName,
       final boolean isGeneratedByPipe) {
     super(database, tableName, queryId, isGeneratedByPipe);
-    this.addedColumnList = addedColumnList;
+    this.newName = newName;
   }
 
   @Override
-  protected Flow executeFromState(final ConfigNodeProcedureEnv env, final AddTableColumnState state)
+  protected Flow executeFromState(final ConfigNodeProcedureEnv env, final RenameTableState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
         case COLUMN_CHECK:
-          LOGGER.info("Column check for table {}.{} when adding column", database, tableName);
-          columnCheck(env);
+          LOGGER.info("Column check for table {}.{} when renaming table", database, tableName);
+          tableCheck(env);
           break;
         case PRE_RELEASE:
-          LOGGER.info("Pre release info of table {}.{} when adding column", database, tableName);
+          LOGGER.info("Pre release info of table {}.{} when renaming table", database, tableName);
           preRelease(env);
           break;
-        case ADD_COLUMN:
-          LOGGER.info("Add column to table {}.{}", database, tableName);
-          addColumn(env);
+        case RENAME_TABLE:
+          LOGGER.info("Rename column to table {}.{} on config node", database, tableName);
+          renameTable(env);
           break;
         case COMMIT_RELEASE:
-          LOGGER.info("Commit release info of table {}.{} when adding column", database, tableName);
+          LOGGER.info(
+              "Commit release info of table {}.{} when renaming table", database, tableName);
           commitRelease(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized AddTableColumnState " + state));
+          setFailure(new ProcedureException("Unrecognized RenameTableState " + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
     } finally {
       LOGGER.info(
-          "AddTableColumn-{}.{}-{} costs {}ms",
+          "RenameTable-{}.{}-{} costs {}ms",
           database,
           tableName,
           state,
@@ -101,12 +97,12 @@ public class AddTableColumnProcedure
     }
   }
 
-  private void columnCheck(final ConfigNodeProcedureEnv env) {
+  private void tableCheck(final ConfigNodeProcedureEnv env) {
     try {
       final Pair<TSStatus, TsTable> result =
           env.getConfigManager()
               .getClusterSchemaManager()
-              .tableColumnCheckForColumnExtension(database, tableName, addedColumnList);
+              .tableCheckForRenaming(database, tableName, newName);
       final TSStatus status = result.getLeft();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         setFailure(
@@ -114,7 +110,7 @@ public class AddTableColumnProcedure
         return;
       }
       table = result.getRight();
-      setNextState(AddTableColumnState.PRE_RELEASE);
+      setNextState(RenameTableState.PRE_RELEASE);
     } catch (final MetadataException e) {
       setFailure(new ProcedureException(e));
     }
@@ -123,40 +119,31 @@ public class AddTableColumnProcedure
   @Override
   protected void preRelease(final ConfigNodeProcedureEnv env) {
     super.preRelease(env);
-    setNextState(AddTableColumnState.ADD_COLUMN);
+    setNextState(RenameTableState.RENAME_TABLE);
   }
 
-  private void addColumn(final ConfigNodeProcedureEnv env) {
+  private void renameTable(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .executePlan(
-                new AddTableColumnPlan(database, tableName, addedColumnList, false),
-                isGeneratedByPipe);
+            .executePlan(new RenameTablePlan(database, tableName, newName), isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     } else {
-      setNextState(AddTableColumnState.COMMIT_RELEASE);
+      setNextState(RenameTableState.COMMIT_RELEASE);
     }
   }
 
   @Override
-  protected String getActionMessage() {
-    return "add table column";
-  }
-
-  @Override
-  protected void rollbackState(final ConfigNodeProcedureEnv env, final AddTableColumnState state)
+  protected void rollbackState(final ConfigNodeProcedureEnv env, final RenameTableState state)
       throws IOException, InterruptedException, ProcedureException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
-        case ADD_COLUMN:
+        case RENAME_TABLE:
           LOGGER.info(
-              "Start rollback Add column to table {}.{} when adding column",
-              database,
-              table.getTableName());
-          rollbackAddColumn(env);
+              "Start rollback Renaming table {}.{} on configNode", database, table.getTableName());
+          rollbackRenameTable(env);
           break;
         case PRE_RELEASE:
           LOGGER.info(
@@ -166,66 +153,58 @@ public class AddTableColumnProcedure
       }
     } finally {
       LOGGER.info(
-          "Rollback DropTable-{} costs {}ms.", state, (System.currentTimeMillis() - startTime));
+          "Rollback RenameTable-{} costs {}ms.", state, (System.currentTimeMillis() - startTime));
     }
   }
 
-  private void rollbackAddColumn(final ConfigNodeProcedureEnv env) {
+  private void rollbackRenameTable(final ConfigNodeProcedureEnv env) {
     if (table == null) {
       return;
     }
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .executePlan(
-                new AddTableColumnPlan(database, tableName, addedColumnList, true),
-                isGeneratedByPipe);
+            .executePlan(new RenameTablePlan(database, newName, tableName), isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
   }
 
   @Override
-  protected AddTableColumnState getState(final int stateId) {
-    return AddTableColumnState.values()[stateId];
+  protected RenameTableState getState(final int stateId) {
+    return RenameTableState.values()[stateId];
   }
 
   @Override
-  protected int getStateId(final AddTableColumnState state) {
+  protected int getStateId(final RenameTableState state) {
     return state.ordinal();
   }
 
   @Override
-  protected AddTableColumnState getInitialState() {
-    return AddTableColumnState.COLUMN_CHECK;
+  protected RenameTableState getInitialState() {
+    return RenameTableState.COLUMN_CHECK;
+  }
+
+  @Override
+  protected String getActionMessage() {
+    return "rename table";
   }
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
     stream.writeShort(
         isGeneratedByPipe
-            ? ProcedureType.PIPE_ENRICHED_ADD_TABLE_COLUMN_PROCEDURE.getTypeCode()
-            : ProcedureType.ADD_TABLE_COLUMN_PROCEDURE.getTypeCode());
+            ? ProcedureType.PIPE_ENRICHED_RENAME_TABLE_PROCEDURE.getTypeCode()
+            : ProcedureType.RENAME_TABLE_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
-    TsTableColumnSchemaUtil.serialize(addedColumnList, stream);
+    ReadWriteIOUtils.write(newName, stream);
   }
 
   @Override
   public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
 
-    this.addedColumnList = TsTableColumnSchemaUtil.deserializeColumnSchemaList(byteBuffer);
-  }
-
-  @Override
-  public boolean equals(final Object o) {
-    return super.equals(o)
-        && Objects.equals(this.addedColumnList, ((AddTableColumnProcedure) o).addedColumnList);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(super.hashCode(), addedColumnList);
+    this.newName = ReadWriteIOUtils.readString(byteBuffer);
   }
 }
