@@ -226,19 +226,23 @@ public class LastAccumulator implements TableAccumulator {
     switch (seriesDataType) {
       case INT32:
       case DATE:
-        updateIntLastValue((int) statistics[0].getLastValue(), statistics[0].getEndTime());
+        updateIntLastValue(
+            ((Number) statistics[0].getLastValue()).intValue(), statistics[0].getEndTime());
         break;
       case INT64:
-        updateLongLastValue((long) statistics[0].getLastValue(), statistics[0].getEndTime());
+        updateLongLastValue(
+            ((Number) statistics[0].getLastValue()).longValue(), statistics[0].getEndTime());
         break;
       case TIMESTAMP:
         updateLongLastValue(statistics[0].getEndTime(), statistics[0].getEndTime());
         break;
       case FLOAT:
-        updateFloatLastValue((float) statistics[0].getLastValue(), statistics[0].getEndTime());
+        updateFloatLastValue(
+            ((Number) statistics[0].getLastValue()).floatValue(), statistics[0].getEndTime());
         break;
       case DOUBLE:
-        updateDoubleLastValue((double) statistics[0].getLastValue(), statistics[0].getEndTime());
+        updateDoubleLastValue(
+            ((Number) statistics[0].getLastValue()).doubleValue(), statistics[0].getEndTime());
         break;
       case TEXT:
       case BLOB:

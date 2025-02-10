@@ -25,7 +25,9 @@ public enum AlterOrDropTableOperationType {
   RENAME_COLUMN((byte) 2),
   DROP_COLUMN((byte) 3),
   RENAME_TABLE((byte) 4),
-  DROP_TABLE((byte) 5);
+  DROP_TABLE((byte) 5),
+  ALTER_COLUMN_DATA_TYPE((byte) 6),
+  ;
 
   private final byte type;
 
@@ -51,6 +53,8 @@ public enum AlterOrDropTableOperationType {
         return RENAME_TABLE;
       case 5:
         return DROP_TABLE;
+      case 6:
+        return ALTER_COLUMN_DATA_TYPE;
       default:
         throw new IllegalArgumentException();
     }

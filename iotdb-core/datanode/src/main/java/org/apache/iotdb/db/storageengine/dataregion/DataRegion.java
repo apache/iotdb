@@ -42,6 +42,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -1062,8 +1063,14 @@ public class DataRegion implements IDataRegionForQuery {
                   > lastFlushTimeMap.getFlushedTime(timePartitionId, insertRowNode.getDeviceID());
 
       // insert to sequence or unSequence file
-      TsFileProcessor tsFileProcessor =
-          insertToTsFileProcessor(insertRowNode, isSequence, timePartitionId);
+      TsFileProcessor tsFileProcessor;
+      try {
+        tsFileProcessor = insertToTsFileProcessor(insertRowNode, isSequence, timePartitionId);
+      } catch (DataTypeInconsistentException e) {
+        tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, isSequence);
+        fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+        tsFileProcessor = insertToTsFileProcessor(insertRowNode, isSequence, timePartitionId);
+      }
 
       // check memtable size and may asyncTryToFlush the work memtable
       if (tsFileProcessor != null && tsFileProcessor.shouldFlush()) {
@@ -1321,11 +1328,10 @@ public class DataRegion implements IDataRegionForQuery {
       return false;
     }
 
-    // register TableSchema (and maybe more) for table insertion
-    registerToTsFile(insertTabletNode, tsFileProcessor);
-
     try {
-      tsFileProcessor.insertTablet(insertTabletNode, rangeList, results, noFailure, infoForMetrics);
+      tsFileProcessor =
+          insertTabletWithTypeConsistencyCheck(
+              tsFileProcessor, insertTabletNode, rangeList, results, noFailure, infoForMetrics);
     } catch (WriteProcessRejectException e) {
       logger.warn("insert to TsFileProcessor rejected, {}", e.getMessage());
       return false;
@@ -1339,6 +1345,29 @@ public class DataRegion implements IDataRegionForQuery {
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
     }
     return true;
+  }
+
+  private TsFileProcessor insertTabletWithTypeConsistencyCheck(
+      TsFileProcessor tsFileProcessor,
+      InsertTabletNode insertTabletNode,
+      List<int[]> rangeList,
+      TSStatus[] results,
+      boolean noFailure,
+      long[] infoForMetrics)
+      throws WriteProcessException {
+    try {
+      // register TableSchema (and maybe more) for table insertion
+      registerToTsFile(insertTabletNode, tsFileProcessor);
+      tsFileProcessor.insertTablet(insertTabletNode, rangeList, results, noFailure, infoForMetrics);
+    } catch (DataTypeInconsistentException e) {
+      fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+      tsFileProcessor =
+          getOrCreateTsFileProcessor(
+              tsFileProcessor.getTimeRangeId(), tsFileProcessor.isSequence());
+      registerToTsFile(insertTabletNode, tsFileProcessor);
+      tsFileProcessor.insertTablet(insertTabletNode, rangeList, results, noFailure, infoForMetrics);
+    }
+    return tsFileProcessor;
   }
 
   private void registerToTsFile(InsertNode node, TsFileProcessor tsFileProcessor) {
@@ -1425,7 +1454,8 @@ public class DataRegion implements IDataRegionForQuery {
       TsFileProcessor tsFileProcessor = entry.getKey();
       InsertRowsNode subInsertRowsNode = entry.getValue();
       try {
-        tsFileProcessor.insertRows(subInsertRowsNode, infoForMetrics);
+        tsFileProcessor =
+            insertRowsWithTypeConsistencyCheck(tsFileProcessor, subInsertRowsNode, infoForMetrics);
       } catch (WriteProcessException e) {
         insertRowsNode
             .getResults()
@@ -1434,14 +1464,31 @@ public class DataRegion implements IDataRegionForQuery {
                 RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
       executedInsertRowNodeList.addAll(subInsertRowsNode.getInsertRowNodeList());
-      // register TableSchema (and maybe more) for table insertion
-      registerToTsFile(subInsertRowsNode, tsFileProcessor);
+
       // check memtable size and may asyncTryToFlush the work memtable
       if (entry.getKey().shouldFlush()) {
         fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
       }
     }
     return executedInsertRowNodeList;
+  }
+
+  private TsFileProcessor insertRowsWithTypeConsistencyCheck(
+      TsFileProcessor tsFileProcessor, InsertRowsNode subInsertRowsNode, long[] infoForMetrics)
+      throws WriteProcessException {
+    try {
+      // register TableSchema (and maybe more) for table insertion
+      registerToTsFile(subInsertRowsNode, tsFileProcessor);
+      tsFileProcessor.insertRows(subInsertRowsNode, infoForMetrics);
+    } catch (DataTypeInconsistentException e) {
+      fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+      tsFileProcessor =
+          getOrCreateTsFileProcessor(
+              tsFileProcessor.getTimeRangeId(), tsFileProcessor.isSequence());
+      registerToTsFile(subInsertRowsNode, tsFileProcessor);
+      tsFileProcessor.insertRows(subInsertRowsNode, infoForMetrics);
+    }
+    return tsFileProcessor;
   }
 
   private void tryToUpdateInsertRowsLastCache(List<InsertRowNode> nodeList) {
@@ -1893,7 +1940,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /** close all working tsfile processors */
-  private List<Future<?>> asyncCloseAllWorkingTsFileProcessors() {
+  public List<Future<?>> asyncCloseAllWorkingTsFileProcessors() {
     writeLock("asyncCloseAllWorkingTsFileProcessors");
     List<Future<?>> futures = new ArrayList<>();
     int count = 0;
@@ -3422,7 +3469,9 @@ public class DataRegion implements IDataRegionForQuery {
         TsFileProcessor tsFileProcessor = entry.getKey();
         InsertRowsNode subInsertRowsNode = entry.getValue();
         try {
-          tsFileProcessor.insertRows(subInsertRowsNode, infoForMetrics);
+          tsFileProcessor =
+              insertRowsWithTypeConsistencyCheck(
+                  tsFileProcessor, subInsertRowsNode, infoForMetrics);
         } catch (WriteProcessException e) {
           insertRowsOfOneDeviceNode
               .getResults()
