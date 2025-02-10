@@ -46,21 +46,30 @@ public class PipeRowCollector implements RowCollector {
   private final PipeTaskMeta pipeTaskMeta; // Used to report progress
   private final EnrichedEvent sourceEvent; // Used to report progress
   private final String sourceEventDataBaseName;
+  private final Boolean isTableModel;
 
   public PipeRowCollector(PipeTaskMeta pipeTaskMeta, EnrichedEvent sourceEvent) {
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
-    sourceEventDataBaseName =
-        sourceEvent instanceof PipeInsertionEvent
-            ? ((PipeInsertionEvent) sourceEvent).getSourceDatabaseNameFromDataRegion()
-            : null;
+    if (sourceEvent instanceof PipeInsertionEvent) {
+      sourceEventDataBaseName =
+          ((PipeInsertionEvent) sourceEvent).getSourceDatabaseNameFromDataRegion();
+      isTableModel = ((PipeInsertionEvent) sourceEvent).isTableModelEvent();
+    } else {
+      sourceEventDataBaseName = null;
+      isTableModel = null;
+    }
   }
 
   public PipeRowCollector(
-      PipeTaskMeta pipeTaskMeta, EnrichedEvent sourceEvent, String sourceEventDataBase) {
+      PipeTaskMeta pipeTaskMeta,
+      EnrichedEvent sourceEvent,
+      String sourceEventDataBase,
+      Boolean isTableModel) {
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
     this.sourceEventDataBaseName = sourceEventDataBase;
+    this.isTableModel = isTableModel;
   }
 
   @Override
@@ -118,8 +127,10 @@ public class PipeRowCollector implements RowCollector {
           sourceEvent instanceof PipeInsertionEvent ? ((PipeInsertionEvent) sourceEvent) : null;
       tabletInsertionEventList.add(
           new PipeRawTabletInsertionEvent(
-              pipeInsertionEvent == null ? null : pipeInsertionEvent.isTableModelEvent(),
+              isTableModel,
               sourceEventDataBaseName,
+              pipeInsertionEvent == null ? null : pipeInsertionEvent.getRawTableModelDataBase(),
+              pipeInsertionEvent == null ? null : pipeInsertionEvent.getRawTreeModelDataBase(),
               tablet,
               isAligned,
               sourceEvent == null ? null : sourceEvent.getPipeName(),

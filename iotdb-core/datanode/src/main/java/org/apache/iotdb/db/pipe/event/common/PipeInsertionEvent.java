@@ -52,10 +52,10 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
   // Record the database name of the DataRegion corresponding to the SourceEvent
   private final String sourceDatabaseNameFromDataRegion;
 
-  private Boolean isTableModelEvent; // lazy initialization
+  protected Boolean isTableModelEvent; // lazy initialization
 
-  private String treeModelDatabaseName; // lazy initialization
-  private String tableModelDatabaseName; // lazy initialization
+  protected String treeModelDatabaseName; // lazy initialization
+  protected String tableModelDatabaseName; // lazy initialization
 
   protected PipeInsertionEvent(
       final String pipeName,
@@ -120,14 +120,20 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
     return isTableModelEvent;
   }
 
-  /** Only for internal use. */
-  protected Boolean getRawIsTableModelEvent() {
+  public Boolean getRawIsTableModelEvent() {
     return isTableModelEvent;
   }
 
-  /** Only for internal use. */
   public String getSourceDatabaseNameFromDataRegion() {
     return sourceDatabaseNameFromDataRegion;
+  }
+
+  public String getRawTableModelDataBase() {
+    return tableModelDatabaseName;
+  }
+
+  public String getRawTreeModelDataBase() {
+    return treeModelDatabaseName;
   }
 
   public String getTreeModelDatabaseName() {

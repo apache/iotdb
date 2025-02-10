@@ -136,6 +136,7 @@ public class AggregateProcessor implements PipeProcessor {
   private String[] columnNameStringList;
 
   private String dataBaseName;
+  private Boolean isTableModel;
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -191,6 +192,9 @@ public class AggregateProcessor implements PipeProcessor {
         StorageEngine.getInstance()
             .getDataRegion(new DataRegionId(environment.getRegionId()))
             .getDatabaseName();
+    if (dataBaseName != null) {
+      isTableModel = PathUtils.isTableModelDatabase(dataBaseName);
+    }
 
     pipeName2referenceCountMap.compute(
         pipeName, (name, count) -> Objects.nonNull(count) ? count + 1 : 1);
@@ -554,7 +558,7 @@ public class AggregateProcessor implements PipeProcessor {
                     pipeName2timeSeries2TimeSeriesRuntimeStateMap.get(pipeName).get(timeSeries);
                 synchronized (stateReference) {
                   final PipeRowCollector rowCollector =
-                      new PipeRowCollector(pipeTaskMeta, null, dataBaseName);
+                      new PipeRowCollector(pipeTaskMeta, null, dataBaseName, isTableModel);
                   try {
                     collectWindowOutputs(
                         stateReference.get().forceOutput(), timeSeries, rowCollector);

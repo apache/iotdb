@@ -443,6 +443,8 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
                     new PipeRawTabletInsertionEvent(
                         getRawIsTableModelEvent(),
                         getSourceDatabaseNameFromDataRegion(),
+                        getRawTableModelDataBase(),
+                        getRawTreeModelDataBase(),
                         container.convertToTablet(),
                         container.isAligned(),
                         pipeName,
