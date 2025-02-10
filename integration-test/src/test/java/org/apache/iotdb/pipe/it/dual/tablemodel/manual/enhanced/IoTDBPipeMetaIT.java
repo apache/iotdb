@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.dual.treemodel.auto.enhanced;
+package org.apache.iotdb.pipe.it.dual.tablemodel.manual.enhanced;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -25,10 +25,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoEnhanced;
+import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualEnhanced;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
-import org.apache.iotdb.pipe.it.dual.treemodel.manual.AbstractPipeDualTreeModelManualIT;
+import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -43,8 +43,8 @@ import java.util.HashSet;
 import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2DualTreeAutoEnhanced.class})
-public class IoTDBPipeTableManualIT extends AbstractPipeDualTreeModelManualIT {
+@Category({MultiClusterIT2DualTableManualEnhanced.class})
+public class IoTDBPipeMetaIT extends AbstractPipeTableModelDualManualIT {
   @Test
   public void testTableSync() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
