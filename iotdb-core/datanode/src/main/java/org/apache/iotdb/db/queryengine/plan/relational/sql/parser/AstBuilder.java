@@ -1477,12 +1477,22 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitListUserStatement(RelationalSqlParser.ListUserStatementContext ctx) {
-    return new RelationalAuthorStatement(AuthorRType.LIST_USER);
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.LIST_USER);
+    if (ctx.OF() != null) {
+      String roleName = ctx.roleName.getText();
+      stmt.setRoleName(roleName);
+    }
+    return stmt;
   }
 
   @Override
   public Node visitListRoleStatement(RelationalSqlParser.ListRoleStatementContext ctx) {
-    return new RelationalAuthorStatement(AuthorRType.LIST_ROLE);
+    RelationalAuthorStatement stmt = new RelationalAuthorStatement(AuthorRType.LIST_ROLE);
+    if (ctx.OF() != null) {
+      String userName = ctx.userName.getText();
+      stmt.setUserName(userName);
+    }
+    return stmt;
   }
 
   private Set<PrivilegeType> parseSystemPrivilege(RelationalSqlParser.SystemPrivilegesContext ctx) {
@@ -1496,10 +1506,18 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   private Set<PrivilegeType> parseRelationalPrivilege(
       RelationalSqlParser.ObjectPrivilegesContext ctx) {
-    List<RelationalSqlParser.ObjectPrivilegeContext> privilegeContexts = ctx.objectPrivilege();
     Set<PrivilegeType> privileges = new HashSet<>();
-    for (RelationalSqlParser.ObjectPrivilegeContext privilege : privilegeContexts) {
-      privileges.add(PrivilegeType.valueOf(privilege.getText().toUpperCase()));
+    if (ctx.ALL() != null) {
+      for (PrivilegeType privilegeType : PrivilegeType.values()) {
+        if (privilegeType.isRelationalPrivilege()) {
+          privileges.add(privilegeType);
+        }
+      }
+    } else {
+      List<RelationalSqlParser.ObjectPrivilegeContext> privilegeContexts = ctx.objectPrivilege();
+      for (RelationalSqlParser.ObjectPrivilegeContext privilege : privilegeContexts) {
+        privileges.add(PrivilegeType.valueOf(privilege.getText().toUpperCase()));
+      }
     }
     return privileges;
   }
@@ -1585,7 +1603,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     fromUser = ctx.holderType().getText().equalsIgnoreCase("user");
     name = ctx.holderName.getText();
     boolean grantOption = ctx.revokeGrantOpt() != null;
-    boolean fromTable;
+    boolean fromTable = false;
     Set<PrivilegeType> privileges = new HashSet<>();
 
     // SYSTEM PRIVILEGES OR ALL PRIVILEGES
@@ -1607,38 +1625,48 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       }
     } else {
       privileges = parseRelationalPrivilege(ctx.privilegeObjectScope().objectPrivileges());
+      boolean revokeAll = ctx.privilegeObjectScope().objectPrivileges().ALL() != null;
+      String databaseName = "";
+      String tableName = "";
+
       // ON TABLE / DB
       if (ctx.privilegeObjectScope().objectType() != null) {
         fromTable = ctx.privilegeObjectScope().objectType().getText().equalsIgnoreCase("table");
-        String databaseName = "";
         if (fromTable) {
           databaseName = clientSession.getDatabaseName();
           if (databaseName == null) {
             throw new SemanticException("Database is not set yet.");
           }
+          tableName = ctx.privilegeObjectScope().objectName.getText().toLowerCase();
+        } else {
+          databaseName = ctx.privilegeObjectScope().objectName.getText().toLowerCase();
         }
-        String obj = ctx.privilegeObjectScope().objectName.getText();
-        return new RelationalAuthorStatement(
-            fromUser
-                ? fromTable ? AuthorRType.REVOKE_USER_TB : AuthorRType.REVOKE_USER_DB
-                : fromTable ? AuthorRType.REVOKE_ROLE_TB : AuthorRType.REVOKE_ROLE_DB,
-            fromUser ? name : "",
-            fromUser ? "" : name,
-            fromTable ? databaseName.toLowerCase() : obj.toLowerCase(),
-            fromTable ? obj.toLowerCase() : "",
-            privileges,
-            grantOption,
-            null);
       } else if (ctx.privilegeObjectScope().objectScope() != null) {
-        String db = ctx.privilegeObjectScope().objectScope().dbname.getText().toLowerCase();
-        String tb = ctx.privilegeObjectScope().objectScope().tbname.getText().toLowerCase();
+        fromTable = true;
+        databaseName = ctx.privilegeObjectScope().objectScope().dbname.getText().toLowerCase();
+        tableName = ctx.privilegeObjectScope().objectScope().tbname.getText().toLowerCase();
+      }
+
+      // The REVOKE ALL command can revoke privileges for users, databases, and tables.
+      // When AuthorRType is REVOKE_USER_ALL:
+      // If both database and table are empty, it clears all privileges globally.
+      // If a database is specified (non-empty), it revokes all privileges within that database
+      // scope.
+      // If a table is specified (non-empty), it revokes privileges specifically for that table.
+      // For operations involving the ANY scope, REVOKE_USER_ALL cannot be combined with
+      // database/table
+      // specifications. However, since ALL privileges are resolved as concrete privileges in this
+      // context,
+      // equivalent effects can be achieved by supplementing with REVOKE_USER_ANY operations.
+
+      if (revokeAll && ctx.privilegeObjectScope().ANY() == null) {
         return new RelationalAuthorStatement(
-            fromUser ? AuthorRType.REVOKE_USER_TB : AuthorRType.REVOKE_ROLE_TB,
+            fromUser ? AuthorRType.REVOKE_USER_ALL : AuthorRType.REVOKE_ROLE_ALL,
             fromUser ? name : "",
             fromUser ? "" : name,
-            db,
-            tb,
-            privileges,
+            databaseName,
+            tableName,
+            Collections.emptySet(),
             grantOption,
             null);
       } else if (ctx.privilegeObjectScope().ANY() != null) {
@@ -1648,10 +1676,20 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             fromUser ? name : "",
             fromUser ? "" : name,
             grantOption);
+      } else {
+        return new RelationalAuthorStatement(
+            fromUser
+                ? fromTable ? AuthorRType.REVOKE_USER_TB : AuthorRType.REVOKE_USER_DB
+                : fromTable ? AuthorRType.REVOKE_ROLE_TB : AuthorRType.REVOKE_ROLE_DB,
+            fromUser ? name : "",
+            fromUser ? "" : name,
+            databaseName,
+            tableName,
+            privileges,
+            grantOption,
+            null);
       }
     }
-    // will not get here.
-    throw new SemanticException("author statement parser error");
   }
 
   // ********************** query expressions ********************
