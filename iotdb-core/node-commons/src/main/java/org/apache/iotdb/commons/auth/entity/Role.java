@@ -365,7 +365,7 @@ public class Role {
     anyScopePrivilegeGrantOptSet.remove(priv);
   }
 
-  public void revokeAllPrivileges() {
+  public void revokeAllRelationalPrivileges() {
     objectPrivilegeMap = new HashMap<>();
     sysPrivilegeSet.removeIf(PrivilegeType::forRelationalSys);
     sysPriGrantOpt.removeIf(PrivilegeType::forRelationalSys);

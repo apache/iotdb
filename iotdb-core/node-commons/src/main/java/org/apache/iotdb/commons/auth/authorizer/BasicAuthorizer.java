@@ -166,7 +166,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       throw new AuthException(
           TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", userName));
     }
-    user.revokeAllPrivileges();
+    user.revokeAllRelationalPrivileges();
   }
 
   @Override
@@ -219,7 +219,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       throw new AuthException(
           TSStatusCode.ROLE_NOT_EXIST, String.format("Role %s does not exist", roleName));
     }
-    role.revokeAllPrivileges();
+    role.revokeAllRelationalPrivileges();
   }
 
   @Override
