@@ -34,13 +34,7 @@ public abstract class AbstractGreatestLeastColumnTransformer extends MultiColumn
   protected void doTransform(
       List<Column> childrenColumns, ColumnBuilder builder, int positionCount) {
     for (int i = 0; i < positionCount; i++) {
-      final int index = i;
-      if (childrenColumns.stream().allMatch(column -> column.isNull(index))) {
-        builder.appendNull();
-        continue;
-      }
-
-      transform(builder, childrenColumns, index);
+      transform(builder, childrenColumns, i);
     }
   }
 
@@ -48,12 +42,11 @@ public abstract class AbstractGreatestLeastColumnTransformer extends MultiColumn
   protected void doTransform(
       List<Column> childrenColumns, ColumnBuilder builder, int positionCount, boolean[] selection) {
     for (int i = 0; i < positionCount; i++) {
-      final int index = i;
-      if (selection[index] || childrenColumns.stream().allMatch(column -> column.isNull(index))) {
+      if (selection[i]) {
+        transform(builder, childrenColumns, i);
+      } else {
         builder.appendNull();
-        continue;
       }
-      transform(builder, childrenColumns, index);
     }
   }
 
