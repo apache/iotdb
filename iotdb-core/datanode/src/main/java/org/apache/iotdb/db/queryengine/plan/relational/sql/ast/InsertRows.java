@@ -143,6 +143,9 @@ public class InsertRows extends WrappedInsertStatement {
 
       @Override
       public List<Object[]> getAttributeValueList() {
+        if (insertRowStatement.getColumnCategories() == null) {
+          return Collections.singletonList(new Object[0]);
+        }
         List<Object> attributeValueList = new ArrayList<>();
         for (int i = 0; i < insertRowStatement.getColumnCategories().length; i++) {
           if (insertRowStatement.getColumnCategories()[i] == TsTableColumnCategory.ATTRIBUTE) {
