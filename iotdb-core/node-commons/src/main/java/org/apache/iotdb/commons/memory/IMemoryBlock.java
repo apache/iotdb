@@ -132,6 +132,6 @@ public abstract class IMemoryBlock implements AutoCloseable {
       sb.append("  ");
     }
     sb.append(this);
-    LOGGER.error(sb.toString());
+    LOGGER.info(sb.toString());
   }
 }
