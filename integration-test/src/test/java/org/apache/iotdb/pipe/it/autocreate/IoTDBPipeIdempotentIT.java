@@ -426,6 +426,67 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualAutoIT {
     testTableConfigIdempotent(Collections.singletonList("create table test()"), "drop table test");
   }
 
+  @Test
+  public void testTableCreateUserIdempotent() throws Exception {
+    testTableConfigIdempotent(Collections.emptyList(), "create user newUser 'password'");
+  }
+
+  @Test
+  public void testTableDropUserIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Collections.singletonList("create user newUser 'password'"), "drop user newUser");
+  }
+
+  @Test
+  public void testTableCreateRoleIdempotent() throws Exception {
+    testTableConfigIdempotent(Collections.emptyList(), "create role newRole");
+  }
+
+  @Test
+  public void testTableDropRoleIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Collections.singletonList("create role newRole"), "drop role newRole");
+  }
+
+  @Test
+  public void testTableAlterUserIdempotent3() throws Exception {
+    testTableConfigIdempotent(
+        Collections.singletonList("create user newUser 'password'"),
+        "alter user newUser set password 'passwd'");
+  }
+
+  @Test
+  public void testTableGrantRoleToUserIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Arrays.asList("create user newUser 'password'", "create role newRole"),
+        "grant role newRole to newUser");
+  }
+
+  @Test
+  public void testTableRevokeRoleFromUserIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Arrays.asList(
+            "create user newUser 'password'",
+            "create role newRole",
+            "grant role newRole to newUser"),
+        "revoke role newRole from newUser");
+  }
+
+  @Test
+  public void testTableGrantIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Collections.singletonList("create user newUser 'password'"),
+        "grant all to user newUser with grant option");
+  }
+
+  @Test
+  public void testTableRevokeIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Arrays.asList(
+            "create user newUser 'password'", "grant all to user newUser with grant option"),
+        "revoke all from user newUser");
+  }
+
   private void testIdempotent(
       final List<String> beforeSqlList,
       final String testSql,
