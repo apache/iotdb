@@ -908,6 +908,16 @@ public class StorageEngine implements IService {
       return status;
     }
 
+    final DataRegion dataRegion = getDataRegion(dataRegionId);
+    if (dataRegion == null) {
+      LOGGER.warn(
+          "DataRegion {} not found on this DataNode when writing piece node"
+              + "of TsFile {} (maybe due to region migration), will skip.",
+          dataRegionId,
+          pieceNode.getTsFile());
+      return RpcUtils.SUCCESS_STATUS;
+    }
+
     LoadTsFileRateLimiter.getInstance().acquire(pieceNode.getDataSize());
 
     try {
@@ -936,26 +946,18 @@ public class StorageEngine implements IService {
     try {
       switch (loadCommand) {
         case EXECUTE:
-          if (loadTsFileManager.loadAll(uuid, isGeneratedByPipe, progressIndex)) {
-            status = RpcUtils.SUCCESS_STATUS;
-          } else {
-            status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-            status.setMessage(
-                String.format(
-                    "No load TsFile uuid %s recorded for execute load command %s.",
-                    uuid, loadCommand));
+          if (!loadTsFileManager.loadAll(uuid, isGeneratedByPipe, progressIndex)) {
+            LOGGER.warn(
+                "No load TsFile uuid {} recorded for execute load command {}.", uuid, loadCommand);
           }
+          status = RpcUtils.SUCCESS_STATUS;
           break;
         case ROLLBACK:
-          if (loadTsFileManager.deleteAll(uuid)) {
-            status = RpcUtils.SUCCESS_STATUS;
-          } else {
-            status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
-            status.setMessage(
-                String.format(
-                    "No load TsFile uuid %s recorded for execute load command %s.",
-                    uuid, loadCommand));
+          if (!loadTsFileManager.deleteAll(uuid)) {
+            LOGGER.warn(
+                "No load TsFile uuid {} recorded for rollback load command {}.", uuid, loadCommand);
           }
+          status = RpcUtils.SUCCESS_STATUS;
           break;
         default:
           status.setCode(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());

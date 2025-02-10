@@ -215,8 +215,7 @@ public class LoadTsFileScheduler implements IScheduler {
             long startTime = System.nanoTime();
             final boolean isFirstPhaseSuccess;
             try {
-              isFirstPhaseSuccess =
-                  firstPhaseWithRetry(node, CONFIG.getLoadTsFileRetryCountOnRegionChange());
+              isFirstPhaseSuccess = firstPhase(node);
             } finally {
               LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
                   LoadTsFileCostMetricsSet.FIRST_PHASE, System.nanoTime() - startTime);
@@ -273,6 +272,7 @@ public class LoadTsFileScheduler implements IScheduler {
         final long startTime = System.nanoTime();
         try {
           // if failed to load some TsFiles, then try to convert the TsFiles to Tablets
+          LOGGER.info("Load TsFile failed, will try to convert to tablets and insert.");
           convertFailedTsFilesToTabletsAndRetry();
         } finally {
           LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
@@ -284,30 +284,7 @@ public class LoadTsFileScheduler implements IScheduler {
     }
   }
 
-  private boolean firstPhaseWithRetry(LoadSingleTsFileNode node, int retryCountOnRegionChange) {
-    retryCountOnRegionChange = Math.max(0, retryCountOnRegionChange);
-    while (true) {
-      try {
-        return firstPhase(node);
-      } catch (RegionReplicaSetChangedException e) {
-        if (retryCountOnRegionChange > 0) {
-          LOGGER.warn(
-              "Region replica set changed during loading TsFile {}, maybe due to region migration, will retry for {} times.",
-              node.getTsFileResource(),
-              retryCountOnRegionChange);
-          retryCountOnRegionChange--;
-        } else {
-          stateMachine.transitionToFailed(e);
-          LOGGER.warn(
-              "Region replica set changed during loading TsFile {} after retry.",
-              node.getTsFileResource());
-          return false;
-        }
-      }
-    }
-  }
-
-  private boolean firstPhase(LoadSingleTsFileNode node) throws RegionReplicaSetChangedException {
+  private boolean firstPhase(LoadSingleTsFileNode node) {
     final TsFileDataManager tsFileDataManager = new TsFileDataManager(this, node, block);
     try {
       new TsFileSplitter(
@@ -317,8 +294,6 @@ public class LoadTsFileScheduler implements IScheduler {
         stateMachine.transitionToFailed(new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()));
         return false;
       }
-    } catch (RegionReplicaSetChangedException e) {
-      throw e;
     } catch (IllegalStateException e) {
       stateMachine.transitionToFailed(e);
       LOGGER.warn(
@@ -698,7 +673,7 @@ public class LoadTsFileScheduler implements IScheduler {
 
           dataSize -= pieceNode.getDataSize();
           block.reduceMemoryUsage(pieceNode.getDataSize());
-          regionId2ReplicaSetAndNode.put(
+          regionId2ReplicaSetAndNode.replace(
               sortedRegionId,
               new Pair<>(
                   replicaSet,
