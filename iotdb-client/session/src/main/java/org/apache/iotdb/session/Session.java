@@ -192,7 +192,7 @@ public class Session implements ISession {
 
   protected long retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
 
-  protected String sqlDialect = SessionConfig.SQL_DIALECT;
+  protected volatile String sqlDialect = SessionConfig.SQL_DIALECT;
 
   // may be null
   protected volatile String database;
@@ -994,8 +994,10 @@ public class Session implements ISession {
   public void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
     String previousDB = database;
+    String previousDialect = sqlDialect;
     defaultSessionConnection.executeNonQueryStatement(sql);
-    if (!Objects.equals(previousDB, database) && endPointToSessionConnection != null) {
+    if ((!Objects.equals(previousDB, database) || !Objects.equals(previousDialect, sqlDialect))
+        && endPointToSessionConnection != null) {
       Iterator<Map.Entry<TEndPoint, SessionConnection>> iterator =
           endPointToSessionConnection.entrySet().iterator();
       while (iterator.hasNext()) {
@@ -1005,7 +1007,7 @@ public class Session implements ISession {
           try {
             sessionConnection.executeNonQueryStatement(sql);
           } catch (Throwable t) {
-            logger.warn("failed to change database for {}", entry.getKey());
+            logger.warn("failed to execute '{}' for {}", sql, entry.getKey());
             iterator.remove();
           }
         }
@@ -4154,6 +4156,14 @@ public class Session implements ISession {
 
   public String getDatabase() {
     return database;
+  }
+
+  protected void changeSqlDialect(String sqlDialect) {
+    this.sqlDialect = sqlDialect;
+  }
+
+  public String getSqlDialect() {
+    return sqlDialect;
   }
 
   public static class Builder extends AbstractSessionBuilder {
