@@ -133,6 +133,9 @@ public class CommonConfig {
   /** The maximum number of TTL rules stored in the system, the default is 1000. */
   private int ttlRuleCapacity = 1000;
 
+  /** The interval of ttl check task in each database. The unit is ms. Default is 2 hours. */
+  private long ttlCheckInterval = 7_200_000L;
+
   /** Thrift socket and connection timeout between data node and config node. */
   private int cnConnectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(60);
 
@@ -248,6 +251,8 @@ public class CommonConfig {
   private boolean pipeAirGapReceiverEnabled = false;
   private int pipeAirGapReceiverPort = 9780;
 
+  private long pipeReceiverLoginPeriodicVerificationIntervalMs = 300000;
+
   private int pipeMaxAllowedHistoricalTsFilePerDataRegion = 100;
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 2;
   private int pipeMaxAllowedPinnedMemTableCount = 50;
@@ -282,13 +287,12 @@ public class CommonConfig {
   private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000L; // 3 minutes
   private long twoStageAggregateSenderEndPointsCacheInMs = 3 * 60 * 1000L; // 3 minutes
 
-  private float subscriptionCacheMemoryUsagePercentage = 0.2F;
-
   private boolean pipeEventReferenceTrackingEnabled = true;
   private long pipeEventReferenceEliminateIntervalSeconds = 10;
 
-  private int subscriptionSubtaskExecutorMaxThreadNum =
-      Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
+  private float subscriptionCacheMemoryUsagePercentage = 0.2F;
+  private int subscriptionSubtaskExecutorMaxThreadNum = 2;
+
   private int subscriptionPrefetchTabletBatchMaxDelayInMs = 1000; // 1s
   private long subscriptionPrefetchTabletBatchMaxSizeInBytes = 16 * MB;
   private int subscriptionPrefetchTsFileBatchMaxDelayInMs = 5000; // 5s
@@ -300,7 +304,13 @@ public class CommonConfig {
   private long subscriptionReadFileBufferSize = 8 * MB;
   private long subscriptionReadTabletBufferSize = 8 * MB;
   private long subscriptionTsFileDeduplicationWindowSeconds = 120; // 120s
-  private volatile long subscriptionTsFileSlicerCheckMemoryEnoughIntervalMs = 10L;
+  private volatile long subscriptionCheckMemoryEnoughIntervalMs = 10L;
+
+  private boolean subscriptionPrefetchEnabled = true;
+  private float subscriptionPrefetchMemoryThreshold = 0.5F;
+  private float subscriptionPrefetchMissingRateThreshold = 0.9F;
+  private int subscriptionPrefetchEventLocalCountThreshold = 10;
+  private int subscriptionPrefetchEventGlobalCountThreshold = 100;
 
   private long subscriptionMetaSyncerInitialSyncDelayMinutes = 3;
   private long subscriptionMetaSyncerSyncIntervalMinutes = 3;
@@ -502,6 +512,14 @@ public class CommonConfig {
 
   public void setTTlRuleCapacity(int ttlRuleCapacity) {
     this.ttlRuleCapacity = ttlRuleCapacity;
+  }
+
+  public long getTTLCheckInterval() {
+    return ttlCheckInterval;
+  }
+
+  public void setTTLCheckInterval(long ttlCheckInterval) {
+    this.ttlCheckInterval = ttlCheckInterval;
   }
 
   public int getCnConnectionTimeoutInMS() {
@@ -981,6 +999,16 @@ public class CommonConfig {
     return pipeAirGapReceiverPort;
   }
 
+  public void setPipeReceiverLoginPeriodicVerificationIntervalMs(
+      long pipeReceiverLoginPeriodicVerificationIntervalMs) {
+    this.pipeReceiverLoginPeriodicVerificationIntervalMs =
+        pipeReceiverLoginPeriodicVerificationIntervalMs;
+  }
+
+  public long getPipeReceiverLoginPeriodicVerificationIntervalMs() {
+    return pipeReceiverLoginPeriodicVerificationIntervalMs;
+  }
+
   public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
     return pipeMaxAllowedHistoricalTsFilePerDataRegion;
   }
@@ -1286,10 +1314,7 @@ public class CommonConfig {
 
   public void setSubscriptionSubtaskExecutorMaxThreadNum(
       int subscriptionSubtaskExecutorMaxThreadNum) {
-    this.subscriptionSubtaskExecutorMaxThreadNum =
-        Math.min(
-            subscriptionSubtaskExecutorMaxThreadNum,
-            Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
+    this.subscriptionSubtaskExecutorMaxThreadNum = subscriptionSubtaskExecutorMaxThreadNum;
   }
 
   public int getSubscriptionPrefetchTabletBatchMaxDelayInMs() {
@@ -1390,14 +1415,58 @@ public class CommonConfig {
         subscriptionTsFileDeduplicationWindowSeconds;
   }
 
-  public long getSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs() {
-    return subscriptionTsFileSlicerCheckMemoryEnoughIntervalMs;
+  public long getSubscriptionCheckMemoryEnoughIntervalMs() {
+    return subscriptionCheckMemoryEnoughIntervalMs;
   }
 
-  public void setSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs(
-      long subscriptionTsFileSlicerCheckMemoryEnoughIntervalMs) {
-    this.subscriptionTsFileSlicerCheckMemoryEnoughIntervalMs =
-        subscriptionTsFileSlicerCheckMemoryEnoughIntervalMs;
+  public void setSubscriptionCheckMemoryEnoughIntervalMs(
+      long subscriptionCheckMemoryEnoughIntervalMs) {
+    this.subscriptionCheckMemoryEnoughIntervalMs = subscriptionCheckMemoryEnoughIntervalMs;
+  }
+
+  public boolean getSubscriptionPrefetchEnabled() {
+    return subscriptionPrefetchEnabled;
+  }
+
+  public void setSubscriptionPrefetchEnabled(boolean subscriptionPrefetchEnabled) {
+    this.subscriptionPrefetchEnabled = subscriptionPrefetchEnabled;
+  }
+
+  public float getSubscriptionPrefetchMemoryThreshold() {
+    return subscriptionPrefetchMemoryThreshold;
+  }
+
+  public void setSubscriptionPrefetchMemoryThreshold(float subscriptionPrefetchMemoryThreshold) {
+    this.subscriptionPrefetchMemoryThreshold = subscriptionPrefetchMemoryThreshold;
+  }
+
+  public float getSubscriptionPrefetchMissingRateThreshold() {
+    return subscriptionPrefetchMissingRateThreshold;
+  }
+
+  public void setSubscriptionPrefetchMissingRateThreshold(
+      float subscriptionPrefetchMissingRateThreshold) {
+    this.subscriptionPrefetchMissingRateThreshold = subscriptionPrefetchMissingRateThreshold;
+  }
+
+  public int getSubscriptionPrefetchEventLocalCountThreshold() {
+    return subscriptionPrefetchEventLocalCountThreshold;
+  }
+
+  public void setSubscriptionPrefetchEventLocalCountThreshold(
+      int subscriptionPrefetchEventLocalCountThreshold) {
+    this.subscriptionPrefetchEventLocalCountThreshold =
+        subscriptionPrefetchEventLocalCountThreshold;
+  }
+
+  public int getSubscriptionPrefetchEventGlobalCountThreshold() {
+    return subscriptionPrefetchEventGlobalCountThreshold;
+  }
+
+  public void setSubscriptionPrefetchEventGlobalCountThreshold(
+      int subscriptionPrefetchEventGlobalCountThreshold) {
+    this.subscriptionPrefetchEventGlobalCountThreshold =
+        subscriptionPrefetchEventGlobalCountThreshold;
   }
 
   public long getSubscriptionMetaSyncerInitialSyncDelayMinutes() {

@@ -150,6 +150,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropTriggerStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
@@ -233,6 +234,7 @@ import org.apache.iotdb.trigger.api.enums.TriggerType;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.BaseEncoding;
 import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -1520,10 +1522,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     Map<String, Expression> aliasToColumnMap = new HashMap<>();
     for (IoTDBSqlParser.ResultColumnContext resultColumnContext : ctx.resultColumn()) {
       ResultColumn resultColumn = parseResultColumn(resultColumnContext);
+      String columnName = resultColumn.getExpression().getExpressionString();
       // __endTime shouldn't be included in resultColumns
-      if (resultColumn.getExpression().getExpressionString().equals(ColumnHeaderConstant.ENDTIME)) {
+      if (columnName.equals(ColumnHeaderConstant.ENDTIME)) {
         queryStatement.setOutputEndTime(true);
         continue;
+      }
+      // don't support pure time in select
+      if (columnName.equals(ColumnHeaderConstant.TIME)) {
+        throw new SemanticException(
+            "Time column is no need to appear in SELECT Clause explicitly, it will always be returned if possible");
       }
       if (resultColumn.hasAlias()) {
         String alias = resultColumn.getAlias();
@@ -2076,10 +2084,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (ctx.SGLEVEL() != null) {
       loadTsFileStatement.setDatabaseLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     } else if (ctx.VERIFY() != null) {
-      if (!Boolean.parseBoolean(ctx.boolean_literal().getText())) {
-        throw new SemanticException("Load option VERIFY can only be set to true.");
-      }
-      loadTsFileStatement.setVerifySchema(true);
+      loadTsFileStatement.setVerifySchema(Boolean.parseBoolean(ctx.boolean_literal().getText()));
     } else {
       throw new SemanticException(
           String.format(
@@ -2489,7 +2494,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       if ("ALL".equalsIgnoreCase(privilege)
           || (!"READ".equalsIgnoreCase(privilege)
               && !"WRITE".equalsIgnoreCase(privilege)
-              && !PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant())) {
+              && !PrivilegeType.valueOf(privilege.toUpperCase()).isPathPrivilege())) {
         hasSystemPri = true;
         errorPrivilegeName = privilege.toUpperCase();
         break;
@@ -4209,6 +4214,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitRemoveRegion(IoTDBSqlParser.RemoveRegionContext ctx) {
     return new RemoveRegionStatement(
         Integer.parseInt(ctx.regionId.getText()), Integer.parseInt(ctx.targetDataNodeId.getText()));
+  }
+
+  @Override
+  public Statement visitRemoveDataNode(IoTDBSqlParser.RemoveDataNodeContext ctx) {
+    List<Integer> dataNodeIDs =
+        ctx.INTEGER_LITERAL().stream()
+            .map(ParseTree::getText)
+            .map(Integer::parseInt)
+            .collect(Collectors.toList());
+    return new RemoveDataNodeStatement(dataNodeIDs);
   }
 
   @Override

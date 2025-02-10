@@ -56,8 +56,8 @@ public class IoTDBDatabaseSetAndDeleteIT {
 
   @Before
   public void setUp() throws Exception {
-    // Init 1C0D environment
-    EnvFactory.getEnv().initClusterEnvironment(1, 0);
+    // Init 1C1D environment
+    EnvFactory.getEnv().initClusterEnvironment(1, 1);
   }
 
   @After

@@ -501,7 +501,12 @@ public class DataRegion implements IDataRegionForQuery {
                     resource.getTsFile().length(),
                     true,
                     resource.getTsFile().getName());
-            resource.upgradeModFile(upgradeModFileThreadPool);
+            if (ModificationFile.getExclusiveMods(resource.getTsFile()).exists()) {
+              // update mods file metrics
+              resource.getExclusiveModFile();
+            } else {
+              resource.upgradeModFile(upgradeModFileThreadPool);
+            }
           }
         }
         while (!value.isEmpty()) {
@@ -530,7 +535,12 @@ public class DataRegion implements IDataRegionForQuery {
                     false,
                     resource.getTsFile().getName());
           }
-          resource.upgradeModFile(upgradeModFileThreadPool);
+          if (ModificationFile.getExclusiveMods(resource.getTsFile()).exists()) {
+            // update mods file metrics
+            resource.getExclusiveModFile();
+          } else {
+            resource.upgradeModFile(upgradeModFileThreadPool);
+          }
         }
         while (!value.isEmpty()) {
           TsFileResource tsFileResource = value.get(value.size() - 1);

@@ -162,7 +162,7 @@ public abstract class AbstractSortOperator implements ProcessOperator {
   }
 
   protected void cacheTsBlock(TsBlock tsBlock) throws IoTDBException {
-    long bytesSize = tsBlock.getRetainedSizeInBytes();
+    long bytesSize = tsBlock.getSizeInBytes();
     if (bytesSize + cachedBytes < sortBufferManager.getSortBufferSize()) {
       cachedBytes += bytesSize;
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {

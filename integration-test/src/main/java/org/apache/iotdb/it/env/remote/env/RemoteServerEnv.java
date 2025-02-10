@@ -321,6 +321,16 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public ITableSession getTableSessionConnection(String userName, String password)
+      throws IoTDBConnectionException {
+    return new TableSessionBuilder()
+        .nodeUrls(Collections.singletonList(ip_addr + ":" + port))
+        .username(userName)
+        .password(password)
+        .build();
+  }
+
+  @Override
   public ISession getSessionConnection(String userName, String password)
       throws IoTDBConnectionException {
     Session session =
