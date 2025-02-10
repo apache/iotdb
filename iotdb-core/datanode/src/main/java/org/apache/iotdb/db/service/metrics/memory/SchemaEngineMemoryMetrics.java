@@ -42,7 +42,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getSchemaEngineMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -53,7 +53,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[1]);
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getSchemaRegionMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -64,7 +64,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getSchemaRegionMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -75,7 +75,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getSchemaCacheMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -86,7 +86,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getSchemaCacheMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -97,7 +97,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getPartitionCacheMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -108,7 +108,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getPartitionCacheMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),

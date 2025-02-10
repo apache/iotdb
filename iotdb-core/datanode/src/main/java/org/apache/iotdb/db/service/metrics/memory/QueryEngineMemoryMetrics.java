@@ -47,7 +47,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getQueryEngineMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -58,7 +58,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[1]);
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getBloomFilterCacheMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -69,7 +69,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getBloomFilterCacheMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -80,7 +80,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getChunkCacheMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -91,7 +91,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getChunkCacheMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -102,7 +102,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getTimeSeriesMetaDataCacheMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -113,7 +113,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getTimeSeriesMetaDataCacheMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -124,7 +124,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getOperatorsMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -135,7 +135,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getOperatorsMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -146,7 +146,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getDataExchangeMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -157,7 +157,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getDataExchangeMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -168,7 +168,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getTimeIndexMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -179,7 +179,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getTimeIndexMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -190,7 +190,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getCoordinatorMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),

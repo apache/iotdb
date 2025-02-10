@@ -43,7 +43,7 @@ public class GlobalMemoryMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getOnHeapMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -54,7 +54,7 @@ public class GlobalMemoryMetrics implements IMetricSet {
         LEVELS[0]);
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getOffHeapMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),

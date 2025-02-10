@@ -37,7 +37,7 @@ public class StreamEngineMemoryMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getPipeMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -48,7 +48,7 @@ public class StreamEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[1]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getPipeMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),

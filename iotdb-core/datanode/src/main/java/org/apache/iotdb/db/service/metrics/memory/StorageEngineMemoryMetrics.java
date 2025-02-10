@@ -51,7 +51,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     // total memory of storage engine
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getStorageEngineMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -86,7 +86,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     // The memory of storage engine divided into write and compaction
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getWriteMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -97,7 +97,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getCompactionMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -108,7 +108,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[2]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getCompactionMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -151,7 +151,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     // The memory of write divided into memtable and compaction
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getMemtableMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -162,7 +162,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[3]);
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getTimePartitionInfoMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -173,7 +173,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[3]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getTimePartitionInfoMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -207,7 +207,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     // DevicePathCache related metrics
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getDevicePathCacheMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -218,7 +218,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[4]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getDevicePathCacheMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -230,7 +230,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     // BufferedArrays related metrics
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getBufferedArraysMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -241,7 +241,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[4]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getBufferedArraysMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -253,7 +253,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     // WalBufferQueue related metrics
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getWalBufferQueueManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
@@ -264,7 +264,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
         GlobalMemoryMetrics.LEVELS[4]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
-        MetricLevel.NORMAL,
+        MetricLevel.IMPORTANT,
         config.getWalBufferQueueManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
