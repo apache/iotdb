@@ -290,4 +290,80 @@ public class IoTDBPipeTableManualIT extends AbstractPipeDualManualIT {
           dbName);
     }
   }
+
+  @Test
+  public void testAuth() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "create user testUser 'password'", "grant all on root.** to user testUser"))) {
+        return;
+      }
+
+      final String dbName = "test";
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          Arrays.asList(
+              "grant create on db.tb to user testUser",
+              "grant drop on database test to user testUser"))) {
+        return;
+      }
+
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("extractor.inclusion", "all");
+      extractorAttributes.put("extractor.capture.tree", "false");
+      extractorAttributes.put("extractor.capture.table", "true");
+      extractorAttributes.put("extractor.database-name", "test");
+      extractorAttributes.put("extractor.table-name", "t.*[0-9]");
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("testPipe", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
+
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
+          dbName,
+          BaseEnv.TABLE_SQL_DIALECT,
+          senderEnv,
+          "grant alter on any to user testUser with grant option")) {
+        return;
+      }
+
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv,
+          "list privileges of user testUser",
+          "Role,Scope,Privileges,GrantOption,",
+          new HashSet<>(
+              Arrays.asList(
+                  ",,MANAGE_USER,false,",
+                  ",,MANAGE_ROLE,false,",
+                  ",,MAINTAIN,false,",
+                  ",*.*,ALTER,true,",
+                  ",test.*,DROP,false,")),
+          dbName);
+    }
+  }
 }
