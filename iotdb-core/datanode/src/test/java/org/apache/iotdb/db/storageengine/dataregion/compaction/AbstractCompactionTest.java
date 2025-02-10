@@ -41,7 +41,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.PartitionLevelModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -111,6 +113,8 @@ public class AbstractCompactionTest {
   private int[] unseqVersion = {
     20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39
   };
+  protected ModFileManagement modFileManagement =
+      new PartitionLevelModFileManager(Integer.MAX_VALUE, 0);
 
   private static final long oldTargetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
@@ -376,6 +380,7 @@ public class AbstractCompactionTest {
       }
       // add resource
       TsFileResource resource = new TsFileResource(file);
+      resource.setModFileManagement(modFileManagement);
       int deviceStartindex = isAlign ? TsFileGeneratorUtils.getAlignDeviceOffset() : 0;
       for (int j = 0; j < deviceIndexes.size(); j++) {
         resource.updateStartTime(
@@ -414,6 +419,7 @@ public class AbstractCompactionTest {
       File file, int deviceNum, long startTime, long endTime, boolean isAlign, boolean isSeq)
       throws IOException {
     TsFileResource resource = new TsFileResource(file);
+    resource.setModFileManagement(modFileManagement);
     int deviceStartindex = isAlign ? TsFileGeneratorUtils.getAlignDeviceOffset() : 0;
 
     for (int i = deviceStartindex; i < deviceStartindex + deviceNum; i++) {
@@ -720,6 +726,7 @@ public class AbstractCompactionTest {
     TsFileResource resource = new TsFileResource(new File(filePath));
     resource.updatePlanIndexes(fileVersion);
     resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+    resource.setModFileManagement(modFileManagement);
     return resource;
   }
 
@@ -733,6 +740,7 @@ public class AbstractCompactionTest {
     }
     TsFileResource resource = new TsFileResource(new File(filePath));
     resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+    resource.setModFileManagement(modFileManagement);
     return resource;
   }
 
@@ -753,6 +761,7 @@ public class AbstractCompactionTest {
     }
     TsFileResource resource = new TsFileResource(new File(filePath));
     resource.setStatusForTest(TsFileResourceStatus.NORMAL);
+    resource.setModFileManagement(modFileManagement);
     return resource;
   }
 

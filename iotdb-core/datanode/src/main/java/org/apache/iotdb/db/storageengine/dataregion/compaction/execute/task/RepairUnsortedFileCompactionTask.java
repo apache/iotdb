@@ -168,17 +168,8 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
     if (sourceFile.getTsFileRepairStatus() == TsFileRepairStatus.NEED_TO_REPAIR_BY_REWRITE) {
       CompactionUtils.combineModsInInnerCompaction(
           filesView.sourceFilesInCompactionPerformer, filesView.targetFilesInPerformer);
-    } else {
-      if (sourceFile.anyModFileExists()) {
-        sourceFile.linkModFile(filesView.targetFilesInPerformer.get(0));
-      }
-      if (TsFileResource.useSharedModFile) {
-        filesView
-            .targetFilesInPerformer
-            .get(0)
-            .setSharedModFile(sourceFile.getSharedModFile(), false);
-      }
     }
+    // the compaction performer has dealt with the mod file
   }
 
   @Override
