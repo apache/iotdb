@@ -300,7 +300,7 @@ public class IoTDBConnection implements Connection {
     if (isClosed) {
       throw new SQLException("Cannot create statement because connection is closed");
     }
-    if (getSqlDialect().equals("table")) {
+    if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
       return new IoTDBRelationalDatabaseMetadata(this, getClient(), sessionId, zoneId);
     }
     return new IoTDBDatabaseMetadata(this, getClient(), sessionId, zoneId);
@@ -313,22 +313,28 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public String getSchema() throws SQLException {
-    return getDatabase();
+    if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
+      return getDatabase();
+    }
+    throw new SQLException("Does not support getSchema");
   }
 
   @Override
   public void setSchema(String arg0) throws SQLException {
     // changeDefaultDatabase(arg0);
-    Statement stmt = this.createStatement();
-    String sql = "USE " + arg0;
-    boolean rs;
-    try {
-      rs = stmt.execute(sql);
-    } catch (SQLException e) {
-      stmt.close();
-      logger.error("Use database error: {}", e.getMessage());
-      throw e;
+    if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
+      Statement stmt = this.createStatement();
+      String sql = "USE " + arg0;
+      boolean rs;
+      try {
+        rs = stmt.execute(sql);
+      } catch (SQLException e) {
+        stmt.close();
+        logger.error("Use database error: {}", e.getMessage());
+        throw e;
+      }
     }
+    throw new SQLException("Does not support setSchema");
   }
 
   @Override

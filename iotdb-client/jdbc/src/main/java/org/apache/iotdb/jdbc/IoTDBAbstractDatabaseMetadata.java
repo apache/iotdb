@@ -45,10 +45,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 
 public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData {
 
@@ -71,7 +69,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
   protected static final String TIMESTAMP = "TIMESTAMP";
   protected static final String DATE = "DATE";
 
-  protected static final String sqlKeywordsThatArentSQL92;
+  protected static String sqlKeywordsThatArentSQL92;
 
   protected static final String BUFFER_LENGTH = "BUFFER_LENGTH";
   protected static final String CHAR_OCTET_LENGTH = "CHAR_OCTET_LENGTH";
@@ -143,427 +141,275 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     this.zoneId = zoneId;
   }
 
-  static {
-    String[] allIotdbSQLKeywords = {
-      "ALTER",
-      "ADD",
-      "ALIAS",
-      "ALL",
-      "AVG",
-      "ALIGN",
-      "ATTRIBUTES",
-      "AS",
-      "ASC",
-      "BY",
-      BOOLEAN,
-      "BITMAP",
-      "CREATE",
-      "CONFIGURATION",
-      "COMPRESSOR",
-      "CHILD",
-      "COUNT",
-      "COMPRESSION",
-      "CLEAR",
-      "CACHE",
-      "CONTAIN",
-      "CONCAT",
-      "DELETE",
-      "DEVICE",
-      "DESCRIBE",
-      "DATATYPE",
-      DOUBLE,
-      "DIFF",
-      "DROP",
-      "DEVICES",
-      "DISABLE",
-      "DESC",
-      "ENCODING",
-      "FROM",
-      "FILL",
-      FLOAT,
-      "FLUSH",
-      "FIRST_VALUE",
-      "FULL",
-      "FALSE",
-      "FOR",
-      "FUNCTION",
-      "FUNCTIONS",
-      "GRANT",
-      "GROUP",
-      "GORILLA",
-      "GLOBAL",
-      "GZIP",
-      "INSERT",
-      "INTO",
-      INT32,
-      INT64,
-      "INDEX",
-      "INFO",
-      "KILL",
-      "LIMIT",
-      "LINEAR",
-      "LABEL",
-      "LINK",
-      "LIST",
-      "LOAD",
-      "LEVEL",
-      "LAST_VALUE",
-      "LAST",
-      "LZO",
-      "LZ4",
-      "ZSTD",
-      "LZMA2",
-      "LATEST",
-      "LIKE",
-      "MAX_BY",
-      "MIN_BY",
-      "METADATA",
-      "MOVE",
-      "MIN_TIME",
-      "MAX_TIME",
-      "MIN_VALUE",
-      "MAX_VALUE",
-      "NOW",
-      "NODES",
-      "ORDER",
-      "OFFSET",
-      "ON",
-      "OFF",
-      "OF",
-      "PROCESSLIST",
-      "PREVIOUS",
-      "PREVIOUSUNTILLAST",
-      "PROPERTY",
-      "PLAIN",
-      "PLAIN_DICTIONARY",
-      "PRIVILEGES",
-      "PASSWORD",
-      "PATHS",
-      "PAA",
-      "PLA",
-      "PARTITION",
-      "QUERY",
-      "ROOT",
-      "RLE",
-      "REGULAR",
-      "ROLE",
-      "REVOKE",
-      "REMOVE",
-      "RENAME",
-      "SELECT",
-      "SHOW",
-      "SET",
-      "SLIMIT",
-      "SOFFSET",
-      "STDDEV",
-      "STDDEV_POP",
-      "STDDEV_SAMP",
-      "STORAGE",
-      "SUM",
-      "SNAPPY",
-      "SNAPSHOT",
-      "SCHEMA",
-      "TO",
-      "TIMESERIES",
-      "TIMESTAMP",
-      "TEXT",
-      "TS_2DIFF",
-      "TRACING",
-      "TTL",
-      "TASK",
-      "TIME",
-      "TAGS",
-      "TRUE",
-      "TEMPORARY",
-      "TOP",
-      "TOLERANCE",
-      "UPDATE",
-      "UNLINK",
-      "UPSERT",
-      "USING",
-      "USER",
-      "UNSET",
-      "UNCOMPRESSED",
-      "VALUES",
-      "VARIANCE",
-      "VAR_POP",
-      "VAR_SAMP",
-      "VERSION",
-      "WHERE",
-      "WITH",
-      "WATERMARK_EMBEDDING"
-    };
+  protected static String[] sql92Keywords = {
+    "ABSOLUTE",
+    "EXEC",
+    "OVERLAPS",
+    "ACTION",
+    "EXECUTE",
+    "PAD",
+    "ADA",
+    "EXISTS",
+    "PARTIAL",
+    "ADD",
+    "EXTERNAL",
+    "PASCAL",
+    "ALL",
+    "EXTRACT",
+    "POSITION",
+    "ALLOCATE",
+    "FALSE",
+    PRECISION,
+    "ALTER",
+    "FETCH",
+    "PREPARE",
+    "AND",
+    "FIRST",
+    "PRESERVE",
+    "ANY",
+    FLOAT,
+    PRIMARY,
+    "ARE",
+    "FOR",
+    "PRIOR",
+    "AS",
+    "FOREIGN",
+    "PRIVILEGES",
+    "ASC",
+    "FORTRAN",
+    "PROCEDURE",
+    "ASSERTION",
+    "FOUND",
+    "PUBLIC",
+    "AT",
+    "FROM",
+    "READ",
+    "AUTHORIZATION",
+    "FULL",
+    "REAL",
+    "AVG",
+    "GET",
+    "REFERENCES",
+    "BEGIN",
+    "GLOBAL",
+    "RELATIVE",
+    "BETWEEN",
+    "GO",
+    "RESTRICT",
+    "BIT",
+    "GOTO",
+    "REVOKE",
+    "BIT_LENGTH",
+    "GRANT",
+    "RIGHT",
+    "BOTH",
+    "GROUP",
+    "ROLLBACK",
+    "BY",
+    "HAVING",
+    "ROWS",
+    "CASCADE",
+    "HOUR",
+    "SCHEMA",
+    "CASCADED",
+    "IDENTITY",
+    "SCROLL",
+    "CASE",
+    "IMMEDIATE",
+    "SECOND",
+    "CAST",
+    "IN",
+    "SECTION",
+    "CATALOG",
+    "INCLUDE",
+    "SELECT",
+    "CHAR",
+    "INDEX",
+    "SESSION",
+    "CHAR_LENGTH",
+    "INDICATOR",
+    "SESSION_USER",
+    "CHARACTER",
+    "INITIALLY",
+    "SET",
+    "CHARACTER_LENGTH",
+    "INNER",
+    "SIZE",
+    "CHECK",
+    "INPUT",
+    "SMALLINT",
+    "CLOSE",
+    "INSENSITIVE",
+    "SOME",
+    "COALESCE",
+    "INSERT",
+    "SPACE",
+    "COLLATE",
+    "INT",
+    "SQL",
+    "COLLATION",
+    "INTEGER",
+    "SQLCA",
+    "COLUMN",
+    "INTERSECT",
+    "SQLCODE",
+    "COMMIT",
+    "INTERVAL",
+    "SQLERROR",
+    "CONNECT",
+    "INTO",
+    "SQLSTATE",
+    "CONNECTION",
+    "IS",
+    "SQLWARNING",
+    "CONSTRAINT",
+    "ISOLATION",
+    "SUBSTRING",
+    "CONSTRAINTS",
+    "JOIN",
+    "SUM",
+    "CONTINUE",
+    "KEY",
+    "SYSTEM_USER",
+    "CONVERT",
+    "LANGUAGE",
+    "TABLE",
+    "CORRESPONDING",
+    "LAST",
+    "TEMPORARY",
+    "COUNT",
+    "LEADING",
+    "THEN",
+    "CREATE",
+    "LEFT",
+    "TIME",
+    "CROSS",
+    "LEVEL",
+    "TIMESTAMP",
+    "CURRENT",
+    "LIKE",
+    "TIMEZONE_HOUR",
+    "CURRENT_DATE",
+    "LOCAL",
+    "TIMEZONE_MINUTE",
+    "CURRENT_TIME",
+    "LOWER",
+    "TO",
+    "CURRENT_TIMESTAMP",
+    "MATCH",
+    "TRAILING",
+    "CURRENT_USER",
+    "MAX",
+    "TRANSACTION",
+    "CURSOR",
+    "MIN",
+    "TRANSLATE",
+    "DATE",
+    "MINUTE",
+    "TRANSLATION",
+    "DAY",
+    "MODULE",
+    "TRIM",
+    "DEALLOCATE",
+    "MONTH",
+    "TRUE",
+    "DEC",
+    "NAMES",
+    "UNION",
+    "DECIMAL",
+    "NATIONAL",
+    "UNIQUE",
+    "DECLARE",
+    "NATURAL",
+    "UNKNOWN",
+    "DEFAULT",
+    "NCHAR",
+    "UPDATE",
+    "DEFERRABLE",
+    "NEXT",
+    "UPPER",
+    "DEFERRED",
+    "NO",
+    "USAGE",
+    "DELETE",
+    "NONE",
+    "USER",
+    "DESC",
+    "NOT",
+    "USING",
+    "DESCRIBE",
+    "NULL",
+    "VALUE",
+    "DESCRIPTOR",
+    "NULLIF",
+    "VALUES",
+    "DIAGNOSTICS",
+    "NUMERIC",
+    "VARCHAR",
+    "DISCONNECT",
+    "OCTET_LENGTH",
+    "VARYING",
+    "DISTINCT",
+    "OF",
+    "VIEW",
+    "DOMAIN",
+    "ON",
+    "WHEN",
+    DOUBLE,
+    "ONLY",
+    "WHENEVER",
+    "DROP",
+    "OPEN",
+    "WHERE",
+    "ELSE",
+    "OPTION",
+    "WITH",
+    "END",
+    "OR",
+    "WORK",
+    "END-EXEC",
+    "ORDER",
+    "WRITE",
+    "ESCAPE",
+    "OUTER",
+    "YEAR",
+    "EXCEPT",
+    "OUTPUT",
+    "ZONE",
+    "EXCEPTION"
+  };
 
-    String[] sql92Keywords = {
-      "ABSOLUTE",
-      "EXEC",
-      "OVERLAPS",
-      "ACTION",
-      "EXECUTE",
-      "PAD",
-      "ADA",
-      "EXISTS",
-      "PARTIAL",
-      "ADD",
-      "EXTERNAL",
-      "PASCAL",
-      "ALL",
-      "EXTRACT",
-      "POSITION",
-      "ALLOCATE",
-      "FALSE",
-      PRECISION,
-      "ALTER",
-      "FETCH",
-      "PREPARE",
-      "AND",
-      "FIRST",
-      "PRESERVE",
-      "ANY",
-      FLOAT,
-      PRIMARY,
-      "ARE",
-      "FOR",
-      "PRIOR",
-      "AS",
-      "FOREIGN",
-      "PRIVILEGES",
-      "ASC",
-      "FORTRAN",
-      "PROCEDURE",
-      "ASSERTION",
-      "FOUND",
-      "PUBLIC",
-      "AT",
-      "FROM",
-      "READ",
-      "AUTHORIZATION",
-      "FULL",
-      "REAL",
-      "AVG",
-      "GET",
-      "REFERENCES",
-      "BEGIN",
-      "GLOBAL",
-      "RELATIVE",
-      "BETWEEN",
-      "GO",
-      "RESTRICT",
-      "BIT",
-      "GOTO",
-      "REVOKE",
-      "BIT_LENGTH",
-      "GRANT",
-      "RIGHT",
-      "BOTH",
-      "GROUP",
-      "ROLLBACK",
-      "BY",
-      "HAVING",
-      "ROWS",
-      "CASCADE",
-      "HOUR",
-      "SCHEMA",
-      "CASCADED",
-      "IDENTITY",
-      "SCROLL",
-      "CASE",
-      "IMMEDIATE",
-      "SECOND",
-      "CAST",
-      "IN",
-      "SECTION",
-      "CATALOG",
-      "INCLUDE",
-      "SELECT",
-      "CHAR",
-      "INDEX",
-      "SESSION",
-      "CHAR_LENGTH",
-      "INDICATOR",
-      "SESSION_USER",
-      "CHARACTER",
-      "INITIALLY",
-      "SET",
-      "CHARACTER_LENGTH",
-      "INNER",
-      "SIZE",
-      "CHECK",
-      "INPUT",
-      "SMALLINT",
-      "CLOSE",
-      "INSENSITIVE",
-      "SOME",
-      "COALESCE",
-      "INSERT",
-      "SPACE",
-      "COLLATE",
-      "INT",
-      "SQL",
-      "COLLATION",
-      "INTEGER",
-      "SQLCA",
-      "COLUMN",
-      "INTERSECT",
-      "SQLCODE",
-      "COMMIT",
-      "INTERVAL",
-      "SQLERROR",
-      "CONNECT",
-      "INTO",
-      "SQLSTATE",
-      "CONNECTION",
-      "IS",
-      "SQLWARNING",
-      "CONSTRAINT",
-      "ISOLATION",
-      "SUBSTRING",
-      "CONSTRAINTS",
-      "JOIN",
-      "SUM",
-      "CONTINUE",
-      "KEY",
-      "SYSTEM_USER",
-      "CONVERT",
-      "LANGUAGE",
-      "TABLE",
-      "CORRESPONDING",
-      "LAST",
-      "TEMPORARY",
-      "COUNT",
-      "LEADING",
-      "THEN",
-      "CREATE",
-      "LEFT",
-      "TIME",
-      "CROSS",
-      "LEVEL",
-      "TIMESTAMP",
-      "CURRENT",
-      "LIKE",
-      "TIMEZONE_HOUR",
-      "CURRENT_DATE",
-      "LOCAL",
-      "TIMEZONE_MINUTE",
-      "CURRENT_TIME",
-      "LOWER",
-      "TO",
-      "CURRENT_TIMESTAMP",
-      "MATCH",
-      "TRAILING",
-      "CURRENT_USER",
-      "MAX",
-      "TRANSACTION",
-      "CURSOR",
-      "MIN",
-      "TRANSLATE",
-      "DATE",
-      "MINUTE",
-      "TRANSLATION",
-      "DAY",
-      "MODULE",
-      "TRIM",
-      "DEALLOCATE",
-      "MONTH",
-      "TRUE",
-      "DEC",
-      "NAMES",
-      "UNION",
-      "DECIMAL",
-      "NATIONAL",
-      "UNIQUE",
-      "DECLARE",
-      "NATURAL",
-      "UNKNOWN",
-      "DEFAULT",
-      "NCHAR",
-      "UPDATE",
-      "DEFERRABLE",
-      "NEXT",
-      "UPPER",
-      "DEFERRED",
-      "NO",
-      "USAGE",
-      "DELETE",
-      "NONE",
-      "USER",
-      "DESC",
-      "NOT",
-      "USING",
-      "DESCRIBE",
-      "NULL",
-      "VALUE",
-      "DESCRIPTOR",
-      "NULLIF",
-      "VALUES",
-      "DIAGNOSTICS",
-      "NUMERIC",
-      "VARCHAR",
-      "DISCONNECT",
-      "OCTET_LENGTH",
-      "VARYING",
-      "DISTINCT",
-      "OF",
-      "VIEW",
-      "DOMAIN",
-      "ON",
-      "WHEN",
-      DOUBLE,
-      "ONLY",
-      "WHENEVER",
-      "DROP",
-      "OPEN",
-      "WHERE",
-      "ELSE",
-      "OPTION",
-      "WITH",
-      "END",
-      "OR",
-      "WORK",
-      "END-EXEC",
-      "ORDER",
-      "WRITE",
-      "ESCAPE",
-      "OUTER",
-      "YEAR",
-      "EXCEPT",
-      "OUTPUT",
-      "ZONE",
-      "EXCEPTION"
-    };
-
-    try {
-      TreeMap<String, String> myKeywordMap = new TreeMap<>();
-      for (String allIotdbSQLKeyword : allIotdbSQLKeywords) {
-        myKeywordMap.put(allIotdbSQLKeyword, null);
-      }
-
-      HashMap<String, String> sql92KeywordMap = new HashMap<>(sql92Keywords.length);
-      for (String sql92Keyword : sql92Keywords) {
-        sql92KeywordMap.put(sql92Keyword, null);
-      }
-
-      Iterator<String> it = sql92KeywordMap.keySet().iterator();
-      while (it.hasNext()) {
-        myKeywordMap.remove(it.next());
-      }
-
-      StringBuilder keywordBuf = new StringBuilder();
-      it = myKeywordMap.keySet().iterator();
-      if (it.hasNext()) {
-        keywordBuf.append(it.next());
-      }
-      while (it.hasNext()) {
-        keywordBuf.append(",");
-        keywordBuf.append(it.next());
-      }
-      sqlKeywordsThatArentSQL92 = keywordBuf.toString();
-
-    } catch (Exception e) {
-      LOGGER.error("Error when initializing SQL keywords: ", e);
-      throw new RuntimeException(e);
-    }
-  }
+  //    try {
+  //      TreeMap<String, String> myKeywordMap = new TreeMap<>();
+  //      for (String allIotdbSQLKeyword : allIotdbSQLKeywords) {
+  //        myKeywordMap.put(allIotdbSQLKeyword, null);
+  //      }
+  //
+  //      HashMap<String, String> sql92KeywordMap = new HashMap<>(sql92Keywords.length);
+  //      for (String sql92Keyword : sql92Keywords) {
+  //        sql92KeywordMap.put(sql92Keyword, null);
+  //      }
+  //
+  //      Iterator<String> it = sql92KeywordMap.keySet().iterator();
+  //      while (it.hasNext()) {
+  //        myKeywordMap.remove(it.next());
+  //      }
+  //
+  //      StringBuilder keywordBuf = new StringBuilder();
+  //      it = myKeywordMap.keySet().iterator();
+  //      if (it.hasNext()) {
+  //        keywordBuf.append(it.next());
+  //      }
+  //      while (it.hasNext()) {
+  //        keywordBuf.append(",");
+  //        keywordBuf.append(it.next());
+  //      }
+  //      sqlKeywordsThatArentSQL92 = keywordBuf.toString();
+  //
+  //    } catch (Exception e) {
+  //      LOGGER.error("Error when initializing SQL keywords: ", e);
+  //      throw new RuntimeException(e);
+  //    }
 
   public static ByteBuffer convertTsBlock(
       List<List<Object>> valuesList, List<TSDataType> tsDataTypeList) throws IOException {
@@ -835,42 +681,43 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
   }
 
   @Override
-  public String getIdentifierQuoteString() throws SQLException {
-    return "";
-  }
+  public abstract String getIdentifierQuoteString() throws SQLException;
 
   @Override
   public String getSQLKeywords() throws SQLException {
     return sqlKeywordsThatArentSQL92;
   }
 
-  @Override
-  public String getNumericFunctions() throws SQLException {
-    ResultSet resultSet = null;
-    Statement statement = null;
-    String result = "";
-    try {
-      statement = connection.createStatement();
-      StringBuilder str = new StringBuilder("");
-      resultSet = statement.executeQuery(SHOW_FUNCTIONS);
-      List<String> listFunction = Arrays.asList("MAX_TIME", "MIN_TIME", "TIME_DIFFERENCE", "NOW");
-      while (resultSet.next()) {
-        if (listFunction.contains(resultSet.getString(1))) {
-          continue;
-        }
-        str.append(resultSet.getString(1)).append(",");
-      }
-      result = str.toString();
-      if (!result.isEmpty()) {
-        result = result.substring(0, result.length() - 1);
-      }
-    } catch (Exception e) {
-      LOGGER.error("Get numeric functions error: {}", e.getMessage());
-    } finally {
-      close(resultSet, statement);
-    }
-    return result;
-  }
+  public abstract String getNumericFunctions() throws SQLException;
+
+  //  @Override
+  //  public String getNumericFunctions() throws SQLException {
+  //    ResultSet resultSet = null;
+  //    Statement statement = null;
+  //    String result = "";
+  //    try {
+  //      statement = connection.createStatement();
+  //      StringBuilder str = new StringBuilder("");
+  //      resultSet = statement.executeQuery(SHOW_FUNCTIONS);
+  //      List<String> listFunction = Arrays.asList("MAX_TIME", "MIN_TIME", "TIME_DIFFERENCE",
+  // "NOW");
+  //      while (resultSet.next()) {
+  //        if (listFunction.contains(resultSet.getString(1))) {
+  //          continue;
+  //        }
+  //        str.append(resultSet.getString(1)).append(",");
+  //      }
+  //      result = str.toString();
+  //      if (!result.isEmpty()) {
+  //        result = result.substring(0, result.length() - 1);
+  //      }
+  //    } catch (Exception e) {
+  //      LOGGER.error("Get numeric functions error: {}", e.getMessage());
+  //    } finally {
+  //      close(resultSet, statement);
+  //    }
+  //    return result;
+  //  }
 
   @Override
   public String getStringFunctions() throws SQLException {

@@ -41,8 +41,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
 
@@ -52,6 +54,195 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
       IoTDBDatabaseMetadata.class.getPackage().getImplementationVersion() != null
           ? IoTDBDatabaseMetadata.class.getPackage().getImplementationVersion()
           : "UNKNOWN";
+
+  private static final String[] allIotdbSQLKeywords = {
+    "ALTER",
+    "ADD",
+    "ALIAS",
+    "ALL",
+    "AVG",
+    "ALIGN",
+    "ATTRIBUTES",
+    "AS",
+    "ASC",
+    "BY",
+    BOOLEAN,
+    "BITMAP",
+    "CREATE",
+    "CONFIGURATION",
+    "COMPRESSOR",
+    "CHILD",
+    "COUNT",
+    "COMPRESSION",
+    "CLEAR",
+    "CACHE",
+    "CONTAIN",
+    "CONCAT",
+    "DELETE",
+    "DEVICE",
+    "DESCRIBE",
+    "DATATYPE",
+    DOUBLE,
+    "DIFF",
+    "DROP",
+    "DEVICES",
+    "DISABLE",
+    "DESC",
+    "ENCODING",
+    "FROM",
+    "FILL",
+    FLOAT,
+    "FLUSH",
+    "FIRST_VALUE",
+    "FULL",
+    "FALSE",
+    "FOR",
+    "FUNCTION",
+    "FUNCTIONS",
+    "GRANT",
+    "GROUP",
+    "GORILLA",
+    "GLOBAL",
+    "GZIP",
+    "INSERT",
+    "INTO",
+    INT32,
+    INT64,
+    "INDEX",
+    "INFO",
+    "KILL",
+    "LIMIT",
+    "LINEAR",
+    "LABEL",
+    "LINK",
+    "LIST",
+    "LOAD",
+    "LEVEL",
+    "LAST_VALUE",
+    "LAST",
+    "LZO",
+    "LZ4",
+    "ZSTD",
+    "LZMA2",
+    "LATEST",
+    "LIKE",
+    "MAX_BY",
+    "MIN_BY",
+    "METADATA",
+    "MOVE",
+    "MIN_TIME",
+    "MAX_TIME",
+    "MIN_VALUE",
+    "MAX_VALUE",
+    "NOW",
+    "NODES",
+    "ORDER",
+    "OFFSET",
+    "ON",
+    "OFF",
+    "OF",
+    "PROCESSLIST",
+    "PREVIOUS",
+    "PREVIOUSUNTILLAST",
+    "PROPERTY",
+    "PLAIN",
+    "PLAIN_DICTIONARY",
+    "PRIVILEGES",
+    "PASSWORD",
+    "PATHS",
+    "PAA",
+    "PLA",
+    "PARTITION",
+    "QUERY",
+    "ROOT",
+    "RLE",
+    "REGULAR",
+    "ROLE",
+    "REVOKE",
+    "REMOVE",
+    "RENAME",
+    "SELECT",
+    "SHOW",
+    "SET",
+    "SLIMIT",
+    "SOFFSET",
+    "STDDEV",
+    "STDDEV_POP",
+    "STDDEV_SAMP",
+    "STORAGE",
+    "SUM",
+    "SNAPPY",
+    "SNAPSHOT",
+    "SCHEMA",
+    "TO",
+    "TIMESERIES",
+    "TIMESTAMP",
+    "TEXT",
+    "TS_2DIFF",
+    "TRACING",
+    "TTL",
+    "TASK",
+    "TIME",
+    "TAGS",
+    "TRUE",
+    "TEMPORARY",
+    "TOP",
+    "TOLERANCE",
+    "UPDATE",
+    "UNLINK",
+    "UPSERT",
+    "USING",
+    "USER",
+    "UNSET",
+    "UNCOMPRESSED",
+    "VALUES",
+    "VARIANCE",
+    "VAR_POP",
+    "VAR_SAMP",
+    "VERSION",
+    "WHERE",
+    "WITH",
+    "WATERMARK_EMBEDDING"
+  };
+
+  private static final String[] allIoTDBMathFunctions = {
+    "ABS", "ACOS", "ASIN", "ATAN", "CEIL", "COS", "COSH", "DEGREES", "EXP", "FLOOR", "LN", "LOG10",
+    "PI", "RADIANS", "ROUND", "SIGN", "SIN", "SINH", "SQRT", "TAN", "TANH"
+  };
+
+  static {
+    try {
+      TreeMap<String, String> myKeywordMap = new TreeMap<>();
+      for (String allIotdbSQLKeyword : allIotdbSQLKeywords) {
+        myKeywordMap.put(allIotdbSQLKeyword, null);
+      }
+
+      HashMap<String, String> sql92KeywordMap = new HashMap<>(sql92Keywords.length);
+      for (String sql92Keyword : sql92Keywords) {
+        sql92KeywordMap.put(sql92Keyword, null);
+      }
+
+      Iterator<String> it = sql92KeywordMap.keySet().iterator();
+      while (it.hasNext()) {
+        myKeywordMap.remove(it.next());
+      }
+
+      StringBuilder keywordBuf = new StringBuilder();
+      it = myKeywordMap.keySet().iterator();
+      if (it.hasNext()) {
+        keywordBuf.append(it.next());
+      }
+      while (it.hasNext()) {
+        keywordBuf.append(",");
+        keywordBuf.append(it.next());
+      }
+      sqlKeywordsThatArentSQL92 = keywordBuf.toString();
+
+    } catch (Exception e) {
+      LOGGER.error("Error when initializing SQL keywords: ", e);
+      throw new RuntimeException(e);
+    }
+  }
 
   public IoTDBDatabaseMetadata(
       IoTDBConnection connection, IClientRPCService.Iface client, long sessionId, ZoneId zoneId) {
@@ -64,15 +255,15 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
   }
 
   @Override
+  public String getNumericFunctions() throws SQLException {
+    return String.join(",", allIoTDBMathFunctions);
+  }
+
+  @Override
   public ResultSet getTables(
       String catalog, String schemaPattern, String tableNamePattern, String[] types)
       throws SQLException {
     Statement stmt = this.connection.createStatement();
-    LOGGER.info(
-        "Get tables: catalog: {}, schemaPattern: {}, tableNamePattern: {}",
-        catalog,
-        schemaPattern,
-        tableNamePattern);
 
     String sql = "SHOW DEVICES";
     String database = "";
@@ -322,6 +513,8 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
           valuesInRow.add(splitRes[splitRes.length - 1]);
         } else if (i == 4) {
           valuesInRow.add(getSQLType(rs.getString(4)));
+        } else if (i == 5) {
+          valuesInRow.add(rs.getString(4));
         } else if (i == 6) {
           valuesInRow.add(getTypePrecision(fields[i].getSqlType()));
         } else if (i == 7) {
@@ -394,6 +587,11 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
   @Override
   public boolean supportsSchemasInDataManipulation() throws SQLException {
     return false;
+  }
+
+  @Override
+  public String getIdentifierQuoteString() throws SQLException {
+    return "`";
   }
 
   /**

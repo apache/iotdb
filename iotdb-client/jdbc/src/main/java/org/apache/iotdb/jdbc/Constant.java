@@ -24,6 +24,8 @@ public class Constant {
   private Constant() {}
 
   public static final String GLOBAL_DB_NAME = "IoTDB";
+  public static final String TABLE_DIALECT = "table";
+  public static final String TREE_DIALECT = "tree";
 
   public static final String METHOD_NOT_SUPPORTED = "Method not supported";
   static final String PARAMETER_NOT_NULL = "The parameter cannot be null";
