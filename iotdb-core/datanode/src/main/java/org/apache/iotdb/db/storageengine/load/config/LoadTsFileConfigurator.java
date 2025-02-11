@@ -139,15 +139,15 @@ public class LoadTsFileConfigurator {
   public static void validateVerifyParam(final String verify) {
     if (!"true".equalsIgnoreCase(verify) && !"false".equalsIgnoreCase(verify)) {
       throw new SemanticException(
-              String.format(
-                      "Given %s value '%s' is not supported, please input a valid boolean value.",
-                      VERIFY_KEY, verify));
+          String.format(
+              "Given %s value '%s' is not supported, please input a valid boolean value.",
+              VERIFY_KEY, verify));
     }
   }
 
   public static boolean parseOrGetDefaultVerify(final Map<String, String> loadAttributes) {
     return Boolean.parseBoolean(
-            loadAttributes.getOrDefault(VERIFY_KEY, String.valueOf(VERIFY_DEFAULT_VALUE)));
+        loadAttributes.getOrDefault(VERIFY_KEY, String.valueOf(VERIFY_DEFAULT_VALUE)));
   }
 
   private LoadTsFileConfigurator() {
