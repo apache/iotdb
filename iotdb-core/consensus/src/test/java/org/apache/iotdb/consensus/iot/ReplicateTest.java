@@ -48,8 +48,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class ReplicateTest {
@@ -117,6 +115,8 @@ public class ReplicateTest {
                                     ConsensusFactory.CONSTRUCT_FAILED_MSG,
                                     ConsensusFactory.IOT_CONSENSUS))));
         servers.get(i).recordCorrectPeerListBeforeStarting(Collections.singletonMap(gid, peers));
+      }
+      for (int i = 0; i < peers.size(); i++) {
         servers.get(i).start();
       }
     } catch (IOException e) {
