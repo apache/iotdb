@@ -430,6 +430,7 @@ public class TsFileResource implements PersistentResource {
     target.setExclusiveModFile(targetModsFileObject);
     if (sharedModFileExists()) {
       modFileManagement.addReference(target, sharedModFile);
+      target.setModFileManagement(modFileManagement);
       target.setSharedModFile(this.getSharedModFile(), false);
     }
   }
