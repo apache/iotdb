@@ -510,7 +510,8 @@ public class IoTConsensus implements IConsensus {
       for (Peer peer : currentMembers) {
         if (!correctPeers.contains(peer)) {
           if (!impl.removeSyncLogChannel(peer)) {
-            logger.error("[RESET PEER LIST] {} Failed to remove sync channel with: {}", groupId, peer);
+            logger.error(
+                "[RESET PEER LIST] {} Failed to remove sync channel with: {}", groupId, peer);
           } else {
             logger.info("[RESET PEER LIST] {} Remove sync channel with: {}", groupId, peer);
           }
@@ -527,13 +528,14 @@ public class IoTConsensus implements IConsensus {
       String newPeerListStr = impl.getConfiguration().toString();
       if (!previousPeerListStr.equals(newPeerListStr)) {
         logger.info(
-            "[RESET PEER LIST] {} Local peer list has been reset: {} -> {}", groupId,
+            "[RESET PEER LIST] {} Local peer list has been reset: {} -> {}",
+            groupId,
             previousPeerListStr,
             newPeerListStr);
       } else {
         logger.info(
             "[RESET PEER LIST] {} The current peer list is correct, nothing need to be reset: {}",
-                groupId,
+            groupId,
             previousPeerListStr);
       }
     }
