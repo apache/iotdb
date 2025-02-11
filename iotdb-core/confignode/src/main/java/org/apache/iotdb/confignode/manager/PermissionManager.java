@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
@@ -66,7 +67,9 @@ public class PermissionManager {
       if (authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateUser
           || authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateRole
           || authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateUserWithRawPassword) {
-        tsStatus = getConsensusManager().write(authorPlan);
+        tsStatus =
+            getConsensusManager()
+                .write(isGeneratedByPipe ? new PipeEnrichedPlan(authorPlan) : authorPlan);
       } else {
         List<TDataNodeConfiguration> allDataNodes =
             configManager.getNodeManager().getRegisteredDataNodes();
@@ -76,7 +79,7 @@ public class PermissionManager {
                 .operateAuthPlan(authorPlan, allDataNodes, isGeneratedByPipe);
       }
       return tsStatus;
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
