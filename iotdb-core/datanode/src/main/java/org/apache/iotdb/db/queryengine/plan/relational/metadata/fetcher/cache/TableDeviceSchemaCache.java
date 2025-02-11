@@ -668,6 +668,11 @@ public class TableDeviceSchemaCache {
   }
 
   public void invalidateAll() {
-    dualKeyCache.invalidateAll();
+    readWriteLock.writeLock().lock();
+    try {
+      dualKeyCache.invalidateAll();
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
   }
 }
