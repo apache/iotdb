@@ -28,6 +28,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -44,6 +46,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class SeriesPartitionTable {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(SeriesPartitionTable.class);
 
   private final ConcurrentSkipListMap<TTimePartitionSlot, List<TConsensusGroupId>>
       seriesPartitionMap;
@@ -233,6 +237,18 @@ public class SeriesPartitionTable {
       return null;
     }
     return lastEntry.getValue().get(lastEntry.getValue().size() - 1);
+  }
+
+  /**
+   * Remove PartitionTable where the TimeSlot is expired.
+   *
+   * @param TTL The Time To Live
+   * @param currentTimeSlot The current TimeSlot
+   */
+  public void autoCleanPartitionTable(long TTL, TTimePartitionSlot currentTimeSlot) {
+    seriesPartitionMap
+        .entrySet()
+        .removeIf(entry -> entry.getKey().getStartTime() + TTL < currentTimeSlot.getStartTime());
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)

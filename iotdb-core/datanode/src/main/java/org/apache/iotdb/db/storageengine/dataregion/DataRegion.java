@@ -501,7 +501,12 @@ public class DataRegion implements IDataRegionForQuery {
                     resource.getTsFile().length(),
                     true,
                     resource.getTsFile().getName());
-            resource.upgradeModFile(upgradeModFileThreadPool);
+            if (ModificationFile.getExclusiveMods(resource.getTsFile()).exists()) {
+              // update mods file metrics
+              resource.getExclusiveModFile();
+            } else {
+              resource.upgradeModFile(upgradeModFileThreadPool);
+            }
           }
         }
         while (!value.isEmpty()) {
@@ -530,7 +535,12 @@ public class DataRegion implements IDataRegionForQuery {
                     false,
                     resource.getTsFile().getName());
           }
-          resource.upgradeModFile(upgradeModFileThreadPool);
+          if (ModificationFile.getExclusiveMods(resource.getTsFile()).exists()) {
+            // update mods file metrics
+            resource.getExclusiveModFile();
+          } else {
+            resource.upgradeModFile(upgradeModFileThreadPool);
+          }
         }
         while (!value.isEmpty()) {
           TsFileResource tsFileResource = value.get(value.size() - 1);
@@ -2505,17 +2515,22 @@ public class DataRegion implements IDataRegionForQuery {
       if (tsFileResource.isClosed()) {
         sealedTsFiles.add(tsFileResource);
       } else {
-        tsFileResource.getProcessor().getFlushQueryLock().writeLock().lock();
-        if (tsFileResource.isClosed()) {
+        TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
+        if (tsFileProcessor == null) {
           sealedTsFiles.add(tsFileResource);
-          tsFileResource.getProcessor().getFlushQueryLock().writeLock().unlock();
         } else {
-          try {
-            if (!tsFileResource.getProcessor().deleteDataInMemory(deletion)) {
-              sealedTsFiles.add(tsFileResource);
-            } // else do nothing
-          } finally {
-            tsFileResource.getProcessor().getFlushQueryLock().writeLock().unlock();
+          tsFileProcessor.getFlushQueryLock().writeLock().lock();
+          if (tsFileResource.isClosed()) {
+            sealedTsFiles.add(tsFileResource);
+            tsFileProcessor.getFlushQueryLock().writeLock().unlock();
+          } else {
+            try {
+              if (!tsFileProcessor.deleteDataInMemory(deletion)) {
+                sealedTsFiles.add(tsFileResource);
+              } // else do nothing
+            } finally {
+              tsFileProcessor.getFlushQueryLock().writeLock().unlock();
+            }
           }
         }
       }

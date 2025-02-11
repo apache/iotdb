@@ -20,6 +20,8 @@
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -1206,5 +1208,12 @@ public class ConfigNodeConfig {
         getConfigNodeId(),
         new TEndPoint(getInternalAddress(), getInternalPort()),
         new TEndPoint(getInternalAddress(), getConsensusPort()));
+  }
+
+  public boolean isConsensusGroupStrongConsistency(TConsensusGroupId regionGroupId) {
+    return (TConsensusGroupType.SchemaRegion.equals(regionGroupId.getType())
+            && getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS))
+        || (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
+            && getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS));
   }
 }

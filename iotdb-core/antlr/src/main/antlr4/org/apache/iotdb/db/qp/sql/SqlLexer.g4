@@ -217,6 +217,10 @@ DATABASES
     : D A T A B A S E S
     ;
 
+DATANODE
+    : D A T A N O D E
+    ;
+
 DATANODEID
     : D A T A N O D E I D
     ;
@@ -300,6 +304,10 @@ EXISTS
 
 EXPLAIN
     : E X P L A I N
+    ;
+
+EXTEND
+    : E X T E N D
     ;
 
 EXTRACTOR
@@ -640,6 +648,10 @@ RANGE
 
 READONLY
     : R E A D O N L Y
+    ;
+
+RECONSTRUCT
+    : R E C O N S T R U C T
     ;
 
 REGEXP

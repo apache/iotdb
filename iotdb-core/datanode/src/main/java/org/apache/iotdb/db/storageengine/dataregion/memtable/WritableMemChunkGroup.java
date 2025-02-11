@@ -118,7 +118,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
   @Override
   public boolean isEmpty() {
-    return memChunkMap.isEmpty();
+    return memChunkMap.isEmpty() || count() == 0;
   }
 
   @Override

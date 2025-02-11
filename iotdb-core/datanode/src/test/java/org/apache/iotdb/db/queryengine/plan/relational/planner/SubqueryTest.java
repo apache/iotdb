@@ -56,6 +56,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.FINAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.INTERMEDIATE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.PARTIAL;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
 
 public class SubqueryTest {
@@ -321,5 +322,207 @@ public class SubqueryTest {
                 filter(
                     filterPredicate,
                     semiJoin("s1", "s1_6", "expr", sort(tableScan1), sort(tableScan2))))));
+  }
+
+  @Test
+  public void testUncorrelatedAnyComparisonSubquery() {
+    PlanTester planTester = new PlanTester();
+
+    String sql = "SELECT s1 FROM table1 where s1 > any (select s1 from table1)";
+
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+
+    PlanMatchPattern tableScan1 =
+        tableScan("testdb.table1", ImmutableList.of("s1"), ImmutableSet.of("s1"));
+
+    PlanMatchPattern tableScan2 = tableScan("testdb.table1", ImmutableMap.of("s1_7", "s1"));
+
+    PlanMatchPattern tableScan3 = tableScan("testdb.table1", ImmutableMap.of("s1_6", "s1"));
+
+    // Verify full LogicalPlan
+    /*
+    *   └──OutputNode
+    *           └──ProjectNode
+    *             └──FilterNode
+    *                └──JoinNode
+    *                   |──TableScanNode
+    *                   ├──AggregationNode
+    *                      └──TableScanNode
+
+    */
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            project(
+                anyTree(
+                    join(
+                        JoinNode.JoinType.INNER,
+                        builder ->
+                            builder
+                                .left(tableScan1)
+                                .right(
+                                    aggregation(
+                                        singleGroupingSet(),
+                                        ImmutableMap.of(
+                                            Optional.of("min"),
+                                            aggregationFunction("min", ImmutableList.of("s1_7")),
+                                            Optional.of("count_all"),
+                                            aggregationFunction(
+                                                "count_all", ImmutableList.of("s1_7")),
+                                            Optional.of("count_non_null"),
+                                            aggregationFunction("count", ImmutableList.of("s1_7"))),
+                                        Collections.emptyList(),
+                                        Optional.empty(),
+                                        SINGLE,
+                                        tableScan2)))))));
+
+    // Verify DistributionPlan
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            project(
+                anyTree(
+                    join(
+                        JoinNode.JoinType.INNER,
+                        builder ->
+                            builder
+                                .left(collect(exchange(), tableScan1, exchange()))
+                                .right(
+                                    aggregation(
+                                        singleGroupingSet(),
+                                        ImmutableMap.of(
+                                            Optional.of("min"),
+                                            aggregationFunction("min", ImmutableList.of("min_9")),
+                                            Optional.of("count_all"),
+                                            aggregationFunction(
+                                                "count_all", ImmutableList.of("count_all_10")),
+                                            Optional.of("count_non_null"),
+                                            aggregationFunction(
+                                                "count", ImmutableList.of("count"))),
+                                        Collections.emptyList(),
+                                        Optional.empty(),
+                                        FINAL,
+                                        collect(
+                                            exchange(),
+                                            aggregation(
+                                                singleGroupingSet(),
+                                                ImmutableMap.of(
+                                                    Optional.of("min_9"),
+                                                    aggregationFunction(
+                                                        "min", ImmutableList.of("s1_6")),
+                                                    Optional.of("count_all_10"),
+                                                    aggregationFunction(
+                                                        "count_all", ImmutableList.of("s1_6")),
+                                                    Optional.of("count"),
+                                                    aggregationFunction(
+                                                        "count", ImmutableList.of("s1_6"))),
+                                                Collections.emptyList(),
+                                                Optional.empty(),
+                                                PARTIAL,
+                                                tableScan3),
+                                            exchange()))))))));
+
+    assertPlan(planTester.getFragmentPlan(1), tableScan1);
+
+    assertPlan(planTester.getFragmentPlan(2), tableScan1);
+
+    assertPlan(
+        planTester.getFragmentPlan(3),
+        aggregation(
+            singleGroupingSet(),
+            ImmutableMap.of(
+                Optional.of("min_9"),
+                aggregationFunction("min", ImmutableList.of("s1_6")),
+                Optional.of("count_all_10"),
+                aggregationFunction("count_all", ImmutableList.of("s1_6")),
+                Optional.of("count"),
+                aggregationFunction("count", ImmutableList.of("s1_6"))),
+            Collections.emptyList(),
+            Optional.empty(),
+            PARTIAL,
+            tableScan3));
+
+    assertPlan(
+        planTester.getFragmentPlan(4),
+        aggregation(
+            singleGroupingSet(),
+            ImmutableMap.of(
+                Optional.of("min_9"),
+                aggregationFunction("min", ImmutableList.of("s1_6")),
+                Optional.of("count_all_10"),
+                aggregationFunction("count_all", ImmutableList.of("s1_6")),
+                Optional.of("count"),
+                aggregationFunction("count", ImmutableList.of("s1_6"))),
+            Collections.emptyList(),
+            Optional.empty(),
+            PARTIAL,
+            tableScan3));
+  }
+
+  @Test
+  public void testUncorrelatedEqualsSomeComparisonSubquery() {
+    PlanTester planTester = new PlanTester();
+
+    String sql = "SELECT s1 FROM table1 where s1 = some (select s1 from table1)";
+
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+
+    Expression filterPredicate = new SymbolReference("expr");
+
+    PlanMatchPattern tableScan1 =
+        tableScan("testdb.table1", ImmutableList.of("s1"), ImmutableSet.of("s1"));
+
+    PlanMatchPattern tableScan2 = tableScan("testdb.table1", ImmutableMap.of("s1_6", "s1"));
+
+    // Verify full LogicalPlan
+    /*
+    *   └──OutputNode
+    *           └──ProjectNode
+    *             └──FilterNode
+    *               └──SemiJoinNode
+    *                   |──SortNode
+    *                   |   └──TableScanNode
+    *                   ├──SortNode
+    *                   │   └──TableScanNode
+
+    */
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            project(
+                filter(
+                    filterPredicate,
+                    semiJoin("s1", "s1_6", "expr", sort(tableScan1), sort(tableScan2))))));
+  }
+
+  @Test
+  public void testUncorrelatedAllComparisonSubquery() {
+    PlanTester planTester = new PlanTester();
+
+    String sql = "SELECT s1 FROM table1 where s1 != all (select s1 from table1)";
+
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+
+    PlanMatchPattern tableScan1 =
+        tableScan("testdb.table1", ImmutableList.of("s1"), ImmutableSet.of("s1"));
+
+    PlanMatchPattern tableScan2 = tableScan("testdb.table1", ImmutableMap.of("s1_6", "s1"));
+
+    // Verify full LogicalPlan
+    /*
+    *   └──OutputNode
+    *           └──ProjectNode
+    *             └──FilterNode
+    *                └──SemiJoinNode
+    *                    |──SortNode
+    *                    |   └──TableScanNode
+    *                    ├──SortNode
+    *                    │   └──TableScanNode
+
+    */
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            project(anyTree(semiJoin("s1", "s1_6", "expr", sort(tableScan1), sort(tableScan2))))));
   }
 }

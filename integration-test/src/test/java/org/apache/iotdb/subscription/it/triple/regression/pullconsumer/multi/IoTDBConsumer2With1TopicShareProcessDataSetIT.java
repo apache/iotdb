@@ -23,7 +23,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionConsumer;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
@@ -51,8 +51,8 @@ public class IoTDBConsumer2With1TopicShareProcessDataSetIT
   private static final String device = database + ".d_0";
   private static final String topicName = "topicConsumer2With1TopicShareProcessDataSet";
   private String pattern = device + ".**";
-  private SubscriptionPullConsumer consumer2;
-  private static SubscriptionPullConsumer consumer;
+  private SubscriptionTreePullConsumer consumer2;
+  private static SubscriptionTreePullConsumer consumer;
   private static List<IMeasurementSchema> schemaList = new ArrayList<>();
 
   @Override

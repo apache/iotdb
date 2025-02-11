@@ -92,6 +92,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -531,7 +532,9 @@ public class LoadTsFileScheduler implements IScheduler {
     final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
         new LoadTsFileDataTypeConverter(isGeneratedByPipe);
 
-    for (final int failedLoadTsFileIndex : failedTsFileNodeIndexes) {
+    final Iterator<Integer> iterator = failedTsFileNodeIndexes.listIterator();
+    while (iterator.hasNext()) {
+      final int failedLoadTsFileIndex = iterator.next();
       final LoadSingleTsFileNode failedNode = tsFileNodeList.get(failedLoadTsFileIndex);
       final String filePath = failedNode.getTsFileResource().getTsFilePath();
 
@@ -548,7 +551,7 @@ public class LoadTsFileScheduler implements IScheduler {
                     .orElse(null);
 
         if (loadTsFileDataTypeConverter.isSuccessful(status)) {
-          failedTsFileNodeIndexes.remove(failedLoadTsFileIndex);
+          iterator.remove();
           LOGGER.info(
               "Load: Successfully converted TsFile {} into tablets and inserted.",
               failedNode.getTsFileResource().getTsFilePath());

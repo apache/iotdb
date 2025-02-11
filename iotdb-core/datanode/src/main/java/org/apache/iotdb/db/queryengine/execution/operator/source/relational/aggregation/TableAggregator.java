@@ -76,6 +76,10 @@ public class TableAggregator {
       // Use select-all AggregationMask here because filter of Agg-Function is not supported now
       AggregationMask mask = AggregationMask.createSelectAll(block.getPositionCount());
 
+      if (maskChannel.isPresent()) {
+        mask.applyMaskBlock(block.getColumn(maskChannel.getAsInt()));
+      }
+
       accumulator.addInput(arguments, mask);
     } else {
       accumulator.addIntermediate(arguments[0]);
