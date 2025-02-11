@@ -356,7 +356,11 @@ public abstract class PipeTaskAgent {
     for (final PipeMeta metaFromCoordinator : pipeMetaListFromCoordinator) {
       try {
         executeSinglePipeMetaChanges(metaFromCoordinator);
-      } catch (final Exception e) {
+      } catch (final Exception | Error e) {
+        // To ensure that all Pipes cannot be started due to an Error in a certain pipeline, you
+        // need to capture the Error. The reason for the Error may be a class loading failure. For
+        // example, plugin A depends on plugin B, but because plugin B is not loaded, plugin A
+        // cannot be loaded, so you need to ignore the Error of the loading process.
         final String pipeName = metaFromCoordinator.getStaticMeta().getPipeName();
         final String errorMessage =
             String.format(
