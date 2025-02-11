@@ -980,7 +980,7 @@ public class OptionsUtil extends Constants {
             .longOpt(TABLE_ARGS)
             .argName(TABLE_ARGS)
             .hasArg()
-            .desc(TABLE_DESC_EXPORT)
+            .desc(TABLE_DESC)
             .build();
     options.addOption(opTable);
 

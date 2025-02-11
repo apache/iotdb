@@ -96,14 +96,14 @@ public class Constants {
   public static final String DB_ARGS = "db";
   public static final String DB_NAME = "database";
   public static final String DB_DESC =
-      "The database to be exported,Only takes effect when sql_dialect is of type table.(optional)";
+      "The database to be exported,only takes effect when sql_dialect is of type table.(optional)";
 
   public static final String TABLE_ARGS = "table";
   public static final String TABLE_DESC =
-      "The table to be exported,only takes effect when sql_dialect is of type table";
+      "The table to be exported,only takes effect when sql_dialect is of type table.(optional)";
   public static final String TABLE_DESC_EXPORT =
       TABLE_DESC
-          + ".If the '- q' parameter is specified, this parameter does not take effect. If the export type is tsfile or sql, this parameter is required. (optional)";
+          + ".If the '-q' parameter is specified, this parameter does not take effect. If the export type is tsfile or sql, this parameter is required. (optional)";
   public static final String TABLE_DESC_IMPORT = TABLE_DESC + " and file_type is csv. (optional)";
 
   public static final String DATATYPE_BOOLEAN = "boolean";
@@ -179,7 +179,7 @@ public class Constants {
   public static final String TARGET_DIR_ARGS_NAME = "target_directory";
   public static final String TARGET_DIR_DESC = "Target file directory (required)";
   public static final String TARGET_DIR_SUBSCRIPTION_DESC =
-      "Target file directory.default ./target/out/ (optional)";
+      "Target file directory.default ./target (optional)";
 
   public static final String QUERY_COMMAND_ARGS = "q";
   public static final String QUERY_COMMAND_NAME = "query";
@@ -215,7 +215,7 @@ public class Constants {
       new String[] {"default", "long", "number", "timestamp"};
 
   public static final String PATH_ARGS = "path";
-  public static final String PATH_DESC = "the iotdb path to be subscripted in model tree";
+  public static final String PATH_DESC = "the path only to be effective in model tree";
 
   public static final long memoryThreshold = 10 * 1024 * 1024;
 
