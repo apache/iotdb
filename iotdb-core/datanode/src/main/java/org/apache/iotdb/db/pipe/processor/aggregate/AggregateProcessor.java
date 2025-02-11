@@ -186,7 +186,7 @@ public class AggregateProcessor implements PipeProcessor {
   public void customize(
       final PipeParameters parameters, final PipeProcessorRuntimeConfiguration configuration)
       throws Exception {
-    PipeRuntimeEnvironment environment = configuration.getRuntimeEnvironment();
+    final PipeRuntimeEnvironment environment = configuration.getRuntimeEnvironment();
     pipeName = environment.getPipeName();
     dataBaseName =
         StorageEngine.getInstance()
