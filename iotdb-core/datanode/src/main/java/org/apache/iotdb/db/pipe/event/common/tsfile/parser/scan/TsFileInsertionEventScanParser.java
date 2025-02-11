@@ -163,8 +163,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                       sourceEvent.getRawTreeModelDataBase(),
                       tablet,
                       isAligned,
-                      null,
-                      0,
+                      sourceEvent.getPipeName(),
+                      sourceEvent.getCreationTime(),
                       pipeTaskMeta,
                       sourceEvent,
                       !hasNext);

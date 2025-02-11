@@ -136,8 +136,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                           sourceEvent.getRawTreeModelDataBase(),
                           tablet,
                           true,
-                          null,
-                          0,
+                          sourceEvent.getPipeName(),
+                          sourceEvent.getCreationTime(),
                           pipeTaskMeta,
                           sourceEvent,
                           true);

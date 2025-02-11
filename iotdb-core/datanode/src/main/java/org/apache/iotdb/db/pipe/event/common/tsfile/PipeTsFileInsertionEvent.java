@@ -420,7 +420,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
           .anyMatch(
               deviceID -> {
                 // Tree model
-                if (deviceID instanceof PlainDeviceID
+                if (Boolean.FALSE.equals(getRawIsTableModelEvent())
+                    || deviceID instanceof PlainDeviceID
                     || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
                     || deviceID.getTableName().equals(PATH_ROOT)) {
                   markAsTreeModelEvent();
@@ -446,6 +447,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean isTableModelEvent() {
     if (getRawIsTableModelEvent() == null) {
+      if (getSourceDatabaseNameFromDataRegion() != null) {
+        return super.isTableModelEvent();
+      }
+
       try {
         final Map<IDeviceID, Boolean> deviceIsAlignedMap =
             PipeDataNodeResourceManager.tsfile()
