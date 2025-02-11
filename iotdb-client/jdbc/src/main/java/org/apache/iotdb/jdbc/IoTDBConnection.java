@@ -491,13 +491,18 @@ public class IoTDBConnection implements Connection {
     DeepCopyRpcTransportFactory.setThriftMaxFrameSize(params.getThriftMaxFrameSize());
 
     if (params.isUseSSL()) {
-      transport =
-          DeepCopyRpcTransportFactory.INSTANCE.getTransport(
-              params.getHost(),
-              params.getPort(),
-              getNetworkTimeout(),
-              params.getTrustStore(),
-              params.getTrustStorePwd());
+//      transport =
+//          DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+//              params.getHost(),
+//              params.getPort(),
+//              getNetworkTimeout(),
+//              params.getTrustStore(),
+//              params.getTrustStorePwd());
+      try {
+        transport = DeepCopyRpcTransportFactory.INSTANCE.getInsecureTransport(params.getHost(), params.getPort());
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
     } else {
       transport =
           DeepCopyRpcTransportFactory.INSTANCE.getTransport(

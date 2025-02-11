@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.rpc;
 
+import java.security.cert.X509Certificate;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import org.apache.thrift.transport.TMemoryInputTransport;
 import org.apache.thrift.transport.TSSLTransportFactory;
 import org.apache.thrift.transport.TSocket;
@@ -82,6 +88,32 @@ public class BaseRpcTransportFactory extends TTransportFactory {
     params.setTrustStore(trustStore, trustStorePwd);
     TTransport transport = TSSLTransportFactory.getClientSocket(ip, port, timeout, params);
     return inner.getTransport(transport);
+  }
+
+  public static class CustomX509TrustManager implements X509TrustManager {
+    public void checkClientTrusted(X509Certificate[] chain, String authType) {
+      // 空实现，接受任何客户端证书
+    }
+
+    public void checkServerTrusted(X509Certificate[] chain, String authType) {
+      // 空实现，接受任何服务器证书
+    }
+
+    public X509Certificate[] getAcceptedIssuers() {
+      return new X509Certificate[]{};
+    }
+  }
+
+  public static SSLSocket createSSLSocket(String host, int port) throws Exception {
+    SSLContext sslContext = SSLContext.getInstance("TLS");
+    TrustManager[] trustManagers = new TrustManager[]{new CustomX509TrustManager()};
+    sslContext.init(null, trustManagers, new java.security.SecureRandom());
+    SSLSocketFactory factory = sslContext.getSocketFactory();
+    return (SSLSocket) factory.createSocket(host, port);
+  }
+
+  public TTransport getInsecureTransport(String ip, int port) throws Exception {
+    return inner.getTransport(new TSocket(createSSLSocket(ip, port)));
   }
 
   public TTransport getTransport(String ip, int port, int timeout) throws TTransportException {
