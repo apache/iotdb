@@ -44,6 +44,7 @@ public class LoadTsFile extends Statement {
   private boolean deleteAfterLoad = false;
   private boolean convertOnTypeMismatch = true;
   private boolean autoCreateDatabase = true;
+  private boolean verify;
   private boolean isGeneratedByPipe = false;
 
   private final Map<String, String> loadAttributes;
@@ -61,6 +62,7 @@ public class LoadTsFile extends Statement {
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
     this.deleteAfterLoad = false;
     this.convertOnTypeMismatch = true;
+    this.verify = true;
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.resources = new ArrayList<>();
     this.writePointCountList = new ArrayList<>();
@@ -99,6 +101,10 @@ public class LoadTsFile extends Statement {
 
   public boolean isConvertOnTypeMismatch() {
     return convertOnTypeMismatch;
+  }
+
+  public boolean isVerifySchema() {
+    return verify;
   }
 
   public int getDatabaseLevel() {
@@ -156,6 +162,7 @@ public class LoadTsFile extends Statement {
     this.deleteAfterLoad = LoadTsFileConfigurator.parseOrGetDefaultOnSuccess(loadAttributes);
     this.convertOnTypeMismatch =
         LoadTsFileConfigurator.parseOrGetDefaultConvertOnTypeMismatch(loadAttributes);
+    this.verify = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
   }
 
   @Override

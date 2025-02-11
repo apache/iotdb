@@ -57,8 +57,7 @@ public class DeleteLogicalViewStatement extends Statement implements IConfigStat
     }
     List<PartialPath> checkedPaths = getPaths();
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkPatternPermission(
-            userName, checkedPaths, PrivilegeType.WRITE_SCHEMA.ordinal()),
+        AuthorityChecker.checkPatternPermission(userName, checkedPaths, PrivilegeType.WRITE_SCHEMA),
         checkedPaths,
         PrivilegeType.WRITE_SCHEMA);
   }

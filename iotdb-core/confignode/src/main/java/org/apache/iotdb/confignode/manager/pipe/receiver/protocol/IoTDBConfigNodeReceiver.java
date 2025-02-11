@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.receiver.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -40,6 +41,8 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
@@ -257,13 +260,11 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case AlterDatabase:
       case DeleteDatabase:
         return configManager
-            .checkUserPrivileges(
-                username, Collections.emptyList(), PrivilegeType.MANAGE_DATABASE.ordinal())
+            .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_DATABASE))
             .getStatus();
       case ExtendSchemaTemplate:
         return configManager
-            .checkUserPrivileges(
-                username, Collections.emptyList(), PrivilegeType.EXTEND_TEMPLATE.ordinal())
+            .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.EXTEND_TEMPLATE))
             .getStatus();
       case CreateSchemaTemplate:
       case CommitSetSchemaTemplate:
@@ -276,55 +277,184 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         return configManager
             .checkUserPrivileges(
                 username,
-                new ArrayList<>(
-                    PathPatternTree.deserialize(
-                            ((PipeDeleteTimeSeriesPlan) plan).getPatternTreeBytes())
-                        .getAllPathPatterns()),
-                PrivilegeType.WRITE_SCHEMA.ordinal())
+                new PrivilegeUnion(
+                    new ArrayList<>(
+                        PathPatternTree.deserialize(
+                                ((PipeDeleteTimeSeriesPlan) plan).getPatternTreeBytes())
+                            .getAllPathPatterns()),
+                    PrivilegeType.WRITE_SCHEMA))
             .getStatus();
       case PipeDeleteLogicalView:
         return configManager
             .checkUserPrivileges(
                 username,
-                new ArrayList<>(
-                    PathPatternTree.deserialize(
-                            ((PipeDeleteLogicalViewPlan) plan).getPatternTreeBytes())
-                        .getAllPathPatterns()),
-                PrivilegeType.WRITE_SCHEMA.ordinal())
+                new PrivilegeUnion(
+                    new ArrayList<>(
+                        PathPatternTree.deserialize(
+                                ((PipeDeleteLogicalViewPlan) plan).getPatternTreeBytes())
+                            .getAllPathPatterns()),
+                    PrivilegeType.WRITE_SCHEMA))
             .getStatus();
       case PipeDeactivateTemplate:
         return configManager
             .checkUserPrivileges(
                 username,
-                new ArrayList<>(((PipeDeactivateTemplatePlan) plan).getTemplateSetInfo().keySet()),
-                PrivilegeType.WRITE_SCHEMA.ordinal())
+                new PrivilegeUnion(
+                    new ArrayList<>(
+                        ((PipeDeactivateTemplatePlan) plan).getTemplateSetInfo().keySet()),
+                    PrivilegeType.WRITE_SCHEMA))
             .getStatus();
       case SetTTL:
         return configManager
             .checkUserPrivileges(
                 username,
-                Collections.singletonList(new PartialPath(((SetTTLPlan) plan).getPathPattern())),
-                PrivilegeType.WRITE_SCHEMA.ordinal())
+                new PrivilegeUnion(
+                    Collections.singletonList(
+                        new PartialPath(((SetTTLPlan) plan).getPathPattern())),
+                    PrivilegeType.WRITE_SCHEMA))
             .getStatus();
       case UpdateTriggerStateInTable:
       case DeleteTriggerInTable:
         return configManager
+            .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.USE_TRIGGER))
+            .getStatus();
+      case PipeCreateTable:
+        return configManager
             .checkUserPrivileges(
-                username, Collections.emptyList(), PrivilegeType.USE_TRIGGER.ordinal())
+                username,
+                new PrivilegeUnion(
+                    ((PipeCreateTablePlan) plan).getDatabase(),
+                    ((PipeCreateTablePlan) plan).getTable().getTableName(),
+                    PrivilegeType.CREATE))
+            .getStatus();
+      case AddTableColumn:
+      case SetTableProperties:
+      case CommitDeleteColumn:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new PrivilegeUnion(
+                    ((PipeCreateTablePlan) plan).getDatabase(),
+                    ((PipeCreateTablePlan) plan).getTable().getTableName(),
+                    PrivilegeType.ALTER))
+            .getStatus();
+      case CommitDeleteTable:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new PrivilegeUnion(
+                    ((PipeCreateTablePlan) plan).getDatabase(),
+                    ((PipeCreateTablePlan) plan).getTable().getTableName(),
+                    PrivilegeType.DROP))
             .getStatus();
       case GrantRole:
       case GrantUser:
       case RevokeUser:
       case RevokeRole:
-        for (final int permission : ((AuthorPlan) plan).getPermissions()) {
+        for (final int permission : ((AuthorTreePlan) plan).getPermissions()) {
           final TSStatus status =
               configManager
                   .checkUserPrivilegeGrantOpt(
                       username,
-                      PrivilegeType.isPathRelevant(permission)
-                          ? ((AuthorPlan) plan).getNodeNameList()
-                          : Collections.emptyList(),
-                      permission)
+                      PrivilegeType.values()[permission].isPathPrivilege()
+                          ? new PrivilegeUnion(
+                              ((AuthorTreePlan) plan).getNodeNameList(),
+                              PrivilegeType.values()[permission],
+                              true)
+                          : new PrivilegeUnion(PrivilegeType.values()[permission], true))
+                  .getStatus();
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return status;
+          }
+        }
+        return StatusUtils.OK;
+      case RGrantUserAny:
+      case RGrantRoleAny:
+      case RRevokeUserAny:
+      case RRevokeRoleAny:
+        for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
+          final TSStatus status =
+              configManager
+                  .checkUserPrivileges(
+                      username, new PrivilegeUnion(PrivilegeType.values()[permission], true, true))
+                  .getStatus();
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return status;
+          }
+        }
+        return StatusUtils.OK;
+      case RGrantUserAll:
+      case RGrantRoleAll:
+      case RRevokeUserAll:
+      case RRevokeRoleAll:
+        for (PrivilegeType privilegeType : PrivilegeType.values()) {
+          final TSStatus status;
+          if (privilegeType.isRelationalPrivilege()) {
+            status =
+                configManager
+                    .checkUserPrivileges(username, new PrivilegeUnion(privilegeType, true, true))
+                    .getStatus();
+          } else if (privilegeType.forRelationalSys()) {
+            status =
+                configManager
+                    .checkUserPrivileges(username, new PrivilegeUnion(privilegeType, true))
+                    .getStatus();
+          } else {
+            continue;
+          }
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return status;
+          }
+        }
+        return StatusUtils.OK;
+      case RGrantUserDBPriv:
+      case RGrantRoleDBPriv:
+      case RRevokeUserDBPriv:
+      case RRevokeRoleDBPriv:
+        for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
+          final TSStatus status =
+              configManager
+                  .checkUserPrivileges(
+                      username,
+                      new PrivilegeUnion(
+                          ((AuthorRelationalPlan) plan).getDatabaseName(),
+                          PrivilegeType.values()[permission],
+                          true))
+                  .getStatus();
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return status;
+          }
+        }
+        return StatusUtils.OK;
+      case RGrantUserTBPriv:
+      case RGrantRoleTBPriv:
+      case RRevokeUserTBPriv:
+      case RRevokeRoleTBPriv:
+        for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
+          final TSStatus status =
+              configManager
+                  .checkUserPrivileges(
+                      username,
+                      new PrivilegeUnion(
+                          ((AuthorRelationalPlan) plan).getDatabaseName(),
+                          ((AuthorRelationalPlan) plan).getTableName(),
+                          PrivilegeType.values()[permission],
+                          true))
+                  .getStatus();
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            return status;
+          }
+        }
+        return StatusUtils.OK;
+      case RGrantUserSysPri:
+      case RGrantRoleSysPri:
+      case RRevokeUserSysPri:
+      case RRevokeRoleSysPri:
+        for (final int permission : ((AuthorRelationalPlan) plan).getPermissions()) {
+          final TSStatus status =
+              configManager
+                  .checkUserPrivileges(
+                      username, new PrivilegeUnion(PrivilegeType.values()[permission], true))
                   .getStatus();
           if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return status;
@@ -332,26 +462,30 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         }
         return StatusUtils.OK;
       case UpdateUser:
+      case RUpdateUser:
         return ((AuthorPlan) plan).getUserName().equals(username)
             ? StatusUtils.OK
             : configManager
-                .checkUserPrivileges(
-                    username, Collections.emptyList(), PrivilegeType.MANAGE_USER.ordinal())
+                .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_USER))
                 .getStatus();
       case CreateUser:
+      case RCreateUser:
       case CreateUserWithRawPassword:
       case DropUser:
+      case RDropUser:
         return configManager
-            .checkUserPrivileges(
-                username, Collections.emptyList(), PrivilegeType.MANAGE_USER.ordinal())
+            .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_USER))
             .getStatus();
       case CreateRole:
+      case RCreateRole:
       case DropRole:
+      case RDropRole:
       case GrantRoleToUser:
+      case RGrantUserRole:
       case RevokeRoleFromUser:
+      case RRevokeUserRole:
         return configManager
-            .checkUserPrivileges(
-                username, Collections.emptyList(), PrivilegeType.MANAGE_ROLE.ordinal())
+            .checkUserPrivileges(username, new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
             .getStatus();
       default:
         return StatusUtils.OK;
@@ -548,6 +682,9 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ByteBuffer.wrap(((PipeDeleteDevicesPlan) plan).getModBytes())),
                 true)
             .getStatus();
+      case CreateUser:
+      case CreateUserWithRawPassword:
+      case CreateRole:
       case DropUser:
       case DropRole:
       case GrantRole:
@@ -557,11 +694,34 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RevokeRole:
       case RevokeRoleFromUser:
       case UpdateUser:
+      case RCreateUser:
+      case RCreateRole:
+      case RDropUser:
+      case RDropRole:
+      case RGrantRoleAll:
+      case RGrantUserAll:
+      case RRevokeRoleAll:
+      case RRevokeUserAll:
+      case RGrantRoleAny:
+      case RGrantUserAny:
+      case RRevokeUserAny:
+      case RRevokeRoleAny:
+      case RGrantRoleDBPriv:
+      case RGrantUserDBPriv:
+      case RRevokeRoleDBPriv:
+      case RRevokeUserDBPriv:
+      case RGrantRoleTBPriv:
+      case RGrantUserTBPriv:
+      case RRevokeRoleTBPriv:
+      case RRevokeUserTBPriv:
+      case RGrantRoleSysPri:
+      case RGrantUserSysPri:
+      case RRevokeRoleSysPri:
+      case RRevokeUserSysPri:
+      case RGrantUserRole:
+      case RRevokeUserRole:
         return configManager.getPermissionManager().operatePermission((AuthorPlan) plan, true);
       case CreateSchemaTemplate:
-      case CreateUser:
-      case CreateRole:
-      case CreateUserWithRawPassword:
       default:
         return configManager.getConsensusManager().write(new PipeEnrichedPlan(plan));
     }

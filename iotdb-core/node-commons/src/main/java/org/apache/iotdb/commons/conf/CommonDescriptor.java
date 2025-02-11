@@ -104,6 +104,11 @@ public class CommonDescriptor {
     }
     config.setTierTTLInMs(tierTTL);
 
+    config.setTTLCheckInterval(
+        Long.parseLong(
+            properties.getProperty(
+                "ttl_check_interval", Long.toString(config.getTTLCheckInterval()))));
+
     config.setSyncDir(properties.getProperty("dn_sync_dir", config.getSyncDir()).trim());
 
     config.setWalDirs(
@@ -474,6 +479,12 @@ public class CommonDescriptor {
                 "pipe_air_gap_receiver_port",
                 Integer.toString(config.getPipeAirGapReceiverPort()))));
 
+    config.setPipeReceiverLoginPeriodicVerificationIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_receiver_login_periodic_verification_interval_ms",
+                Long.toString(config.getPipeReceiverLoginPeriodicVerificationIntervalMs()))));
+
     config.setPipeMaxAllowedHistoricalTsFilePerDataRegion(
         Integer.parseInt(
             properties.getProperty(
@@ -644,15 +655,12 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_cache_memory_usage_percentage",
                 String.valueOf(config.getSubscriptionCacheMemoryUsagePercentage()))));
-
     config.setSubscriptionSubtaskExecutorMaxThreadNum(
         Integer.parseInt(
             properties.getProperty(
                 "subscription_subtask_executor_max_thread_num",
                 Integer.toString(config.getSubscriptionSubtaskExecutorMaxThreadNum()))));
-    if (config.getSubscriptionSubtaskExecutorMaxThreadNum() <= 0) {
-      config.setSubscriptionSubtaskExecutorMaxThreadNum(5);
-    }
+
     config.setSubscriptionPrefetchTabletBatchMaxDelayInMs(
         Integer.parseInt(
             properties.getProperty(
@@ -708,11 +716,37 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_ts_file_deduplication_window_seconds",
                 String.valueOf(config.getSubscriptionTsFileDeduplicationWindowSeconds()))));
-    config.setSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs(
+    config.setSubscriptionCheckMemoryEnoughIntervalMs(
         Long.parseLong(
             properties.getProperty(
-                "subscription_ts_file_slicer_check_memory_enough_interval_ms",
-                String.valueOf(config.getSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs()))));
+                "subscription_check_memory_enough_interval_ms",
+                String.valueOf(config.getSubscriptionCheckMemoryEnoughIntervalMs()))));
+
+    config.setSubscriptionPrefetchEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "subscription_prefetch_enabled",
+                String.valueOf(config.getSubscriptionPrefetchEnabled()))));
+    config.setSubscriptionPrefetchMemoryThreshold(
+        Float.parseFloat(
+            properties.getProperty(
+                "subscription_prefetch_memory_threshold",
+                String.valueOf(config.getSubscriptionPrefetchMemoryThreshold()))));
+    config.setSubscriptionPrefetchMissingRateThreshold(
+        Float.parseFloat(
+            properties.getProperty(
+                "subscription_prefetch_missing_rate_threshold",
+                String.valueOf(config.getSubscriptionPrefetchMemoryThreshold()))));
+    config.setSubscriptionPrefetchEventLocalCountThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_prefetch_event_local_count_threshold",
+                String.valueOf(config.getSubscriptionPrefetchEventLocalCountThreshold()))));
+    config.setSubscriptionPrefetchEventGlobalCountThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_prefetch_event_global_count_threshold",
+                String.valueOf(config.getSubscriptionPrefetchEventGlobalCountThreshold()))));
 
     config.setSubscriptionMetaSyncerInitialSyncDelayMinutes(
         Long.parseLong(

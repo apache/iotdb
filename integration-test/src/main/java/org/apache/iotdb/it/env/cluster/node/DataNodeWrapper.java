@@ -36,6 +36,8 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATANODE_MAX_DIREC
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATANODE_MAX_HEAP_SIZE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_NODE_NAME;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_PER_DATANODE;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_PER_DATA_NODE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_RATIS_LOG_APPENDER_BUFFER_SIZE_MAX;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REPLICATION_FACTOR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_DATA_NODE_COMMON_PROPERTIES;
@@ -82,6 +84,8 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   private final String defaultCommonPropertiesFile;
 
+  private final int regionPerDataNode;
+
   public DataNodeWrapper(
       final String seedConfigNode,
       final String testClassName,
@@ -103,6 +107,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
         EnvUtils.getFilePathFromSysVar(DEFAULT_DATA_NODE_PROPERTIES, clusterIndex);
     this.defaultCommonPropertiesFile =
         EnvUtils.getFilePathFromSysVar(DEFAULT_DATA_NODE_COMMON_PROPERTIES, clusterIndex);
+    this.regionPerDataNode = EnvUtils.getIntFromSysVar(DATA_REGION_PER_DATANODE, 0, clusterIndex);
     // Initialize mutable properties
     reloadMutableFields();
 
@@ -214,6 +219,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     mutableNodeProperties.setProperty(WAL_BUFFER_SIZE_IN_BYTE, "16777216");
     mutableNodeProperties.setProperty(SCHEMA_REGION_RATIS_LOG_APPENDER_BUFFER_SIZE_MAX, "8388608");
     mutableNodeProperties.setProperty(DATA_REGION_RATIS_LOG_APPENDER_BUFFER_SIZE_MAX, "8388608");
+    mutableNodeProperties.setProperty(DATA_REGION_PER_DATA_NODE, String.valueOf(regionPerDataNode));
   }
 
   @Override

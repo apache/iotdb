@@ -319,7 +319,7 @@ public class AvgAccumulator implements TableAccumulator {
     for (int i = 0; i < count; i++) {
       if (!column.isNull(i)) {
         countValue--;
-        sumValue += column.getFloat(i);
+        sumValue -= column.getFloat(i);
       }
     }
   }

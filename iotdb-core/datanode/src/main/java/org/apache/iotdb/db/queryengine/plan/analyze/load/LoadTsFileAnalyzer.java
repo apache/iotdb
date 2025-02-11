@@ -140,7 +140,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.tsFiles = loadTsFileTableStatement.getTsFiles();
     this.isTableModel = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
     this.statementString = loadTsFileTableStatement.toString();
-    this.isVerifySchema = true;
+    this.isVerifySchema = loadTsFileTableStatement.isVerifySchema();
     this.isDeleteAfterLoad = loadTsFileTableStatement.isDeleteAfterLoad();
     this.isConvertOnTypeMismatch = loadTsFileTableStatement.isConvertOnTypeMismatch();
     this.isAutoCreateDatabase = loadTsFileTableStatement.isAutoCreateDatabase();

@@ -128,7 +128,7 @@ public class CreateTriggerStatement extends Statement implements IConfigStatemen
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_TRIGGER.ordinal()),
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_TRIGGER),
         PrivilegeType.USE_TRIGGER);
   }
 }
