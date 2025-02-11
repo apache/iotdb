@@ -76,7 +76,7 @@ public class ExportTsFileTestIT extends AbstractScript {
 
   @Override
   protected void testOnWindows() throws IOException {
-    final String[] output = {"Subscription TsFile Count:0"};
+    final String[] output = {"Export TsFile Count:0"};
     ProcessBuilder builder =
         new ProcessBuilder(
             "cmd.exe",
@@ -100,7 +100,7 @@ public class ExportTsFileTestIT extends AbstractScript {
 
     prepareData();
 
-    final String[] output1 = {"Subscription TsFile Count:1"};
+    final String[] output1 = {"Export TsFile Count:1"};
     ProcessBuilder builder1 =
         new ProcessBuilder(
             "cmd.exe",
@@ -125,7 +125,7 @@ public class ExportTsFileTestIT extends AbstractScript {
 
   @Override
   protected void testOnUnix() throws IOException {
-    final String[] output = {"Subscription TsFile Count:0"};
+    final String[] output = {"Export TsFile Count:0"};
     // -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -q "select * from root.**"
     ProcessBuilder builder =
         new ProcessBuilder(
@@ -146,7 +146,7 @@ public class ExportTsFileTestIT extends AbstractScript {
 
     prepareData();
 
-    final String[] output1 = {"Subscription TsFile Count:1"};
+    final String[] output1 = {"Export TsFile Count:1"};
     // -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -q "select * from root.**"
     ProcessBuilder builder1 =
         new ProcessBuilder(

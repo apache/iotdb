@@ -96,11 +96,11 @@ public class Constants {
   public static final String DB_ARGS = "db";
   public static final String DB_NAME = "database";
   public static final String DB_DESC =
-      "The database to be exported,only takes effect when sql_dialect is of type table.(optional)";
+      "The database to be exported,only takes effect when sql_dialect is table.(optional)";
 
   public static final String TABLE_ARGS = "table";
   public static final String TABLE_DESC =
-      "The table to be exported,only takes effect when sql_dialect is of type table.(optional)";
+      "The table to be exported,only takes effect when sql_dialect is table.(optional)";
   public static final String TABLE_DESC_EXPORT =
       TABLE_DESC
           + ".If the '-q' parameter is specified, this parameter does not take effect. If the export type is tsfile or sql, this parameter is required. (optional)";
@@ -185,7 +185,7 @@ public class Constants {
   public static final String QUERY_COMMAND_NAME = "query";
   public static final String QUERY_COMMAND_ARGS_NAME = "query_command";
   public static final String QUERY_COMMAND_DESC =
-      "The query command that you want to execute.If sql-dialect is of type table The 'q' parameter is only applicable to export types of CSV, and is not available for other types.If the '- q' parameter is not empty, then the parameters' creatTime ',' EndTime 'and' table 'are not effective.(optional)";
+      "The query command that you want to execute.If sql_dialect is table The 'q' parameter is only applicable to export types of CSV, and is not available for other types.If the '- q' parameter is not empty, then the parameters' creatTime ',' EndTime 'and' table 'are not effective.(optional)";
 
   public static final String TARGET_FILE_ARGS = "pfn";
   public static final String TARGET_FILE_NAME = "prefix_file_name";
@@ -215,7 +215,8 @@ public class Constants {
       new String[] {"default", "long", "number", "timestamp"};
 
   public static final String PATH_ARGS = "path";
-  public static final String PATH_DESC = "the path only to be effective in model tree";
+  public static final String PATH_DESC =
+      "The path to be exported,only takes effect when sql_dialect is tree.(optional)";
 
   public static final long memoryThreshold = 10 * 1024 * 1024;
 
@@ -259,7 +260,7 @@ public class Constants {
         "yyyy.MM.dd'T'HH:mm:ss"
       };
 
-  public static final String SUBSCRIPTION_CLI_PREFIX = "Subscription TsFile";
+  public static final String SUBSCRIPTION_CLI_PREFIX = "Export TsFile";
   public static final int MAX_RETRY_TIMES = 2;
   public static final String LOOSE_RANGE = "";
   public static final boolean STRICT = false;
@@ -272,8 +273,6 @@ public class Constants {
   public static final String GROUP_NAME_PREFIX = "group_";
   public static final String HANDLER = "TsFileHandler";
   public static final String CONSUMER_NAME_PREFIX = "consumer_";
-  public static final SimpleDateFormat DATE_FORMAT =
-      new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
   public static final SimpleDateFormat DATE_FORMAT_VIEW = new SimpleDateFormat("yyyyMMddHHmmssSSS");
 
   // import constants
