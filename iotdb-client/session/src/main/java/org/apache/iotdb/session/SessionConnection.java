@@ -474,10 +474,12 @@ public class SessionConnection {
       session.changeDatabase(dbName);
       this.database = dbName;
     }
-    String sqlDialect = resp.tableModel ? TABLE : TREE;
-    if (!sqlDialect.equalsIgnoreCase(this.sqlDialect)) {
-      session.changeSqlDialect(sqlDialect);
-      this.sqlDialect = sqlDialect;
+    if (resp.isSetTableModel()) {
+      String sqlDialect = resp.tableModel ? TABLE : TREE;
+      if (!sqlDialect.equalsIgnoreCase(this.sqlDialect)) {
+        session.changeSqlDialect(sqlDialect);
+        this.sqlDialect = sqlDialect;
+      }
     }
     return resp.status;
   }
