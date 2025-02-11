@@ -72,5 +72,6 @@ public class RpcUtilsTest {
     Assert.assertTrue(RpcUtils.isSetSqlDialect("set sql_dialect  =table"));
     Assert.assertTrue(RpcUtils.isSetSqlDialect("set  sql_dialect =table"));
     Assert.assertFalse(RpcUtils.isSetSqlDialect("setsql_dialect =table"));
+    Assert.assertFalse(RpcUtils.isSetSqlDialect("set           sql_dia"));
   }
 }
