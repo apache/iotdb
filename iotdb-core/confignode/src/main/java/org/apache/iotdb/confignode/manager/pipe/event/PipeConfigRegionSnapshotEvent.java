@@ -67,14 +67,24 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
             new HashSet<>(
                 Arrays.asList(
                     ConfigPhysicalPlanType.CreateRole.getPlanType(),
-                    ConfigPhysicalPlanType.GrantRole.getPlanType()))));
+                    ConfigPhysicalPlanType.GrantRole.getPlanType(),
+                    ConfigPhysicalPlanType.RGrantRoleDBPriv.getPlanType(),
+                    ConfigPhysicalPlanType.RGrantRoleTBPriv.getPlanType(),
+                    ConfigPhysicalPlanType.RGrantRoleAny.getPlanType(),
+                    ConfigPhysicalPlanType.RGrantRoleSysPri.getPlanType(),
+                    ConfigPhysicalPlanType.RGrantRoleAll.getPlanType()))));
     SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.put(
         CNSnapshotFileType.USER,
         Collections.unmodifiableSet(
             new HashSet<>(
                 Arrays.asList(
                     ConfigPhysicalPlanType.CreateUserWithRawPassword.getPlanType(),
-                    ConfigPhysicalPlanType.GrantUser.getPlanType()))));
+                    ConfigPhysicalPlanType.GrantUser.getPlanType(),
+                    ConfigPhysicalPlanType.RGrantUserDBPriv.getPlanType(),
+                    ConfigPhysicalPlanType.RGrantUserTBPriv.getPlanType(),
+                    ConfigPhysicalPlanType.RGrantUserAny.getPlanType(),
+                    ConfigPhysicalPlanType.RGrantUserSysPri.getPlanType(),
+                    ConfigPhysicalPlanType.RGrantUserAll.getPlanType()))));
     SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.put(
         CNSnapshotFileType.USER_ROLE,
         Collections.singleton(ConfigPhysicalPlanType.GrantRoleToUser.getPlanType()));

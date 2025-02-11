@@ -108,6 +108,9 @@ statement
     | countTimeSlotListStatement
     | showSeriesSlotListStatement
     | migrateRegionStatement
+    | reconstructRegionStatement
+    | extendRegionStatement
+    | removeRegionStatement
     | removeDataNodeStatement
 
     // Admin Statement
@@ -479,6 +482,18 @@ migrateRegionStatement
     : MIGRATE REGION regionId=INTEGER_VALUE FROM fromId=INTEGER_VALUE TO toId=INTEGER_VALUE
     ;
 
+reconstructRegionStatement
+    : RECONSTRUCT REGION regionIds+=INTEGER_VALUE (COMMA regionIds+=INTEGER_VALUE)* ON targetDataNodeId=INTEGER_VALUE
+    ;
+
+extendRegionStatement
+    : EXTEND REGION regionId=INTEGER_VALUE TO targetDataNodeId=INTEGER_VALUE
+    ;
+
+removeRegionStatement
+    : REMOVE REGION regionId=INTEGER_VALUE FROM targetDataNodeId=INTEGER_VALUE
+    ;
+
 removeDataNodeStatement
     : REMOVE DATANODE dataNodeId=INTEGER_VALUE (',' dataNodeId=INTEGER_VALUE)*
     ;
@@ -604,11 +619,11 @@ listRolePrivilegeStatement
     ;
 
 listUserStatement
-    : LIST USER
+    : LIST USER (OF ROLE roleName=identifier)?
     ;
 
 listRoleStatement
-    : LIST ROLE
+    : LIST ROLE (OF USER userName=identifier)?
     ;
 
 
@@ -619,7 +634,7 @@ revokeStatement
 privilegeObjectScope
     : systemPrivileges
     | objectPrivileges ON objectType objectName=identifier
-    | objectPrivileges ON objectScope
+    | objectPrivileges ON (TABLE)? objectScope
     | objectPrivileges ON ANY
     | ALL
     ;
@@ -630,6 +645,7 @@ systemPrivileges
 
 objectPrivileges
     : objectPrivilege (',' objectPrivilege)*
+    | ALL
     ;
 
 objectScope
@@ -1188,6 +1204,7 @@ EXCLUDING: 'EXCLUDING';
 EXECUTE: 'EXECUTE';
 EXISTS: 'EXISTS';
 EXPLAIN: 'EXPLAIN';
+EXTEND: 'EXTEND';
 EXTRACT: 'EXTRACT';
 EXTRACTOR: 'EXTRACTOR';
 FALSE: 'FALSE';
