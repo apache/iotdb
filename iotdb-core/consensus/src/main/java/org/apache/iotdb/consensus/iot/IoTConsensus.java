@@ -497,7 +497,7 @@ public class IoTConsensus implements IConsensus {
     Peer localPeer = new Peer(groupId, thisNodeId, thisNode);
     if (!correctPeers.contains(localPeer)) {
       logger.info(
-          "[RESET PEER LIST] Local peer is not in the correct configuration, delete local peer {}",
+          "[RESET PEER LIST] {} Local peer is not in the correct configuration, delete it.",
           groupId);
       deleteLocalPeer(groupId);
       return;
@@ -510,9 +510,9 @@ public class IoTConsensus implements IConsensus {
       for (Peer peer : currentMembers) {
         if (!correctPeers.contains(peer)) {
           if (!impl.removeSyncLogChannel(peer)) {
-            logger.error("[RESET PEER LIST] Failed to remove sync channel with: {}", peer);
+            logger.error("[RESET PEER LIST] {} Failed to remove sync channel with: {}", groupId, peer);
           } else {
-            logger.info("[RESET PEER LIST] Remove sync channel with: {}", peer);
+            logger.info("[RESET PEER LIST] {} Remove sync channel with: {}", groupId, peer);
           }
         }
       }
@@ -520,19 +520,20 @@ public class IoTConsensus implements IConsensus {
       for (Peer peer : correctPeers) {
         if (!impl.getConfiguration().contains(peer)) {
           impl.buildSyncLogChannel(peer);
-          logger.info("[RESET PEER LIST] Build sync channel with: {}", peer);
+          logger.info("[RESET PEER LIST] {} Build sync channel with: {}", groupId, peer);
         }
       }
       // show result
       String newPeerListStr = impl.getConfiguration().toString();
       if (!previousPeerListStr.equals(newPeerListStr)) {
         logger.info(
-            "[RESET PEER LIST] Local peer list has been reset: {} -> {}",
+            "[RESET PEER LIST] {} Local peer list has been reset: {} -> {}", groupId,
             previousPeerListStr,
             newPeerListStr);
       } else {
         logger.info(
-            "[RESET PEER LIST] The current peer list is correct, nothing need to be reset: {}",
+            "[RESET PEER LIST] {} The current peer list is correct, nothing need to be reset: {}",
+                groupId,
             previousPeerListStr);
       }
     }
