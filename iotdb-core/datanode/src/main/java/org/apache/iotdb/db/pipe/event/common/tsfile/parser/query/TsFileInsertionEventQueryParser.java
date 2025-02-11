@@ -326,10 +326,10 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                           sourceEvent,
                           true)
                       : new PipeRawTabletInsertionEvent(
-                          sourceEvent.isTableModelEvent(),
+                          sourceEvent.getRawIsTableModelEvent(),
                           sourceEvent.getSourceDatabaseNameFromDataRegion(),
-                          sourceEvent.getTableModelDatabaseName(),
-                          sourceEvent.getTreeModelDatabaseName(),
+                          sourceEvent.getRawTableModelDataBase(),
+                          sourceEvent.getRawTreeModelDataBase(),
                           tablet,
                           isAligned,
                           sourceEvent.getPipeName(),
@@ -354,10 +354,10 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                           sourceEvent,
                           true)
                       : new PipeRawTabletInsertionEvent(
-                          sourceEvent.isTableModelEvent(),
+                          sourceEvent.getRawIsTableModelEvent(),
                           sourceEvent.getSourceDatabaseNameFromDataRegion(),
-                          sourceEvent.getTableModelDatabaseName(),
-                          sourceEvent.getTreeModelDatabaseName(),
+                          sourceEvent.getRawTableModelDataBase(),
+                          sourceEvent.getRawTreeModelDataBase(),
                           tablet,
                           isAligned,
                           sourceEvent.getPipeName(),

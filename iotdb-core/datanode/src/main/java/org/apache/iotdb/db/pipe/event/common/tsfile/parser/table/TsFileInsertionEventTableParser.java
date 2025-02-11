@@ -118,7 +118,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
               next =
                   sourceEvent == null
                       ? new PipeRawTabletInsertionEvent(
-                          null,
+                          Boolean.TRUE,
                           null,
                           null,
                           null,

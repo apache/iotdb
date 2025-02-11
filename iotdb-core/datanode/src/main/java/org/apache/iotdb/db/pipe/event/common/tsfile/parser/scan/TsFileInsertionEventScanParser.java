@@ -157,7 +157,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                       sourceEvent,
                       !hasNext)
                   : new PipeRawTabletInsertionEvent(
-                      sourceEvent.isTableModelEvent(),
+                      sourceEvent.getRawIsTableModelEvent(),
                       sourceEvent.getSourceDatabaseNameFromDataRegion(),
                       sourceEvent.getRawTableModelDataBase(),
                       sourceEvent.getRawTreeModelDataBase(),

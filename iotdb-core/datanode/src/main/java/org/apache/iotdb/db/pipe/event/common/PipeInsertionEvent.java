@@ -67,8 +67,8 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
       final long endTime,
       final Boolean isTableModelEvent,
       final String databaseNameFromDataRegion,
-      final String treeModelDatabaseName,
-      final String tableModelDatabaseName) {
+      final String tableModelDatabaseName,
+      final String treeModelDatabaseName) {
     super(pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, startTime, endTime);
     this.isTableModelEvent = isTableModelEvent;
     this.sourceDatabaseNameFromDataRegion = databaseNameFromDataRegion;
