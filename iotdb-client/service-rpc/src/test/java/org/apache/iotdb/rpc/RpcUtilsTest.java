@@ -64,4 +64,13 @@ public class RpcUtilsTest {
         "1970-01-01T07:59:59.999+08:00",
         RpcUtils.parseLongToDateWithPrecision(formatter, -1, zoneId, "ms"));
   }
+
+  @Test
+  public void testIsSetSqlDialect() {
+    Assert.assertTrue(RpcUtils.isSetSqlDialect("set sql_dialect=table"));
+    Assert.assertTrue(RpcUtils.isSetSqlDialect("set sql_dialect =table"));
+    Assert.assertTrue(RpcUtils.isSetSqlDialect("set sql_dialect  =table"));
+    Assert.assertTrue(RpcUtils.isSetSqlDialect("set  sql_dialect =table"));
+    Assert.assertFalse(RpcUtils.isSetSqlDialect("setsql_dialect =table"));
+  }
 }

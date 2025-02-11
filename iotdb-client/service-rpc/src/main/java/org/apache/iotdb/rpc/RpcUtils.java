@@ -375,7 +375,10 @@ public class RpcUtils {
   }
 
   public static boolean isSetSqlDialect(String sql) {
-    return sql.length() > 15 && "set sql_dialect".equalsIgnoreCase(sql.substring(0, 15));
+    sql = sql.toLowerCase();
+    return sql.length() > 15
+        && "set ".equals(sql.substring(0, 4))
+        && sql.substring(4).trim().startsWith("sql_dialect");
   }
 
   public static long getMilliSecond(long time, int timeFactor) {
