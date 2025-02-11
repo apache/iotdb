@@ -46,7 +46,9 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -56,12 +58,6 @@ public class ReplicateTest {
   private final Logger logger = LoggerFactory.getLogger(ReplicateTest.class);
 
   private final ConsensusGroupId gid = new DataRegionId(1);
-
-  private static final long timeout = TimeUnit.SECONDS.toMillis(300);
-
-  private static final String CONFIGURATION_FILE_NAME = "configuration.dat";
-
-  private static final String CONFIGURATION_TMP_FILE_NAME = "configuration.dat.tmp";
 
   private int basePort = 9000;
 
@@ -73,9 +69,9 @@ public class ReplicateTest {
 
   private final List<File> peersStorage =
       Arrays.asList(
-          new File("target" + java.io.File.separator + "1"),
-          new File("target" + java.io.File.separator + "2"),
-          new File("target" + java.io.File.separator + "3"));
+          new File("target" + File.separator + "1"),
+          new File("target" + File.separator + "2"),
+          new File("target" + File.separator + "3"));
 
   private final ConsensusGroup group = new ConsensusGroup(gid, peers);
   private final List<IoTConsensus> servers = new ArrayList<>();
@@ -120,6 +116,7 @@ public class ReplicateTest {
                                 String.format(
                                     ConsensusFactory.CONSTRUCT_FAILED_MSG,
                                     ConsensusFactory.IOT_CONSENSUS))));
+        servers.get(i).recordCorrectPeerListBeforeStarting(Collections.singletonMap(gid, peers));
         servers.get(i).start();
       }
     } catch (IOException e) {
@@ -299,6 +296,10 @@ public class ReplicateTest {
           Thread.sleep(100);
         }
       }
+
+      System.out.println(stateMachines.get(0).getRequestSet().size());
+      System.out.println(stateMachines.get(1).getRequestSet().size());
+      System.out.println(stateMachines.get(2).getRequestSet().size());
 
       Assert.assertEquals(CHECK_POINT_GAP * 2, stateMachines.get(0).getRequestSet().size());
       Assert.assertEquals(CHECK_POINT_GAP * 2, stateMachines.get(1).getRequestSet().size());
