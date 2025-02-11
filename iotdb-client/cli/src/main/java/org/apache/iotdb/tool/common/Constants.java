@@ -21,6 +21,7 @@ package org.apache.iotdb.tool.common;
 
 import org.apache.tsfile.enums.TSDataType;
 
+import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -177,6 +178,8 @@ public class Constants {
   public static final String TARGET_DIR_NAME = "target";
   public static final String TARGET_DIR_ARGS_NAME = "target_directory";
   public static final String TARGET_DIR_DESC = "Target file directory (required)";
+  public static final String TARGET_DIR_SUBSCRIPTION_DESC =
+      "Target file directory.default ./target/out/ (optional)";
 
   public static final String QUERY_COMMAND_ARGS = "q";
   public static final String QUERY_COMMAND_NAME = "query";
@@ -210,6 +213,9 @@ public class Constants {
 
   public static final String[] TIME_FORMAT =
       new String[] {"default", "long", "number", "timestamp"};
+
+  public static final String PATH_ARGS = "path";
+  public static final String PATH_DESC = "the iotdb path to be subscripted in model tree";
 
   public static final long memoryThreshold = 10 * 1024 * 1024;
 
@@ -252,6 +258,23 @@ public class Constants {
         "yyyy/MM/dd'T'HH:mm:ss",
         "yyyy.MM.dd'T'HH:mm:ss"
       };
+
+  public static final String SUBSCRIPTION_CLI_PREFIX = "Subscription TsFile";
+  public static final int MAX_RETRY_TIMES = 2;
+  public static final String LOOSE_RANGE = "";
+  public static final boolean STRICT = false;
+  public static final String MODE = "snapshot";
+  public static final boolean AUTO_COMMIT = false;
+  public static final String TABLE_MODEL = "table";
+  public static final long AUTO_COMMIT_INTERVAL = 5000;
+  public static final long POLL_MESSAGE_TIMEOUT = 10000;
+  public static final String TOPIC_NAME_PREFIX = "topic_";
+  public static final String GROUP_NAME_PREFIX = "group_";
+  public static final String HANDLER = "TsFileHandler";
+  public static final String CONSUMER_NAME_PREFIX = "consumer_";
+  public static final SimpleDateFormat DATE_FORMAT =
+      new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+  public static final SimpleDateFormat DATE_FORMAT_VIEW = new SimpleDateFormat("yyyyMMddHHmmssSSS");
 
   // import constants
   public static final String IMPORT_CLI_PREFIX = "Import Data";

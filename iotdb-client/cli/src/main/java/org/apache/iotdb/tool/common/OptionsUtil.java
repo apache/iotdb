@@ -912,4 +912,116 @@ public class OptionsUtil extends Constants {
     options.addOption(opTimestampPrecision);
     return options;
   }
+
+  public static Options createSubscriptionTsFileOptions() {
+    Options options = new Options();
+
+    Option opSqlDialect =
+        Option.builder(SQL_DIALECT_ARGS)
+            .longOpt(SQL_DIALECT_ARGS)
+            .argName(SQL_DIALECT_ARGS)
+            .hasArg()
+            .desc(SQL_DIALECT_DESC)
+            .build();
+    options.addOption(opSqlDialect);
+
+    Option opHost =
+        Option.builder(HOST_ARGS)
+            .longOpt(HOST_NAME)
+            .argName(HOST_NAME)
+            .hasArg()
+            .desc(HOST_DESC)
+            .build();
+    options.addOption(opHost);
+
+    Option opPort =
+        Option.builder(PORT_ARGS)
+            .longOpt(PORT_NAME)
+            .argName(PORT_NAME)
+            .hasArg()
+            .desc(PORT_DESC)
+            .build();
+    options.addOption(opPort);
+
+    Option opUsername =
+        Option.builder(USERNAME_ARGS)
+            .longOpt(USERNAME_NAME)
+            .argName(USERNAME_NAME)
+            .hasArg()
+            .desc(USERNAME_DESC)
+            .build();
+    options.addOption(opUsername);
+
+    Option opPassword =
+        Option.builder(PW_ARGS)
+            .longOpt(PW_NAME)
+            .optionalArg(true)
+            .argName(PW_NAME)
+            .hasArg()
+            .desc(PW_DESC)
+            .build();
+    options.addOption(opPassword);
+
+    Option opPath =
+        Option.builder(PATH_ARGS)
+            .longOpt(PATH_ARGS)
+            .argName(PATH_ARGS)
+            .hasArg()
+            .desc(PATH_DESC)
+            .build();
+    options.addOption(opPath);
+
+    Option opDatabase =
+        Option.builder(DB_ARGS).longOpt(DB_NAME).argName(DB_ARGS).hasArg().desc(DB_DESC).build();
+    options.addOption(opDatabase);
+
+    Option opTable =
+        Option.builder(TABLE_ARGS)
+            .longOpt(TABLE_ARGS)
+            .argName(TABLE_ARGS)
+            .hasArg()
+            .desc(TABLE_DESC_EXPORT)
+            .build();
+    options.addOption(opTable);
+
+    Option opStartTime =
+        Option.builder(START_TIME_ARGS)
+            .longOpt(START_TIME_ARGS)
+            .argName(START_TIME_ARGS)
+            .hasArg()
+            .desc(START_TIME_DESC)
+            .build();
+    options.addOption(opStartTime);
+
+    Option opEndTime =
+        Option.builder(END_TIME_ARGS)
+            .longOpt(END_TIME_ARGS)
+            .argName(END_TIME_ARGS)
+            .hasArg()
+            .desc(END_TIME_DESC)
+            .build();
+    options.addOption(opEndTime);
+
+    Option opFile =
+        Option.builder(TARGET_DIR_ARGS)
+            .longOpt(TARGET_DIR_NAME)
+            .argName(TARGET_DIR_ARGS_NAME)
+            .hasArg()
+            .desc(TARGET_DIR_SUBSCRIPTION_DESC)
+            .build();
+    options.addOption(opFile);
+
+    Option opThreadNum =
+        Option.builder(THREAD_NUM_ARGS)
+            .longOpt(THREAD_NUM_NAME)
+            .argName(THREAD_NUM_NAME)
+            .hasArg()
+            .desc(THREAD_NUM_DESC)
+            .build();
+    options.addOption(opThreadNum);
+
+    Option opHelp = Option.builder(HELP_ARGS).longOpt(HELP_ARGS).hasArg().desc(HELP_DESC).build();
+    options.addOption(opHelp);
+    return options;
+  }
 }
