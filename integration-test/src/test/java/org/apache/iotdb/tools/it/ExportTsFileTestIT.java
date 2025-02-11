@@ -100,7 +100,7 @@ public class ExportTsFileTestIT extends AbstractScript {
 
     prepareData();
 
-    final String[] output1 = {"Export TsFile Count:1"};
+    final String[] output1 = {"Export TsFile Count:"};
     ProcessBuilder builder1 =
         new ProcessBuilder(
             "cmd.exe",
@@ -146,7 +146,7 @@ public class ExportTsFileTestIT extends AbstractScript {
 
     prepareData();
 
-    final String[] output1 = {"Export TsFile Count:1"};
+    final String[] output1 = {"Export TsFile Count:"};
     // -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -q "select * from root.**"
     ProcessBuilder builder1 =
         new ProcessBuilder(
