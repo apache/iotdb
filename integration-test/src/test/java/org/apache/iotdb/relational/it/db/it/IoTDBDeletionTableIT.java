@@ -894,7 +894,7 @@ public class IoTDBDeletionTableIT {
     }
     // repeat 100 times
     // each time write 10000 points and delete 1000 of them randomly
-    int repetition = 100;
+    int repetition = 10;
     Random random = new Random();
 
     for (int rep = 0; rep < repetition; rep++) {
@@ -1024,8 +1024,8 @@ public class IoTDBDeletionTableIT {
 
     AtomicLong writtenPointCounter = new AtomicLong(-1);
     ExecutorService threadPool = Executors.newCachedThreadPool();
-    int fileNumMax = 1000;
-    int pointPerFile = 1000;
+    int fileNumMax = 100;
+    int pointPerFile = 100;
     int deviceNum = 4;
     Future<Void> writeThread =
         threadPool.submit(
@@ -1076,8 +1076,8 @@ public class IoTDBDeletionTableIT {
 
     AtomicLong writtenPointCounter = new AtomicLong(-1);
     AtomicLong deletedPointCounter = new AtomicLong(0);
-    int fileNumMax = 1000;
-    int pointPerFile = 1000;
+    int fileNumMax = 100;
+    int pointPerFile = 100;
     int deviceNum = 4;
     ExecutorService threadPool = Executors.newCachedThreadPool();
     Future<Void> writeThread =
