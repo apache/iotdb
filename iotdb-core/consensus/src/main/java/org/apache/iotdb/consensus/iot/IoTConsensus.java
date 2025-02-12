@@ -75,6 +75,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -174,7 +175,7 @@ public class IoTConsensus implements IConsensus {
               new IoTConsensusServerImpl(
                   path.toString(),
                   new Peer(consensusGroupId, thisNodeId, thisNode),
-                  new ArrayList<>(),
+                  new TreeSet<>(),
                   registry.apply(consensusGroupId),
                   backgroundTaskService,
                   clientManager,
@@ -281,7 +282,7 @@ public class IoTConsensus implements IConsensus {
                       new IoTConsensusServerImpl(
                           path,
                           new Peer(groupId, thisNodeId, thisNode),
-                          peers,
+                          new TreeSet<>(peers),
                           registry.apply(groupId),
                           backgroundTaskService,
                           clientManager,

@@ -85,7 +85,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.PriorityQueue;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
@@ -111,7 +113,7 @@ public class IoTConsensusServerImpl {
   private final Lock stateMachineLock = new ReentrantLock();
   private final Condition stateMachineCondition = stateMachineLock.newCondition();
   private final String storageDir;
-  private final List<Peer> configuration;
+  private final TreeSet<Peer> configuration;
   private final AtomicLong searchIndex;
   private final LogDispatcher logDispatcher;
   private IoTConsensusConfig config;
@@ -128,7 +130,7 @@ public class IoTConsensusServerImpl {
   public IoTConsensusServerImpl(
       String storageDir,
       Peer thisNode,
-      List<Peer> configuration,
+      TreeSet<Peer> configuration,
       IStateMachine stateMachine,
       ScheduledExecutorService backgroundTaskService,
       IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager,
@@ -638,17 +640,15 @@ public class IoTConsensusServerImpl {
 
   public void buildSyncLogChannel(Peer targetPeer, long initialSyncIndex) {
     KillPoint.setKillPoint(DataNodeKillPoints.ORIGINAL_ADD_PEER_DONE);
-    // step 1, build sync channel in LogDispatcher
-    if (!targetPeer.equals(thisNode)) {
-      logger.info(
-              "[IoTConsensus] build sync log channel to {} with initialSyncIndex {}",
-              targetPeer,
-              initialSyncIndex);
-      logDispatcher.addLogDispatcherThread(targetPeer, initialSyncIndex);
-    }
-    // step 2, update configuration
     configuration.add(targetPeer);
-    logger.info("[IoTConsensus Configuration] persist new configuration: {}", configuration);
+    if (Objects.equals(targetPeer, thisNode)) {
+      return;
+    }
+    logDispatcher.addLogDispatcherThread(targetPeer, initialSyncIndex);
+    logger.info(
+        "[IoTConsensus] Successfully build sync log channel to {} with initialSyncIndex {}",
+        targetPeer,
+        initialSyncIndex);
   }
 
   /**
@@ -723,7 +723,7 @@ public class IoTConsensusServerImpl {
   }
 
   public List<Peer> getConfiguration() {
-    return configuration;
+    return new ArrayList<>(configuration);
   }
 
   public long getSearchIndex() {

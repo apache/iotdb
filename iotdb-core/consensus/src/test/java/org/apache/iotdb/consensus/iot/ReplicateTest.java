@@ -184,23 +184,9 @@ public class ReplicateTest {
       stopServer();
       initServer();
 
-      Assert.assertEquals(
-          peers.stream().map(Peer::getNodeId).collect(Collectors.toSet()),
-          servers.get(0).getImpl(gid).getConfiguration().stream()
-              .map(Peer::getNodeId)
-              .collect(Collectors.toSet()));
-
-      Assert.assertEquals(
-          peers.stream().map(Peer::getNodeId).collect(Collectors.toSet()),
-          servers.get(1).getImpl(gid).getConfiguration().stream()
-              .map(Peer::getNodeId)
-              .collect(Collectors.toSet()));
-
-      Assert.assertEquals(
-          peers.stream().map(Peer::getNodeId).collect(Collectors.toSet()),
-          servers.get(2).getImpl(gid).getConfiguration().stream()
-              .map(Peer::getNodeId)
-              .collect(Collectors.toSet()));
+      checkPeerList(servers.get(0).getImpl(gid));
+      checkPeerList(servers.get(1).getImpl(gid));
+      checkPeerList(servers.get(2).getImpl(gid));
 
       Assert.assertEquals(CHECK_POINT_GAP, servers.get(0).getImpl(gid).getSearchIndex());
       Assert.assertEquals(CHECK_POINT_GAP, servers.get(1).getImpl(gid).getSearchIndex());
@@ -261,23 +247,9 @@ public class ReplicateTest {
       initServer();
 
       servers.get(2).createLocalPeer(group.getGroupId(), group.getPeers());
-      Assert.assertEquals(
-          peers.stream().map(Peer::getNodeId).collect(Collectors.toSet()),
-          servers.get(0).getImpl(gid).getConfiguration().stream()
-              .map(Peer::getNodeId)
-              .collect(Collectors.toSet()));
-
-      Assert.assertEquals(
-          peers.stream().map(Peer::getNodeId).collect(Collectors.toSet()),
-          servers.get(1).getImpl(gid).getConfiguration().stream()
-              .map(Peer::getNodeId)
-              .collect(Collectors.toSet()));
-
-      Assert.assertEquals(
-          peers.stream().map(Peer::getNodeId).collect(Collectors.toSet()),
-          servers.get(2).getImpl(gid).getConfiguration().stream()
-              .map(Peer::getNodeId)
-              .collect(Collectors.toSet()));
+      checkPeerList(servers.get(0).getImpl(gid));
+      checkPeerList(servers.get(1).getImpl(gid));
+      checkPeerList(servers.get(2).getImpl(gid));
 
       Assert.assertEquals(CHECK_POINT_GAP, servers.get(0).getImpl(gid).getSearchIndex());
       Assert.assertEquals(CHECK_POINT_GAP, servers.get(1).getImpl(gid).getSearchIndex());
@@ -296,10 +268,6 @@ public class ReplicateTest {
           Thread.sleep(100);
         }
       }
-
-      System.out.println(stateMachines.get(0).getRequestSet().size());
-      System.out.println(stateMachines.get(1).getRequestSet().size());
-      System.out.println(stateMachines.get(2).getRequestSet().size());
 
       Assert.assertEquals(CHECK_POINT_GAP * 2, stateMachines.get(0).getRequestSet().size());
       Assert.assertEquals(CHECK_POINT_GAP * 2, stateMachines.get(1).getRequestSet().size());
@@ -345,5 +313,11 @@ public class ReplicateTest {
       }
     }
     return true;
+  }
+
+  private void checkPeerList(IoTConsensusServerImpl iotServerImpl) {
+    Assert.assertEquals(
+        peers.stream().map(Peer::getNodeId).collect(Collectors.toSet()),
+        iotServerImpl.getConfiguration().stream().map(Peer::getNodeId).collect(Collectors.toSet()));
   }
 }
