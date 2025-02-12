@@ -146,8 +146,8 @@ public class LoadTsFileConfigurator {
         loadAttributes.getOrDefault(
             TABLET_CONVERSION_THRESHOLD_KEY,
             String.valueOf(TABLET_CONVERSION_THRESHOLD_DEFAULT_VALUE)));
-      }
-      
+  }
+
   public static final String VERIFY_KEY = "verify";
   private static final boolean VERIFY_DEFAULT_VALUE = true;
 
