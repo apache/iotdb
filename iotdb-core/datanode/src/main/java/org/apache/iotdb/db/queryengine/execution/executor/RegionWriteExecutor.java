@@ -85,6 +85,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -661,8 +662,13 @@ public class RegionWriteExecutor {
           MeasurementGroup measurementGroup;
           Map<Integer, MetadataException> failingMeasurementMap;
           MetadataException metadataException;
-          for (final Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> deviceEntry :
-              node.getDeviceMap().entrySet()) {
+
+          final Iterator<Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>>> iterator =
+              node.getDeviceMap().entrySet().iterator();
+
+          while (iterator.hasNext()) {
+            final Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> deviceEntry =
+                iterator.next();
             measurementGroup = deviceEntry.getValue().right;
             failingMeasurementMap =
                 schemaRegion.checkMeasurementExistence(
@@ -690,10 +696,18 @@ public class RegionWriteExecutor {
               }
             }
             measurementGroup.removeMeasurements(failingMeasurementMap.keySet());
+            if (measurementGroup.isEmpty()) {
+              iterator.remove();
+            }
           }
 
           return processExecutionResultOfInternalCreateSchema(
-              super.visitInternalCreateMultiTimeSeries(node, context),
+              !node.getDeviceMap().isEmpty()
+                  ? super.visitInternalCreateMultiTimeSeries(node, context)
+                  : RegionExecutionResult.create(
+                      true,
+                      "Execute successfully",
+                      RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")),
               failingStatus,
               alreadyExistingStatus);
         } finally {
