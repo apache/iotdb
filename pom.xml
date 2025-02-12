@@ -1668,6 +1668,19 @@
                                     <outputDirectory>${project.build.directory}/generated-sources-go</outputDirectory>
                                 </configuration>
                             </execution>
+                            <execution>
+                                <id>generate-thrift-sources-csharp</id>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <phase>generate-sources</phase>
+                                <configuration>
+                                    <generator>netstd:no_deepcopy</generator>
+                                    <includes>**/common.thrift,**/client.thrift</includes>
+                                    <!-- The output directory is set to the parent of the generated sources for copying-->
+                                    <outputDirectory>${project.parent.build.directory}/generated-sources-csharp</outputDirectory>
+                                </configuration>
+                            </execution>
                         </executions>
                     </plugin>
                 </plugins>
