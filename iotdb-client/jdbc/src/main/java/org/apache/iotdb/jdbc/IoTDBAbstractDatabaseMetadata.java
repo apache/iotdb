@@ -379,38 +379,6 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     "EXCEPTION"
   };
 
-  //    try {
-  //      TreeMap<String, String> myKeywordMap = new TreeMap<>();
-  //      for (String allIotdbSQLKeyword : allIotdbSQLKeywords) {
-  //        myKeywordMap.put(allIotdbSQLKeyword, null);
-  //      }
-  //
-  //      HashMap<String, String> sql92KeywordMap = new HashMap<>(sql92Keywords.length);
-  //      for (String sql92Keyword : sql92Keywords) {
-  //        sql92KeywordMap.put(sql92Keyword, null);
-  //      }
-  //
-  //      Iterator<String> it = sql92KeywordMap.keySet().iterator();
-  //      while (it.hasNext()) {
-  //        myKeywordMap.remove(it.next());
-  //      }
-  //
-  //      StringBuilder keywordBuf = new StringBuilder();
-  //      it = myKeywordMap.keySet().iterator();
-  //      if (it.hasNext()) {
-  //        keywordBuf.append(it.next());
-  //      }
-  //      while (it.hasNext()) {
-  //        keywordBuf.append(",");
-  //        keywordBuf.append(it.next());
-  //      }
-  //      sqlKeywordsThatArentSQL92 = keywordBuf.toString();
-  //
-  //    } catch (Exception e) {
-  //      LOGGER.error("Error when initializing SQL keywords: ", e);
-  //      throw new RuntimeException(e);
-  //    }
-
   public static ByteBuffer convertTsBlock(
       List<List<Object>> valuesList, List<TSDataType> tsDataTypeList) throws IOException {
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(tsDataTypeList);
