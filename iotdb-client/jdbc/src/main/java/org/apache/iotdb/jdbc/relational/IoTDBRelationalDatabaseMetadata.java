@@ -308,21 +308,19 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
     }
 
     // Setup Fields
-    Field[] fields = new Field[8];
+    Field[] fields = new Field[7];
     fields[0] = new Field("", ORDINAL_POSITION, INT32);
     fields[1] = new Field("", COLUMN_NAME, "TEXT");
     fields[2] = new Field("", DATA_TYPE, INT32);
-    fields[3] = new Field("", REMARKS, "TEXT");
-    fields[4] = new Field("", TYPE_NAME, "TEXT");
-    fields[5] = new Field("", IS_AUTOINCREMENT, "TEXT");
-    fields[6] = new Field("", IS_NULLABLE, "TEXT");
-    fields[7] = new Field("", NULLABLE, INT32);
+    fields[3] = new Field("", TYPE_NAME, "TEXT");
+    fields[4] = new Field("", IS_AUTOINCREMENT, "TEXT");
+    fields[5] = new Field("", IS_NULLABLE, "TEXT");
+    fields[6] = new Field("", NULLABLE, INT32);
     List<TSDataType> tsDataTypeList =
         Arrays.asList(
             TSDataType.INT32,
             TSDataType.TEXT,
             TSDataType.INT32,
-            TSDataType.TEXT,
             TSDataType.TEXT,
             TSDataType.TEXT,
             TSDataType.TEXT,
@@ -351,11 +349,8 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
         } else if (i == 2) {
           valueInRow.add(getSQLType(type));
         } else if (i == 3) {
-          String columnCategory = rs.getString(5);
-          valueInRow.add(columnCategory);
-        } else if (i == 4) {
           valueInRow.add(type);
-        } else if (i == 5) {
+        } else if (i == 4) {
           valueInRow.add("");
         } else {
           if (!columnName.equals("time")) {
