@@ -269,11 +269,15 @@ public class LoadTsFileScheduler implements IScheduler {
       if (isLoadSuccess) {
         stateMachine.transitionToFinished();
       } else {
-        final StringBuilder failedTsFiles = new StringBuilder();
+        final StringBuilder failedTsFiles =
+            new StringBuilder(
+                !tsFileNodeList.isEmpty()
+                    ? tsFileNodeList.get(0).getTsFileResource().getTsFilePath()
+                    : "");
         for (int i : failedTsFileNodeIndexes) {
           failedTsFiles
-              .append(tsFileNodeList.get(i).getTsFileResource().getTsFilePath())
-              .append(", ");
+              .append(", ")
+              .append(tsFileNodeList.get(i).getTsFileResource().getTsFilePath());
         }
         final long startTime = System.nanoTime();
         try {
