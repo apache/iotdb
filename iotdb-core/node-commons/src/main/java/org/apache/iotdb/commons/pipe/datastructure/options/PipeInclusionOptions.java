@@ -30,6 +30,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
@@ -45,10 +46,16 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 public class PipeInclusionOptions {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeInclusionOptions.class);
-  public static final PartialPath treeOnlySyncPrefix =
-      new PartialPath(new String[] {"schema", "timeseries"});
-  public static final PartialPath tableOnlySyncPrefix =
-      new PartialPath(new String[] {"schema", "table"});
+  public static final List<PartialPath> treeOnlySyncPrefixes =
+      Collections.singletonList(new PartialPath(new String[] {"schema", "timeseries"}));
+  public static final List<PartialPath> tableOnlySyncPrefixes =
+      Collections.unmodifiableList(
+          Arrays.asList(
+              new PartialPath(new String[] {"schema", "table"}),
+              new PartialPath(new String[] {"auth", "role", "grant", "table"}),
+              new PartialPath(new String[] {"auth", "role", "revoke", "table"}),
+              new PartialPath(new String[] {"auth", "user", "grant", "table"}),
+              new PartialPath(new String[] {"auth", "user", "revoke", "table"})));
   public static final String ALL = "all";
 
   private static final Set<PartialPath> OPTIONS = new HashSet<>();

@@ -45,6 +45,7 @@ public class LoadTsFile extends Statement {
   private boolean convertOnTypeMismatch = true;
   private int tabletConversionThreshold = -1;
   private boolean autoCreateDatabase = true;
+  private boolean verify;
   private boolean isGeneratedByPipe = false;
   private String model = LoadTsFileConfigurator.MODEL_TABLE_VALUE;
 
@@ -63,6 +64,7 @@ public class LoadTsFile extends Statement {
     this.deleteAfterLoad = false;
     this.convertOnTypeMismatch = true;
     this.tabletConversionThreshold = -1;
+    this.verify = true;
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.resources = new ArrayList<>();
     this.writePointCountList = new ArrayList<>();
@@ -104,6 +106,10 @@ public class LoadTsFile extends Statement {
 
   public int getTabletConversionThreshold() {
     return tabletConversionThreshold;
+  }
+
+  public boolean isVerifySchema() {
+    return verify;
   }
 
   public int getDatabaseLevel() {
@@ -159,6 +165,7 @@ public class LoadTsFile extends Statement {
         LoadTsFileConfigurator.parseOrGetDefaultConvertOnTypeMismatch(loadAttributes);
     this.tabletConversionThreshold =
         LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThreshold(loadAttributes);
+    this.verify = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
     this.model =
         LoadTsFileConfigurator.parseOrGetDefaultModel(
             loadAttributes, LoadTsFileConfigurator.MODEL_TABLE_VALUE);
