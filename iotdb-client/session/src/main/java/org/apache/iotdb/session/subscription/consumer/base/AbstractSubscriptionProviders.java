@@ -111,7 +111,11 @@ final class AbstractSubscriptionProviders {
           provider = consumer.constructProviderAndHandshake(entry.getValue());
         } catch (final Exception e) {
           LOGGER.warn(
-              "{} failed to create connection with {} because of {}", consumer, endPoint, e, e);
+              "{} failed to create connection with {} because of {}",
+              consumer,
+              entry.getValue(),
+              e,
+              e);
           continue;
         }
         addProvider(entry.getKey(), provider);
