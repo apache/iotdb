@@ -5,7 +5,7 @@ on:
     branches:
       - master
       - 'rel/1.*'
-      - 'rc/1.*'
+      - 'rc/*'
       - 'force_ci/**'
     paths-ignore:
       - 'docs/**'
