@@ -49,6 +49,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -139,6 +140,21 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
     super.validate(validator);
+
+    final boolean forwardingPipeRequests =
+        validator
+            .getParameters()
+            .getBooleanOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
+                    PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
+                PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
+    if (!forwardingPipeRequests) {
+      throw new PipeParameterNotValidException(
+          String.format(
+              "The parameter %s cannot be set to false.",
+              PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY));
+    }
 
     // Validate whether the pipe needs to extract table model data or tree model data
     final boolean isTreeDialect =

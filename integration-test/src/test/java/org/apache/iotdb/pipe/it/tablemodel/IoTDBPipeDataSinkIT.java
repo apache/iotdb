@@ -30,6 +30,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -239,6 +240,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeTableModelTestIT {
     }
   }
 
+  @Ignore
   @Test
   public void testWriteBackSink() throws Exception {
     try (final SyncConfigNodeIServiceClient client =

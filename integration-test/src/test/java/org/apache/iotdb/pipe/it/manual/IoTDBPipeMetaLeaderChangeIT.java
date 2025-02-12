@@ -32,6 +32,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -66,6 +67,7 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
     receiverEnv.initClusterEnvironment();
   }
 
+  @Ignore
   @Test
   public void testConfigNodeLeaderChange() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
@@ -125,6 +127,7 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
         receiverEnv, "count databases", "count,", Collections.singleton("20,"));
   }
 
+  @Ignore
   @Test
   public void testSchemaRegionLeaderChange() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);

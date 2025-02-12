@@ -30,6 +30,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -620,6 +621,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
     }
   }
 
+  @Ignore
   @Test
   public void testDoubleLiving() throws Exception {
     // Double living is two clusters with pipes connecting each other.

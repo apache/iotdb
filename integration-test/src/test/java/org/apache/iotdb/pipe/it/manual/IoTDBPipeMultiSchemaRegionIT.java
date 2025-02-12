@@ -29,6 +29,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2ManualCreateSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -41,6 +42,7 @@ import java.util.Map;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2ManualCreateSchema.class})
 public class IoTDBPipeMultiSchemaRegionIT extends AbstractPipeDualManualIT {
+  @Ignore
   @Test
   public void testMultiSchemaRegion() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);

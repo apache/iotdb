@@ -575,6 +575,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelTestIT {
     }
   }
 
+  @Ignore
   @Test
   public void testDoubleLiving() throws Exception {
     boolean insertResult = true;

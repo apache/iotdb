@@ -33,6 +33,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -76,6 +77,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelTestIT {
     receiverEnv.initClusterEnvironment();
   }
 
+  @Ignore
   @Test
   public void testDoubleLivingAutoConflict() throws Exception {
     // Double living is two clusters each with a pipe connecting to the other.
@@ -173,6 +175,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelTestIT {
     TableModelUtils.assertData("test", "test1", 0, 600, receiverEnv, handleFailure);
   }
 
+  @Ignore
   @Test
   public void testDoubleLivingAutoConflictTemplate() throws Exception {
     final DataNodeWrapper senderDataNode = senderEnv.getDataNodeWrapper(0);
