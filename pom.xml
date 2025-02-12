@@ -105,7 +105,7 @@
         <jjwt.version>0.11.5</jjwt.version>
         <jline.version>3.26.2</jline.version>
         <jna.version>5.14.0</jna.version>
-        <json-smart.version>2.5.0</json-smart.version>
+        <json-smart.version>2.5.2</json-smart.version>
         <jtransforms.version>3.1</jtransforms.version>
         <junit.version>4.13.2</junit.version>
         <!-- This was the last version to support Java 8 -->
@@ -1666,6 +1666,19 @@
                                     <generator>go:package_prefix=github.com/apache/iotdb-client-go/</generator>
                                     <includes>**/common.thrift,**/client.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-go</outputDirectory>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>generate-thrift-sources-csharp</id>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <phase>generate-sources</phase>
+                                <configuration>
+                                    <generator>netstd:no_deepcopy</generator>
+                                    <includes>**/common.thrift,**/client.thrift</includes>
+                                    <!-- The output directory is set to the parent of the generated sources for copying-->
+                                    <outputDirectory>${project.parent.build.directory}/generated-sources-csharp</outputDirectory>
                                 </configuration>
                             </execution>
                         </executions>
