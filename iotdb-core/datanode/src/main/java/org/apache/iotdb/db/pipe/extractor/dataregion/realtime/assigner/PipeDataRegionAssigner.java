@@ -283,7 +283,7 @@ public class PipeDataRegionAssigner implements Closeable {
     return eventCounter.getPipeHeartbeatEventCount();
   }
 
-  public boolean isTableModel() {
+  public Boolean isTableModel() {
     return isTableModel;
   }
 }
