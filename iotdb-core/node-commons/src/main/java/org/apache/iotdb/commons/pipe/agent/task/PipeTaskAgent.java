@@ -48,6 +48,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -352,7 +353,7 @@ public abstract class PipeTaskAgent {
 
     final List<TPushPipeMetaRespExceptionMessage> exceptionMessages = new ArrayList<>();
     final List<PipeMeta> copyPipeMetaListFromCoordinator =
-        new ArrayList<>(pipeMetaListFromCoordinator);
+        new LinkedList<>(pipeMetaListFromCoordinator);
 
     while (!copyPipeMetaListFromCoordinator.isEmpty()) {
       // Iterate through pipe meta list from coordinator, check if pipe meta exists on local agent
