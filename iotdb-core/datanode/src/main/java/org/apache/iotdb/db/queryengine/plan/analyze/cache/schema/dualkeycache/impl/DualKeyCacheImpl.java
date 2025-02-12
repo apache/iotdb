@@ -337,7 +337,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   private void executeInvalidateAll() {
     firstKeyMap.clear();
     cacheEntryManager.cleanUp();
-    cacheStats.resetMemoryUsage();
+    cacheStats.resetMemoryUsageAndEntriesCount();
   }
 
   @Override

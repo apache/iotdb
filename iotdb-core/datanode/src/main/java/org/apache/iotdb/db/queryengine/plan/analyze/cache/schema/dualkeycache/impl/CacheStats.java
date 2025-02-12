@@ -116,12 +116,13 @@ class CacheStats implements IDualKeyCacheStats {
   }
 
   void reset() {
-    resetMemoryUsage();
+    resetMemoryUsageAndEntriesCount();
     hitCount.set(0);
     requestCount.set(0);
   }
 
-  void resetMemoryUsage() {
+  void resetMemoryUsageAndEntriesCount() {
     memoryUsage.set(0);
+    entriesCount.set(0);
   }
 }
