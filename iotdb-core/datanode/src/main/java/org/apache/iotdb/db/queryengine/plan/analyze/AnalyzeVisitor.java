@@ -2999,7 +2999,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   @Override
-  public Analysis visitLoadFile(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
+  public Analysis visitLoadFile(
+      final LoadTsFileStatement loadTsFileStatement, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
 
     final long startTime = System.nanoTime();
@@ -3023,7 +3024,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private LoadTsFileAnalyzer getAnalyzer(
-      LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
+      final LoadTsFileStatement loadTsFileStatement, final MPPQueryContext context) {
     if (Objects.equals(loadTsFileStatement.getModel(), LoadTsFileConfigurator.MODEL_TREE_VALUE)) {
       // Load to tree-model
       return new LoadTsFileToTreeModelAnalyzer(

@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -84,7 +85,9 @@ public class IoTDBAirGapReceiverAgent implements IService {
   @Override
   public void stop() {
     try {
-      serverSocket.close();
+      if (Objects.nonNull(serverSocket)) {
+        serverSocket.close();
+      }
     } catch (final IOException e) {
       LOGGER.warn("Failed to close IoTDBAirGapReceiverAgent's server socket", e);
     }
