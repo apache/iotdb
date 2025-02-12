@@ -269,10 +269,18 @@ public class LoadTsFileScheduler implements IScheduler {
       if (isLoadSuccess) {
         stateMachine.transitionToFinished();
       } else {
+        final StringBuilder failedTsFiles = new StringBuilder();
+        for (int i : failedTsFileNodeIndexes) {
+          failedTsFiles
+              .append(tsFileNodeList.get(i).getTsFileResource().getTsFilePath())
+              .append(", ");
+        }
         final long startTime = System.nanoTime();
         try {
           // if failed to load some TsFiles, then try to convert the TsFiles to Tablets
-          LOGGER.info("Load TsFile failed, will try to convert to tablets and insert.");
+          LOGGER.info(
+              "Load TsFile failed, will try to convert to tablets and insert. Failed TsFiles: [{}]",
+              failedTsFiles);
           convertFailedTsFilesToTabletsAndRetry();
         } finally {
           LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
