@@ -29,6 +29,10 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import java.util.Objects;
 
 public class TableDeviceSchemaCacheMetrics implements IMetricSet {
+
+  private static final String SCHEMA_CACHE_TOTAL_USAGE = "schema_cache_total_usage";
+  private static final String SCHEMA_CACHE_MEM_CAPACITY = "schema_cache_mem_capacity";
+
   private final TableDeviceSchemaCache tableDeviceSchemaCache;
 
   public TableDeviceSchemaCacheMetrics(final TableDeviceSchemaCache dataNodeSchemaCache) {
@@ -55,6 +59,20 @@ public class TableDeviceSchemaCacheMetrics implements IMetricSet {
         "SchemaCache",
         Tag.TYPE.toString(),
         "all");
+    metricService.createAutoGauge(
+        Metric.MEM.toString(),
+        MetricLevel.IMPORTANT,
+        tableDeviceSchemaCache,
+        TableDeviceSchemaCache::getMemoryUsage,
+        Tag.NAME.toString(),
+        SCHEMA_CACHE_TOTAL_USAGE);
+    metricService.createAutoGauge(
+        Metric.MEM.toString(),
+        MetricLevel.IMPORTANT,
+        tableDeviceSchemaCache,
+        TableDeviceSchemaCache::capacity,
+        Tag.NAME.toString(),
+        SCHEMA_CACHE_MEM_CAPACITY);
   }
 
   @Override
@@ -73,6 +91,18 @@ public class TableDeviceSchemaCacheMetrics implements IMetricSet {
         "SchemaCache",
         Tag.TYPE.toString(),
         "all");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.MEM.toString(),
+        Tag.NAME.toString(),
+        SCHEMA_CACHE_TOTAL_USAGE);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.CACHE.toString(),
+        Tag.NAME.toString(),
+        "SchemaCache",
+        Tag.TYPE.toString(),
+        SCHEMA_CACHE_MEM_CAPACITY);
   }
 
   @Override

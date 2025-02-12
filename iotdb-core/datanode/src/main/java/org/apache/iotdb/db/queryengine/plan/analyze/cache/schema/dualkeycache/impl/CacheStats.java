@@ -96,6 +96,11 @@ class CacheStats implements IDualKeyCacheStats {
     return memoryUsage.get();
   }
 
+  @Override
+  public long capacity() {
+    return memoryThreshold;
+  }
+
   void reset() {
     resetMemoryUsage();
     hitCount.set(0);
