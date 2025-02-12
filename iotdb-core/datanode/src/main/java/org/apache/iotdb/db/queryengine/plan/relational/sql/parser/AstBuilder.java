@@ -1194,8 +1194,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitRemoveConfigNodeStatement(
       RelationalSqlParser.RemoveConfigNodeStatementContext ctx) {
-    Integer nodeId =
-        Integer.parseInt(ctx.INTEGER_VALUE() == null ? "-1" : ctx.INTEGER_VALUE().getText());
+    Integer nodeId = Integer.parseInt(ctx.INTEGER_VALUE().getText());
     return new RemoveConfigNode(nodeId);
   }
 

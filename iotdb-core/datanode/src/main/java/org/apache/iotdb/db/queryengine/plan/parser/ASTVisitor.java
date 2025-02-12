@@ -4229,8 +4229,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitRemoveConfigNode(IoTDBSqlParser.RemoveConfigNodeContext ctx) {
-    Integer nodeId =
-        Integer.parseInt(ctx.INTEGER_LITERAL() == null ? "-1" : ctx.INTEGER_LITERAL().getText());
+    Integer nodeId = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
     return new RemoveConfigNodeStatement(nodeId);
   }
 
