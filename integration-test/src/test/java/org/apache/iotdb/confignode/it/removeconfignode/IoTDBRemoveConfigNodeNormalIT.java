@@ -32,11 +32,11 @@ import org.junit.runner.RunWith;
 public class IoTDBRemoveConfigNodeNormalIT extends IoTDBRemoveConfigNodeITFramework {
   @Test
   public void test3C1DUseTreeSQL() throws Exception {
-    testRemoveConfigNode(1, 1, 3, 1, 1, 2, SQLModel.TREE_MODEL_SQL);
+    testRemoveConfigNode(1, 1, 3, 1, 2, SQLModel.TREE_MODEL_SQL);
   }
 
   @Test
   public void test3C1DUseTableSQL() throws Exception {
-    testRemoveConfigNode(1, 1, 3, 1, 1, 2, SQLModel.TABLE_MODEL_SQL);
+    testRemoveConfigNode(1, 1, 3, 1, 2, SQLModel.TABLE_MODEL_SQL);
   }
 }

@@ -82,7 +82,6 @@ public class IoTDBRemoveConfigNodeITFramework {
       final int schemaReplicationFactor,
       final int configNodeNum,
       final int dataNodeNum,
-      final int removeConfigNodeNum,
       final int dataRegionPerDataNode,
       final SQLModel model)
       throws Exception {
