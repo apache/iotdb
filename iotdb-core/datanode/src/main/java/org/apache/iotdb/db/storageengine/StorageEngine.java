@@ -937,7 +937,7 @@ public class StorageEngine implements IService {
           pieceNode.getTsFile(),
           dataRegionId,
           e);
-      status.setCode(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
       return status;
     }

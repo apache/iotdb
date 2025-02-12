@@ -283,7 +283,7 @@ public class LoadTsFileScheduler implements IScheduler {
         try {
           // if failed to load some TsFiles, then try to convert the TsFiles to Tablets
           LOGGER.info(
-              "Load TsFile failed, will try to convert to tablets and insert. Failed TsFiles: [{}]",
+              "Load TsFile(s) failed, will try to convert to tablets and insert. Failed TsFiles: {}",
               failedTsFiles);
           convertFailedTsFilesToTabletsAndRetry();
         } finally {
