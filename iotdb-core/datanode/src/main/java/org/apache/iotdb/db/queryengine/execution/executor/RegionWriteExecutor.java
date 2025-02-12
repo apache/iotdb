@@ -458,11 +458,11 @@ public class RegionWriteExecutor {
             measurementGroupMap.remove(emptyDevice);
           }
 
-          final RegionExecutionResult failingResult =
+          final RegionExecutionResult executionResult =
               registerTimeSeries(measurementGroupMap, node, context, failingStatus);
 
-          if (failingResult != null) {
-            return failingResult;
+          if (executionResult != null) {
+            return executionResult;
           }
 
           final TSStatus status = RpcUtils.getStatus(failingStatus);
@@ -589,7 +589,12 @@ public class RegionWriteExecutor {
           measurementGroup.removeMeasurements(failingMeasurementMap.keySet());
 
           return processExecutionResultOfInternalCreateSchema(
-              super.visitInternalCreateTimeSeries(node, context),
+              !measurementGroup.isEmpty()
+                  ? super.visitInternalCreateTimeSeries(node, context)
+                  : RegionExecutionResult.create(
+                      true,
+                      "Execute successfully",
+                      RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")),
               failingStatus,
               alreadyExistingStatus);
         } finally {
