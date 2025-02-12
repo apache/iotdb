@@ -21,7 +21,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "apache-iotdb-ainode"
-version = "2.0.0.dev"
+version = "2.0.2.dev"
 description = "Apache IoTDB AINode"
 readme = "README.md"
 authors = ["Apache Software Foundation <dev@iotdb.apache.org>"]
@@ -34,12 +34,12 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 include = [
-    "iotdb/thrift/*",
-    "iotdb/thrift/common/*",
-    "iotdb/thrift/confignode/*",
-    "iotdb/thrift/datanode/*",
-    "iotdb/thrift/ainode/*",
-    "iotdb/conf/*",
+    {path = "iotdb/thrift/*", format = "wheel"},
+    {path = "iotdb/thrift/common/*", format = "wheel"},
+    {path = "iotdb/thrift/confignode/*", format = "wheel"},
+    {path = "iotdb/thrift/datanode/*", format = "wheel"},
+    {path = "iotdb/thrift/ainode/*", format = "wheel"},
+    {path = "iotdb/conf/*", format = "wheel"},
 ]
 packages = [
     { include = "iotdb" }
