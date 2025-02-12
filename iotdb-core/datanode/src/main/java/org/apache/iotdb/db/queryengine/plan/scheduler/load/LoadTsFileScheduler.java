@@ -94,6 +94,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -274,10 +275,11 @@ public class LoadTsFileScheduler implements IScheduler {
                 !tsFileNodeList.isEmpty()
                     ? tsFileNodeList.get(0).getTsFileResource().getTsFilePath()
                     : "");
-        for (int i : failedTsFileNodeIndexes) {
+        final ListIterator<Integer> iterator = failedTsFileNodeIndexes.listIterator(1);
+        while (iterator.hasNext()) {
           failedTsFiles
               .append(", ")
-              .append(tsFileNodeList.get(i).getTsFileResource().getTsFilePath());
+              .append(tsFileNodeList.get(iterator.next()).getTsFileResource().getTsFilePath());
         }
         final long startTime = System.nanoTime();
         try {
