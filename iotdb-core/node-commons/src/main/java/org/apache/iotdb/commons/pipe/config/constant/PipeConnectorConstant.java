@@ -46,8 +46,8 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_IOTDB_NODE_URLS_KEY = "connector.node-urls";
   public static final String SINK_IOTDB_NODE_URLS_KEY = "sink.node-urls";
 
-  public static final String CONNECTOR_MARK_AS_PIPE_REQUEST_KEY = "connector.mark_as_pipe_request";
-  public static final String SINK_MARK_AS_PIPE_REQUEST_KEY = "sink.mark_as_pipe_request";
+  public static final String CONNECTOR_MARK_AS_PIPE_REQUEST_KEY = "connector.mark-as-pipe-request";
+  public static final String SINK_MARK_AS_PIPE_REQUEST_KEY = "sink.mark-as-pipe-request";
   public static final boolean CONNECTOR_MARK_AS_PIPE_REQUEST_DEFAULT_VALUE = true;
 
   public static final String SINK_IOTDB_SSL_ENABLE_KEY = "sink.ssl.enable";
