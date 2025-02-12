@@ -42,4 +42,7 @@ public interface IDualKeyCacheStats {
 
   /** Return capacity of dual key cache. */
   long capacity();
+
+  /** Return entries num of dual key cache */
+  long entriesCount();
 }

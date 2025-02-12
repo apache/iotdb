@@ -31,6 +31,7 @@ class CacheStats implements IDualKeyCacheStats {
   private final long memoryThreshold;
 
   private final AtomicLong memoryUsage = new AtomicLong(0);
+  private final AtomicLong entriesCount = new AtomicLong(0);
 
   private final AtomicLong requestCount = new AtomicLong(0);
   private final AtomicLong hitCount = new AtomicLong(0);
@@ -68,6 +69,14 @@ class CacheStats implements IDualKeyCacheStats {
     requestCount.getAndAdd(num);
   }
 
+  void increaseEntryCount() {
+    entriesCount.addAndGet(1);
+  }
+
+  void decreaseEntryCount(final int n) {
+    entriesCount.addAndGet(-n);
+  }
+
   @Override
   public long requestCount() {
     return requestCount.get();
@@ -99,6 +108,11 @@ class CacheStats implements IDualKeyCacheStats {
   @Override
   public long capacity() {
     return memoryThreshold;
+  }
+
+  @Override
+  public long entriesCount() {
+    return entriesCount.get();
   }
 
   void reset() {

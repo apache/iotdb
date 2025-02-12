@@ -73,6 +73,11 @@ public class TableDeviceSchemaCacheMetrics implements IMetricSet {
         TableDeviceSchemaCache::capacity,
         Tag.NAME.toString(),
         SCHEMA_CACHE_MEM_CAPACITY);
+    metricService.createAutoGauge(
+        Metric.CACHE_ENTRIES_NUM.toString(),
+        MetricLevel.IMPORTANT,
+        tableDeviceSchemaCache,
+        TableDeviceSchemaCache::entriesCount);
   }
 
   @Override
@@ -98,11 +103,10 @@ public class TableDeviceSchemaCacheMetrics implements IMetricSet {
         SCHEMA_CACHE_TOTAL_USAGE);
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.CACHE.toString(),
+        Metric.MEM.toString(),
         Tag.NAME.toString(),
-        "SchemaCache",
-        Tag.TYPE.toString(),
         SCHEMA_CACHE_MEM_CAPACITY);
+    metricService.remove(MetricType.AUTO_GAUGE, Metric.CACHE_ENTRIES_NUM.toString());
   }
 
   @Override

@@ -98,6 +98,7 @@ public enum Metric {
   MEM("mem"),
   CACHE("cache"),
   CACHE_HIT_RATE("cache_hit"),
+  CACHE_ENTRIES_NUM("cache_entries_num"),
   QUANTITY("quantity"),
   LEADER_QUANTITY("leader_quantity"),
   SCHEMA_REGION("schema_region"),
