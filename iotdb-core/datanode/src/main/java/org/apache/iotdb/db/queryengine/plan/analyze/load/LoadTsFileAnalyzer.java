@@ -30,6 +30,7 @@ import org.apache.iotdb.db.exception.load.LoadEmptyFileException;
 import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -40,6 +41,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterCon
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -112,6 +115,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
   final ISchemaFetcher schemaFetcher = ClusterSchemaFetcher.getInstance();
   private final Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
+  private final AccessControl accessControl = Coordinator.getInstance().getAccessControl();
   private TreeSchemaAutoCreatorAndVerifier schemaAutoCreatorAndVerifier;
   private LoadTsFileTableSchemaCache schemaCache;
 
@@ -335,6 +339,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
               org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema
                   .fromTsFileTableSchema(name2Schema.getKey(), name2Schema.getValue());
           getOrCreateTableSchemaCache().createTable(fileSchema, context, metadata);
+          accessControl.checkCanInsertIntoTable(
+              context.getSession().getUserName(),
+              new QualifiedObjectName(databaseForTableData, name2Schema.getKey()));
         }
 
         while (timeseriesMetadataIterator.hasNext()) {
