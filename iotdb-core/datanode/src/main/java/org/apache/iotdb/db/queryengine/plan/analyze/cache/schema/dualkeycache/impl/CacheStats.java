@@ -70,11 +70,11 @@ class CacheStats implements IDualKeyCacheStats {
   }
 
   void increaseEntryCount() {
-    entriesCount.addAndGet(1);
+    entriesCount.incrementAndGet();
   }
 
-  void decreaseEntryCount(final int n) {
-    entriesCount.addAndGet(-n);
+  void decreaseEntryCount() {
+    entriesCount.decrementAndGet();
   }
 
   @Override
