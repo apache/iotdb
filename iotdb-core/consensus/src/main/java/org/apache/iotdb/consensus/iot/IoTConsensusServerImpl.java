@@ -639,11 +639,13 @@ public class IoTConsensusServerImpl {
   public void buildSyncLogChannel(Peer targetPeer, long initialSyncIndex) {
     KillPoint.setKillPoint(DataNodeKillPoints.ORIGINAL_ADD_PEER_DONE);
     // step 1, build sync channel in LogDispatcher
-    logger.info(
-        "[IoTConsensus] build sync log channel to {} with initialSyncIndex {}",
-        targetPeer,
-        initialSyncIndex);
-    logDispatcher.addLogDispatcherThread(targetPeer, initialSyncIndex);
+    if (!targetPeer.equals(thisNode)) {
+      logger.info(
+              "[IoTConsensus] build sync log channel to {} with initialSyncIndex {}",
+              targetPeer,
+              initialSyncIndex);
+      logDispatcher.addLogDispatcherThread(targetPeer, initialSyncIndex);
+    }
     // step 2, update configuration
     configuration.add(targetPeer);
     logger.info("[IoTConsensus Configuration] persist new configuration: {}", configuration);

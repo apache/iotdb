@@ -44,6 +44,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.OptionalLong;
+import java.util.HashSet;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
@@ -59,6 +60,7 @@ public class LogDispatcher {
   private static final long DEFAULT_INITIAL_SYNC_INDEX = 0L;
   private final IoTConsensusServerImpl impl;
   private final List<LogDispatcherThread> threads;
+  private final HashSet<Peer> submittedThreads;
   private final int selfPeerId;
   private final IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager;
   private ExecutorService executorService;
@@ -81,6 +83,7 @@ public class LogDispatcher {
             .filter(x -> !Objects.equals(x, impl.getThisNode()))
             .map(x -> new LogDispatcherThread(x, impl.getConfig(), DEFAULT_INITIAL_SYNC_INDEX))
             .collect(Collectors.toList());
+    this.submittedThreads = new HashSet<>();
     if (!threads.isEmpty()) {
       initLogSyncThreadPool();
     }
@@ -98,7 +101,12 @@ public class LogDispatcher {
 
   public synchronized void start() {
     if (!threads.isEmpty()) {
-      threads.forEach(executorService::submit);
+      for (LogDispatcherThread thread : threads) {
+        if (!submittedThreads.contains(thread.peer)) {
+          executorService.submit(thread);
+          submittedThreads.add(thread.peer);
+        }
+      }
     }
   }
 
@@ -131,7 +139,10 @@ public class LogDispatcher {
     if (this.executorService == null) {
       initLogSyncThreadPool();
     }
-    executorService.submit(thread);
+    if (!submittedThreads.contains(thread.peer)) {
+      executorService.submit(thread);
+      submittedThreads.add(thread.peer);
+    }
   }
 
   public synchronized void removeLogDispatcherThread(Peer peer) throws IOException {
