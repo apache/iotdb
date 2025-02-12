@@ -260,6 +260,11 @@ public class IoTDBDatabaseMetadata extends IoTDBAbstractDatabaseMetadata {
   }
 
   @Override
+  public String getTimeDateFunctions() throws SQLException {
+    return "COUNT_TIME,MAX_TIME,MIN_TIME,TIME_DIFFERENCE,TIME_DURATION";
+  }
+
+  @Override
   public ResultSet getTables(
       String catalog, String schemaPattern, String tableNamePattern, String[] types)
       throws SQLException {

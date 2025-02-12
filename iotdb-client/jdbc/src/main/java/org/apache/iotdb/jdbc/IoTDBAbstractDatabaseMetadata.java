@@ -690,35 +690,6 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   public abstract String getNumericFunctions() throws SQLException;
 
-  //  @Override
-  //  public String getNumericFunctions() throws SQLException {
-  //    ResultSet resultSet = null;
-  //    Statement statement = null;
-  //    String result = "";
-  //    try {
-  //      statement = connection.createStatement();
-  //      StringBuilder str = new StringBuilder("");
-  //      resultSet = statement.executeQuery(SHOW_FUNCTIONS);
-  //      List<String> listFunction = Arrays.asList("MAX_TIME", "MIN_TIME", "TIME_DIFFERENCE",
-  // "NOW");
-  //      while (resultSet.next()) {
-  //        if (listFunction.contains(resultSet.getString(1))) {
-  //          continue;
-  //        }
-  //        str.append(resultSet.getString(1)).append(",");
-  //      }
-  //      result = str.toString();
-  //      if (!result.isEmpty()) {
-  //        result = result.substring(0, result.length() - 1);
-  //      }
-  //    } catch (Exception e) {
-  //      LOGGER.error("Get numeric functions error: {}", e.getMessage());
-  //    } finally {
-  //      close(resultSet, statement);
-  //    }
-  //    return result;
-  //  }
-
   @Override
   public String getStringFunctions() throws SQLException {
     return getSystemFunctions();
@@ -748,10 +719,7 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
     return result;
   }
 
-  @Override
-  public String getTimeDateFunctions() throws SQLException {
-    return "MAX_TIME,MIN_TIME,TIME_DIFFERENCE,NOW";
-  }
+  public abstract String getTimeDateFunctions() throws SQLException;
 
   @Override
   public String getSearchStringEscape() throws SQLException {

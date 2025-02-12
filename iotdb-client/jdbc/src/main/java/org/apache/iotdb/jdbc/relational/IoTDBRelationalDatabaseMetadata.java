@@ -196,6 +196,11 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
   }
 
   @Override
+  public String getTimeDateFunctions() throws SQLException {
+    return "DATE_BIN";
+  }
+
+  @Override
   public ResultSet getTables(
       String catalog, String schemaPattern, String tableNamePattern, String[] types)
       throws SQLException {
