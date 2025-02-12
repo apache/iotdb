@@ -54,7 +54,7 @@ public class PipeRowCollector implements RowCollector {
     if (sourceEvent instanceof PipeInsertionEvent) {
       sourceEventDataBaseName =
           ((PipeInsertionEvent) sourceEvent).getSourceDatabaseNameFromDataRegion();
-      isTableModel = ((PipeInsertionEvent) sourceEvent).isTableModelEvent();
+      isTableModel = ((PipeInsertionEvent) sourceEvent).getRawIsTableModelEvent();
     } else {
       sourceEventDataBaseName = null;
       isTableModel = null;
