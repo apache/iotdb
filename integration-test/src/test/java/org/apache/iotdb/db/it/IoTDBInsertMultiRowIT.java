@@ -171,6 +171,13 @@ public class IoTDBInsertMultiRowIT {
     } catch (SQLException e) {
       assertTrue(e.getMessage().contains("Current system timestamp precision is ms"));
     }
+    try (Statement st1 = connection.createStatement()) {
+      st1.execute(
+          "insert into root.t1.d99.wt01(timestamp, s1, s2) values(-1618283005586000, 1, 1), (-1618283005586001, 1, 2)");
+      fail();
+    } catch (SQLException e) {
+      assertTrue(e.getMessage().contains("Current system timestamp precision is ms"));
+    }
   }
 
   @Test
