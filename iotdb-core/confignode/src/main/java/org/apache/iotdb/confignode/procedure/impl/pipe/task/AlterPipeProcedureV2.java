@@ -20,11 +20,13 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -48,6 +50,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -97,8 +100,42 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     LOGGER.info(
         "AlterPipeProcedureV2: executeFromValidateTask({})", alterPipeRequest.getPipeName());
 
+    checkSourceUserName(env);
+    checkSinkUserName(env);
+
+    // We should execute checkBeforeAlterPipe before checking the pipe plugin. This method will
+    // update the alterPipeRequest based on the alterPipeRequest and existing pipe metadata.
+    pipeTaskInfo.get().checkAndUpdateRequestBeforeAlterPipe(alterPipeRequest);
+
+    final PipeManager pipeManager = env.getConfigManager().getPipeManager();
+    pipeManager
+        .getPipePluginCoordinator()
+        .getPipePluginInfo()
+        .checkPipePluginExistence(
+            alterPipeRequest.getExtractorAttributes(),
+            alterPipeRequest.getProcessorAttributes(),
+            alterPipeRequest.getConnectorAttributes());
+
+    return true;
+  }
+
+  private void checkSourceUserName(final ConfigNodeProcedureEnv env) {
     final PipeParameters extractorParameters =
         new PipeParameters(alterPipeRequest.getExtractorAttributes());
+
+    final String pluginName =
+        extractorParameters
+            .getStringOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
+
+    if (!pluginName.equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+        && !pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName())) {
+      return;
+    }
+
     if (extractorParameters.hasAttribute(PipeExtractorConstant.EXTRACTOR_IOTDB_USERNAME_KEY)
         || extractorParameters.hasAttribute(PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY)) {
       final String hashedPassword =
@@ -120,21 +157,45 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                   PipeExtractorConstant.SOURCE_IOTDB_PASSWORD_KEY, hashedPassword)));
       alterPipeRequest.setExtractorAttributes(extractorParameters.getAttributes());
     }
+  }
 
-    // We should execute checkBeforeAlterPipe before checking the pipe plugin. This method will
-    // update the alterPipeRequest based on the alterPipeRequest and existing pipe metadata.
-    pipeTaskInfo.get().checkAndUpdateRequestBeforeAlterPipe(alterPipeRequest);
+  private void checkSinkUserName(final ConfigNodeProcedureEnv env) {
+    final PipeParameters connectorParameters =
+        new PipeParameters(alterPipeRequest.getConnectorAttributes());
 
-    final PipeManager pipeManager = env.getConfigManager().getPipeManager();
-    pipeManager
-        .getPipePluginCoordinator()
-        .getPipePluginInfo()
-        .checkPipePluginExistence(
-            alterPipeRequest.getExtractorAttributes(),
-            alterPipeRequest.getProcessorAttributes(),
-            alterPipeRequest.getConnectorAttributes());
+    final String pluginName =
+        connectorParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+                BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName())
+            .toLowerCase();
 
-    return true;
+    if (!pluginName.equals(BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName())
+        && !pluginName.equals(BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName())) {
+      return;
+    }
+
+    if (connectorParameters.hasAttribute(PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY)
+        || connectorParameters.hasAttribute(PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY)) {
+      final String hashedPassword =
+          env.getConfigManager()
+              .getPermissionManager()
+              .login4Pipe(
+                  connectorParameters.getStringByKeys(
+                      PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+                      PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY),
+                  connectorParameters.getStringByKeys(
+                      PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+                      PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY));
+      if (Objects.isNull(hashedPassword)) {
+        throw new PipeException("Authentication failed.");
+      }
+      connectorParameters.addOrReplaceEquivalentAttributes(
+          new PipeParameters(
+              Collections.singletonMap(
+                  PipeExtractorConstant.SOURCE_IOTDB_PASSWORD_KEY, hashedPassword)));
+      alterPipeRequest.setConnectorAttributes(connectorParameters.getAttributes());
+    }
   }
 
   @Override
