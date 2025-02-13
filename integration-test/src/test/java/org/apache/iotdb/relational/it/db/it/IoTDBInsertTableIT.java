@@ -491,6 +491,17 @@ public class IoTDBInsertTableIT {
         assertTrue(e.getMessage().contains("Current system timestamp precision is ms"));
       }
     }
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement st1 = connection.createStatement()) {
+      try {
+        st1.execute("use \"test\"");
+        st1.execute(
+            "insert into wf16(tag1, time, status) values('wt01', -1618283005586000, true), ('wt01', -1618283005586001, false)");
+        fail();
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("Current system timestamp precision is ms"));
+      }
+    }
   }
 
   @Test
