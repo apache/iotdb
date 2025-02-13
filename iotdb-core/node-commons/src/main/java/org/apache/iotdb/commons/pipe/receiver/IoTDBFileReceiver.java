@@ -400,10 +400,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     return writingFile != null && writingFile.exists() && writingFile.getName().equals(fileName);
   }
 
-  private void closeCurrentWritingFileWriter(final boolean fsyncAfterClose) {
+  private void closeCurrentWritingFileWriter(final boolean fsyncBeforeClose) {
     if (writingFileWriter != null) {
       try {
-        if (IS_FSYNC_ENABLED && fsyncAfterClose) {
+        if (IS_FSYNC_ENABLED && fsyncBeforeClose) {
           writingFileWriter.getFD().sync();
         }
         writingFileWriter.close();
