@@ -47,7 +47,7 @@ public class MemoryManager {
   private final boolean enable;
 
   /** The total memory size in byte of memory manager */
-  private long totalMemorySizeInBytes = 0L;
+  private long totalMemorySizeInBytes;
 
   /** The allocated memory size */
   private long allocatedMemorySizeInBytes = 0L;
@@ -95,7 +95,8 @@ public class MemoryManager {
    * @param type the type of memory block
    * @return the memory block if success, otherwise throw MemoryException
    */
-  public IMemoryBlock forceAllocate(String name, long sizeInBytes, MemoryBlockType type) {
+  public synchronized IMemoryBlock forceAllocate(
+      String name, long sizeInBytes, MemoryBlockType type) {
     if (!enable) {
       return registerMemoryBlock(name, sizeInBytes, type);
     }
@@ -130,7 +131,7 @@ public class MemoryManager {
    * @param name the name of memory block
    * @param memoryBlockType the type of memory block
    */
-  public IMemoryBlock forceAllocate(String name, MemoryBlockType memoryBlockType) {
+  public synchronized IMemoryBlock forceAllocate(String name, MemoryBlockType memoryBlockType) {
     return forceAllocate(
         name, totalMemorySizeInBytes - allocatedMemorySizeInBytes, memoryBlockType);
   }
