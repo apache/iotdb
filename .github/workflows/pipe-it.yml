@@ -4,9 +4,8 @@ on:
   push:
     branches:
       - master
-      - 'rel/1.*'
-      - 'rc/1.*'
-      - 'force_ci/**'
+      - 'rel/*'
+      - 'rc/*'
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -14,8 +13,8 @@ on:
   pull_request:
     branches:
       - master
-      - 'rel/1.*'
-      - 'rc/1.*'
+      - 'rel/*'
+      - 'rc/*'
       - 'force_ci/**'
     paths-ignore:
       - 'docs/**'
