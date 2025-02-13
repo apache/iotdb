@@ -34,12 +34,12 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 include = [
-    "iotdb/thrift/*",
-    "iotdb/thrift/common/*",
-    "iotdb/thrift/confignode/*",
-    "iotdb/thrift/datanode/*",
-    "iotdb/thrift/ainode/*",
-    "iotdb/conf/*",
+    {path = "iotdb/thrift/*", format = "wheel"},
+    {path = "iotdb/thrift/common/*", format = "wheel"},
+    {path = "iotdb/thrift/confignode/*", format = "wheel"},
+    {path = "iotdb/thrift/datanode/*", format = "wheel"},
+    {path = "iotdb/thrift/ainode/*", format = "wheel"},
+    {path = "iotdb/conf/*", format = "wheel"},
 ]
 packages = [
     { include = "iotdb" }
