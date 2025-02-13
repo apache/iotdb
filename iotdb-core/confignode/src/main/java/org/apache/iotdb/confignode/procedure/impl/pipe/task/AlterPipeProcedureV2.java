@@ -100,12 +100,12 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     LOGGER.info(
         "AlterPipeProcedureV2: executeFromValidateTask({})", alterPipeRequest.getPipeName());
 
-    checkSourceUserName(env);
-    checkSinkUserName(env);
-
     // We should execute checkBeforeAlterPipe before checking the pipe plugin. This method will
     // update the alterPipeRequest based on the alterPipeRequest and existing pipe metadata.
     pipeTaskInfo.get().checkAndUpdateRequestBeforeAlterPipe(alterPipeRequest);
+
+    checkSourceUserName(env);
+    checkSinkUserName(env);
 
     final PipeManager pipeManager = env.getConfigManager().getPipeManager();
     pipeManager
