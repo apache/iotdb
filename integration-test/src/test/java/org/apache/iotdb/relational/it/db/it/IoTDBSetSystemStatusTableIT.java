@@ -24,6 +24,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.itbase.exception.InconsistentDataException;
 
 import org.awaitility.Awaitility;
 import org.junit.AfterClass;
@@ -64,7 +65,12 @@ public class IoTDBSetSystemStatusTableIT {
                 ResultSet resultSet = statement.executeQuery("SHOW DATANODES");
                 int num = 0;
                 while (resultSet.next()) {
-                  String status = resultSet.getString("Status");
+                  String status;
+                  try {
+                    status = resultSet.getString("Status");
+                  } catch (InconsistentDataException e) {
+                    return false;
+                  }
                   if (status.equals("ReadOnly")) {
                     num++;
                   }
@@ -81,7 +87,12 @@ public class IoTDBSetSystemStatusTableIT {
                 ResultSet resultSet = statement.executeQuery("SHOW DATANODES");
                 int num = 0;
                 while (resultSet.next()) {
-                  String status = resultSet.getString("Status");
+                  String status;
+                  try {
+                    status = resultSet.getString("Status");
+                  } catch (InconsistentDataException e) {
+                    return false;
+                  }
                   if (status.equals("Running")) {
                     num++;
                   }
