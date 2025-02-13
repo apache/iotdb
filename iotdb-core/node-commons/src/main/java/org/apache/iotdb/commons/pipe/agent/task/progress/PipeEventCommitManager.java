@@ -176,6 +176,17 @@ public class PipeEventCommitManager {
     this.commitRateMarker = commitRateMarker;
   }
 
+  public int getGivenConsensusPipeRestartTimes(
+          final String consensusPipeName, final long creationTime, final int consensusGroupId) {
+    final CommitterKey committerKey =
+            generateCommitterKey(consensusPipeName, creationTime, consensusGroupId);
+    final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
+    if (committer == null) {
+      return 0;
+    }
+    return committer.getPipeTaskRestartTimes();
+  }
+
   public long getGivenConsensusPipeCommitId(
       final String consensusPipeName, final long creationTime, final int consensusGroupId) {
     final CommitterKey committerKey =
