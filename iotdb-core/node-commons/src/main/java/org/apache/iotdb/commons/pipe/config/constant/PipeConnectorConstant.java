@@ -46,10 +46,6 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_IOTDB_NODE_URLS_KEY = "connector.node-urls";
   public static final String SINK_IOTDB_NODE_URLS_KEY = "sink.node-urls";
 
-  public static final String CONNECTOR_MARK_AS_PIPE_REQUEST_KEY = "connector.mark-as-pipe-request";
-  public static final String SINK_MARK_AS_PIPE_REQUEST_KEY = "sink.mark-as-pipe-request";
-  public static final boolean CONNECTOR_MARK_AS_PIPE_REQUEST_DEFAULT_VALUE = true;
-
   public static final String SINK_IOTDB_SSL_ENABLE_KEY = "sink.ssl.enable";
   public static final String SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY = "sink.ssl.trust-store-path";
   public static final String SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY = "sink.ssl.trust-store-pwd";
@@ -250,6 +246,10 @@ public class PipeConnectorConstant {
       "connector.load-tsfile-validation";
   public static final String SINK_LOAD_TSFILE_VALIDATION_KEY = "sink.load-tsfile-validation";
   public static final boolean CONNECTOR_LOAD_TSFILE_VALIDATION_DEFAULT_VALUE = true;
+
+  public static final String CONNECTOR_MARK_AS_PIPE_REQUEST_KEY = "connector.mark-as-pipe-request";
+  public static final String SINK_MARK_AS_PIPE_REQUEST_KEY = "sink.mark-as-pipe-request";
+  public static final boolean CONNECTOR_MARK_AS_PIPE_REQUEST_DEFAULT_VALUE = true;
 
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");
