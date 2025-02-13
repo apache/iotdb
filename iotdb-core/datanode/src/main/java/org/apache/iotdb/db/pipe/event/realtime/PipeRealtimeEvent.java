@@ -197,11 +197,21 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     return new PipeRealtimeEvent(
         event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-            pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, startTime, endTime),
+            pipeName,
+            creationTime,
+            pipeTaskMeta,
+            treePattern,
+            tablePattern,
+            userName,
+            skipIfNoPrivileges,
+            startTime,
+            endTime),
         this.tsFileEpoch,
         // device2Measurements is not used anymore, so it is not copied.
         // If null is not passed, the field will not be GCed and may cause OOM.
@@ -209,6 +219,8 @@ public class PipeRealtimeEvent extends EnrichedEvent {
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userName,
+        skipIfNoPrivileges,
         startTime,
         endTime);
   }

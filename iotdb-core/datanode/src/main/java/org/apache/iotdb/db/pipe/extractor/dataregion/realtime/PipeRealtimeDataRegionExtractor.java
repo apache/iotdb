@@ -499,6 +499,14 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     return tablePattern;
   }
 
+  public String getUserName() {
+    return userName;
+  }
+
+  public boolean isSkipIfNoPrivileges() {
+    return skipIfNoPrivileges;
+  }
+
   public final String getDataRegionId() {
     return dataRegionId;
   }
