@@ -29,12 +29,14 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceSourceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
 
 import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType.DIFFERENT_FROM_ALL_CHILDREN;
+import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType.NO_CHILD;
 import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType.SAME_WITH_ALL_CHILDREN;
 import static org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistributionType.SAME_WITH_SOME_CHILD;
 
@@ -77,14 +79,15 @@ public class AddExchangeNodes
 
       TRegionReplicaSet region =
           context.nodeDistributionMap.get(rewriteNode.getPlanNodeId()).getRegion();
-      if (!region.equals(context.mostUsedRegion)) {
+      if (region.equals(DataPartition.NOT_ASSIGNED) || region.equals(context.mostUsedRegion)) {
+        // if region equals NOT_ASSIGNED, it can be executed on any node
+        newNode.addChild(rewriteNode);
+      } else {
         ExchangeNode exchangeNode = new ExchangeNode(queryContext.getQueryId().genPlanNodeId());
         exchangeNode.addChild(rewriteNode);
         exchangeNode.setOutputSymbols(rewriteNode.getOutputSymbols());
         newNode.addChild(exchangeNode);
         context.hasExchangeNode = true;
-      } else {
-        newNode.addChild(rewriteNode);
       }
     }
 
@@ -141,6 +144,18 @@ public class AddExchangeNodes
         new NodeDistribution(DIFFERENT_FROM_ALL_CHILDREN, DataPartition.NOT_ASSIGNED));
     context.hasExchangeNode = true;
     return newNode;
+  }
+
+  @Override
+  public PlanNode visitTableFunctionProcessor(
+      TableFunctionProcessorNode node, TableDistributedPlanGenerator.PlanContext context) {
+    if (node.getChildren().isEmpty()) {
+      context.nodeDistributionMap.put(
+          node.getPlanNodeId(), new NodeDistribution(NO_CHILD, DataPartition.NOT_ASSIGNED));
+      return node;
+    } else {
+      return visitPlan(node, context);
+    }
   }
 
   private PlanNode processTableDeviceSourceNode(

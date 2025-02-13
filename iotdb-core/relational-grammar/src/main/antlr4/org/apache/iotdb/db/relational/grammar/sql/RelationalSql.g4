@@ -868,6 +868,37 @@ relationPrimary
     : qualifiedName                                                   #tableName
     | '(' query ')'                                                   #subqueryRelation
     | '(' relation ')'                                                #parenthesizedRelation
+    | TABLE '(' tableFunctionCall ')'                                 #tableFunctionInvocation
+    ;
+
+tableFunctionCall
+    : qualifiedName '(' (tableFunctionArgument (',' tableFunctionArgument)*)?
+      (COPARTITION copartitionTables (',' copartitionTables)*)? ')'
+    ;
+
+tableFunctionArgument
+    : (identifier '=>')? (tableArgument | scalarArgument) // descriptor before expression to avoid parsing descriptor as a function call
+    ;
+
+tableArgument
+    : tableArgumentRelation
+        (PARTITION BY ('(' (expression (',' expression)*)? ')' | expression))?
+        (PRUNE WHEN EMPTY | KEEP WHEN EMPTY)?
+        (ORDER BY ('(' sortItem (',' sortItem)* ')' | sortItem))?
+    ;
+
+tableArgumentRelation
+    : TABLE '(' qualifiedName ')' (AS? identifier columnAliases?)?  #tableArgumentTable
+    | TABLE '(' query ')' (AS? identifier columnAliases?)?          #tableArgumentQuery
+    ;
+
+scalarArgument
+    : expression
+    | timeDuration
+    ;
+
+copartitionTables
+    : '(' qualifiedName ',' qualifiedName (',' qualifiedName)* ')'
     ;
 
 expression
