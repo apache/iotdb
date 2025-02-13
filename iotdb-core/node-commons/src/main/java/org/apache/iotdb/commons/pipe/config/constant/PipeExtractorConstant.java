@@ -135,6 +135,18 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_WATERMARK_INTERVAL_KEY = "extractor.watermark.interval-ms";
   public static final String SOURCE_WATERMARK_INTERVAL_KEY = "source.watermark.interval-ms";
 
+  public static final String EXTRACTOR_IOTDB_USERNAME_KEY = "extractor.username";
+  public static final String SOURCE_IOTDB_USERNAME_KEY = "source.username";
+  public static final String EXTRACTOR_IOTDB_USER_DEFAULT_VALUE = "root";
+
+  public static final String EXTRACTOR_IOTDB_PASSWORD_KEY = "extractor.password";
+  public static final String SOURCE_IOTDB_PASSWORD_KEY = "source.password";
+  public static final String EXTRACTOR_IOTDB_PASSWORD_DEFAULT_VALUE = "root";
+
+  public static final String EXTRACTOR_SKIP_IF_KEY = "extractor.password";
+  public static final String SOURCE_SKIP_IF_KEY = "source.password";
+  public static final String EXTRACTOR_IOTDB_SKIP_IF_NO_PRIVILEGES = "no-priveleges";
+
   ///////////////////// pipe consensus /////////////////////
 
   public static final String EXTRACTOR_CONSENSUS_GROUP_ID_KEY = "extractor.consensus.group-id";
