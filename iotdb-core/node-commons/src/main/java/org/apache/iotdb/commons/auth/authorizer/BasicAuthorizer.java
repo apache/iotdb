@@ -107,7 +107,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
-  public boolean login(String username, String password) {
+  public boolean login(String username, String password) throws AuthException {
     User user = userManager.getEntity(username);
     return user != null
         && password != null
