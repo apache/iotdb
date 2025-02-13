@@ -75,7 +75,7 @@ public abstract class EnrichedEvent implements Event {
   protected volatile boolean shouldReportOnCommit = true;
   protected List<Supplier<Void>> onCommittedHooks = new ArrayList<>();
   protected String userName;
-  protected boolean skipIfNoPrivileges = true;
+  protected boolean skipIfNoPrivileges;
 
   protected EnrichedEvent(
       final String pipeName,

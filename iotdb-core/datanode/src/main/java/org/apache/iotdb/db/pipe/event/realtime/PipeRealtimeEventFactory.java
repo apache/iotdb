@@ -64,16 +64,16 @@ public class PipeRealtimeEventFactory {
   public static PipeRealtimeEvent createRealtimeEvent(
       final String dataRegionId, final boolean shouldPrintMessage) {
     return new PipeRealtimeEvent(
-        new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null, null, null);
+        new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(final AbstractDeleteDataNode node) {
     return new PipeRealtimeEvent(
-        new PipeDeleteDataNodeEvent(node, node.isGeneratedByPipe()), null, null, null, null);
+        new PipeDeleteDataNodeEvent(node, node.isGeneratedByPipe()), null, null);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(final ProgressReportEvent event) {
-    return new PipeRealtimeEvent(event, null, null, null, null);
+    return new PipeRealtimeEvent(event, null, null);
   }
 
   private PipeRealtimeEventFactory() {

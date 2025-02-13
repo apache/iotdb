@@ -49,7 +49,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
 
   public PipeDeleteDataNodeEvent(
       final AbstractDeleteDataNode deleteDataNode, final boolean isGeneratedByPipe) {
-    this(deleteDataNode, null, 0, null, null, null, isGeneratedByPipe);
+    this(deleteDataNode, null, 0, null, null, null, null, true, isGeneratedByPipe);
   }
 
   public PipeDeleteDataNodeEvent(
@@ -59,6 +59,8 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final boolean isGeneratedByPipe) {
     super(
         pipeName,
@@ -66,6 +68,8 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userName,
+        skipIfNoPrivileges,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
     this.isGeneratedByPipe = isGeneratedByPipe;
@@ -116,6 +120,8 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     return new PipeDeleteDataNodeEvent(
@@ -125,6 +131,8 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userName,
+        skipIfNoPrivileges,
         isGeneratedByPipe);
   }
 
