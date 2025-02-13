@@ -813,7 +813,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     accessControl.checkUserHasMaintainPrivilege(userName);
 
     final Map<String, String> extractorAttributes = node.getExtractorAttributes();
-    for (String ExtractorAttribute : extractorAttributes.keySet()) {
+    for (final String ExtractorAttribute : extractorAttributes.keySet()) {
       if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
