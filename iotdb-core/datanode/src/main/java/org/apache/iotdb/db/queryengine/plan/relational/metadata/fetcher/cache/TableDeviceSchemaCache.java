@@ -525,6 +525,18 @@ public class TableDeviceSchemaCache {
     return dualKeyCache.stats().requestCount();
   }
 
+  long getMemoryUsage() {
+    return dualKeyCache.stats().memoryUsage();
+  }
+
+  long capacity() {
+    return dualKeyCache.stats().capacity();
+  }
+
+  long entriesCount() {
+    return dualKeyCache.stats().entriesCount();
+  }
+
   void invalidateLastCache(final @Nonnull String database) {
     readWriteLock.writeLock().lock();
 
@@ -685,6 +697,11 @@ public class TableDeviceSchemaCache {
   }
 
   public void invalidateAll() {
-    dualKeyCache.invalidateAll();
+    readWriteLock.writeLock().lock();
+    try {
+      dualKeyCache.invalidateAll();
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
   }
 }

@@ -911,11 +911,30 @@ public class StorageEngine implements IService {
 
     LoadTsFileRateLimiter.getInstance().acquire(pieceNode.getDataSize());
 
+    final DataRegion dataRegion = getDataRegion(dataRegionId);
+    if (dataRegion == null) {
+      LOGGER.warn(
+          "DataRegion {} not found on this DataNode when writing piece node"
+              + "of TsFile {} (maybe due to region migration), will skip.",
+          dataRegionId,
+          pieceNode.getTsFile());
+      return RpcUtils.SUCCESS_STATUS;
+    }
+
     try {
-      loadTsFileManager.writeToDataRegion(getDataRegion(dataRegionId), pieceNode, uuid);
+      loadTsFileManager.writeToDataRegion(dataRegion, pieceNode, uuid);
     } catch (IOException e) {
-      LOGGER.error(
+      LOGGER.warn(
           "IO error when writing piece node of TsFile {} to DataRegion {}.",
+          pieceNode.getTsFile(),
+          dataRegionId,
+          e);
+      status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+      return status;
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Exception occurred when writing piece node of TsFile {} to DataRegion {}.",
           pieceNode.getTsFile(),
           dataRegionId,
           e);
