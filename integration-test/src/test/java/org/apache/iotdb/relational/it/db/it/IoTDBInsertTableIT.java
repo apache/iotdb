@@ -866,7 +866,7 @@ public class IoTDBInsertTableIT {
   }
 
   @Test
-  public void testInsertSingleColumn() throws SQLException {
+  public void testInsertSingleColumn() throws SQLException, InterruptedException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement st1 = connection.createStatement()) {
       st1.execute("use \"test\"");
@@ -884,6 +884,8 @@ public class IoTDBInsertTableIT {
       }
       // only attribute
       st1.execute("insert into sg21(ss1) values('1')");
+      // sleep a while, to avoid the same timestamp between two insertions
+      Thread.sleep(100);
       // only field
       st1.execute("insert into sg21(ss2) values(1)");
 
