@@ -33,9 +33,6 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorSubtaskWorker.class);
 
-  private static final long CLOSED_SUBTASK_CLEANUP_ROUND_INTERVAL = 1000;
-  private long closedSubtaskCleanupRoundCounter = 0;
-
   private static final int SLEEP_INTERVAL_ADJUSTMENT_ROUND_INTERVAL = 100;
   private int totalRoundInAdjustmentInterval = 0;
   private int workingRoundInAdjustmentInterval = 0;
@@ -56,12 +53,10 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
   }
 
   private void cleanupClosedSubtasksIfNecessary() {
-    if (++closedSubtaskCleanupRoundCounter % CLOSED_SUBTASK_CLEANUP_ROUND_INTERVAL == 0) {
-      subtasks.stream()
-          .filter(PipeProcessorSubtask::isClosed)
-          .collect(Collectors.toList())
-          .forEach(subtasks::remove);
-    }
+    subtasks.stream()
+        .filter(PipeProcessorSubtask::isClosed)
+        .collect(Collectors.toList())
+        .forEach(subtasks::remove);
   }
 
   private boolean runSubtasks() {
