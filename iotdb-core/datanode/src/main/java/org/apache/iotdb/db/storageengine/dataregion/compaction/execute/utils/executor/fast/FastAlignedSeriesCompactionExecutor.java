@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
@@ -279,6 +280,13 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
       }
       String measurement = chunkMetadata.getMeasurementUid();
       IMeasurementSchema schema = measurementSchemaMap.get(measurement);
+      if (MetadataUtils.canAlter(chunkMetadata.getDataType(), schema.getType())) {
+        if(schema.getType() != chunkMetadata.getDataType()){
+          chunkMetadata.setNewType(schema.getType());
+        }
+      }else{
+        return false;
+      }
       return schema.getType() == chunkMetadata.getDataType();
     }
     return true;
@@ -362,7 +370,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
         valueChunks.add(null);
         continue;
       }
-      valueChunks.add(readChunk(reader, (ChunkMetadata) valueChunkMetadata));
+      valueChunks.add(readChunk(reader, (ChunkMetadata) valueChunkMetadata).rewrite());
     }
     chunkMetadataElement.valueChunks = valueChunks;
     setForceDecoding(chunkMetadataElement);
