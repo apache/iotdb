@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -178,12 +180,14 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStateme
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -805,9 +809,11 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitCreatePipe(final CreatePipe node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
+    final String userName = context.getSession().getUserName();
+    accessControl.checkUserHasMaintainPrivilege(userName);
 
-    for (String ExtractorAttribute : node.getExtractorAttributes().keySet()) {
+    final Map<String, String> extractorAttributes = node.getExtractorAttributes();
+    for (String ExtractorAttribute : extractorAttributes.keySet()) {
       if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
             String.format(
@@ -817,10 +823,40 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     }
 
     // Inject table model into the extractor attributes
-    node.getExtractorAttributes()
-        .put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    extractorAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
+    checkAndEnrichUserName(node.getPipeName(), extractorAttributes, userName);
 
     return new CreatePipeTask(node);
+  }
+
+  private void checkAndEnrichUserName(
+      final String pipeName, final Map<String, String> extractorAttributes, final String userName) {
+    final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
+    final String pluginName =
+        extractorParameters
+            .getStringOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_KEY, PipeExtractorConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
+
+    if (!pluginName.equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+        && !pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName())) {
+      return;
+    }
+
+    if (!extractorParameters.hasAnyAttributes(
+        PipeExtractorConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+        PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY)) {
+      extractorAttributes.put(PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY, userName);
+    } else if (!extractorParameters.hasAnyAttributes(
+        PipeExtractorConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
+        PipeExtractorConstant.SOURCE_IOTDB_PASSWORD_KEY)) {
+      throw new SemanticException(
+          String.format(
+              "Failed to create pipe %s, password must be set when the username is specified.",
+              pipeName));
+    }
   }
 
   @Override
