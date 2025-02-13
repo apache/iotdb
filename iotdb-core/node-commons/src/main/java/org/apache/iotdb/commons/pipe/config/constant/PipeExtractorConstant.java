@@ -135,6 +135,8 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_WATERMARK_INTERVAL_KEY = "extractor.watermark.interval-ms";
   public static final String SOURCE_WATERMARK_INTERVAL_KEY = "source.watermark.interval-ms";
 
+  public static final String EXTRACTOR_IOTDB_USER_KEY = "extractor.user";
+  public static final String SOURCE_IOTDB_USER_KEY = "source.user";
   public static final String EXTRACTOR_IOTDB_USERNAME_KEY = "extractor.username";
   public static final String SOURCE_IOTDB_USERNAME_KEY = "source.username";
 
