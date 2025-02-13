@@ -631,7 +631,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           new TCreateConsumerReq()
               .setConsumerId(consumerConfig.getConsumerId())
               .setConsumerGroupId(consumerConfig.getConsumerGroupId())
-              .setConsumerAttributes(consumerConfig.getAttribute());
+              .setConsumerAttributes(consumerConfig.getAttributes());
       final TSStatus tsStatus = configNodeClient.createConsumer(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(

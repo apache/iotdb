@@ -96,9 +96,9 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
               new PipeConfigNodeTaskStage(
                   pipeStaticMeta.getPipeName(),
                   pipeStaticMeta.getCreationTime(),
-                  pipeStaticMeta.getExtractorParameters().getAttribute(),
-                  pipeStaticMeta.getProcessorParameters().getAttribute(),
-                  pipeStaticMeta.getConnectorParameters().getAttribute(),
+                  pipeStaticMeta.getExtractorParameters().getAttributes(),
+                  pipeStaticMeta.getProcessorParameters().getAttributes(),
+                  pipeStaticMeta.getConnectorParameters().getAttributes(),
                   pipeTaskMeta));
       pipeTask.create();
       pipeTaskManager.addPipeTask(pipeStaticMeta, consensusGroupId, pipeTask);

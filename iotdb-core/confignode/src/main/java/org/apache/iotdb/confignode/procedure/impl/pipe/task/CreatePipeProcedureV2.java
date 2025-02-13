@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
@@ -43,6 +44,7 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.pipe.api.PipePlugin;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -53,6 +55,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -135,6 +138,27 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             createPipeRequest.getExtractorAttributes(),
             createPipeRequest.getProcessorAttributes(),
             createPipeRequest.getConnectorAttributes());
+
+    final PipeParameters extractorParameters =
+        new PipeParameters(createPipeRequest.getExtractorAttributes());
+    final String hashedPassword =
+        env.getConfigManager()
+            .getPermissionManager()
+            .login4Pipe(
+                extractorParameters.getStringByKeys(
+                    PipeExtractorConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+                    PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY),
+                extractorParameters.getStringByKeys(
+                    PipeExtractorConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
+                    PipeExtractorConstant.SOURCE_IOTDB_PASSWORD_KEY));
+    if (Objects.isNull(hashedPassword)) {
+      throw new PipeException("Authentication failed.");
+    }
+    extractorParameters.addOrReplaceEquivalentAttributes(
+        new PipeParameters(
+            Collections.singletonMap(
+                PipeExtractorConstant.SOURCE_IOTDB_PASSWORD_KEY, hashedPassword)));
+    createPipeRequest.setExtractorAttributes(extractorParameters.getAttributes());
 
     return pipeTaskInfo.get().checkBeforeCreatePipe(createPipeRequest);
   }

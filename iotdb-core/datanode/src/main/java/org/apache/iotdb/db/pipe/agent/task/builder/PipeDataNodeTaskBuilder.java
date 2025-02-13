@@ -154,7 +154,7 @@ public class PipeDataNodeTaskBuilder {
   private PipeParameters blendUserAndSystemParameters(final PipeParameters userParameters) {
     // Deep copy the user parameters to avoid modification of the original parameters.
     // If the original parameters are modified, progress index report will be affected.
-    final Map<String, String> blendedParameters = new HashMap<>(userParameters.getAttribute());
+    final Map<String, String> blendedParameters = new HashMap<>(userParameters.getAttributes());
     blendedParameters.putAll(systemParameters);
     return new PipeParameters(blendedParameters);
   }
