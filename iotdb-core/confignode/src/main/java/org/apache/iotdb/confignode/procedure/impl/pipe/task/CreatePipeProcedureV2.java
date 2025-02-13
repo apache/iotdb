@@ -170,6 +170,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             .getPermissionManager()
             .login4Pipe(
                 extractorParameters.getStringByKeys(
+                    PipeExtractorConstant.EXTRACTOR_IOTDB_USER_KEY,
+                    PipeExtractorConstant.SOURCE_IOTDB_USER_KEY,
                     PipeExtractorConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
                     PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY),
                 extractorParameters.getStringByKeys(
@@ -206,6 +208,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             .getPermissionManager()
             .login4Pipe(
                 connectorParameters.getStringByKeys(
+                    PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+                    PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY,
                     PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY,
                     PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY),
                 connectorParameters.getStringByKeys(
