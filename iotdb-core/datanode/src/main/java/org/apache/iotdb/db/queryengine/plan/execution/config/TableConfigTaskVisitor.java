@@ -849,6 +849,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     }
 
     if (!extractorParameters.hasAnyAttributes(
+        PipeExtractorConstant.EXTRACTOR_IOTDB_USER_KEY,
+        PipeExtractorConstant.SOURCE_IOTDB_USER_KEY,
         PipeExtractorConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
         PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY)) {
       extractorAttributes.put(PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY, userName);
@@ -878,6 +880,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     }
 
     if (!connectorParameters.hasAnyAttributes(
+        PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY,
+        PipeConnectorConstant.SINK_IOTDB_USER_KEY,
         PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY,
         PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY)) {
       connectorAttributes.put(PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY, userName);
