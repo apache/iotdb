@@ -247,6 +247,10 @@ public class PipeConnectorConstant {
   public static final String SINK_LOAD_TSFILE_VALIDATION_KEY = "sink.load-tsfile-validation";
   public static final boolean CONNECTOR_LOAD_TSFILE_VALIDATION_DEFAULT_VALUE = true;
 
+  public static final String CONNECTOR_SKIP_IF_KEY = "connector.skipif";
+  public static final String SINK_SKIP_IF_KEY = "sink.skipif";
+  public static final String CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES = "no-privileges";
+
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");
   }

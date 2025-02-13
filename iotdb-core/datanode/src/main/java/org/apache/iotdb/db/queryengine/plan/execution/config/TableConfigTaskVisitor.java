@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -813,6 +814,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     accessControl.checkUserHasMaintainPrivilege(userName);
 
     final Map<String, String> extractorAttributes = node.getExtractorAttributes();
+    final String pipeName = node.getPipeName();
     for (final String ExtractorAttribute : extractorAttributes.keySet()) {
       if (ExtractorAttribute.startsWith(SystemConstant.SYSTEM_PREFIX_KEY)) {
         throw new SemanticException(
@@ -824,12 +826,13 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
     // Inject table model into the extractor attributes
     extractorAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TABLE_VALUE);
-    checkAndEnrichUserName(node.getPipeName(), extractorAttributes, userName);
+    checkAndEnrichSourceUserName(pipeName, extractorAttributes, userName);
+    checkAndEnrichSinkUserName(pipeName, node.getConnectorAttributes(), userName);
 
     return new CreatePipeTask(node);
   }
 
-  private void checkAndEnrichUserName(
+  private void checkAndEnrichSourceUserName(
       final String pipeName, final Map<String, String> extractorAttributes, final String userName) {
     final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
     final String pluginName =
@@ -854,7 +857,36 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         PipeExtractorConstant.SOURCE_IOTDB_PASSWORD_KEY)) {
       throw new SemanticException(
           String.format(
-              "Failed to create pipe %s, password must be set when the username is specified.",
+              "Failed to create pipe %s, in iotdb-source, password must be set when the username is specified.",
+              pipeName));
+    }
+  }
+
+  private void checkAndEnrichSinkUserName(
+      final String pipeName, final Map<String, String> connectorAttributes, final String userName) {
+    final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
+    final String pluginName =
+        connectorParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeConnectorConstant.CONNECTOR_KEY, PipeConnectorConstant.SINK_KEY),
+                BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName())
+            .toLowerCase();
+
+    if (!pluginName.equals(BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName())
+        && !pluginName.equals(BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName())) {
+      return;
+    }
+
+    if (!connectorParameters.hasAnyAttributes(
+        PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY,
+        PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY)) {
+      connectorAttributes.put(PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY, userName);
+    } else if (!connectorParameters.hasAnyAttributes(
+        PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
+        PipeConnectorConstant.SINK_IOTDB_PASSWORD_KEY)) {
+      throw new SemanticException(
+          String.format(
+              "Failed to create pipe %s, in write-back-sink, password must be set when the username is specified.",
               pipeName));
     }
   }
