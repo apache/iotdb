@@ -81,7 +81,6 @@ public class IoTDBQueryAuthIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setEnableCrossSpaceCompaction(false);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareTableData(createSqls);
   }
@@ -92,7 +91,7 @@ public class IoTDBQueryAuthIT {
   }
 
   @Test
-  public void normalFillTest() {
+  public void queryAuthTest() {
     // case 1: user1 with SELECT ON ANY
     String[] expectedHeader1 = new String[] {"time", "device_id", "s1"};
     String[] retArray1 =

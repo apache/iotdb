@@ -207,7 +207,7 @@ public class CommonConfig {
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor. */
   private int pipeSubtaskExecutorMaxThreadNum =
-      Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
+      Math.max(5, Runtime.getRuntime().availableProcessors());
 
   private int pipeNonForwardingEventsProgressReportInterval = 100;
 
@@ -232,8 +232,10 @@ public class CommonConfig {
   private long pipeConnectorRetryIntervalMs = 1000L;
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
 
-  private int pipeAsyncConnectorSelectorNumber = 4;
-  private int pipeAsyncConnectorMaxClientNumber = 16;
+  private int pipeAsyncConnectorSelectorNumber =
+      Math.max(4, Runtime.getRuntime().availableProcessors());
+  private int pipeAsyncConnectorMaxClientNumber =
+      Math.max(16, Runtime.getRuntime().availableProcessors());
 
   private double pipeAllSinksRateLimitBytesPerSecond = -1;
   private int rateLimiterHotReloadCheckIntervalMs = 1000;
@@ -259,7 +261,7 @@ public class CommonConfig {
   private long pipeMaxAllowedLinkedTsFileCount = 100;
   private float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage = 0.1F;
   private long pipeStuckRestartIntervalSeconds = 120;
-  private long pipeStuckRestartMinIntervalMs = 30 * 60 * 1000L; // 30 minutes
+  private long pipeStuckRestartMinIntervalMs = 5 * 60 * 1000L; // 5 minutes
 
   private int pipeMetaReportMaxLogNumPerRound = 10;
   private int pipeMetaReportMaxLogIntervalRounds = 36;
@@ -940,10 +942,7 @@ public class CommonConfig {
   }
 
   public void setPipeSubtaskExecutorMaxThreadNum(int pipeSubtaskExecutorMaxThreadNum) {
-    this.pipeSubtaskExecutorMaxThreadNum =
-        Math.min(
-            pipeSubtaskExecutorMaxThreadNum,
-            Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
+    this.pipeSubtaskExecutorMaxThreadNum = pipeSubtaskExecutorMaxThreadNum;
   }
 
   public long getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs() {

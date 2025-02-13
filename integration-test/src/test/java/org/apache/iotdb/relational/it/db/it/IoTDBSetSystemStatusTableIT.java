@@ -64,16 +64,15 @@ public class IoTDBSetSystemStatusTableIT {
               () -> {
                 ResultSet resultSet = statement.executeQuery("SHOW DATANODES");
                 int num = 0;
-                while (resultSet.next()) {
-                  String status;
-                  try {
-                    status = resultSet.getString("Status");
-                  } catch (InconsistentDataException e) {
-                    return false;
+                try {
+                  while (resultSet.next()) {
+                    String status = resultSet.getString("Status");
+                    if (status.equals("ReadOnly")) {
+                      num++;
+                    }
                   }
-                  if (status.equals("ReadOnly")) {
-                    num++;
-                  }
+                } catch (InconsistentDataException e) {
+                  return false;
                 }
                 return num == EnvFactory.getEnv().getDataNodeWrapperList().size();
               });
@@ -85,17 +84,17 @@ public class IoTDBSetSystemStatusTableIT {
           .until(
               () -> {
                 ResultSet resultSet = statement.executeQuery("SHOW DATANODES");
+
                 int num = 0;
-                while (resultSet.next()) {
-                  String status;
-                  try {
-                    status = resultSet.getString("Status");
-                  } catch (InconsistentDataException e) {
-                    return false;
+                try {
+                  while (resultSet.next()) {
+                    String status = resultSet.getString("Status");
+                    if (status.equals("Running")) {
+                      num++;
+                    }
                   }
-                  if (status.equals("Running")) {
-                    num++;
-                  }
+                } catch (InconsistentDataException e) {
+                  return false;
                 }
                 return num == EnvFactory.getEnv().getDataNodeWrapperList().size();
               });

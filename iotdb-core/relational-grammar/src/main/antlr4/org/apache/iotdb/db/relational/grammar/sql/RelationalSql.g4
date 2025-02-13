@@ -620,11 +620,11 @@ listRolePrivilegeStatement
     ;
 
 listUserStatement
-    : LIST USER
+    : LIST USER (OF ROLE roleName=identifier)?
     ;
 
 listRoleStatement
-    : LIST ROLE
+    : LIST ROLE (OF USER userName=identifier)?
     ;
 
 
@@ -635,7 +635,7 @@ revokeStatement
 privilegeObjectScope
     : systemPrivileges
     | objectPrivileges ON objectType objectName=identifier
-    | objectPrivileges ON objectScope
+    | objectPrivileges ON (TABLE)? objectScope
     | objectPrivileges ON ANY
     | ALL
     ;
@@ -646,6 +646,7 @@ systemPrivileges
 
 objectPrivileges
     : objectPrivilege (',' objectPrivilege)*
+    | ALL
     ;
 
 objectScope

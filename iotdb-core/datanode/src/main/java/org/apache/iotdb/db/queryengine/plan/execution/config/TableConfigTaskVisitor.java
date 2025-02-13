@@ -1015,12 +1015,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitKillQuery(KillQuery node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserHasMaintainPrivilege(context.getSession().getUserName());
     return new KillQueryTask(node);
   }
 
   @Override
   protected IConfigTask visitCreateFunction(CreateFunction node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     if (node.getUriString().map(ExecutableManager::isUriTrusted).orElse(true)) {
       // 1. user specified uri and that uri is trusted
       // 2. user doesn't specify uri
@@ -1040,6 +1042,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitDropFunction(DropFunction node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserIsAdmin(context.getSession().getUserName());
     return new DropFunctionTask(Model.TABLE, node.getUdfName());
   }
 
