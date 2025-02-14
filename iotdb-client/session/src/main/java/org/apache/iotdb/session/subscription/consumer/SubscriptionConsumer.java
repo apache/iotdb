@@ -382,7 +382,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       } catch (final Exception ignored) {
       }
       throw new SubscriptionConnectionException(
-          String.format("Failed to handshake with subscription provider %s", provider), e);
+          String.format(
+              "Failed to handshake with subscription provider %s because of %s", provider, e),
+          e);
     }
 
     // update consumer id and consumer group id if not exist
