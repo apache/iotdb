@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMa
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
@@ -58,8 +59,9 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Aggre
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.PARTIAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN;
 
-public class SubqueryTest {
+public class UncorrelatedSubqueryTest {
 
   @Test
   public void testUncorrelatedScalarSubqueryInWhereClause() {
@@ -524,5 +526,105 @@ public class SubqueryTest {
         logicalQueryPlan,
         output(
             project(anyTree(semiJoin("s1", "s1_6", "expr", sort(tableScan1), sort(tableScan2))))));
+  }
+
+  @Test
+  public void testUncorrelatedExistsSubquery() {
+    PlanTester planTester = new PlanTester();
+
+    String sql = "SELECT s1 FROM table1 where exists(select s2 from table2)";
+
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+
+    PlanMatchPattern tableScan1 =
+        tableScan("testdb.table1", ImmutableList.of("s1"), ImmutableSet.of("s1"));
+
+    PlanMatchPattern tableScan2 = tableScan("testdb.table2", ImmutableList.of(), ImmutableSet.of());
+
+    Expression filterPredicate =
+        new ComparisonExpression(GREATER_THAN, new SymbolReference("count"), new LongLiteral("0"));
+    // Verify full LogicalPlan
+    /*
+    *   └──OutputNode
+    *      └──JoinNode
+    *         |──TableScanNode
+    *         |
+    *         ├──ProjectNode
+    *         │   └──FilterNode
+    *         |      └──TableScanNode
+
+    */
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            join(
+                JoinNode.JoinType.INNER,
+                builder ->
+                    builder
+                        .left(tableScan1)
+                        .right(
+                            project(
+                                filter(
+                                    filterPredicate,
+                                    aggregation(
+                                        singleGroupingSet(),
+                                        ImmutableMap.of(
+                                            Optional.of("count"),
+                                            aggregationFunction("count", ImmutableList.of())),
+                                        Collections.emptyList(),
+                                        Optional.empty(),
+                                        SINGLE,
+                                        tableScan2)))))));
+  }
+
+  @Test
+  public void testUncorrelatedNotExistsSubquery() {
+    PlanTester planTester = new PlanTester();
+
+    String sql = "SELECT s1 FROM table1 where not exists(select s2 from table2)";
+
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+
+    PlanMatchPattern tableScan1 =
+        tableScan("testdb.table1", ImmutableList.of("s1"), ImmutableSet.of("s1"));
+
+    PlanMatchPattern tableScan2 = tableScan("testdb.table2", ImmutableList.of(), ImmutableSet.of());
+
+    Expression filterPredicate =
+        new NotExpression(
+            new ComparisonExpression(
+                GREATER_THAN, new SymbolReference("count"), new LongLiteral("0")));
+    // Verify full LogicalPlan
+    /*
+    *   └──OutputNode
+    *      └──JoinNode
+    *         |──TableScanNode
+    *         |
+    *         ├──ProjectNode
+    *         │   └──FilterNode
+    *         |      └──TableScanNode
+
+    */
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            join(
+                JoinNode.JoinType.INNER,
+                builder ->
+                    builder
+                        .left(tableScan1)
+                        .right(
+                            project(
+                                filter(
+                                    filterPredicate,
+                                    aggregation(
+                                        singleGroupingSet(),
+                                        ImmutableMap.of(
+                                            Optional.of("count"),
+                                            aggregationFunction("count", ImmutableList.of())),
+                                        Collections.emptyList(),
+                                        Optional.empty(),
+                                        SINGLE,
+                                        tableScan2)))))));
   }
 }

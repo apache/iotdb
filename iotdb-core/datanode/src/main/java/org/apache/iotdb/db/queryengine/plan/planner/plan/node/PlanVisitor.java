@@ -655,6 +655,11 @@ public abstract class PlanVisitor<R, C> {
     return visitTwoChildProcess(node, context);
   }
 
+  public R visitAssignUniqueId(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
   public R visitEnforceSingleRow(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode node,
       C context) {
