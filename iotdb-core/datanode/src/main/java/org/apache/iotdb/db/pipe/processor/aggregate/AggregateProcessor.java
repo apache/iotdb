@@ -50,6 +50,7 @@ import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -134,6 +135,9 @@ public class AggregateProcessor implements PipeProcessor {
   // Static values, calculated on initialization
   private String[] columnNameStringList;
 
+  private String dataBaseName;
+  private Boolean isTableModel;
+
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
     final PipeParameters parameters = validator.getParameters();
@@ -182,7 +186,16 @@ public class AggregateProcessor implements PipeProcessor {
   public void customize(
       final PipeParameters parameters, final PipeProcessorRuntimeConfiguration configuration)
       throws Exception {
-    pipeName = configuration.getRuntimeEnvironment().getPipeName();
+    final PipeRuntimeEnvironment environment = configuration.getRuntimeEnvironment();
+    pipeName = environment.getPipeName();
+    dataBaseName =
+        StorageEngine.getInstance()
+            .getDataRegion(new DataRegionId(environment.getRegionId()))
+            .getDatabaseName();
+    if (dataBaseName != null) {
+      isTableModel = PathUtils.isTableModelDatabase(dataBaseName);
+    }
+
     pipeName2referenceCountMap.compute(
         pipeName, (name, count) -> Objects.nonNull(count) ? count + 1 : 1);
     pipeName2timeSeries2TimeSeriesRuntimeStateMap.putIfAbsent(pipeName, new ConcurrentHashMap<>());
@@ -544,7 +557,8 @@ public class AggregateProcessor implements PipeProcessor {
                 final AtomicReference<TimeSeriesRuntimeState> stateReference =
                     pipeName2timeSeries2TimeSeriesRuntimeStateMap.get(pipeName).get(timeSeries);
                 synchronized (stateReference) {
-                  final PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, null);
+                  final PipeRowCollector rowCollector =
+                      new PipeRowCollector(pipeTaskMeta, null, dataBaseName, isTableModel);
                   try {
                     collectWindowOutputs(
                         stateReference.get().forceOutput(), timeSeries, rowCollector);
