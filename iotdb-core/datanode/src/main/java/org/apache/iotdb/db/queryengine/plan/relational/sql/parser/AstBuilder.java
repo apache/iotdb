@@ -142,6 +142,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSystemStatus;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
@@ -1278,6 +1279,13 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   public Node visitShowCurrentSqlDialectStatement(
       RelationalSqlParser.ShowCurrentSqlDialectStatementContext ctx) {
     return new ShowCurrentSqlDialect(getLocation(ctx));
+  }
+
+  @Override
+  public Node visitSetSqlDialectStatement(RelationalSqlParser.SetSqlDialectStatementContext ctx) {
+    return new SetSqlDialect(
+        ctx.TABLE() == null ? IClientSession.SqlDialect.TREE : IClientSession.SqlDialect.TABLE,
+        getLocation(ctx));
   }
 
   @Override

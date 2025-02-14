@@ -664,4 +664,8 @@ public abstract class AstVisitor<R, C> {
   protected R visitRemoveRegion(RemoveRegion node, C context) {
     return visitStatement(node, context);
   }
+
+  protected R visitSetSqlDialect(SetSqlDialect node, C context) {
+    return visitStatement(node, context);
+  }
 }
