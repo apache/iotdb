@@ -2243,7 +2243,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // Step 1: transfer from TSInsertTabletReq to Statement
       InsertTabletStatement statement = StatementGenerator.createStatement(req);
       // return success when this statement is empty because server doesn't need to execute it
-      if (statement.isEmpty()) {
+      if (statement.isEmpty() && !req.isWriteToTable()) {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
 
