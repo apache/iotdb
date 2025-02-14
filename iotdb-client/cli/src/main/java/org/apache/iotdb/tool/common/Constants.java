@@ -21,6 +21,7 @@ package org.apache.iotdb.tool.common;
 
 import org.apache.tsfile.enums.TSDataType;
 
+import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -95,14 +96,14 @@ public class Constants {
   public static final String DB_ARGS = "db";
   public static final String DB_NAME = "database";
   public static final String DB_DESC =
-      "The database to be exported,Only takes effect when sql_dialect is of type table.(optional)";
+      "The database to be exported,only takes effect when sql_dialect is table.(optional)";
 
   public static final String TABLE_ARGS = "table";
   public static final String TABLE_DESC =
-      "The table to be exported,only takes effect when sql_dialect is of type table";
+      "The table to be exported,only takes effect when sql_dialect is table.(optional)";
   public static final String TABLE_DESC_EXPORT =
       TABLE_DESC
-          + ".If the '- q' parameter is specified, this parameter does not take effect. If the export type is tsfile or sql, this parameter is required. (optional)";
+          + ".If the '-q' parameter is specified, this parameter does not take effect. If the export type is tsfile or sql, this parameter is required. (optional)";
   public static final String TABLE_DESC_IMPORT = TABLE_DESC + " and file_type is csv. (optional)";
 
   public static final String DATATYPE_BOOLEAN = "boolean";
@@ -177,12 +178,14 @@ public class Constants {
   public static final String TARGET_DIR_NAME = "target";
   public static final String TARGET_DIR_ARGS_NAME = "target_directory";
   public static final String TARGET_DIR_DESC = "Target file directory (required)";
+  public static final String TARGET_DIR_SUBSCRIPTION_DESC =
+      "Target file directory.default ./target (optional)";
 
   public static final String QUERY_COMMAND_ARGS = "q";
   public static final String QUERY_COMMAND_NAME = "query";
   public static final String QUERY_COMMAND_ARGS_NAME = "query_command";
   public static final String QUERY_COMMAND_DESC =
-      "The query command that you want to execute.If sql-dialect is of type table The 'q' parameter is only applicable to export types of CSV, and is not available for other types.If the '- q' parameter is not empty, then the parameters' creatTime ',' EndTime 'and' table 'are not effective.(optional)";
+      "The query command that you want to execute.If sql_dialect is table The 'q' parameter is only applicable to export types of CSV, and is not available for other types.If the '- q' parameter is not empty, then the parameters' creatTime ',' EndTime 'and' table 'are not effective.(optional)";
 
   public static final String TARGET_FILE_ARGS = "pfn";
   public static final String TARGET_FILE_NAME = "prefix_file_name";
@@ -210,6 +213,10 @@ public class Constants {
 
   public static final String[] TIME_FORMAT =
       new String[] {"default", "long", "number", "timestamp"};
+
+  public static final String PATH_ARGS = "path";
+  public static final String PATH_DESC =
+      "The path to be exported,only takes effect when sql_dialect is tree.(optional)";
 
   public static final long memoryThreshold = 10 * 1024 * 1024;
 
@@ -252,6 +259,21 @@ public class Constants {
         "yyyy/MM/dd'T'HH:mm:ss",
         "yyyy.MM.dd'T'HH:mm:ss"
       };
+
+  public static final String SUBSCRIPTION_CLI_PREFIX = "Export TsFile";
+  public static final int MAX_RETRY_TIMES = 2;
+  public static final String LOOSE_RANGE = "";
+  public static final boolean STRICT = false;
+  public static final String MODE = "snapshot";
+  public static final boolean AUTO_COMMIT = false;
+  public static final String TABLE_MODEL = "table";
+  public static final long AUTO_COMMIT_INTERVAL = 5000;
+  public static final long POLL_MESSAGE_TIMEOUT = 10000;
+  public static final String TOPIC_NAME_PREFIX = "topic_";
+  public static final String GROUP_NAME_PREFIX = "group_";
+  public static final String HANDLER = "TsFileHandler";
+  public static final String CONSUMER_NAME_PREFIX = "consumer_";
+  public static final SimpleDateFormat DATE_FORMAT_VIEW = new SimpleDateFormat("yyyyMMddHHmmssSSS");
 
   // import constants
   public static final String IMPORT_CLI_PREFIX = "Import Data";
