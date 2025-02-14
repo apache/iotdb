@@ -62,6 +62,7 @@ keyWords
     | CLUSTERID
     | CONCAT
     | CONDITION
+    | CONFIGNODE
     | CONFIGNODES
     | CONFIGURATION
     | CONNECTION
