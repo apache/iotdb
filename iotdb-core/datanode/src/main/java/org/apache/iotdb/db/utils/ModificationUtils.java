@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
@@ -38,6 +40,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 public class ModificationUtils {
 
@@ -398,5 +401,19 @@ public class ModificationUtils {
       result.add(current);
     }
     return result;
+  }
+
+  public static boolean isDeviceDeletedByMods(
+      Collection<ModEntry> currentModifications, ITimeIndex currentTimeIndex, IDeviceID device)
+      throws IllegalPathException {
+    if (currentTimeIndex == null) {
+      return false;
+    }
+    Optional<Long> startTime = currentTimeIndex.getStartTime(device);
+    Optional<Long> endTime = currentTimeIndex.getEndTime(device);
+    if (startTime.isPresent() && endTime.isPresent()) {
+      return isAllDeletedByMods(currentModifications, device, startTime.get(), endTime.get());
+    }
+    return false;
   }
 }
