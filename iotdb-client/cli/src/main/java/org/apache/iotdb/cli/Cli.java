@@ -202,9 +202,7 @@ public class Cli extends AbstractCli {
         }
       }
     } catch (SQLException e) {
-      ctx.getErr()
-          .printf(
-              "%s: %s Host is %s, port is %s.%n", IOTDB_ERROR_PREFIX, e.getMessage(), host, port);
+      ctx.getErr().printf("%s: %s%n", IOTDB_ERROR_PREFIX, e.getMessage());
       ctx.exit(CODE_ERROR);
     }
   }
