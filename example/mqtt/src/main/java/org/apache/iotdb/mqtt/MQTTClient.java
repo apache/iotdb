@@ -35,7 +35,14 @@ public class MQTTClient {
 
     BlockingConnection connection = mqtt.blockingConnection();
     connection.connect();
+    // the config mqttPayloadFormatter must be json
+    jsonPayloadFormatter(connection);
+    // the config mqttPayloadFormatter must be line
+    // linePayloadFormatter(connection);
+    connection.disconnect();
+  }
 
+  private static void jsonPayloadFormatter(BlockingConnection connection) throws Exception {
     Random random = new Random();
     StringBuilder sb = new StringBuilder();
     for (int i = 0; i < 10; i++) {
@@ -58,7 +65,35 @@ public class MQTTClient {
     sb.insert(0, "[");
     sb.replace(sb.lastIndexOf(","), sb.length(), "]");
     connection.publish("root.sg.d1.s1", sb.toString().getBytes(), QoS.AT_LEAST_ONCE, false);
+  }
 
-    connection.disconnect();
+  private static void linePayloadFormatter(BlockingConnection connection) throws Exception {
+
+    String payload1 = "test1,tag1=t1,tag2=t2 attr3=a5,attr4=a4 field1=1,field2=1f,field3=1i32 1";
+    Thread.sleep(10);
+    connection.publish("myMqttTest/myTopic", payload1.getBytes(), QoS.AT_LEAST_ONCE, false);
+
+    String payload =
+        "test1,tag1=t1,tag2=t2 attr3=a5,attr4=a4 field1=\"fieldValue1\",field2=1i,field3=1u 1";
+    Thread.sleep(10);
+    connection.publish("myMqttTest/myTopic", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+
+    payload = "test1,tag1=t1,tag2=t2  field4=2,field5=2i32,field6=2f 2";
+    Thread.sleep(10);
+    connection.publish("myMqttTest/myTopic", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+
+    payload =
+        "test1,tag1=t1,tag2=t2  field7=t,field8=T,field9=true 3\n test1,tag1=t1,tag2=t2  field7=f,field8=F,field9=FALSE 4";
+    Thread.sleep(10);
+    connection.publish("myMqttTest/myTopic", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+
+    payload =
+        "test1,tag1=t1,tag2=t2 attr1=a1,attr2=a2 field1=\"fieldValue1\",field2=1i,field3=1u 4 \n test1,tag1=t1,tag2=t2 field4=2,field5=2i32,field6=2f 5";
+    Thread.sleep(10);
+    connection.publish("myMqttTest/myTopic", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+
+    payload = "# It's a remark\n test1,tag1=t1,tag2=t2 field4=2,field5=2i32,field6=2f 6";
+    Thread.sleep(10);
+    connection.publish("myMqttTest/myTopic", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
   }
 }
