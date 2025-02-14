@@ -295,11 +295,18 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private void analyzeSingleTsFile(final File tsFile, int i)
       throws IOException, AuthException, LoadAnalyzeException {
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+
+      // check whether the tsfile is tree-model or not
+      final Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
+      final boolean isTableModelFile = Objects.nonNull(tableSchemaMap) && !tableSchemaMap.isEmpty();
+      LOGGER.info(
+          "TsFile {} is a {}-model file.", tsFile.getPath(), isTableModelFile ? "table" : "tree");
+
       // can be reused when constructing tsfile resource
       final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =
           new TsFileSequenceReaderTimeseriesMetadataIterator(
               reader,
-              true,
+              !isTableModelFile, // currently we only need chunk metadata for tree model files
               IoTDBDescriptor.getInstance()
                   .getConfig()
                   .getLoadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount());
@@ -316,11 +323,6 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         throw new SemanticException("The encryption way of the TsFile is not supported.");
       }
 
-      // check whether the tsfile is tree-model or not
-      final Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
-      final boolean isTableModelFile = Objects.nonNull(tableSchemaMap) && !tableSchemaMap.isEmpty();
-      LOGGER.info(
-          "TsFile {} is a {}-model file.", tsFile.getPath(), isTableModelFile ? "table" : "tree");
       this.isTableModelTsFile.set(i, isTableModelFile);
 
       if (isTableModelFile) {
