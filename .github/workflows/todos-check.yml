@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - master
+      - 'dev/*'
       - 'rel/*'
       - "rc/*"
       - 'force_ci/**'
@@ -29,13 +30,15 @@ jobs:
           git switch -c check_branch
           
           # Get the diff of the changes
-          DIFF=$(git diff origin/$GITHUB_BASE_REF check_branch)
+          DIFF=$(git diff origin/$GITHUB_BASE_REF check_branch  -- . ':(exclude).github/workflows/todos-check.yml')
           
   
           # Check the diff for TODOs
-          if echo "$DIFF" | grep -Eq '^\+.*(TODO|FIXME)'; then
-            echo "TODO or FIXME found in the changes. Please resolve it before merging."
-            # exit 1
+          echo "$DIFF" | grep -E '^\+.*(TODO|FIXME)' > check.log
+          if [ $(wc -l < check.log> -eq 0)]; then
+            echo "No TODOs or FIXMEs found in changed content."
           else
-            echo "No TODOs found in changed content."
+            echo "TODO or FIXME found in the changes. Please resolve it before merging."
+            cat check.log
+            exit 1
           fi
