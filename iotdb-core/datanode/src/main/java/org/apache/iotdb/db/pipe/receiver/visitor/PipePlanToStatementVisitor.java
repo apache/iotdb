@@ -84,9 +84,9 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Object, Void> {
 
   @Override
   public InsertRowStatement visitInsertRow(final InsertRowNode node, final Void context) {
-    // MeasurementSchema is set at the analysis type stage. Since InsertNode has already set
-    // MeasurementSchema at the sender end, if the statement constructed this time sets
-    // MeasurementSchema, NPE will occur.
+    // MeasurementSchema is only allowed to be set at the analysis type stage. However, InsertNode
+    // has already set MeasurementSchema at the sending end. If the statement constructed this time
+    // calls SetMeasurementSchema, it will cause NPE
     final InsertRowStatement statement = new InsertRowStatement();
     statement.setDevicePath(node.getTargetPath());
     statement.setTime(node.getTime());
@@ -103,9 +103,9 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Object, Void> {
   public Statement visitRelationalInsertTablet(
       final RelationalInsertTabletNode node, final Void context) {
     final InsertTabletStatement insertTabletStatement = new InsertTabletStatement(node);
-    // MeasurementSchema is set at the analysis type stage. Since InsertNode has already set
-    // MeasurementSchema at the sender end, if the statement constructed this time sets
-    // MeasurementSchema, NPE will occur.
+    // MeasurementSchema is only allowed to be set at the analysis type stage. However, InsertNode
+    // has already set MeasurementSchema at the sending end. If the statement constructed this time
+    // calls SetMeasurementSchema, it will cause NPE
     insertTabletStatement.setMeasurementSchemas(null);
     return insertTabletStatement;
   }
@@ -113,9 +113,9 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Object, Void> {
   @Override
   public InsertTabletStatement visitInsertTablet(final InsertTabletNode node, final Void context) {
     final InsertTabletStatement insertTabletStatement = new InsertTabletStatement(node);
-    // MeasurementSchema is set at the analysis type stage. Since InsertNode has already set
-    // MeasurementSchema at the sender end, if the statement constructed this time sets
-    // MeasurementSchema, NPE will occur.
+    // MeasurementSchema is only allowed to be set at the analysis type stage. However, InsertNode
+    // has already set MeasurementSchema at the sending end. If the statement constructed this time
+    // calls SetMeasurementSchema, it will cause NPE
     insertTabletStatement.setMeasurementSchemas(null);
     return insertTabletStatement;
   }
