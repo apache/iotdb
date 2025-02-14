@@ -96,6 +96,7 @@ public class SubscriptionEventSingleResponse
 
   @Override
   public void cleanUp() {
+    response.closeMemoryBlock();
     invalidateCurrentResponseByteBuffer();
   }
 

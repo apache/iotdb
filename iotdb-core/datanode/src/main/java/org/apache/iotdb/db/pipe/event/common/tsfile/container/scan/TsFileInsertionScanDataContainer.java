@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -71,6 +72,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
   private IChunkReader chunkReader;
   private BatchData data;
+  private final PipeMemoryBlock allocatedMemoryBlockForBatchData;
 
   private boolean currentIsMultiPage;
   private String currentDevice;
@@ -100,6 +102,10 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
     this.startTime = startTime;
     this.endTime = endTime;
     filter = Objects.nonNull(timeFilterExpression) ? timeFilterExpression.getFilter() : null;
+
+    // Allocate empty memory block, will be resized later.
+    this.allocatedMemoryBlockForBatchData =
+        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
 
     try {
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), false, false);
@@ -264,6 +270,10 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
       do {
         data = chunkReader.nextPageData();
+        PipeDataNodeResourceManager.memory()
+            .forceResize(
+                allocatedMemoryBlockForBatchData,
+                PipeMemoryWeightUtil.calculateBatchDataRamBytesUsed(data));
       } while (!data.hasCurrent() && chunkReader.hasNextSatisfiedPage());
     } while (!data.hasCurrent());
   }
@@ -496,5 +506,14 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
       return true;
     }
     return false;
+  }
+
+  @Override
+  public void close() {
+    super.close();
+
+    if (allocatedMemoryBlockForBatchData != null) {
+      allocatedMemoryBlockForBatchData.close();
+    }
   }
 }
