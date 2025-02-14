@@ -203,7 +203,7 @@ public class CommonConfig {
 
   private boolean pipeFileReceiverFsyncEnabled = true;
 
-  private int pipeRealTimeQueuePollHistoryThreshold = 100;
+  private int pipeRealTimeQueuePollHistoryThreshold = 1;
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor. */
   private int pipeSubtaskExecutorMaxThreadNum =
