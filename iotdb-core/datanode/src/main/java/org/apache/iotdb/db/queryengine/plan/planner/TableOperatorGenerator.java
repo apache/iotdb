@@ -437,7 +437,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             .addOperatorContext(context.getNextOperatorId(), node.getPlanNodeId(), className);
 
     Set<String> allSensors = new HashSet<>(measurementColumnNames);
-    allSensors.add("");
 
     DeviceIteratorScanOperator.DeviceChildOperatorTreeGenerator deviceChildOperatorTreeGenerator =
         new DeviceIteratorScanOperator.DeviceChildOperatorTreeGenerator() {
