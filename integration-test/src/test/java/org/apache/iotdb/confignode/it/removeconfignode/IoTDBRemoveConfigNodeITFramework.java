@@ -20,13 +20,12 @@
 package org.apache.iotdb.confignode.it.removeconfignode;
 
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
-import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.confignode.it.removedatanode.SQLModel;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.exception.InconsistentDataException;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
-import org.apache.iotdb.relational.it.query.old.aligned.TableUtils;
 
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
@@ -46,7 +45,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework.getDataRegionMap;
-import static org.apache.iotdb.confignode.it.removedatanode.IoTDBRemoveDataNodeITFramework.getConnectionWithSQLType;
 import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
 
 public class IoTDBRemoveConfigNodeITFramework {
@@ -96,18 +94,13 @@ public class IoTDBRemoveConfigNodeITFramework {
             dataRegionPerDataNode * dataNodeNum / dataReplicateFactor);
     EnvFactory.getEnv().initClusterEnvironment(configNodeNum, dataNodeNum);
 
-    try (final Connection connection = makeItCloseQuietly(getConnectionWithSQLType(model));
+    try (final Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
         final Statement statement = makeItCloseQuietly(connection.createStatement());
         SyncConfigNodeIServiceClient client =
             (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
 
-      if (SQLModel.TABLE_MODEL_SQL.equals(model)) {
-        // Insert data in table model
-        TableUtils.insertData();
-      } else {
-        // Insert data in tree model
-        statement.execute(TREE_MODEL_INSERTION);
-      }
+      // Insert data in tree model
+      statement.execute(TREE_MODEL_INSERTION);
 
       Map<Integer, Set<Integer>> regionMap = getDataRegionMap(statement);
       regionMap.forEach(

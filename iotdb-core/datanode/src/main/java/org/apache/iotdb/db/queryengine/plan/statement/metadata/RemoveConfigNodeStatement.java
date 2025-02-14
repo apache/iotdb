@@ -50,7 +50,7 @@ public class RemoveConfigNodeStatement extends Statement implements IConfigState
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MAINTAIN),
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MAINTAIN.ordinal()),
         PrivilegeType.MAINTAIN);
   }
 

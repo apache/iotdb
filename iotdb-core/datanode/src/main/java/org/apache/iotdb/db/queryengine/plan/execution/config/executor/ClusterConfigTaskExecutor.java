@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.executor;
 
-import org.apache.iotdb.common.rpc.thrift.FunctionType;
-import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
