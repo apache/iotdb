@@ -55,6 +55,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeTsFileInsertionEvent extends EnrichedEvent
     implements TsFileInsertionEvent, ReferenceTrackableEvent {
@@ -74,7 +75,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   private final boolean isGeneratedByHistoricalExtractor;
 
   private final AtomicBoolean isClosed;
-  private TsFileInsertionDataContainer dataContainer;
+  private final AtomicReference<TsFileInsertionDataContainer> dataContainer;
 
   // The point count of the TsFile. Used for metrics on PipeConsensus' receiver side.
   // May be updated after it is flushed. Should be negative if not set.
@@ -163,6 +164,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     // If the status is "closed", then the resource status is "closed", the tsFile won't be altered
     // and can be sent.
     isClosed.set(resource.isClosed());
+
+    this.dataContainer = new AtomicReference<>(null);
   }
 
   /**
@@ -489,13 +492,12 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
 
   private TsFileInsertionDataContainer initDataContainer() {
     try {
-      if (dataContainer == null) {
-        dataContainer =
-            new TsFileInsertionDataContainerProvider(
-                    tsFile, pipePattern, startTime, endTime, pipeTaskMeta, this)
-                .provide();
-      }
-      return dataContainer;
+      dataContainer.compareAndSet(
+          null,
+          new TsFileInsertionDataContainerProvider(
+                  tsFile, pipePattern, startTime, endTime, pipeTaskMeta, this)
+              .provide());
+      return dataContainer.get();
     } catch (final IOException e) {
       close();
 
@@ -532,10 +534,13 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   /** Release the resource of {@link TsFileInsertionDataContainer}. */
   @Override
   public void close() {
-    if (dataContainer != null) {
-      dataContainer.close();
-      dataContainer = null;
-    }
+    dataContainer.getAndUpdate(
+        container -> {
+          if (Objects.nonNull(container)) {
+            container.close();
+          }
+          return null;
+        });
   }
 
   /////////////////////////// Object ///////////////////////////
@@ -568,7 +573,12 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   @Override
   public PipeEventResource eventResourceBuilder() {
     return new PipeTsFileInsertionEventResource(
-        this.isReleased, this.referenceCount, this.tsFile, this.isWithMod, this.modFile);
+        this.isReleased,
+        this.referenceCount,
+        this.tsFile,
+        this.isWithMod,
+        this.modFile,
+        this.dataContainer);
   }
 
   private static class PipeTsFileInsertionEventResource extends PipeEventResource {
@@ -576,26 +586,39 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     private final File tsFile;
     private final boolean isWithMod;
     private final File modFile;
+    private final AtomicReference<TsFileInsertionDataContainer> dataContainer;
 
     private PipeTsFileInsertionEventResource(
         final AtomicBoolean isReleased,
         final AtomicInteger referenceCount,
         final File tsFile,
         final boolean isWithMod,
-        final File modFile) {
+        final File modFile,
+        final AtomicReference<TsFileInsertionDataContainer> dataContainer) {
       super(isReleased, referenceCount);
       this.tsFile = tsFile;
       this.isWithMod = isWithMod;
       this.modFile = modFile;
+      this.dataContainer = dataContainer;
     }
 
     @Override
     protected void finalizeResource() {
       try {
+        // decrease reference count
         PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile);
         if (isWithMod) {
           PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile);
         }
+
+        // close data container
+        dataContainer.getAndUpdate(
+            container -> {
+              if (Objects.nonNull(container)) {
+                container.close();
+              }
+              return null;
+            });
       } catch (final Exception e) {
         LOGGER.warn(
             String.format("Decrease reference count for TsFile %s error.", tsFile.getPath()), e);

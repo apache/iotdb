@@ -196,6 +196,8 @@ public class TopicMeta {
     extractorAttributes.putAll(config.getAttributesWithSourceMode());
     // loose range
     extractorAttributes.putAll(config.getAttributesWithSourceLooseRange());
+    // backdoor configs
+    extractorAttributes.putAll(config.getAttributesWithSourcePrefix());
     return extractorAttributes;
   }
 
@@ -209,6 +211,8 @@ public class TopicMeta {
     connectorAttributes.put(PipeConnectorConstant.SINK_TOPIC_KEY, topicName);
     connectorAttributes.put(PipeConnectorConstant.SINK_CONSUMER_GROUP_KEY, consumerGroupId);
     connectorAttributes.putAll(config.getAttributesWithSinkFormat());
+    // backdoor configs
+    connectorAttributes.putAll(config.getAttributesWithSinkPrefix());
     return connectorAttributes;
   }
 
