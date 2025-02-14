@@ -99,23 +99,15 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Object, Void> {
   @Override
   public Statement visitRelationalInsertTablet(
       final RelationalInsertTabletNode node, final Void context) {
-    final InsertTabletStatement insertTabletStatement = visitInsertTablet(node, context);
-    insertTabletStatement.setColumnCategories(node.getColumnCategories());
-    insertTabletStatement.setWriteToTable(true);
+    final InsertTabletStatement insertTabletStatement = new InsertTabletStatement(node);
+    insertTabletStatement.setMeasurementSchemas(null);
     return insertTabletStatement;
   }
 
   @Override
   public InsertTabletStatement visitInsertTablet(final InsertTabletNode node, final Void context) {
-    final InsertTabletStatement insertTabletStatement = new InsertTabletStatement();
-    insertTabletStatement.setDevicePath(node.getTargetPath());
-    insertTabletStatement.setMeasurements(node.getMeasurements());
-    insertTabletStatement.setTimes(node.getTimes());
-    insertTabletStatement.setColumns(node.getColumns());
-    insertTabletStatement.setBitMaps(node.getBitMaps());
-    insertTabletStatement.setRowCount(node.getRowCount());
-    insertTabletStatement.setDataTypes(node.getDataTypes());
-    insertTabletStatement.setAligned(node.isAligned());
+    final InsertTabletStatement insertTabletStatement = new InsertTabletStatement(node);
+    insertTabletStatement.setMeasurementSchemas(null);
     return insertTabletStatement;
   }
 
