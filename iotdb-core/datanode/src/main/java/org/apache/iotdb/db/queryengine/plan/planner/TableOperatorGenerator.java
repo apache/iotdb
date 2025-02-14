@@ -479,20 +479,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                       path,
                       node.getScanOrder(),
                       seriesScanOptionsList.get(i));
-              //              Operator seriesScanOperator =
-              //                  new AlignedSeriesScanOperator(
-              //                      operatorContext,
-              //                      node.getPlanNodeId(),
-              //                      new AlignedFullPath(
-              //                          deviceEntry.getDeviceID(),
-              //
-              // Collections.singletonList(measurementSchema.getMeasurementName()),
-              //                          Collections.singletonList(measurementSchema)),
-              //                      node.getScanOrder(),
-              //                      seriesScanOptionsList.get(i),
-              //                      false,
-              //                      Collections.singletonList(measurementSchema.getType()),
-              //                      1000);
               seriesScanOperators.add(seriesScanOperator);
               ColumnMerger columnMerger =
                   new SingleColumnMerger(
@@ -816,26 +802,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   @Override
   public Operator visitDeviceTableScan(
       DeviceTableScanNode node, LocalExecutionPlanContext context) {
-    TreeNonAlignedDeviceViewScanNode n =
-        new TreeNonAlignedDeviceViewScanNode(
-            node.getPlanNodeId(),
-            node.getQualifiedObjectName(),
-            node.getOutputSymbols(),
-            node.getAssignments(),
-            node.getDeviceEntries(),
-            node.getIdAndAttributeIndexMap(),
-            node.getScanOrder(),
-            node.getTimePredicate().orElse(null),
-            node.getPushDownPredicate(),
-            node.getPushDownLimit(),
-            node.getPushDownOffset(),
-            node.isPushLimitToEachDevice(),
-            true,
-            "root.tree",
-            new HashMap<>());
-    if (true) {
-      return visitTreeNonAlignedDeviceViewScan(n, context);
-    }
 
     AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
         constructAbstractTableScanOperatorParameter(node, context);

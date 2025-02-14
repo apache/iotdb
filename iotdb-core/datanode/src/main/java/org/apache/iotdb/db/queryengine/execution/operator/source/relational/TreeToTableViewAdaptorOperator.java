@@ -75,7 +75,6 @@ public class TreeToTableViewAdaptorOperator implements ProcessOperator {
   }
 
   private String getNthIdColumnValue(DeviceEntry deviceEntry, int idColumnIndex) {
-    //    return deviceEntry.getNthSegment(idColumnIndex + 1).toString();
     return (String) extractor.extract(deviceEntry.getDeviceID(), idColumnIndex);
   }
 
