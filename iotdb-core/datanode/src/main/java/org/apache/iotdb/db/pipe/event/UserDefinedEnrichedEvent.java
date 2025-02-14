@@ -49,7 +49,6 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
         enrichedEvent.getTreePattern(),
         enrichedEvent.getTablePattern(),
         enrichedEvent.getUserName(),
-        enrichedEvent.isSkipIfNoPrivileges(),
         enrichedEvent.getStartTime(),
         enrichedEvent.getEndTime());
     this.userDefinedEvent = userDefinedEvent;
@@ -83,7 +82,6 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
       final TreePattern treePattern,
       final TablePattern tablePattern,
       final String userName,
-      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     return enrichedEvent.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
@@ -93,7 +91,6 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
         treePattern,
         tablePattern,
         userName,
-        skipIfNoPrivileges,
         startTime,
         endTime);
   }

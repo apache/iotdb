@@ -75,7 +75,6 @@ public abstract class EnrichedEvent implements Event {
   protected volatile boolean shouldReportOnCommit = true;
   protected List<Supplier<Void>> onCommittedHooks = new ArrayList<>();
   protected String userName;
-  protected boolean skipIfNoPrivileges;
 
   protected EnrichedEvent(
       final String pipeName,
@@ -84,7 +83,6 @@ public abstract class EnrichedEvent implements Event {
       final TreePattern treePattern,
       final TablePattern tablePattern,
       final String userName,
-      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     referenceCount = new AtomicInteger(0);
@@ -96,7 +94,6 @@ public abstract class EnrichedEvent implements Event {
     this.treePattern = treePattern;
     this.tablePattern = tablePattern;
     this.userName = userName;
-    this.skipIfNoPrivileges = skipIfNoPrivileges;
     this.startTime = startTime;
     this.endTime = endTime;
 
@@ -348,10 +345,6 @@ public abstract class EnrichedEvent implements Event {
     return userName;
   }
 
-  public boolean isSkipIfNoPrivileges() {
-    return skipIfNoPrivileges;
-  }
-
   public final long getStartTime() {
     return startTime;
   }
@@ -391,7 +384,6 @@ public abstract class EnrichedEvent implements Event {
       final TreePattern treePattern,
       final TablePattern tablePattern,
       final String userName,
-      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime);
 
@@ -404,6 +396,10 @@ public abstract class EnrichedEvent implements Event {
   /** Whether the {@link EnrichedEvent} need to be committed in order. */
   public boolean needToCommit() {
     return true;
+  }
+
+  public void throwIfNoPrivilege() {
+    // Do nothing by default
   }
 
   public abstract boolean mayEventTimeOverlappedWithTimeRange();

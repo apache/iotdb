@@ -813,7 +813,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             treePattern,
             tablePattern,
             userName,
-            skipIfNoPrivileges,
             historicalDataExtractionStartTime,
             historicalDataExtractionEndTime);
 
@@ -859,7 +858,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             treePattern,
             tablePattern,
             userName,
-            skipIfNoPrivileges,
             false);
 
     if (sloppyPattern || isDbNameCoveredByPattern) {

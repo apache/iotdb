@@ -43,16 +43,7 @@ public class PipeTerminateEvent extends EnrichedEvent {
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final int dataRegionId) {
-    super(
-        pipeName,
-        creationTime,
-        pipeTaskMeta,
-        null,
-        null,
-        null,
-        true,
-        Long.MIN_VALUE,
-        Long.MAX_VALUE);
+    super(pipeName, creationTime, pipeTaskMeta, null, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
     this.dataRegionId = dataRegionId;
   }
 
@@ -79,7 +70,6 @@ public class PipeTerminateEvent extends EnrichedEvent {
       final TreePattern treePattern,
       final TablePattern tablePattern,
       final String userName,
-      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     // Should record PipeTaskMeta, for the terminateEvent shall report progress to

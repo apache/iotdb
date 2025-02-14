@@ -40,7 +40,6 @@ public class ProgressReportEvent extends EnrichedEvent {
       final TreePattern treePattern,
       final TablePattern tablePattern,
       final String userName,
-      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     super(
@@ -50,7 +49,6 @@ public class ProgressReportEvent extends EnrichedEvent {
         treePattern,
         tablePattern,
         userName,
-        skipIfNoPrivileges,
         startTime,
         endTime);
   }
@@ -83,7 +81,6 @@ public class ProgressReportEvent extends EnrichedEvent {
       final TreePattern treePattern,
       final TablePattern tablePattern,
       final String userName,
-      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     return new ProgressReportEvent(
@@ -93,7 +90,6 @@ public class ProgressReportEvent extends EnrichedEvent {
         treePattern,
         tablePattern,
         userName,
-        skipIfNoPrivileges,
         startTime,
         endTime);
   }

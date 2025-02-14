@@ -111,7 +111,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         null,
         null,
         null,
-        true,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
   }
@@ -130,7 +129,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final TreePattern treePattern,
       final TablePattern tablePattern,
       final String userName,
-      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     super(
@@ -140,7 +138,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         treePattern,
         tablePattern,
         userName,
-        skipIfNoPrivileges,
         startTime,
         endTime,
         isTableModelEvent,
@@ -378,7 +375,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final TreePattern treePattern,
       final TablePattern tablePattern,
       final String userName,
-      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     return new PipeTsFileInsertionEvent(
@@ -395,7 +391,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         treePattern,
         tablePattern,
         userName,
-        skipIfNoPrivileges,
         startTime,
         endTime);
   }

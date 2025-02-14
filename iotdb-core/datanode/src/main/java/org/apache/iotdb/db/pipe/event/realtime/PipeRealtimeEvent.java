@@ -55,7 +55,6 @@ public class PipeRealtimeEvent extends EnrichedEvent {
         null,
         null,
         null,
-        true,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
   }
@@ -68,7 +67,6 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       final TreePattern treePattern,
       final TablePattern tablePattern,
       final String userName,
-      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     // PipeTaskMeta is used to report the progress of the event, the PipeRealtimeEvent
@@ -81,7 +79,6 @@ public class PipeRealtimeEvent extends EnrichedEvent {
         treePattern,
         tablePattern,
         userName,
-        skipIfNoPrivileges,
         startTime,
         endTime);
 
@@ -198,7 +195,6 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       final TreePattern treePattern,
       final TablePattern tablePattern,
       final String userName,
-      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     return new PipeRealtimeEvent(
@@ -209,7 +205,6 @@ public class PipeRealtimeEvent extends EnrichedEvent {
             treePattern,
             tablePattern,
             userName,
-            skipIfNoPrivileges,
             startTime,
             endTime),
         this.tsFileEpoch,
@@ -220,7 +215,6 @@ public class PipeRealtimeEvent extends EnrichedEvent {
         treePattern,
         tablePattern,
         userName,
-        skipIfNoPrivileges,
         startTime,
         endTime);
   }
