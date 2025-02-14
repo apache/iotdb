@@ -84,6 +84,9 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Object, Void> {
 
   @Override
   public InsertRowStatement visitInsertRow(final InsertRowNode node, final Void context) {
+    // MeasurementSchema is set at the analysis type stage. Since InsertNode has already set
+    // MeasurementSchema at the sender end, if the statement constructed this time sets
+    // MeasurementSchema, NPE will occur.
     final InsertRowStatement statement = new InsertRowStatement();
     statement.setDevicePath(node.getTargetPath());
     statement.setTime(node.getTime());
@@ -100,6 +103,9 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Object, Void> {
   public Statement visitRelationalInsertTablet(
       final RelationalInsertTabletNode node, final Void context) {
     final InsertTabletStatement insertTabletStatement = new InsertTabletStatement(node);
+    // MeasurementSchema is set at the analysis type stage. Since InsertNode has already set
+    // MeasurementSchema at the sender end, if the statement constructed this time sets
+    // MeasurementSchema, NPE will occur.
     insertTabletStatement.setMeasurementSchemas(null);
     return insertTabletStatement;
   }
@@ -107,6 +113,9 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Object, Void> {
   @Override
   public InsertTabletStatement visitInsertTablet(final InsertTabletNode node, final Void context) {
     final InsertTabletStatement insertTabletStatement = new InsertTabletStatement(node);
+    // MeasurementSchema is set at the analysis type stage. Since InsertNode has already set
+    // MeasurementSchema at the sender end, if the statement constructed this time sets
+    // MeasurementSchema, NPE will occur.
     insertTabletStatement.setMeasurementSchemas(null);
     return insertTabletStatement;
   }
