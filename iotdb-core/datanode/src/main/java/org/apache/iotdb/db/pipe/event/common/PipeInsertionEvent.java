@@ -27,12 +27,17 @@ import org.apache.iotdb.commons.utils.PathUtils;
 
 import javax.validation.constraints.NotNull;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public abstract class PipeInsertionEvent extends EnrichedEvent {
 
   private Boolean isTableModelEvent; // lazy initialization
 
   private String treeModelDatabaseName;
   private String tableModelDatabaseName; // lazy initialization
+
+  private Set<String> noPrivilegeTableNames = new HashSet<>();
 
   protected PipeInsertionEvent(
       final String pipeName,
@@ -126,5 +131,13 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
     // rename TreeModelDatabaseName as well.
     this.tableModelDatabaseName = tableModelDatabaseName.toLowerCase();
     this.treeModelDatabaseName = "root." + tableModelDatabaseName;
+  }
+
+  public void addTable(final String tableName) {
+    noPrivilegeTableNames.add(tableName);
+  }
+
+  public Set<String> getNoPrivilegeTableNames() {
+    return noPrivilegeTableNames;
   }
 }

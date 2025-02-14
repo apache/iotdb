@@ -237,6 +237,10 @@ public class PipeDataRegionAssigner implements Closeable {
     matcher.deregister(extractor);
   }
 
+  public void invalidateCache() {
+    matcher.invalidateCache();
+  }
+
   public boolean notMoreExtractorNeededToBeAssigned() {
     return matcher.getRegisterCount() == 0;
   }
