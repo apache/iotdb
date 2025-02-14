@@ -111,7 +111,7 @@ public class LoadTsFileAnalyzeSchemaMemoryBlock extends LoadTsFileAbstractMemory
     return "LoadTsFileAnalyzeSchemaMemoryBlock{"
         + "totalMemorySizeInBytes="
         + totalMemorySizeInBytes
-        + ", memoryUsageInBytes="
+        + ", usedMemoryInBytes="
         + memoryUsageInBytes.get()
         + '}';
   }
