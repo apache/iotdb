@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.FunctionType;
 import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -229,6 +230,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
@@ -2884,6 +2886,49 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
     } catch (Exception e) {
       future.setException(e);
+    }
+
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> removeConfigNode(
+      final RemoveConfigNodeStatement removeConfigNodeStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    int removeConfigNodeId = removeConfigNodeStatement.getNodeId();
+
+    LOGGER.info("Starting to remove ConfigNode with node-id {}", removeConfigNodeId);
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      TShowClusterResp showClusterResp = configNodeClient.showCluster();
+      List<TConfigNodeLocation> removeConfigNodeLocations =
+          showClusterResp.getConfigNodeList().stream()
+              .filter(node -> node.configNodeId == removeConfigNodeId)
+              .collect(Collectors.toList());
+      if (removeConfigNodeLocations.size() != 1) {
+        LOGGER.error(
+            "The ConfigNode to be removed is not in the cluster, or the input format is incorrect.");
+        future.set(new ConfigTaskResult(TSStatusCode.REMOVE_CONFIGNODE_ERROR));
+      }
+
+      TConfigNodeLocation configNodeLocation = removeConfigNodeLocations.get(0);
+      TSStatus status = configNodeClient.removeConfigNode(configNodeLocation);
+
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(new IOException("Remove ConfigNode failed: " + status.getMessage()));
+        return future;
+      } else {
+        LOGGER.info(
+            "ConfigNode: {} is removed. If the confignode data directory is no longer needed, you can delete it manually.",
+            removeConfigNodeId);
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+
+    } catch (Exception e) {
+      future.setException(e);
+      return future;
     }
 
     return future;
