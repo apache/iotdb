@@ -1731,9 +1731,10 @@ public class ConfigManager implements IManager {
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           LOGGER.warn("Unexpected interruption during retry getting latest region route map");
+          resp.getStatus().setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+          return resp;
         }
       }
-
       resp.setTimestamp(System.currentTimeMillis());
       resp.setRegionRouteMap(getLoadManager().getRegionPriorityMap());
     }
