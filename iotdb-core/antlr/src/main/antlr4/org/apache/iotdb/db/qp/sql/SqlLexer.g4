@@ -165,6 +165,10 @@ CONFIGNODES
     : C O N F I G N O D E S
     ;
 
+CONFIGNODE
+    : C O N F I G N O D E
+    ;
+
 CONFIGURATION
     : C O N F I G U R A T I O N
     ;
