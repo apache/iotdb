@@ -42,6 +42,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceForRegio
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -668,6 +669,40 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   /**
+   * It checks all referenced TVList by the query: 1. If current is not the owner, just remove
+   * itself from query context list 2. If current query is the owner and no other query use it now,
+   * release the TVList 3. If current query is the owner and other queries still use it, set the
+   * next query as owner
+   */
+  private void releaseTVListOwnedByQuery() {
+    for (TVList tvList : tvListSet) {
+      tvList.lockQueryList();
+      List<QueryContext> queryContextList = tvList.getQueryContextList();
+      try {
+        queryContextList.remove(this);
+        if (tvList.getOwnerQuery() == this) {
+          if (queryContextList.isEmpty()) {
+            LOGGER.debug(
+                "TVList {} is released by the query, FragmentInstance Id is {}",
+                tvList,
+                this.getId());
+            memoryReservationManager.releaseMemoryCumulatively(tvList.calculateRamSize());
+            tvList.clear();
+          } else {
+            LOGGER.debug(
+                "TVList {} is now owned by another query, FragmentInstance Id is {}",
+                tvList,
+                ((FragmentInstanceContext) queryContextList.get(0)).getId());
+            tvList.setOwnerQuery(queryContextList.get(0));
+          }
+        }
+      } finally {
+        tvList.unlockQueryList();
+      }
+    }
+  }
+
+  /**
    * All file paths used by this fragment instance must be cleared and thus the usage reference must
    * be decreased.
    */
@@ -686,6 +721,9 @@ public class FragmentInstanceContext extends QueryContext {
       }
       unClosedFilePaths = null;
     }
+
+    // release TVList/AlignedTVList owned by current query
+    releaseTVListOwnedByQuery();
 
     dataRegion = null;
     globalTimeFilter = null;

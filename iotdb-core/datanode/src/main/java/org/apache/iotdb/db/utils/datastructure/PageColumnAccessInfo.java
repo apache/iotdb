@@ -16,31 +16,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.utils.datastructure;
 
-public class TimBooleanTVList extends BooleanTVList {
-  private final TimSort policy;
+public class PageColumnAccessInfo {
+  // time -> (selectedTVList, selectedIndex)
+  private final int[][] indices;
+  private int count;
 
-  TimBooleanTVList() {
-    policy = new TimSort(this);
-  }
-
-  @Override
-  public synchronized void sort() {
-    policy.checkSortedTimestampsAndIndices();
-    if (!sorted) {
-      policy.sort(0, rowCount);
+  public PageColumnAccessInfo(int maxNumberOfPointsInPage) {
+    this.indices = new int[maxNumberOfPointsInPage][];
+    for (int i = 0; i < maxNumberOfPointsInPage; i++) {
+      indices[i] = new int[2];
     }
-    policy.clearSortedValue();
-    policy.clearSortedTime();
-    sorted = true;
-    seqRowCount = rowCount;
+    this.count = 0;
   }
 
-  @Override
-  public void clear() {
-    super.clear();
-    policy.clearSortedTime();
-    policy.clearSortedValue();
+  public int[] get(int index) {
+    return indices[index];
+  }
+
+  public void add(int[] columnAccess) {
+    indices[count][0] = columnAccess[0];
+    indices[count][1] = columnAccess[1];
+    count++;
+  }
+
+  public int count() {
+    return count;
+  }
+
+  public void reset() {
+    count = 0;
   }
 }
