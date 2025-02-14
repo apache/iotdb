@@ -486,7 +486,7 @@ public class IoTConsensusServerImpl {
       if (peer.equals(thisNode)) {
         // use searchIndex for thisNode as the initialSyncIndex because targetPeer will load the
         // snapshot produced by thisNode
-        buildSyncLogChannel(targetPeer);
+        buildSyncLogChannel(targetPeer, true);
       } else {
         // use RPC to tell other peers to build sync log channel to target peer
         try (SyncIoTConsensusServiceClient client =
@@ -634,21 +634,22 @@ public class IoTConsensusServerImpl {
   }
 
   /** build SyncLog channel with safeIndex as the default initial sync index. */
-  public void buildSyncLogChannel(Peer targetPeer) {
-    buildSyncLogChannel(targetPeer, getMinSyncIndex());
+  public void buildSyncLogChannel(Peer targetPeer, boolean startNow) {
+    buildSyncLogChannel(targetPeer, getMinSyncIndex(), startNow);
   }
 
-  public void buildSyncLogChannel(Peer targetPeer, long initialSyncIndex) {
+  public void buildSyncLogChannel(Peer targetPeer, long initialSyncIndex, boolean startNow) {
     KillPoint.setKillPoint(DataNodeKillPoints.ORIGINAL_ADD_PEER_DONE);
     configuration.add(targetPeer);
     if (Objects.equals(targetPeer, thisNode)) {
       return;
     }
-    logDispatcher.addLogDispatcherThread(targetPeer, initialSyncIndex);
+    logDispatcher.addLogDispatcherThread(targetPeer, initialSyncIndex, startNow);
     logger.info(
-        "[IoTConsensus] Successfully build sync log channel to {} with initialSyncIndex {}",
+        "[IoTConsensus] Successfully build sync log channel to {} with initialSyncIndex {}. {}",
         targetPeer,
-        initialSyncIndex);
+        initialSyncIndex,
+        startNow ? "Sync log channel has started." : "Sync log channel maybe start later.");
   }
 
   /**

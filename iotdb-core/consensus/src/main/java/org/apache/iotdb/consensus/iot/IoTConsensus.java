@@ -189,7 +189,7 @@ public class IoTConsensus implements IConsensus {
       BiConsumer<ConsensusGroupId, List<Peer>> resetPeerListWithoutThrow =
           (consensusGroupId, peers) -> {
             try {
-              resetPeerList(consensusGroupId, peers);
+              resetPeerListImpl(consensusGroupId, peers, false);
             } catch (ConsensusGroupNotExistException ignore) {
 
             } catch (Exception e) {
@@ -491,6 +491,12 @@ public class IoTConsensus implements IConsensus {
   @Override
   public void resetPeerList(ConsensusGroupId groupId, List<Peer> correctPeers)
       throws ConsensusException {
+    resetPeerListImpl(groupId, correctPeers, true);
+  }
+
+  private void resetPeerListImpl(
+      ConsensusGroupId groupId, List<Peer> correctPeers, boolean startNow)
+      throws ConsensusException {
     IoTConsensusServerImpl impl =
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
@@ -521,7 +527,7 @@ public class IoTConsensus implements IConsensus {
       // add correct peer
       for (Peer peer : correctPeers) {
         if (!impl.getConfiguration().contains(peer)) {
-          impl.buildSyncLogChannel(peer);
+          impl.buildSyncLogChannel(peer, startNow);
           logger.info("[RESET PEER LIST] {} Build sync channel with: {}", groupId, peer);
         }
       }

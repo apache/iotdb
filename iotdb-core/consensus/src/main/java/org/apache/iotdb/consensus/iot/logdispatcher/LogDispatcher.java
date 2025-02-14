@@ -98,13 +98,7 @@ public class LogDispatcher {
 
   public synchronized void start() {
     if (!threads.isEmpty()) {
-      threads.stream()
-          .filter(LogDispatcherThread::notSubmitted)
-          .forEach(
-              logDispatcherThread -> {
-                executorService.submit(logDispatcherThread);
-                logDispatcherThread.setSubmitted();
-              });
+      threads.forEach(logDispatcherThread -> executorService.submit(logDispatcherThread));
     }
   }
 
@@ -126,7 +120,8 @@ public class LogDispatcher {
     stopped = true;
   }
 
-  public synchronized void addLogDispatcherThread(Peer peer, long initialSyncIndex) {
+  public synchronized void addLogDispatcherThread(
+      Peer peer, long initialSyncIndex, boolean startNow) {
     if (stopped) {
       return;
     }
@@ -137,9 +132,8 @@ public class LogDispatcher {
     if (this.executorService == null) {
       initLogSyncThreadPool();
     }
-    if (thread.notSubmitted()) {
+    if (startNow) {
       executorService.submit(thread);
-      thread.setSubmitted();
     }
   }
 
@@ -232,7 +226,6 @@ public class LogDispatcher {
         (ConsensusReqReader) impl.getStateMachine().read(new GetConsensusReqReaderPlan());
     private final IoTConsensusMemoryManager iotConsensusMemoryManager =
         IoTConsensusMemoryManager.getInstance();
-    private boolean submitted = false;
     private volatile boolean stopped = false;
 
     private final ConsensusReqReader.ReqIterator walEntryIterator;
@@ -585,14 +578,6 @@ public class LogDispatcher {
         IndexedConsensusRequest request, Batch logBatches) {
       logBatches.addTLogEntry(
           new TLogEntry(request.getSerializedRequests(), request.getSearchIndex(), false));
-    }
-
-    public boolean notSubmitted() {
-      return !submitted;
-    }
-
-    public void setSubmitted() {
-      submitted = true;
     }
   }
 }
