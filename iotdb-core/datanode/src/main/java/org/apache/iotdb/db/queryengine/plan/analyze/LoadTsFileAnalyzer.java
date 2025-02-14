@@ -236,9 +236,16 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
             : null;
 
     if (status == null) {
+      LOGGER.warn(
+          "Load: Failed to convert to tablets from statement {}. Status is null.",
+          loadTsFileStatement);
       analysis.setFailStatus(
           new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
     } else if (!loadTsFileDataTypeConverter.isSuccessful(status)) {
+      LOGGER.warn(
+          "Load: Failed to convert to tablets from statement {}. Status: {}",
+          loadTsFileStatement,
+          status);
       analysis.setFailStatus(status);
     }
 
