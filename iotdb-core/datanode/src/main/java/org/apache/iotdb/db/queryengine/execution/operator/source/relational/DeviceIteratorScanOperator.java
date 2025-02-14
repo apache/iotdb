@@ -157,7 +157,8 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
 
   @Override
   protected List<TSDataType> getResultDataTypes() {
-    throw new RuntimeException("Should not call getResultDataTypes here");
+    throw new UnsupportedOperationException(
+        "Should not call getResultDataTypes() method in DeviceIteratorScanOperator");
   }
 
   @Override

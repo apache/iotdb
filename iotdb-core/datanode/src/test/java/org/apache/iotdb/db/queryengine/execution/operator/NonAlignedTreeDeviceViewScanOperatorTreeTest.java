@@ -85,7 +85,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
 
   private static final String NON_ALIGNED_TREE_DEVICE_VIEW_SCAN_OPERATOR_TREE_TEST =
       "root.NonAlignedTreeDeviceViewScanOperatorTreeTest";
-  private TableOperatorGenerator tableOperatorGenerator =
+  private final TableOperatorGenerator tableOperatorGenerator =
       new TableOperatorGenerator(new TestMatadata());
   private final List<String> deviceIds = new ArrayList<>();
   private final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
@@ -112,6 +112,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
   public void testScanWithLimitAndOffset() {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    Operator operator = null;
     try {
       QueryId queryId = new QueryId("stub_query");
       FragmentInstanceId instanceId =
@@ -131,7 +132,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
       LocalExecutionPlanContext localExecutionPlanContext =
           new LocalExecutionPlanContext(
               new TypeProvider(), fragmentInstanceContext, new DataNodeQueryContext(1));
-      Operator operator =
+      operator =
           tableOperatorGenerator.visitTreeNonAlignedDeviceViewScan(node, localExecutionPlanContext);
       ((DataDriverContext) localExecutionPlanContext.getDriverContext())
           .getSourceOperators()
@@ -155,11 +156,17 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
         count += tsBlock.getPositionCount();
       }
       assertEquals(500, count);
-      operator.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
+      if (operator != null) {
+        try {
+          operator.close();
+        } catch (Exception ignored) {
+
+        }
+      }
       instanceNotificationExecutor.shutdown();
     }
   }
@@ -168,6 +175,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
   public void testScanAndPushLimitToEachDevice() {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    Operator operator = null;
     try {
       QueryId queryId = new QueryId("stub_query");
       FragmentInstanceId instanceId =
@@ -187,7 +195,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
       LocalExecutionPlanContext localExecutionPlanContext =
           new LocalExecutionPlanContext(
               new TypeProvider(), fragmentInstanceContext, new DataNodeQueryContext(1));
-      Operator operator =
+      operator =
           tableOperatorGenerator.visitTreeNonAlignedDeviceViewScan(node, localExecutionPlanContext);
       ((DataDriverContext) localExecutionPlanContext.getDriverContext())
           .getSourceOperators()
@@ -211,11 +219,16 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
         count += tsBlock.getPositionCount();
       }
       assertEquals(1500, count);
-      operator.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
+      if (operator != null) {
+        try {
+          operator.close();
+        } catch (Exception ignored) {
+        }
+      }
       instanceNotificationExecutor.shutdown();
     }
   }
@@ -224,6 +237,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
   public void testScanWithPushDownPredicate() {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    Operator operator = null;
     try {
       QueryId queryId = new QueryId("stub_query");
       FragmentInstanceId instanceId =
@@ -263,7 +277,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
       LocalExecutionPlanContext localExecutionPlanContext =
           new LocalExecutionPlanContext(
               typeProvider, fragmentInstanceContext, new DataNodeQueryContext(1));
-      Operator operator =
+      operator =
           tableOperatorGenerator.visitTreeNonAlignedDeviceViewScan(node, localExecutionPlanContext);
       ((DataDriverContext) localExecutionPlanContext.getDriverContext())
           .getSourceOperators()
@@ -287,11 +301,16 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
         count += tsBlock.getPositionCount();
       }
       assertEquals(1320, count);
-      operator.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
+      if (operator != null) {
+        try {
+          operator.close();
+        } catch (Exception ignored) {
+        }
+      }
       instanceNotificationExecutor.shutdown();
     }
   }
@@ -300,6 +319,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
   public void testScanWithPushDownPredicateAndPushLimitToEachDevice() {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    Operator operator = null;
     try {
       QueryId queryId = new QueryId("stub_query");
       FragmentInstanceId instanceId =
@@ -341,7 +361,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
       LocalExecutionPlanContext localExecutionPlanContext =
           new LocalExecutionPlanContext(
               typeProvider, fragmentInstanceContext, new DataNodeQueryContext(1));
-      Operator operator =
+      operator =
           tableOperatorGenerator.visitTreeNonAlignedDeviceViewScan(node, localExecutionPlanContext);
       ((DataDriverContext) localExecutionPlanContext.getDriverContext())
           .getSourceOperators()
@@ -365,11 +385,16 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
         count += tsBlock.getPositionCount();
       }
       assertEquals(30, count);
-      operator.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
+      if (operator != null) {
+        try {
+          operator.close();
+        } catch (Exception ignored) {
+        }
+      }
       instanceNotificationExecutor.shutdown();
     }
   }

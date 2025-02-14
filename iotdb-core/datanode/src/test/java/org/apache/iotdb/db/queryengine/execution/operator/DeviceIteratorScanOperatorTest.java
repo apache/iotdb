@@ -91,6 +91,7 @@ public class DeviceIteratorScanOperatorTest {
   public void test1() {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    DeviceIteratorScanOperator operator = null;
     try {
       QueryId queryId = new QueryId("stub_query");
       FragmentInstanceId instanceId =
@@ -162,7 +163,7 @@ public class DeviceIteratorScanOperatorTest {
               return currentDeviceRootOperator;
             }
           };
-      DeviceIteratorScanOperator operator =
+      operator =
           new DeviceIteratorScanOperator(
               driverContext.getOperatorContexts().get(0), deviceEntries, generator);
       operator.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
@@ -205,11 +206,16 @@ public class DeviceIteratorScanOperatorTest {
       }
       assertEquals(500, count);
 
-      operator.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail();
     } finally {
+      if (operator != null) {
+        try {
+          operator.close();
+        } catch (Exception ignored) {
+        }
+      }
       instanceNotificationExecutor.shutdown();
     }
   }

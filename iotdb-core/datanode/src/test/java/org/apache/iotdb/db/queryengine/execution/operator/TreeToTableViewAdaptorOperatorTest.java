@@ -100,6 +100,7 @@ public class TreeToTableViewAdaptorOperatorTest {
   public void test1() {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    Operator operator = null;
     try {
       AlignedFullPath alignedPath =
           new AlignedFullPath(
@@ -169,7 +170,7 @@ public class TreeToTableViewAdaptorOperatorTest {
               TsTableColumnCategory.TIME));
       columnIndexArray[measurementSchemas.size() + 2] = -1;
 
-      TreeToTableViewAdaptorOperator operator =
+      operator =
           new TreeToTableViewAdaptorOperator(
               driverContext.addOperatorContext(
                   2, planNodeId, TreeToTableViewAdaptorOperator.class.getSimpleName()),
@@ -220,12 +221,17 @@ public class TreeToTableViewAdaptorOperatorTest {
           assertEquals("attr1", tsBlock.getColumn(7).getBinary(i).toString());
         }
       }
-      operator.close();
       Assert.assertEquals(500, count);
     } catch (Exception e) {
       e.printStackTrace();
       fail();
     } finally {
+      if (operator != null) {
+        try {
+          operator.close();
+        } catch (Exception ignored) {
+        }
+      }
       instanceNotificationExecutor.shutdown();
     }
   }
