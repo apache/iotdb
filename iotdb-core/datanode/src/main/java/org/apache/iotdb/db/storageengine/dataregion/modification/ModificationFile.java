@@ -48,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
@@ -119,13 +120,15 @@ public class ModificationFile implements AutoCloseable {
           cascadeFile.write(entry);
         }
       }
+
+      if (!fileExists) {
+        fileExists = true;
+        updateFileNum = 1;
+      }
     } finally {
       lock.writeLock().unlock();
     }
-    if (!fileExists) {
-      fileExists = true;
-      updateFileNum = 1;
-    }
+
     updateModFileMetric(updateFileNum, size);
   }
 
@@ -152,13 +155,15 @@ public class ModificationFile implements AutoCloseable {
           cascadeFile.write(entries);
         }
       }
+
+      if (!fileExists) {
+        updateFileNum = 1;
+        fileExists = true;
+      }
     } finally {
       lock.writeLock().unlock();
     }
-    if (!fileExists) {
-      updateFileNum = 1;
-      fileExists = true;
-    }
+
     updateModFileMetric(updateFileNum, size);
   }
 
@@ -339,7 +344,7 @@ public class ModificationFile implements AutoCloseable {
     lock.writeLock().lock();
     try {
       close();
-      FileUtils.deleteFileOrDirectory(file);
+      FileUtils.deleteFileOrDirectory(file, true);
       if (fileExists) {
         updateModFileMetric(-1, -getFileLength());
       }
@@ -394,7 +399,6 @@ public class ModificationFile implements AutoCloseable {
         Map<PartialPath, List<ModEntry>> pathModificationMap =
             getAllMods().stream().collect(Collectors.groupingBy(ModEntry::keyOfPatternTree));
         String newModsFileName = getFile().getPath() + COMPACT_SUFFIX;
-        List<ModEntry> allSettledModifications = new ArrayList<>();
         try (ModificationFile compactedModificationFile =
             new ModificationFile(newModsFileName, false)) {
           Set<Entry<PartialPath, List<ModEntry>>> modificationsEntrySet =
@@ -402,7 +406,6 @@ public class ModificationFile implements AutoCloseable {
           for (Map.Entry<PartialPath, List<ModEntry>> modificationEntry : modificationsEntrySet) {
             List<ModEntry> settledModifications = sortAndMerge(modificationEntry.getValue());
             compactedModificationFile.write(settledModifications);
-            allSettledModifications.addAll(settledModifications);
           }
         } catch (IOException e) {
           LOGGER.error("compact mods file exception of {}", file, e);
@@ -425,6 +428,23 @@ public class ModificationFile implements AutoCloseable {
       }
       hasCompacted = true;
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    ModificationFile that = (ModificationFile) o;
+    return Objects.equals(file, that.file);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(file);
   }
 
   public void setCascadeFile(Set<ModificationFile> cascadeFiles) {

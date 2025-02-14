@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -33,11 +35,21 @@ import java.util.TreeMap;
 @SuppressWarnings("FieldCanBeLocal")
 public class PartitionLevelModFileManager implements ModFileManagement {
 
-  private final int levelModFileNumThreshold = 30;
-  private final long singleModFileSizeThresholdByte = 16 * 1024L;
+  private int levelModFileNumThreshold =
+      IoTDBDescriptor.getInstance().getConfig().getLevelModFileNumThreshold();
+  private long singleModFileSizeThresholdByte =
+      IoTDBDescriptor.getInstance().getConfig().getSingleModFileSizeThresholdByte();
   // level -> mod file id -> mod file
   private final Map<Long, TreeMap<Long, ModificationFile>> levelModFileIdMap = new HashMap<>();
   private final Map<ModificationFile, Set<TsFileResource>> modFileReferences = new HashMap<>();
+
+  public PartitionLevelModFileManager() {}
+
+  public PartitionLevelModFileManager(
+      int levelModFileNumThreshold, long singleModFileSizeThresholdByte) {
+    this.levelModFileNumThreshold = levelModFileNumThreshold;
+    this.singleModFileSizeThresholdByte = singleModFileSizeThresholdByte;
+  }
 
   @Override
   public synchronized ModificationFile recover(String modFilePath, TsFileResource tsFileResource)
@@ -58,17 +70,18 @@ public class PartitionLevelModFileManager implements ModFileManagement {
   }
 
   @Override
-  public ModificationFile allocateFor(TsFileResource tsFileResource) throws IOException {
+  public ModificationFile allocateFor(TsFileResource tsFileResource) {
     TsFileResource prev = tsFileResource.getPrev();
     TsFileResource next = tsFileResource.getNext();
     while (prev != null || next != null) {
+      // probe backward
       if (prev != null) {
         ModificationFile sharedModFile = prev.getSharedModFile();
         if (sharedModFile != null) {
           if (tryShare(sharedModFile, prev, tsFileResource)) {
             return sharedModFile;
           } else {
-            // do not prove further if a TsFile with mod is already found
+            // do not probe further if a TsFile with mod is already found
             prev = null;
           }
         } else {
@@ -76,13 +89,14 @@ public class PartitionLevelModFileManager implements ModFileManagement {
         }
       }
 
+      // probe forward
       if (next != null) {
         ModificationFile sharedModFile = next.getSharedModFile();
         if (sharedModFile != null) {
           if (tryShare(sharedModFile, next, tsFileResource)) {
             return sharedModFile;
           } else {
-            // do not prove further if a TsFile with mod is already found
+            // do not probe further if a TsFile with mod is already found
             next = null;
           }
         } else {
@@ -95,8 +109,7 @@ public class PartitionLevelModFileManager implements ModFileManagement {
   }
 
   private synchronized boolean tryShare(
-      ModificationFile sharedModFile, TsFileResource modFileHolder, TsFileResource toAllocate)
-      throws IOException {
+      ModificationFile sharedModFile, TsFileResource modFileHolder, TsFileResource toAllocate) {
     Set<TsFileResource> references = modFileReferences.get(sharedModFile);
     if (references.isEmpty()) {
       // the mod file is to be deleted, cannot share
@@ -104,7 +117,8 @@ public class PartitionLevelModFileManager implements ModFileManagement {
     }
 
     long level = modFileHolder.getTsFileID().compactionVersion;
-    TreeMap<Long, ModificationFile> idModificationMap = levelModFileIdMap.get(level);
+    TreeMap<Long, ModificationFile> idModificationMap =
+        levelModFileIdMap.computeIfAbsent(level, l -> new TreeMap<>());
     if (idModificationMap.size() > levelModFileNumThreshold) {
       // too many mod files already, must share
       references.add(toAllocate);
@@ -143,10 +157,12 @@ public class PartitionLevelModFileManager implements ModFileManagement {
   public synchronized void releaseFor(
       TsFileResource tsFileResource, ModificationFile modificationFile) throws IOException {
     Set<TsFileResource> references = modFileReferences.get(modificationFile);
-    references.remove(tsFileResource);
-    if (references.isEmpty()) {
-      modFileReferences.remove(modificationFile);
-      modificationFile.remove();
+    if (references != null) {
+      references.remove(tsFileResource);
+      if (references.isEmpty()) {
+        modFileReferences.remove(modificationFile);
+        modificationFile.remove();
+      }
     }
   }
 
@@ -154,5 +170,10 @@ public class PartitionLevelModFileManager implements ModFileManagement {
   public synchronized void addReference(
       TsFileResource tsFileResource, ModificationFile modificationFile) {
     modFileReferences.computeIfAbsent(modificationFile, f -> new HashSet<>()).add(tsFileResource);
+  }
+
+  @Override
+  public synchronized int referenceCount(ModificationFile modificationFile) {
+    return modFileReferences.getOrDefault(modificationFile, Collections.emptySet()).size();
   }
 }
