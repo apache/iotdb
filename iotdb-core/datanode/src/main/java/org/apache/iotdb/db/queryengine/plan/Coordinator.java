@@ -82,6 +82,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSystemStatus;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
@@ -421,6 +422,7 @@ public class Coordinator {
         || statement instanceof RemoveDataNode
         || statement instanceof SubscriptionStatement
         || statement instanceof ShowCurrentSqlDialect
+        || statement instanceof SetSqlDialect
         || statement instanceof ShowCurrentUser
         || statement instanceof ShowCurrentDatabase
         || statement instanceof ShowVersion

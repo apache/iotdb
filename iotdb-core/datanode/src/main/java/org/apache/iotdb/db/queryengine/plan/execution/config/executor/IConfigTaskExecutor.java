@@ -372,6 +372,8 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showCurrentSqlDialect(String sqlDialect);
 
+  SettableFuture<ConfigTaskResult> setSqlDialect(IClientSession.SqlDialect sqlDialect);
+
   SettableFuture<ConfigTaskResult> showCurrentUser(String currentUser);
 
   SettableFuture<ConfigTaskResult> showCurrentDatabase(@Nullable String currentDatabase);

@@ -126,6 +126,7 @@ statement
     | loadConfigurationStatement
     | setConfigurationStatement
     | showCurrentSqlDialectStatement
+    | setSqlDialectStatement
     | showCurrentUserStatement
     | showCurrentDatabaseStatement
     | showCurrentTimestampStatement
@@ -562,6 +563,10 @@ showCurrentSqlDialectStatement
     : SHOW CURRENT_SQL_DIALECT
     ;
 
+setSqlDialectStatement
+    : SET SQL_DIALECT EQ (TABLE | TREE)
+    ;
+
 showCurrentUserStatement
     : SHOW CURRENT_USER
     ;
@@ -619,11 +624,11 @@ listRolePrivilegeStatement
     ;
 
 listUserStatement
-    : LIST USER
+    : LIST USER (OF ROLE roleName=identifier)?
     ;
 
 listRoleStatement
-    : LIST ROLE
+    : LIST ROLE (OF USER userName=identifier)?
     ;
 
 
@@ -634,7 +639,7 @@ revokeStatement
 privilegeObjectScope
     : systemPrivileges
     | objectPrivileges ON objectType objectName=identifier
-    | objectPrivileges ON objectScope
+    | objectPrivileges ON (TABLE)? objectScope
     | objectPrivileges ON ANY
     | ALL
     ;
@@ -645,6 +650,7 @@ systemPrivileges
 
 objectPrivileges
     : objectPrivilege (',' objectPrivilege)*
+    | ALL
     ;
 
 objectScope
@@ -1405,6 +1411,7 @@ SINK: 'SINK';
 SKIP_TOKEN: 'SKIP';
 SOME: 'SOME';
 SOURCE: 'SOURCE';
+SQL_DIALECT: 'SQL_DIALECT';
 START: 'START';
 STATS: 'STATS';
 STOP: 'STOP';
@@ -1432,6 +1439,7 @@ TOPIC: 'TOPIC';
 TOPICS: 'TOPICS';
 TRAILING: 'TRAILING';
 TRANSACTION: 'TRANSACTION';
+TREE: 'TREE';
 TRIM: 'TRIM';
 TRUE: 'TRUE';
 TRUNCATE: 'TRUNCATE';

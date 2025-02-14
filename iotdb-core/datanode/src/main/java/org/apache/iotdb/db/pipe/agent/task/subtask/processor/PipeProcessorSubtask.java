@@ -228,10 +228,9 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     PipeProcessorMetrics.getInstance().deregister(taskID);
     try {
       isClosed.set(true);
-
-      // pipeProcessor closes first, then no more events will be added into outputEventCollector.
-      // only after that, outputEventCollector can be closed.
       pipeProcessor.close();
+      // It is important to note that even if the subtask and its corresponding processor are
+      // closed, the execution thread may still deliver events downstream.
     } catch (final Exception e) {
       LOGGER.info(
           "Exception occurred when closing pipe processor subtask {}, root cause: {}",
