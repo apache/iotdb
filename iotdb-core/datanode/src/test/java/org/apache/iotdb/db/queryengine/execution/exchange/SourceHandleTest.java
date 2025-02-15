@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
@@ -193,8 +194,9 @@ public class SourceHandleTest {
 
     // Construct a mock LocalMemoryManager with capacity 5 * MOCK_TSBLOCK_SIZE per query.
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
+    MemoryManager memoryManager = Mockito.spy(new MemoryManager(10 * MOCK_TSBLOCK_SIZE));
     MemoryPool spyMemoryPool =
-        Mockito.spy(new MemoryPool("test", 10 * MOCK_TSBLOCK_SIZE, 5 * MOCK_TSBLOCK_SIZE));
+        Mockito.spy(new MemoryPool("test", memoryManager, 5 * MOCK_TSBLOCK_SIZE));
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(spyMemoryPool);
     IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> mockClientManager =
         Mockito.mock(IClientManager.class);

@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
@@ -55,7 +56,8 @@ public class MPPDataExchangeManagerTest {
 
     // Construct a mock LocalMemoryManager with capacity 5 * mockTsBlockSize per query.
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
-    MemoryPool spyMemoryPool = Mockito.spy(new MemoryPool("test", 10240L, 5120L));
+    MemoryManager memoryManager = Mockito.spy(new MemoryManager(10240L));
+    MemoryPool spyMemoryPool = Mockito.spy(new MemoryPool("test", memoryManager, 5120L));
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(spyMemoryPool);
 
     MPPDataExchangeManager mppDataExchangeManager =
@@ -111,7 +113,8 @@ public class MPPDataExchangeManagerTest {
 
     // Construct a mock LocalMemoryManager with capacity 5 * mockTsBlockSize per query.
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
-    MemoryPool spyMemoryPool = Mockito.spy(new MemoryPool("test", 10240L, 5120L));
+    MemoryManager memoryManager = Mockito.spy(new MemoryManager(10240L));
+    MemoryPool spyMemoryPool = Mockito.spy(new MemoryPool("test", memoryManager, 5120L));
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(spyMemoryPool);
 
     MPPDataExchangeManager mppDataExchangeManager =

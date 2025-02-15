@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.schemaengine.rescon;
 
+import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
@@ -36,12 +38,10 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   private static final Logger logger = LoggerFactory.getLogger(MemSchemaEngineStatistics.class);
 
   // Total size of schema region
-  private final long memoryCapacity =
-      IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion();
+  private final IMemoryBlock memoryBlock;
   private final ClusterTemplateManager clusterTemplateManager =
       ClusterTemplateManager.getInstance();
 
-  protected final AtomicLong memoryUsage = new AtomicLong(0);
   private final AtomicLong totalMeasurementNumber = new AtomicLong(0);
   private final AtomicLong totalViewNumber = new AtomicLong(0);
   private final AtomicLong totalDeviceNumber = new AtomicLong(0);
@@ -54,6 +54,14 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   // In pbtree mode, we only need related log for debug.
   protected volatile boolean needLog = true;
 
+  public MemSchemaEngineStatistics() {
+    memoryBlock =
+        IoTDBDescriptor.getInstance()
+            .getConfig()
+            .getSchemaRegionMemoryManager()
+            .forceAllocate("SchemaRegion", MemoryBlockType.FUNCTION);
+  }
+
   @Override
   public boolean isAllowToCreateNewSeries() {
     return allowToCreateNewSeries;
@@ -61,28 +69,31 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
   @Override
   public boolean isExceedCapacity() {
-    return memoryUsage.get() > memoryCapacity;
+    return memoryBlock.getUsedMemoryInBytes() > memoryBlock.getTotalMemorySizeInBytes();
   }
 
   @Override
   public long getMemoryCapacity() {
-    return memoryCapacity;
+    return memoryBlock.getTotalMemorySizeInBytes();
   }
 
   @Override
   public long getMemoryUsage() {
-    return memoryUsage.get();
+    return memoryBlock.getUsedMemoryInBytes();
   }
 
   public void requestMemory(final long size) {
-    memoryUsage.addAndGet(size);
-    if (memoryUsage.get() >= memoryCapacity) {
+    memoryBlock.forceAllocate(size);
+    if (memoryBlock.getUsedMemoryInBytes() >= memoryBlock.getTotalMemorySizeInBytes()) {
       synchronized (allowToCreateNewSeriesLock) {
-        if (allowToCreateNewSeries && memoryUsage.get() >= memoryCapacity) {
+        if (allowToCreateNewSeries
+            && memoryBlock.getUsedMemoryInBytes() >= memoryBlock.getTotalMemorySizeInBytes()) {
           if (needLog) {
-            logger.warn("Current series memory {} is too large...", memoryUsage);
+            logger.warn(
+                "Current series memory {} is too large...", memoryBlock.getUsedMemoryInBytes());
           } else {
-            logger.debug("Current series memory {} is too large...", memoryUsage);
+            logger.debug(
+                "Current series memory {} is too large...", memoryBlock.getUsedMemoryInBytes());
           }
           allowToCreateNewSeries = false;
         }
@@ -91,19 +102,20 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   }
 
   public void releaseMemory(final long size) {
-    memoryUsage.addAndGet(-size);
-    if (memoryUsage.get() < memoryCapacity) {
+    memoryBlock.release(size);
+    if (memoryBlock.getUsedMemoryInBytes() < memoryBlock.getTotalMemorySizeInBytes()) {
       synchronized (allowToCreateNewSeriesLock) {
-        if (!allowToCreateNewSeries && memoryUsage.get() < memoryCapacity) {
+        if (!allowToCreateNewSeries
+            && memoryBlock.getUsedMemoryInBytes() < memoryBlock.getTotalMemorySizeInBytes()) {
           if (needLog) {
             logger.info(
                 "Current series memory {} come back to normal level, total series number is {}.",
-                memoryUsage,
+                memoryBlock.getUsedMemoryInBytes(),
                 totalMeasurementNumber.get() + totalViewNumber.get());
           } else {
             logger.debug(
                 "Current series memory {} come back to normal level, total series number is {}.",
-                memoryUsage,
+                memoryBlock.getUsedMemoryInBytes(),
                 totalMeasurementNumber.get() + totalViewNumber.get());
           }
           allowToCreateNewSeries = true;
