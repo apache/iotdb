@@ -324,6 +324,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
+    cnConfig.setMqttPayloadFormatter(mqttPayloadFormatter);
+    dnConfig.setMqttPayloadFormatter(mqttPayloadFormatter);
+    return this;
+  }
+
+  @Override
   public CommonConfig setSchemaEngineMode(String schemaEngineMode) {
     cnConfig.setSchemaEngineMode(schemaEngineMode);
     dnConfig.setSchemaEngineMode(schemaEngineMode);

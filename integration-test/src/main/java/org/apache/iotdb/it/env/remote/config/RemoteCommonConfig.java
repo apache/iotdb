@@ -227,6 +227,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setSchemaEngineMode(String schemaEngineMode) {
     return this;
   }
