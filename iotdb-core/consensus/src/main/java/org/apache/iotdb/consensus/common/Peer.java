@@ -35,14 +35,15 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Comparator;
 import java.util.Objects;
 
-public class Peer {
+public class Peer implements Comparable<Peer> {
 
   private final Logger logger = LoggerFactory.getLogger(Peer.class);
   private final ConsensusGroupId groupId;
-  private final TEndPoint endpoint;
   private final int nodeId;
+  private final TEndPoint endpoint;
 
   public Peer(ConsensusGroupId groupId, int nodeId, TEndPoint endpoint) {
     this.groupId = groupId;
@@ -103,6 +104,14 @@ public class Peer {
   @Override
   public String toString() {
     return "Peer{" + "groupId=" + groupId + ", endpoint=" + endpoint + ", nodeId=" + nodeId + '}';
+  }
+
+  @Override
+  public int compareTo(Peer peer) {
+    return Comparator.comparing(Peer::getGroupId)
+        .thenComparingInt(Peer::getNodeId)
+        .thenComparing(Peer::getEndpoint)
+        .compare(this, peer);
   }
 
   public static Peer valueOf(
