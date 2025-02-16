@@ -28,7 +28,7 @@ import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 
 public abstract class PipeTransferTrackableHandler
-    implements AsyncMethodCallback<TPipeTransferResp> {
+    implements AsyncMethodCallback<TPipeTransferResp>, AutoCloseable {
 
   protected final IoTDBDataRegionAsyncConnector connector;
 
@@ -42,10 +42,11 @@ public abstract class PipeTransferTrackableHandler
       if (onCompleteInternal(response)) {
         // eliminate handler only when all transmissions corresponding to the handler have been
         // completed
+        close();
         connector.eliminateHandler(this);
       }
     } else {
-      clearEventsReferenceCount();
+      close();
       connector.eliminateHandler(this);
     }
   }
@@ -55,7 +56,7 @@ public abstract class PipeTransferTrackableHandler
     if (!connector.isClosed()) {
       onErrorInternal(exception);
     } else {
-      clearEventsReferenceCount();
+      close();
     }
     connector.eliminateHandler(this);
   }
@@ -75,7 +76,7 @@ public abstract class PipeTransferTrackableHandler
     // track handler before checking if connector is closed
     connector.trackHandler(this);
     if (connector.isClosed()) {
-      clearEventsReferenceCount();
+      close();
       return false;
     }
     doTransfer(client, req);
@@ -94,5 +95,8 @@ public abstract class PipeTransferTrackableHandler
       final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req)
       throws TException;
 
-  public abstract void clearEventsReferenceCount();
+  @Override
+  public void close() {
+    // do nothing
+  }
 }

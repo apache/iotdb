@@ -316,6 +316,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeTsFileParserCheckMemoryEnoughIntervalMs();
   }
 
+  public long getPipeTsFileSlicerCheckMemoryEnoughIntervalMs() {
+    return COMMON_CONFIG.getPipeTsFileSlicerCheckMemoryEnoughIntervalMs();
+  }
+
   /////////////////////////////// TwoStage ///////////////////////////////
 
   public long getTwoStageAggregateMaxCombinerLiveTimeInMs() {
@@ -477,6 +481,9 @@ public class PipeConfig {
     LOGGER.info(
         "PipeTsFileParserCheckMemoryEnoughIntervalMs: {}",
         getPipeTsFileParserCheckMemoryEnoughIntervalMs());
+    LOGGER.info(
+        "PipeTsFileSlicerCheckMemoryEnoughIntervalMs: {}",
+        getPipeTsFileSlicerCheckMemoryEnoughIntervalMs());
 
     LOGGER.info(
         "TwoStageAggregateMaxCombinerLiveTimeInMs: {}",

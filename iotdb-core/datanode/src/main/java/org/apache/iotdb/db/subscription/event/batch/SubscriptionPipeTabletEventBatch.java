@@ -317,7 +317,9 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       currentTsFileInsertionEvent = tsFileInsertionEvent;
       currentTabletInsertionEventsIterator =
           tsFileInsertionEvent
-              .toTabletInsertionEvents(SubscriptionAgent.receiver().remainingMs())
+              .toTabletInsertionEvents(
+                  // disrupt parsing requests through the introduction of randomness
+                  (long) ((1 + Math.random()) * SubscriptionAgent.receiver().remainingMs()))
               .iterator();
       return next();
     } else if (enrichedEvent instanceof TabletInsertionEvent) {

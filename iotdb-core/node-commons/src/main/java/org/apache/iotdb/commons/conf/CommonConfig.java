@@ -277,6 +277,7 @@ public class CommonConfig {
   private long pipeMemoryAllocateForTsFileSequenceReaderInBytes = (long) 2 * 1024 * 1024; // 2MB
   private long pipeMemoryExpanderIntervalSeconds = (long) 3 * 60; // 3Min
   private volatile long pipeTsFileParserCheckMemoryEnoughIntervalMs = 10L;
+  private volatile long pipeTsFileSlicerCheckMemoryEnoughIntervalMs = 10L;
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
   private long pipeListeningQueueTransferSnapshotThreshold = 1000;
   private int pipeSnapshotExecutionMaxBatchSize = 1000;
@@ -1150,6 +1151,15 @@ public class CommonConfig {
   public void setPipeTsFileParserCheckMemoryEnoughIntervalMs(
       long pipeTsFileParserCheckMemoryEnoughIntervalMs) {
     this.pipeTsFileParserCheckMemoryEnoughIntervalMs = pipeTsFileParserCheckMemoryEnoughIntervalMs;
+  }
+
+  public long getPipeTsFileSlicerCheckMemoryEnoughIntervalMs() {
+    return pipeTsFileSlicerCheckMemoryEnoughIntervalMs;
+  }
+
+  public void setPipeTsFileSlicerCheckMemoryEnoughIntervalMs(
+      long pipeTsFileSlicerCheckMemoryEnoughIntervalMs) {
+    this.pipeTsFileSlicerCheckMemoryEnoughIntervalMs = pipeTsFileSlicerCheckMemoryEnoughIntervalMs;
   }
 
   public int getPipeMemoryAllocateMaxRetries() {
