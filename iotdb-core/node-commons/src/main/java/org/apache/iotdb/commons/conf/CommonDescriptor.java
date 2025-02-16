@@ -591,6 +591,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_tsfile_parser_check_memory_enough_interval_ms",
                 String.valueOf(config.getPipeTsFileParserCheckMemoryEnoughIntervalMs()))));
+    config.setPipeTsFileSlicerCheckMemoryEnoughIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_tsfile_slicer_check_memory_enough_interval_ms",
+                String.valueOf(config.getPipeTsFileSlicerCheckMemoryEnoughIntervalMs()))));
     config.setPipeLeaderCacheMemoryUsagePercentage(
         Float.parseFloat(
             properties.getProperty(

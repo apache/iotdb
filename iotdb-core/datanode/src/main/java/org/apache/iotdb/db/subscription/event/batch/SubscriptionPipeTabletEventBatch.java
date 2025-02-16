@@ -37,7 +37,6 @@ import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -61,7 +60,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   private final Meter insertNodeTabletInsertionEventSizeEstimator;
   private final Meter rawTabletInsertionEventSizeEstimator;
 
-  private volatile List<EnrichedEvent> iteratedEnrichedEvents;
+  private volatile SubscriptionPipeTabletIterationSnapshot iterationSnapshot;
   private final AtomicInteger referenceCount = new AtomicInteger();
 
   private static final long ITERATED_COUNT_REPORT_FREQ =
@@ -88,7 +87,17 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   @Override
   public synchronized void ack() {
     referenceCount.decrementAndGet();
-    // do nothing for iterated enriched events, see SubscriptionPipeTabletBatchEvents
+
+    // we decrease the reference count of events if and only if when the whole batch is consumed
+    if (!hasNext() && referenceCount.get() == 0) {
+      for (final EnrichedEvent enrichedEvent : enrichedEvents) {
+        if (enrichedEvent instanceof PipeTsFileInsertionEvent) {
+          // close data container in tsfile event
+          ((PipeTsFileInsertionEvent) enrichedEvent).close();
+        }
+        enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
+      }
+    }
   }
 
   @Override
@@ -200,26 +209,29 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
   /////////////////////////////// iterator ///////////////////////////////
 
-  public List<EnrichedEvent> sendIterationSnapshot() {
-    final List<EnrichedEvent> result = Collections.unmodifiableList(iteratedEnrichedEvents);
-    iteratedEnrichedEvents = new ArrayList<>();
+  public synchronized SubscriptionPipeTabletIterationSnapshot sendIterationSnapshot() {
+    final SubscriptionPipeTabletIterationSnapshot result = iterationSnapshot;
+    iterationSnapshot = new SubscriptionPipeTabletIterationSnapshot();
     referenceCount.incrementAndGet();
     return result;
   }
 
-  public void resetForIteration() {
+  public synchronized void resetForIteration() {
     currentEnrichedEventsIterator = enrichedEvents.iterator();
     currentTabletInsertionEventsIterator = null;
     currentTsFileInsertionEvent = null;
 
-    iteratedEnrichedEvents = new ArrayList<>();
+    if (Objects.nonNull(iterationSnapshot)) {
+      iterationSnapshot.clear();
+    }
+    iterationSnapshot = new SubscriptionPipeTabletIterationSnapshot();
     referenceCount.set(0);
 
     iteratedCount.set(0);
   }
 
   @Override
-  public boolean hasNext() {
+  public synchronized boolean hasNext() {
     if (Objects.nonNull(currentTabletInsertionEventsIterator)) {
       if (currentTabletInsertionEventsIterator.hasNext()) {
         return true;
@@ -245,7 +257,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   }
 
   @Override
-  public List<Tablet> next() {
+  public synchronized List<Tablet> next() {
     final List<Tablet> tablets = nextInternal();
     if (Objects.isNull(tablets)) {
       return null;
@@ -267,8 +279,16 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       if (currentTabletInsertionEventsIterator.hasNext()) {
         final TabletInsertionEvent tabletInsertionEvent =
             currentTabletInsertionEventsIterator.next();
+        if (!((EnrichedEvent) tabletInsertionEvent)
+            .increaseReferenceCount(this.getClass().getName())) {
+          LOGGER.warn(
+              "SubscriptionPipeTabletEventBatch: Failed to increase the reference count of event {}, skipping it.",
+              ((EnrichedEvent) tabletInsertionEvent).coreReportMessage());
+        } else {
+          iterationSnapshot.addParsedEnrichedEvent((EnrichedEvent) tabletInsertionEvent);
+        }
         if (!currentTabletInsertionEventsIterator.hasNext()) {
-          iteratedEnrichedEvents.add((EnrichedEvent) currentTsFileInsertionEvent);
+          iterationSnapshot.addIteratedEnrichedEvent((EnrichedEvent) currentTsFileInsertionEvent);
         }
         return convertToTablets(tabletInsertionEvent);
       } else {
@@ -297,11 +317,13 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       currentTsFileInsertionEvent = tsFileInsertionEvent;
       currentTabletInsertionEventsIterator =
           tsFileInsertionEvent
-              .toTabletInsertionEvents(SubscriptionAgent.receiver().remainingMs())
+              .toTabletInsertionEvents(
+                  // disrupt parsing requests through the introduction of randomness
+                  (long) ((1 + Math.random()) * SubscriptionAgent.receiver().remainingMs()))
               .iterator();
       return next();
     } else if (enrichedEvent instanceof TabletInsertionEvent) {
-      iteratedEnrichedEvents.add(enrichedEvent);
+      iterationSnapshot.addIteratedEnrichedEvent(enrichedEvent);
       return convertToTablets((TabletInsertionEvent) enrichedEvent);
     } else {
       LOGGER.warn(

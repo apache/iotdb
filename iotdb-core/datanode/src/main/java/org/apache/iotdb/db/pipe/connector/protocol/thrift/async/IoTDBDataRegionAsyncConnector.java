@@ -183,7 +183,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   private void transferInBatchWithoutCheck(
       final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch)
-      throws IOException, WriteProcessException {
+      throws IOException, WriteProcessException, InterruptedException {
     final PipeTabletEventBatch batch = endPointAndBatch.getRight();
 
     if (batch instanceof PipeTabletEventPlainBatch) {
@@ -472,7 +472,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   }
 
   /** Try its best to commit data in order. Flush can also be a trigger to transfer batched data. */
-  private void transferBatchedEventsIfNecessary() throws IOException, WriteProcessException {
+  private void transferBatchedEventsIfNecessary()
+      throws IOException, WriteProcessException, InterruptedException {
     if (!isTabletBatchModeEnabled || tabletBatchBuilder.isEmpty()) {
       return;
     }
@@ -564,7 +565,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
     // ensure all on-the-fly handlers have been cleared
     if (hasPendingHandlers()) {
-      pendingHandlers.forEach((handler, _handler) -> handler.clearEventsReferenceCount());
+      pendingHandlers.forEach((handler, _handler) -> handler.close());
       pendingHandlers.clear();
     }
 
