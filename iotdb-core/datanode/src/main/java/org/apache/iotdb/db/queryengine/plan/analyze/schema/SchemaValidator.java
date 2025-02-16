@@ -79,6 +79,7 @@ public class SchemaValidator {
               insertStatement.getTableName()));
       insertStatement.updateAfterSchemaValidation(context);
       insertStatement.validateDeviceSchema(metadata, context);
+      insertStatement.removeAttributeColumns();
     } catch (final QueryProcessException e) {
       throw new SemanticException(e.getMessage());
     }
