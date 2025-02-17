@@ -197,8 +197,8 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     }
 
     realtimeEvent =
-        trimRealtimeEventByPrivilege(realtimeEvent)
-            .flatMap(this::trimRealtimeEventByPipePattern)
+        trimRealtimeEventByPipePattern(realtimeEvent)
+            .flatMap(this::trimRealtimeEventByPrivilege)
             .orElse(null);
     iterator.next(0);
 
