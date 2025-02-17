@@ -27,6 +27,8 @@ import java.nio.charset.Charset;
 import java.time.ZoneId;
 import java.util.Optional;
 
+import static org.apache.iotdb.jdbc.Constant.TREE;
+
 public class IoTDBConnectionParams {
 
   private String host = Config.IOTDB_DEFAULT_HOST;
@@ -50,7 +52,7 @@ public class IoTDBConnectionParams {
   private String trustStore;
   private String trustStorePwd;
 
-  private String sqlDialect = "tree";
+  private String sqlDialect = TREE;
 
   private String db;
 
