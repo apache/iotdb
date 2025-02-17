@@ -336,6 +336,9 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       case RELATIONAL:
         // check any scope privilege
         if (union.isForAny()) {
+          if (union.getPrivilegeType() == null) {
+            return role.checkAnyVisible();
+          }
           if (union.isGrantOption()) {
             return role.checkAnyScopePrivilegeGrantOption(union.getPrivilegeType());
           }

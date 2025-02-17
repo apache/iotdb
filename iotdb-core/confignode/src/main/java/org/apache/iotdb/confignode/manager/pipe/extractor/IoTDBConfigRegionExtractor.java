@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.confignode.manager.pipe.extractor;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
@@ -36,6 +38,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
+import org.apache.iotdb.confignode.manager.PermissionManager;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
@@ -49,6 +52,7 @@ import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.HashSet;
 import java.util.Objects;
@@ -134,7 +138,23 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
 
   @Override
   protected boolean canSkipSnapshotPrivilegeCheck() {
-    return false;
+    final PermissionManager permissionManager =
+        ConfigNode.getInstance().getConfigManager().getPermissionManager();
+    return permissionManager
+                .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.MANAGE_USER))
+                .getStatus()
+                .getCode()
+            == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && permissionManager
+                .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
+                .getStatus()
+                .getCode()
+            == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && permissionManager
+                .checkUserPrivileges(userName, new PrivilegeUnion(null, false, true))
+                .getStatus()
+                .getCode()
+            == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
   @Override
