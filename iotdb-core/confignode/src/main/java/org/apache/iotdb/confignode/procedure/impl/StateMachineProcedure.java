@@ -155,11 +155,14 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
       TState state = getCurrentState();
       if (states.isEmpty()) {
         setNextState(getStateId(state));
+        addNextStateAndCalculateCycles();
       }
 
       LOG.trace("{}", this);
       stateFlow = executeFromState(env, state);
-      addNextStateAndCalculateCycles();
+      if (!isFailed()) {
+        addNextStateAndCalculateCycles();
+      }
       setStateDeserialized(false);
 
       if (!subProcList.isEmpty()) {
