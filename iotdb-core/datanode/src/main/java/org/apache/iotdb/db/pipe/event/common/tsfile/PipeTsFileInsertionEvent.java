@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.event.common.tsfile;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
@@ -77,6 +78,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   private boolean isWithMod;
   private File modFile;
   private File sharedModFile;
+  private boolean shouldParse4Privilege = false;
 
   private final boolean isLoaded;
   private final boolean isGeneratedByPipe;
@@ -373,6 +375,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   @Override
+  public boolean shouldParsePattern() {
+    return super.shouldParsePattern() || shouldParse4Privilege;
+  }
+
+  @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       final String pipeName,
       final long creationTime,
@@ -409,15 +416,23 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   @Override
   public void throwIfNoPrivilege() throws IOException {
-    if (skipIfNoPrivileges || !isTableModelEvent()) {
+    if (!isTableModelEvent()) {
       return;
     }
     for (final IDeviceID deviceID : getDeviceSet()) {
-      Coordinator.getInstance()
-          .getAccessControl()
-          .checkCanSelectFromTable(
-              userName,
-              new QualifiedObjectName(getTableModelDatabaseName(), deviceID.getTableName()));
+      try {
+        Coordinator.getInstance()
+            .getAccessControl()
+            .checkCanSelectFromTable(
+                userName,
+                new QualifiedObjectName(getTableModelDatabaseName(), deviceID.getTableName()));
+      } catch (final AccessDeniedException e) {
+        if (skipIfNoPrivileges) {
+          shouldParse4Privilege = true;
+        } else {
+          throw e;
+        }
+      }
     }
   }
 
@@ -479,17 +494,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   public boolean isTableModelEvent() {
     if (getRawIsTableModelEvent() == null) {
       try {
-        final Map<IDeviceID, Boolean> deviceIsAlignedMap =
-            PipeDataNodeResourceManager.tsfile()
-                .getDeviceIsAlignedMapFromCache(
-                    PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
-                        resource.getTsFile()),
-                    false);
-        final Set<IDeviceID> deviceSet =
-            Objects.nonNull(deviceIsAlignedMap)
-                ? deviceIsAlignedMap.keySet()
-                : resource.getDevices();
-        for (final IDeviceID deviceID : deviceSet) {
+        for (final IDeviceID deviceID : getDeviceSet()) {
           if (deviceID instanceof PlainDeviceID
               || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
               || deviceID.getTableName().equals(PATH_ROOT)) {
