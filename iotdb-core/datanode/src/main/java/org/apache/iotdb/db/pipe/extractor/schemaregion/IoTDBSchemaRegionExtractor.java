@@ -35,11 +35,13 @@ import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEven
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.metric.PipeSchemaRegionExtractorMetrics;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
+import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
@@ -64,6 +66,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   private SchemaRegionId schemaRegionId;
 
   private Set<PlanNodeType> listenedTypeSet = new HashSet<>();
+  private String database;
 
   @Override
   public void customize(
@@ -101,6 +104,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
         == 1) {
       SchemaRegionConsensusImpl.getInstance()
           .write(schemaRegionId, new PipeOperateSchemaQueueNode(new PlanNodeId(""), true));
+      database = SchemaEngine.getInstance().getSchemaRegion(schemaRegionId).getDatabaseFullPath();
     }
 
     super.start();
@@ -136,6 +140,18 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
     // The dataNode processor can sleep if it supplies null
     // Here we return immediately to be consistent with the data region extractor
     return 0;
+  }
+
+  @Override
+  protected boolean canSkipSnapshotPrivilegeCheck() {
+    try {
+      Coordinator.getInstance()
+          .getAccessControl()
+          .checkCanSelectFromDatabase4Pipe(userName, database);
+      return true;
+    } catch (final AccessDeniedException e) {
+      return false;
+    }
   }
 
   @Override

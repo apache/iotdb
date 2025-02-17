@@ -240,6 +240,8 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
   protected abstract long getMaxBlockingTimeMs();
 
+  protected abstract boolean canSkipSnapshotPrivilegeCheck();
+
   protected abstract Optional<PipeWritePlanEvent> trimRealtimeEventByPrivilege(
       final PipeWritePlanEvent event) throws AccessDeniedException;
 

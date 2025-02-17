@@ -133,6 +133,11 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
   }
 
   @Override
+  protected boolean canSkipSnapshotPrivilegeCheck() {
+    return false;
+  }
+
+  @Override
   protected Optional<PipeWritePlanEvent> trimRealtimeEventByPrivilege(
       final PipeWritePlanEvent event) {
     final Optional<ConfigPhysicalPlan> result =

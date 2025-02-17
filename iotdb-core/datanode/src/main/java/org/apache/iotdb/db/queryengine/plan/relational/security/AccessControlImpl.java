@@ -82,6 +82,11 @@ public class AccessControlImpl implements AccessControl {
   }
 
   @Override
+  public void checkCanSelectFromDatabase4Pipe(String userName, String databaseName) {
+    authChecker.checkDatabasePrivilege(userName, databaseName, TableModelPrivilege.SELECT);
+  }
+
+  @Override
   public boolean checkCanSelectFromTable4Pipe(
       final String userName, final QualifiedObjectName tableName) {
     return authChecker.checkTablePrivilege4Pipe(userName, tableName);
