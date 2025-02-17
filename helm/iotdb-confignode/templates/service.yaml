@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "iotdb-chart.fullname" . }}
+  labels:
+    {{- include "iotdb-chart.labels" . | nindent 4 }}
+spec:
+  ports:
+  {{- range .Values.service.ports }}
+    - name: {{ .name }}
+      port: {{ .port }}
+      targetPort: {{ .targetPort }}
+      protocol: TCP
+  {{- end }}
+  selector:
+    {{- include "iotdb-chart.selectorLabels" . | nindent 4 }}
+  clusterIP: None
+  type: {{ .Values.service.type }}
