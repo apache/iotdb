@@ -47,6 +47,7 @@ import java.util.Set;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoEnhanced.class})
 public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
+
   @Override
   @Before
   public void setUp() {
