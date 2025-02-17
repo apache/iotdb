@@ -148,9 +148,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
   public boolean login(String token, String password) throws AuthException {
     if (password != null && !password.isEmpty()) {
       logger.error(
-          "JWT Login failed as a non-empty Password was given username (token): {}, password: {}",
-          token,
-          password);
+          "JWT Login failed as a non-empty Password was given username (token): {}", token);
       return false;
     }
     if (token == null || token.isEmpty()) {
