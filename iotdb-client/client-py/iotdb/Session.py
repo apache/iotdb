@@ -19,10 +19,12 @@
 import logging
 import random
 import struct
+import sys
+import ssl
 import time
 import warnings
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
-from thrift.transport import TSocket, TTransport
+from thrift.transport import TSocket, TTransport, TSSLSocket
 
 from iotdb.utils.SessionDataSet import SessionDataSet
 from .template.Template import Template
@@ -84,6 +86,8 @@ class Session(object):
         fetch_size=DEFAULT_FETCH_SIZE,
         zone_id=DEFAULT_ZONE_ID,
         enable_redirection=True,
+        use_ssl=False,
+        ca_certs=None,
     ):
         self.__host = host
         self.__port = port
@@ -104,6 +108,8 @@ class Session(object):
         self.__enable_redirection = enable_redirection
         self.__device_id_to_endpoint = None
         self.__endpoint_to_connection = None
+        self.__use_ssl = use_ssl
+        self.__ca_certs = ca_certs
 
     @classmethod
     def init_from_node_urls(
@@ -114,11 +120,21 @@ class Session(object):
         fetch_size=DEFAULT_FETCH_SIZE,
         zone_id=DEFAULT_ZONE_ID,
         enable_redirection=True,
+        use_ssl=False,
+        ca_certs=None,
     ):
         if node_urls is None:
             raise RuntimeError("node urls is empty")
         session = Session(
-            None, None, user, password, fetch_size, zone_id, enable_redirection
+            None,
+            None,
+            user,
+            password,
+            fetch_size,
+            zone_id,
+            enable_redirection,
+            use_ssl=use_ssl,
+            ca_certs=ca_certs,
         )
         session.__hosts = []
         session.__ports = []
@@ -166,15 +182,31 @@ class Session(object):
             }
 
     def init_connection(self, endpoint):
-        transport = TTransport.TFramedTransport(
-            TSocket.TSocket(endpoint.ip, endpoint.port)
-        )
+        try:
+            if self.__use_ssl:
+                if sys.version_info >= (3, 10):
+                    context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+                else:
+                    context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+                    context.verify_mode = ssl.CERT_REQUIRED
+                    context.check_hostname = True
+                context.load_verify_locations(cafile=self.__ca_certs)
+                socket = TSSLSocket.TSSLSocket(
+                    host=endpoint.ip, port=endpoint.port, ssl_context=context
+                )
+            else:
+                socket = TSocket.TSocket(endpoint.ip, endpoint.port)
+            transport = TTransport.TFramedTransport(socket)
 
-        if not transport.isOpen():
-            try:
-                transport.open()
-            except TTransport.TTransportException as e:
-                raise IoTDBConnectionException(e) from None
+            if not transport.isOpen():
+                try:
+                    transport.open()
+                except TTransport.TTransportException as e:
+                    raise IoTDBConnectionException(e) from None
+        except ssl.SSLError as e:
+            print(f"SSL error occurred: {e}")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
 
         if self.__enable_rpc_compression:
             client = Client(TCompactProtocol.TCompactProtocolAccelerated(transport))
