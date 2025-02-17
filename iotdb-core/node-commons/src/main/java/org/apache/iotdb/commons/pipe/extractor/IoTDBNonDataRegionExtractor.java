@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.extractor;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
@@ -190,12 +191,17 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     }
 
     // Realtime
-    PipeWritePlanEvent realtimeEvent = (PipeWritePlanEvent) iterator.next(getMaxBlockingTimeMs());
+    PipeWritePlanEvent realtimeEvent = (PipeWritePlanEvent) iterator.peek(getMaxBlockingTimeMs());
     if (Objects.isNull(realtimeEvent)) {
       return null;
     }
 
-    realtimeEvent = trimRealtimeEventByPipePattern(realtimeEvent).orElse(null);
+    realtimeEvent =
+        trimRealtimeEventByPrivilege(realtimeEvent)
+            .flatMap(this::trimRealtimeEventByPipePattern)
+            .orElse(null);
+    iterator.next(0);
+
     if (Objects.isNull(realtimeEvent)
         || !isTypeListened(realtimeEvent)
         || (!isForwardingPipeRequests && realtimeEvent.isGeneratedByPipe())) {
@@ -233,6 +239,9 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
   }
 
   protected abstract long getMaxBlockingTimeMs();
+
+  protected abstract Optional<PipeWritePlanEvent> trimRealtimeEventByPrivilege(
+      final PipeWritePlanEvent event) throws AccessDeniedException;
 
   // The trimmed event shall be non-null.
   protected abstract Optional<PipeWritePlanEvent> trimRealtimeEventByPipePattern(

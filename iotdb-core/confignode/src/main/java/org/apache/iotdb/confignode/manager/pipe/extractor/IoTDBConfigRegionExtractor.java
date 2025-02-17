@@ -132,6 +132,7 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
     return PipeConfig.getInstance().getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();
   }
 
+  @Override
   protected Optional<PipeWritePlanEvent> trimRealtimeEventByPrivilege(
       final PipeWritePlanEvent event) {
     final Optional<ConfigPhysicalPlan> result =
