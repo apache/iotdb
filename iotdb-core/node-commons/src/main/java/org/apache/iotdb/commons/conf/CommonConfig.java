@@ -308,7 +308,7 @@ public class CommonConfig {
   private long subscriptionTsFileDeduplicationWindowSeconds = 120; // 120s
   private volatile long subscriptionCheckMemoryEnoughIntervalMs = 10L;
 
-  private boolean subscriptionPrefetchEnabled = true;
+  private boolean subscriptionPrefetchEnabled = false;
   private float subscriptionPrefetchMemoryThreshold = 0.5F;
   private float subscriptionPrefetchMissingRateThreshold = 0.9F;
   private int subscriptionPrefetchEventLocalCountThreshold = 10;
