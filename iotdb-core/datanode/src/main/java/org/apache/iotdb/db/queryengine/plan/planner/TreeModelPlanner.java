@@ -113,7 +113,7 @@ public class TreeModelPlanner implements IPlanner {
     } finally {
       if (analysis.isQuery()) {
         long distributionPlanCost = System.nanoTime() - startTime;
-        context.setDistributionPlanCost(System.nanoTime() - startTime);
+        context.setDistributionPlanCost(distributionPlanCost);
         QueryPlanCostMetricSet.getInstance()
             .recordTreePlanCost(DISTRIBUTION_PLANNER, distributionPlanCost);
       }
