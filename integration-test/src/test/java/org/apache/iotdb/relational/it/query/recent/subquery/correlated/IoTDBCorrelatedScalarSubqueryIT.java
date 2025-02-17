@@ -139,6 +139,7 @@ public class IoTDBCorrelatedScalarSubqueryIT {
   }
 
   // todo: find out why this fails occasionally
+  @Test
   public void testMultipleRowsReturnedByScalarSubquery() {
     // Legality check: Scalar subquery should only return one row
     tableAssertTestFail(

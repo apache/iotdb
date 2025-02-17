@@ -108,7 +108,11 @@ statement
     | countTimeSlotListStatement
     | showSeriesSlotListStatement
     | migrateRegionStatement
+    | reconstructRegionStatement
+    | extendRegionStatement
+    | removeRegionStatement
     | removeDataNodeStatement
+    | removeConfigNodeStatement
 
     // Admin Statement
     | showVariablesStatement
@@ -123,6 +127,7 @@ statement
     | loadConfigurationStatement
     | setConfigurationStatement
     | showCurrentSqlDialectStatement
+    | setSqlDialectStatement
     | showCurrentUserStatement
     | showCurrentDatabaseStatement
     | showCurrentTimestampStatement
@@ -479,8 +484,24 @@ migrateRegionStatement
     : MIGRATE REGION regionId=INTEGER_VALUE FROM fromId=INTEGER_VALUE TO toId=INTEGER_VALUE
     ;
 
+reconstructRegionStatement
+    : RECONSTRUCT REGION regionIds+=INTEGER_VALUE (COMMA regionIds+=INTEGER_VALUE)* ON targetDataNodeId=INTEGER_VALUE
+    ;
+
+extendRegionStatement
+    : EXTEND REGION regionId=INTEGER_VALUE TO targetDataNodeId=INTEGER_VALUE
+    ;
+
+removeRegionStatement
+    : REMOVE REGION regionId=INTEGER_VALUE FROM targetDataNodeId=INTEGER_VALUE
+    ;
+
 removeDataNodeStatement
     : REMOVE DATANODE dataNodeId=INTEGER_VALUE (',' dataNodeId=INTEGER_VALUE)*
+    ;
+
+removeConfigNodeStatement
+    : REMOVE CONFIGNODE configNodeId=INTEGER_VALUE
     ;
 
 // ------------------------------------------- Admin Statement ---------------------------------------------------------
@@ -547,6 +568,10 @@ showCurrentSqlDialectStatement
     : SHOW CURRENT_SQL_DIALECT
     ;
 
+setSqlDialectStatement
+    : SET SQL_DIALECT EQ (TABLE | TREE)
+    ;
+
 showCurrentUserStatement
     : SHOW CURRENT_USER
     ;
@@ -604,11 +629,11 @@ listRolePrivilegeStatement
     ;
 
 listUserStatement
-    : LIST USER
+    : LIST USER (OF ROLE roleName=identifier)?
     ;
 
 listRoleStatement
-    : LIST ROLE
+    : LIST ROLE (OF USER userName=identifier)?
     ;
 
 
@@ -619,7 +644,7 @@ revokeStatement
 privilegeObjectScope
     : systemPrivileges
     | objectPrivileges ON objectType objectName=identifier
-    | objectPrivileges ON objectScope
+    | objectPrivileges ON (TABLE)? objectScope
     | objectPrivileges ON ANY
     | ALL
     ;
@@ -630,6 +655,7 @@ systemPrivileges
 
 objectPrivileges
     : objectPrivilege (',' objectPrivilege)*
+    | ALL
     ;
 
 objectScope
@@ -1059,7 +1085,7 @@ nonReserved
     // IMPORTANT: this rule must only contain tokens. Nested rules are not supported. See SqlParser.exitNonReserved
     : ABSENT | ADD | ADMIN | AFTER | ALL | ANALYZE | ANY | ARRAY | ASC | AT | ATTRIBUTE | AUTHORIZATION
     | BEGIN | BERNOULLI | BOTH
-    | CACHE | CALL | CALLED | CASCADE | CATALOG | CATALOGS | CHAR | CHARACTER | CHARSET | CLEAR | CLUSTER | CLUSTERID | COLUMN | COLUMNS | COMMENT | COMMIT | COMMITTED | CONDITION | CONDITIONAL | CONFIGNODES | CONFIGURATION | CONNECTOR | CONSTANT | COPARTITION | COUNT | CURRENT
+    | CACHE | CALL | CALLED | CASCADE | CATALOG | CATALOGS | CHAR | CHARACTER | CHARSET | CLEAR | CLUSTER | CLUSTERID | COLUMN | COLUMNS | COMMENT | COMMIT | COMMITTED | CONDITION | CONDITIONAL | CONFIGNODES | CONFIGNODE | CONFIGURATION | CONNECTOR | CONSTANT | COPARTITION | COUNT | CURRENT
     | DATA | DATABASE | DATABASES | DATANODE | DATANODES | DATE | DAY | DECLARE | DEFAULT | DEFINE | DEFINER | DENY | DESC | DESCRIPTOR | DETAILS| DETERMINISTIC | DEVICES | DISTRIBUTED | DO | DOUBLE
     | ELSEIF | EMPTY | ENCODING | ERROR | EXCLUDING | EXPLAIN | EXTRACTOR
     | FETCH | FIELD | FILTER | FINAL | FIRST | FLUSH | FOLLOWING | FORMAT | FUNCTION | FUNCTIONS
@@ -1129,6 +1155,7 @@ COMMITTED: 'COMMITTED';
 CONDITION: 'CONDITION';
 CONDITIONAL: 'CONDITIONAL';
 CONFIGNODES: 'CONFIGNODES';
+CONFIGNODE: 'CONFIGNODE';
 CONFIGURATION: 'CONFIGURATION';
 CONNECTOR: 'CONNECTOR';
 CONSTANT: 'CONSTANT';
@@ -1188,6 +1215,7 @@ EXCLUDING: 'EXCLUDING';
 EXECUTE: 'EXECUTE';
 EXISTS: 'EXISTS';
 EXPLAIN: 'EXPLAIN';
+EXTEND: 'EXTEND';
 EXTRACT: 'EXTRACT';
 EXTRACTOR: 'EXTRACTOR';
 FALSE: 'FALSE';
@@ -1389,6 +1417,7 @@ SINK: 'SINK';
 SKIP_TOKEN: 'SKIP';
 SOME: 'SOME';
 SOURCE: 'SOURCE';
+SQL_DIALECT: 'SQL_DIALECT';
 START: 'START';
 STATS: 'STATS';
 STOP: 'STOP';
@@ -1416,6 +1445,7 @@ TOPIC: 'TOPIC';
 TOPICS: 'TOPICS';
 TRAILING: 'TRAILING';
 TRANSACTION: 'TRANSACTION';
+TREE: 'TREE';
 TRIM: 'TRIM';
 TRUE: 'TRUE';
 TRUNCATE: 'TRUNCATE';

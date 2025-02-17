@@ -87,6 +87,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityCo
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.NullColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.TimeColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.AbstractGreatestLeastColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.CoalesceColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InBinaryMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InBooleanMultiColumnTransformer;
@@ -984,6 +985,20 @@ public class ColumnTransformerBuilder
       checkArgument(children.size() == 1 && children.get(0) instanceof StringLiteral);
       return new FailFunctionColumnTransformer(
           STRING, ((StringLiteral) children.get(0)).getValue());
+    } else if (TableBuiltinScalarFunction.GREATEST
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      List<ColumnTransformer> columnTransformers =
+          children.stream().map(child -> this.process(child, context)).collect(Collectors.toList());
+      Type returnType = columnTransformers.get(0).getType();
+      return AbstractGreatestLeastColumnTransformer.getGreatestColumnTransformer(
+          returnType, columnTransformers);
+    } else if (TableBuiltinScalarFunction.LEAST.getFunctionName().equalsIgnoreCase(functionName)) {
+      List<ColumnTransformer> columnTransformers =
+          children.stream().map(child -> this.process(child, context)).collect(Collectors.toList());
+      Type returnType = columnTransformers.get(0).getType();
+      return AbstractGreatestLeastColumnTransformer.getLeastColumnTransformer(
+          returnType, columnTransformers);
     } else {
       // user defined function
       if (TableUDFUtils.isScalarFunction(functionName)) {
