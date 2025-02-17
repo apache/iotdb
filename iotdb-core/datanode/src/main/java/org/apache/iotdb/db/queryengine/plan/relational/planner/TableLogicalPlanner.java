@@ -171,14 +171,15 @@ public class TableLogicalPlanner {
   private PlanNode planStatement(final Analysis analysis, Statement statement) {
     // Schema statements are handled here
     if (statement instanceof PipeEnriched) {
-      statement = ((PipeEnriched) statement).getInnerStatement();
-      if (statement instanceof CreateOrUpdateDevice) {
+      Statement innerStatement = ((PipeEnriched) statement).getInnerStatement();
+      if (innerStatement instanceof CreateOrUpdateDevice) {
         return new PipeEnrichedWritePlanNode(
-            (WritePlanNode) planCreateOrUpdateDevice((CreateOrUpdateDevice) statement, analysis));
+            (WritePlanNode)
+                planCreateOrUpdateDevice((CreateOrUpdateDevice) innerStatement, analysis));
       }
-      if (statement instanceof Update) {
+      if (innerStatement instanceof Update) {
         return new PipeEnrichedWritePlanNode(
-            (WritePlanNode) planUpdate((Update) statement, analysis));
+            (WritePlanNode) planUpdate((Update) innerStatement, analysis));
       }
     }
     if (statement instanceof CreateOrUpdateDevice) {
