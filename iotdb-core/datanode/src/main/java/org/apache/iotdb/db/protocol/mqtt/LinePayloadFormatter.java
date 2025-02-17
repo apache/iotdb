@@ -87,93 +87,28 @@ public class LinePayloadFormatter implements PayloadFormatter {
         message.setTable(matcher.group(TABLE));
 
         // Parsing Tags
-        List<String> tagKeys = new ArrayList<>();
-        List<Object> tagValues = new ArrayList<>();
-        String tagsGroup = matcher.group(TAGS);
-        if (tagsGroup != null && !tagsGroup.isEmpty()) {
-          String[] tagPairs = tagsGroup.split(COMMA);
-          for (String tagPair : tagPairs) {
-            if (!tagPair.isEmpty()) {
-              String[] keyValue = tagPair.split(EQUAL);
-              if (keyValue.length == 2 && !NULL.equals(keyValue[1])) {
-                tagKeys.add(keyValue[0]);
-                tagValues.add(
-                    new Binary[] {new Binary(keyValue[1].getBytes(StandardCharsets.UTF_8))});
-              }
-            }
-          }
-        }
-        if (!tagKeys.isEmpty() && !tagValues.isEmpty() && tagKeys.size() == tagValues.size()) {
-          message.setTagKeys(tagKeys);
-          message.setTagValues(tagValues);
-        } else {
+        if (!setTags(matcher, message)) {
           log.warn("The tags is error , line is {}", line);
           continue;
         }
 
         // Parsing Attributes
-        List<String> attributeKeys = new ArrayList<>();
-        List<Object> attributeValues = new ArrayList<>();
-        String attributesGroup = matcher.group(ATTRIBUTES);
-        if (attributesGroup != null && !attributesGroup.isEmpty()) {
-          String[] attributePairs = attributesGroup.split(COMMA);
-          for (String attributePair : attributePairs) {
-            if (!attributePair.isEmpty()) {
-              String[] keyValue = attributePair.split(EQUAL);
-              if (keyValue.length == 2 && !NULL.equals(keyValue[1])) {
-                attributeKeys.add(keyValue[0]);
-                attributeValues.add(
-                    new Binary[] {new Binary(keyValue[1].getBytes(StandardCharsets.UTF_8))});
-              }
-            }
-          }
-        }
-        if (attributeKeys.size() == attributeValues.size()) {
-          message.setAttributeKeys(attributeKeys);
-          message.setAttributeValues(attributeValues);
-        } else {
+        if (!setAttributes(matcher, message)) {
           log.warn("The attributes is error , line is {}", line);
           continue;
         }
 
         // Parsing Fields
-        List<String> fields = new ArrayList<>();
-        List<TSDataType> dataTypes = new ArrayList<>();
-        List<Object> values = new ArrayList<>();
-        String fieldsGroup = matcher.group(FIELDS);
-        if (fieldsGroup != null && !fieldsGroup.isEmpty()) {
-          String[] fieldPairs = fieldsGroup.split(COMMA);
-          for (String fieldPair : fieldPairs) {
-            if (!fieldPair.isEmpty()) {
-              String[] keyValue = fieldPair.split(EQUAL);
-              if (keyValue.length == 2 && !NULL.equals(keyValue[1])) {
-                fields.add(keyValue[0]);
-                Pair<TSDataType, Object> typeAndValue = analyticValue(keyValue[1]);
-                values.add(typeAndValue.getRight());
-                dataTypes.add(typeAndValue.getLeft());
-              }
-            }
-          }
-        }
-        if (!fields.isEmpty() && !values.isEmpty() && fields.size() == values.size()) {
-          message.setFields(fields);
-          message.setDataTypes(dataTypes);
-          message.setValues(values);
-        } else {
+        if (!setFields(matcher, message)) {
           log.warn("The fields is error , line is {}", line);
           continue;
         }
 
         // Parsing timestamp
-        Long timestamp = null;
-        String timestampGroup = matcher.group(TIMESTAMP);
-        if (timestampGroup != null && !timestampGroup.isEmpty()) {
-          timestamp = Long.parseLong(timestampGroup);
-        } else {
+        if (!setTimestamp(matcher, message)) {
           log.warn("The timestamp is error , line is {}", line);
           continue;
         }
-        message.setTimestamp(timestamp);
 
         messages.add(message);
       } catch (Exception e) {
@@ -184,6 +119,86 @@ public class LinePayloadFormatter implements PayloadFormatter {
       }
     }
     return messages;
+  }
+
+  private boolean setTags(Matcher matcher, TableMessage message) {
+    List<String> tagKeys = new ArrayList<>();
+    List<Object> tagValues = new ArrayList<>();
+    String tagsGroup = matcher.group(TAGS);
+    if (tagsGroup != null && !tagsGroup.isEmpty()) {
+      String[] tagPairs = tagsGroup.split(COMMA);
+      for (String tagPair : tagPairs) {
+        if (!tagPair.isEmpty()) {
+          String[] keyValue = tagPair.split(EQUAL);
+          if (keyValue.length == 2 && !NULL.equals(keyValue[1])) {
+            tagKeys.add(keyValue[0]);
+            tagValues.add(new Binary[] {new Binary(keyValue[1].getBytes(StandardCharsets.UTF_8))});
+          }
+        }
+      }
+    }
+    if (!tagKeys.isEmpty() && !tagValues.isEmpty() && tagKeys.size() == tagValues.size()) {
+      message.setTagKeys(tagKeys);
+      message.setTagValues(tagValues);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  private boolean setAttributes(Matcher matcher, TableMessage message) {
+    List<String> attributeKeys = new ArrayList<>();
+    List<Object> attributeValues = new ArrayList<>();
+    String attributesGroup = matcher.group(ATTRIBUTES);
+    if (attributesGroup != null && !attributesGroup.isEmpty()) {
+      String[] attributePairs = attributesGroup.split(COMMA);
+      for (String attributePair : attributePairs) {
+        if (!attributePair.isEmpty()) {
+          String[] keyValue = attributePair.split(EQUAL);
+          if (keyValue.length == 2 && !NULL.equals(keyValue[1])) {
+            attributeKeys.add(keyValue[0]);
+            attributeValues.add(
+                new Binary[] {new Binary(keyValue[1].getBytes(StandardCharsets.UTF_8))});
+          }
+        }
+      }
+    }
+    if (attributeKeys.size() == attributeValues.size()) {
+      message.setAttributeKeys(attributeKeys);
+      message.setAttributeValues(attributeValues);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  private boolean setFields(Matcher matcher, TableMessage message) {
+    List<String> fields = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    List<Object> values = new ArrayList<>();
+    String fieldsGroup = matcher.group(FIELDS);
+    if (fieldsGroup != null && !fieldsGroup.isEmpty()) {
+      String[] fieldPairs = fieldsGroup.split(COMMA);
+      for (String fieldPair : fieldPairs) {
+        if (!fieldPair.isEmpty()) {
+          String[] keyValue = fieldPair.split(EQUAL);
+          if (keyValue.length == 2 && !NULL.equals(keyValue[1])) {
+            fields.add(keyValue[0]);
+            Pair<TSDataType, Object> typeAndValue = analyticValue(keyValue[1]);
+            values.add(typeAndValue.getRight());
+            dataTypes.add(typeAndValue.getLeft());
+          }
+        }
+      }
+    }
+    if (!fields.isEmpty() && !values.isEmpty() && fields.size() == values.size()) {
+      message.setFields(fields);
+      message.setDataTypes(dataTypes);
+      message.setValues(values);
+      return true;
+    } else {
+      return false;
+    }
   }
 
   private Pair<TSDataType, Object> analyticValue(String value) {
@@ -198,7 +213,7 @@ public class LinePayloadFormatter implements PayloadFormatter {
         || value.equalsIgnoreCase("true")
         || value.equalsIgnoreCase("f")
         || value.equalsIgnoreCase("false")) {
-      // BOOLEAN
+      // boolean
       return new Pair<>(
           TSDataType.BOOLEAN,
           new boolean[] {value.equalsIgnoreCase("t") || value.equalsIgnoreCase("true")});
@@ -215,7 +230,18 @@ public class LinePayloadFormatter implements PayloadFormatter {
       return new Pair<>(
           TSDataType.INT64, new long[] {Long.parseLong(value.substring(0, value.length() - 1))});
     } else {
+      // double
       return new Pair<>(TSDataType.DOUBLE, new double[] {Double.parseDouble(value)});
+    }
+  }
+
+  private boolean setTimestamp(Matcher matcher, TableMessage message) {
+    String timestampGroup = matcher.group(TIMESTAMP);
+    if (timestampGroup != null && !timestampGroup.isEmpty()) {
+      message.setTimestamp(Long.parseLong(timestampGroup));
+      return true;
+    } else {
+      return false;
     }
   }
 

@@ -46,24 +46,24 @@ import static org.junit.Assert.fail;
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBMQTTServiceIT {
   private BlockingConnection connection;
-  private int port = 1883;
-  private final String ip = System.getProperty("RemoteIp", "127.0.0.1");
-  private final String user = System.getProperty("RemoteUser", "root");
-  private final String password = System.getProperty("RemotePassword", "root");
-  private final String DATABASE = "mqtttest";
+  private static final String IP = System.getProperty("RemoteIp", "127.0.0.1");
+  private static final String USER = System.getProperty("RemoteUser", "root");
+  private static final String PASSWORD = System.getProperty("RemotePassword", "root");
+  private static final String DATABASE = "mqtttest";
+  public static final String FORMATTER = "line";
 
   @Before
   public void setUp() throws Exception {
     BaseEnv baseEnv = EnvFactory.getEnv();
     baseEnv.getConfig().getDataNodeConfig().setEnableMQTTService(true);
-    baseEnv.getConfig().getDataNodeConfig().setMqttPayloadFormatter("line");
+    baseEnv.getConfig().getDataNodeConfig().setMqttPayloadFormatter(FORMATTER);
     baseEnv.initClusterEnvironment();
     DataNodeWrapper portConflictDataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
-    port = portConflictDataNodeWrapper.getMqttPort();
+    int port = portConflictDataNodeWrapper.getMqttPort();
     MQTT mqtt = new MQTT();
-    mqtt.setHost(ip, port);
-    mqtt.setUserName(user);
-    mqtt.setPassword(password);
+    mqtt.setHost(IP, port);
+    mqtt.setUserName(USER);
+    mqtt.setPassword(PASSWORD);
     mqtt.setConnectAttemptsMax(3);
     mqtt.setReconnectDelay(10);
 
