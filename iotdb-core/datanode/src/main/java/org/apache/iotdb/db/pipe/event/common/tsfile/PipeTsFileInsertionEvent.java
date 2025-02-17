@@ -37,6 +37,8 @@ import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -406,6 +408,20 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   @Override
+  public void throwIfNoPrivilege() throws IOException {
+    if (skipIfNoPrivileges || !isTableModelEvent()) {
+      return;
+    }
+    for (final IDeviceID deviceID : getDeviceSet()) {
+      Coordinator.getInstance()
+          .getAccessControl()
+          .checkCanSelectFromTable(
+              userName,
+              new QualifiedObjectName(getTableModelDatabaseName(), deviceID.getTableName()));
+    }
+  }
+
+  @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     // If the tsFile is not closed the resource.getFileEndTime() will be Long.MIN_VALUE
     // In that case we only judge the resource.getFileStartTime() to avoid losing data
@@ -421,14 +437,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     }
 
     try {
-      final Map<IDeviceID, Boolean> deviceIsAlignedMap =
-          PipeDataNodeResourceManager.tsfile()
-              .getDeviceIsAlignedMapFromCache(
-                  PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()),
-                  false);
-      final Set<IDeviceID> deviceSet =
-          Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
-      return deviceSet.stream()
+      return getDeviceSet().stream()
           .anyMatch(
               deviceID -> {
                 // Tree model
@@ -451,6 +460,17 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
           e);
       return true;
     }
+  }
+
+  private Set<IDeviceID> getDeviceSet() throws IOException {
+    final Map<IDeviceID, Boolean> deviceIsAlignedMap =
+        PipeDataNodeResourceManager.tsfile()
+            .getDeviceIsAlignedMapFromCache(
+                PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()),
+                false);
+    return Objects.nonNull(deviceIsAlignedMap)
+        ? deviceIsAlignedMap.keySet()
+        : resource.getDevices();
   }
 
   /////////////////////////// PipeInsertionEvent ///////////////////////////

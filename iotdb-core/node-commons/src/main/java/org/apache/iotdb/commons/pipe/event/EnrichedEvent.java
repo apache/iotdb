@@ -406,7 +406,7 @@ public abstract class EnrichedEvent implements Event {
     return true;
   }
 
-  public void throwIfNoPrivilege() {
+  public void throwIfNoPrivilege() throws Exception {
     // Do nothing by default
   }
 
