@@ -351,8 +351,13 @@ public abstract class IoTDBConnector implements PipeConnector {
                     Arrays.asList(CONNECTOR_FORMAT_KEY, SINK_FORMAT_KEY),
                     CONNECTOR_FORMAT_HYBRID_VALUE)
                 .equals(CONNECTOR_FORMAT_TS_FILE_VALUE);
-
     LOGGER.info("IoTDBConnector isTabletBatchModeEnabled: {}", isTabletBatchModeEnabled);
+
+    shouldMarkAsPipeRequest =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(CONNECTOR_MARK_AS_PIPE_REQUEST_KEY, SINK_MARK_AS_PIPE_REQUEST_KEY),
+            CONNECTOR_MARK_AS_PIPE_REQUEST_DEFAULT_VALUE);
+    LOGGER.info("IoTDBConnector shouldMarkAsPipeRequest: {}", shouldMarkAsPipeRequest);
 
     receiverStatusHandler =
         new PipeReceiverStatusHandler(
@@ -390,10 +395,6 @@ public abstract class IoTDBConnector implements PipeConnector {
                 CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY,
                 SINK_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY),
             CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE);
-    shouldMarkAsPipeRequest =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(CONNECTOR_MARK_AS_PIPE_REQUEST_KEY, SINK_MARK_AS_PIPE_REQUEST_KEY),
-            CONNECTOR_MARK_AS_PIPE_REQUEST_DEFAULT_VALUE);
     LOGGER.info(
         "IoTDBConnector {} = {}",
         CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_KEY,

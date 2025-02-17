@@ -296,6 +296,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             req.getParams()
                 .getOrDefault(
                     PipeTransferHandshakeConstant.HANDSHAKE_KEY_MARK_AS_PIPE_REQUEST, "true")));
+
     // Handle the handshake request as a v1 request.
     // Here we construct a fake "dataNode" request to valid from v1 validation logic, though
     // it may not require the actual type of the v1 request.
