@@ -30,8 +30,7 @@ import java.util.List;
 public class SubscriptionPipeTabletIterationSnapshot {
 
   private final List<EnrichedEvent> iteratedEnrichedEvents = new ArrayList<>();
-  private final List<EnrichedEvent> parsedEnrichedEvents =
-      new ArrayList<>(); // TODO: consider PipeInsertNodeTabletInsertionEvent
+  private final List<EnrichedEvent> parsedEnrichedEvents = new ArrayList<>();
 
   public List<EnrichedEvent> getIteratedEnrichedEvents() {
     return Collections.unmodifiableList(iteratedEnrichedEvents);
