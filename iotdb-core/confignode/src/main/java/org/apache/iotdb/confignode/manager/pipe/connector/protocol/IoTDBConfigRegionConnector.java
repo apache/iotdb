@@ -68,7 +68,8 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
       final String loadBalanceStrategy,
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
-      final boolean validateTsFile) {
+      final boolean validateTsFile,
+      final boolean shouldMarkAsPipeRequest) {
     return new IoTDBConfigNodeSyncClientManager(
         nodeUrls,
         username,
@@ -79,7 +80,8 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
         loadBalanceStrategy,
         shouldReceiverConvertOnTypeMismatch,
         loadTsFileStrategy,
-        validateTsFile);
+        validateTsFile,
+        shouldMarkAsPipeRequest);
   }
 
   @Override
