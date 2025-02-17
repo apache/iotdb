@@ -109,6 +109,8 @@ public interface AccessControl {
   // This does not throw exception for performance issues
   boolean checkCanSelectFromTable4Pipe(final String userName, final QualifiedObjectName tableName);
 
+  void checkCanSelectFromAll4Pipe(final String userName, final QualifiedObjectName tableName);
+
   /**
    * Check if user is allowed to delete from the specified table.
    *

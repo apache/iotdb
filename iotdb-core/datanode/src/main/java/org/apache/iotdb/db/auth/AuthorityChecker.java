@@ -258,6 +258,12 @@ public class AuthorityChecker {
         == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
+  public static boolean checkAnyScopePermission(
+      final String userName, final PrivilegeType permission) {
+    return authorityFetcher.get().checkUserAnyScopePrivilege(userName, permission).getCode()
+        == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+  }
+
   public static boolean checkAnyScopePermissionGrantOption(
       String userName, PrivilegeType permission) {
     return authorityFetcher
