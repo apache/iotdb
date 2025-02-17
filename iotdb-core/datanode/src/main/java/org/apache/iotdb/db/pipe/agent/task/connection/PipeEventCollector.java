@@ -150,8 +150,12 @@ public class PipeEventCollector implements EventCollector {
             ? IoTDBSchemaRegionExtractor.TREE_PATTERN_PARSE_VISITOR.process(
                 deleteDataEvent.getDeleteDataNode(),
                 (IoTDBTreePattern) deleteDataEvent.getTreePattern())
-            : IoTDBSchemaRegionExtractor.TABLE_PATTERN_PARSE_VISITOR.process(
-                deleteDataEvent.getDeleteDataNode(), deleteDataEvent.getTablePattern()))
+            : IoTDBSchemaRegionExtractor.TABLE_PATTERN_PARSE_VISITOR
+                .process(deleteDataEvent.getDeleteDataNode(), deleteDataEvent.getTablePattern())
+                .flatMap(
+                    planNode ->
+                        IoTDBSchemaRegionExtractor.TABLE_PRIVILEGE_PARSE_VISITOR.process(
+                            planNode, deleteDataEvent.getUserName())))
         .map(
             planNode ->
                 new PipeDeleteDataNodeEvent(

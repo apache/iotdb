@@ -58,6 +58,8 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
       new PipePlanTreePatternParseVisitor();
   public static final PipePlanTablePatternParseVisitor TABLE_PATTERN_PARSE_VISITOR =
       new PipePlanTablePatternParseVisitor();
+  public static final PipePlanTablePrivilegeParseVisitor TABLE_PRIVILEGE_PARSE_VISITOR =
+      new PipePlanTablePrivilegeParseVisitor();
 
   private SchemaRegionId schemaRegionId;
 
