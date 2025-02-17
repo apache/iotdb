@@ -684,6 +684,26 @@ time_partition_interval=604800000
 # Datatype: long
 heartbeat_interval_in_ms=1000
 
+# Default failure detector, enum from {fixed, phi_accrual}
+# effectiveMode: restart
+# Datatype: string
+failure_detector=fixed
+
+# Fixed failure detector threshold of time elapsed without receiving heartbeat replies
+# effectiveMode: restart
+# Datatype: long
+failure_detector_fixed_threshold_in_ms=20000
+
+# Phi accrual: threshold to determine a node is down
+# effectiveMode: restart
+# Datatype: long
+failure_detector_phi_threshold=30
+
+# Phi accrual: acceptable heartbeat pause time (due to JVM GC, etc)
+# effectiveMode: restart
+# Datatype: long
+failure_detector_phi_acceptable_pause_in_ms=10000
+
 # Disk remaining threshold at which DataNode is set to ReadOnly status
 # effectiveMode: restart
 # Datatype: double(percentage)

@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.confignode.manager.load.cache;
 
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.manager.load.cache.detector.FixedDetector;
+import org.apache.iotdb.confignode.manager.load.cache.detector.PhiAccrualDetector;
+
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -40,9 +45,27 @@ public abstract class AbstractLoadCache {
   // The current statistics calculated by the latest heartbeat sample
   protected final AtomicReference<AbstractStatistics> currentStatistics;
 
+  protected final IFailureDetector failureDetector;
+
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+
   protected AbstractLoadCache() {
     this.currentStatistics = new AtomicReference<>();
     this.slidingWindow = Collections.synchronizedList(new LinkedList<>());
+    switch (CONF.getFailureDetector()) {
+      case IFailureDetector.PHI_ACCRUAL_DETECTOR:
+        this.failureDetector =
+            new PhiAccrualDetector(
+                CONF.getFailureDetectorPhiThreshold(),
+                CONF.getFailureDetectorPhiAcceptablePauseInMs() * 1000L,
+                CONF.getHeartbeatIntervalInMs() * 1000L,
+                CONF.getFailureDetectorPhiAcceptablePauseInMs() * 1000L);
+        break;
+      case IFailureDetector.FIXED_DETECTOR:
+      default:
+        this.failureDetector =
+            new FixedDetector(CONF.getFailureDetectorFixedThresholdInMs() * 1000L);
+    }
   }
 
   /**
