@@ -263,7 +263,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         "delete timeSeries of schema template t1 from root.sg1.*",
         "create database root.sg2",
         "count databases",
-        "count(databases),",
+        "count,",
         Collections.singleton("2,"));
   }
 
