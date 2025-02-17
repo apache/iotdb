@@ -50,6 +50,7 @@ public class IoTDBMQTTServiceIT {
   private final String ip = System.getProperty("RemoteIp", "127.0.0.1");
   private final String user = System.getProperty("RemoteUser", "root");
   private final String password = System.getProperty("RemotePassword", "root");
+  private final String DATABASE = "mqtttest";
 
   @Before
   public void setUp() throws Exception {
@@ -86,21 +87,21 @@ public class IoTDBMQTTServiceIT {
   @Test
   public void testNoAttr() throws Exception {
     try (final ITableSession session =
-        EnvFactory.getEnv().getTableSessionConnectionWithDB("mqtttest")) {
-      session.executeNonQueryStatement("CREATE DATABASE mqtttest");
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE)) {
+      session.executeNonQueryStatement("CREATE DATABASE " + DATABASE);
       String payload1 = "test1,tag1=t1,tag2=t2 field1=1,field2=1f,field3=1i32 1";
-      connection.publish("mqtttest/myTopic", payload1.getBytes(), QoS.AT_LEAST_ONCE, false);
+      connection.publish(DATABASE + "/myTopic", payload1.getBytes(), QoS.AT_LEAST_ONCE, false);
       Thread.sleep(1000);
       try (final SessionDataSet dataSet =
           session.executeQueryStatement(
               "select tag1,tag2,field1,field2,field3 from test1 where time = 1")) {
         assertEquals(5, dataSet.getColumnNames().size());
         List<Field> fields = dataSet.next().getFields();
-        assertEquals(fields.get(0).getStringValue(), "t1");
-        assertEquals(fields.get(1).getStringValue(), "t2");
-        assertEquals(fields.get(2).getDoubleV(), 1d, 0);
-        assertEquals(fields.get(3).getFloatV(), 1f, 0);
-        assertEquals(fields.get(4).getIntV(), 1, 0);
+        assertEquals("t1", fields.get(0).getStringValue());
+        assertEquals("t2", fields.get(1).getStringValue());
+        assertEquals(1d, fields.get(2).getDoubleV(), 0);
+        assertEquals(1f, fields.get(3).getFloatV(), 0);
+        assertEquals(1, fields.get(4).getIntV(), 0);
       }
     }
   }
@@ -108,23 +109,23 @@ public class IoTDBMQTTServiceIT {
   @Test
   public void testWithAttr() throws Exception {
     try (final ITableSession session =
-        EnvFactory.getEnv().getTableSessionConnectionWithDB("mqtttest")) {
-      session.executeNonQueryStatement("CREATE DATABASE mqtttest");
+        EnvFactory.getEnv().getTableSessionConnectionWithDB(DATABASE)) {
+      session.executeNonQueryStatement("CREATE DATABASE " + DATABASE);
       String payload1 = "test2,tag1=t1,tag2=t2 attr3=a3,attr4=a4 field1=1,field2=1f,field3=1i32 1";
-      connection.publish("mqtttest/myTopic", payload1.getBytes(), QoS.AT_LEAST_ONCE, false);
+      connection.publish(DATABASE + "/myTopic", payload1.getBytes(), QoS.AT_LEAST_ONCE, false);
       Thread.sleep(1000);
       try (final SessionDataSet dataSet =
           session.executeQueryStatement(
               "select tag1,tag2,attr3,attr4,field1,field2,field3 from test2 where time = 1")) {
         assertEquals(7, dataSet.getColumnNames().size());
         List<Field> fields = dataSet.next().getFields();
-        assertEquals(fields.get(0).getStringValue(), "t1");
-        assertEquals(fields.get(1).getStringValue(), "t2");
-        assertEquals(fields.get(2).getStringValue(), "a3");
-        assertEquals(fields.get(3).getStringValue(), "a4");
+        assertEquals("t1", fields.get(0).getStringValue());
+        assertEquals("t2", fields.get(1).getStringValue());
+        assertEquals("a3", fields.get(2).getStringValue());
+        assertEquals("a4", fields.get(3).getStringValue());
         assertEquals(1d, fields.get(4).getDoubleV(), 0);
-        assertEquals(fields.get(5).getFloatV(), 1f, 0);
-        assertEquals(fields.get(6).getIntV(), 1, 0);
+        assertEquals(1f, fields.get(5).getFloatV(), 0);
+        assertEquals(1, fields.get(6).getIntV(), 0);
       }
     }
   }
