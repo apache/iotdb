@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
@@ -133,6 +134,12 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
     // The dataNode processor can sleep if it supplies null
     // Here we return immediately to be consistent with the data region extractor
     return 0;
+  }
+
+  @Override
+  protected Optional<PipeWritePlanEvent> trimRealtimeEventByPrivilege(PipeWritePlanEvent event)
+      throws AccessDeniedException {
+    return Optional.empty();
   }
 
   @Override

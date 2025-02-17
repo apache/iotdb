@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -38,15 +39,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class ConfignodeSnapshotParser {
-  private static final Logger LOGGER = LoggerFactory.getLogger(ConfignodeSnapshotParser.class);
+public class ConfigNodeSnapshotParser {
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeSnapshotParser.class);
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
   private static final String SNAPSHOT_CLUSTER_SCHEMA_FILENAME = "cluster_schema.bin";
 
   private static final String SNAPSHOT_TEMPLATE_FILENAME = "template_info.bin";
 
-  private ConfignodeSnapshotParser() {
+  private ConfigNodeSnapshotParser() {
     // Empty constructor
   }
 

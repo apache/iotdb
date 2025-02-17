@@ -311,16 +311,11 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
 
   private boolean notFilteredByAccess(
       final String userName, final Pair<String, IDeviceID> databaseNameAndTableName) {
-    try {
-      accessControl.checkCanSelectFromTable(
-          userName,
-          new QualifiedObjectName(
-              databaseNameAndTableName.getLeft(),
-              databaseNameAndTableName.getRight().getTableName()));
-      return true;
-    } catch (final Exception e) {
-      return false;
-    }
+    return accessControl.checkCanSelectFromTable4Pipe(
+        userName,
+        new QualifiedObjectName(
+            databaseNameAndTableName.getLeft(),
+            databaseNameAndTableName.getRight().getTableName()));
   }
 
   @Override

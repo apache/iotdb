@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -83,6 +82,12 @@ public class AccessControlImpl implements AccessControl {
   }
 
   @Override
+  public boolean checkCanSelectFromTable4Pipe(
+      final String userName, final QualifiedObjectName tableName) {
+    return authChecker.checkTablePrivilege4Pipe(userName, tableName);
+  }
+
+  @Override
   public void checkCanDeleteFromTable(String userName, QualifiedObjectName tableName) {
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DELETE);
   }
@@ -101,7 +106,6 @@ public class AccessControlImpl implements AccessControl {
   public void checkUserCanRunRelationalAuthorStatement(
       String userName, RelationalAuthorStatement statement) {
     AuthorRType type = statement.getAuthorType();
-    TSStatus status;
     switch (type) {
       case CREATE_USER:
         // admin cannot be created.

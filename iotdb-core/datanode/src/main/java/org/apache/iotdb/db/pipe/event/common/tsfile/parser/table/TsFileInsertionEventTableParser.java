@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.table;
 
-import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
@@ -66,22 +65,14 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       filteredTableSchemaIterator =
           tsFileSequenceReader.getTableSchemaMap().entrySet().stream()
               .filter(
-                  entry -> {
-                    if (!Objects.isNull(pattern) && !pattern.matchesTable(entry.getKey())) {
-                      return false;
-                    }
-                    try {
-                      Coordinator.getInstance()
-                          .getAccessControl()
-                          .checkCanSelectFromTable(
-                              userName,
-                              new QualifiedObjectName(
-                                  sourceEvent.getTableModelDatabaseName(), entry.getKey()));
-                    } catch (final AccessDeniedException e) {
-                      return false;
-                    }
-                    return true;
-                  })
+                  entry ->
+                      (Objects.isNull(pattern) || pattern.matchesTable(entry.getKey()))
+                          && Coordinator.getInstance()
+                              .getAccessControl()
+                              .checkCanSelectFromTable4Pipe(
+                                  userName,
+                                  new QualifiedObjectName(
+                                      sourceEvent.getTableModelDatabaseName(), entry.getKey())))
               .iterator();
       tableQueryExecutor =
           new TableQueryExecutor(
