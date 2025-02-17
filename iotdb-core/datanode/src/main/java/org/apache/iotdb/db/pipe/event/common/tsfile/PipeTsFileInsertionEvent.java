@@ -420,6 +420,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       return;
     }
     for (final IDeviceID deviceID : getDeviceSet()) {
+      if (!tablePattern.matchesDatabase(getTableModelDatabaseName())
+          || !tablePattern.matchesTable(deviceID.getTableName())) {
+        continue;
+      }
       try {
         Coordinator.getInstance()
             .getAccessControl()
