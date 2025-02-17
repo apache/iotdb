@@ -139,9 +139,21 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   }
 
   @Override
-  protected Optional<PipeWritePlanEvent> trimRealtimeEventByPrivilege(PipeWritePlanEvent event)
-      throws AccessDeniedException {
-    return Optional.empty();
+  protected Optional<PipeWritePlanEvent> trimRealtimeEventByPrivilege(
+      final PipeWritePlanEvent event) throws AccessDeniedException {
+    final Optional<PlanNode> result =
+        TABLE_PRIVILEGE_PARSE_VISITOR.process(
+            ((PipeSchemaRegionWritePlanEvent) event).getPlanNode(), userName);
+    if (result.isPresent()) {
+      return Optional.of(
+          new PipeSchemaRegionWritePlanEvent(result.get(), event.isGeneratedByPipe()));
+    }
+    if (skipIfNoPrivileges) {
+      return Optional.empty();
+    }
+    throw new AccessDeniedException(
+        "Not has privilege to transfer event: "
+            + ((PipeSchemaRegionWritePlanEvent) event).getPlanNode());
   }
 
   @Override
