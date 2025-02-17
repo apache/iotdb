@@ -20,8 +20,9 @@
 package org.apache.iotdb.udf.api.relational;
 
 import org.apache.iotdb.udf.api.State;
-import org.apache.iotdb.udf.api.customizer.config.AggregateFunctionConfig;
-import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
+import org.apache.iotdb.udf.api.customizer.analysis.AggregateFunctionAnalysis;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
+import org.apache.iotdb.udf.api.exception.UDFArgumentNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.utils.ResultValue;
@@ -29,30 +30,33 @@ import org.apache.iotdb.udf.api.utils.ResultValue;
 public interface AggregateFunction extends SQLFunction {
 
   /**
-   * This method is used to validate {@linkplain FunctionParameters}.
-   *
-   * @param parameters parameters used to validate
-   * @throws UDFException if any parameter is not valid
-   */
-  void validate(FunctionParameters parameters) throws UDFException;
-
-  /**
-   * This method is mainly used to initialize {@linkplain AggregateFunction} and set the output data
-   * type. In this method, the user need to do the following things:
+   * In this method, the user need to do the following things:
    *
    * <ul>
-   *   <li>Use {@linkplain FunctionParameters} to get input data types and infer output data type.
-   *   <li>Use {@linkplain FunctionParameters} to get necessary attributes.
-   *   <li>Set the output data type in {@linkplain AggregateFunctionConfig}.
+   *   <li>Validate {@linkplain FunctionArguments}. Throw {@link UDFArgumentNotValidException} if
+   *       any parameter is not valid.
+   *   <li>Use {@linkplain FunctionArguments} to get input data types and infer output data type.
+   *   <li>Construct and return a {@linkplain AggregateFunctionAnalysis} object.
    * </ul>
    *
-   * <p>This method is called after the AggregateFunction is instantiated and before the beginning
-   * of the transformation process.
-   *
-   * @param parameters used to parse the input parameters entered by the user
-   * @param configurations used to set the required properties in the ScalarFunction
+   * @param arguments arguments used to validate
+   * @throws UDFArgumentNotValidException if any parameter is not valid
+   * @return the analysis result of the scalar function
    */
-  void beforeStart(FunctionParameters parameters, AggregateFunctionConfig configurations);
+  AggregateFunctionAnalysis analyze(FunctionArguments arguments)
+      throws UDFArgumentNotValidException;
+
+  /**
+   * This method is called after the AggregateFunction is instantiated and before the beginning of
+   * the transformation process. This method is mainly used to initialize the resources used in
+   * AggregateFunction.
+   *
+   * @param arguments used to parse the input arguments entered by the user
+   * @throws UDFException the user can throw errors if necessary
+   */
+  default void beforeStart(FunctionArguments arguments) throws UDFException {
+    // do nothing
+  }
 
   /** Create and initialize state. You may bind some resource in this method. */
   State createState();
@@ -83,8 +87,8 @@ public interface AggregateFunction extends SQLFunction {
 
   /**
    * Remove input data from state. This method is used to remove the data points that have been
-   * added to the state. Once it is implemented, {@linkplain AggregateFunctionConfig#setRemovable}
-   * should be set to true.
+   * added to the state. Once it is implemented, {@linkplain
+   * AggregateFunctionAnalysis.Builder#removable(boolean)} should be set to true.
    *
    * @param state state to be updated
    * @param input row to be removed

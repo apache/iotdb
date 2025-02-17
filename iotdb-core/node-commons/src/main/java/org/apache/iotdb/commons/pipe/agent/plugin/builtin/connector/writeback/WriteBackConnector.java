@@ -20,6 +20,8 @@
 package org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.writeback;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.PlaceholderConnector;
+import org.apache.iotdb.pipe.api.annotation.TableModel;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 
 /**
  * This class is a placeholder and should not be initialized. It represents the Write Back
@@ -27,4 +29,6 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.PlaceholderC
  * pipe agent in the server module will replace this class with the real implementation when
  * initializing the Write Back connector.
  */
+@TreeModel
+@TableModel
 public class WriteBackConnector extends PlaceholderConnector {}

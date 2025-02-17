@@ -32,6 +32,7 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.ELAPSE
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.QUERY_ID_TABLE_MODEL;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.START_TIME_TABLE_MODEL;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.STATEMENT;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.USER;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.collect;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
@@ -60,7 +61,8 @@ public class ShowQueriesTest {
                     START_TIME_TABLE_MODEL,
                     DATA_NODE_ID_TABLE_MODEL,
                     ELAPSED_TIME_TABLE_MODEL,
-                    STATEMENT.toLowerCase(Locale.ENGLISH)))));
+                    STATEMENT.toLowerCase(Locale.ENGLISH),
+                    USER.toLowerCase(Locale.ENGLISH)))));
 
     //                  - Exchange
     // Output - Collect - Exchange
@@ -137,6 +139,7 @@ public class ShowQueriesTest {
                         START_TIME_TABLE_MODEL,
                         DATA_NODE_ID_TABLE_MODEL,
                         ELAPSED_TIME_TABLE_MODEL,
-                        STATEMENT.toLowerCase(Locale.ENGLISH))))));
+                        STATEMENT.toLowerCase(Locale.ENGLISH),
+                        USER.toLowerCase(Locale.ENGLISH))))));
   }
 }

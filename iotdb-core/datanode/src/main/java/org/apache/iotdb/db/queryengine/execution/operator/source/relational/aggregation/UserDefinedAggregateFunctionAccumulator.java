@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational.agg
 
 import org.apache.iotdb.commons.udf.access.RecordIterator;
 import org.apache.iotdb.udf.api.State;
+import org.apache.iotdb.udf.api.customizer.analysis.AggregateFunctionAnalysis;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.utils.ResultValue;
 
@@ -43,12 +44,16 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(UserDefinedAggregateFunctionAccumulator.class);
+  private final AggregateFunctionAnalysis analysis;
   private final AggregateFunction aggregateFunction;
   private final List<Type> inputDataTypes;
   private final State state;
 
   public UserDefinedAggregateFunctionAccumulator(
-      AggregateFunction aggregateFunction, List<Type> inputDataTypes) {
+      AggregateFunctionAnalysis analysis,
+      AggregateFunction aggregateFunction,
+      List<Type> inputDataTypes) {
+    this.analysis = analysis;
     this.aggregateFunction = aggregateFunction;
     this.inputDataTypes = inputDataTypes;
     this.state = aggregateFunction.createState();
@@ -61,14 +66,16 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
 
   @Override
   public TableAccumulator copy() {
-    return new UserDefinedAggregateFunctionAccumulator(aggregateFunction, inputDataTypes);
+    return new UserDefinedAggregateFunctionAccumulator(analysis, aggregateFunction, inputDataTypes);
   }
 
   @Override
-  public void addInput(Column[] arguments) {
+  public void addInput(Column[] arguments, AggregationMask mask) {
     RecordIterator iterator =
-        new RecordIterator(
-            Arrays.asList(arguments), inputDataTypes, arguments[0].getPositionCount());
+        mask.isSelectAll()
+            ? new RecordIterator(
+                Arrays.asList(arguments), inputDataTypes, arguments[0].getPositionCount())
+            : new MaskedRecordIterator(Arrays.asList(arguments), inputDataTypes, mask);
     while (iterator.hasNext()) {
       aggregateFunction.addInput(state, iterator.next());
     }
@@ -119,6 +126,24 @@ public class UserDefinedAggregateFunctionAccumulator implements TableAccumulator
   @Override
   public void reset() {
     state.reset();
+  }
+
+  @Override
+  public void removeInput(Column[] arguments) {
+    if (!analysis.isRemovable()) {
+      throw new UnsupportedOperationException("This Accumulator does not support removing inputs!");
+    }
+    RecordIterator iterator =
+        new RecordIterator(
+            Arrays.asList(arguments), inputDataTypes, arguments[0].getPositionCount());
+    while (iterator.hasNext()) {
+      aggregateFunction.remove(state, iterator.next());
+    }
+  }
+
+  @Override
+  public boolean removable() {
+    return analysis.isRemovable();
   }
 
   @Override

@@ -28,13 +28,13 @@ public class PipeEnriched extends Statement {
 
   private final Statement innerStatement;
 
-  public PipeEnriched(@NotNull Statement innerstatement) {
+  public PipeEnriched(final @NotNull Statement innerstatement) {
     super(innerstatement.getLocation().isPresent() ? innerstatement.getLocation().get() : null);
     this.innerStatement = innerstatement;
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitPipeEnriched(this, context);
   }
 
@@ -49,14 +49,14 @@ public class PipeEnriched extends Statement {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeEnriched that = (PipeEnriched) obj;
+    final PipeEnriched that = (PipeEnriched) obj;
     return Objects.equals(innerStatement, that.innerStatement);
   }
 

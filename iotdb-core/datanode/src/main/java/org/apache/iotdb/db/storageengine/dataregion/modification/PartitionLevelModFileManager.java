@@ -50,7 +50,7 @@ public class PartitionLevelModFileManager implements ModFileManagement {
         levelModFileIdMap.computeIfAbsent(level, l -> new TreeMap<>());
     ModificationFile modificationFile =
         idModificationMap.computeIfAbsent(
-            modFileId, id -> new ModificationFile(new File(modFilePath)));
+            modFileId, id -> new ModificationFile(new File(modFilePath), true));
 
     modFileReferences.computeIfAbsent(modificationFile, f -> new HashSet<>()).add(tsFileResource);
 
@@ -128,7 +128,8 @@ public class PartitionLevelModFileManager implements ModFileManagement {
         new ModificationFile(
             new File(
                 tsFileResource.getTsFile().getParentFile(),
-                ModificationFile.composeFileName(level, newId)));
+                ModificationFile.composeFileName(level, newId)),
+            true);
     idModificationMap.put(newId, newModFile);
 
     Set<TsFileResource> references = new HashSet<>();

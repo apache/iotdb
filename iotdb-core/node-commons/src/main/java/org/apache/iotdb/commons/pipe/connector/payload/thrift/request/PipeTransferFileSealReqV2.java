@@ -35,6 +35,9 @@ import java.util.Objects;
 
 public abstract class PipeTransferFileSealReqV2 extends TPipeTransferReq {
 
+  public static final String DATABASE_PATTERN = "database_pattern";
+  public static final String TREE = "tree";
+  public static final String TABLE = "table";
   protected transient List<String> fileNames;
   protected transient List<Long> fileLengths;
   protected transient Map<String, String> parameters;
@@ -56,7 +59,9 @@ public abstract class PipeTransferFileSealReqV2 extends TPipeTransferReq {
   /////////////////////////////// Thrift ///////////////////////////////
 
   protected PipeTransferFileSealReqV2 convertToTPipeTransferReq(
-      List<String> fileNames, List<Long> fileLengths, Map<String, String> parameters)
+      final List<String> fileNames,
+      final List<Long> fileLengths,
+      final Map<String, String> parameters)
       throws IOException {
 
     this.fileNames = fileNames;
@@ -68,11 +73,11 @@ public abstract class PipeTransferFileSealReqV2 extends TPipeTransferReq {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(fileNames.size(), outputStream);
-      for (String fileName : fileNames) {
+      for (final String fileName : fileNames) {
         ReadWriteIOUtils.write(fileName, outputStream);
       }
       ReadWriteIOUtils.write(fileLengths.size(), outputStream);
-      for (Long fileLength : fileLengths) {
+      for (final Long fileLength : fileLengths) {
         ReadWriteIOUtils.write(fileLength, outputStream);
       }
       ReadWriteIOUtils.write(parameters.size(), outputStream);
@@ -86,7 +91,7 @@ public abstract class PipeTransferFileSealReqV2 extends TPipeTransferReq {
     return this;
   }
 
-  public PipeTransferFileSealReqV2 translateFromTPipeTransferReq(TPipeTransferReq req) {
+  public PipeTransferFileSealReqV2 translateFromTPipeTransferReq(final TPipeTransferReq req) {
     fileNames = new ArrayList<>();
     int size = ReadWriteIOUtils.readInt(req.body);
     for (int i = 0; i < size; ++i) {

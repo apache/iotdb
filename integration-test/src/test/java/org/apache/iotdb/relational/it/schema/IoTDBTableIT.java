@@ -27,6 +27,7 @@ import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -41,6 +42,7 @@ import java.util.Collections;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showDBColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTablesColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -390,69 +392,66 @@ public class IoTDBTableIT {
       statement.execute(
           "insert into table2(region_id, plant_id, color, temperature, speed) values(1, 1, 1, 1, 1)");
 
-      // TODO: Reopen
-      if (false) {
-        // Test drop column
-        statement.execute("alter table table2 drop column color");
+      // Test drop column
+      statement.execute("alter table table2 drop column color");
 
-        columnNames = new String[] {"time", "region_id", "plant_id", "temperature", "speed"};
-        dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "FLOAT", "DOUBLE"};
-        categories = new String[] {"TIME", "TAG", "TAG", "FIELD", "FIELD"};
-        final String[] statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
-        try (final ResultSet resultSet = statement.executeQuery("describe table2 details")) {
-          int cnt = 0;
-          ResultSetMetaData metaData = resultSet.getMetaData();
-          assertEquals(describeTableDetailsColumnHeaders.size(), metaData.getColumnCount());
-          for (int i = 0; i < describeTableDetailsColumnHeaders.size(); i++) {
-            assertEquals(
-                describeTableDetailsColumnHeaders.get(i).getColumnName(),
-                metaData.getColumnName(i + 1));
-          }
-          while (resultSet.next()) {
-            assertEquals(columnNames[cnt], resultSet.getString(1));
-            assertEquals(dataTypes[cnt], resultSet.getString(2));
-            assertEquals(categories[cnt], resultSet.getString(3));
-            assertEquals(statuses[cnt], resultSet.getString(4));
-            cnt++;
-          }
-          assertEquals(columnNames.length, cnt);
+      columnNames = new String[] {"time", "region_id", "plant_id", "temperature", "speed"};
+      dataTypes = new String[] {"TIMESTAMP", "STRING", "STRING", "FLOAT", "DOUBLE"};
+      categories = new String[] {"TIME", "TAG", "TAG", "FIELD", "FIELD"};
+      final String[] statuses = new String[] {"USING", "USING", "USING", "USING", "USING"};
+      try (final ResultSet resultSet = statement.executeQuery("describe table2 details")) {
+        int cnt = 0;
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(describeTableDetailsColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < describeTableDetailsColumnHeaders.size(); i++) {
+          assertEquals(
+              describeTableDetailsColumnHeaders.get(i).getColumnName(),
+              metaData.getColumnName(i + 1));
         }
-
-        statement.execute("alter table table2 drop column speed");
-
-        try {
-          statement.executeQuery("select color from table2");
-          fail();
-        } catch (final SQLException e) {
-          assertEquals("701: Column 'color' cannot be resolved", e.getMessage());
+        while (resultSet.next()) {
+          assertEquals(columnNames[cnt], resultSet.getString(1));
+          assertEquals(dataTypes[cnt], resultSet.getString(2));
+          assertEquals(categories[cnt], resultSet.getString(3));
+          assertEquals(statuses[cnt], resultSet.getString(4));
+          cnt++;
         }
-
-        try {
-          statement.executeQuery("select speed from table2");
-          fail();
-        } catch (final SQLException e) {
-          assertEquals("701: Column 'speed' cannot be resolved", e.getMessage());
-        }
-
-        try {
-          statement.execute("alter table table2 drop column speed");
-        } catch (final SQLException e) {
-          assertEquals("616: Column speed in table 'test2.table2' does not exist.", e.getMessage());
-        }
-
-        try {
-          statement.execute("alter table table2 drop column time");
-        } catch (final SQLException e) {
-          assertEquals("701: Dropping tag or time column is not supported.", e.getMessage());
-        }
-
-        // test data deletion by drop column
-        statement.execute("alter table table2 add column speed double");
-        TestUtils.assertResultSetEqual(
-            statement.executeQuery("select speed from table2"),
-            "speed,",
-            Collections.singleton("null,"));
+        assertEquals(columnNames.length, cnt);
       }
+
+      statement.execute("alter table table2 drop column speed");
+
+      try {
+        statement.executeQuery("select color from table2");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("616: Column 'color' cannot be resolved", e.getMessage());
+      }
+
+      try {
+        statement.executeQuery("select speed from table2");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("616: Column 'speed' cannot be resolved", e.getMessage());
+      }
+
+      try {
+        statement.execute("alter table table2 drop column speed");
+      } catch (final SQLException e) {
+        assertEquals("616: Column speed in table 'test2.table2' does not exist.", e.getMessage());
+      }
+
+      try {
+        statement.execute("alter table table2 drop column time");
+      } catch (final SQLException e) {
+        assertEquals("701: Dropping tag or time column is not supported.", e.getMessage());
+      }
+
+      // test data deletion by drop column
+      statement.execute("alter table table2 add column speed double");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select speed from table2"),
+          "speed,",
+          Collections.singleton("null,"));
 
       statement.execute("drop table table2");
       try {
@@ -504,14 +503,11 @@ public class IoTDBTableIT {
         assertEquals("500: Unknown database test1", e.getMessage());
       }
 
-      // TODO: Reopen
-      if (false) {
-        try {
-          statement.execute("alter table test1.test drop column a");
-          fail();
-        } catch (final SQLException e) {
-          assertEquals("500: Unknown database test1", e.getMessage());
-        }
+      try {
+        statement.execute("alter table test1.test drop column a");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("500: Unknown database test1", e.getMessage());
       }
 
       try {
@@ -564,6 +560,61 @@ public class IoTDBTableIT {
     } catch (final SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testTableAuth() throws SQLException {
+    try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("create user test 'password'");
+      adminStmt.execute("create database db");
+      adminStmt.execute("use db");
+      adminStmt.execute("create table test (a tag, b attribute, c int32)");
+    }
+
+    try (final Connection userCon =
+            EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement userStmt = userCon.createStatement()) {
+      Assert.assertThrows(
+          SQLException.class,
+          () -> {
+            userStmt.execute("select * from db.test");
+          });
+    }
+
+    try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("GRANT SELECT ON db.test to user test");
+    }
+
+    try (final Connection userCon =
+            EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement userStmt = userCon.createStatement()) {
+      try (final ResultSet resultSet = userStmt.executeQuery("SHOW DATABASES")) {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(showDBColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < showDBColumnHeaders.size(); i++) {
+          assertEquals(showDBColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+        }
+        Assert.assertTrue(resultSet.next());
+        assertEquals("db", resultSet.getString(1));
+        Assert.assertFalse(resultSet.next());
+      }
+
+      userStmt.execute("select * from db.test");
+    }
+
+    try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("GRANT DROP ON DATABASE DB to user test");
+    }
+
+    try (final Connection userCon =
+            EnvFactory.getEnv().getConnection("test", "password", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement userStmt = userCon.createStatement()) {
+      userStmt.execute("use db");
+      userStmt.execute("drop table test");
     }
   }
 }

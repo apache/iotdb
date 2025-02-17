@@ -40,7 +40,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DropTrigge
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetRegionIdTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetSeriesSlotListTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetTimeSlotListTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.MigrateRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.RemoveConfigNodeTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.RemoveDataNodeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.SetTTLTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowAINodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterDetailsTask;
@@ -60,6 +61,10 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.UnSetTTLTa
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.CreateModelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.DropModelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowModelsTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ExtendRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.RemoveRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.AlterSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.CreateSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.DeactivateSchemaTemplateTask;
@@ -72,6 +77,9 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.U
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.view.AlterLogicalViewTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.view.DeleteLogicalViewTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.view.RenameLogicalViewTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.SetSqlDialectTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentSqlDialectTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentUserTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.AuthorizerTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ClearCacheTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.FlushTask;
@@ -114,7 +122,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropTriggerStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.MigrateRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
@@ -141,6 +150,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePlug
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ExtendRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
@@ -164,7 +177,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.TestConnectionStatement;
@@ -397,7 +413,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitShowPipePlugins(
       ShowPipePluginsStatement showPipePluginStatement, MPPQueryContext context) {
-    return new ShowPipePluginsTask();
+    return new ShowPipePluginsTask(showPipePluginStatement);
   }
 
   @Override
@@ -629,6 +645,36 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   }
 
   @Override
+  public IConfigTask visitReconstructRegion(
+      ReconstructRegionStatement reconstructRegionStatement, MPPQueryContext context) {
+    return new ReconstructRegionTask(reconstructRegionStatement);
+  }
+
+  @Override
+  public IConfigTask visitExtendRegion(
+      ExtendRegionStatement extendRegionStatement, MPPQueryContext context) {
+    return new ExtendRegionTask(extendRegionStatement);
+  }
+
+  @Override
+  public IConfigTask visitRemoveRegion(
+      RemoveRegionStatement removeRegionStatement, MPPQueryContext context) {
+    return new RemoveRegionTask(removeRegionStatement);
+  }
+
+  @Override
+  public IConfigTask visitRemoveDataNode(
+      RemoveDataNodeStatement removeDataNodeStatement, MPPQueryContext context) {
+    return new RemoveDataNodeTask(removeDataNodeStatement);
+  }
+
+  @Override
+  public IConfigTask visitRemoveConfigNode(
+      RemoveConfigNodeStatement removeConfigNodeStatement, MPPQueryContext context) {
+    return new RemoveConfigNodeTask(removeConfigNodeStatement);
+  }
+
+  @Override
   public IConfigTask visitCreateContinuousQuery(
       CreateContinuousQueryStatement createContinuousQueryStatement, MPPQueryContext context) {
     return new CreateContinuousQueryTask(createContinuousQueryStatement, context);
@@ -670,6 +716,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     return new ShowThrottleQuotaTask(showThrottleQuotaStatement);
   }
 
+  @Override
+  public IConfigTask visitSetSqlDialect(
+      SetSqlDialectStatement setSqlDialectStatement, MPPQueryContext context) {
+    return new SetSqlDialectTask(setSqlDialectStatement.getSqlDialect());
+  }
+
   /** AI Model Management */
   @Override
   public IConfigTask visitCreateModel(
@@ -694,5 +746,16 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitShowModels(
       ShowModelsStatement showModelsStatement, MPPQueryContext context) {
     return new ShowModelsTask(showModelsStatement.getModelName());
+  }
+
+  @Override
+  public IConfigTask visitShowCurrentUser(ShowCurrentUserStatement node, MPPQueryContext context) {
+    return new ShowCurrentUserTask(context.getSession().getUserName());
+  }
+
+  @Override
+  public IConfigTask visitShowCurrentSqlDialect(
+      ShowCurrentSqlDialectStatement node, MPPQueryContext context) {
+    return new ShowCurrentSqlDialectTask(context.getSession().getSqlDialect().name());
   }
 }

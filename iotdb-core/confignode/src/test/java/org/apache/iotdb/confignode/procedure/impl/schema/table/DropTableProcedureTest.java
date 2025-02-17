@@ -34,7 +34,7 @@ public class DropTableProcedureTest {
   @Test
   public void serializeDeserializeTest() throws IllegalPathException, IOException {
     final DropTableProcedure dropTableProcedure =
-        new DropTableProcedure("database1", "table1", "0");
+        new DropTableProcedure("database1", "table1", "0", false);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -44,7 +44,7 @@ public class DropTableProcedureTest {
 
     Assert.assertEquals(ProcedureType.DROP_TABLE_PROCEDURE.getTypeCode(), byteBuffer.getShort());
 
-    final DropTableProcedure deserializedProcedure = new DropTableProcedure();
+    final DropTableProcedure deserializedProcedure = new DropTableProcedure(false);
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(dropTableProcedure, deserializedProcedure);

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
 
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.BinaryBigArray;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.BooleanBigArray;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.DoubleBigArray;
@@ -322,29 +323,29 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
   }
 
   @Override
-  public void addInput(int[] groupIds, Column[] arguments) {
+  public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
     switch (yDataType) {
       case INT32:
       case DATE:
-        addIntInput(groupIds, arguments);
+        addIntInput(groupIds, arguments, mask);
         return;
       case INT64:
       case TIMESTAMP:
-        addLongInput(groupIds, arguments);
+        addLongInput(groupIds, arguments, mask);
         return;
       case FLOAT:
-        addFloatInput(groupIds, arguments);
+        addFloatInput(groupIds, arguments, mask);
         return;
       case DOUBLE:
-        addDoubleInput(groupIds, arguments);
+        addDoubleInput(groupIds, arguments, mask);
         return;
       case TEXT:
       case BLOB:
       case STRING:
-        addBinaryInput(groupIds, arguments);
+        addBinaryInput(groupIds, arguments, mask);
         return;
       case BOOLEAN:
-        addBooleanInput(groupIds, arguments);
+        addBooleanInput(groupIds, arguments, mask);
         return;
       default:
         throw new UnSupportedDataTypeException(
@@ -392,10 +393,24 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
     writeX(groupId, columnBuilder);
   }
 
-  private void addIntInput(int[] groupIds, Column[] arguments) {
-    for (int i = 0; i < groupIds.length; i++) {
-      if (!arguments[1].isNull(i)) {
-        updateIntResult(groupIds[i], arguments[1].getInt(i), arguments[0], i);
+  private void addIntInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!arguments[1].isNull(i)) {
+          updateIntResult(groupIds[i], arguments[1].getInt(i), arguments[0], i);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!arguments[1].isNull(position)) {
+          updateIntResult(
+              groupIds[position], arguments[1].getInt(position), arguments[0], position);
+        }
       }
     }
   }
@@ -408,10 +423,24 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
     }
   }
 
-  private void addLongInput(int[] groupIds, Column[] arguments) {
-    for (int i = 0; i < groupIds.length; i++) {
-      if (!arguments[1].isNull(i)) {
-        updateLongResult(groupIds[i], arguments[1].getLong(i), arguments[0], i);
+  private void addLongInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!arguments[1].isNull(i)) {
+          updateLongResult(groupIds[i], arguments[1].getLong(i), arguments[0], i);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!arguments[1].isNull(position)) {
+          updateLongResult(
+              groupIds[position], arguments[1].getLong(position), arguments[0], position);
+        }
       }
     }
   }
@@ -424,10 +453,24 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
     }
   }
 
-  private void addFloatInput(int[] groupIds, Column[] arguments) {
-    for (int i = 0; i < groupIds.length; i++) {
-      if (!arguments[1].isNull(i)) {
-        updateFloatResult(groupIds[i], arguments[1].getFloat(i), arguments[0], i);
+  private void addFloatInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!arguments[1].isNull(i)) {
+          updateFloatResult(groupIds[i], arguments[1].getFloat(i), arguments[0], i);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!arguments[1].isNull(position)) {
+          updateFloatResult(
+              groupIds[position], arguments[1].getFloat(position), arguments[0], position);
+        }
       }
     }
   }
@@ -440,10 +483,24 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
     }
   }
 
-  private void addDoubleInput(int[] groupIds, Column[] arguments) {
-    for (int i = 0; i < groupIds.length; i++) {
-      if (!arguments[1].isNull(i)) {
-        updateDoubleResult(groupIds[i], arguments[1].getDouble(i), arguments[0], i);
+  private void addDoubleInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!arguments[1].isNull(i)) {
+          updateDoubleResult(groupIds[i], arguments[1].getDouble(i), arguments[0], i);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!arguments[1].isNull(position)) {
+          updateDoubleResult(
+              groupIds[position], arguments[1].getDouble(position), arguments[0], position);
+        }
       }
     }
   }
@@ -456,10 +513,24 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
     }
   }
 
-  private void addBinaryInput(int[] groupIds, Column[] arguments) {
-    for (int i = 0; i < groupIds.length; i++) {
-      if (!arguments[1].isNull(i)) {
-        updateBinaryResult(groupIds[i], arguments[1].getBinary(i), arguments[0], i);
+  private void addBinaryInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!arguments[1].isNull(i)) {
+          updateBinaryResult(groupIds[i], arguments[1].getBinary(i), arguments[0], i);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!arguments[1].isNull(position)) {
+          updateBinaryResult(
+              groupIds[position], arguments[1].getBinary(position), arguments[0], position);
+        }
       }
     }
   }
@@ -472,10 +543,24 @@ public abstract class GroupedMaxMinByBaseAccumulator implements GroupedAccumulat
     }
   }
 
-  private void addBooleanInput(int[] groupIds, Column[] arguments) {
-    for (int i = 0; i < groupIds.length; i++) {
-      if (!arguments[1].isNull(i)) {
-        updateBooleanResult(groupIds[i], arguments[1].getBoolean(i), arguments[0], i);
+  private void addBooleanInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!arguments[1].isNull(i)) {
+          updateBooleanResult(groupIds[i], arguments[1].getBoolean(i), arguments[0], i);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!arguments[1].isNull(position)) {
+          updateBooleanResult(
+              groupIds[position], arguments[1].getBoolean(position), arguments[0], position);
+        }
       }
     }
   }

@@ -41,13 +41,14 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Consumer;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
 
-public class SubscriptionEvent {
+public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionEvent.class);
 
@@ -63,7 +64,13 @@ public class SubscriptionEvent {
   private final AtomicLong committedTimestamp = new AtomicLong(INVALID_TIMESTAMP);
 
   // record file name for file payload
-  private String fileName;
+  private volatile String fileName;
+
+  // record for cross-event dataset payload
+  private volatile SubscriptionCommitContext rootCommitContext;
+
+  private static final long NACK_COUNT_REPORT_THRESHOLD = 3;
+  private final AtomicLong nackCount = new AtomicLong();
 
   /**
    * Constructs a {@link SubscriptionEvent} with the response type of {@link
@@ -88,13 +95,36 @@ public class SubscriptionEvent {
    * SubscriptionEventTabletResponse}.
    */
   public SubscriptionEvent(
-      final SubscriptionPipeTabletEventBatch batch,
-      final SubscriptionCommitContextSupplier commitContextSupplier) {
-    this.pipeEvents = new SubscriptionPipeTabletBatchEvents(batch);
-    final SubscriptionCommitContext commitContext = commitContextSupplier.get();
+      final SubscriptionPipeTabletEventBatch batch, final SubscriptionPrefetchingQueue queue) {
+    final SubscriptionPipeTabletBatchEvents events = new SubscriptionPipeTabletBatchEvents(batch);
+    final SubscriptionCommitContext commitContext = queue.generateSubscriptionCommitContext();
+
+    this.pipeEvents = events;
     this.response =
-        new SubscriptionEventTabletResponse(batch, commitContext, commitContextSupplier);
+        new SubscriptionEventTabletResponse(batch, queue, events, commitContext, commitContext);
     this.commitContext = commitContext;
+
+    // root event for cross-event dataset payload
+    this.rootCommitContext = commitContext;
+  }
+
+  /**
+   * Constructs a {@link SubscriptionEvent} with the response type of {@link
+   * SubscriptionEventTabletResponse}.
+   */
+  public SubscriptionEvent(
+      final SubscriptionPipeTabletEventBatch batch,
+      final SubscriptionPrefetchingQueue queue,
+      final SubscriptionCommitContext rootCommitContext) {
+    final SubscriptionPipeTabletBatchEvents events = new SubscriptionPipeTabletBatchEvents(batch);
+    final SubscriptionCommitContext commitContext = queue.generateSubscriptionCommitContext();
+
+    this.pipeEvents = events;
+    this.response =
+        new SubscriptionEventTabletResponse(batch, queue, events, commitContext, rootCommitContext);
+    this.commitContext = commitContext;
+
+    this.rootCommitContext = rootCommitContext;
   }
 
   /**
@@ -142,11 +172,7 @@ public class SubscriptionEvent {
     return response.isCommittable();
   }
 
-  public void ack(final Consumer<SubscriptionEvent> onCommittedHook) {
-    // ack response
-    response.ack(onCommittedHook);
-
-    // ack pipe events
+  public void ack() {
     pipeEvents.ack();
   }
 
@@ -156,11 +182,8 @@ public class SubscriptionEvent {
    * SubscriptionPrefetchingQueue} or {@link SubscriptionPrefetchingQueue#cleanUp}.
    */
   public void cleanUp() {
-    // reset serialized responses
-    response.cleanUp();
-
-    // clean up pipe events
     pipeEvents.cleanUp();
+    response.cleanUp();
 
     // TODO: clean more fields
   }
@@ -216,6 +239,11 @@ public class SubscriptionEvent {
 
     // reset lastPolledTimestamp makes this event pollable
     lastPolledTimestamp.set(INVALID_TIMESTAMP);
+
+    // record nack count
+    if (nackCount.getAndIncrement() > NACK_COUNT_REPORT_THRESHOLD) {
+      LOGGER.warn("{} has been nacked {} times", this, nackCount);
+    }
   }
 
   public void recordLastPolledConsumerId(final String consumerId) {
@@ -228,7 +256,7 @@ public class SubscriptionEvent {
 
   //////////////////////////// prefetch & fetch ////////////////////////////
 
-  public void prefetchRemainingResponses() throws Exception {
+  public void prefetchRemainingResponses() {
     response.prefetchRemainingResponses();
   }
 
@@ -276,16 +304,25 @@ public class SubscriptionEvent {
 
   @Override
   public String toString() {
-    return "SubscriptionEvent{response="
-        + response
-        + ", lastPolledConsumerId="
-        + lastPolledConsumerId
-        + ", lastPolledTimestamp="
-        + lastPolledTimestamp
-        + ", committedTimestamp="
-        + committedTimestamp
-        + ", pipeEvents="
-        + pipeEvents
-        + "}";
+    return toStringHelper(this)
+        .add("commitContext", commitContext)
+        .add("response", response)
+        .add("lastPolledConsumerId", lastPolledConsumerId)
+        .add("lastPolledTimestamp", lastPolledTimestamp)
+        .add("committedTimestamp", committedTimestamp)
+        .add("pipeEvents", pipeEvents)
+        .add(
+            "rootCommitContext",
+            Objects.nonNull(rootCommitContext) ? rootCommitContext : "<unknown>")
+        .toString();
+  }
+
+  @Override
+  public int compareTo(final SubscriptionEvent that) {
+    final SubscriptionCommitContext thisCommitContext =
+        Objects.nonNull(this.rootCommitContext) ? this.rootCommitContext : this.commitContext;
+    final SubscriptionCommitContext thatCommitContext =
+        Objects.nonNull(that.rootCommitContext) ? that.rootCommitContext : that.commitContext;
+    return thisCommitContext.compareTo(thatCommitContext);
   }
 }

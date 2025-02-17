@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.subscription.it;
 
-import org.apache.iotdb.session.subscription.consumer.SubscriptionExecutorServiceManager;
+import org.apache.iotdb.session.subscription.consumer.base.SubscriptionExecutorServiceManager;
 
 import org.junit.After;
 import org.junit.Before;

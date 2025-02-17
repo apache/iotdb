@@ -62,6 +62,7 @@ keyWords
     | CLUSTERID
     | CONCAT
     | CONDITION
+    | CONFIGNODE
     | CONFIGNODES
     | CONFIGURATION
     | CONNECTION
@@ -73,11 +74,14 @@ keyWords
     | CQ
     | CQS
     | CREATE
+    | CURRENT_SQL_DIALECT
+    | CURRENT_USER
     | DATA
     | DATA_REPLICATION_FACTOR
     | DATA_REGION_GROUP_NUM
     | DATABASE
     | DATABASES
+    | DATANODE
     | DATANODEID
     | DATANODES
     | DATASET
@@ -213,6 +217,7 @@ keyWords
     | SOFFSET
     | SOURCE
     | SPACE
+    | SQL_DIALECT
     | STORAGE
     | START
     | STARTTIME
@@ -223,6 +228,7 @@ keyWords
     | SUBSCRIPTIONS
     | SUBSTRING
     | SYSTEM
+    | TABLE
     | TAGS
     | TAIL
     | TASK
@@ -241,6 +247,7 @@ keyWords
     | TOPIC
     | TOPICS
     | TRACING
+    | TREE
     | TRIGGER
     | TRIGGERS
     | TRUE

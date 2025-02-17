@@ -175,7 +175,7 @@ public class AggregationNode extends SingleChildProcessNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -575,6 +575,10 @@ public class AggregationNode extends SingleChildProcessNode {
 
     public Optional<Symbol> getMask() {
       return mask;
+    }
+
+    public boolean hasMask() {
+      return mask.isPresent();
     }
 
     @Override

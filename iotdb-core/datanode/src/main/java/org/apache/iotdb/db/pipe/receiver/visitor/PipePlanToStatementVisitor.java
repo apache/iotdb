@@ -38,7 +38,15 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
@@ -64,7 +72,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
+public class PipePlanToStatementVisitor extends PlanVisitor<Object, Void> {
 
   @Override
   public Statement visitPlan(final PlanNode node, final Void context) {
@@ -76,6 +84,9 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
 
   @Override
   public InsertRowStatement visitInsertRow(final InsertRowNode node, final Void context) {
+    // MeasurementSchema is only allowed to be set at the analysis type stage. However, InsertNode
+    // has already set MeasurementSchema at the sending end. If the statement constructed this time
+    // calls SetMeasurementSchema, it will cause NPE
     final InsertRowStatement statement = new InsertRowStatement();
     statement.setDevicePath(node.getTargetPath());
     statement.setTime(node.getTime());
@@ -84,19 +95,29 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
     statement.setValues(node.getValues());
     statement.setNeedInferType(node.isNeedInferType());
     statement.setAligned(node.isAligned());
-    statement.setMeasurementSchemas(node.getMeasurementSchemas());
     statement.setColumnCategories(node.getColumnCategories());
     return statement;
   }
 
   @Override
-  public Statement visitRelationalInsertTablet(RelationalInsertTabletNode node, Void context) {
-    return new InsertTabletStatement(node);
+  public Statement visitRelationalInsertTablet(
+      final RelationalInsertTabletNode node, final Void context) {
+    final InsertTabletStatement insertTabletStatement = new InsertTabletStatement(node);
+    // MeasurementSchema is only allowed to be set at the analysis type stage. However, InsertNode
+    // has already set MeasurementSchema at the sending end. If the statement constructed this time
+    // calls SetMeasurementSchema, it will cause NPE
+    insertTabletStatement.setMeasurementSchemas(null);
+    return insertTabletStatement;
   }
 
   @Override
   public InsertTabletStatement visitInsertTablet(final InsertTabletNode node, final Void context) {
-    return new InsertTabletStatement(node);
+    final InsertTabletStatement insertTabletStatement = new InsertTabletStatement(node);
+    // MeasurementSchema is only allowed to be set at the analysis type stage. However, InsertNode
+    // has already set MeasurementSchema at the sending end. If the statement constructed this time
+    // calls SetMeasurementSchema, it will cause NPE
+    insertTabletStatement.setMeasurementSchemas(null);
+    return insertTabletStatement;
   }
 
   @Override
@@ -153,9 +174,9 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
     final List<Map<String, String>> tagsList = new ArrayList<>();
     final List<Map<String, String>> attributesList = new ArrayList<>();
 
-    for (Map.Entry<PartialPath, MeasurementGroup> path2Group :
+    for (final Map.Entry<PartialPath, MeasurementGroup> path2Group :
         node.getMeasurementGroupMap().entrySet()) {
-      MeasurementGroup group = path2Group.getValue();
+      final MeasurementGroup group = path2Group.getValue();
       dataTypes.addAll(
           Objects.nonNull(group.getDataTypes()) ? group.getDataTypes() : new ArrayList<>());
       encodings.addAll(
@@ -260,6 +281,43 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
     statement.setDeleteEndTime(node.getDeleteEndTime());
     statement.setDeleteStartTime(node.getDeleteStartTime());
     statement.setPathList(node.getPathList());
+    return statement;
+  }
+
+  // Table
+  @Override
+  public CreateOrUpdateDevice visitCreateOrUpdateTableDevice(
+      final CreateOrUpdateTableDeviceNode node, final Void context) {
+    return new CreateOrUpdateDevice(
+        node.getDatabase(),
+        node.getTableName(),
+        node.getDeviceIdList(),
+        node.getAttributeNameList(),
+        node.getAttributeValueList());
+  }
+
+  // Currently we do not parse the partitionKey for simplicity
+  @Override
+  public Update visitTableDeviceAttributeUpdate(
+      final TableDeviceAttributeUpdateNode node, final Void context) {
+    final Update update =
+        new Update(
+            null,
+            new Table(QualifiedName.of(node.getDatabase(), node.getTableName())),
+            node.getAssignments(),
+            null);
+    update.setIdDeterminedFilterList(node.getIdDeterminedFilterList());
+    update.setIdFuzzyPredicate(node.getIdFuzzyPredicate());
+    update.setDatabase(node.getDatabase());
+    update.setTableName(node.getTableName());
+    return update;
+  }
+
+  @Override
+  public Delete visitDeleteData(final RelationalDeleteDataNode node, final Void context) {
+    final Delete statement = new Delete();
+    statement.setDatabaseName(node.getDatabaseName());
+    statement.setTableDeletionEntries(node.getModEntries());
     return statement;
   }
 }

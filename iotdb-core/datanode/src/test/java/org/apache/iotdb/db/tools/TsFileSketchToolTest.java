@@ -103,16 +103,13 @@ public class TsFileSketchToolTest {
         // add measurements into TSFileWriter
         // construct the tablet
         Tablet tablet = new Tablet(device.toString(), measurementSchemas);
-        long[] timestamps = tablet.timestamps;
-        Object[] values = tablet.values;
         long timestamp = 1;
         long value = 1000000L;
         for (int r = 0; r < rowNum; r++, value++) {
           int row = tablet.getRowSize();
           tablet.addTimestamp(row, timestamp++);
           for (int i = 0; i < sensorNum; i++) {
-            long[] sensor = (long[]) values[i];
-            sensor[row] = value;
+            tablet.addValue(row, i, value);
           }
           // write Tablet to TsFile
           if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
@@ -129,16 +126,13 @@ public class TsFileSketchToolTest {
         // add aligned measurements into TSFileWriter
         // construct the tablet
         tablet = new Tablet(alignedDevice.toString(), alignedMeasurementSchemas);
-        timestamps = tablet.timestamps;
-        values = tablet.values;
         timestamp = 1;
         value = 1000000L;
         for (int r = 0; r < rowNum; r++, value++) {
           int row = tablet.getRowSize();
           tablet.addTimestamp(row, timestamp++);
           for (int i = 0; i < sensorNum; i++) {
-            long[] sensor = (long[]) values[i];
-            sensor[row] = value;
+            tablet.addValue(row, i, value);
           }
           // write Tablet to TsFile
           if (tablet.getRowSize() == tablet.getMaxRowNumber()) {

@@ -45,15 +45,10 @@ public abstract class AbstractCrossSpaceEstimator extends AbstractCompactionEsti
     List<TsFileResource> resources = new ArrayList<>(seqResources.size() + unseqResources.size());
     resources.addAll(seqResources);
     resources.addAll(unseqResources);
-    if (!CompactionEstimateUtils.addReadLock(resources)) {
-      return -1L;
-    }
+    CompactionEstimateUtils.addReadLock(resources);
 
     long cost = 0;
     try {
-      if (!isAllSourceFileExist(resources)) {
-        return -1L;
-      }
       CompactionTaskInfo taskInfo = calculatingCompactionTaskInfo(resources);
       cost += calculatingMetadataMemoryCost(taskInfo);
       cost += calculatingDataMemoryCost(taskInfo);

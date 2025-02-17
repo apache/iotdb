@@ -20,10 +20,9 @@
 package org.apache.iotdb.udf;
 
 import org.apache.iotdb.udf.api.State;
-import org.apache.iotdb.udf.api.customizer.config.AggregateFunctionConfig;
-import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
-import org.apache.iotdb.udf.api.exception.UDFException;
-import org.apache.iotdb.udf.api.exception.UDFParameterNotValidException;
+import org.apache.iotdb.udf.api.customizer.analysis.AggregateFunctionAnalysis;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
+import org.apache.iotdb.udf.api.exception.UDFArgumentNotValidException;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.type.Type;
@@ -47,10 +46,10 @@ import java.nio.ByteBuffer;
  *
  * <p>SHOW FUNCTIONS;
  *
- * <p>SELECT time, device_id, my_count(s1) as s1_count, my_count(s2) as s2_count FROM t1 group by
+ * <p>SELECT device_id, my_count(s1) as s1_count, my_count(s2) as s2_count FROM t1 group by
  * device_id;
  *
- * <p>SELECT time, my_count(s1) as s1_count, my_count(s2) as s2_count FROM t1;
+ * <p>SELECT my_count(s1) as s1_count, my_count(s2) as s2_count FROM t1;
  */
 public class AggregateFunctionExample implements AggregateFunction {
 
@@ -78,15 +77,15 @@ public class AggregateFunctionExample implements AggregateFunction {
   }
 
   @Override
-  public void validate(FunctionParameters parameters) throws UDFException {
-    if (parameters.getChildExpressionsSize() != 1) {
-      throw new UDFParameterNotValidException("Only one parameter is required.");
+  public AggregateFunctionAnalysis analyze(FunctionArguments arguments)
+      throws UDFArgumentNotValidException {
+    if (arguments.getArgumentsSize() != 1) {
+      throw new UDFArgumentNotValidException("Only one parameter is required.");
     }
-  }
-
-  @Override
-  public void beforeStart(FunctionParameters parameters, AggregateFunctionConfig configurations) {
-    configurations.setOutputDataType(Type.INT64);
+    return new AggregateFunctionAnalysis.Builder()
+        .outputDataType(Type.INT64)
+        .removable(true)
+        .build();
   }
 
   @Override
@@ -113,5 +112,13 @@ public class AggregateFunctionExample implements AggregateFunction {
   public void outputFinal(State state, ResultValue resultValue) {
     CountState countState = (CountState) state;
     resultValue.setLong(countState.count);
+  }
+
+  @Override
+  public void remove(State state, Record input) {
+    CountState countState = (CountState) state;
+    if (!input.isNull(0)) {
+      countState.count--;
+    }
   }
 }

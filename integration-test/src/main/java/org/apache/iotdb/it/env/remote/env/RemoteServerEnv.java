@@ -177,6 +177,13 @@ public class RemoteServerEnv implements BaseEnv {
     return connection;
   }
 
+  @Override
+  public Connection getConnection(
+      DataNodeWrapper dataNodeWrapper, String username, String password, String sqlDialect)
+      throws SQLException {
+    throw new UnsupportedOperationException();
+  }
+
   public void setTestMethodName(String testCaseName) {
     // Do nothing
   }
@@ -314,6 +321,16 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public ITableSession getTableSessionConnection(String userName, String password)
+      throws IoTDBConnectionException {
+    return new TableSessionBuilder()
+        .nodeUrls(Collections.singletonList(ip_addr + ":" + port))
+        .username(userName)
+        .password(password)
+        .build();
+  }
+
+  @Override
   public ISession getSessionConnection(String userName, String password)
       throws IoTDBConnectionException {
     Session session =
@@ -437,6 +454,11 @@ public class RemoteServerEnv implements BaseEnv {
 
   @Override
   public void shutdownAllDataNodes() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void shutdownForciblyAllDataNodes() {
     throw new UnsupportedOperationException();
   }
 

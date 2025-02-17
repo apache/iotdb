@@ -24,8 +24,11 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFileNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
@@ -118,12 +121,12 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   private final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries;
 
   public RelationPlanner(
-      Analysis analysis,
-      SymbolAllocator symbolAllocator,
-      MPPQueryContext queryContext,
-      Optional<TranslationMap> outerContext,
-      SessionInfo sessionInfo,
-      Map<NodeRef<Node>, RelationPlan> recursiveSubqueries) {
+      final Analysis analysis,
+      final SymbolAllocator symbolAllocator,
+      final MPPQueryContext queryContext,
+      final Optional<TranslationMap> outerContext,
+      final SessionInfo sessionInfo,
+      final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries) {
     requireNonNull(analysis, "analysis is null");
     requireNonNull(symbolAllocator, "symbolAllocator is null");
     requireNonNull(queryContext, "queryContext is null");
@@ -149,17 +152,17 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   }
 
   @Override
-  protected RelationPlan visitQuery(Query node, Void context) {
+  protected RelationPlan visitQuery(final Query node, final Void context) {
     return new QueryPlanner(
             analysis, symbolAllocator, queryContext, outerContext, sessionInfo, recursiveSubqueries)
         .plan(node);
   }
 
   @Override
-  protected RelationPlan visitTable(Table table, Void context) {
+  protected RelationPlan visitTable(final Table table, final Void context) {
     // is this a recursive reference in expandable named query? If so, there's base relation already
     // planned.
-    RelationPlan expansion = recursiveSubqueries.get(NodeRef.of(table));
+    final RelationPlan expansion = recursiveSubqueries.get(NodeRef.of(table));
     if (expansion != null) {
       // put the pre-planned recursive subquery in the actual outer context to enable resolving
       // correlation
@@ -167,27 +170,27 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           expansion.getRoot(), expansion.getScope(), expansion.getFieldMappings(), outerContext);
     }
 
-    Scope scope = analysis.getScope(table);
-    ImmutableList.Builder<Symbol> outputSymbolsBuilder = ImmutableList.builder();
-    ImmutableMap.Builder<Symbol, ColumnSchema> symbolToColumnSchema = ImmutableMap.builder();
-    Collection<Field> fields = scope.getRelationType().getAllFields();
-    QualifiedName qualifiedName = analysis.getRelationName(table);
+    final Scope scope = analysis.getScope(table);
+    final ImmutableList.Builder<Symbol> outputSymbolsBuilder = ImmutableList.builder();
+    final ImmutableMap.Builder<Symbol, ColumnSchema> symbolToColumnSchema = ImmutableMap.builder();
+    final Collection<Field> fields = scope.getRelationType().getAllFields();
+    final QualifiedName qualifiedName = analysis.getRelationName(table);
     if (!qualifiedName.getPrefix().isPresent()) {
       throw new IllegalStateException("Table " + table.getName() + " has no prefix!");
     }
 
-    QualifiedObjectName qualifiedObjectName =
+    final QualifiedObjectName qualifiedObjectName =
         new QualifiedObjectName(
             qualifiedName.getPrefix().map(QualifiedName::toString).orElse(null),
             qualifiedName.getSuffix());
 
     // on the basis of that the order of fields is same with the column category order of segments
     // in DeviceEntry
-    Map<Symbol, Integer> idAndAttributeIndexMap = new HashMap<>();
+    final Map<Symbol, Integer> idAndAttributeIndexMap = new HashMap<>();
     int idIndex = 0;
-    for (Field field : fields) {
-      TsTableColumnCategory category = field.getColumnCategory();
-      Symbol symbol = symbolAllocator.newSymbol(field);
+    for (final Field field : fields) {
+      final TsTableColumnCategory category = field.getColumnCategory();
+      final Symbol symbol = symbolAllocator.newSymbol(field);
       outputSymbolsBuilder.add(symbol);
       symbolToColumnSchema.put(
           symbol,
@@ -198,9 +201,9 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       }
     }
 
-    List<Symbol> outputSymbols = outputSymbolsBuilder.build();
+    final List<Symbol> outputSymbols = outputSymbolsBuilder.build();
 
-    Map<Symbol, ColumnSchema> tableColumnSchema = symbolToColumnSchema.build();
+    final Map<Symbol, ColumnSchema> tableColumnSchema = symbolToColumnSchema.build();
     analysis.addTableSchema(qualifiedObjectName, tableColumnSchema);
 
     if (analysis.getTableHandle(table) instanceof TreeDeviceViewSchema) {
@@ -240,28 +243,29 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   }
 
   @Override
-  protected RelationPlan visitQuerySpecification(QuerySpecification node, Void context) {
+  protected RelationPlan visitQuerySpecification(
+      final QuerySpecification node, final Void context) {
     return new QueryPlanner(
             analysis, symbolAllocator, queryContext, outerContext, sessionInfo, recursiveSubqueries)
         .plan(node);
   }
 
   @Override
-  protected RelationPlan visitNode(Node node, Void context) {
+  protected RelationPlan visitNode(final Node node, final Void context) {
     throw new IllegalStateException("Unsupported node type: " + node.getClass().getName());
   }
 
   @Override
-  protected RelationPlan visitTableSubquery(TableSubquery node, Void context) {
-    RelationPlan plan = process(node.getQuery(), context);
+  protected RelationPlan visitTableSubquery(final TableSubquery node, final Void context) {
+    final RelationPlan plan = process(node.getQuery(), context);
     return new RelationPlan(
         plan.getRoot(), analysis.getScope(node), plan.getFieldMappings(), outerContext);
   }
 
   @Override
-  protected RelationPlan visitJoin(Join node, Void context) {
-    RelationPlan leftPlan = process(node.getLeft(), context);
-    RelationPlan rightPlan = process(node.getRight(), context);
+  protected RelationPlan visitJoin(final Join node, final Void context) {
+    final RelationPlan leftPlan = process(node.getLeft(), context);
+    final RelationPlan rightPlan = process(node.getRight(), context);
 
     if (node.getCriteria().isPresent() && node.getCriteria().get() instanceof JoinUsing) {
       return planJoinUsing(node, leftPlan, rightPlan);
@@ -720,23 +724,23 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   }
 
   @Override
-  protected RelationPlan visitInsertRows(InsertRows node, Void context) {
-    InsertRowsStatement insertRowsStatement = node.getInnerTreeStatement();
-    List<Integer> indices = new ArrayList<>();
-    List<InsertRowNode> insertRowStatements = new ArrayList<>();
+  protected RelationPlan visitInsertRows(final InsertRows node, final Void context) {
+    final InsertRowsStatement insertRowsStatement = node.getInnerTreeStatement();
+    final List<Integer> indices = new ArrayList<>();
+    final List<InsertRowNode> insertRowStatements = new ArrayList<>();
     for (int i = 0; i < insertRowsStatement.getInsertRowStatementList().size(); i++) {
       indices.add(i);
       insertRowStatements.add(
           fromInsertRowStatement(insertRowsStatement.getInsertRowStatementList().get(i)));
     }
-    RelationalInsertRowsNode relationalInsertRowsNode =
+    final RelationalInsertRowsNode relationalInsertRowsNode =
         new RelationalInsertRowsNode(idAllocator.genPlanNodeId(), indices, insertRowStatements);
     return new RelationPlan(
         relationalInsertRowsNode, analysis.getRootScope(), Collections.emptyList(), outerContext);
   }
 
   @Override
-  protected RelationPlan visitLoadTsFile(LoadTsFile node, Void context) {
+  protected RelationPlan visitLoadTsFile(final LoadTsFile node, final Void context) {
     final List<Boolean> isTableModel = new ArrayList<>();
     for (int i = 0; i < node.getResources().size(); i++) {
       isTableModel.add(node.getModel().equals(LoadTsFileConfigurator.MODEL_TABLE_VALUE));
@@ -750,8 +754,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   }
 
   @Override
-  protected RelationPlan visitPipeEnriched(PipeEnriched node, Void context) {
-    RelationPlan relationPlan = node.getInnerStatement().accept(this, context);
+  protected RelationPlan visitPipeEnriched(final PipeEnriched node, final Void context) {
+    final RelationPlan relationPlan = node.getInnerStatement().accept(this, context);
 
     if (relationPlan.getRoot() instanceof LoadTsFileNode) {
       return relationPlan;
@@ -761,12 +765,23 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           analysis.getRootScope(),
           Collections.emptyList(),
           outerContext);
+    } else if (relationPlan.getRoot() instanceof RelationalDeleteDataNode) {
+      return new RelationPlan(
+          new PipeEnrichedDeleteDataNode((RelationalDeleteDataNode) relationPlan.getRoot()),
+          analysis.getRootScope(),
+          Collections.emptyList(),
+          outerContext);
     }
-    throw new IllegalStateException("Other WritePlanNode is not supported in current version.");
+
+    return new RelationPlan(
+        new PipeEnrichedWritePlanNode((WritePlanNode) relationPlan.getRoot()),
+        analysis.getRootScope(),
+        Collections.emptyList(),
+        outerContext);
   }
 
   @Override
-  protected RelationPlan visitDelete(Delete node, Void context) {
+  protected RelationPlan visitDelete(final Delete node, final Void context) {
     return new RelationPlan(
         new RelationalDeleteDataNode(idAllocator.genPlanNodeId(), node),
         analysis.getRootScope(),

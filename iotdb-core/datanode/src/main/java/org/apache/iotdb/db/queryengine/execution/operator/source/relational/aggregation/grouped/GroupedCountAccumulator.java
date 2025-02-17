@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
 
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.LongBigArray;
 
 import org.apache.tsfile.block.column.Column;
@@ -41,10 +42,23 @@ public class GroupedCountAccumulator implements GroupedAccumulator {
   }
 
   @Override
-  public void addInput(int[] groupIds, Column[] arguments) {
-    for (int i = 0; i < groupIds.length; i++) {
-      if (!arguments[0].isNull(i)) {
-        countValues.increment(groupIds[i]);
+  public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
+    int positionCount = mask.getSelectedPositionCount();
+
+    if (mask.isSelectAll()) {
+      for (int i = 0; i < positionCount; i++) {
+        if (!arguments[0].isNull(i)) {
+          countValues.increment(groupIds[i]);
+        }
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      int position;
+      for (int i = 0; i < positionCount; i++) {
+        position = selectedPositions[i];
+        if (!arguments[0].isNull(position)) {
+          countValues.increment(groupIds[position]);
+        }
       }
     }
   }

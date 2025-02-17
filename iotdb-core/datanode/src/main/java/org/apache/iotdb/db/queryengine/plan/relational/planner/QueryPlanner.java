@@ -256,7 +256,7 @@ public class QueryPlanner {
     }
 
     List<Expression> orderBy = analysis.getOrderByExpressions(node);
-    if (!orderBy.isEmpty()) {
+    if (!orderBy.isEmpty() || node.getSelect().isDistinct()) {
       builder =
           builder.appendProjections(
               Iterables.concat(orderBy, outputs), symbolAllocator, queryContext);

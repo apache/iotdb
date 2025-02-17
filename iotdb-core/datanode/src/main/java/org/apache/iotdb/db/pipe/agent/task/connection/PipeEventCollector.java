@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.agent.task.connection;
 
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -29,6 +30,9 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -76,7 +80,7 @@ public class PipeEventCollector implements EventCollector {
       } else if (event instanceof PipeTsFileInsertionEvent) {
         parseAndCollectEvent((PipeTsFileInsertionEvent) event);
       } else if (event instanceof PipeDeleteDataNodeEvent) {
-        collectEvent(event);
+        parseAndCollectEvent((PipeDeleteDataNodeEvent) event);
       } else if (!(event instanceof ProgressReportEvent)) {
         collectEvent(event);
       }
@@ -116,7 +120,8 @@ public class PipeEventCollector implements EventCollector {
     if (!forceTabletFormat
         && (!sourceEvent.shouldParseTimeOrPattern()
             || (sourceEvent.isTableModelEvent()
-                && sourceEvent.getTablePattern() == null
+                && (sourceEvent.getTablePattern() == null
+                    || !sourceEvent.getTablePattern().hasTablePattern())
                 && !sourceEvent.shouldParseTime()))) {
       collectEvent(sourceEvent);
       return;
@@ -136,6 +141,32 @@ public class PipeEventCollector implements EventCollector {
       hasNoGeneratedEvent = false;
       collectEvent(parsedEvent);
     }
+  }
+
+  private void parseAndCollectEvent(final PipeDeleteDataNodeEvent deleteDataEvent) {
+    // Only used by events containing delete data node, no need to bind progress index here since
+    // delete data event does not have progress index currently
+    (deleteDataEvent.getDeleteDataNode() instanceof DeleteDataNode
+            ? IoTDBSchemaRegionExtractor.TREE_PATTERN_PARSE_VISITOR.process(
+                deleteDataEvent.getDeleteDataNode(),
+                (IoTDBTreePattern) deleteDataEvent.getTreePattern())
+            : IoTDBSchemaRegionExtractor.TABLE_PATTERN_PARSE_VISITOR.process(
+                deleteDataEvent.getDeleteDataNode(), deleteDataEvent.getTablePattern()))
+        .map(
+            planNode ->
+                new PipeDeleteDataNodeEvent(
+                    (AbstractDeleteDataNode) planNode,
+                    deleteDataEvent.getPipeName(),
+                    deleteDataEvent.getCreationTime(),
+                    deleteDataEvent.getPipeTaskMeta(),
+                    deleteDataEvent.getTreePattern(),
+                    deleteDataEvent.getTablePattern(),
+                    deleteDataEvent.isGeneratedByPipe()))
+        .ifPresent(
+            event -> {
+              hasNoGeneratedEvent = false;
+              collectEvent(event);
+            });
   }
 
   private void collectEvent(final Event event) {

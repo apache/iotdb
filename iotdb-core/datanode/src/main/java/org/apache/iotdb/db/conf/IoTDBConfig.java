@@ -542,9 +542,6 @@ public class IoTDBConfig {
   /** The interval of compaction task schedulation in each virtual database. The unit is ms. */
   private long compactionScheduleIntervalInMs = 60_000L;
 
-  /** The interval of ttl check task in each database. The unit is ms. Default is 2 hours. */
-  private long ttlCheckInterval = 7_200_000L;
-
   /** The number of threads to be set up to check ttl. */
   private int ttlCheckerNum = 1;
 
@@ -1064,7 +1061,7 @@ public class IoTDBConfig {
   private int driverTaskExecutionTimeSliceInMs = 200;
 
   /** Maximum size of wal buffer used in IoTConsensus. Unit: byte */
-  private long throttleThreshold = 50 * 1024 * 1024 * 1024L;
+  private long throttleThreshold = 200 * 1024 * 1024 * 1024L;
 
   /** Maximum wait time of write cache in IoTConsensus. Unit: ms */
   private long cacheWindowTimeInMs = 10 * 1000L;
@@ -1144,7 +1141,7 @@ public class IoTDBConfig {
   private int maxSizePerBatch = 16 * 1024 * 1024;
   private int maxPendingBatchesNum = 5;
   private double maxMemoryRatioForQueue = 0.6;
-  private long regionMigrationSpeedLimitBytesPerSecond = 32 * 1024 * 1024L;
+  private long regionMigrationSpeedLimitBytesPerSecond = 48 * 1024 * 1024L;
 
   // IoTConsensusV2 Config
   private int iotConsensusV2PipelineSize = 5;
@@ -1204,10 +1201,11 @@ public class IoTDBConfig {
           + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
           + File.separator
           + IoTDBConstant.LOAD_TSFILE_ACTIVE_LISTENING_FAILED_FOLDER_NAME;
-
   private long loadActiveListeningCheckIntervalSeconds = 5L;
 
   private int loadActiveListeningMaxThreadNum = Runtime.getRuntime().availableProcessors();
+
+  private boolean loadActiveListeningVerifyEnable = true;
 
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
@@ -3061,16 +3059,8 @@ public class IoTDBConfig {
     this.compactionScheduleIntervalInMs = compactionScheduleIntervalInMs;
   }
 
-  public long getTTlCheckInterval() {
-    return ttlCheckInterval;
-  }
-
   public int getTTlCheckerNum() {
     return ttlCheckerNum;
-  }
-
-  public void setTtlCheckInterval(long ttlCheckInterval) {
-    this.ttlCheckInterval = ttlCheckInterval;
   }
 
   public long getMaxExpiredTime() {
@@ -4155,6 +4145,14 @@ public class IoTDBConfig {
 
   public void setLoadActiveListeningMaxThreadNum(int loadActiveListeningMaxThreadNum) {
     this.loadActiveListeningMaxThreadNum = loadActiveListeningMaxThreadNum;
+  }
+
+  public boolean isLoadActiveListeningVerifyEnable() {
+    return loadActiveListeningVerifyEnable;
+  }
+
+  public void setLoadActiveListeningVerifyEnable(boolean loadActiveListeningVerifyEnable) {
+    this.loadActiveListeningVerifyEnable = loadActiveListeningVerifyEnable;
   }
 
   public long getLoadActiveListeningCheckIntervalSeconds() {

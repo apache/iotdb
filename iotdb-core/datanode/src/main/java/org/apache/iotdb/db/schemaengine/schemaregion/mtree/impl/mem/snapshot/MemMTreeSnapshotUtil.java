@@ -137,20 +137,21 @@ public class MemMTreeSnapshotUtil {
     }
   }
 
-  private static void serializeTo(MemMTreeStore store, OutputStream outputStream)
+  private static void serializeTo(final MemMTreeStore store, final OutputStream outputStream)
       throws IOException {
     ReadWriteIOUtils.write(VERSION, outputStream);
     inorderSerialize(store.getRoot(), store, outputStream);
   }
 
   private static void inorderSerialize(
-      IMemMNode root, MemMTreeStore store, OutputStream outputStream) throws IOException {
-    MNodeSerializer serializer = new MNodeSerializer();
+      final IMemMNode root, MemMTreeStore store, final OutputStream outputStream)
+      throws IOException {
+    final MNodeSerializer serializer = new MNodeSerializer();
     if (!root.accept(serializer, outputStream)) {
       throw new IOException(SERIALIZE_ERROR_INFO);
     }
 
-    Deque<IMNodeIterator<IMemMNode>> stack = new ArrayDeque<>();
+    final Deque<IMNodeIterator<IMemMNode>> stack = new ArrayDeque<>();
     stack.push(store.getChildrenIterator(root));
     IMemMNode node;
     IMNodeIterator<IMemMNode> iterator;
@@ -308,19 +309,19 @@ public class MemMTreeSnapshotUtil {
   private static class MNodeSerializer extends MNodeVisitor<Boolean, OutputStream> {
 
     @Override
-    public Boolean visitBasicMNode(IMNode<?> node, OutputStream outputStream) {
+    public Boolean visitBasicMNode(final IMNode<?> node, final OutputStream outputStream) {
       try {
         if (node.isDevice()) {
           if (node.getAsDeviceMNode().getDeviceInfo() instanceof TableDeviceInfo) {
             ReadWriteIOUtils.write(TABLE_MNODE_TYPE, outputStream);
-            TableDeviceInfo<IMemMNode> tableDeviceInfo =
+            final TableDeviceInfo<IMemMNode> tableDeviceInfo =
                 (TableDeviceInfo<IMemMNode>) (node.getAsDeviceMNode().getDeviceInfo());
             serializeBasicMNode(node, outputStream);
             ReadWriteIOUtils.write(tableDeviceInfo.getAttributePointer(), outputStream);
           } else {
             ReadWriteIOUtils.write(ENTITY_MNODE_TYPE, outputStream);
             serializeBasicMNode(node, outputStream);
-            IDeviceMNode<?> deviceMNode = node.getAsDeviceMNode();
+            final IDeviceMNode<?> deviceMNode = node.getAsDeviceMNode();
             ReadWriteIOUtils.write(deviceMNode.getSchemaTemplateIdWithState(), outputStream);
             ReadWriteIOUtils.write(deviceMNode.isUseTemplate(), outputStream);
             ReadWriteIOUtils.write(deviceMNode.isAlignedNullable(), outputStream);
@@ -332,7 +333,7 @@ public class MemMTreeSnapshotUtil {
           ReadWriteIOUtils.write(false, outputStream); // for compatibly
         }
         return true;
-      } catch (IOException e) {
+      } catch (final IOException e) {
         logger.error(SERIALIZE_ERROR_INFO, e);
         return false;
       }
@@ -414,29 +415,29 @@ public class MemMTreeSnapshotUtil {
       return node;
     }
 
-    public IMemMNode deserializeStorageGroupEntityMNode(InputStream inputStream)
+    public IMemMNode deserializeStorageGroupEntityMNode(final InputStream inputStream)
         throws IOException {
-      String name = ReadWriteIOUtils.readString(inputStream);
-      IMemMNode node = nodeFactory.createDatabaseDeviceMNode(null, name);
+      final String name = ReadWriteIOUtils.readString(inputStream);
+      final IMemMNode node = nodeFactory.createDatabaseDeviceMNode(null, name);
       node.getAsDeviceMNode().setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
       node.getAsDeviceMNode().setUseTemplate(ReadWriteIOUtils.readBool(inputStream));
       node.getAsDeviceMNode().setAligned(ReadWriteIOUtils.readBoolObject(inputStream));
       return node;
     }
 
-    public IMemMNode deserializeEntityMNode(InputStream inputStream) throws IOException {
-      String name = ReadWriteIOUtils.readString(inputStream);
-      IDeviceMNode<IMemMNode> node = nodeFactory.createDeviceMNode(null, name);
+    public IMemMNode deserializeEntityMNode(final InputStream inputStream) throws IOException {
+      final String name = ReadWriteIOUtils.readString(inputStream);
+      final IDeviceMNode<IMemMNode> node = nodeFactory.createDeviceMNode(null, name);
       node.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
       node.setUseTemplate(ReadWriteIOUtils.readBool(inputStream));
       node.setAligned(ReadWriteIOUtils.readBoolObject(inputStream));
       return node.getAsMNode();
     }
 
-    public IMemMNode deserializeTableDeviceMNode(InputStream inputStream) throws IOException {
-      String name = ReadWriteIOUtils.readString(inputStream);
-      IDeviceMNode<IMemMNode> node = nodeFactory.createDeviceMNode(null, name);
-      TableDeviceInfo<IMemMNode> tableDeviceInfo = new TableDeviceInfo<>();
+    public IMemMNode deserializeTableDeviceMNode(final InputStream inputStream) throws IOException {
+      final String name = ReadWriteIOUtils.readString(inputStream);
+      final IDeviceMNode<IMemMNode> node = nodeFactory.createDeviceMNode(null, name);
+      final TableDeviceInfo<IMemMNode> tableDeviceInfo = new TableDeviceInfo<>();
       tableDeviceInfo.setAttributePointer(ReadWriteIOUtils.readInt(inputStream));
       node.getAsInternalMNode().setDeviceInfo(tableDeviceInfo);
       return node.getAsMNode();

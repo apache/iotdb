@@ -97,7 +97,7 @@ public class RegionMaintainHandler {
         location.getDataNodeId(), location.getClientRpcEndPoint());
   }
 
-  public String simplifiedLocation(TDataNodeLocation dataNodeLocation) {
+  public static String simplifiedLocation(TDataNodeLocation dataNodeLocation) {
     return dataNodeLocation.getDataNodeId() + "@" + dataNodeLocation.getInternalEndPoint().getIp();
   }
 
@@ -577,12 +577,19 @@ public class RegionMaintainHandler {
         configManager.getNodeManager().filterDataNodeThroughStatus(allowingStatus).stream()
             .map(TDataNodeConfiguration::getLocation)
             .collect(Collectors.toList());
+    final int leaderId = configManager.getLoadManager().getRegionLeaderMap().get(regionId);
     Collections.shuffle(aliveDataNodes);
+    Optional<TDataNodeLocation> bestChoice = Optional.empty();
     for (TDataNodeLocation aliveDataNode : aliveDataNodes) {
       if (regionLocations.contains(aliveDataNode) && !excludeLocations.contains(aliveDataNode)) {
-        return Optional.of(aliveDataNode);
+        if (leaderId == aliveDataNode.getDataNodeId()) {
+          bestChoice = Optional.of(aliveDataNode);
+          break;
+        } else if (!bestChoice.isPresent()) {
+          bestChoice = Optional.of(aliveDataNode);
+        }
       }
     }
-    return Optional.empty();
+    return bestChoice;
   }
 }

@@ -286,7 +286,7 @@ public class Analysis implements IAnalysis {
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   // extra message from config node, queries wll be sent to these Running DataNodes
-  private List<TDataNodeLocation> runningDataNodeLocations;
+  private List<TDataNodeLocation> readableDataNodeLocations;
 
   // used for limit and offset push down optimizer, if we select all columns from aligned device, we
   // can use statistics to skip
@@ -805,12 +805,12 @@ public class Analysis implements IAnalysis {
     this.tagValuesToGroupedTimeseriesOperands = tagValuesToGroupedTimeseriesOperands;
   }
 
-  public List<TDataNodeLocation> getRunningDataNodeLocations() {
-    return runningDataNodeLocations;
+  public List<TDataNodeLocation> getReadableDataNodeLocations() {
+    return readableDataNodeLocations;
   }
 
-  public void setRunningDataNodeLocations(List<TDataNodeLocation> runningDataNodeLocations) {
-    this.runningDataNodeLocations = runningDataNodeLocations;
+  public void setReadableDataNodeLocations(List<TDataNodeLocation> readableDataNodeLocations) {
+    this.readableDataNodeLocations = readableDataNodeLocations;
   }
 
   public boolean isVirtualSource() {

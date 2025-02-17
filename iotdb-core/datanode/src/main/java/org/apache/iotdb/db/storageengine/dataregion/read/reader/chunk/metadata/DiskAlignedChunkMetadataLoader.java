@@ -26,8 +26,8 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskAligne
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
 
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
-import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.tsfile.read.controller.IChunkMetadataLoader;
@@ -83,7 +83,7 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
   public List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeSeriesMetadata) {
     final long t1 = System.nanoTime();
     try {
-      List<AlignedChunkMetadata> alignedChunkMetadataList =
+      List<AbstractAlignedChunkMetadata> alignedChunkMetadataList =
           ((AbstractAlignedTimeSeriesMetadata) timeSeriesMetadata).getCopiedChunkMetadataList();
 
       // when alignedChunkMetadataList.size() == 1, it means that the chunk statistics is same as

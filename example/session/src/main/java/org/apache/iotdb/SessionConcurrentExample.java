@@ -151,7 +151,6 @@ public class SessionConcurrentExample {
 
     Tablet tablet = new Tablet(deviceId, schemaList, 100);
 
-    // Method 1 to add tablet data
     long timestamp = System.currentTimeMillis();
     for (long row = 0; row < 100; row++) {
       int rowIndex = tablet.getRowSize();
@@ -165,28 +164,6 @@ public class SessionConcurrentExample {
         tablet.reset();
       }
       timestamp++;
-    }
-
-    if (tablet.getRowSize() != 0) {
-      session.insertTablet(tablet);
-      tablet.reset();
-    }
-
-    // Method 2 to add tablet data
-    long[] timestamps = tablet.timestamps;
-    Object[] values = tablet.values;
-
-    for (long time = 0; time < 100; time++) {
-      int row = tablet.getRowSize();
-      tablet.addTimestamp(row, time);
-      for (int i = 0; i < 3; i++) {
-        long[] sensor = (long[]) values[i];
-        sensor[row] = i;
-      }
-      if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
-        session.insertTablet(tablet, true);
-        tablet.reset();
-      }
     }
 
     if (tablet.getRowSize() != 0) {

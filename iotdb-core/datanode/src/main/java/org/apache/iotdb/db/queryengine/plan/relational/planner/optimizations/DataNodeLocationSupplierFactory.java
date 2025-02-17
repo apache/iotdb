@@ -24,18 +24,25 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 
+import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.rpc.TSStatusCode.QUERY_PROCESS_ERROR;
 
 public class DataNodeLocationSupplierFactory {
+
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   private DataNodeLocationSupplierFactory() {}
 
   public static DataNodeLocationSupplier getSupplier() {
@@ -44,6 +51,25 @@ public class DataNodeLocationSupplierFactory {
 
   public interface DataNodeLocationSupplier {
     List<TDataNodeLocation> getDataNodeLocations(String table);
+  }
+
+  /** DataNode in these states is readable: Running, ReadOnly, Removing */
+  public static List<TDataNodeLocation> getReadableDataNodeLocations() {
+    try (final ConfigNodeClient client =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TGetDataNodeLocationsResp showDataNodesResp = client.getReadableDataNodeLocations();
+      if (showDataNodesResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new IoTDBRuntimeException(
+            "An error occurred when executing getReadableDataNodeLocations():"
+                + showDataNodesResp.getStatus().getMessage(),
+            QUERY_PROCESS_ERROR.getStatusCode());
+      }
+      return showDataNodesResp.getDataNodeLocationList();
+    } catch (final ClientManagerException | TException e) {
+      throw new IoTDBRuntimeException(
+          "An error occurred when executing getReadableDataNodeLocations():" + e.getMessage(),
+          QUERY_PROCESS_ERROR.getStatusCode());
+    }
   }
 
   private static class InformationSchemaTableDataNodeLocationSupplier
@@ -59,31 +85,22 @@ public class DataNodeLocationSupplierFactory {
       return SingletonHolder.INSTANCE;
     }
 
-    private List<TDataNodeLocation> getRunningDataNodeLocations() {
-      try (final ConfigNodeClient client =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        final TGetDataNodeLocationsResp showDataNodesResp = client.getRunningDataNodeLocations();
-        if (showDataNodesResp.getStatus().getCode()
-            != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new IoTDBRuntimeException(
-              "An error occurred when executing getRunningDataNodeLocations():"
-                  + showDataNodesResp.getStatus().getMessage(),
-              QUERY_PROCESS_ERROR.getStatusCode());
-        }
-        return showDataNodesResp.getDataNodeLocationList();
-      } catch (final ClientManagerException | TException e) {
-        throw new IoTDBRuntimeException(
-            "An error occurred when executing getRunningDataNodeLocations():" + e.getMessage(),
-            QUERY_PROCESS_ERROR.getStatusCode());
-      }
-    }
-
     @Override
     public List<TDataNodeLocation> getDataNodeLocations(final String tableName) {
-      if (tableName.equals(InformationSchema.QUERIES)) {
-        return getRunningDataNodeLocations();
-      } else {
-        throw new UnsupportedOperationException("Unknown table: " + tableName);
+      switch (tableName) {
+        case InformationSchema.QUERIES:
+          return getReadableDataNodeLocations();
+        case InformationSchema.DATABASES:
+        case InformationSchema.TABLES:
+        case InformationSchema.COLUMNS:
+        case InformationSchema.REGIONS:
+        case InformationSchema.PIPES:
+        case InformationSchema.PIPE_PLUGINS:
+        case InformationSchema.TOPICS:
+        case InformationSchema.SUBSCRIPTIONS:
+          return Collections.singletonList(DataNodeEndPoints.getLocalDataNodeLocation());
+        default:
+          throw new UnsupportedOperationException("Unknown table: " + tableName);
       }
     }
   }

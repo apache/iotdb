@@ -60,7 +60,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
     try {
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
       filteredTableSchemaIterator =
-          tsFileSequenceReader.readFileMetadata().getTableSchemaMap().entrySet().stream()
+          tsFileSequenceReader.getTableSchemaMap().entrySet().stream()
               .filter(entry -> Objects.isNull(pattern) || pattern.matchesTable(entry.getKey()))
               .iterator();
       tableQueryExecutor =

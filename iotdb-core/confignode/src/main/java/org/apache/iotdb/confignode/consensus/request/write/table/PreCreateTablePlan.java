@@ -35,12 +35,17 @@ public class PreCreateTablePlan extends ConfigPhysicalPlan {
 
   private TsTable table;
 
-  public PreCreateTablePlan() {
-    super(ConfigPhysicalPlanType.PreCreateTable);
+  public PreCreateTablePlan(final ConfigPhysicalPlanType type) {
+    super(type);
   }
 
   public PreCreateTablePlan(final String database, final TsTable table) {
-    super(ConfigPhysicalPlanType.PreCreateTable);
+    this(ConfigPhysicalPlanType.PreCreateTable, database, table);
+  }
+
+  public PreCreateTablePlan(
+      final ConfigPhysicalPlanType type, final String database, final TsTable table) {
+    super(type);
     this.database = database;
     this.table = table;
   }

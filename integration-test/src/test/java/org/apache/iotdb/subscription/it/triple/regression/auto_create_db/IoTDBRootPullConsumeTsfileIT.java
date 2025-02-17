@@ -23,7 +23,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionMisc;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
@@ -52,7 +52,7 @@ public class IoTDBRootPullConsumeTsfileIT extends AbstractSubscriptionRegression
   private static final String pattern = "root.**";
   private static final String device = "root.auto_create_db.RootPullConsumeTsfile.d_0";
   private static final String device2 = "root.RootPullConsumeTsfile.d_1";
-  public static SubscriptionPullConsumer consumer;
+  public static SubscriptionTreePullConsumer consumer;
   private static String topicName = "topicAutoCreateDB_RootPullConsumeTsfile";
   private static List<IMeasurementSchema> schemaList = new ArrayList<>();
 
@@ -108,7 +108,7 @@ public class IoTDBRootPullConsumeTsfileIT extends AbstractSubscriptionRegression
     insert_data(1706659200000L, device); // 2024-01-31 08:00:00+08:00
     insert_data(1706659200000L, device2); // 2024-01-31 08:00:00+08:00
     consumer =
-        new SubscriptionPullConsumer.Builder()
+        new SubscriptionTreePullConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("root_tsfile")

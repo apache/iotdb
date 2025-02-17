@@ -27,6 +27,8 @@ import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePluginsStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -44,19 +46,31 @@ import java.util.stream.Collectors;
 
 public class ShowPipePluginsTask implements IConfigTask {
 
-  private static final Binary PIPE_PLUGIN_TYPE_BUILTIN = BytesUtils.valueOf("Builtin");
-  private static final Binary PIPE_PLUGIN_TYPE_EXTERNAL = BytesUtils.valueOf("External");
+  public static final Binary PIPE_PLUGIN_TYPE_BUILTIN = BytesUtils.valueOf("Builtin");
+  public static final Binary PIPE_PLUGIN_TYPE_EXTERNAL = BytesUtils.valueOf("External");
 
   private static final Binary PIPE_JAR_NAME_EMPTY_FIELD = BytesUtils.valueOf("");
 
+  private final ShowPipePluginsStatement showPipePluginsStatement;
+
+  public ShowPipePluginsTask(final ShowPipePluginsStatement showPipePluginsStatement) {
+    this.showPipePluginsStatement = showPipePluginsStatement;
+  }
+
+  public ShowPipePluginsTask(final ShowPipePlugins node) {
+    this.showPipePluginsStatement = new ShowPipePluginsStatement();
+    this.showPipePluginsStatement.setTableModel(true);
+  }
+
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showPipePlugins();
+    return configTaskExecutor.showPipePlugins(showPipePluginsStatement);
   }
 
   public static void buildTsBlock(
-      List<ByteBuffer> allPipePluginsInformation, SettableFuture<ConfigTaskResult> future) {
+      final List<ByteBuffer> allPipePluginsInformation,
+      final SettableFuture<ConfigTaskResult> future) {
     final List<PipePluginMeta> pipePluginMetaList = new ArrayList<>();
     if (allPipePluginsInformation != null) {
       for (final ByteBuffer pipePluginInformationByteBuffer : allPipePluginsInformation) {

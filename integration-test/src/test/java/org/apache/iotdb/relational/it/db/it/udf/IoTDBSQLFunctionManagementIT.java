@@ -25,6 +25,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -64,13 +65,18 @@ public class IoTDBSQLFunctionManagementIT {
   private static final String UDF_JAR_PREFIX = new File(UDF_LIB_PREFIX).toURI().toString();
 
   @BeforeClass
-  public void setUp() throws Exception {
+  public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @AfterClass
-  public void tearDown() {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @After
+  public void dropAll() {
+    SQLFunctionUtils.dropAllUDF();
   }
 
   @Test
@@ -79,7 +85,6 @@ public class IoTDBSQLFunctionManagementIT {
         Statement statement = connection.createStatement()) {
       statement.execute(
           "create function udsf as 'org.apache.iotdb.db.query.udf.example.relational.ContainNull'");
-
       try (ResultSet resultSet = statement.executeQuery("show functions")) {
         assertEquals(4, resultSet.getMetaData().getColumnCount());
         int count = 0;
@@ -128,8 +133,8 @@ public class IoTDBSQLFunctionManagementIT {
   public void testCreateShowDropAggregateFunction() {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create function udaf as 'org.apache.iotdb.db.query.udf.example.relational.MyCount'");
+      SQLFunctionUtils.createUDF(
+          "udaf", "org.apache.iotdb.db.query.udf.example.relational.MyCount");
 
       try (ResultSet resultSet = statement.executeQuery("show functions")) {
         assertEquals(4, resultSet.getMetaData().getColumnCount());
@@ -331,13 +336,15 @@ public class IoTDBSQLFunctionManagementIT {
       // ensure that abs is not dropped
       statement.execute("CREATE DATABASE db");
       statement.execute("USE db");
-      statement.execute("CREATE TABLE table0 (device string id, s1 INT32)");
+      statement.execute("CREATE TABLE table0 (device string TAG, s1 INT32)");
       statement.execute("INSERT INTO table0 (time, device, s1) VALUES (1, 'd1', -10)");
       try (ResultSet rs = statement.executeQuery("SELECT time, ABS(s1) FROM table0")) {
         Assert.assertTrue(rs.next());
         Assert.assertEquals(1, rs.getLong(1));
         Assert.assertEquals(10, rs.getInt(2));
         Assert.assertFalse(rs.next());
+      } finally {
+        statement.execute("DROP DATABASE db");
       }
     }
   }

@@ -285,6 +285,25 @@ public class TableDeviceSchemaCache {
   }
 
   /**
+   * Get the last {@link TimeValuePair}s of given measurements, the measurements shall never be
+   * "time".
+   *
+   * @param database the device's database, without "root", {@code null} for tree model
+   * @param deviceId {@link IDeviceID}
+   * @param measurements the measurements to get
+   * @return {@code null} iff cache miss, {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR} iff
+   *     cache hit but result is {@code null}, and the result value otherwise.
+   */
+  public TimeValuePair[] getLastEntries(
+      final @Nullable String database, final IDeviceID deviceId, final String[] measurements) {
+    final TableDeviceCacheEntry entry =
+        dualKeyCache.get(new TableId(database, deviceId.getTableName()), deviceId);
+    return Objects.nonNull(entry)
+        ? Arrays.stream(measurements).map(entry::getTimeValuePair).toArray(TimeValuePair[]::new)
+        : null;
+  }
+
+  /**
    * Get the last value of measurements last by a target measurement. If the caller wants to last by
    * time or get the time last by another source measurement, the measurement shall be "" to
    * indicate the time column.
@@ -489,6 +508,18 @@ public class TableDeviceSchemaCache {
     return dualKeyCache.stats().requestCount();
   }
 
+  long getMemoryUsage() {
+    return dualKeyCache.stats().memoryUsage();
+  }
+
+  long capacity() {
+    return dualKeyCache.stats().capacity();
+  }
+
+  long entriesCount() {
+    return dualKeyCache.stats().entriesCount();
+  }
+
   void invalidateLastCache(final @Nonnull String database) {
     readWriteLock.writeLock().lock();
 
@@ -649,6 +680,11 @@ public class TableDeviceSchemaCache {
   }
 
   public void invalidateAll() {
-    dualKeyCache.invalidateAll();
+    readWriteLock.writeLock().lock();
+    try {
+      dualKeyCache.invalidateAll();
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
   }
 }

@@ -1271,7 +1271,7 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planShowQueries(Analysis analysis) {
-    List<TDataNodeLocation> dataNodeLocations = analysis.getRunningDataNodeLocations();
+    List<TDataNodeLocation> dataNodeLocations = analysis.getReadableDataNodeLocations();
     if (dataNodeLocations.size() == 1) {
       this.root =
           planSingleShowQueries(dataNodeLocations.get(0))

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
@@ -27,6 +29,7 @@ import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFu
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -49,9 +52,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundExceptio
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
-import org.apache.iotdb.udf.api.customizer.config.AggregateFunctionConfig;
-import org.apache.iotdb.udf.api.customizer.config.ScalarFunctionConfig;
-import org.apache.iotdb.udf.api.customizer.parameter.FunctionParameters;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.udf.api.customizer.analysis.AggregateFunctionAnalysis;
+import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
+import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
 
@@ -537,6 +541,15 @@ public class TableMetadataImpl implements Metadata {
                 + " must have at least two arguments, and first argument must be char type.");
       }
       return STRING;
+    } else if (TableBuiltinScalarFunction.GREATEST.getFunctionName().equalsIgnoreCase(functionName)
+        || TableBuiltinScalarFunction.LEAST.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() < 2 || !areAllTypesSameAndComparable(argumentTypes)) {
+        throw new SemanticException(
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " must have at least two arguments, and all type must be the same.");
+      }
+      return argumentTypes.get(0);
     }
 
     // builtin aggregation function
@@ -573,12 +586,20 @@ public class TableMetadataImpl implements Metadata {
                   "Aggregate functions [%s] should only have one argument", functionName));
         }
         break;
+      case SqlConstant.COUNT_IF:
+        if (argumentTypes.size() != 1 || !isBool(argumentTypes.get(0))) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregate functions [%s] should only have one boolean expression as argument",
+                  functionName));
+        }
+        break;
       case SqlConstant.FIRST_AGGREGATION:
       case SqlConstant.LAST_AGGREGATION:
         if (argumentTypes.size() != 2) {
           throw new SemanticException(
               String.format(
-                  "Aggregate functions [%s] should only have two arguments", functionName));
+                  "Aggregate functions [%s] should only have one or two arguments", functionName));
         } else if (!isTimestampType(argumentTypes.get(1))) {
           throw new SemanticException(
               String.format(
@@ -590,7 +611,8 @@ public class TableMetadataImpl implements Metadata {
         if (argumentTypes.size() != 3) {
           throw new SemanticException(
               String.format(
-                  "Aggregate functions [%s] should only have three arguments", functionName));
+                  "Aggregate functions [%s] should only have two or three arguments",
+                  functionName));
         }
         break;
       case SqlConstant.MAX_BY:
@@ -615,6 +637,8 @@ public class TableMetadataImpl implements Metadata {
     // get return type
     switch (functionName.toLowerCase(Locale.ENGLISH)) {
       case SqlConstant.COUNT:
+      case SqlConstant.COUNT_ALL:
+      case SqlConstant.COUNT_IF:
         return INT64;
       case SqlConstant.FIRST_AGGREGATION:
       case SqlConstant.LAST_AGGREGATION:
@@ -643,17 +667,16 @@ public class TableMetadataImpl implements Metadata {
     // User-defined scalar function
     if (TableUDFUtils.isScalarFunction(functionName)) {
       ScalarFunction scalarFunction = TableUDFUtils.getScalarFunction(functionName);
-      FunctionParameters functionParameters =
-          new FunctionParameters(
+      FunctionArguments functionArguments =
+          new FunctionArguments(
               argumentTypes.stream()
                   .map(UDFDataTypeTransformer::transformReadTypeToUDFDataType)
                   .collect(Collectors.toList()),
               Collections.emptyMap());
       try {
-        scalarFunction.validate(functionParameters);
-        ScalarFunctionConfig config = new ScalarFunctionConfig();
-        scalarFunction.beforeStart(functionParameters, config);
-        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(config.getOutputDataType());
+        ScalarFunctionAnalysis scalarFunctionAnalysis = scalarFunction.analyze(functionArguments);
+        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(
+            scalarFunctionAnalysis.getOutputDataType());
       } catch (Exception e) {
         throw new SemanticException("Invalid function parameters: " + e.getMessage());
       } finally {
@@ -661,17 +684,17 @@ public class TableMetadataImpl implements Metadata {
       }
     } else if (TableUDFUtils.isAggregateFunction(functionName)) {
       AggregateFunction aggregateFunction = TableUDFUtils.getAggregateFunction(functionName);
-      FunctionParameters functionParameters =
-          new FunctionParameters(
+      FunctionArguments functionArguments =
+          new FunctionArguments(
               argumentTypes.stream()
                   .map(UDFDataTypeTransformer::transformReadTypeToUDFDataType)
                   .collect(Collectors.toList()),
               Collections.emptyMap());
       try {
-        aggregateFunction.validate(functionParameters);
-        AggregateFunctionConfig config = new AggregateFunctionConfig();
-        aggregateFunction.beforeStart(functionParameters, config);
-        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(config.getOutputDataType());
+        AggregateFunctionAnalysis aggregateFunctionAnalysis =
+            aggregateFunction.analyze(functionArguments);
+        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(
+            aggregateFunctionAnalysis.getOutputDataType());
       } catch (Exception e) {
         throw new SemanticException("Invalid function parameters: " + e.getMessage());
       } finally {
@@ -726,7 +749,8 @@ public class TableMetadataImpl implements Metadata {
       TableSchema tableSchema,
       MPPQueryContext context,
       boolean allowCreateTable,
-      boolean isStrictIdColumn) {
+      boolean isStrictIdColumn)
+      throws LoadAnalyzeTableColumnDisorderException {
     return TableHeaderSchemaValidator.getInstance()
         .validateTableHeaderSchema(
             database, tableSchema, context, allowCreateTable, isStrictIdColumn);
@@ -869,6 +893,17 @@ public class TableMetadataImpl implements Metadata {
         || ((isNumericType(left) || isCharType(left)) && isUnknownType(right));
   }
 
+  public static boolean areAllTypesSameAndComparable(List<? extends Type> argumentTypes) {
+    if (argumentTypes == null || argumentTypes.isEmpty()) {
+      return true;
+    }
+    Type firstType = argumentTypes.get(0);
+    if (!firstType.isComparable()) {
+      return false;
+    }
+    return argumentTypes.stream().allMatch(type -> type.equals(firstType));
+  }
+
   public static boolean isArithmeticType(Type type) {
     return INT32.equals(type)
         || INT64.equals(type)
@@ -889,5 +924,16 @@ public class TableMetadataImpl implements Metadata {
       return true;
     }
     return isArithmeticType(left) && isArithmeticType(right);
+  }
+
+  public static void throwTableNotExistsException(final String database, final String tableName) {
+    throw new SemanticException(new TableNotExistsException(database, tableName));
+  }
+
+  public static void throwColumnNotExistsException(final Object columnName) {
+    throw new SemanticException(
+        new IoTDBException(
+            String.format("Column '%s' cannot be resolved.", columnName),
+            TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode()));
   }
 }

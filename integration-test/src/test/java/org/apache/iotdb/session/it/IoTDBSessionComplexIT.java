@@ -299,18 +299,13 @@ public class IoTDBSessionComplexIT {
     if (tablet.getRowSize() != 0) {
       session.insertTablet(tablet);
       tablet.reset();
-      tablet.bitMaps = null;
     }
-
-    long[] timestamps = tablet.timestamps;
-    Object[] values = tablet.values;
 
     for (long time = 0; time < 100; time++) {
       int row = tablet.getRowSize();
       tablet.addTimestamp(row, time);
       for (int i = 0; i < 3; i++) {
-        long[] sensor = (long[]) values[i];
-        sensor[row] = i;
+        tablet.addValue(row, i, (long) i);
       }
       if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet);
@@ -321,7 +316,6 @@ public class IoTDBSessionComplexIT {
     if (tablet.getRowSize() != 0) {
       session.insertTablet(tablet);
       tablet.reset();
-      tablet.bitMaps = null;
     }
   }
 

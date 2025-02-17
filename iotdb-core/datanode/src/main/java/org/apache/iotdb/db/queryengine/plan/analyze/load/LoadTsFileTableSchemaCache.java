@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.VerifyMetadataException;
-import org.apache.iotdb.db.exception.VerifyMetadataTypeMismatchException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadRuntimeOutOfMemoryException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSche
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
@@ -254,11 +255,11 @@ public class LoadTsFileTableSchemaCache {
   }
 
   public void createTable(TableSchema fileSchema, MPPQueryContext context, Metadata metadata)
-      throws VerifyMetadataException {
+      throws LoadAnalyzeException {
     final TableSchema realSchema =
         metadata.validateTableHeaderSchema(database, fileSchema, context, true, true).orElse(null);
     if (Objects.isNull(realSchema)) {
-      throw new VerifyMetadataException(
+      throw new LoadAnalyzeException(
           String.format(
               "Failed to validate schema for table {%s, %s}",
               fileSchema.getTableName(), fileSchema));
@@ -267,7 +268,7 @@ public class LoadTsFileTableSchemaCache {
   }
 
   private void verifyTableDataTypeAndGenerateIdColumnMapper(
-      TableSchema fileSchema, TableSchema realSchema) throws VerifyMetadataException {
+      TableSchema fileSchema, TableSchema realSchema) throws LoadAnalyzeException {
     final int realIdColumnCount = realSchema.getIdColumns().size();
     final Map<Integer, Integer> idColumnMapping =
         tableIdColumnMapper
@@ -282,7 +283,7 @@ public class LoadTsFileTableSchemaCache {
         if (realIndex != -1) {
           idColumnMapping.put(idColumnIndex++, realIndex);
         } else {
-          throw new VerifyMetadataException(
+          throw new LoadAnalyzeException(
               String.format(
                   "Id column %s in TsFile is not found in IoTDB table %s",
                   fileColumn.getName(), realSchema.getTableName()));
@@ -291,7 +292,7 @@ public class LoadTsFileTableSchemaCache {
         final ColumnSchema realColumn =
             realSchema.getColumn(fileColumn.getName(), fileColumn.getColumnCategory());
         if (!fileColumn.getType().equals(realColumn.getType())) {
-          throw new VerifyMetadataTypeMismatchException(
+          throw new LoadAnalyzeTypeMismatchException(
               String.format(
                   "Data type mismatch for column %s in table %s, type in TsFile: %s, type in IoTDB: %s",
                   realColumn.getName(),
@@ -320,7 +321,7 @@ public class LoadTsFileTableSchemaCache {
       TsFileResource resource, TsFileSequenceReader reader) throws IOException {
     clearModificationsAndTimeIndex();
 
-    currentModifications = resource.getAllModEntries();
+    currentModifications = ModificationFile.readAllModifications(resource.getTsFile(), false);
     for (final ModEntry modification : currentModifications) {
       currentModificationsMemoryUsageSizeInBytes += modification.serializedSize();
     }

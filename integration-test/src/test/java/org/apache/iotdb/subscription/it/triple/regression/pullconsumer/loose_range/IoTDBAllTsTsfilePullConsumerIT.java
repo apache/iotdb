@@ -24,7 +24,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionCon
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
@@ -59,7 +59,7 @@ public class IoTDBAllTsTsfilePullConsumerIT extends AbstractSubscriptionRegressi
   private static final String device = database + ".d_0";
   private static final String pattern = device + ".s_0";
   private static final String device2 = database + ".d_1";
-  private static SubscriptionPullConsumer consumer;
+  private static SubscriptionTreePullConsumer consumer;
   private List<IMeasurementSchema> schemaList = new ArrayList<>();
   private long nowTimestamp;
 
@@ -144,7 +144,7 @@ public class IoTDBAllTsTsfilePullConsumerIT extends AbstractSubscriptionRegressi
     insert_data(1706659200000L, device2); // 2024-01-31 08:00:00+08:00
 
     consumer =
-        new SubscriptionPullConsumer.Builder()
+        new SubscriptionTreePullConsumer.Builder()
             .host(SRC_HOST)
             .port(SRC_PORT)
             .consumerId("ts_pattern_history_tsfile_pull")

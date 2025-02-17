@@ -70,20 +70,20 @@ public class MessageDigestEncryptTest {
       users[i] = new User("user" + i, "password" + i);
       for (int j = 0; j <= i; j++) {
         PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.a.b.c" + j));
-        pathPrivilege.getPrivileges().add(j);
+        pathPrivilege.getPrivilegeIntSet().add(j);
         users[i].getPathPrivilegeList().add(pathPrivilege);
-        users[i].getRoleList().add("role" + j);
+        users[i].getRoleSet().add("role" + j);
       }
     }
 
     // create
-    User user = manager.getUser(users[0].getName());
+    User user = manager.getEntity(users[0].getName());
     assertNull(user);
     for (User user1 : users) {
       assertTrue(manager.createUser(user1.getName(), user1.getPassword(), false));
     }
     for (User user1 : users) {
-      user = manager.getUser(user1.getName());
+      user = manager.getEntity(user1.getName());
       assertEquals(user1.getName(), user.getName());
       assertEquals(messageDigestEncrypt.encrypt(user1.getPassword()), user.getPassword());
     }

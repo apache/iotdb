@@ -28,8 +28,10 @@ import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.event.SerializableEvent;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
@@ -84,8 +86,27 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
                             .getName(),
                         ((UnsetSchemaTemplatePlan) plan).getPath().getFullPath()),
                     isGeneratedByPipe);
-          } catch (MetadataException e) {
+          } catch (final MetadataException e) {
             LOGGER.warn("Failed to collect UnsetTemplatePlan", e);
+            return;
+          }
+          break;
+        case CommitCreateTable:
+          try {
+            event =
+                new PipeConfigRegionWritePlanEvent(
+                    new PipeCreateTablePlan(
+                        ((CommitCreateTablePlan) plan).getDatabase(),
+                        ConfigNode.getInstance()
+                            .getConfigManager()
+                            .getClusterSchemaManager()
+                            .getTableIfExists(
+                                ((CommitCreateTablePlan) plan).getDatabase(),
+                                ((CommitCreateTablePlan) plan).getTableName())
+                            .orElse(null)),
+                    isGeneratedByPipe);
+          } catch (final MetadataException e) {
+            LOGGER.warn("Failed to collect CommitCreateTablePlan", e);
             return;
           }
           break;
