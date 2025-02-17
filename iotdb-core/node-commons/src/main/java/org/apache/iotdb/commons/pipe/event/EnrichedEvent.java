@@ -406,6 +406,10 @@ public abstract class EnrichedEvent implements Event {
     return true;
   }
 
+  public void throwIfNoPrivilege() {
+    // Do nothing by default
+  }
+
   public abstract boolean mayEventTimeOverlappedWithTimeRange();
 
   public abstract boolean mayEventPathsOverlappedWithPattern();
@@ -489,6 +493,10 @@ public abstract class EnrichedEvent implements Event {
         + isTimeParsed
         + ", shouldReportOnCommit="
         + shouldReportOnCommit
+        + ", userName="
+        + userName
+        + ", skipIfNoPrivileges="
+        + skipIfNoPrivileges
         + '}';
   }
 
@@ -518,6 +526,10 @@ public abstract class EnrichedEvent implements Event {
         + isTimeParsed
         + ", shouldReportOnCommit="
         + shouldReportOnCommit
+        + ", userName="
+        + userName
+        + ", skipIfNoPrivileges="
+        + skipIfNoPrivileges
         + '}';
   }
 }
