@@ -160,7 +160,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     try {
       claims = validateToken(token);
     } catch (JwtException e) {
-      logger.error("Unable to login the user wit jwt {}", password, e);
+      logger.error("Unable to login the user with Username (token) {}", token, e);
       return false;
     }
     logger.debug("JWT was validated successfully!");
