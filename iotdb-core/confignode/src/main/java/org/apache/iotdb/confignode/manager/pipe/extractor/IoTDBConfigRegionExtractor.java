@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.pipe.extractor;
 
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
@@ -66,6 +67,8 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
       new PipeConfigPhysicalPlanTreeScopeParseVisitor();
   public static final PipeConfigPhysicalPlanTableScopeParseVisitor TABLE_SCOPE_PARSE_VISITOR =
       new PipeConfigPhysicalPlanTableScopeParseVisitor();
+  public static final PipeConfigPhysicalPlanTablePrivilegeParseVisitor
+      TABLE_PRIVILEGE_PARSE_VISITOR = new PipeConfigPhysicalPlanTablePrivilegeParseVisitor();
 
   private Set<ConfigPhysicalPlanType> listenedTypeSet = new HashSet<>();
 
@@ -127,6 +130,23 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
     // The connector continues to submit and relies on the queue to sleep if empty
     // Here we return with block to be consistent with the dataNode connector
     return PipeConfig.getInstance().getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();
+  }
+
+  protected Optional<PipeWritePlanEvent> trimRealtimeEventByPrivilege(
+      final PipeWritePlanEvent event) {
+    final Optional<ConfigPhysicalPlan> result =
+        TABLE_PRIVILEGE_PARSE_VISITOR.process(
+            ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan(), userName);
+    if (result.isPresent()) {
+      return Optional.of(
+          new PipeConfigRegionWritePlanEvent(result.get(), event.isGeneratedByPipe()));
+    }
+    if (skipIfNoPrivileges) {
+      return Optional.empty();
+    }
+    throw new AccessDeniedException(
+        "Not has privilege to transfer event: "
+            + ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan());
   }
 
   @Override

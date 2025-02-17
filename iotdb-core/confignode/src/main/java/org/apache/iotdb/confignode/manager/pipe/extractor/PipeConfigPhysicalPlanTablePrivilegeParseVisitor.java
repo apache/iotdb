@@ -38,7 +38,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Optional;
 
-public class PipeConfigPhysicalPlanPrivilegeParseVisitor
+public class PipeConfigPhysicalPlanTablePrivilegeParseVisitor
     extends ConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, String> {
   private static final PermissionManager permissionManager =
       ConfigNode.getInstance().getConfigManager().getPermissionManager();
