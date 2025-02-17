@@ -44,7 +44,7 @@ jobs:
            # Check the diff for TODOs
           echo Check the diff for TODOs
           TODOsCOUNT=$(echo "$DIFF" | grep -E '^\+.*(TODO|FIXME)' | wc -l)
-          if [ "TODOsCOUNT" -eq 0 ]; then
+          if [ "$TODOsCOUNT" -eq 0 ]; then
             echo "No TODOs or FIXMEs found in changed content.";
             exit 0
           fi
