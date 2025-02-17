@@ -114,7 +114,6 @@ public class DeleteTimeSeriesProcedure
                             .map(PartialPath::getFullPath)
                             .collect(Collectors.toList()),
                         false)));
-            return Flow.NO_MORE_STATE;
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
           LOGGER.info("Invalidate cache of timeSeries {}", requestMessage);
