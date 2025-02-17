@@ -33,7 +33,6 @@ import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLANNER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLAN_OPTIMIZE;
-import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TREE_TYPE;
 
 /** Generate a logical plan for the statement. */
 public class LogicalPlanner {
@@ -57,8 +56,7 @@ public class LogicalPlanner {
       long planFinishTime = System.nanoTime();
       long logicalPlanCost = planFinishTime - startTime;
       context.setLogicalPlanCost(logicalPlanCost);
-      QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TREE_TYPE, LOGICAL_PLANNER, logicalPlanCost);
+      QueryPlanCostMetricSet.getInstance().recordTreePlanCost(LOGICAL_PLANNER, logicalPlanCost);
 
       for (PlanOptimizer optimizer : optimizers) {
         rootNode = optimizer.optimize(rootNode, analysis, context);
@@ -66,7 +64,7 @@ public class LogicalPlanner {
       long logicalOptimizationCost = System.nanoTime() - planFinishTime;
       context.setLogicalOptimizationCost(logicalOptimizationCost);
       QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TREE_TYPE, LOGICAL_PLAN_OPTIMIZE, logicalOptimizationCost);
+          .recordTreePlanCost(LOGICAL_PLAN_OPTIMIZE, logicalOptimizationCost);
     }
 
     return new LogicalQueryPlan(context, rootNode);

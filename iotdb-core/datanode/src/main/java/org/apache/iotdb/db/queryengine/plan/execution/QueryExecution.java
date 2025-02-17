@@ -73,7 +73,6 @@ import static com.google.common.base.Throwables.throwIfUnchecked;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.WAIT_FOR_RESULT;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DISTRIBUTION_PLANNER;
-import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TREE_TYPE;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 
 /**
@@ -294,8 +293,7 @@ public class QueryExecution implements IQueryExecution {
     if (analysis.isQuery()) {
       final long distributionPlanCost = System.nanoTime() - startTime;
       context.setDistributionPlanCost(distributionPlanCost);
-      QUERY_PLAN_COST_METRIC_SET.recordPlanCost(
-          TREE_TYPE, DISTRIBUTION_PLANNER, distributionPlanCost);
+      QUERY_PLAN_COST_METRIC_SET.recordTreePlanCost(DISTRIBUTION_PLANNER, distributionPlanCost);
     }
 
     // if is this Statement is ShowQueryStatement, set its instances to the highest priority, so

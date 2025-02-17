@@ -54,7 +54,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DISTRIBUTION_PLANNER;
-import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TABLE_TYPE;
 
 public class TableDistributedPlanner {
 
@@ -116,7 +115,7 @@ public class TableDistributedPlanner {
 
     if (analysis.isQuery()) {
       QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TABLE_TYPE, DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
+          .recordTablePlanCost(DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
     }
     return resultDistributedPlan;
   }
