@@ -606,7 +606,14 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       eventParser.compareAndSet(
           null,
           new TsFileInsertionEventParserProvider(
-                  tsFile, treePattern, tablePattern, startTime, endTime, pipeTaskMeta, this)
+                  tsFile,
+                  treePattern,
+                  tablePattern,
+                  startTime,
+                  endTime,
+                  pipeTaskMeta,
+                  userName,
+                  this)
               .provide());
       return eventParser.get();
     } catch (final IOException e) {
