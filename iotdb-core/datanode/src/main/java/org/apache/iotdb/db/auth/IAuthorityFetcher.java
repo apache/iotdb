@@ -59,8 +59,6 @@ public interface IAuthorityFetcher {
   TSStatus checkUserTBPrivilegesGrantOpt(
       String username, String database, String table, PrivilegeType permission);
 
-  TSStatus checkUserAnyScopePrivilege(String username, PrivilegeType permission);
-
   TSStatus checkUserAnyScopePrivilegeGrantOption(String username, PrivilegeType permission);
 
   TSStatus checkDBVisible(String username, String database);

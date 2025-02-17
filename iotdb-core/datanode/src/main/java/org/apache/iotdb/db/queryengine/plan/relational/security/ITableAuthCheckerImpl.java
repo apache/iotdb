@@ -131,11 +131,6 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
   }
 
   @Override
-  public boolean checkAllPrivilege4Pipe(String userName) {
-    return false;
-  }
-
-  @Override
   public void checkTableVisibility(String userName, QualifiedObjectName tableName) {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return;

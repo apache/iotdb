@@ -276,23 +276,11 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
-  public TSStatus checkUserAnyScopePrivilege(
-      final String username, final PrivilegeType permission) {
-    checkCacheAvailable();
-    return checkPrivilege(
-        username,
-        new PrivilegeUnion(permission, false, true),
-        (role, union) -> role.checkAnyScopePrivilegeGrantOption(union.getPrivilegeType()),
-        new TCheckUserPrivilegesReq(
-            username, PrivilegeModelType.RELATIONAL.ordinal(), permission.ordinal(), true));
-  }
-
-  @Override
   public TSStatus checkUserAnyScopePrivilegeGrantOption(String username, PrivilegeType permission) {
     checkCacheAvailable();
     return checkPrivilege(
         username,
-        new PrivilegeUnion(permission, true, true),
+        new PrivilegeUnion(permission, false, true),
         (role, union) -> role.checkAnyScopePrivilegeGrantOption(union.getPrivilegeType()),
         new TCheckUserPrivilegesReq(
             username, PrivilegeModelType.RELATIONAL.ordinal(), permission.ordinal(), true));

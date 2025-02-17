@@ -88,11 +88,6 @@ public class AccessControlImpl implements AccessControl {
   }
 
   @Override
-  public void checkCanSelectFromAll4Pipe(String userName, QualifiedObjectName tableName) {
-    authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.SELECT);
-  }
-
-  @Override
   public void checkCanDeleteFromTable(String userName, QualifiedObjectName tableName) {
     authChecker.checkTablePrivilege(userName, tableName, TableModelPrivilege.DELETE);
   }
