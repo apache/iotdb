@@ -312,8 +312,8 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMemoryExpanderIntervalSeconds();
   }
 
-  public long getPipeTsFileParserCheckMemoryEnoughIntervalMs() {
-    return COMMON_CONFIG.getPipeTsFileParserCheckMemoryEnoughIntervalMs();
+  public long getPipeCheckMemoryEnoughIntervalMs() {
+    return COMMON_CONFIG.getPipeCheckMemoryEnoughIntervalMs();
   }
 
   /////////////////////////////// TwoStage ///////////////////////////////
@@ -474,9 +474,7 @@ public class PipeConfig {
         "PipeMemoryAllocateForTsFileSequenceReaderInBytes: {}",
         getPipeMemoryAllocateForTsFileSequenceReaderInBytes());
     LOGGER.info("PipeMemoryExpanderIntervalSeconds: {}", getPipeMemoryExpanderIntervalSeconds());
-    LOGGER.info(
-        "PipeTsFileParserCheckMemoryEnoughIntervalMs: {}",
-        getPipeTsFileParserCheckMemoryEnoughIntervalMs());
+    LOGGER.info("PipeCheckMemoryEnoughIntervalMs: {}", getPipeCheckMemoryEnoughIntervalMs());
 
     LOGGER.info(
         "TwoStageAggregateMaxCombinerLiveTimeInMs: {}",

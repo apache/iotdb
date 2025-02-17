@@ -101,7 +101,8 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
   }
 
   @Override
-  public void clearEventsReferenceCount() {
+  public void close() {
+    super.close();
     event.clearReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName());
   }
 

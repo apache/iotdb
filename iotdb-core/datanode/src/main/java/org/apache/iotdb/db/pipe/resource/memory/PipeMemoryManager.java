@@ -59,7 +59,7 @@ public class PipeMemoryManager {
       PipeConfig.getInstance().getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold();
   private volatile long usedMemorySizeInBytesOfTablets;
 
-  // Used to control the memory allocated for managing slice tsfile in subscription module.
+  // Used to control the memory allocated for managing slice tsfile.
   private static final double TS_FILE_MEMORY_REJECT_THRESHOLD =
       PipeConfig.getInstance().getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold();
   private volatile long usedMemorySizeInBytesOfTsFiles;
@@ -74,14 +74,31 @@ public class PipeMemoryManager {
             PipeConfig.getInstance().getPipeMemoryExpanderIntervalSeconds());
   }
 
+  // NOTE: Here we unify the memory threshold judgment for tablet and tsfile memory block, because
+  // introducing too many heuristic rules not conducive to flexible dynamic adjustment of memory
+  // configuration.
   public boolean isEnough4TabletParsing() {
-    return (double) usedMemorySizeInBytesOfTablets
-        < 0.95 * TABLET_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES;
+    return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
+        < 0.95 * TABLET_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
+            + 0.95 * TS_FILE_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES;
+  }
+
+  private boolean isHardEnough4TabletParsing() {
+    return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
+        < TABLET_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
+            + TS_FILE_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES;
   }
 
   public boolean isEnough4TsFileSlicing() {
-    return (double) usedMemorySizeInBytesOfTsFiles
-        < 0.95 * TS_FILE_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES;
+    return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
+        < 0.95 * TABLET_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
+            + 0.95 * TS_FILE_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES;
+  }
+
+  private boolean isHardEnough4TsFileSlicing() {
+    return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
+        < TABLET_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
+            + TS_FILE_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES;
   }
 
   public synchronized PipeMemoryBlock forceAllocate(long sizeInBytes)
@@ -97,8 +114,7 @@ public class PipeMemoryManager {
     }
 
     for (int i = 1; i <= MEMORY_ALLOCATE_MAX_RETRIES; i++) {
-      if ((double) usedMemorySizeInBytesOfTablets / TOTAL_MEMORY_SIZE_IN_BYTES
-          < TABLET_MEMORY_REJECT_THRESHOLD) {
+      if (isHardEnough4TabletParsing()) {
         break;
       }
 
@@ -110,8 +126,7 @@ public class PipeMemoryManager {
       }
     }
 
-    if ((double) usedMemorySizeInBytesOfTablets / TOTAL_MEMORY_SIZE_IN_BYTES
-        >= TABLET_MEMORY_REJECT_THRESHOLD) {
+    if (!isHardEnough4TabletParsing()) {
       throw new PipeRuntimeOutOfMemoryCriticalException(
           String.format(
               "forceAllocateForTablet: failed to allocate because there's too much memory for tablets, "
@@ -134,8 +149,7 @@ public class PipeMemoryManager {
     }
 
     for (int i = 1; i <= MEMORY_ALLOCATE_MAX_RETRIES; i++) {
-      if ((double) usedMemorySizeInBytesOfTsFiles / TOTAL_MEMORY_SIZE_IN_BYTES
-          < TS_FILE_MEMORY_REJECT_THRESHOLD) {
+      if (isHardEnough4TsFileSlicing()) {
         break;
       }
 
@@ -147,8 +161,7 @@ public class PipeMemoryManager {
       }
     }
 
-    if ((double) usedMemorySizeInBytesOfTsFiles / TOTAL_MEMORY_SIZE_IN_BYTES
-        >= TS_FILE_MEMORY_REJECT_THRESHOLD) {
+    if (!isHardEnough4TsFileSlicing()) {
       throw new PipeRuntimeOutOfMemoryCriticalException(
           String.format(
               "forceAllocateForTsFile: failed to allocate because there's too much memory for tsfiles, "

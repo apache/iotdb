@@ -279,13 +279,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     try {
+      // increase reference count
       tsFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, resource);
       if (isWithMod) {
         modFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, null);
-      }
-      if (Objects.nonNull(pipeName)) {
-        PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .increaseTsFileEventCount(pipeName, creationTime);
       }
       return true;
     } catch (final Exception e) {
@@ -295,16 +292,24 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               tsFile, modFile, holderMessage),
           e);
       return false;
+    } finally {
+      if (Objects.nonNull(pipeName)) {
+        PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+            .increaseTsFileEventCount(pipeName, creationTime);
+      }
     }
   }
 
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
+      // decrease reference count
       PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile);
       if (isWithMod) {
         PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile);
       }
+      // close data container
+      close();
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
@@ -527,7 +532,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     long lastRecordTime = startTime;
 
     final long memoryCheckIntervalMs =
-        PipeConfig.getInstance().getPipeTsFileParserCheckMemoryEnoughIntervalMs();
+        PipeConfig.getInstance().getPipeCheckMemoryEnoughIntervalMs();
     while (!memoryManager.isEnough4TabletParsing()) {
       Thread.sleep(memoryCheckIntervalMs);
 
