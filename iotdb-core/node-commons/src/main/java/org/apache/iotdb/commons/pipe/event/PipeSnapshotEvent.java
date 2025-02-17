@@ -41,6 +41,7 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
       final TreePattern treePattern,
       final TablePattern tablePattern,
       final String userName,
+      final boolean skipIfNoPrivileges,
       final PipeSnapshotResourceManager resourceManager) {
     super(
         pipeName,
@@ -49,6 +50,7 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
         treePattern,
         tablePattern,
         userName,
+        skipIfNoPrivileges,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
     this.resourceManager = resourceManager;

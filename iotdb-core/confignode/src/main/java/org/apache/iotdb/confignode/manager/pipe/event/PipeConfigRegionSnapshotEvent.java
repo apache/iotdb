@@ -108,7 +108,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
 
   public PipeConfigRegionSnapshotEvent(
       final String snapshotPath, final String templateFilePath, final CNSnapshotFileType type) {
-    this(snapshotPath, templateFilePath, type, null, 0, null, null, null, null);
+    this(snapshotPath, templateFilePath, type, null, 0, null, null, null, null, true);
   }
 
   public PipeConfigRegionSnapshotEvent(
@@ -120,7 +120,8 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
-      final String userName) {
+      final String userName,
+      final boolean skipIfNoPrivileges) {
     super(
         pipeName,
         creationTime,
@@ -128,6 +129,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
         treePattern,
         tablePattern,
         userName,
+        skipIfNoPrivileges,
         PipeConfigNodeResourceManager.snapshot());
     this.snapshotPath = snapshotPath;
     this.templateFilePath = Objects.nonNull(templateFilePath) ? templateFilePath : "";
@@ -190,6 +192,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
       final TreePattern treePattern,
       final TablePattern tablePattern,
       final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     return new PipeConfigRegionSnapshotEvent(
@@ -201,7 +204,8 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
-        userName);
+        userName,
+        skipIfNoPrivileges);
   }
 
   @Override

@@ -81,6 +81,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       final TreePattern treePattern,
       final TablePattern tablePattern,
       final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     super(
@@ -90,6 +91,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         treePattern,
         tablePattern,
         userName,
+        skipIfNoPrivileges,
         startTime,
         endTime,
         isTableModelEvent,
@@ -123,6 +125,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         null,
         null,
         null,
+        true,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
   }
@@ -142,6 +145,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         null,
         null,
         null,
+        true,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
   }
@@ -162,6 +166,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         treePattern,
         null,
         null,
+        true,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
   }
@@ -170,7 +175,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   public PipeRawTabletInsertionEvent(
       final Tablet tablet, final long startTime, final long endTime) {
     this(
-        null, null, tablet, false, null, false, null, 0, null, null, null, null, startTime,
+        null, null, tablet, false, null, false, null, 0, null, null, null, null, true, startTime,
         endTime);
   }
 
@@ -244,6 +249,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       final TreePattern treePattern,
       final TablePattern tablePattern,
       final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     return new PipeRawTabletInsertionEvent(
@@ -259,6 +265,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         treePattern,
         tablePattern,
         userName,
+        skipIfNoPrivileges,
         startTime,
         endTime);
   }

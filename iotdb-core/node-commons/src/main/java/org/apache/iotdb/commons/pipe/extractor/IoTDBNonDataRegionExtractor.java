@@ -173,6 +173,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
                       treePattern,
                       tablePattern,
                       userName,
+                      skipIfNoPrivileges,
                       Long.MIN_VALUE,
                       Long.MAX_VALUE);
 
@@ -206,6 +207,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
               treePattern,
               tablePattern,
               userName,
+              skipIfNoPrivileges,
               Long.MIN_VALUE,
               Long.MAX_VALUE);
       event.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
@@ -222,6 +224,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
                 treePattern,
                 tablePattern,
                 userName,
+                skipIfNoPrivileges,
                 Long.MIN_VALUE,
                 Long.MAX_VALUE);
     realtimeEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));

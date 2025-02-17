@@ -573,6 +573,7 @@ public class TsFileInsertionEventParserTest {
             null,
             null,
             null,
+            true,
             Long.MIN_VALUE,
             Long.MAX_VALUE);
     try (final TsFileInsertionEventParser tsFileContainer =

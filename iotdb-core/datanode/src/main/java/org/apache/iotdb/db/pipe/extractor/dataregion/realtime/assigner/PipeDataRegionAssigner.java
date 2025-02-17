@@ -150,6 +150,7 @@ public class PipeDataRegionAssigner implements Closeable {
                         extractor.getTreePattern(),
                         extractor.getTablePattern(),
                         extractor.getUserName(),
+                        extractor.isSkipIfNoPrivileges(),
                         extractor.getRealtimeDataExtractionStartTime(),
                         extractor.getRealtimeDataExtractionEndTime());
                 reportEvent.bindProgressIndex(event.getProgressIndex());
@@ -171,6 +172,7 @@ public class PipeDataRegionAssigner implements Closeable {
                       extractor.getTreePattern(),
                       extractor.getTablePattern(),
                       extractor.getUserName(),
+                      extractor.isSkipIfNoPrivileges(),
                       extractor.getRealtimeDataExtractionStartTime(),
                       extractor.getRealtimeDataExtractionEndTime());
               final EnrichedEvent innerEvent = copiedEvent.getEvent();

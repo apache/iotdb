@@ -107,7 +107,8 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
         null,
         null,
         null,
-        null);
+        null,
+        true);
   }
 
   public PipeSchemaRegionSnapshotEvent(
@@ -120,7 +121,8 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
-      final String userName) {
+      final String userName,
+      final boolean skipIfNoPrivileges) {
     super(
         pipeName,
         creationTime,
@@ -128,6 +130,7 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
         treePattern,
         tablePattern,
         userName,
+        skipIfNoPrivileges,
         PipeDataNodeResourceManager.snapshot());
     this.mTreeSnapshotPath = mTreeSnapshotPath;
     this.tagLogSnapshotPath = Objects.nonNull(tagLogSnapshotPath) ? tagLogSnapshotPath : "";
@@ -202,6 +205,7 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
       final TreePattern treePattern,
       final TablePattern tablePattern,
       final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     return new PipeSchemaRegionSnapshotEvent(
@@ -214,7 +218,8 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
-        userName);
+        userName,
+        skipIfNoPrivileges);
   }
 
   @Override

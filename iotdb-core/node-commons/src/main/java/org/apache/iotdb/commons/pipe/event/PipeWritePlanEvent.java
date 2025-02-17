@@ -37,6 +37,7 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
       final TreePattern treePattern,
       final TablePattern tablePattern,
       final String userName,
+      final boolean skipIfNoPrivileges,
       final boolean isGeneratedByPipe) {
     super(
         pipeName,
@@ -45,6 +46,7 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
         treePattern,
         tablePattern,
         userName,
+        skipIfNoPrivileges,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
     this.isGeneratedByPipe = isGeneratedByPipe;
