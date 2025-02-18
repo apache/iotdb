@@ -137,29 +137,36 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
   }
 
   @Override
-  protected boolean canSkipSnapshotPrivilegeCheck() {
+  protected boolean canSkipSnapshotPrivilegeCheck(final PipeSnapshotEvent event) {
     final PermissionManager permissionManager =
         ConfigNode.getInstance().getConfigManager().getPermissionManager();
-    return permissionManager
+    switch (((PipeConfigRegionSnapshotEvent) event).getFileType()) {
+      case USER:
+        return permissionManager
                 .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.MANAGE_USER))
                 .getStatus()
                 .getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && permissionManager
+            == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+      case ROLE:
+        return permissionManager
                 .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
                 .getStatus()
                 .getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && permissionManager
+            == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+      case SCHEMA:
+        return permissionManager
                 .checkUserPrivileges(userName, new PrivilegeUnion(null, false, true))
                 .getStatus()
                 .getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+      default:
+        return true;
+    }
   }
 
   @Override
-  protected boolean initSnapshotGenerator(final PipeSnapshotEvent event) {
-    return false;
+  protected void initSnapshotGenerator(final PipeSnapshotEvent event) {
+    // Do nothing
   }
 
   @Override

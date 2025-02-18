@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.extractor;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
@@ -241,10 +242,10 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
   protected abstract long getMaxBlockingTimeMs();
 
-  protected abstract boolean canSkipSnapshotPrivilegeCheck();
+  protected abstract boolean canSkipSnapshotPrivilegeCheck(final PipeSnapshotEvent event);
 
-  protected abstract boolean initSnapshotGenerator(final PipeSnapshotEvent event)
-      throws IOException;
+  protected abstract void initSnapshotGenerator(final PipeSnapshotEvent event)
+      throws IOException, IllegalPathException;
 
   protected abstract boolean getNextInSnapshot();
 

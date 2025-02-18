@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
@@ -148,7 +150,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   }
 
   @Override
-  protected boolean canSkipSnapshotPrivilegeCheck() {
+  protected boolean canSkipSnapshotPrivilegeCheck(final PipeSnapshotEvent event) {
     try {
       Coordinator.getInstance()
           .getAccessControl()
@@ -160,7 +162,8 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   }
 
   @Override
-  protected boolean initSnapshotGenerator(final PipeSnapshotEvent event) throws IOException {
+  protected void initSnapshotGenerator(final PipeSnapshotEvent event)
+      throws IOException, IllegalPathException {
     final PipeSchemaRegionSnapshotEvent snapshotEvent = (PipeSchemaRegionSnapshotEvent) event;
     generator =
         SchemaRegionSnapshotParser.translate2Statements(
@@ -171,8 +174,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
             Objects.nonNull(snapshotEvent.getAttributeSnapshotFile())
                 ? Paths.get(snapshotEvent.getAttributeSnapshotFile().getPath())
                 : null,
-            null);
-    return false;
+            PartialPath.getQualifiedDatabasePartialPath(database));
   }
 
   @Override
