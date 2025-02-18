@@ -163,8 +163,11 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
       }
     }
 
+    // Check whether snapshot being parsed exists
+    PipeWritePlanEvent realtimeEvent = getNextEventInCurrentSnapshot();
+
     // Historical
-    if (!historicalEvents.isEmpty()) {
+    while (Objects.isNull(realtimeEvent) && !historicalEvents.isEmpty()) {
       final PipeSnapshotEvent historicalEvent =
           (PipeSnapshotEvent)
               historicalEvents
@@ -180,20 +183,27 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
                       Long.MIN_VALUE,
                       Long.MAX_VALUE);
 
-      if (historicalEvents.isEmpty()) {
-        // We only report progress for the last snapshot event.
-        historicalEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
+      if (canSkipSnapshotPrivilegeCheck(historicalEvent)) {
+        if (historicalEvents.isEmpty()) {
+          // We only report progress for the last snapshot event.
+          historicalEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
+        }
+
+        historicalEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
+        // We allow to send the events with empty transferred types to make the last
+        // event commit and report its progress
+        confineHistoricalEventTransferTypes(historicalEvent);
+        return historicalEvent;
       }
 
-      historicalEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
-      // We allow to send the events with empty transferred types to make the last
-      // event commit and report its progress
-      confineHistoricalEventTransferTypes(historicalEvent);
-      return historicalEvent;
+      initSnapshotGenerator(historicalEvent);
+      realtimeEvent = getNextEventInCurrentSnapshot();
     }
 
     // Realtime
-    PipeWritePlanEvent realtimeEvent = (PipeWritePlanEvent) iterator.peek(getMaxBlockingTimeMs());
+    if (Objects.isNull(realtimeEvent)) {
+      realtimeEvent = (PipeWritePlanEvent) iterator.peek(getMaxBlockingTimeMs());
+    }
     if (Objects.isNull(realtimeEvent)) {
       return null;
     }
@@ -247,7 +257,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
   protected abstract void initSnapshotGenerator(final PipeSnapshotEvent event)
       throws IOException, IllegalPathException;
 
-  protected abstract PipeWritePlanEvent getNextEventInSnapshot();
+  protected abstract PipeWritePlanEvent getNextEventInCurrentSnapshot();
 
   protected abstract Optional<PipeWritePlanEvent> trimRealtimeEventByPrivilege(
       final PipeWritePlanEvent event) throws AccessDeniedException;

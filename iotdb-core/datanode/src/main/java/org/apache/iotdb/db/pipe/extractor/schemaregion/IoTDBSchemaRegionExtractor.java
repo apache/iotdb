@@ -178,7 +178,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   }
 
   @Override
-  protected PipeWritePlanEvent getNextEventInSnapshot() {
+  protected PipeWritePlanEvent getNextEventInCurrentSnapshot() {
     return null;
   }
 
