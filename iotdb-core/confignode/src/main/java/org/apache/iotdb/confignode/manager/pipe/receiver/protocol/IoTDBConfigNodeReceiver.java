@@ -329,14 +329,30 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     PrivilegeType.CREATE))
             .getStatus();
       case AddTableColumn:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new PrivilegeUnion(
+                    ((AddTableColumnPlan) plan).getDatabase(),
+                    ((AddTableColumnPlan) plan).getTableName(),
+                    PrivilegeType.ALTER))
+            .getStatus();
       case SetTableProperties:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new PrivilegeUnion(
+                    ((SetTablePropertiesPlan) plan).getDatabase(),
+                    ((SetTablePropertiesPlan) plan).getTableName(),
+                    PrivilegeType.ALTER))
+            .getStatus();
       case CommitDeleteColumn:
         return configManager
             .checkUserPrivileges(
                 username,
                 new PrivilegeUnion(
-                    ((PipeCreateTablePlan) plan).getDatabase(),
-                    ((PipeCreateTablePlan) plan).getTable().getTableName(),
+                    ((CommitDeleteColumnPlan) plan).getDatabase(),
+                    ((CommitDeleteColumnPlan) plan).getTableName(),
                     PrivilegeType.ALTER))
             .getStatus();
       case CommitDeleteTable:
@@ -344,8 +360,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             .checkUserPrivileges(
                 username,
                 new PrivilegeUnion(
-                    ((PipeCreateTablePlan) plan).getDatabase(),
-                    ((PipeCreateTablePlan) plan).getTable().getTableName(),
+                    ((CommitDeleteTablePlan) plan).getDatabase(),
+                    ((CommitDeleteTablePlan) plan).getTableName(),
                     PrivilegeType.DROP))
             .getStatus();
       case GrantRole:
