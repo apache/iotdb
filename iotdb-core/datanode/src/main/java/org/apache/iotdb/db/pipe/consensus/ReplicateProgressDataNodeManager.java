@@ -36,21 +36,29 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class ReplicateProgressDataNodeManager implements ReplicateProgressManager {
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+  private static final Map<String, AtomicLong> groupId2ReplicateIndex = new HashMap<>();
   private final Map<ConsensusGroupId, ProgressIndex> groupId2MaxProgressIndex;
   private long pinnedCommitIndexForMigration;
-  private int pinnedPipeRestartTimesForMigration;
 
   public ReplicateProgressDataNodeManager() {
     this.groupId2MaxProgressIndex = new ConcurrentHashMap<>();
 
     recoverMaxProgressIndexFromDataRegion();
+  }
+
+  public static long assignReplicateIndexForIoTV2(String groupId) {
+    return groupId2ReplicateIndex
+        .compute(groupId, (k, v) -> v == null ? new AtomicLong(0) : v)
+        .getAndIncrement();
   }
 
   public static ProgressIndex extractLocalSimpleProgressIndex(ProgressIndex progressIndex) {
@@ -136,11 +144,9 @@ public class ReplicateProgressDataNodeManager implements ReplicateProgressManage
   @Override
   public long getSyncLagForSpecificConsensusPipe(
       ConsensusGroupId consensusGroupId, ConsensusPipeName consensusPipeName) {
-    return PipeConsensusSyncLagManager.getInstance(consensusGroupId.toString())
-        .getSyncLagForRegionMigration(
-            consensusPipeName,
-            this.pinnedCommitIndexForMigration,
-            this.pinnedPipeRestartTimesForMigration);
+    //    return PipeConsensusSyncLagManager.getInstance(consensusGroupId.toString())
+    //        .getSyncLagForRegionMigration(consensusPipeName, this.pinnedCommitIndexForMigration);
+    return 0;
   }
 
   @Override

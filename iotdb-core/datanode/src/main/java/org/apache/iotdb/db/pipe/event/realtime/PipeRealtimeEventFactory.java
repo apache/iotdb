@@ -20,11 +20,15 @@
 package org.apache.iotdb.db.pipe.event.realtime;
 
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.consensus.pipe.PipeConsensus;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpochManager;
+import org.apache.iotdb.db.pipe.processor.pipeconsensus.PipeConsensusProcessor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -35,30 +39,48 @@ public class PipeRealtimeEventFactory {
   private static final TsFileEpochManager TS_FILE_EPOCH_MANAGER = new TsFileEpochManager();
 
   public static PipeRealtimeEvent createRealtimeEvent(
+      final String dataRegionId,
       final String databaseName,
       final TsFileResource resource,
       final boolean isLoaded,
       final boolean isGeneratedByPipe) {
-    return TS_FILE_EPOCH_MANAGER.bindPipeTsFileInsertionEvent(
-        new PipeTsFileInsertionEvent(databaseName, resource, isLoaded, isGeneratedByPipe, false),
-        resource);
+    PipeTsFileInsertionEvent tsFileEvent =
+        new PipeTsFileInsertionEvent(databaseName, resource, isLoaded, isGeneratedByPipe, false);
+
+    // if using IoTV2, assign a replicateIndex for this event
+    if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus
+        && PipeConsensusProcessor.isShouldReplicate(tsFileEvent)) {
+      tsFileEvent.setReplicateIndexForIoTV2(
+          ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(dataRegionId));
+    }
+
+    return TS_FILE_EPOCH_MANAGER.bindPipeTsFileInsertionEvent(tsFileEvent, resource);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(
+      final String dataRegionId,
       final String databaseName,
       final WALEntryHandler walEntryHandler,
       final InsertNode insertNode,
       final TsFileResource resource) {
-    return TS_FILE_EPOCH_MANAGER.bindPipeInsertNodeTabletInsertionEvent(
+    PipeInsertNodeTabletInsertionEvent insertionEvent =
         new PipeInsertNodeTabletInsertionEvent(
             databaseName,
             walEntryHandler,
             insertNode.getTargetPath(),
             insertNode.getProgressIndex(),
             insertNode.isAligned(),
-            insertNode.isGeneratedByPipe()),
-        insertNode,
-        resource);
+            insertNode.isGeneratedByPipe());
+
+    // if using IoTV2, assign a replicateIndex for this event
+    if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus
+        && PipeConsensusProcessor.isShouldReplicate(insertionEvent)) {
+      insertionEvent.setReplicateIndexForIoTV2(
+          ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(dataRegionId));
+    }
+
+    return TS_FILE_EPOCH_MANAGER.bindPipeInsertNodeTabletInsertionEvent(
+        insertionEvent, insertNode, resource);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(
@@ -67,9 +89,19 @@ public class PipeRealtimeEventFactory {
         new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null, null, null);
   }
 
-  public static PipeRealtimeEvent createRealtimeEvent(final AbstractDeleteDataNode node) {
-    return new PipeRealtimeEvent(
-        new PipeDeleteDataNodeEvent(node, node.isGeneratedByPipe()), null, null, null, null);
+  public static PipeRealtimeEvent createRealtimeEvent(
+      final String dataRegionId, final AbstractDeleteDataNode node) {
+    PipeDeleteDataNodeEvent deleteDataNodeEvent =
+        new PipeDeleteDataNodeEvent(node, node.isGeneratedByPipe());
+
+    // if using IoTV2, assign a replicateIndex for this event
+    if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus
+        && PipeConsensusProcessor.isShouldReplicate(deleteDataNodeEvent)) {
+      deleteDataNodeEvent.setReplicateIndexForIoTV2(
+          ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(dataRegionId));
+    }
+
+    return new PipeRealtimeEvent(deleteDataNodeEvent, null, null, null, null);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(final ProgressReportEvent event) {

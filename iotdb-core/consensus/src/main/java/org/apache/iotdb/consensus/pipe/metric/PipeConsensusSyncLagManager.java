@@ -45,32 +45,32 @@ public class PipeConsensusSyncLagManager {
    * pinnedCommitIndex - currentReplicateProgress. If res <= 0, indicating that replication is
    * finished.
    */
-  public long getSyncLagForRegionMigration(
-      ConsensusPipeName consensusPipeName, long pinnedCommitIndex, int pinnedPipeRestartTimes) {
-    return Optional.ofNullable(consensusPipe2ConnectorMap.get(consensusPipeName))
-        .map(
-            consensusPipeConnector -> {
-              int pipeRestartTimes = consensusPipeConnector.getConsensusPipeRestartTimes();
-              if (pipeRestartTimes > pinnedPipeRestartTimes) {
-                long accumulatedReplicatedProgress = 0;
-                for (int i = pinnedPipeRestartTimes; i <= pipeRestartTimes; i++) {
-                  accumulatedReplicatedProgress +=
-                      consensusPipe2MaxIndexContainerMap
-                          .get(consensusPipeName)
-                          .getMaxReplicateIndex(i);
-                }
-                return Math.max(pinnedCommitIndex - accumulatedReplicatedProgress, 0);
-              } else {
-                return Math.max(
-                    pinnedCommitIndex
-                        - consensusPipe2MaxIndexContainerMap
-                            .get(consensusPipeName)
-                            .getMaxReplicateIndex(pinnedPipeRestartTimes),
-                    0L);
-              }
-            })
-        .orElse(0L);
-  }
+  //  public long getSyncLagForRegionMigration(
+  //      ConsensusPipeName consensusPipeName, long pinnedCommitIndex, int pinnedPipeRestartTimes) {
+  //    return Optional.ofNullable(consensusPipe2ConnectorMap.get(consensusPipeName))
+  //        .map(
+  //            consensusPipeConnector -> {
+  //              int pipeRestartTimes = consensusPipeConnector.getConsensusPipeRestartTimes();
+  //              if (pipeRestartTimes > pinnedPipeRestartTimes) {
+  //                long accumulatedReplicatedProgress = 0;
+  //                for (int i = pinnedPipeRestartTimes; i <= pipeRestartTimes; i++) {
+  //                  accumulatedReplicatedProgress +=
+  //                      consensusPipe2MaxIndexContainerMap
+  //                          .get(consensusPipeName)
+  //                          .getMaxReplicateIndex(i);
+  //                }
+  //                return Math.max(pinnedCommitIndex - accumulatedReplicatedProgress, 0);
+  //              } else {
+  //                return Math.max(
+  //                    pinnedCommitIndex
+  //                        - consensusPipe2MaxIndexContainerMap
+  //                            .get(consensusPipeName)
+  //                            .getMaxReplicateIndex(pinnedPipeRestartTimes),
+  //                    0L);
+  //              }
+  //            })
+  //        .orElse(0L);
+  //  }
 
   public long getCurrentCommitIndex(ConsensusPipeName consensusPipeName) {
     return Optional.ofNullable(consensusPipe2ConnectorMap.get(consensusPipeName))
@@ -187,11 +187,11 @@ public class PipeConsensusSyncLagManager {
     }
 
     public Long getMaxUserWriteIndex(int restartTimes) {
-      return pipeRestartTimes2MaxUserWriteIndex.getOrDefault(restartTimes, 0);
+      return pipeRestartTimes2MaxUserWriteIndex.getOrDefault(restartTimes, 0l);
     }
 
     public Long getMaxReplicateIndex(int restartTimes) {
-      return pipeRestartTimes2MaxReplicateIndex.getOrDefault(restartTimes, 0);
+      return pipeRestartTimes2MaxReplicateIndex.getOrDefault(restartTimes, 0l);
     }
   }
 
