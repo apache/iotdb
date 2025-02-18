@@ -165,7 +165,7 @@ public class TableModelPlanner implements IPlanner {
         long distributionPlanCost = System.nanoTime() - startTime;
         context.setDistributionPlanCost(distributionPlanCost);
         QueryPlanCostMetricSet.getInstance()
-            .recordTablePlanCost(DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
+            .recordTablePlanCost(DISTRIBUTION_PLANNER, distributionPlanCost);
       }
     }
   }
