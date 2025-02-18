@@ -260,6 +260,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeStuckRestartMinIntervalMs();
   }
 
+  public long getPipeStorageEngineFlushTimeIntervalMs() {
+    return COMMON_CONFIG.getPipeStorageEngineFlushTimeIntervalMs();
+  }
+
   /////////////////////////////// Logger ///////////////////////////////
 
   public int getPipeMetaReportMaxLogNumPerRound() {
@@ -457,6 +461,8 @@ public class PipeConfig {
         getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage());
     LOGGER.info("PipeStuckRestartIntervalSeconds: {}", getPipeStuckRestartIntervalSeconds());
     LOGGER.info("PipeStuckRestartMinIntervalMs: {}", getPipeStuckRestartMinIntervalMs());
+    LOGGER.info(
+        "PipeStorageEngineFlushTimeIntervalMs: {}", getPipeStorageEngineFlushTimeIntervalMs());
 
     LOGGER.info("PipeMetaReportMaxLogNumPerRound: {}", getPipeMetaReportMaxLogNumPerRound());
     LOGGER.info("PipeMetaReportMaxLogIntervalRounds: {}", getPipeMetaReportMaxLogIntervalRounds());

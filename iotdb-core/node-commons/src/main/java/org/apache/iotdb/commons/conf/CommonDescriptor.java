@@ -524,6 +524,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_stuck_restart_min_interval_ms",
                 String.valueOf(config.getPipeStuckRestartMinIntervalMs()))));
+    config.setPipeStorageEngineFlushTimeIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_storage_engine_flush_time_interval_ms",
+                String.valueOf(config.getPipeStorageEngineFlushTimeIntervalMs()))));
 
     config.setPipeMetaReportMaxLogNumPerRound(
         Integer.parseInt(
