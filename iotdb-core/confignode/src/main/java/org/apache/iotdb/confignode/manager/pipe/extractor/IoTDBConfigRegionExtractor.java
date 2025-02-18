@@ -145,7 +145,7 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
       final ConfigPhysicalPlan plan,
       final IoTDBTreePattern treePattern,
       final TablePattern tablePattern) {
-    Optional<ConfigPhysicalPlan> result = Optional.empty();
+    Optional<ConfigPhysicalPlan> result = Optional.of(plan);
     final Boolean isTableDatabasePlan = isTableDatabasePlan(plan);
     if (!Boolean.TRUE.equals(isTableDatabasePlan)) {
       result = TREE_PATTERN_PARSE_VISITOR.process(plan, treePattern);
@@ -153,19 +153,19 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
         return result;
       }
     }
-    if (!Boolean.FALSE.equals(isTableDatabasePlan) && result.isPresent()) {
+    if (!Boolean.FALSE.equals(isTableDatabasePlan)) {
       result = TABLE_PATTERN_PARSE_VISITOR.process(result.get(), tablePattern);
       if (!result.isPresent()) {
         return result;
       }
     }
-    if (!treePattern.isTreeModelDataAllowedToBeCaptured() && result.isPresent()) {
+    if (!treePattern.isTreeModelDataAllowedToBeCaptured()) {
       result = TREE_SCOPE_PARSE_VISITOR.process(result.get(), null);
       if (!result.isPresent()) {
         return result;
       }
     }
-    if (!tablePattern.isTableModelDataAllowedToBeCaptured() && result.isPresent()) {
+    if (!tablePattern.isTableModelDataAllowedToBeCaptured()) {
       result = TABLE_SCOPE_PARSE_VISITOR.process(result.get(), null);
       if (!result.isPresent()) {
         return result;
