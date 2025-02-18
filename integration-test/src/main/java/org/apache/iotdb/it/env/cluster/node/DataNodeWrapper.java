@@ -58,6 +58,7 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_WAL_DIRS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOTDB_SYSTEM_PROPERTIES_FILE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MAIN_CLASS_NAME;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MAX_TSBLOCK_SIZE_IN_BYTES;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_DATA_PATH;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_HOST;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.PAGE_SIZE_IN_BYTE;
@@ -115,6 +116,8 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     // Override mqtt properties of super class
     immutableCommonProperties.setProperty(MQTT_HOST, super.getIp());
     immutableCommonProperties.setProperty(MQTT_PORT, String.valueOf(this.mqttPort));
+    immutableCommonProperties.setProperty(
+        MQTT_DATA_PATH, getNodePath() + File.separator + "mqttData");
     immutableCommonProperties.setProperty(
         PIPE_AIR_GAP_RECEIVER_PORT, String.valueOf(this.pipeAirGapReceiverPort));
 

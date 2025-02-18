@@ -104,6 +104,8 @@ public interface CommonConfig {
 
   CommonConfig setEnableMQTTService(boolean enableMQTTService);
 
+  CommonConfig setMqttPayloadFormatter(String mqttPayloadFormatter);
+
   CommonConfig setSchemaEngineMode(String schemaEngineMode);
 
   CommonConfig setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit);
