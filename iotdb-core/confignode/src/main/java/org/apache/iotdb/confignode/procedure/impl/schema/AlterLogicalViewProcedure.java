@@ -216,7 +216,9 @@ public class AlterLogicalViewProcedure
   protected void rollbackState(
       final ConfigNodeProcedureEnv env, final AlterLogicalViewState alterLogicalViewState)
       throws IOException, InterruptedException, ProcedureException {
-    invalidateCache(env);
+    if (alterLogicalViewState == AlterLogicalViewState.CLEAN_DATANODE_SCHEMA_CACHE) {
+      invalidateCache(env);
+    }
   }
 
   @Override
