@@ -138,8 +138,7 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
   }
 
   @Override
-  public void close() {
-    super.close();
+  public void clearEventsReferenceCount() {
     events.forEach(
         event -> event.clearReferenceCount(PipeTransferTabletBatchEventHandler.class.getName()));
   }

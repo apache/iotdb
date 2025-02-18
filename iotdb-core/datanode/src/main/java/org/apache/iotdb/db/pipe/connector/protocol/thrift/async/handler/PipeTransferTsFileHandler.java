@@ -287,6 +287,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
           client.returnSelf();
         }
       }
+
       return true;
     }
 
@@ -388,9 +389,13 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   }
 
   @Override
+  public void clearEventsReferenceCount() {
+    events.forEach(event -> event.clearReferenceCount(PipeTransferTsFileHandler.class.getName()));
+  }
+
+  @Override
   public void close() {
     super.close();
-    events.forEach(event -> event.clearReferenceCount(PipeTransferTsFileHandler.class.getName()));
     memoryBlock.close();
   }
 
