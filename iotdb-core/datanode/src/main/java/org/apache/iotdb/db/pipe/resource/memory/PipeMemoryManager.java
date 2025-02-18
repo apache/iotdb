@@ -77,28 +77,42 @@ public class PipeMemoryManager {
   // NOTE: Here we unify the memory threshold judgment for tablet and tsfile memory block, because
   // introducing too many heuristic rules not conducive to flexible dynamic adjustment of memory
   // configuration.
+
+  // Proportion of Memory Occupied by Tablet Memory Block: [TABLET_MEMORY_REJECT_THRESHOLD / 2,
+  // TABLET_MEMORY_REJECT_THRESHOLD + TS_FILE_MEMORY_REJECT_THRESHOLD / 2]
+  // Proportion of Memory Occupied by TsFile Memory Block: [TS_FILE_MEMORY_REJECT_THRESHOLD / 2,
+  // TS_FILE_MEMORY_REJECT_THRESHOLD + TABLET_MEMORY_REJECT_THRESHOLD / 2]
+
   public boolean isEnough4TabletParsing() {
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
-        < 0.95 * TABLET_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
-            + 0.95 * TS_FILE_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES;
+            < 0.95 * TABLET_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
+                + 0.95 * TS_FILE_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
+        && (double) usedMemorySizeInBytesOfTablets
+            < 0.95 * TABLET_MEMORY_REJECT_THRESHOLD / 2 * TOTAL_MEMORY_SIZE_IN_BYTES;
   }
 
   private boolean isHardEnough4TabletParsing() {
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
-        < TABLET_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
-            + TS_FILE_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES;
+            < TABLET_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
+                + TS_FILE_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
+        && (double) usedMemorySizeInBytesOfTablets
+            < TABLET_MEMORY_REJECT_THRESHOLD / 2 * TOTAL_MEMORY_SIZE_IN_BYTES;
   }
 
   public boolean isEnough4TsFileSlicing() {
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
-        < 0.95 * TABLET_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
-            + 0.95 * TS_FILE_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES;
+            < 0.95 * TABLET_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
+                + 0.95 * TS_FILE_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
+        && (double) usedMemorySizeInBytesOfTsFiles
+            < 0.95 * TS_FILE_MEMORY_REJECT_THRESHOLD / 2 * TOTAL_MEMORY_SIZE_IN_BYTES;
   }
 
   private boolean isHardEnough4TsFileSlicing() {
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
-        < TABLET_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
-            + TS_FILE_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES;
+            < TABLET_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
+                + TS_FILE_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
+        && (double) usedMemorySizeInBytesOfTsFiles
+            < TS_FILE_MEMORY_REJECT_THRESHOLD / 2 * TOTAL_MEMORY_SIZE_IN_BYTES;
   }
 
   public synchronized PipeMemoryBlock forceAllocate(long sizeInBytes)
