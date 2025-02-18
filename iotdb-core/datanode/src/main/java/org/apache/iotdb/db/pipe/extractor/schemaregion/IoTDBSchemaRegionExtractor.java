@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.event.PipeWritePlanEvent;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBNonDataRegionExtractor;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -152,9 +153,11 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   @Override
   protected boolean canSkipSnapshotPrivilegeCheck(final PipeSnapshotEvent event) {
     try {
-      Coordinator.getInstance()
-          .getAccessControl()
-          .checkCanSelectFromDatabase4Pipe(userName, database);
+      if (PathUtils.isTableModelDatabase(database)) {
+        Coordinator.getInstance()
+            .getAccessControl()
+            .checkCanSelectFromDatabase4Pipe(userName, database);
+      }
       return true;
     } catch (final AccessDeniedException e) {
       return false;
