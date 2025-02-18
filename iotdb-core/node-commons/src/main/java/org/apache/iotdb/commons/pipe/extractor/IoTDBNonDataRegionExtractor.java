@@ -164,7 +164,10 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     }
 
     // Check whether snapshot being parsed exists
-    PipeWritePlanEvent realtimeEvent = getNextEventInCurrentSnapshot();
+    PipeWritePlanEvent realtimeEvent = null;
+    if (hasNextEventInCurrentSnapshot()) {
+      realtimeEvent = getNextEventInCurrentSnapshot();
+    }
 
     // Historical
     while (Objects.isNull(realtimeEvent) && !historicalEvents.isEmpty()) {
@@ -197,11 +200,13 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
       }
 
       initSnapshotGenerator(historicalEvent);
-      realtimeEvent = getNextEventInCurrentSnapshot();
+      if (hasNextEventInCurrentSnapshot()) {
+        realtimeEvent = getNextEventInCurrentSnapshot();
+      }
     }
 
     // Bind index for the last event parsed from snapshot or realtime event
-    boolean shouldBindIndex = historicalEvents.isEmpty();
+    final boolean shouldBindIndex = historicalEvents.isEmpty() && !hasNextEventInCurrentSnapshot();
 
     // Realtime
     if (Objects.isNull(realtimeEvent)) {
@@ -263,6 +268,8 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
   protected abstract void initSnapshotGenerator(final PipeSnapshotEvent event)
       throws IOException, IllegalPathException;
+
+  protected abstract boolean hasNextEventInCurrentSnapshot();
 
   protected abstract PipeWritePlanEvent getNextEventInCurrentSnapshot();
 

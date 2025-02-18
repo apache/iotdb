@@ -182,10 +182,13 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
   }
 
   @Override
+  protected boolean hasNextEventInCurrentSnapshot() {
+    return Objects.nonNull(parser) && parser.hasNext();
+  }
+
+  @Override
   protected PipeWritePlanEvent getNextEventInCurrentSnapshot() {
-    return Objects.nonNull(parser) && parser.hasNext()
-        ? new PipeConfigRegionWritePlanEvent(parser.next(), false)
-        : null;
+    return new PipeConfigRegionWritePlanEvent(parser.next(), false);
   }
 
   @Override
