@@ -44,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.tools.schema.SRStatementGenerator;
 import org.apache.iotdb.db.tools.schema.SchemaRegionSnapshotParser;
@@ -69,6 +70,8 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
       new PipePlanTablePatternParseVisitor();
   public static final PipePlanTablePrivilegeParseVisitor TABLE_PRIVILEGE_PARSE_VISITOR =
       new PipePlanTablePrivilegeParseVisitor();
+  private static final PipeStatementToPlanVisitor STATEMENT_TO_PLAN_VISITOR =
+      new PipeStatementToPlanVisitor();
 
   private SchemaRegionId schemaRegionId;
 
@@ -188,7 +191,8 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   @Override
   protected PipeWritePlanEvent getNextEventInCurrentSnapshot() {
     // Currently only support table model event
-    return null;
+    return new PipeSchemaRegionWritePlanEvent(
+        STATEMENT_TO_PLAN_VISITOR.process((Node) generator.next()), false);
   }
 
   @Override
