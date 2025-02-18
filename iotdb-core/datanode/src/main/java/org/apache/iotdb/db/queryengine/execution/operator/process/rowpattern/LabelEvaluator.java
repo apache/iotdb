@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern;
 
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.Computation;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.PatternExpressionComputation;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.ArrayView;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
 
 import org.apache.tsfile.read.common.block.TsBlock;
 
@@ -48,6 +51,7 @@ public class LabelEvaluator {
   private final List<Evaluation> evaluations;
 
   //  private final ProjectingPagesWindowIndex windowIndex;
+  private final Partition partition;
 
   public LabelEvaluator(
       long matchNumber,
@@ -55,9 +59,9 @@ public class LabelEvaluator {
       int partitionStart,
       int searchStart,
       int searchEnd,
-      List<Evaluation> evaluations
+      List<Evaluation> evaluations,
       //      ProjectingPagesWindowIndex windowIndex
-      ) {
+      Partition partition) {
     this.matchNumber = matchNumber;
     this.patternStart = patternStart;
     this.partitionStart = partitionStart;
@@ -65,6 +69,7 @@ public class LabelEvaluator {
     this.searchEnd = searchEnd;
     this.evaluations = requireNonNull(evaluations, "evaluations is null");
     //    this.windowIndex = requireNonNull(windowIndex, "windowIndex is null");
+    this.partition = requireNonNull(partition, "partition is null");
   }
 
   public int getInputLength() {
@@ -76,9 +81,14 @@ public class LabelEvaluator {
   }
 
   // evaluate the last label in matchedLabels. It has been tentatively appended to the match
+  // TODO:
+  //  matchedLabels是一个数组，数组的最后一个元素是label，evaluateLabel方法用来判断这个label是否符合条件
+  //  也就是将当前行识别为label符合条件吗
   public boolean evaluateLabel(ArrayView matchedLabels) {
     int label = matchedLabels.get(matchedLabels.length() - 1);
+    // evaluation 存储了判断一个行能否识别为 label 的逻辑
     Evaluation evaluation = evaluations.get(label);
+    // 调用 evaluation 的 test 方法，判断能否将该行识别为 label
     return evaluation.test(
         matchedLabels,
         //        aggregations,
@@ -86,21 +96,27 @@ public class LabelEvaluator {
         searchStart,
         searchEnd,
         patternStart,
-        matchNumber
+        matchNumber,
         //        windowIndex
-        );
+        partition);
   }
 
-  public static class Evaluation {
-    // compiled computation of label-defining boolean expression
-    //    private final PageProjection projection;
+  // 一个 Evaluation 对应一个 label 的识别逻辑
+  // 是 PatternExpressionComputation 的特殊形式，专门用于计算 DEFINE 子句中的布尔表达式
+  public static class Evaluation extends PatternExpressionComputation {
+    // 访问 Partition 中的一组数据。一个访问器访问一个数据。
+    // 如 B.value，访问当前行。
+    // 如 LAST(B.value)，访问上一行。
+    // private final List<PhysicalValueAccessor> valueAccessors;
 
-    // value accessors ordered as expected by the compiled projection
-    private final List<PhysicalValueAccessor> expectedLayout;
+    // 计算逻辑：用于表示多个访问器对应的数据之间应该如何计算。其实就是一个传统的表达式了。
+    // 如一共有两个参数，定义的运算可以为 #0 < #1
+    // 如一共有三个参数，定义的运算可以为 #0 + #1 + #2
+    // private final Computation computation;
 
     // precomputed `Block`s with null values for every `PhysicalValuePointer` (see
     // MeasureComputation)
-    private final TsBlock[] nulls;
+    // private final Column[] nulls;
 
     // mapping from int representation to label name
     private final List<String> labelNames;
@@ -108,21 +124,20 @@ public class LabelEvaluator {
     //    private final ConnectorSession session;
 
     public Evaluation(
-        //        PageProjection projection,
-        List<PhysicalValueAccessor> expectedLayout, List<String> labelNames
-        //        ConnectorSession session
-        ) {
-      //      this.projection = requireNonNull(projection, "projection is null");
-      this.expectedLayout = requireNonNull(expectedLayout, "expectedLayout is null");
-      this.nulls = precomputeNulls(expectedLayout);
+        List<PhysicalValueAccessor> valueAccessors,
+        Computation computation,
+        List<String> labelNames) {
+      //      this.valueAccessors = requireNonNull(valueAccessors, "valueAccessors is null");
+      // this.nulls = precomputeNulls(valueAccessors);
+      //      this.computation = requireNonNull(computation, "labelNames is null");
+      super(valueAccessors, computation);
       this.labelNames = requireNonNull(labelNames, "labelNames is null");
-      //      this.session = requireNonNull(session, "session is null");
     }
 
-    public static TsBlock[] precomputeNulls(List<PhysicalValueAccessor> expectedLayout) {
-      TsBlock[] nulls = new TsBlock[expectedLayout.size()];
-      for (int i = 0; i < expectedLayout.size(); i++) {
-        PhysicalValueAccessor accessor = expectedLayout.get(i);
+    public static TsBlock[] precomputeNulls(List<PhysicalValueAccessor> valueAccessors) {
+      TsBlock[] nulls = new TsBlock[valueAccessors.size()];
+      for (int i = 0; i < valueAccessors.size(); i++) {
+        PhysicalValueAccessor accessor = valueAccessors.get(i);
         if (accessor instanceof PhysicalValuePointer) {
           //          nulls[i] = nativeValueToBlock(((PhysicalValuePointer) accessor).getType(),
           // null);
@@ -133,10 +148,11 @@ public class LabelEvaluator {
       return nulls;
     }
 
-    public List<PhysicalValueAccessor> getExpectedLayout() {
-      return expectedLayout;
-    }
+    //    public List<PhysicalValueAccessor> getvalueAccessors() {
+    //      return valueAccessors;
+    //    }
 
+    // TODO: 2.12
     public boolean test(
         ArrayView matchedLabels,
         //        MatchAggregation[] aggregations,
@@ -144,10 +160,41 @@ public class LabelEvaluator {
         int searchStart,
         int searchEnd,
         int patternStart,
-        long matchNumber
+        long matchNumber,
         //        ProjectingPagesWindowIndex windowIndex
-        ) {
+        Partition partition) {
+
+      // 计算当前匹配到哪一行了
       int currentRow = patternStart + matchedLabels.length() - 1;
+
+      // compute 方法用于计算 RPR 中的表达式
+      // DEFINE 子句中定义的识别一个 label 就是一个布尔表达式
+      // 计算得到的布尔值就是我们需要的结果
+
+      // TODO: Done by 2.17
+      //  感觉没必要传入 partition 对象？？
+      //  A: 需要的，因为需要访问 partition 中的数据。也就是访问行中的数据
+      Object result =
+          this.compute(
+              currentRow,
+              matchedLabels,
+              searchStart,
+              searchEnd,
+              patternStart,
+              matchNumber,
+              labelNames,
+              partition);
+
+      //      Object result =
+      //          this.compute(
+      //              position,
+      //              labels,
+      //              searchStart,
+      //              searchEnd,
+      //              currentPosition,
+      //              matchNumber,
+      //              labelNames,
+      //              partition);
 
       // TODO:
       //      Block result =
@@ -162,35 +209,38 @@ public class LabelEvaluator {
       //              matchNumber,
       //              windowIndex,
       //              projection,
-      //              expectedLayout,
+      //              valueAccessors,
       //              nulls,
       //              labelNames,
       //              session);
 
       //      return BOOLEAN.getBoolean(result, 0);
-      return false;
+      //      return false;
+
+      // ADD 2.17: 因为是一个布尔表达式，所以 result 一定是一个布尔值
+      return (boolean) result;
     }
   }
 
   //  public static class EvaluationSupplier {
   //    private final Supplier<PageProjection> projection;
-  //    private final List<PhysicalValueAccessor> expectedLayout;
+  //    private final List<PhysicalValueAccessor> valueAccessors;
   //    private final List<String> labelNames;
   //    private final ConnectorSession session;
   //
   //    public EvaluationSupplier(
   //        Supplier<PageProjection> projection,
-  //        List<PhysicalValueAccessor> expectedLayout,
+  //        List<PhysicalValueAccessor> valueAccessors,
   //        List<String> labelNames,
   //        ConnectorSession session) {
   //      this.projection = requireNonNull(projection, "projection is null");
-  //      this.expectedLayout = requireNonNull(expectedLayout, "expectedLayout is null");
+  //      this.valueAccessors = requireNonNull(valueAccessors, "valueAccessors is null");
   //      this.labelNames = requireNonNull(labelNames, "labelNames is null");
   //      this.session = requireNonNull(session, "session is null");
   //    }
   //
   //    public Evaluation get() {
-  //      return new Evaluation(projection.get(), expectedLayout, labelNames, session);
+  //      return new Evaluation(projection.get(), valueAccessors, labelNames, session);
   //    }
   //  }
 }
