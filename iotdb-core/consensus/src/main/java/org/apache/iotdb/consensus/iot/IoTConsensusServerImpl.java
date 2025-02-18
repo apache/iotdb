@@ -159,11 +159,6 @@ public class IoTConsensusServerImpl {
   }
 
   public void start() {
-    // Since the underlying wal does not persist safelyDeletedSearchIndex, IoTConsensus needs to
-    // update wal with its syncIndex recovered from the consensus layer when initializing.
-    // This prevents wal from being piled up if the safelyDeletedSearchIndex is not updated after
-    // the restart and Leader migration occurs
-    checkAndUpdateSafeDeletedSearchIndex();
     MetricService.getInstance().addMetricSet(this.ioTConsensusServerMetrics);
     stateMachine.start();
     logDispatcher.start();
@@ -839,7 +834,7 @@ public class IoTConsensusServerImpl {
    * If there is only one replica, set it to Long.MAX_VALUE.、 If there are multiple replicas, get
    * the latest SafelyDeletedSearchIndex again. This enables wal to be deleted in a timely manner.
    */
-  private void checkAndUpdateSafeDeletedSearchIndex() {
+  void checkAndUpdateSafeDeletedSearchIndex() {
     if (configuration.isEmpty()) {
       logger.error(
           "Configuration is empty, which is unexpected. Safe deleted search index won't be updated this time.");

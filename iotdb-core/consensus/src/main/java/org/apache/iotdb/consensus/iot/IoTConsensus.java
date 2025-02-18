@@ -207,6 +207,11 @@ public class IoTConsensus implements IConsensus {
               consensusGroupId ->
                   resetPeerListWithoutThrow.accept(consensusGroupId, Collections.emptyList()));
     }
+    // Since the underlying wal does not persist safelyDeletedSearchIndex, IoTConsensus needs to
+    // update wal with its syncIndex recovered from the consensus layer when initializing.
+    // This prevents wal from being piled up if the safelyDeletedSearchIndex is not updated after
+    // the restart and Leader migration occurs
+    stateMachineMap.values().forEach(IoTConsensusServerImpl::checkAndUpdateSafeDeletedSearchIndex);
     stateMachineMap.values().forEach(IoTConsensusServerImpl::start);
   }
 
