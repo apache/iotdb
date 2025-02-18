@@ -438,7 +438,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             if (isSingleColumn) {
               return;
             }
-            if (node.getPushDownPredicate() != null) {
+            if (!cannotPushDownConjuncts.isEmpty()
+                || node.getAssignments().size() != node.getOutputSymbols().size()) {
               operator = getFilterAndProjectOperator(operator);
             }
             if (!node.isPushLimitToEachDevice()) {
