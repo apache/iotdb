@@ -34,7 +34,4 @@ public interface ReplicateProgressManager {
 
   void pinCommitIndexForMigration(
       ConsensusGroupId consensusGroupId, ConsensusPipeName consensusPipeName);
-
-  void pinRestartTimeForMigration(
-      ConsensusGroupId consensusGroupId, ConsensusPipeName consensusPipeName);
 }

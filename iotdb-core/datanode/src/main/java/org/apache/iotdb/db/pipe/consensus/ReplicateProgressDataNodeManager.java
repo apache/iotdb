@@ -47,10 +47,11 @@ public class ReplicateProgressDataNodeManager implements ReplicateProgressManage
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
   private static final Map<String, AtomicLong> groupId2ReplicateIndex = new HashMap<>();
   private final Map<ConsensusGroupId, ProgressIndex> groupId2MaxProgressIndex;
-  private long pinnedCommitIndexForMigration;
+  private final Map<ConsensusPipeName, Long> consensusPipe2pinnedCommitIndexForMigration;
 
   public ReplicateProgressDataNodeManager() {
     this.groupId2MaxProgressIndex = new ConcurrentHashMap<>();
+    this.consensusPipe2pinnedCommitIndexForMigration = new ConcurrentHashMap<>();
 
     recoverMaxProgressIndexFromDataRegion();
   }
@@ -144,24 +145,18 @@ public class ReplicateProgressDataNodeManager implements ReplicateProgressManage
   @Override
   public long getSyncLagForSpecificConsensusPipe(
       ConsensusGroupId consensusGroupId, ConsensusPipeName consensusPipeName) {
-    //    return PipeConsensusSyncLagManager.getInstance(consensusGroupId.toString())
-    //        .getSyncLagForRegionMigration(consensusPipeName, this.pinnedCommitIndexForMigration);
-    return 0;
+    return PipeConsensusSyncLagManager.getInstance(consensusGroupId.toString())
+        .getSyncLagForRegionMigration(
+            consensusPipeName,
+            this.consensusPipe2pinnedCommitIndexForMigration.getOrDefault(consensusPipeName, 0L));
   }
 
   @Override
   public void pinCommitIndexForMigration(
       ConsensusGroupId consensusGroupId, ConsensusPipeName consensusPipeName) {
-    this.pinnedCommitIndexForMigration =
+    this.consensusPipe2pinnedCommitIndexForMigration.put(
+        consensusPipeName,
         PipeConsensusSyncLagManager.getInstance(consensusGroupId.toString())
-            .getCurrentCommitIndex(consensusPipeName);
-  }
-
-  @Override
-  public void pinRestartTimeForMigration(
-      ConsensusGroupId consensusGroupId, ConsensusPipeName consensusPipeName) {
-    this.pinnedCommitIndexForMigration =
-        PipeConsensusSyncLagManager.getInstance(consensusGroupId.toString())
-            .getCurrentRestartTimes(consensusPipeName);
+            .getCurrentCommitIndex(consensusPipeName));
   }
 }
