@@ -21,7 +21,10 @@ package org.apache.iotdb.confignode.manager.load.cache.node;
 
 import org.apache.iotdb.common.rpc.thrift.TLoadSample;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class AINodeHeartbeatCache extends BaseNodeCache {
@@ -35,13 +38,12 @@ public class AINodeHeartbeatCache extends BaseNodeCache {
 
   @Override
   public void updateCurrentStatistics(boolean forceUpdate) {
-    NodeHeartbeatSample lastSample = null;
+    NodeHeartbeatSample lastSample;
+    final List<AbstractHeartbeatSample> heartbeatHistory;
     synchronized (slidingWindow) {
-      if (!slidingWindow.isEmpty()) {
-        lastSample = (NodeHeartbeatSample) getLastSample();
-      }
+      lastSample = (NodeHeartbeatSample) getLastSample();
+      heartbeatHistory = Collections.unmodifiableList(slidingWindow);
     }
-    long lastSendTime = lastSample == null ? 0 : lastSample.getSampleLogicalTimestamp();
 
     /* Update load sample */
     if (lastSample != null && lastSample.isSetLoadSample()) {
@@ -54,7 +56,8 @@ public class AINodeHeartbeatCache extends BaseNodeCache {
     long currentNanoTime = System.nanoTime();
     if (lastSample != null && NodeStatus.Removing.equals(lastSample.getStatus())) {
       status = NodeStatus.Removing;
-    } else if (currentNanoTime - lastSendTime > HEARTBEAT_TIMEOUT_TIME_IN_NS) {
+    } else if (failureDetector.isAvailable(heartbeatHistory)) {
+      /* Failure detector decides that this DataNode is UNKNOWN */
       status = NodeStatus.Unknown;
     } else if (lastSample != null) {
       status = lastSample.getStatus();
