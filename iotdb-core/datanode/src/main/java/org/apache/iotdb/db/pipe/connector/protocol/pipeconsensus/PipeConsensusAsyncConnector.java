@@ -170,7 +170,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
         LOGGER.debug(
             "PipeConsensus-ConsensusGroup-{}: no.{} event-{} added to connector buffer",
             consensusGroupId,
-            event.getCommitId(),
+            event.getReplicateIndexForIoTV2(),
             event);
       }
       // Special judge to avoid transfer stuck when re-transfer events that will not be put in
@@ -228,7 +228,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
     }
     iterator.remove();
     // update replicate progress
-    currentReplicateProgress = Math.max(currentReplicateProgress, event.getCommitId());
+    currentReplicateProgress =
+        Math.max(currentReplicateProgress, event.getReplicateIndexForIoTV2());
     // decrease reference count
     event.decreaseReferenceCount(PipeConsensusAsyncConnector.class.getName(), true);
   }
