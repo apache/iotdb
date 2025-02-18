@@ -57,14 +57,14 @@ public abstract class AbstractLoadCache {
         this.failureDetector =
             new PhiAccrualDetector(
                 CONF.getFailureDetectorPhiThreshold(),
-                CONF.getFailureDetectorPhiAcceptablePauseInMs() * 1000L,
-                CONF.getHeartbeatIntervalInMs() * 1000L,
-                CONF.getFailureDetectorPhiAcceptablePauseInMs() * 1000L);
+                CONF.getFailureDetectorPhiAcceptablePauseInMs() * 1000_000L,
+                CONF.getHeartbeatIntervalInMs() * 1000_000L,
+                CONF.getFailureDetectorPhiAcceptablePauseInMs() * 1000_000L);
         break;
       case IFailureDetector.FIXED_DETECTOR:
       default:
         this.failureDetector =
-            new FixedDetector(CONF.getFailureDetectorFixedThresholdInMs() * 1000L);
+            new FixedDetector(CONF.getFailureDetectorFixedThresholdInMs() * 1000_000L);
     }
   }
 
