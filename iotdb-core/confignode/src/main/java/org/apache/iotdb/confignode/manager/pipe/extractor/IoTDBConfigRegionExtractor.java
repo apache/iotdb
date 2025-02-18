@@ -147,14 +147,14 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
         ConfigNode.getInstance().getConfigManager().getPermissionManager();
     switch (((PipeConfigRegionSnapshotEvent) event).getFileType()) {
       case USER:
-        return Objects.isNull(userName)
+        return isTreeDialect
             || permissionManager
                     .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.MANAGE_USER))
                     .getStatus()
                     .getCode()
                 == TSStatusCode.SUCCESS_STATUS.getStatusCode();
       case ROLE:
-        return Objects.isNull(userName)
+        return isTreeDialect
             || permissionManager
                     .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
                     .getStatus()
