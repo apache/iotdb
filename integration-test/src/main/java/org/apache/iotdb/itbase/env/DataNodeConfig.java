@@ -37,4 +37,6 @@ public interface DataNodeConfig {
   DataNodeConfig setEnableMQTTService(boolean enableMQTTService);
 
   DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter);
+
+  DataNodeConfig setMqttDataPath(String mqttDataPath);
 }

@@ -95,4 +95,10 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
     setProperty("mqtt_payload_formatter", String.valueOf(mqttPayloadFormatter));
     return this;
   }
+
+  @Override
+  public DataNodeConfig setMqttDataPath(String mqttDataPath) {
+    setProperty("mqtt_data_path", String.valueOf(mqttDataPath));
+    return this;
+  }
 }

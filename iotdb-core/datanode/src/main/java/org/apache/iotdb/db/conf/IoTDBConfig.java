@@ -115,6 +115,9 @@ public class IoTDBConfig {
   /** The mqtt message payload formatter. */
   private String mqttPayloadFormatter = "json";
 
+  /** The mqtt save data path */
+  private String mqttDataPath = "data/";
+
   /** Max mqtt message size. Unit: byte */
   private int mqttMaxMessageSize = 1048576;
 
@@ -2721,6 +2724,14 @@ public class IoTDBConfig {
 
   public void setMqttPayloadFormatter(String mqttPayloadFormatter) {
     this.mqttPayloadFormatter = mqttPayloadFormatter;
+  }
+
+  public String getMqttDataPath() {
+    return mqttDataPath;
+  }
+
+  public void setMqttDataPath(String mqttDataPath) {
+    this.mqttDataPath = mqttDataPath;
   }
 
   public int getMqttMaxMessageSize() {

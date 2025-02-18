@@ -1855,6 +1855,10 @@ public class IoTDBDescriptor {
           properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME).trim());
     }
 
+    if (properties.getProperty(IoTDBConstant.MQTT_DATA_PATH) != null) {
+      conf.setMqttDataPath(properties.getProperty(IoTDBConstant.MQTT_DATA_PATH).trim());
+    }
+
     if (properties.getProperty(IoTDBConstant.ENABLE_MQTT) != null) {
       conf.setEnableMQTTService(
           Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT).trim()));
