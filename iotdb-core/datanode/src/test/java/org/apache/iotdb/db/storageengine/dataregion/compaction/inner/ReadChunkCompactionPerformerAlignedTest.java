@@ -34,6 +34,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.Com
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
+import org.apache.iotdb.db.storageengine.dataregion.modification.PartitionLevelModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -79,6 +81,8 @@ public class ReadChunkCompactionPerformerAlignedTest {
               + storageGroup.concat(File.separator)
               + "0".concat(File.separator)
               + "0".concat(File.separator));
+  private final ModFileManagement modFileManagement =
+      new PartitionLevelModFileManager(Integer.MAX_VALUE, 0);
 
   @Before
   public void setUp() throws Exception {
@@ -191,6 +195,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
     for (int i = 1; i < 31; i++) {
       TsFileResource resource =
           new TsFileResource(new File(dataDirectory, String.format("%d-%d-0-0.tsfile", i, i)));
+      resource.setModFileManagement(modFileManagement);
       TestUtilsForAlignedSeries.writeTsFile(
           devices.toArray(new String[] {}),
           schemas.toArray(new IMeasurementSchema[0]),
@@ -703,6 +708,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
       writer.endChunkGroup();
       writer.endFile();
       TsFileResource resource = new TsFileResource(writer.getFile(), TsFileResourceStatus.NORMAL);
+      resource.setModFileManagement(modFileManagement);
       resource
           .getModFileForWrite()
           .write(new TreeDeletionEntry(new MeasurementPath("root.sg.d1.*"), i * 100, i * 100 + 20));
