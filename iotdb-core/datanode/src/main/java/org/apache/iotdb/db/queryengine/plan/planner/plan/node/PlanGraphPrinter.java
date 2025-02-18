@@ -1028,7 +1028,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
             orderingScheme -> boxValue.add(String.format("OrderingScheme: %s", orderingScheme)));
     node.getHashSymbol()
         .ifPresent(hashSymbol -> boxValue.add(String.format("HashSymbol: %s", hashSymbol)));
-    boxValue.add(String.format("Measures: %s", node.getMeasures()));
+    // boxValue.add(String.format("Measures: %s", node.getMeasures()));
     boxValue.add(String.format("RowsPerMatch: %s", node.getRowsPerMatch()));
     boxValue.add(String.format("SkipToLabels: %s", node.getSkipToLabels()));
     boxValue.add(String.format("SkipToPosition: %s", node.getSkipToPosition()));

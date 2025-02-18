@@ -160,15 +160,7 @@ public class MatcherTest {
       mappedInput[i] = LABEL_MAPPING.get(new IrLabel(String.valueOf(input.charAt(i))));
     }
 
-    return matcher.run(testLabelEvaluator(mappedInput));
-  }
-
-  private static LabelEvaluator testLabelEvaluator(int[] input) {
-    // create dummy WindowIndex for the LabelEvaluator
-    //    PagesIndex pagesIndex =
-    //        new PagesIndex.TestingFactory(false).newPagesIndex(ImmutableList.of(), 1);
-    //    pagesIndex.addPage(new Page(1));
-    return new testLabelEvaluator(input);
+    return matcher.run(new testLabelEvaluator(mappedInput));
   }
 
   private static class testLabelEvaluator extends LabelEvaluator {
@@ -191,6 +183,19 @@ public class MatcherTest {
 
     @Override
     public boolean evaluateLabel(ArrayView matchedLabels) {
+      // 作用：判断将当前行识别为 label = matchedLabels.get(position) 是否合法
+      // 在 Test 中，每一行都有明确的标签，即 input[position]
+      // 所以只需要判断 input[position] 与 label 是否相等
+      // 在真实匹配的 evaluateLabel 中，需要根据 DEFINE 子句中对 label 的定义来判断能否将当前行识别为 label
+
+      // Purpose: Determine whether it is valid to recognize the current row as label =
+      // matchedLabels.get(position).
+
+      // In the Test, each row has an explicit label, i.e., input[position].
+      // Therefore, it only needs to check whether input[position] equals the label.
+      // In the actual matching process of evaluateLabel, it is necessary to determine whether the
+      // current row can be recognized as the label based on the definition of the label in the
+      // DEFINE clause.
       int position = matchedLabels.length() - 1;
       return input[position] == matchedLabels.get(position);
     }

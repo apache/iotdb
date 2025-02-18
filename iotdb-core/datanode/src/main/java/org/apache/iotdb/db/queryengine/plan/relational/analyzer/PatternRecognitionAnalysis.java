@@ -222,6 +222,8 @@ public class PatternRecognitionAnalysis {
   }
 
   public static class ScalarInputDescriptor implements Descriptor {
+    // label indicates which column to access
+    // navigation indicates which row to access.
     private final Optional<String> label;
     private final Navigation navigation;
 

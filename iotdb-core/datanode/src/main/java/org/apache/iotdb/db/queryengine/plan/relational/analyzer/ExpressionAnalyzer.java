@@ -431,6 +431,21 @@ public class ExpressionAnalyzer {
     protected Type visitIdentifier(Identifier node, StackableAstVisitorContext<Context> context) {
       ResolvedField resolvedField =
           context.getContext().getScope().resolveField(node, QualifiedName.of(node.getValue()));
+
+      // Handle cases where column names do not exist in navigation functions, such as
+      // RPR_LAST(val).
+      // Additionally, if column names are present in navigation functions, such as RPR_LAST(B.val),
+      // process them in visitDereferenceExpression.
+      if (context.getContext().isPatternRecognition()) {
+        labels.put(NodeRef.of(node), Optional.empty());
+        patternRecognitionInputs.add(
+            new PatternFunctionAnalysis(
+                node,
+                new ScalarInputDescriptor(
+                    Optional.empty(),
+                    context.getContext().getPatternRecognitionContext().getNavigation())));
+      }
+
       return handleResolvedField(node, resolvedField, context);
     }
 
@@ -1942,6 +1957,7 @@ public class ExpressionAnalyzer {
       Analysis analysis,
       Expression expression,
       WarningCollector warningCollector,
+      // labels are all the pattern variables defined in the context of RPR
       Set<String> labels) {
     ExpressionAnalyzer analyzer =
         new ExpressionAnalyzer(
