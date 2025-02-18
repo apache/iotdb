@@ -286,6 +286,36 @@ public class ConcurrentIterableLinkedQueue<E> {
 
     /**
      * Get the next element in the queue. If the queue is empty, wait for the next element to be
+     * added. Note that this does NOT poll the next element.
+     *
+     * @param waitTimeMillis the maximum time to wait in milliseconds
+     * @return the next element in the queue. {@code null} if the queue is closed, or if the waiting
+     *     time elapsed, or the thread is interrupted
+     */
+    public E peek(final long waitTimeMillis) {
+      lock.writeLock().lock();
+      try {
+        while (!hasNext()) {
+          if (isClosed) {
+            LOGGER.warn("Calling next() to a closed iterator, will return null.");
+            return null;
+          }
+          if (!hasNextCondition.await(waitTimeMillis, TimeUnit.MILLISECONDS)) {
+            return null;
+          }
+        }
+        return currentNode.next.data;
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn("Interrupted while waiting for next element.", e);
+        return null;
+      } finally {
+        lock.writeLock().unlock();
+      }
+    }
+
+    /**
+     * Get the next element in the queue. If the queue is empty, wait for the next element to be
      * added.
      *
      * @param waitTimeMillis the maximum time to wait in milliseconds

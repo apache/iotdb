@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -53,6 +55,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       final long startTime,
       final long endTime,
       final PipeTaskMeta pipeTaskMeta,
+      final String userName,
       final PipeInsertionEvent sourceEvent)
       throws IOException {
     super(null, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
@@ -61,7 +64,15 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
       filteredTableSchemaIterator =
           tsFileSequenceReader.getTableSchemaMap().entrySet().stream()
-              .filter(entry -> Objects.isNull(pattern) || pattern.matchesTable(entry.getKey()))
+              .filter(
+                  entry ->
+                      (Objects.isNull(pattern) || pattern.matchesTable(entry.getKey()))
+                          && Coordinator.getInstance()
+                              .getAccessControl()
+                              .checkCanSelectFromTable4Pipe(
+                                  userName,
+                                  new QualifiedObjectName(
+                                      sourceEvent.getTableModelDatabaseName(), entry.getKey())))
               .iterator();
       tableQueryExecutor =
           new TableQueryExecutor(

@@ -522,6 +522,10 @@ public class Role {
     return sysPrivilegeSet.contains(priv) && sysPriGrantOpt.contains(priv);
   }
 
+  public boolean checkAnyVisible() {
+    return !anyScopePrivilegeSet.isEmpty();
+  }
+
   public boolean checkDBVisible(String database) {
     return !anyScopePrivilegeSet.isEmpty() || objectPrivilegeMap.containsKey(database);
   }

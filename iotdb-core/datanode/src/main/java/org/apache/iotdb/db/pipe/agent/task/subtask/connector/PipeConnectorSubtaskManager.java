@@ -228,7 +228,7 @@ public class PipeConnectorSubtaskManager {
 
   private String generateAttributeSortedString(final PipeParameters pipeConnectorParameters) {
     final TreeMap<String, String> sortedStringSourceMap =
-        new TreeMap<>(pipeConnectorParameters.getAttribute());
+        new TreeMap<>(pipeConnectorParameters.getAttributes());
     sortedStringSourceMap.remove(SystemConstant.RESTART_KEY);
     return sortedStringSourceMap.toString();
   }

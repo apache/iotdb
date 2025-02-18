@@ -112,6 +112,10 @@ public class PermissionManager {
     return authorInfo.login(username, password);
   }
 
+  public String login4Pipe(final String userName, final String password) {
+    return authorInfo.login4Pipe(userName, password);
+  }
+
   public TPermissionInfoResp checkUserPrivileges(String username, PrivilegeUnion union) {
     return authorInfo.checkUserPrivileges(username, union);
   }

@@ -69,6 +69,16 @@ public class AllowAllAccessControl implements AccessControl {
   }
 
   @Override
+  public void checkCanSelectFromDatabase4Pipe(String userName, String databaseName) {
+    // allow anything
+  }
+
+  @Override
+  public boolean checkCanSelectFromTable4Pipe(String userName, QualifiedObjectName tableName) {
+    return true;
+  }
+
+  @Override
   public void checkCanDeleteFromTable(String userName, QualifiedObjectName tableName) {
     // allow anything
   }

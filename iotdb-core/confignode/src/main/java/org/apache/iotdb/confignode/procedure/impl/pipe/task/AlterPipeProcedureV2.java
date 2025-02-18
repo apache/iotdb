@@ -98,6 +98,11 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     // update the alterPipeRequest based on the alterPipeRequest and existing pipe metadata.
     pipeTaskInfo.get().checkAndUpdateRequestBeforeAlterPipe(alterPipeRequest);
 
+    CreatePipeProcedureV2.checkAndEnrichSourceAuthentication(
+        env, alterPipeRequest.getExtractorAttributes());
+    CreatePipeProcedureV2.checkAndEnrichSinkAuthentication(
+        env, alterPipeRequest.getConnectorAttributes());
+
     final PipeManager pipeManager = env.getConfigManager().getPipeManager();
     pipeManager
         .getPipePluginCoordinator()

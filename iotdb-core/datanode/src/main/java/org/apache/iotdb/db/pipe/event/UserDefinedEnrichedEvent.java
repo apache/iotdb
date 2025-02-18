@@ -48,6 +48,8 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
         enrichedEvent.getPipeTaskMeta(),
         enrichedEvent.getTreePattern(),
         enrichedEvent.getTablePattern(),
+        enrichedEvent.getUserName(),
+        enrichedEvent.isSkipIfNoPrivileges(),
         enrichedEvent.getStartTime(),
         enrichedEvent.getEndTime());
     this.userDefinedEvent = userDefinedEvent;
@@ -80,10 +82,20 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     return enrichedEvent.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-        pipeName, creationTime, pipeTaskMeta, treePattern, tablePattern, startTime, endTime);
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern,
+        userName,
+        skipIfNoPrivileges,
+        startTime,
+        endTime);
   }
 
   @Override

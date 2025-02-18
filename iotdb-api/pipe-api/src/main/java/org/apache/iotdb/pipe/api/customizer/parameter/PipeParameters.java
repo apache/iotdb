@@ -54,7 +54,7 @@ public class PipeParameters {
     this.attributes = attributes == null ? new HashMap<>() : attributes;
   }
 
-  public Map<String, String> getAttribute() {
+  public Map<String, String> getAttributes() {
     return attributes;
   }
 

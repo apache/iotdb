@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.event.common.tsfile;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
@@ -37,6 +38,8 @@ import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -75,6 +78,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   private boolean isWithMod;
   private File modFile;
   private File sharedModFile;
+  private boolean shouldParse4Privilege = false;
 
   private final boolean isLoaded;
   private final boolean isGeneratedByPipe;
@@ -111,6 +115,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         null,
         null,
         null,
+        null,
+        true,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
   }
@@ -128,6 +134,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     super(
@@ -136,6 +144,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userName,
+        skipIfNoPrivileges,
         startTime,
         endTime,
         isTableModelEvent,
@@ -368,12 +378,19 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   @Override
+  public boolean shouldParsePattern() {
+    return super.shouldParsePattern() || shouldParse4Privilege;
+  }
+
+  @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     return new PipeTsFileInsertionEvent(
@@ -389,6 +406,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userName,
+        skipIfNoPrivileges,
         startTime,
         endTime);
   }
@@ -396,6 +415,32 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean isGeneratedByPipe() {
     return isGeneratedByPipe;
+  }
+
+  @Override
+  public void throwIfNoPrivilege() throws IOException {
+    if (!isTableModelEvent()) {
+      return;
+    }
+    for (final IDeviceID deviceID : getDeviceSet()) {
+      if (!tablePattern.matchesDatabase(getTableModelDatabaseName())
+          || !tablePattern.matchesTable(deviceID.getTableName())) {
+        continue;
+      }
+      try {
+        Coordinator.getInstance()
+            .getAccessControl()
+            .checkCanSelectFromTable(
+                userName,
+                new QualifiedObjectName(getTableModelDatabaseName(), deviceID.getTableName()));
+      } catch (final AccessDeniedException e) {
+        if (skipIfNoPrivileges) {
+          shouldParse4Privilege = true;
+        } else {
+          throw e;
+        }
+      }
+    }
   }
 
   @Override
@@ -414,14 +459,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     }
 
     try {
-      final Map<IDeviceID, Boolean> deviceIsAlignedMap =
-          PipeDataNodeResourceManager.tsfile()
-              .getDeviceIsAlignedMapFromCache(
-                  PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()),
-                  false);
-      final Set<IDeviceID> deviceSet =
-          Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
-      return deviceSet.stream()
+      return getDeviceSet().stream()
           .anyMatch(
               deviceID -> {
                 // Tree model
@@ -447,6 +485,17 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     }
   }
 
+  private Set<IDeviceID> getDeviceSet() throws IOException {
+    final Map<IDeviceID, Boolean> deviceIsAlignedMap =
+        PipeDataNodeResourceManager.tsfile()
+            .getDeviceIsAlignedMapFromCache(
+                PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()),
+                false);
+    return Objects.nonNull(deviceIsAlignedMap)
+        ? deviceIsAlignedMap.keySet()
+        : resource.getDevices();
+  }
+
   /////////////////////////// PipeInsertionEvent ///////////////////////////
 
   @Override
@@ -457,17 +506,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       }
 
       try {
-        final Map<IDeviceID, Boolean> deviceIsAlignedMap =
-            PipeDataNodeResourceManager.tsfile()
-                .getDeviceIsAlignedMapFromCache(
-                    PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(
-                        resource.getTsFile()),
-                    false);
-        final Set<IDeviceID> deviceSet =
-            Objects.nonNull(deviceIsAlignedMap)
-                ? deviceIsAlignedMap.keySet()
-                : resource.getDevices();
-        for (final IDeviceID deviceID : deviceSet) {
+        for (final IDeviceID deviceID : getDeviceSet()) {
           if (deviceID instanceof PlainDeviceID
               || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
               || deviceID.getTableName().equals(PATH_ROOT)) {
@@ -584,7 +623,14 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       eventParser.compareAndSet(
           null,
           new TsFileInsertionEventParserProvider(
-                  tsFile, treePattern, tablePattern, startTime, endTime, pipeTaskMeta, this)
+                  tsFile,
+                  treePattern,
+                  tablePattern,
+                  startTime,
+                  endTime,
+                  pipeTaskMeta,
+                  userName,
+                  this)
               .provide());
       return eventParser.get();
     } catch (final IOException e) {

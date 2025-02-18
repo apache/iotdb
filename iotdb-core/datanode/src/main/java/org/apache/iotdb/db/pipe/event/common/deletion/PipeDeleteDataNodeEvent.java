@@ -27,9 +27,13 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.SerializableEvent;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -49,7 +53,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
 
   public PipeDeleteDataNodeEvent(
       final AbstractDeleteDataNode deleteDataNode, final boolean isGeneratedByPipe) {
-    this(deleteDataNode, null, 0, null, null, null, isGeneratedByPipe);
+    this(deleteDataNode, null, 0, null, null, null, null, true, isGeneratedByPipe);
   }
 
   public PipeDeleteDataNodeEvent(
@@ -59,6 +63,8 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final boolean isGeneratedByPipe) {
     super(
         pipeName,
@@ -66,6 +72,8 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userName,
+        skipIfNoPrivileges,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
     this.isGeneratedByPipe = isGeneratedByPipe;
@@ -116,6 +124,8 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     return new PipeDeleteDataNodeEvent(
@@ -125,12 +135,31 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userName,
+        skipIfNoPrivileges,
         isGeneratedByPipe);
   }
 
   @Override
   public boolean isGeneratedByPipe() {
     return isGeneratedByPipe;
+  }
+
+  @Override
+  public void throwIfNoPrivilege() {
+    if (skipIfNoPrivileges || !(deleteDataNode instanceof RelationalDeleteDataNode)) {
+      return;
+    }
+    for (final TableDeletionEntry entry :
+        ((RelationalDeleteDataNode) deleteDataNode).getModEntries()) {
+      Coordinator.getInstance()
+          .getAccessControl()
+          .checkCanSelectFromTable(
+              userName,
+              new QualifiedObjectName(
+                  ((RelationalDeleteDataNode) deleteDataNode).getDatabaseName(),
+                  entry.getTableName()));
+    }
   }
 
   @Override

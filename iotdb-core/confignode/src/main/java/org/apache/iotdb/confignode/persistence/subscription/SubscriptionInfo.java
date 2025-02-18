@@ -224,7 +224,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
           .getAllTopicMeta()
           .forEach(
               meta -> {
-                if (pipePluginName.equals(meta.getConfig().getAttribute().get("processor"))) {
+                if (pipePluginName.equals(meta.getConfig().getAttributes().get("processor"))) {
                   final String exceptionMessage =
                       String.format(
                           "PipePlugin '%s' is already used by Topic '%s' as a processor.",

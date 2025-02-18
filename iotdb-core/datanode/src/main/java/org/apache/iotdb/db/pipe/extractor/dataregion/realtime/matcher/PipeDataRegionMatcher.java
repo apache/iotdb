@@ -35,6 +35,9 @@ public interface PipeDataRegionMatcher {
   /** Deregister a extractor. */
   void deregister(PipeRealtimeDataRegionExtractor extractor);
 
+  /** Invalidate cache */
+  void invalidateCache();
+
   /** Get the number of registered extractors in this matcher. */
   int getRegisterCount();
 

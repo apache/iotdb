@@ -157,6 +157,7 @@ public class ConcurrentIterableLinkedQueueTest {
 
     Assert.assertEquals(2, queue.tryRemoveBefore(Long.MAX_VALUE));
     queue.add(3);
+    Assert.assertEquals(3, (int) itr.peek(0));
     Assert.assertEquals(3, (int) itr.next(0));
   }
 

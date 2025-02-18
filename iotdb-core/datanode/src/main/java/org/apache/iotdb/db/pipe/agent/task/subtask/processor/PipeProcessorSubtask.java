@@ -132,6 +132,9 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
     outputEventCollector.resetFlags();
     try {
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event).throwIfNoPrivilege();
+      }
       // event can be supplied after the subtask is closed, so we need to check isClosed here
       if (!isClosed.get()) {
         if (event instanceof TabletInsertionEvent) {
