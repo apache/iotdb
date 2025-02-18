@@ -360,7 +360,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
                       expectedValues,
                       tablet.getTimestamps());
                 } catch (Exception e) {
-                  fail();
+                  e.printStackTrace();
+                  fail(e.getMessage());
                 }
               });
       senderSession.close();

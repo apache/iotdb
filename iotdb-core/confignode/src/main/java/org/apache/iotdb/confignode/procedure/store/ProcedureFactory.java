@@ -52,6 +52,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTTLProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.AlterTableColumnDataTypeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DeleteDevicesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
@@ -209,6 +210,9 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case DROP_TABLE_COLUMN_PROCEDURE:
         procedure = new DropTableColumnProcedure(false);
+        break;
+      case ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE:
+        procedure = new AlterTableColumnDataTypeProcedure(false);
         break;
       case DROP_TABLE_PROCEDURE:
         procedure = new DropTableProcedure(false);
@@ -459,6 +463,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.NEVER_FINISH_PROCEDURE;
     } else if (procedure instanceof AddNeverFinishSubProcedureProcedure) {
       return ProcedureType.ADD_NEVER_FINISH_SUB_PROCEDURE_PROCEDURE;
+    } else if (procedure instanceof AlterTableColumnDataTypeProcedure) {
+      return ProcedureType.ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE;
     }
     throw new UnsupportedOperationException(
         "Procedure type " + procedure.getClass() + " is not supported");
