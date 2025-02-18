@@ -352,7 +352,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                           0,
                           pipeTaskMeta,
                           sourceEvent,
-                          true)
+                          false)
                       : new PipeRawTabletInsertionEvent(
                           sourceEvent.getRawIsTableModelEvent(),
                           sourceEvent.getSourceDatabaseNameFromDataRegion(),
@@ -364,7 +364,7 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
                           sourceEvent.getCreationTime(),
                           pipeTaskMeta,
                           sourceEvent,
-                          true);
+                          false);
             }
             return next;
           }
