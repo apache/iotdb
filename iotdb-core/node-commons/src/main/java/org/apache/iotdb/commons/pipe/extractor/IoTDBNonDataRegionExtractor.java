@@ -247,7 +247,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
   protected abstract void initSnapshotGenerator(final PipeSnapshotEvent event)
       throws IOException, IllegalPathException;
 
-  protected abstract boolean getNextInSnapshot();
+  protected abstract PipeWritePlanEvent getNextEventInSnapshot();
 
   protected abstract Optional<PipeWritePlanEvent> trimRealtimeEventByPrivilege(
       final PipeWritePlanEvent event) throws AccessDeniedException;
