@@ -200,9 +200,15 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
       realtimeEvent = getNextEventInCurrentSnapshot();
     }
 
+    // Bind index for the last event parsed from snapshot
+    boolean shouldBindIndex = historicalEvents.isEmpty();
+
     // Realtime
     if (Objects.isNull(realtimeEvent)) {
       realtimeEvent = (PipeWritePlanEvent) iterator.peek(getMaxBlockingTimeMs());
+
+      // Or for the realtime event
+      shouldBindIndex = true;
     }
     if (Objects.isNull(realtimeEvent)) {
       return null;
@@ -228,7 +234,9 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
               skipIfNoPrivileges,
               Long.MIN_VALUE,
               Long.MAX_VALUE);
-      event.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
+      if (shouldBindIndex) {
+        event.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
+      }
       event.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
       return event;
     }
@@ -245,7 +253,9 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
                 skipIfNoPrivileges,
                 Long.MIN_VALUE,
                 Long.MAX_VALUE);
-    realtimeEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
+    if (shouldBindIndex) {
+      realtimeEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
+    }
     realtimeEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
     return realtimeEvent;
   }
