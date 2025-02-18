@@ -20,15 +20,29 @@
 package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
-import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 
-public class PipeStatementToPlanVisitor extends StatementVisitor<PlanNode, Void> {
+public class PipeStatementToPlanVisitor extends AstVisitor<PlanNode, Void> {
   @Override
-  public PlanNode visitNode(final StatementNode node, final Void context) {
+  public PlanNode visitNode(final Node node, final Void context) {
     throw new UnsupportedOperationException(
         String.format(
             "PipeStatementToPlanVisitor does not support visiting general statement, Statement: %s",
             node));
+  }
+
+  @Override
+  public PlanNode visitCreateOrUpdateDevice(final CreateOrUpdateDevice node, final Void context) {
+    return new CreateOrUpdateTableDeviceNode(
+        new PlanNodeId(""),
+        node.getDatabase(),
+        node.getTable(),
+        node.getDeviceIdList(),
+        node.getAttributeNameList(),
+        node.getAttributeValueList());
   }
 }
