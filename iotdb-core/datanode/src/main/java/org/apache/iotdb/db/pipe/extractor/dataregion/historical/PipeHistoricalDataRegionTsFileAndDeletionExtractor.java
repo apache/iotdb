@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeE
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.resource.PersistentResource;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
@@ -325,8 +326,13 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     if (Objects.nonNull(dataRegion)) {
       final String databaseName = dataRegion.getDatabaseName();
       if (Objects.nonNull(databaseName)) {
-        isDbNameCoveredByPattern =
-            treePattern.coversDb(databaseName) && tablePattern.coversDb(databaseName);
+        isTableModel = PathUtils.isTableModelDatabase(databaseName);
+        isModelDetected = true;
+        if (isTableModel) {
+          isDbNameCoveredByPattern = tablePattern.coversDb(databaseName);
+        } else {
+          isDbNameCoveredByPattern = treePattern.coversDb(databaseName);
+        }
       }
     }
 

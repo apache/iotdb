@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -225,8 +226,11 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     if (dataRegion != null) {
       final String databaseName = dataRegion.getDatabaseName();
       if (databaseName != null) {
-        isDbNameCoveredByPattern =
-            treePattern.coversDb(databaseName) && tablePattern.coversDb(databaseName);
+        if (PathUtils.isTableModelDatabase(databaseName)) {
+          isDbNameCoveredByPattern = tablePattern.coversDb(databaseName);
+        } else {
+          isDbNameCoveredByPattern = treePattern.coversDb(databaseName);
+        }
       }
     }
 

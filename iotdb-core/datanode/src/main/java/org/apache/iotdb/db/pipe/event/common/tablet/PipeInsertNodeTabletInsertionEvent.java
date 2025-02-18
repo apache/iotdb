@@ -35,6 +35,8 @@ import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventT
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
+import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -85,6 +87,8 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   private final boolean isAligned;
   private final boolean isGeneratedByPipe;
 
+  private final PipeTabletMemoryBlock allocatedMemoryBlock;
+
   private List<TabletInsertionEventParser> eventParsers;
 
   private final PartialPath devicePath;
@@ -92,15 +96,16 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   private ProgressIndex progressIndex;
 
   public PipeInsertNodeTabletInsertionEvent(
-      final String databaseName,
+      final Boolean isTableModel,
+      final String databaseNameFromDataRegion,
       final WALEntryHandler walEntryHandler,
       final PartialPath devicePath,
       final ProgressIndex progressIndex,
       final boolean isAligned,
       final boolean isGeneratedByPipe) {
     this(
-        null,
-        databaseName,
+        isTableModel,
+        databaseNameFromDataRegion,
         walEntryHandler,
         devicePath,
         progressIndex,
@@ -119,7 +124,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
 
   private PipeInsertNodeTabletInsertionEvent(
       final Boolean isTableModelEvent,
-      final String databaseName,
+      final String databaseNameFromDataRegion,
       final WALEntryHandler walEntryHandler,
       final PartialPath devicePath,
       final ProgressIndex progressIndex,
@@ -145,13 +150,17 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         startTime,
         endTime,
         isTableModelEvent,
-        databaseName);
+        databaseNameFromDataRegion);
     this.walEntryHandler = walEntryHandler;
     // Record device path here so there's no need to get it from InsertNode cache later.
     this.devicePath = devicePath;
     this.progressIndex = progressIndex;
     this.isAligned = isAligned;
     this.isGeneratedByPipe = isGeneratedByPipe;
+
+    // Allocate empty memory block, will be resized later.
+    this.allocatedMemoryBlock =
+        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
   }
 
   public InsertNode getInsertNode() throws WALPipeException {
@@ -200,11 +209,12 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
       PipeDataNodeResourceManager.wal().unpin(walEntryHandler);
-      // Release the parsers' memory.
+      // release the parsers' memory and close memory block
       if (eventParsers != null) {
         eventParsers.clear();
         eventParsers = null;
       }
+      allocatedMemoryBlock.close();
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
@@ -245,7 +255,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       final long endTime) {
     return new PipeInsertNodeTabletInsertionEvent(
         getRawIsTableModelEvent(),
-        getTreeModelDatabaseName(),
+        getSourceDatabaseNameFromDataRegion(),
         walEntryHandler,
         devicePath,
         progressIndex,
@@ -395,9 +405,18 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
 
   // TODO: for table model insertion, we need to get the database name
   public List<Tablet> convertToTablets() {
-    return initEventParsers().stream()
-        .map(TabletInsertionEventParser::convertToTablet)
-        .collect(Collectors.toList());
+    final List<Tablet> tablets =
+        initEventParsers().stream()
+            .map(TabletInsertionEventParser::convertToTablet)
+            .collect(Collectors.toList());
+    PipeDataNodeResourceManager.memory()
+        .forceResize(
+            allocatedMemoryBlock,
+            tablets.stream()
+                .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
+                .reduce(Long::sum)
+                .orElse(0L));
+    return tablets;
   }
 
   /////////////////////////// event parser ///////////////////////////
@@ -468,7 +487,9 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
                 container ->
                     new PipeRawTabletInsertionEvent(
                         getRawIsTableModelEvent(),
-                        getTreeModelDatabaseName(),
+                        getSourceDatabaseNameFromDataRegion(),
+                        getRawTableModelDataBase(),
+                        getRawTreeModelDataBase(),
                         container.convertToTablet(),
                         container.isAligned(),
                         pipeName,
@@ -517,7 +538,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public PipeEventResource eventResourceBuilder() {
     return new PipeInsertNodeTabletInsertionEventResource(
-        this.isReleased, this.referenceCount, this.walEntryHandler);
+        this.isReleased, this.referenceCount, this.walEntryHandler, this.allocatedMemoryBlock);
   }
 
   // Notes:
@@ -535,20 +556,23 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   private static class PipeInsertNodeTabletInsertionEventResource extends PipeEventResource {
 
     private final WALEntryHandler walEntryHandler;
+    private final PipeTabletMemoryBlock allocatedMemoryBlock;
 
     private PipeInsertNodeTabletInsertionEventResource(
         final AtomicBoolean isReleased,
         final AtomicInteger referenceCount,
-        final WALEntryHandler walEntryHandler) {
+        final WALEntryHandler walEntryHandler,
+        final PipeTabletMemoryBlock allocatedMemoryBlock) {
       super(isReleased, referenceCount);
       this.walEntryHandler = walEntryHandler;
+      this.allocatedMemoryBlock = allocatedMemoryBlock;
     }
 
     @Override
     protected void finalizeResource() {
       try {
         PipeDataNodeResourceManager.wal().unpin(walEntryHandler);
-        // no need to release the containers' memory because it has already been GCed
+        allocatedMemoryBlock.close();
       } catch (final Exception e) {
         LOGGER.warn(
             String.format(

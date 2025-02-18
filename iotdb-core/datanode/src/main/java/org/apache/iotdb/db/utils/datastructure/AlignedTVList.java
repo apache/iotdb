@@ -181,6 +181,7 @@ public abstract class AlignedTVList extends TVList {
         }
       }
     }
+    cloneList.timeColDeletedMap = timeColDeletedMap == null ? null : timeColDeletedMap.clone();
     return cloneList;
   }
 
@@ -723,7 +724,7 @@ public abstract class AlignedTVList extends TVList {
       timeColDeletedMap = new BitMap(rowCount, newBytes);
     }
     // use value index so that sorts will not change the nullability
-    if (timeColDeletedMap.isMarked(i)) {
+    if (timeColDeletedMap.isMarked(getValueIndex(i))) {
       return false;
     } else {
       timeColDeletedMap.mark(getValueIndex(i));
