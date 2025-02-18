@@ -93,15 +93,16 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   private ProgressIndex progressIndex;
 
   public PipeInsertNodeTabletInsertionEvent(
-      final String databaseName,
+      final Boolean isTableModel,
+      final String databaseNameFromDataRegion,
       final WALEntryHandler walEntryHandler,
       final PartialPath devicePath,
       final ProgressIndex progressIndex,
       final boolean isAligned,
       final boolean isGeneratedByPipe) {
     this(
-        null,
-        databaseName,
+        isTableModel,
+        databaseNameFromDataRegion,
         walEntryHandler,
         devicePath,
         progressIndex,
@@ -118,7 +119,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
 
   private PipeInsertNodeTabletInsertionEvent(
       final Boolean isTableModelEvent,
-      final String databaseName,
+      final String databaseNameFromDataRegion,
       final WALEntryHandler walEntryHandler,
       final PartialPath devicePath,
       final ProgressIndex progressIndex,
@@ -140,7 +141,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         startTime,
         endTime,
         isTableModelEvent,
-        databaseName);
+        databaseNameFromDataRegion);
     this.walEntryHandler = walEntryHandler;
     // Record device path here so there's no need to get it from InsertNode cache later.
     this.devicePath = devicePath;
@@ -243,7 +244,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       final long endTime) {
     return new PipeInsertNodeTabletInsertionEvent(
         getRawIsTableModelEvent(),
-        getTreeModelDatabaseName(),
+        getSourceDatabaseNameFromDataRegion(),
         walEntryHandler,
         devicePath,
         progressIndex,
@@ -459,7 +460,9 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
                 container ->
                     new PipeRawTabletInsertionEvent(
                         getRawIsTableModelEvent(),
-                        getTreeModelDatabaseName(),
+                        getSourceDatabaseNameFromDataRegion(),
+                        getRawTableModelDataBase(),
+                        getRawTreeModelDataBase(),
                         container.convertToTablet(),
                         container.isAligned(),
                         pipeName,
