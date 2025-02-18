@@ -187,8 +187,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   public PipeRawTabletInsertionEvent(
       final Tablet tablet, final long startTime, final long endTime) {
     this(
-        null, null, null, null, tablet, false, null, false, null, 0, null, null, null, null, true, startTime,
-        endTime);
+        null, null, null, null, tablet, false, null, false, null, 0, null, null, null, null, true,
+        startTime, endTime);
   }
 
   @Override
