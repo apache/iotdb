@@ -50,6 +50,7 @@ import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurat
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_DELETE_VALUE;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_NONE_VALUE;
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY;
 
 public class LoadTsFileStatement extends Statement {
 
@@ -59,6 +60,7 @@ public class LoadTsFileStatement extends Statement {
   private boolean verifySchema = true;
   private boolean deleteAfterLoad = false;
   private boolean convertOnTypeMismatch = true;
+  private int tabletConversionThreshold = -1;
   private boolean autoCreateDatabase = true;
   private boolean isGeneratedByPipe = false;
   private String model = LoadTsFileConfigurator.MODEL_TREE_VALUE;
@@ -75,6 +77,7 @@ public class LoadTsFileStatement extends Statement {
     this.verifySchema = true;
     this.deleteAfterLoad = false;
     this.convertOnTypeMismatch = true;
+    this.tabletConversionThreshold = -1;
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.resources = new ArrayList<>();
     this.writePointCountList = new ArrayList<>();
@@ -106,6 +109,7 @@ public class LoadTsFileStatement extends Statement {
     this.verifySchema = true;
     this.deleteAfterLoad = false;
     this.convertOnTypeMismatch = true;
+    this.tabletConversionThreshold = -1;
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
@@ -183,6 +187,14 @@ public class LoadTsFileStatement extends Statement {
     return convertOnTypeMismatch;
   }
 
+  public void setTabletConversionThreshold(int tabletConversionThreshold) {
+    this.tabletConversionThreshold = tabletConversionThreshold;
+  }
+
+  public int getTabletConversionThreshold() {
+    return tabletConversionThreshold;
+  }
+
   public void setAutoCreateDatabase(boolean autoCreateDatabase) {
     this.autoCreateDatabase = autoCreateDatabase;
   }
@@ -238,6 +250,8 @@ public class LoadTsFileStatement extends Statement {
     this.deleteAfterLoad = LoadTsFileConfigurator.parseOrGetDefaultOnSuccess(loadAttributes);
     this.convertOnTypeMismatch =
         LoadTsFileConfigurator.parseOrGetDefaultConvertOnTypeMismatch(loadAttributes);
+    this.tabletConversionThreshold =
+        LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThreshold(loadAttributes);
     this.model =
         LoadTsFileConfigurator.parseOrGetDefaultModel(
             loadAttributes, LoadTsFileConfigurator.MODEL_TREE_VALUE);
@@ -267,6 +281,7 @@ public class LoadTsFileStatement extends Statement {
     loadAttributes.put(
         ON_SUCCESS_KEY, deleteAfterLoad ? ON_SUCCESS_DELETE_VALUE : ON_SUCCESS_NONE_VALUE);
     loadAttributes.put(CONVERT_ON_TYPE_MISMATCH_KEY, String.valueOf(convertOnTypeMismatch));
+    loadAttributes.put(TABLET_CONVERSION_THRESHOLD_KEY, String.valueOf(tabletConversionThreshold));
     if (model != null) {
       loadAttributes.put(MODEL_KEY, model);
     }
@@ -292,6 +307,8 @@ public class LoadTsFileStatement extends Statement {
         + verifySchema
         + ", convert-on-type-mismatch="
         + convertOnTypeMismatch
+        + ", tablet-conversion-threshold="
+        + tabletConversionThreshold
         + ", tsFiles size="
         + tsFiles.size()
         + '}';
