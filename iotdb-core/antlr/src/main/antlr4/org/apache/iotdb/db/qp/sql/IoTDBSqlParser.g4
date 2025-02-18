@@ -556,7 +556,7 @@ verifyConnection
 
 // ---- Remove DataNode
 removeDataNode
-    : REMOVE DATANODE dataNodeId=INTEGER_LITERAL (COMMA dataNodeId=INTEGER_LITERAL)*
+    : REMOVE DATANODE dataNodeId=INTEGER_LITERAL
     ;
 
 // ---- Remove ConfigNode
