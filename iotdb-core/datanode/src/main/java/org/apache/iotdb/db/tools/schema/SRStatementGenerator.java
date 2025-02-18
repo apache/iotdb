@@ -128,6 +128,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
   private List<Object[]> tableDeviceIdList = new ArrayList<>();
   private List<String> attributeNameList = null;
   private List<Object[]> attributeValueList = new ArrayList<>();
+  private boolean isClosed = false;
 
   public SRStatementGenerator(
       final File mtreeFile,
@@ -224,16 +225,20 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
         }
       }
     }
-    try {
-      inputStream.close();
-      if (tagFileChannel != null) {
-        tagFileChannel.close();
+
+    if (!isClosed) {
+      try {
+        inputStream.close();
+        if (tagFileChannel != null) {
+          tagFileChannel.close();
+        }
+        deviceAttributeStore.clear();
+      } catch (final IOException e) {
+        lastExcept = e;
+      } finally {
+        schemaRegionStatistics.clear();
       }
-      deviceAttributeStore.clear();
-    } catch (final IOException e) {
-      lastExcept = e;
-    } finally {
-      schemaRegionStatistics.clear();
+      isClosed = true;
     }
     return false;
   }
