@@ -726,7 +726,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
     return Coordinator.getInstance()
         .executeForTreeModel(
-            new PipeEnrichedStatement(statement),
+            shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
             SessionManager.getInstance().requestQueryId(),
             SESSION_MANAGER.getSessionInfo(clientSession),
             "",
