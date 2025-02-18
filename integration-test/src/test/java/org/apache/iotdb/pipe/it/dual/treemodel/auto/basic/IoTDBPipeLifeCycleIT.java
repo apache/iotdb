@@ -31,6 +31,7 @@ import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAut
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -54,6 +55,13 @@ import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSystemPrivileges;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoBasic.class})
 public class IoTDBPipeLifeCycleIT extends AbstractPipeDualTreeModelAutoIT {
+
+  @Override
+  @Before
+  public void setUp() {
+    super.setUp();
+  }
+
   @Test
   public void testLifeCycleWithHistoryEnabled() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
