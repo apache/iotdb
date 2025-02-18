@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -38,15 +39,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class ConfignodeSnapshotParser {
-  private static final Logger LOGGER = LoggerFactory.getLogger(ConfignodeSnapshotParser.class);
+public class ConfigNodeSnapshotParser {
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeSnapshotParser.class);
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
   private static final String SNAPSHOT_CLUSTER_SCHEMA_FILENAME = "cluster_schema.bin";
-
+  private static final String SNAPSHOT_TABLE_CLUSTER_SCHEMA_FILENAME = "table_cluster_schema.bin";
   private static final String SNAPSHOT_TEMPLATE_FILENAME = "template_info.bin";
 
-  private ConfignodeSnapshotParser() {
+  private ConfigNodeSnapshotParser() {
     // Empty constructor
   }
 
@@ -139,6 +140,16 @@ public class ConfignodeSnapshotParser {
                       new Pair<>(schemaInfoFile.toPath(), templateInfoFile.toPath()),
                       CNSnapshotFileType.SCHEMA));
             }
+
+            // Get table schema info file
+            final File tableInfoFile =
+                SystemFileFactory.INSTANCE.getFile(
+                    latestSnapshotPath + File.separator + SNAPSHOT_TABLE_CLUSTER_SCHEMA_FILENAME);
+            if (tableInfoFile.exists()) {
+              snapshotPairList.add(
+                  new Pair<>(new Pair<>(tableInfoFile.toPath(), null), CNSnapshotFileType.SCHEMA));
+            }
+
             // Get ttl info file
             final File ttlInfoFile =
                 SystemFileFactory.INSTANCE.getFile(

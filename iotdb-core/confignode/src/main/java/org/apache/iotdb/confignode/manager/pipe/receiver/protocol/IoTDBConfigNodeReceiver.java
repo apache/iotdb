@@ -75,7 +75,7 @@ import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysi
 import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysicalPlanTSStatusVisitor;
 import org.apache.iotdb.confignode.persistence.schema.CNPhysicalPlanGenerator;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
-import org.apache.iotdb.confignode.persistence.schema.ConfignodeSnapshotParser;
+import org.apache.iotdb.confignode.persistence.schema.ConfigNodeSnapshotParser;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
@@ -776,7 +776,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       throws IOException {
     final Map<String, String> parameters = req.getParameters();
     final CNPhysicalPlanGenerator generator =
-        ConfignodeSnapshotParser.translate2PhysicalPlan(
+        ConfigNodeSnapshotParser.translate2PhysicalPlan(
             Paths.get(fileAbsolutePaths.get(0)),
             fileAbsolutePaths.size() > 1 ? Paths.get(fileAbsolutePaths.get(1)) : null,
             CNSnapshotFileType.deserialize(
