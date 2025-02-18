@@ -57,7 +57,6 @@ public class IoTDBMQTTServiceIT {
     BaseEnv baseEnv = EnvFactory.getEnv();
     baseEnv.getConfig().getDataNodeConfig().setEnableMQTTService(true);
     baseEnv.getConfig().getDataNodeConfig().setMqttPayloadFormatter(FORMATTER);
-    baseEnv.getConfig().getDataNodeConfig().setMqttDataPath("target/mqttData");
     baseEnv.initClusterEnvironment();
     DataNodeWrapper portConflictDataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
     int port = portConflictDataNodeWrapper.getMqttPort();
