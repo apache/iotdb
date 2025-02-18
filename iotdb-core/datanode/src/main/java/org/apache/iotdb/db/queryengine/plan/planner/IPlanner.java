@@ -36,7 +36,8 @@ public interface IPlanner {
 
   LogicalQueryPlan doLogicalPlan(IAnalysis analysis, MPPQueryContext context);
 
-  DistributedQueryPlan doDistributionPlan(IAnalysis analysis, LogicalQueryPlan logicalPlan);
+  DistributedQueryPlan doDistributionPlan(
+      IAnalysis analysis, LogicalQueryPlan logicalPlan, MPPQueryContext context);
 
   IScheduler doSchedule(
       IAnalysis analysis,
