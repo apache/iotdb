@@ -461,7 +461,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               List<Expression> conjuncts = IrUtils.extractConjuncts(node.getPushDownPredicate());
               for (Expression conjunct : conjuncts) {
                 Set<Symbol> symbols = SymbolsExtractor.extractUnique(conjunct);
-                if (symbols.size() > 1) {
+                boolean containsMultiDataSource = symbols.size() > 1;
+                if (containsMultiDataSource) {
                   cannotPushDownConjuncts.add(conjunct);
                   continue;
                 }

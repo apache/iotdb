@@ -256,7 +256,7 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
         Column rightColumn = rightTsBlock.getColumn(i - leftColumnCount);
         int targetColumnIndex =
             outputColumnMap == null
-                ? i - leftColumnCount
+                ? i
                 : outputColumnMap.get(new InputLocation(1, i - leftColumnCount));
         ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(targetColumnIndex);
         if (rightColumn.isNull(rightIndex)) {

@@ -43,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -53,7 +54,9 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.IntColumn;
+import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.type.Type;
@@ -296,6 +299,96 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
         assertTrue(tsBlock.getColumn(2) instanceof IntColumn);
         assertTrue(tsBlock.getColumn(3) instanceof TimeColumn);
         assertTrue(tsBlock.getColumn(4) instanceof RunLengthEncodedColumn);
+        count += tsBlock.getPositionCount();
+      }
+      assertEquals(1320, count);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      if (operator != null) {
+        try {
+          operator.close();
+        } catch (Exception ignored) {
+        }
+      }
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
+  public void testScanWithCannotPushDownPredicate() {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    Operator operator = null;
+    try {
+      QueryId queryId = new QueryId("stub_query");
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      FragmentInstanceContext fragmentInstanceContext =
+          createFragmentInstanceContext(instanceId, stateMachine);
+      DataDriverContext driverContext = new DataDriverContext(fragmentInstanceContext, 0);
+      PlanNodeId planNodeId = new PlanNodeId("1");
+      driverContext.addOperatorContext(
+          1, planNodeId, DeviceIteratorScanOperator.class.getSimpleName());
+
+      TreeNonAlignedDeviceViewScanNode node = getTreeNonAlignedDeviceViewScanNode();
+      node.setPushDownPredicate(
+          new LogicalExpression(
+              LogicalExpression.Operator.OR,
+              Arrays.asList(
+                  new ComparisonExpression(
+                      ComparisonExpression.Operator.GREATER_THAN,
+                      new Symbol("sensor3").toSymbolReference(),
+                      new LongLiteral("1000")),
+                  new ComparisonExpression(
+                      ComparisonExpression.Operator.GREATER_THAN,
+                      new Symbol("sensor1").toSymbolReference(),
+                      new LongLiteral("1000")))));
+
+      node.getAssignments()
+          .put(
+              new Symbol("sensor3"),
+              new ColumnSchema(
+                  "sensor3",
+                  TypeFactory.getType(TSDataType.INT32),
+                  false,
+                  TsTableColumnCategory.FIELD));
+
+      Map<Symbol, Type> symbolTSDataTypeMap = new HashMap<>();
+      symbolTSDataTypeMap.put(new Symbol("sensor0"), TypeFactory.getType(TSDataType.INT32));
+      symbolTSDataTypeMap.put(new Symbol("sensor1"), TypeFactory.getType(TSDataType.INT32));
+      symbolTSDataTypeMap.put(new Symbol("sensor2"), TypeFactory.getType(TSDataType.INT32));
+      symbolTSDataTypeMap.put(new Symbol("sensor3"), TypeFactory.getType(TSDataType.INT32));
+      symbolTSDataTypeMap.put(new Symbol("time"), TypeFactory.getType(TypeEnum.TIMESTAMP));
+      symbolTSDataTypeMap.put(new Symbol("tag1"), TypeFactory.getType(TSDataType.STRING));
+      TypeProvider typeProvider = new TypeProvider(symbolTSDataTypeMap);
+      LocalExecutionPlanContext localExecutionPlanContext =
+          new LocalExecutionPlanContext(
+              typeProvider, fragmentInstanceContext, new DataNodeQueryContext(1));
+      operator =
+          tableOperatorGenerator.visitTreeNonAlignedDeviceViewScan(node, localExecutionPlanContext);
+      ((DataDriverContext) localExecutionPlanContext.getDriverContext())
+          .getSourceOperators()
+          .forEach(
+              sourceOperator ->
+                  sourceOperator.initQueryDataSource(
+                      new QueryDataSource(seqResources, unSeqResources)));
+
+      int count = 0;
+      while (operator.isBlocked().get() != NOT_BLOCKED && operator.hasNext()) {
+        TsBlock tsBlock = operator.next();
+        if (tsBlock == null) {
+          continue;
+        }
+        assertEquals(node.getOutputSymbols().size(), tsBlock.getValueColumnCount());
+        assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
+        assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
+        assertTrue(tsBlock.getColumn(2) instanceof IntColumn);
+        assertTrue(tsBlock.getColumn(3) instanceof LongColumn);
+        assertTrue(tsBlock.getColumn(4) instanceof BinaryColumn);
         count += tsBlock.getPositionCount();
       }
       assertEquals(1320, count);
