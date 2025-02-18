@@ -423,7 +423,7 @@ public class CNPhysicalPlanGenerator
         name = databaseMNode.getName();
         stack.push(new Pair<>(databaseMNode, true));
       } else if (type == TABLE_MNODE_TYPE) {
-        tableNode = ConfigMTree.deserializeTableMNode(inputStream);
+        tableNode = ConfigMTree.deserializeTableMNode(bufferedInputStream);
         name = tableNode.getName();
         stack.push(new Pair<>(tableNode, false));
         tableSet.add(tableNode.getTable());
