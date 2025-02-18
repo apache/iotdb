@@ -42,6 +42,8 @@ class PoolConfig(object):
         time_zone: str = DEFAULT_TIME_ZONE,
         max_retry: int = DEFAULT_MAX_RETRY,
         enable_compression: bool = False,
+        use_ssl: bool = False,
+        ca_certs: str = None,
     ):
         self.host = host
         self.port = port
@@ -58,6 +60,8 @@ class PoolConfig(object):
         self.time_zone = time_zone
         self.max_retry = max_retry
         self.enable_compression = enable_compression
+        self.use_ssl = use_ssl
+        self.ca_certs = ca_certs
 
 
 class SessionPool(object):
@@ -80,6 +84,8 @@ class SessionPool(object):
                 self.__pool_config.password,
                 self.__pool_config.fetch_size,
                 self.__pool_config.time_zone,
+                use_ssl=self.__pool_config.use_ssl,
+                ca_certs=self.__pool_config.ca_certs,
             )
 
         else:
@@ -90,6 +96,8 @@ class SessionPool(object):
                 self.__pool_config.password,
                 self.__pool_config.fetch_size,
                 self.__pool_config.time_zone,
+                use_ssl=self.__pool_config.use_ssl,
+                ca_certs=self.__pool_config.ca_certs,
             )
 
         session.open(self.__pool_config.enable_compression)
@@ -102,7 +110,6 @@ class SessionPool(object):
         return q
 
     def get_session(self) -> Session:
-
         if self.__closed:
             raise ConnectionError("SessionPool has already been closed.")
 
@@ -137,7 +144,6 @@ class SessionPool(object):
         return session
 
     def put_back(self, session: Session):
-
         if self.__closed:
             raise ConnectionError(
                 "SessionPool has already been closed, please close the session manually."
@@ -150,7 +156,6 @@ class SessionPool(object):
                 self.__pool_size -= 1
 
     def close(self):
-
         with self.__lock:
             while not self.__queue.empty():
                 session = self.__queue.get(block=False)
