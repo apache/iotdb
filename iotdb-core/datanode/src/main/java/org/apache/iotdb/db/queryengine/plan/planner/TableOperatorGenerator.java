@@ -474,7 +474,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             }
 
             // only use full outer time join
-            boolean canPushDownLimitToAllSeries = pushDownConjunctsForEachMeasurement.isEmpty();
+            boolean canPushDownLimitToAllSeries =
+                pushDownConjunctsForEachMeasurement.isEmpty() && cannotPushDownConjuncts.isEmpty();
             for (int i = 0; i < measurementSchemas.size(); i++) {
               IMeasurementSchema measurementSchema = measurementSchemas.get(i);
               List<Expression> pushDownPredicatesForCurrentMeasurement =
@@ -638,7 +639,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                       node.getScanOrder() == Ordering.ASC
                           ? new AscTimeComparator()
                           : new DescTimeComparator());
-              return node.getPushDownLimit() > 0
+              return (node.getPushDownLimit() > 0 && cannotPushDownConjuncts.isEmpty())
                   ? new LimitOperator(
                       operatorContext, node.getPushDownLimit(), leftOuterTimeJoinOperator)
                   : leftOuterTimeJoinOperator;
