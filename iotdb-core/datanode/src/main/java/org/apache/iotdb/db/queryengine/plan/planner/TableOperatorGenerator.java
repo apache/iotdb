@@ -473,6 +473,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               }
             }
 
+            // only use full outer time join
+            boolean canPushDownLimitToAllSeries = pushDownConjunctsForEachMeasurement.isEmpty();
             for (int i = 0; i < measurementSchemas.size(); i++) {
               IMeasurementSchema measurementSchema = measurementSchemas.get(i);
               List<Expression> pushDownPredicatesForCurrentMeasurement =
@@ -496,8 +498,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                         commonParameter.columnSchemaMap,
                         commonParameter.timeColumnName));
               }
-              if (isSingleColumn) {
+              if (isSingleColumn || canPushDownLimitToAllSeries) {
                 builder.withPushDownLimit(node.getPushDownLimit());
+              }
+              if (isSingleColumn) {
                 builder.withPushDownOffset(node.getPushDownOffset());
                 builder.withPushLimitToEachDevice(node.isPushLimitToEachDevice());
               }
@@ -623,16 +627,21 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             } else if (right == null) {
               return left;
             } else {
-              return new LeftOuterTimeJoinOperator(
-                  operatorContext,
-                  left,
-                  right,
-                  leftColumnCount,
-                  outputColumnMap,
-                  dataTypes,
-                  node.getScanOrder() == Ordering.ASC
-                      ? new AscTimeComparator()
-                      : new DescTimeComparator());
+              Operator leftOuterTimeJoinOperator =
+                  new LeftOuterTimeJoinOperator(
+                      operatorContext,
+                      left,
+                      right,
+                      leftColumnCount,
+                      outputColumnMap,
+                      dataTypes,
+                      node.getScanOrder() == Ordering.ASC
+                          ? new AscTimeComparator()
+                          : new DescTimeComparator());
+              return node.getPushDownLimit() > 0
+                  ? new LimitOperator(
+                      operatorContext, node.getPushDownLimit(), leftOuterTimeJoinOperator)
+                  : leftOuterTimeJoinOperator;
             }
           }
 
