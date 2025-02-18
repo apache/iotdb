@@ -87,7 +87,7 @@ public class PipeConsensusProcessor implements PipeProcessor {
       return false;
     }
     // Only user-generated TabletInsertionEvent can be replicated.
-    return !isContainLocalData(enrichedEvent);
+    return isContainLocalData(enrichedEvent);
   }
 
   @Override

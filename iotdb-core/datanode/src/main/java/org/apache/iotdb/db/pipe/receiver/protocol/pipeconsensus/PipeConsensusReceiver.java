@@ -1321,7 +1321,7 @@ public class PipeConsensusReceiver {
     private final PipeConsensusTsFileWriterPool tsFileWriterPool;
     private final AtomicInteger WALEventCount = new AtomicInteger(0);
     private final AtomicInteger tsFileEventCount = new AtomicInteger(0);
-    private long onSyncedCommitIndex = 0;
+    private long onSyncedReplicateIndex = 0;
     private int connectorRebootTimes = 0;
 
     public RequestExecutor(
@@ -1342,7 +1342,7 @@ public class PipeConsensusReceiver {
           consensusPipeName,
           commitId);
       RequestMeta curMeta = reqExecutionOrderBuffer.pollFirst();
-      onSyncedCommitIndex = commitId.getReplicateIndex();
+      onSyncedReplicateIndex = commitId.getReplicateIndex();
       // update metric, notice that curMeta is never null.
       if (isTransferTsFileSeal) {
         tsFileEventCount.decrementAndGet();
@@ -1425,7 +1425,7 @@ public class PipeConsensusReceiver {
         // Polling to process
         while (true) {
           if (reqExecutionOrderBuffer.first().equals(requestMeta)
-              && tCommitId.getReplicateIndex() == onSyncedCommitIndex + 1) {
+              && tCommitId.getReplicateIndex() == onSyncedReplicateIndex + 1) {
             long startApplyNanos = System.nanoTime();
             metric.recordDispatchWaitingTimer(startApplyNanos - startDispatchNanos);
             requestMeta.setStartApplyNanos(startApplyNanos);
@@ -1545,7 +1545,7 @@ public class PipeConsensusReceiver {
     private void clear() {
       this.reqExecutionOrderBuffer.clear();
       this.tsFileWriterPool.handleExit(consensusPipeName);
-      this.onSyncedCommitIndex = 0;
+      this.onSyncedReplicateIndex = 0;
     }
   }
 
