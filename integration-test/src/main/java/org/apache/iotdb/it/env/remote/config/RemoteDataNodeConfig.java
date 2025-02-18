@@ -58,9 +58,4 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   public DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
     return this;
   }
-
-  @Override
-  public DataNodeConfig setMqttDataPath(String mqttDataPath) {
-    return this;
-  }
 }
