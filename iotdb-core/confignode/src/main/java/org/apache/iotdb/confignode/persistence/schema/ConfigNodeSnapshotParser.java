@@ -167,10 +167,7 @@ public class ConfigNodeSnapshotParser {
 
   public static CNPhysicalPlanGenerator translate2PhysicalPlan(
       final Path path1, final Path path2, final CNSnapshotFileType type) throws IOException {
-    if (type == CNSnapshotFileType.SCHEMA && (path1 == null || path2 == null)) {
-      LOGGER.warn("Schema_template require schema info file and template file");
-      return null;
-    } else if (path1 == null) {
+    if (path1 == null) {
       LOGGER.warn("Path1 should not be null");
       return null;
     }
