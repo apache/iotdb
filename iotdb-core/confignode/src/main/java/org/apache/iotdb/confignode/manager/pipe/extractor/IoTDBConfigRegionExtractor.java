@@ -44,6 +44,8 @@ import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEv
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigNodeRemainingTimeMetrics;
 import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigRegionExtractorMetrics;
+import org.apache.iotdb.confignode.persistence.schema.CNPhysicalPlanGenerator;
+import org.apache.iotdb.confignode.persistence.schema.ConfigNodeSnapshotParser;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -54,6 +56,8 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
@@ -75,6 +79,7 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
       TABLE_PRIVILEGE_PARSE_VISITOR = new PipeConfigPhysicalPlanTablePrivilegeParseVisitor();
 
   private Set<ConfigPhysicalPlanType> listenedTypeSet = new HashSet<>();
+  private CNPhysicalPlanGenerator parser;
 
   @Override
   public void customize(
@@ -165,8 +170,15 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
   }
 
   @Override
-  protected void initSnapshotGenerator(final PipeSnapshotEvent event) {
-    // Do nothing
+  protected void initSnapshotGenerator(final PipeSnapshotEvent event) throws IOException {
+    final PipeConfigRegionSnapshotEvent snapshotEvent = (PipeConfigRegionSnapshotEvent) event;
+    parser =
+        ConfigNodeSnapshotParser.translate2PhysicalPlan(
+            Paths.get(snapshotEvent.getSnapshotFile().getPath()),
+            Objects.nonNull(snapshotEvent.getTemplateFile())
+                ? Paths.get(snapshotEvent.getTemplateFile().getPath())
+                : null,
+            snapshotEvent.getFileType());
   }
 
   @Override
