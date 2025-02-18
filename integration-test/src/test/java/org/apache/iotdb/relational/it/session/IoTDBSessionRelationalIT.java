@@ -35,12 +35,16 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.v4.ITsFileWriter;
+import org.apache.tsfile.write.v4.TsFileWriterBuilder;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -1456,6 +1460,124 @@ public class IoTDBSessionRelationalIT {
 
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       session.executeNonQueryStatement("SET CONFIGURATION \"enable_partial_insert\"=\"true\"");
+    }
+  }
+
+  @Test
+  public void insertMinMaxTimeTest() throws IoTDBConnectionException, StatementExecutionException {
+    try {
+      try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+        try {
+          session.executeNonQueryStatement(
+              "SET CONFIGURATION timestamp_precision_check_enabled='false'");
+        } catch (StatementExecutionException e) {
+          // run in IDE will trigger this, ignore it
+          if (!e.getMessage().contains("Unable to find the configuration file")) {
+            throw e;
+          }
+        }
+        session.executeNonQueryStatement("USE db1");
+        session.executeNonQueryStatement("CREATE TABLE test_insert_min_max (id1 TAG, s1 INT32)");
+
+        session.executeNonQueryStatement(
+            String.format(
+                "INSERT INTO test_insert_min_max(time, id1, s1) VALUES (%d, 'd1', 1)",
+                Long.MIN_VALUE));
+        session.executeNonQueryStatement(
+            String.format(
+                "INSERT INTO test_insert_min_max(time, id1, s1) VALUES (%d, 'd1', 1)",
+                Long.MAX_VALUE));
+
+        SessionDataSet dataSet = session.executeQueryStatement("SELECT * FROM test_insert_min_max");
+        RowRecord record = dataSet.next();
+        assertEquals(Long.MIN_VALUE, record.getFields().get(0).getLongV());
+        record = dataSet.next();
+        assertEquals(Long.MAX_VALUE, record.getFields().get(0).getLongV());
+        assertFalse(dataSet.hasNext());
+
+        session.executeNonQueryStatement("FLUSH");
+        dataSet = session.executeQueryStatement("SELECT * FROM test_insert_min_max");
+        record = dataSet.next();
+        assertEquals(Long.MIN_VALUE, record.getFields().get(0).getLongV());
+        record = dataSet.next();
+        assertEquals(Long.MAX_VALUE, record.getFields().get(0).getLongV());
+        assertFalse(dataSet.hasNext());
+      }
+    } finally {
+      try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+        try {
+          session.executeNonQueryStatement(
+              "SET CONFIGURATION timestamp_precision_check_enabled='true'");
+        } catch (StatementExecutionException e) {
+          // run in IDE will trigger this, ignore it
+          if (!e.getMessage().contains("Unable to find the configuration file")) {
+            throw e;
+          }
+        }
+      }
+    }
+  }
+
+  @Test
+  public void loadMinMaxTimeAlignedTest()
+      throws IoTDBConnectionException,
+          StatementExecutionException,
+          IOException,
+          WriteProcessException {
+    File file = new File("target", "test.tsfile");
+    TableSchema tableSchema =
+        new TableSchema(
+            "load_min_max",
+            Arrays.asList("id1", "s1"),
+            Arrays.asList(TSDataType.STRING, TSDataType.INT32),
+            Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD));
+
+    try (ITsFileWriter writer =
+        new TsFileWriterBuilder().file(file).tableSchema(tableSchema).build()) {
+      Tablet tablet =
+          new Tablet(
+              Arrays.asList("id1", "s1"), Arrays.asList(TSDataType.STRING, TSDataType.INT32));
+      tablet.addTimestamp(0, Long.MIN_VALUE);
+      tablet.addTimestamp(1, Long.MAX_VALUE);
+      tablet.addValue(0, 0, "d1");
+      tablet.addValue(1, 0, "d1");
+      tablet.addValue(0, 1, 1);
+      tablet.addValue(1, 1, 1);
+      writer.write(tablet);
+    }
+
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE db1");
+      try {
+        session.executeNonQueryStatement(
+            "SET CONFIGURATION timestamp_precision_check_enabled='false'");
+      } catch (StatementExecutionException e) {
+        // run in IDE will trigger this, ignore it
+        if (!e.getMessage().contains("Unable to find the configuration file")) {
+          throw e;
+        }
+      }
+      session.executeNonQueryStatement("LOAD \'" + file.getAbsolutePath() + "\'");
+
+      SessionDataSet dataSet = session.executeQueryStatement("SELECT * FROM load_min_max");
+      RowRecord record = dataSet.next();
+      assertEquals(Long.MIN_VALUE, record.getFields().get(0).getLongV());
+      record = dataSet.next();
+      assertEquals(Long.MAX_VALUE, record.getFields().get(0).getLongV());
+      assertFalse(dataSet.hasNext());
+    } finally {
+      try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+        try {
+          session.executeNonQueryStatement(
+              "SET CONFIGURATION timestamp_precision_check_enabled='false'");
+        } catch (StatementExecutionException e) {
+          // run in IDE will trigger this, ignore it
+          if (!e.getMessage().contains("Unable to find the configuration file")) {
+            throw e;
+          }
+        }
+      }
+      file.delete();
     }
   }
 
