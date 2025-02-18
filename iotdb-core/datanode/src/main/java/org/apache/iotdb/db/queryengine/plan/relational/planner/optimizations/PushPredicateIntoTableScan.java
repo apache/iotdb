@@ -1105,8 +1105,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           !predicateSymbols.contains(node.getIdColumn()),
           "UniqueId in predicate is not yet supported");
       PlanNode rewrittenChild = node.getChild().accept(this, context);
-      node.replaceChildren(ImmutableList.of(rewrittenChild));
-      return node;
+      return replaceChildren(ImmutableList.of(rewrittenChild));
     }
 
     @Override
