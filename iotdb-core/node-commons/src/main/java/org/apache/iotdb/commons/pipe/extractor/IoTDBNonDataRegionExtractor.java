@@ -41,6 +41,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.utils.Pair;
 
+import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -241,6 +242,11 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
   protected abstract long getMaxBlockingTimeMs();
 
   protected abstract boolean canSkipSnapshotPrivilegeCheck();
+
+  protected abstract boolean initSnapshotGenerator(final PipeSnapshotEvent event)
+      throws IOException;
+
+  protected abstract boolean getNextInSnapshot();
 
   protected abstract Optional<PipeWritePlanEvent> trimRealtimeEventByPrivilege(
       final PipeWritePlanEvent event) throws AccessDeniedException;

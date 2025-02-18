@@ -158,6 +158,16 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
   }
 
   @Override
+  protected boolean initSnapshotGenerator(final PipeSnapshotEvent event) {
+    return false;
+  }
+
+  @Override
+  protected boolean getNextInSnapshot() {
+    return false;
+  }
+
+  @Override
   protected Optional<PipeWritePlanEvent> trimRealtimeEventByPrivilege(
       final PipeWritePlanEvent event) {
     final Optional<ConfigPhysicalPlan> result =

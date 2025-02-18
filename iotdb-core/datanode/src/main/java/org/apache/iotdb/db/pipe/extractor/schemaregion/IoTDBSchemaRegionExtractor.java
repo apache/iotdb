@@ -42,12 +42,16 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
+import org.apache.iotdb.db.tools.schema.SRStatementGenerator;
+import org.apache.iotdb.db.tools.schema.SchemaRegionSnapshotParser;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
@@ -67,6 +71,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
 
   private Set<PlanNodeType> listenedTypeSet = new HashSet<>();
   private String database;
+  private SRStatementGenerator generator;
 
   @Override
   public void customize(
@@ -152,6 +157,27 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
     } catch (final AccessDeniedException e) {
       return false;
     }
+  }
+
+  @Override
+  protected boolean initSnapshotGenerator(final PipeSnapshotEvent event) throws IOException {
+    final PipeSchemaRegionSnapshotEvent snapshotEvent = (PipeSchemaRegionSnapshotEvent) event;
+    generator =
+        SchemaRegionSnapshotParser.translate2Statements(
+            Paths.get(snapshotEvent.getMTreeSnapshotFile().getPath()),
+            Objects.nonNull(snapshotEvent.getTagLogSnapshotFile())
+                ? Paths.get(snapshotEvent.getTagLogSnapshotFile().getPath())
+                : null,
+            Objects.nonNull(snapshotEvent.getAttributeSnapshotFile())
+                ? Paths.get(snapshotEvent.getAttributeSnapshotFile().getPath())
+                : null,
+            null);
+    return false;
+  }
+
+  @Override
+  protected boolean getNextInSnapshot() {
+    return false;
   }
 
   @Override
