@@ -119,7 +119,6 @@ public class ModificationFile implements AutoCloseable {
           cascadeFile.write(entry);
         }
       }
-
       if (!fileExists) {
         fileExists = true;
         updateFileNum = 1;
@@ -127,7 +126,6 @@ public class ModificationFile implements AutoCloseable {
     } finally {
       lock.writeLock().unlock();
     }
-
     updateModFileMetric(updateFileNum, size);
   }
 
@@ -154,7 +152,6 @@ public class ModificationFile implements AutoCloseable {
           cascadeFile.write(entries);
         }
       }
-
       if (!fileExists) {
         updateFileNum = 1;
         fileExists = true;
@@ -162,7 +159,6 @@ public class ModificationFile implements AutoCloseable {
     } finally {
       lock.writeLock().unlock();
     }
-
     updateModFileMetric(updateFileNum, size);
   }
 

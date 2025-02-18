@@ -132,6 +132,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecificatio
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReconstructRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveConfigNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
@@ -1205,11 +1206,15 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitRemoveDataNodeStatement(RelationalSqlParser.RemoveDataNodeStatementContext ctx) {
     List<Integer> nodeIds =
-        ctx.INTEGER_VALUE().stream()
-            .map(TerminalNode::getText)
-            .map(Integer::valueOf)
-            .collect(Collectors.toList());
+        Collections.singletonList(Integer.parseInt(ctx.INTEGER_VALUE().getText()));
     return new RemoveDataNode(nodeIds);
+  }
+
+  @Override
+  public Node visitRemoveConfigNodeStatement(
+      RelationalSqlParser.RemoveConfigNodeStatementContext ctx) {
+    Integer nodeId = Integer.parseInt(ctx.INTEGER_VALUE().getText());
+    return new RemoveConfigNode(nodeId);
   }
 
   @Override

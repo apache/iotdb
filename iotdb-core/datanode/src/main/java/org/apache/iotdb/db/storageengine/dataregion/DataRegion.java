@@ -677,7 +677,8 @@ public class DataRegion implements IDataRegionForQuery {
     long timePartitionId = resource.getTimePartition();
     Map<IDeviceID, Long> endTimeMap = new HashMap<>();
     for (IDeviceID deviceId : resource.getDevices()) {
-      long endTime = resource.getEndTime(deviceId);
+      @SuppressWarnings("OptionalGetWithoutIsPresent") // checked above
+      long endTime = resource.getEndTime(deviceId).get();
       endTimeMap.put(deviceId, endTime);
     }
     if (config.isEnableSeparateData()) {
@@ -693,7 +694,9 @@ public class DataRegion implements IDataRegionForQuery {
     Map<IDeviceID, Long> endTimeMap = new HashMap<>();
     for (TsFileResource resource : resources) {
       for (IDeviceID deviceId : resource.getDevices()) {
-        long endTime = resource.getEndTime(deviceId);
+        // checked above
+        //noinspection OptionalGetWithoutIsPresent
+        long endTime = resource.getEndTime(deviceId).get();
         endTimeMap.put(deviceId, endTime);
       }
     }
@@ -2512,6 +2515,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  @SuppressWarnings("OptionalGetWithoutIsPresent")
   private boolean canSkipDelete(TsFileResource tsFileResource, ModEntry deletion) {
     long fileStartTime = tsFileResource.getTimeIndex().getMinStartTime();
     long fileEndTime =
@@ -2535,10 +2539,11 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     for (IDeviceID device : tsFileResource.getDevices()) {
-      long startTime = tsFileResource.getTimeIndex().getStartTime(device);
+      // we are iterating the time index so the times are definitely present
+      long startTime = tsFileResource.getTimeIndex().getStartTime(device).get();
       long endTime =
           tsFileResource.isClosed()
-              ? tsFileResource.getTimeIndex().getEndTime(device)
+              ? tsFileResource.getTimeIndex().getEndTime(device).get()
               : Long.MAX_VALUE;
       if (deletion.affects(device, startTime, endTime)) {
         return false;
