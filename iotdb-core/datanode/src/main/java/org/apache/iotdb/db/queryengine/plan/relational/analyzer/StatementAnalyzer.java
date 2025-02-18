@@ -2079,7 +2079,7 @@ public class StatementAnalyzer {
             Field.newUnqualified(
                 measureDefinition.getName().getValue(),
                 measureTypes.get(NodeRef.of(measureDefinition.getExpression())),
-                TsTableColumnCategory.MEASUREMENT));
+                TsTableColumnCategory.FIELD));
       }
 
       if (!oneRowPerMatch) {
