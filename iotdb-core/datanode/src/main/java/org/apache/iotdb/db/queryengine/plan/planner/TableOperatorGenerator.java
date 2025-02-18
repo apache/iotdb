@@ -499,7 +499,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 builder.withPushDownLimit(node.getPushDownLimit());
                 builder.withPushDownOffset(node.getPushDownOffset());
                 builder.withPushLimitToEachDevice(node.isPushLimitToEachDevice());
-                return;
               }
               seriesScanOptionsList.add(builder.build());
             }
