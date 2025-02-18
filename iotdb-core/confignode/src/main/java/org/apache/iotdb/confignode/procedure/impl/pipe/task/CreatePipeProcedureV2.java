@@ -142,15 +142,18 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             createPipeRequest.getProcessorAttributes(),
             createPipeRequest.getConnectorAttributes());
 
-    checkSourceUserName(env);
-    checkSinkUserName(env);
+    checkAndEnrichSourceAuthentication(env, createPipeRequest.getExtractorAttributes());
+    checkAndEnrichSinkAuthentication(env, createPipeRequest.getConnectorAttributes());
 
     return pipeTaskInfo.get().checkBeforeCreatePipe(createPipeRequest);
   }
 
-  private void checkSourceUserName(final ConfigNodeProcedureEnv env) {
-    final PipeParameters extractorParameters =
-        new PipeParameters(createPipeRequest.getExtractorAttributes());
+  public static void checkAndEnrichSourceAuthentication(
+      final ConfigNodeProcedureEnv env, final Map<String, String> extractorAttributes) {
+    if (Objects.isNull(extractorAttributes)) {
+      return;
+    }
+    final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
 
     final String pluginName =
         extractorParameters
@@ -184,12 +187,11 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         new PipeParameters(
             Collections.singletonMap(
                 PipeExtractorConstant.SOURCE_IOTDB_PASSWORD_KEY, hashedPassword)));
-    createPipeRequest.setExtractorAttributes(extractorParameters.getAttributes());
   }
 
-  private void checkSinkUserName(final ConfigNodeProcedureEnv env) {
-    final PipeParameters connectorParameters =
-        new PipeParameters(createPipeRequest.getConnectorAttributes());
+  public static void checkAndEnrichSinkAuthentication(
+      final ConfigNodeProcedureEnv env, final Map<String, String> connectorAttributes) {
+    final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
 
     final String pluginName =
         connectorParameters
@@ -222,7 +224,6 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         new PipeParameters(
             Collections.singletonMap(
                 PipeExtractorConstant.SOURCE_IOTDB_PASSWORD_KEY, hashedPassword)));
-    createPipeRequest.setConnectorAttributes(connectorParameters.getAttributes());
   }
 
   @Override
