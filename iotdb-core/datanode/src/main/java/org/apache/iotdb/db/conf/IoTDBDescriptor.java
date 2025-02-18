@@ -2063,6 +2063,15 @@ public class IoTDBDescriptor {
         BinaryAllocator.getInstance().close(true);
       }
 
+      commonDescriptor
+          .getConfig()
+          .setTimestampPrecisionCheckEnabled(
+              Boolean.parseBoolean(
+                  properties.getProperty(
+                      "timestamp_precision_check_enabled",
+                      ConfigurationFileUtils.getConfigurationDefaultValue(
+                          "timestamp_precision_check_enabled"))));
+
       conf.setEnablePartialInsert(
           Boolean.parseBoolean(
               Optional.ofNullable(

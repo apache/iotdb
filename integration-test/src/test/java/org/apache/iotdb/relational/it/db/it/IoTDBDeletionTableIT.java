@@ -121,6 +121,80 @@ public class IoTDBDeletionTableIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  @Test
+  public void testDeleteTimeWithSort1() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "create table t1(device_id string tag, s0 int32 field, s1 int32 field, s3 int32 field)");
+      statement.execute(
+          "insert into t1(time, device_id, s0, s1, s3) values (10, 'device_1', 100, 100, 200)");
+      statement.execute(
+          "insert into t1(time, device_id, s0, s1, s3) values (150, 'device_1', 100, 100, 200)");
+      statement.execute(
+          "insert into t1(time, device_id, s0, s1, s3) values (202, 'device_1', 100, 100, 200)");
+      statement.execute("delete from t1 where time <= 200 and device_id='device_1'");
+      statement.execute(
+          "insert into t1(time, device_id, s0, s1, s3) values (10, 'device_1', 100, 100, 200)");
+      statement.execute(
+          "insert into t1(time, device_id, s0, s1, s3) values (10, 'device_1', 100, 100, 200)");
+      statement.execute("delete from t1 where time <= 200 and device_id='device_1'");
+
+      ResultSet resultSet = statement.executeQuery("select * from t1");
+      int count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      Assert.assertEquals(1, count);
+      count = 0;
+
+      statement.execute(
+          "insert into t1(time, device_id, s0, s1, s3) values (10, 'device_1', 100, 100, 200)");
+      statement.execute("delete from t1 where time <= 200 and device_id='device_1'");
+      resultSet = statement.executeQuery("select * from t1");
+      while (resultSet.next()) {
+        count++;
+      }
+      Assert.assertEquals(1, count);
+    }
+  }
+
+  @Test
+  public void testDeleteTimeWithSort2() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "create table t2(device_id string tag, s0 int32 field, s1 int32 field, s3 int32 field)");
+      statement.execute(
+          "insert into t2(time, device_id, s0, s1, s3) values (10, 'device_1', 100, 100, 200)");
+      statement.execute(
+          "insert into t2(time, device_id, s0, s1, s3) values (150, 'device_1', 100, 100, 200)");
+      statement.execute(
+          "insert into t2(time, device_id, s0, s1, s3) values (202, 'device_1', 100, 100, 200)");
+      statement.execute("delete from t2 where time <= 200 and device_id='device_1'");
+
+      ResultSet resultSet = statement.executeQuery("select * from t2");
+      int count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      Assert.assertEquals(1, count);
+      count = 0;
+
+      statement.execute(
+          "insert into t2(time, device_id, s0, s1, s3) values (10, 'device_1', 100, 100, 200)");
+      statement.execute("delete from t2 where time <= 200 and device_id='device_1'");
+
+      resultSet = statement.executeQuery("select * from t2");
+      while (resultSet.next()) {
+        count++;
+      }
+      Assert.assertEquals(1, count);
+    }
+  }
+
   /** Should delete this case after the deletion value filter feature be implemented */
   @Test
   public void testUnsupportedValueFilter() throws SQLException {

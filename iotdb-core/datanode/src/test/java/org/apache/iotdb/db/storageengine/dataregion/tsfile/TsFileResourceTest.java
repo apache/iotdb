@@ -34,6 +34,7 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -57,6 +58,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+@SuppressWarnings("OptionalGetWithoutIsPresent")
 public class TsFileResourceTest {
   private final File file =
       new File(
@@ -115,11 +117,13 @@ public class TsFileResourceTest {
     Assert.assertEquals(deviceToIndex.keySet(), tsFileResource.getDevices());
     for (int i = 0; i < DEVICE_NUM; i++) {
       Assert.assertEquals(
-          tsFileResource.getStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg1.d" + i)),
-          0);
+          0,
+          ((long)
+              tsFileResource.getStartTime(Factory.DEFAULT_FACTORY.create("root.sg1.d" + i)).get()));
       Assert.assertEquals(
-          tsFileResource.getEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg1.d" + i)),
-          DEVICE_NUM);
+          DEVICE_NUM,
+          ((long)
+              tsFileResource.getEndTime(Factory.DEFAULT_FACTORY.create("root.sg1.d" + i)).get()));
     }
   }
 

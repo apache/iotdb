@@ -93,7 +93,6 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
-import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TABLE_TYPE;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ExpressionSymbolInliner.inlineSymbols;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_FIRST;
@@ -577,8 +576,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       final long schemaFetchCost = System.nanoTime() - startTime;
-      QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TABLE_TYPE, SCHEMA_FETCHER, schemaFetchCost);
+      QueryPlanCostMetricSet.getInstance().recordTablePlanCost(SCHEMA_FETCHER, schemaFetchCost);
       queryContext.setFetchSchemaCost(schemaFetchCost);
 
       if (deviceEntries.isEmpty()) {
@@ -623,7 +621,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
         final long fetchPartitionCost = System.nanoTime() - startTime;
         QueryPlanCostMetricSet.getInstance()
-            .recordPlanCost(TABLE_TYPE, PARTITION_FETCHER, fetchPartitionCost);
+            .recordTablePlanCost(PARTITION_FETCHER, fetchPartitionCost);
         queryContext.setFetchPartitionCost(fetchPartitionCost);
       }
     }
