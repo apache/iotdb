@@ -1730,10 +1730,10 @@ continuous_query_min_every_interval_in_ms=1000
 pipe_lib_dir=ext/pipe
 
 # The maximum number of threads that can be used to execute the pipe subtasks in PipeSubtaskExecutor.
-# The actual value will be min(pipe_subtask_executor_max_thread_num, max(1, CPU core number / 2)).
+# When <= 0, use max(5, CPU core number).
 # effectiveMode: restart
 # Datatype: int
-pipe_subtask_executor_max_thread_num=5
+pipe_subtask_executor_max_thread_num=0
 
 # The connection timeout (in milliseconds) for the thrift client.
 # effectiveMode: restart
@@ -1742,14 +1742,16 @@ pipe_sink_timeout_ms=900000
 
 # The maximum number of selectors that can be used in the sink.
 # Recommend to set this value to less than or equal to pipe_sink_max_client_number.
+# When <= 0, use max(4, CPU core number).
 # effectiveMode: restart
 # Datatype: int
-pipe_sink_selector_number=4
+pipe_sink_selector_number=0
 
 # The maximum number of clients that can be used in the sink.
+# When <= 0, use max(16, CPU core number).
 # effectiveMode: restart
 # Datatype: int
-pipe_sink_max_client_number=16
+pipe_sink_max_client_number=0
 
 # Whether to enable receiving pipe data through air gap.
 # The receiver can only return 0 or 1 in tcp mode to indicate whether the data is received successfully.

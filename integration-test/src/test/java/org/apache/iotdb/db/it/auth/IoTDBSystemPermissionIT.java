@@ -219,7 +219,7 @@ public class IoTDBSystemPermissionIT {
     executeNonQuery("show queries", "test", "test123");
     assertNonQueryTestFail(
         "kill query 'test'",
-        "305: Please ensure your input <queryId> is correct",
+        "701: Please ensure your input <queryId> is correct",
         "test",
         "test123");
     executeNonQuery("show cluster", "test", "test123");

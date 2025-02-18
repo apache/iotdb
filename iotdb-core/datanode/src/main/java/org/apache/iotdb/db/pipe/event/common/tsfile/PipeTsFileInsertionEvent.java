@@ -56,6 +56,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_ROOT;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
@@ -81,7 +82,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   private final boolean isGeneratedByHistoricalExtractor;
 
   private final AtomicBoolean isClosed;
-  private TsFileInsertionEventParser eventParser;
+  private final AtomicReference<TsFileInsertionEventParser> eventParser;
 
   // The point count of the TsFile. Used for metrics on PipeConsensus' receiver side.
   // May be updated after it is flushed. Should be negative if not set.
@@ -189,6 +190,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     // If the status is "closed", then the resource status is "closed", the tsFile won't be altered
     // and can be sent.
     isClosed.set(resource.isClosed());
+
+    this.eventParser = new AtomicReference<>(null);
   }
 
   /**
@@ -576,13 +579,12 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   private TsFileInsertionEventParser initEventParser() {
     try {
-      if (eventParser == null) {
-        eventParser =
-            new TsFileInsertionEventParserProvider(
-                    tsFile, treePattern, tablePattern, startTime, endTime, pipeTaskMeta, this)
-                .provide();
-      }
-      return eventParser;
+      eventParser.compareAndSet(
+          null,
+          new TsFileInsertionEventParserProvider(
+                  tsFile, treePattern, tablePattern, startTime, endTime, pipeTaskMeta, this)
+              .provide());
+      return eventParser.get();
     } catch (final IOException e) {
       close();
 
@@ -619,10 +621,13 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   /** Release the resource of {@link TsFileInsertionEventParser}. */
   @Override
   public void close() {
-    if (eventParser != null) {
-      eventParser.close();
-      eventParser = null;
-    }
+    eventParser.getAndUpdate(
+        parser -> {
+          if (Objects.nonNull(parser)) {
+            parser.close();
+          }
+          return null;
+        });
   }
 
   /////////////////////////// Object ///////////////////////////
@@ -660,7 +665,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         this.tsFile,
         this.isWithMod,
         this.modFile,
-        this.sharedModFile);
+        this.sharedModFile,
+        this.eventParser);
   }
 
   private static class PipeTsFileInsertionEventResource extends PipeEventResource {
@@ -668,7 +674,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     private final File tsFile;
     private final boolean isWithMod;
     private final File modFile;
-    private final File sharedModFile;
+    private final File sharedModFile; // unused now
+    private final AtomicReference<TsFileInsertionEventParser> eventParser;
 
     private PipeTsFileInsertionEventResource(
         final AtomicBoolean isReleased,
@@ -676,21 +683,33 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         final File tsFile,
         final boolean isWithMod,
         final File modFile,
-        File sharedModFile) {
+        final File sharedModFile,
+        final AtomicReference<TsFileInsertionEventParser> eventParser) {
       super(isReleased, referenceCount);
       this.tsFile = tsFile;
       this.isWithMod = isWithMod;
       this.modFile = modFile;
       this.sharedModFile = sharedModFile;
+      this.eventParser = eventParser;
     }
 
     @Override
     protected void finalizeResource() {
       try {
+        // decrease reference count
         PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile);
         if (isWithMod) {
           PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile);
         }
+
+        // close event parser
+        eventParser.getAndUpdate(
+            parser -> {
+              if (Objects.nonNull(parser)) {
+                parser.close();
+              }
+              return null;
+            });
       } catch (final Exception e) {
         LOGGER.warn(
             String.format("Decrease reference count for TsFile %s error.", tsFile.getPath()), e);

@@ -365,6 +365,14 @@ public class Role {
     anyScopePrivilegeGrantOptSet.remove(priv);
   }
 
+  public void revokeAllRelationalPrivileges() {
+    objectPrivilegeMap = new HashMap<>();
+    sysPrivilegeSet.removeIf(PrivilegeType::forRelationalSys);
+    sysPriGrantOpt.removeIf(PrivilegeType::forRelationalSys);
+    anyScopePrivilegeSet = new HashSet<>();
+    anyScopePrivilegeGrantOptSet = new HashSet<>();
+  }
+
   public void grantDBPrivilege(String dbName, PrivilegeType priv, boolean grantOption) {
     DatabasePrivilege databasePrivilege = getObjectPrivilege(dbName);
     databasePrivilege.grantDBPrivilege(priv);

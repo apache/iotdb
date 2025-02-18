@@ -46,6 +46,9 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
+import static org.apache.iotdb.jdbc.Constant.TABLE;
+import static org.apache.iotdb.jdbc.Constant.TREE;
+
 public class IoTDBStatement implements Statement {
 
   private final IoTDBConnection connection;
@@ -324,6 +327,10 @@ public class IoTDBStatement implements Statement {
 
     if (execResp.isSetDatabase()) {
       connection.changeDefaultDatabase(execResp.getDatabase());
+    }
+
+    if (execResp.isSetTableModel()) {
+      connection.changeDefaultSqlDialect(execResp.tableModel ? TABLE : TREE);
     }
 
     if (execResp.isSetColumns()) {
