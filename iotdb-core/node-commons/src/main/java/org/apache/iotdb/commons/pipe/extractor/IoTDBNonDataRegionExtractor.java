@@ -200,15 +200,12 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
       realtimeEvent = getNextEventInCurrentSnapshot();
     }
 
-    // Bind index for the last event parsed from snapshot
+    // Bind index for the last event parsed from snapshot or realtime event
     boolean shouldBindIndex = historicalEvents.isEmpty();
 
     // Realtime
     if (Objects.isNull(realtimeEvent)) {
       realtimeEvent = (PipeWritePlanEvent) iterator.peek(getMaxBlockingTimeMs());
-
-      // Or for the realtime event
-      shouldBindIndex = true;
     }
     if (Objects.isNull(realtimeEvent)) {
       return null;
