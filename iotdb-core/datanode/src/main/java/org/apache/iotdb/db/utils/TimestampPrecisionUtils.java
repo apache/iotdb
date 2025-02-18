@@ -26,8 +26,6 @@ import java.util.concurrent.TimeUnit;
 public class TimestampPrecisionUtils {
   public static String TIMESTAMP_PRECISION =
       CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
-  private static final boolean isTimestampPrecisionCheckEnabled =
-      CommonDescriptor.getInstance().getConfig().isTimestampPrecisionCheckEnabled();
 
   @FunctionalInterface
   private interface ConvertFunction<T1, T2, R> {
@@ -65,6 +63,8 @@ public class TimestampPrecisionUtils {
 
   /** check whether the input timestamp match the current system timestamp precision. */
   public static void checkTimestampPrecision(long time) {
+    final boolean isTimestampPrecisionCheckEnabled =
+        CommonDescriptor.getInstance().getConfig().isTimestampPrecisionCheckEnabled();
     if (!isTimestampPrecisionCheckEnabled) {
       return;
     }
@@ -73,8 +73,10 @@ public class TimestampPrecisionUtils {
         if (time > 10_000_000_000_000L || time < -10_000_000_000_000L) {
           throw new SemanticException(
               String.format(
-                  "Current system timestamp precision is %s, "
-                      + "please check whether the timestamp %s is correct.",
+                  "The timestamp is unexpectedly large, you may forget to set the timestamp precision."
+                      + "Current system timestamp precision is %s, "
+                      + "please check whether the timestamp %s is correct."
+                      + "If you insist to insert this timestamp, please set timestamp_precision_check_enabled=false and restart the server.",
                   TIMESTAMP_PRECISION, time));
         }
         break;
@@ -82,8 +84,10 @@ public class TimestampPrecisionUtils {
         if (time > 10_000_000_000_000_000L || time < -10_000_000_000_000L) {
           throw new SemanticException(
               String.format(
-                  "Current system timestamp precision is %s, "
-                      + "please check whether the timestamp %s is correct.",
+                  "The timestamp is unexpectedly large, you may forget to set the timestamp precision."
+                      + "Current system timestamp precision is %s, "
+                      + "please check whether the timestamp %s is correct."
+                      + "If you insist to insert this timestamp, please set timestamp_precision_check_enabled=false and restart the server.",
                   TIMESTAMP_PRECISION, time));
         }
         break;

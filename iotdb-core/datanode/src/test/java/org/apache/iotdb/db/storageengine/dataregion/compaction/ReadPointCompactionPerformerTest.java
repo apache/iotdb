@@ -43,6 +43,7 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.read.common.IBatchDataIterator;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Pair;
@@ -66,6 +67,7 @@ import java.util.concurrent.ExecutionException;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
 
+@SuppressWarnings("OptionalGetWithoutIsPresent")
 public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
   private final String oldThreadName = Thread.currentThread().getName();
 
@@ -228,47 +230,53 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     assertEquals(
         0,
-        targetResources
-            .get(0)
-            .getStartTime(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(
-                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+        ((long)
+            targetResources
+                .get(0)
+                .getStartTime(
+                    Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"))
+                .get()));
     assertEquals(
         0,
-        targetResources
-            .get(0)
-            .getStartTime(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(
-                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+        ((long)
+            targetResources
+                .get(0)
+                .getStartTime(
+                    Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"))
+                .get()));
     assertEquals(
         250,
-        targetResources
-            .get(0)
-            .getStartTime(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(
-                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+        ((long)
+            targetResources
+                .get(0)
+                .getStartTime(
+                    Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"))
+                .get()));
     assertEquals(
         600,
-        targetResources
-            .get(0)
-            .getStartTime(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(
-                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+        ((long)
+            targetResources
+                .get(0)
+                .getStartTime(
+                    Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"))
+                .get()));
     assertEquals(
         600,
-        targetResources
-            .get(0)
-            .getStartTime(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(
-                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d4")));
+        ((long)
+            targetResources
+                .get(0)
+                .getStartTime(
+                    Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4"))
+                .get()));
     for (int i = 0; i < 5; i++) {
       assertEquals(
           749,
-          targetResources
-              .get(0)
-              .getEndTime(
-                  IDeviceID.Factory.DEFAULT_FACTORY.create(
-                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i)));
+          ((long)
+              targetResources
+                  .get(0)
+                  .getEndTime(
+                      Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i))
+                  .get()));
     }
 
     for (int i = 0; i < 5; i++) {
@@ -390,47 +398,53 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     assertEquals(
         0,
-        targetResources
-            .get(0)
-            .getStartTime(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(
-                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d0")));
+        ((long)
+            targetResources
+                .get(0)
+                .getStartTime(
+                    Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"))
+                .get()));
     assertEquals(
         0,
-        targetResources
-            .get(0)
-            .getStartTime(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(
-                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d1")));
+        ((long)
+            targetResources
+                .get(0)
+                .getStartTime(
+                    Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"))
+                .get()));
     assertEquals(
         250,
-        targetResources
-            .get(0)
-            .getStartTime(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(
-                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d2")));
+        ((long)
+            targetResources
+                .get(0)
+                .getStartTime(
+                    Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2"))
+                .get()));
     assertEquals(
         600,
-        targetResources
-            .get(0)
-            .getStartTime(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(
-                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d3")));
+        ((long)
+            targetResources
+                .get(0)
+                .getStartTime(
+                    Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d3"))
+                .get()));
     assertEquals(
         600,
-        targetResources
-            .get(0)
-            .getStartTime(
-                IDeviceID.Factory.DEFAULT_FACTORY.create(
-                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d4")));
+        ((long)
+            targetResources
+                .get(0)
+                .getStartTime(
+                    Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d4"))
+                .get()));
     for (int i = 0; i < 5; i++) {
       assertEquals(
           749,
-          targetResources
-              .get(0)
-              .getEndTime(
-                  IDeviceID.Factory.DEFAULT_FACTORY.create(
-                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i)));
+          ((long)
+              targetResources
+                  .get(0)
+                  .getEndTime(
+                      Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i))
+                  .get()));
     }
 
     for (int i = 0; i < 5; i++) {
