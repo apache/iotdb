@@ -531,4 +531,11 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     super.swapColumn(src, target);
     CommonUtils.swapArray(values, src, target);
   }
+
+  @Override
+  protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
+    if (values != null) {
+      values = columnsToKeep.stream().map(i -> values[i]).toArray();
+    }
+  }
 }

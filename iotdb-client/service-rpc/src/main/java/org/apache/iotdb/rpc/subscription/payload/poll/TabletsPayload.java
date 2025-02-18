@@ -40,8 +40,8 @@ public class TabletsPayload implements SubscriptionPollPayload {
    * <ul>
    *   <li>If nextOffset is 1, it indicates that the current payload is the first payload (its
    *       tablets are empty) and the fetching should continue.
-   *   <li>If nextOffset is negative, it indicates all tablets have been fetched, and -nextOffset
-   *       represents the total number of tablets.
+   *   <li>If nextOffset is negative (or zero), it indicates all tablets have been fetched, and
+   *       -nextOffset represents the total number of tablets.
    * </ul>
    */
   private transient int nextOffset;

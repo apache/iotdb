@@ -197,7 +197,8 @@ public abstract class SubscriptionPrefetchingQueue {
               return null;
             },
             SubscriptionAgent.receiver().remainingMs());
-      } catch (final Exception ignored) {
+      } catch (final Exception e) {
+        LOGGER.warn("Exception {} occurred when {} execute receiver subtask", this, e, e);
       }
     }
 

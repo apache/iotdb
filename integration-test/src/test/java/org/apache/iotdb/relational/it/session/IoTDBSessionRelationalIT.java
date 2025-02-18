@@ -18,10 +18,16 @@
  */
 package org.apache.iotdb.relational.it.session;
 
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALReader;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
@@ -43,6 +49,8 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.io.File;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -56,6 +64,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -1561,6 +1570,79 @@ public class IoTDBSessionRelationalIT {
         cnt++;
       }
       assertEquals(30, cnt);
+    }
+  }
+
+  @Test
+  public void testAttrColumnRemoved()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setWalMode("SYNC");
+    EnvFactory.getEnv().initClusterEnvironment();
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("create database if not exists db1");
+      session.executeNonQueryStatement("use db1");
+      session.executeNonQueryStatement(
+          "CREATE TABLE remove_attr_col (tag1 string tag, attr1 string attribute, "
+              + "m1 double "
+              + "field)");
+
+      // insert tablet to WAL
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("tag1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
+
+      long timestamp = 0;
+      Tablet tablet =
+          new Tablet(
+              "remove_attr_col",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes);
+
+      for (int rowIndex = 0; rowIndex < 10; rowIndex++) {
+        tablet.addTimestamp(rowIndex, timestamp);
+        tablet.addValue("tag1", rowIndex, "tag:1");
+        tablet.addValue("attr1", rowIndex, "attr:" + timestamp);
+        tablet.addValue("m1", rowIndex, timestamp * 1.0);
+        timestamp++;
+      }
+      session.insert(tablet);
+      tablet.reset();
+
+      // insert records to WAL
+      session.executeNonQueryStatement(
+          "INSERT INTO remove_attr_col (time, tag1, attr1, m1) VALUES (10, 'tag:1', 'attr:10', 10.0)");
+
+      // check WAL
+      for (DataNodeWrapper dataNodeWrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
+        String walNodeDir = dataNodeWrapper.getWalDir() + File.separator + "0";
+        File[] walFiles = new File(walNodeDir).listFiles(f -> f.getName().endsWith(".wal"));
+        if (walFiles != null && walFiles.length > 0) {
+          File walFile = walFiles[0];
+          WALEntry entry;
+          try (WALReader walReader = new WALReader(walFile)) {
+            entry = walReader.next();
+            RelationalInsertTabletNode tabletNode = (RelationalInsertTabletNode) entry.getValue();
+            assertTrue(
+                Arrays.stream(tabletNode.getColumnCategories())
+                    .noneMatch(c -> c == TsTableColumnCategory.ATTRIBUTE));
+
+            entry = walReader.next();
+            RelationalInsertRowsNode rowsNode = (RelationalInsertRowsNode) entry.getValue();
+            assertTrue(
+                Arrays.stream(rowsNode.getInsertRowNodeList().get(0).getColumnCategories())
+                    .noneMatch(c -> c == TsTableColumnCategory.ATTRIBUTE));
+            return;
+          }
+        }
+      }
+    } finally {
+      EnvFactory.getEnv().cleanClusterEnvironment();
+      EnvFactory.getEnv().initClusterEnvironment();
     }
   }
 }

@@ -151,6 +151,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropTriggerStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
@@ -238,7 +239,6 @@ import org.apache.iotdb.trigger.api.enums.TriggerType;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.BaseEncoding;
 import org.antlr.v4.runtime.Token;
-import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -4225,12 +4225,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitRemoveDataNode(IoTDBSqlParser.RemoveDataNodeContext ctx) {
-    List<Integer> dataNodeIDs =
-        ctx.INTEGER_LITERAL().stream()
-            .map(ParseTree::getText)
-            .map(Integer::parseInt)
-            .collect(Collectors.toList());
-    return new RemoveDataNodeStatement(dataNodeIDs);
+    List<Integer> nodeIds =
+        Collections.singletonList(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
+    return new RemoveDataNodeStatement(nodeIds);
+  }
+
+  @Override
+  public Statement visitRemoveConfigNode(IoTDBSqlParser.RemoveConfigNodeContext ctx) {
+    Integer nodeId = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
+    return new RemoveConfigNodeStatement(nodeId);
   }
 
   @Override
