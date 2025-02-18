@@ -222,42 +222,112 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean isPipeTaskCurrentlyRestarted() {
-    return PipeDataNodeAgent.task().isPipeTaskCurrentlyRestarted(pipeName);
+    final boolean isPipeTaskCurrentlyRestarted =
+        PipeDataNodeAgent.task().isPipeTaskCurrentlyRestarted(pipeName);
+    if (isPipeTaskCurrentlyRestarted) {
+      LOGGER.info(
+          "Pipe task {}@{} canNotUseTabletAnyMore1: Pipe task is currently restarted",
+          pipeName,
+          dataRegionId);
+    }
+    return isPipeTaskCurrentlyRestarted;
   }
 
   private boolean mayWalSizeReachThrottleThreshold() {
-    return 3 * WALManager.getInstance().getTotalDiskUsage()
-        > IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold();
+    final boolean mayWalSizeReachThrottleThreshold =
+        3 * WALManager.getInstance().getTotalDiskUsage()
+            > IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold();
+    if (mayWalSizeReachThrottleThreshold) {
+      LOGGER.info(
+          "Pipe task {}@{} canNotUseTabletAnyMore2: Wal size {} has reached throttle threshold {}",
+          pipeName,
+          dataRegionId,
+          WALManager.getInstance().getTotalDiskUsage(),
+          IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold() / 3.0d);
+    }
+    return mayWalSizeReachThrottleThreshold;
   }
 
   private boolean mayMemTablePinnedCountReachDangerousThreshold() {
-    return PipeDataNodeResourceManager.wal().getPinnedWalCount()
-        >= PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount();
+    final boolean mayMemTablePinnedCountReachDangerousThreshold =
+        PipeDataNodeResourceManager.wal().getPinnedWalCount()
+            >= PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount();
+    if (mayMemTablePinnedCountReachDangerousThreshold) {
+      LOGGER.info(
+          "Pipe task {}@{} canNotUseTabletAnyMore3: The number of pinned memtables {} has reached the dangerous threshold {}",
+          pipeName,
+          dataRegionId,
+          PipeDataNodeResourceManager.wal().getPinnedWalCount(),
+          PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount());
+    }
+    return mayMemTablePinnedCountReachDangerousThreshold;
   }
 
   private boolean isHistoricalTsFileEventCountExceededLimit() {
     final IoTDBDataRegionExtractor extractor =
         PipeDataRegionExtractorMetrics.getInstance().getExtractorMap().get(getTaskID());
-    return Objects.nonNull(extractor)
-        && extractor.getHistoricalTsFileInsertionEventCount()
-            >= PipeConfig.getInstance().getPipeMaxAllowedHistoricalTsFilePerDataRegion();
+    final boolean isHistoricalTsFileEventCountExceededLimit =
+        Objects.nonNull(extractor)
+            && extractor.getHistoricalTsFileInsertionEventCount()
+                >= PipeConfig.getInstance().getPipeMaxAllowedHistoricalTsFilePerDataRegion();
+    if (isHistoricalTsFileEventCountExceededLimit) {
+      LOGGER.info(
+          "Pipe task {}@{} canNotUseTabletAnyMore4: The number of historical tsFile events {} has exceeded the limit {}",
+          pipeName,
+          dataRegionId,
+          extractor.getHistoricalTsFileInsertionEventCount(),
+          PipeConfig.getInstance().getPipeMaxAllowedHistoricalTsFilePerDataRegion());
+    }
+    return isHistoricalTsFileEventCountExceededLimit;
   }
 
   private boolean isRealtimeTsFileEventCountExceededLimit() {
-    return pendingQueue.getTsFileInsertionEventCount()
-        >= PipeConfig.getInstance().getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
+    final boolean isRealtimeTsFileEventCountExceededLimit =
+        pendingQueue.getTsFileInsertionEventCount()
+            >= PipeConfig.getInstance().getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
+    if (isRealtimeTsFileEventCountExceededLimit) {
+      LOGGER.info(
+          "Pipe task {}@{} canNotUseTabletAnyMore5: The number of realtime tsFile events {} has exceeded the limit {}",
+          pipeName,
+          dataRegionId,
+          pendingQueue.getTsFileInsertionEventCount(),
+          PipeConfig.getInstance().getPipeMaxAllowedPendingTsFileEpochPerDataRegion());
+    }
+    return isRealtimeTsFileEventCountExceededLimit;
   }
 
   private boolean mayTsFileLinkedCountReachDangerousThreshold() {
-    return PipeDataNodeResourceManager.tsfile().getLinkedTsfileCount()
-        >= PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
+    final boolean mayTsFileLinkedCountReachDangerousThreshold =
+        PipeDataNodeResourceManager.tsfile().getLinkedTsfileCount()
+            >= PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
+    if (mayTsFileLinkedCountReachDangerousThreshold) {
+      LOGGER.info(
+          "Pipe task {}@{} canNotUseTabletAnyMore6: The number of linked tsfiles {} has reached the dangerous threshold {}",
+          pipeName,
+          dataRegionId,
+          PipeDataNodeResourceManager.tsfile().getLinkedTsfileCount(),
+          PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount());
+    }
+    return mayTsFileLinkedCountReachDangerousThreshold;
   }
 
   private boolean mayInsertNodeMemoryReachDangerousThreshold() {
-    return 3
-            * PipeDataNodeAgent.task().getFloatingMemoryUsageInByte(pipeName)
-            * PipeDataNodeAgent.task().getPipeCount()
-        >= 2 * PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes();
+    final long floatingMemoryUsageInByte =
+        PipeDataNodeAgent.task().getFloatingMemoryUsageInByte(pipeName);
+    final long pipeCount = PipeDataNodeAgent.task().getPipeCount();
+    final long freeMemorySizeInBytes =
+        PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes();
+    final boolean mayInsertNodeMemoryReachDangerousThreshold =
+        3 * floatingMemoryUsageInByte * pipeCount >= 2 * freeMemorySizeInBytes;
+    if (mayInsertNodeMemoryReachDangerousThreshold) {
+      LOGGER.info(
+          "Pipe task {}@{} canNotUseTabletAnyMore7: The shallow memory usage of the insert node {} has reached the dangerous threshold {}",
+          pipeName,
+          dataRegionId,
+          floatingMemoryUsageInByte * pipeCount,
+          2 * freeMemorySizeInBytes / 3.0d);
+    }
+    return mayInsertNodeMemoryReachDangerousThreshold;
   }
 
   @Override
