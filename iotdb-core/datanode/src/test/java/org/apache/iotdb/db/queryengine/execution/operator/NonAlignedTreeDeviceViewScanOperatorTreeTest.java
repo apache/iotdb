@@ -53,9 +53,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.IntColumn;
-import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.type.Type;
@@ -296,8 +294,8 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
         assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
         assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
         assertTrue(tsBlock.getColumn(2) instanceof IntColumn);
-        assertTrue(tsBlock.getColumn(3) instanceof LongColumn);
-        assertTrue(tsBlock.getColumn(4) instanceof BinaryColumn);
+        assertTrue(tsBlock.getColumn(3) instanceof TimeColumn);
+        assertTrue(tsBlock.getColumn(4) instanceof RunLengthEncodedColumn);
         count += tsBlock.getPositionCount();
       }
       assertEquals(1320, count);
@@ -380,8 +378,8 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
         assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
         assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
         assertTrue(tsBlock.getColumn(2) instanceof IntColumn);
-        assertTrue(tsBlock.getColumn(3) instanceof LongColumn);
-        assertTrue(tsBlock.getColumn(4) instanceof BinaryColumn);
+        assertTrue(tsBlock.getColumn(3) instanceof TimeColumn);
+        assertTrue(tsBlock.getColumn(4) instanceof RunLengthEncodedColumn);
         count += tsBlock.getPositionCount();
       }
       assertEquals(30, count);
