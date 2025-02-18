@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
@@ -44,12 +45,18 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     memChunk = new AlignedWritableMemChunk(schemaList, isTableModel);
   }
 
+  @TestOnly
+  public AlignedWritableMemChunkGroup(
+      AlignedWritableMemChunk memChunk, List<IMeasurementSchema> schemaList, boolean isTableModel) {
+    this.memChunk = memChunk;
+  }
+
   private AlignedWritableMemChunkGroup() {
     // Empty constructor
   }
 
   @Override
-  public boolean writeValuesWithFlushCheck(
+  public void writeTablet(
       long[] times,
       Object[] columns,
       BitMap[] bitMaps,
@@ -57,8 +64,7 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
       int start,
       int end,
       TSStatus[] results) {
-    return memChunk.writeAlignedValuesWithFlushCheck(
-        times, columns, bitMaps, schemaList, start, end, results);
+    memChunk.writeAlignedTablet(times, columns, bitMaps, schemaList, start, end, results);
   }
 
   @Override
@@ -85,9 +91,8 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public boolean writeWithFlushCheck(
-      long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
-    return memChunk.writeAlignedValueWithFlushCheck(insertTime, objectValue, schemaList);
+  public void writeRow(long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
+    memChunk.writeAlignedPoints(insertTime, objectValue, schemaList);
   }
 
   @Override
@@ -133,8 +138,8 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public long getCurrentTVListSize(String measurement) {
-    return memChunk.getTVList().rowCount();
+  public long getMeasurementSize(String measurement) {
+    return memChunk.rowCount();
   }
 
   @Override

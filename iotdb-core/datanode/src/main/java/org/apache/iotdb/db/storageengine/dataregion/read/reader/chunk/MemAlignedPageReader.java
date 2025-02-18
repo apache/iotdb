@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.AlignedPageMetadata;
+import org.apache.iotdb.db.utils.datastructure.MergeSortAlignedTVListIterator;
+
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.BatchDataFactory;
@@ -33,19 +35,27 @@ import org.apache.tsfile.read.filter.factory.FilterFactory;
 import org.apache.tsfile.read.reader.IPageReader;
 import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.TsPrimitiveType;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import static org.apache.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
 
 public class MemAlignedPageReader implements IPageReader {
 
-  private final TsBlock tsBlock;
-  private final AbstractAlignedChunkMetadata chunkMetadata;
+  private TsBlock tsBlock;
+  private final AlignedPageMetadata pageMetadata;
+
+  private final MergeSortAlignedTVListIterator mergeSortAlignedTVListIterator;
+  private final int[] pageStartOffsets;
+  private final int[] pageEndOffsets;
+  private final Supplier<TsBlock> tsBlockSupplier;
+  private final List<TSDataType> tsDataTypes;
 
   private Filter recordFilter;
   private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
@@ -53,10 +63,21 @@ public class MemAlignedPageReader implements IPageReader {
   private TsBlockBuilder builder;
 
   public MemAlignedPageReader(
-      TsBlock tsBlock, AbstractAlignedChunkMetadata chunkMetadata, Filter recordFilter) {
-    this.tsBlock = tsBlock;
-    this.chunkMetadata = chunkMetadata;
+      Supplier<TsBlock> tsBlockSupplier,
+      MergeSortAlignedTVListIterator mergeSortAlignedTVListIterator,
+      int[] pageStartOffsets,
+      int[] pageEndOffSets,
+      List<TSDataType> tsDataTypes,
+      Statistics<? extends Serializable> timeStatistics,
+      Statistics<? extends Serializable>[] valueStatistics,
+      Filter recordFilter) {
+    this.tsBlockSupplier = tsBlockSupplier;
+    this.mergeSortAlignedTVListIterator = mergeSortAlignedTVListIterator;
+    this.pageStartOffsets = pageStartOffsets;
+    this.pageEndOffsets = pageEndOffSets;
     this.recordFilter = recordFilter;
+    this.tsDataTypes = tsDataTypes;
+    this.pageMetadata = new AlignedPageMetadata(timeStatistics, valueStatistics);
   }
 
   @Override
@@ -66,6 +87,8 @@ public class MemAlignedPageReader implements IPageReader {
 
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
+    getTsBlock();
+
     BatchData batchData = BatchDataFactory.createBatchData(TSDataType.VECTOR, ascending, false);
 
     boolean[] satisfyInfo = buildSatisfyInfoArray();
@@ -87,6 +110,8 @@ public class MemAlignedPageReader implements IPageReader {
 
   @Override
   public TsBlock getAllSatisfiedData() {
+    getTsBlock();
+
     builder.reset();
 
     boolean[] satisfyInfo = buildSatisfyInfoArray();
@@ -158,23 +183,23 @@ public class MemAlignedPageReader implements IPageReader {
 
   @Override
   public Statistics<? extends Serializable> getStatistics() {
-    return chunkMetadata.getStatistics();
+    return pageMetadata.getStatistics();
   }
 
   @Override
   public Statistics<? extends Serializable> getTimeStatistics() {
-    return chunkMetadata.getTimeStatistics();
+    return pageMetadata.getTimeStatistics();
   }
 
   @Override
   public Optional<Statistics<? extends Serializable>> getMeasurementStatistics(
       int measurementIndex) {
-    return chunkMetadata.getMeasurementStatistics(measurementIndex);
+    return pageMetadata.getMeasurementStatistics(measurementIndex);
   }
 
   @Override
   public boolean hasNullValue(int measurementIndex) {
-    return chunkMetadata.hasNullValue(measurementIndex);
+    return pageMetadata.hasNullValue(measurementIndex);
   }
 
   @Override
@@ -195,5 +220,97 @@ public class MemAlignedPageReader implements IPageReader {
   @Override
   public void initTsBlockBuilder(List<TSDataType> dataTypes) {
     builder = new TsBlockBuilder(dataTypes);
+  }
+
+  private void getTsBlock() {
+    if (tsBlock == null) {
+      initializeOffsets();
+      tsBlock = tsBlockSupplier.get();
+      if (pageMetadata.getStatistics() == null) {
+        initPageStatistics();
+      }
+    }
+  }
+
+  private void initializeOffsets() {
+    if (pageStartOffsets != null) {
+      mergeSortAlignedTVListIterator.setAlignedTVListOffsets(pageStartOffsets);
+    }
+    if (tsBlockSupplier instanceof MemAlignedChunkReader.TsBlockSupplier) {
+      ((MemAlignedChunkReader.TsBlockSupplier) tsBlockSupplier).setPageEndOffsets(pageEndOffsets);
+    }
+  }
+
+  private void initPageStatistics() {
+    Statistics<? extends Serializable> pageTimeStatistics =
+        Statistics.getStatsByType(TSDataType.VECTOR);
+    Statistics<? extends Serializable>[] pageValueStatistics = new Statistics[tsDataTypes.size()];
+    for (int column = 0; column < tsDataTypes.size(); column++) {
+      Statistics<? extends Serializable> valueStatistics =
+          Statistics.getStatsByType(tsDataTypes.get(column));
+      pageValueStatistics[column] = valueStatistics;
+    }
+    updatePageStatisticsFromTsBlock(pageTimeStatistics, pageValueStatistics);
+    pageMetadata.setStatistics(pageTimeStatistics, pageValueStatistics);
+  }
+
+  private void updatePageStatisticsFromTsBlock(
+      Statistics<? extends Serializable> timeStatistics,
+      Statistics<? extends Serializable>[] valueStatistics) {
+    if (!tsBlock.isEmpty()) {
+      // update time statistics
+      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+        timeStatistics.update(tsBlock.getTimeByIndex(i));
+      }
+      //      timeStatistics.setEmpty(false);
+
+      for (int column = 0; column < tsDataTypes.size(); column++) {
+        switch (tsDataTypes.get(column)) {
+          case BOOLEAN:
+            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+              valueStatistics[column].update(
+                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getBoolean(i));
+            }
+            break;
+          case INT32:
+          case DATE:
+            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+              valueStatistics[column].update(
+                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getInt(i));
+            }
+            break;
+          case INT64:
+          case TIMESTAMP:
+            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+              valueStatistics[column].update(
+                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getLong(i));
+            }
+            break;
+          case FLOAT:
+            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+              valueStatistics[column].update(
+                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getFloat(i));
+            }
+            break;
+          case DOUBLE:
+            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+              valueStatistics[column].update(
+                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getDouble(i));
+            }
+            break;
+          case TEXT:
+          case BLOB:
+          case STRING:
+            for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+              valueStatistics[column].update(
+                  tsBlock.getTimeByIndex(i), tsBlock.getColumn(column).getBinary(i));
+            }
+            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format("Data type %s is not supported.", tsDataTypes.get(column)));
+        }
+      }
+    }
   }
 }

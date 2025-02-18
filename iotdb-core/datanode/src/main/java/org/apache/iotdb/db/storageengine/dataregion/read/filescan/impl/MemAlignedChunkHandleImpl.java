@@ -19,22 +19,17 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl;
 
-import org.apache.iotdb.db.utils.ModificationUtils;
-
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.BitMap;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
-
 public class MemAlignedChunkHandleImpl extends MemChunkHandleImpl {
 
+  private final int column;
   private final List<BitMap> bitMapOfValue;
-  private final List<TimeRange> deletionList;
   // start time and end time of the chunk according to bitMap
   private final long[] startEndTime;
 
@@ -43,11 +38,11 @@ public class MemAlignedChunkHandleImpl extends MemChunkHandleImpl {
       String measurement,
       long[] dataOfTimestamp,
       List<BitMap> bitMapOfValue,
-      List<TimeRange> deletionList,
+      int column,
       long[] startEndTime) {
     super(deviceID, measurement, dataOfTimestamp);
     this.bitMapOfValue = bitMapOfValue;
-    this.deletionList = deletionList;
+    this.column = column;
     this.startEndTime = startEndTime;
   }
 
@@ -59,17 +54,13 @@ public class MemAlignedChunkHandleImpl extends MemChunkHandleImpl {
   @Override
   public long[] getDataTime() throws IOException {
     List<Long> timeList = new ArrayList<>();
-    int[] deletionCursor = {0};
     for (int i = 0; i < dataOfTimestamp.length; i++) {
-      if (!bitMapOfValue.isEmpty()) {
-        int arrayIndex = i / ARRAY_SIZE;
-        int elementIndex = i % ARRAY_SIZE;
-        if (bitMapOfValue.get(arrayIndex).isMarked(elementIndex)) {
+      if (bitMapOfValue != null) {
+        if (bitMapOfValue.get(i).isMarked(column)) {
           continue;
         }
       }
-      if (!ModificationUtils.isPointDeleted(dataOfTimestamp[i], deletionList, deletionCursor)
-          && (i == dataOfTimestamp.length - 1 || dataOfTimestamp[i] != dataOfTimestamp[i + 1])) {
+      if (i == dataOfTimestamp.length - 1 || dataOfTimestamp[i] != dataOfTimestamp[i + 1]) {
         timeList.add(dataOfTimestamp[i]);
       }
     }

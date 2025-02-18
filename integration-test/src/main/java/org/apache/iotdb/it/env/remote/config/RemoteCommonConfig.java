@@ -120,7 +120,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
+  public CommonConfig setTargetChunkPointNum(int targetChunkPointNum) {
     return this;
   }
 
