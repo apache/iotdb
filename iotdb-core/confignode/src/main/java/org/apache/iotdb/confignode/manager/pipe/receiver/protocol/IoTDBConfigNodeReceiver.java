@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -522,7 +523,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         return configManager.deleteDatabases(
             new TDeleteDatabasesReq(
                     Collections.singletonList(((DeleteDatabasePlan) plan).getName()))
-                .setIsGeneratedByPipe(true));
+                .setIsGeneratedByPipe(true).setIsTableModel(PathUtils.isTableModelDatabase(((DeleteDatabasePlan) plan).getName())));
       case ExtendSchemaTemplate:
         return configManager
             .getClusterSchemaManager()
