@@ -54,6 +54,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
+import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -180,7 +181,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   private void transferInBatchWithoutCheck(
       final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch)
-      throws IOException, WriteProcessException {
+      throws IOException, WriteProcessException, InterruptedException {
     final PipeTabletEventBatch batch = endPointAndBatch.getRight();
 
     if (batch instanceof PipeTabletEventPlainBatch) {
@@ -458,7 +459,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   }
 
   /** Try its best to commit data in order. Flush can also be a trigger to transfer batched data. */
-  private void transferBatchedEventsIfNecessary() throws IOException, WriteProcessException {
+  private void transferBatchedEventsIfNecessary()
+      throws IOException, WriteProcessException, InterruptedException {
     if (!isTabletBatchModeEnabled || tabletBatchBuilder.isEmpty()) {
       return;
     }
@@ -550,8 +552,12 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
     // ensure all on-the-fly handlers have been cleared
     if (hasPendingHandlers()) {
-      pendingHandlers.forEach((handler, _handler) -> handler.clearEventsReferenceCount());
-      pendingHandlers.clear();
+      ImmutableSet.copyOf(pendingHandlers.keySet())
+          .forEach(
+              handler -> {
+                handler.clearEventsReferenceCount();
+                eliminateHandler(handler);
+              });
     }
 
     try {
@@ -606,6 +612,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   }
 
   public void eliminateHandler(final PipeTransferTrackableHandler handler) {
+    handler.close();
     pendingHandlers.remove(handler);
   }
 

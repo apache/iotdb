@@ -27,7 +27,6 @@ import org.slf4j.LoggerFactory;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 public class PipeProcessorSubtaskWorker extends WrappedRunnable {
 
@@ -53,10 +52,7 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
   }
 
   private void cleanupClosedSubtasksIfNecessary() {
-    subtasks.stream()
-        .filter(PipeProcessorSubtask::isClosed)
-        .collect(Collectors.toList())
-        .forEach(subtasks::remove);
+    subtasks.removeIf(PipeProcessorSubtask::isClosed);
   }
 
   private boolean runSubtasks() {
