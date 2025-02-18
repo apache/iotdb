@@ -222,10 +222,10 @@ public class PipeConsensusTsFileInsertionEventHandler
             PipeConsensusTsFileInsertionEventHandler.class.getName(), true);
 
         LOGGER.info(
-            "Successfully transferred file {} (committer key={}, commit id={}).",
+            "Successfully transferred file {} (committer key={}, replicate index={}).",
             tsFile,
             event.getCommitterKey(),
-            event.getCommitId());
+            event.getReplicateIndexForIoTV2());
 
         if (client != null) {
           client.setShouldReturnSelf(true);
@@ -274,10 +274,10 @@ public class PipeConsensusTsFileInsertionEventHandler
   @Override
   public void onError(final Exception exception) {
     LOGGER.warn(
-        "Failed to transfer TsFileInsertionEvent {} (committer key {}, commit id {}).",
+        "Failed to transfer TsFileInsertionEvent {} (committer key {}, replicate index {}).",
         tsFile,
         event.getCommitterKey(),
-        event.getCommitId(),
+        event.getReplicateIndexForIoTV2(),
         exception);
 
     try {
