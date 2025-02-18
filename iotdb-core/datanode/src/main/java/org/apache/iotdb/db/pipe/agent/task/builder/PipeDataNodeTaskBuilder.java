@@ -49,6 +49,7 @@ import java.util.Map;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_HYBRID_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_TABLET_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_TS_FILE_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_FORMAT_KEY;
 
 public class PipeDataNodeTaskBuilder {
@@ -139,7 +140,16 @@ public class PipeDataNodeTaskBuilder {
                 .getStringOrDefault(
                     Arrays.asList(CONNECTOR_FORMAT_KEY, SINK_FORMAT_KEY),
                     CONNECTOR_FORMAT_HYBRID_VALUE)
-                .equals(CONNECTOR_FORMAT_TABLET_VALUE));
+                .equals(CONNECTOR_FORMAT_TABLET_VALUE),
+            PipeType.SUBSCRIPTION.equals(pipeType)
+                &&
+                // should not skip parsing when the format is tsfile
+                !pipeStaticMeta
+                    .getConnectorParameters()
+                    .getStringOrDefault(
+                        Arrays.asList(CONNECTOR_FORMAT_KEY, SINK_FORMAT_KEY),
+                        CONNECTOR_FORMAT_HYBRID_VALUE)
+                    .equals(CONNECTOR_FORMAT_TS_FILE_VALUE));
 
     return new PipeDataNodeTask(
         pipeStaticMeta.getPipeName(), regionId, extractorStage, processorStage, connectorStage);

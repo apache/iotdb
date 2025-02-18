@@ -211,7 +211,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
                 String.format(
                     "exception occurred when fetching next response: %s, consumer id: %s, commit context: %s, writing offset: %s, prefetching queue: %s",
                     e, consumerId, commitContext, writingOffset, this);
-            LOGGER.warn(errorMessage);
+            LOGGER.warn(errorMessage, e);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
           }
 
