@@ -935,7 +935,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
     int nextOffset = ((TabletsPayload) initialResponse.getPayload()).getNextOffset();
     while (true) {
-      if (nextOffset < 0) {
+      if (nextOffset <= 0) {
         if (!Objects.equals(tablets.size(), -nextOffset)) {
           final String errorMessage =
               String.format(

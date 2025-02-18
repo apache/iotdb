@@ -188,14 +188,16 @@ public class User extends Role {
     roleSet = new HashSet<>(SerializeUtils.deserializeStringList(buffer));
   }
 
+  /**
+   * TestOnly, get the string representation of the user.
+   *
+   * @return string representation of the user
+   */
   @Override
   public String toString() {
     return "User{"
         + "name='"
         + super.getName()
-        + '\''
-        + ", password='"
-        + password
         + '\''
         + ", pathPrivilegeList="
         + pathPrivilegeList

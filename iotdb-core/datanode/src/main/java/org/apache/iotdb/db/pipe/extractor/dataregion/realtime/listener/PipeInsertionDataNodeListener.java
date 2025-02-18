@@ -115,7 +115,8 @@ public class PipeInsertionDataNodeListener {
 
     assigner.publishToAssign(
         PipeRealtimeEventFactory.createRealtimeEvent(
-            dataRegionId, databaseName, tsFileResource, isLoaded, isGeneratedByPipe));
+                dataRegionId, assigner.isTableModel(), databaseName, tsFileResource, isLoaded, isGeneratedByPipe));
+
   }
 
   public void listenToInsertNode(
@@ -137,7 +138,7 @@ public class PipeInsertionDataNodeListener {
 
     assigner.publishToAssign(
         PipeRealtimeEventFactory.createRealtimeEvent(
-            dataRegionId, databaseName, walEntryHandler, insertNode, tsFileResource));
+                dataRegionId,assigner.isTableModel(), databaseName, walEntryHandler, insertNode, tsFileResource));
   }
 
   public DeletionResource listenToDeleteData(
