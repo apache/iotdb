@@ -48,6 +48,7 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualEnhanced.class})
 public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelDualManualIT {
+
   @Before
   public void setUp() {
     MultiEnvFactory.createEnv(2);

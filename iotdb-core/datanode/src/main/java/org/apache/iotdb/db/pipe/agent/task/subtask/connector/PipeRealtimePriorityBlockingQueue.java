@@ -51,6 +51,8 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
   @Override
   public boolean directOffer(final Event event) {
+    checkBeforeOffer(event);
+
     if (event instanceof TsFileInsertionEvent) {
       tsfileInsertEventDeque.add((TsFileInsertionEvent) event);
       return true;
