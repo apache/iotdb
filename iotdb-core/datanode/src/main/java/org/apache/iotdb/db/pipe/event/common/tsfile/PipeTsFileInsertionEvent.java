@@ -93,15 +93,16 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   private volatile ProgressIndex overridingProgressIndex;
 
   public PipeTsFileInsertionEvent(
-      final String databaseName,
+      final Boolean isTableModelEvent,
+      final String databaseNameFromDataRegion,
       final TsFileResource resource,
       final boolean isLoaded,
       final boolean isGeneratedByPipe,
       final boolean isGeneratedByHistoricalExtractor) {
     // The modFile must be copied before the event is assigned to the listening pipes
     this(
-        null,
-        databaseName,
+        isTableModelEvent,
+        databaseNameFromDataRegion,
         resource,
         true,
         isLoaded,
@@ -118,7 +119,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   public PipeTsFileInsertionEvent(
       final Boolean isTableModelEvent,
-      final String databaseName,
+      final String databaseNameFromDataRegion,
       final TsFileResource resource,
       final boolean isWithMod,
       final boolean isLoaded,
@@ -140,7 +141,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         startTime,
         endTime,
         isTableModelEvent,
-        databaseName);
+        databaseNameFromDataRegion);
 
     this.resource = resource;
     tsFile = resource.getTsFile();
@@ -302,10 +303,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         sharedModFile =
             PipeDataNodeResourceManager.tsfile().increaseFileReference(sharedModFile, false, null);
       }
-      if (Objects.nonNull(pipeName)) {
-        PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-            .increaseTsFileEventCount(pipeName, creationTime);
-      }
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
@@ -314,6 +311,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               tsFile, exclusiveModFile, sharedModFile, holderMessage),
           e);
       return false;
+    } finally {
+      if (Objects.nonNull(pipeName)) {
+        PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+            .increaseTsFileEventCount(pipeName, creationTime);
+      }
     }
   }
 
@@ -327,6 +329,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       if (isWithSharedMod) {
         PipeDataNodeResourceManager.tsfile().decreaseFileReference(sharedModFile);
       }
+      close();
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
@@ -397,7 +400,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final long endTime) {
     return new PipeTsFileInsertionEvent(
         getRawIsTableModelEvent(),
-        getTreeModelDatabaseName(),
+        getSourceDatabaseNameFromDataRegion(),
         resource,
         isWithExclusiveMod,
         isLoaded,
@@ -444,7 +447,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
           .anyMatch(
               deviceID -> {
                 // Tree model
-                if (deviceID instanceof PlainDeviceID
+                if (Boolean.FALSE.equals(getRawIsTableModelEvent())
+                    || deviceID instanceof PlainDeviceID
                     || deviceID.getTableName().startsWith(TREE_MODEL_EVENT_TABLE_NAME_PREFIX)
                     || deviceID.getTableName().equals(PATH_ROOT)) {
                   markAsTreeModelEvent();
@@ -470,6 +474,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean isTableModelEvent() {
     if (getRawIsTableModelEvent() == null) {
+      if (getSourceDatabaseNameFromDataRegion() != null) {
+        return super.isTableModelEvent();
+      }
+
       try {
         final Map<IDeviceID, Boolean> deviceIsAlignedMap =
             PipeDataNodeResourceManager.tsfile()
@@ -549,7 +557,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     long lastRecordTime = startTime;
 
     final long memoryCheckIntervalMs =
-        PipeConfig.getInstance().getPipeTsFileParserCheckMemoryEnoughIntervalMs();
+        PipeConfig.getInstance().getPipeCheckMemoryEnoughIntervalMs();
     while (!memoryManager.isEnough4TabletParsing()) {
       Thread.sleep(memoryCheckIntervalMs);
 
