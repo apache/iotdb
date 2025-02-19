@@ -35,6 +35,10 @@ public class PipeResourceMetrics implements IMetricSet {
 
   private static final String PIPE_USED_MEMORY = "PipeUsedMemory";
 
+  private static final String PIPE_TABLET_USED_MEMORY = "PipeTabletUsedMemory";
+
+  private static final String PIPE_TS_FILE_USED_MEMORY = "PipeTsFileUsedMemory";
+
   private static final String PIPE_TOTAL_MEMORY = "PipeTotalMemory";
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
@@ -49,6 +53,20 @@ public class PipeResourceMetrics implements IMetricSet {
         PipeMemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         PIPE_USED_MEMORY);
+    metricService.createAutoGauge(
+        Metric.PIPE_MEM.toString(),
+        MetricLevel.IMPORTANT,
+        PipeDataNodeResourceManager.memory(),
+        PipeMemoryManager::getUsedMemorySizeInBytesOfTablets,
+        Tag.NAME.toString(),
+        PIPE_TABLET_USED_MEMORY);
+    metricService.createAutoGauge(
+        Metric.PIPE_MEM.toString(),
+        MetricLevel.IMPORTANT,
+        PipeDataNodeResourceManager.memory(),
+        PipeMemoryManager::getUsedMemorySizeInBytesOfTsFiles,
+        Tag.NAME.toString(),
+        PIPE_TS_FILE_USED_MEMORY);
     metricService.createAutoGauge(
         Metric.PIPE_MEM.toString(),
         MetricLevel.IMPORTANT,
@@ -85,6 +103,16 @@ public class PipeResourceMetrics implements IMetricSet {
     // pipe memory related
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.PIPE_MEM.toString(), Tag.NAME.toString(), PIPE_USED_MEMORY);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_MEM.toString(),
+        Tag.NAME.toString(),
+        PIPE_TABLET_USED_MEMORY);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_MEM.toString(),
+        Tag.NAME.toString(),
+        PIPE_TS_FILE_USED_MEMORY);
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.PIPE_MEM.toString(), Tag.NAME.toString(), PIPE_TOTAL_MEMORY);
     // resource reference count
