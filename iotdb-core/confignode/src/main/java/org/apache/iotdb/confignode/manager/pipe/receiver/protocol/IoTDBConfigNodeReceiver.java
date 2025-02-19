@@ -36,6 +36,7 @@ import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -328,14 +329,30 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     PrivilegeType.CREATE))
             .getStatus();
       case AddTableColumn:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new PrivilegeUnion(
+                    ((AddTableColumnPlan) plan).getDatabase(),
+                    ((AddTableColumnPlan) plan).getTableName(),
+                    PrivilegeType.ALTER))
+            .getStatus();
       case SetTableProperties:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new PrivilegeUnion(
+                    ((SetTablePropertiesPlan) plan).getDatabase(),
+                    ((SetTablePropertiesPlan) plan).getTableName(),
+                    PrivilegeType.ALTER))
+            .getStatus();
       case CommitDeleteColumn:
         return configManager
             .checkUserPrivileges(
                 username,
                 new PrivilegeUnion(
-                    ((PipeCreateTablePlan) plan).getDatabase(),
-                    ((PipeCreateTablePlan) plan).getTable().getTableName(),
+                    ((CommitDeleteColumnPlan) plan).getDatabase(),
+                    ((CommitDeleteColumnPlan) plan).getTableName(),
                     PrivilegeType.ALTER))
             .getStatus();
       case CommitDeleteTable:
@@ -343,8 +360,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             .checkUserPrivileges(
                 username,
                 new PrivilegeUnion(
-                    ((PipeCreateTablePlan) plan).getDatabase(),
-                    ((PipeCreateTablePlan) plan).getTable().getTableName(),
+                    ((CommitDeleteTablePlan) plan).getDatabase(),
+                    ((CommitDeleteTablePlan) plan).getTableName(),
                     PrivilegeType.DROP))
             .getStatus();
       case GrantRole:
@@ -522,7 +539,9 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         return configManager.deleteDatabases(
             new TDeleteDatabasesReq(
                     Collections.singletonList(((DeleteDatabasePlan) plan).getName()))
-                .setIsGeneratedByPipe(true));
+                .setIsGeneratedByPipe(true)
+                .setIsTableModel(
+                    PathUtils.isTableModelDatabase(((DeleteDatabasePlan) plan).getName())));
       case ExtendSchemaTemplate:
         return configManager
             .getClusterSchemaManager()

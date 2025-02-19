@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -104,6 +105,11 @@ public class PipeRealtimeEvent extends EnrichedEvent {
 
   public void gcSchemaInfo() {
     device2Measurements = null;
+  }
+
+  public boolean mayExtractorUseTablets(final PipeRealtimeDataRegionExtractor extractor) {
+    final TsFileEpoch.State state = tsFileEpoch.getState(extractor);
+    return state.equals(TsFileEpoch.State.EMPTY) || state.equals(TsFileEpoch.State.USING_TABLET);
   }
 
   public void markAsTableModelEvent() {
