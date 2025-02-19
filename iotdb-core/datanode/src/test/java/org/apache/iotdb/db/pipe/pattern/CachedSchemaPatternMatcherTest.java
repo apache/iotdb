@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeC
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
@@ -75,9 +76,12 @@ public class CachedSchemaPatternMatcherTest {
   private CachedSchemaPatternMatcher matcher;
   private ExecutorService executorService;
   private List<PipeRealtimeDataRegionExtractor> extractors;
+  private int dataNodeId;
 
   @Before
   public void setUp() {
+    dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(0);
     matcher = new CachedSchemaPatternMatcher();
     executorService = Executors.newSingleThreadExecutor();
     extractors = new ArrayList<>();
@@ -86,6 +90,7 @@ public class CachedSchemaPatternMatcherTest {
   @After
   public void tearDown() {
     executorService.shutdownNow();
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(dataNodeId);
   }
 
   @Test
