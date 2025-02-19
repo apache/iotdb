@@ -39,24 +39,15 @@ public class PipeRealtimeEventFactory {
   private static final TsFileEpochManager TS_FILE_EPOCH_MANAGER = new TsFileEpochManager();
 
   public static PipeRealtimeEvent createRealtimeEvent(
-      final String dataRegionId,
       final Boolean isTableModel,
       final String databaseNameFromDataRegion,
       final TsFileResource resource,
       final boolean isLoaded,
       final boolean isGeneratedByPipe) {
-    PipeTsFileInsertionEvent tsFileEvent =
+    return TS_FILE_EPOCH_MANAGER.bindPipeTsFileInsertionEvent(
         new PipeTsFileInsertionEvent(
-            isTableModel, databaseNameFromDataRegion, resource, isLoaded, isGeneratedByPipe, false);
-
-    // if using IoTV2, assign a replicateIndex for this event
-    if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus
-        && PipeConsensusProcessor.isShouldReplicate(tsFileEvent)) {
-      tsFileEvent.setReplicateIndexForIoTV2(
-          ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(dataRegionId));
-    }
-
-    return TS_FILE_EPOCH_MANAGER.bindPipeTsFileInsertionEvent(tsFileEvent, resource);
+            isTableModel, databaseNameFromDataRegion, resource, isLoaded, isGeneratedByPipe, false),
+        resource);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(

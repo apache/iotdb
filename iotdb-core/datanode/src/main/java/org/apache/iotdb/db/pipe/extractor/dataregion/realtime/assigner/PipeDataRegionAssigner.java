@@ -187,7 +187,11 @@ public class PipeDataRegionAssigner implements Closeable {
                       extractor.getRealtimeDataExtractionStartTime(),
                       extractor.getRealtimeDataExtractionEndTime());
               final EnrichedEvent innerEvent = copiedEvent.getEvent();
-              innerEvent.setReplicateIndexForIoTV2(event.getEvent().getReplicateIndexForIoTV2());
+              // Due to the asynchronized process of closing tsfile, the order of TsFileEvent is not
+              // assigned here.
+              if (!(innerEvent instanceof PipeTsFileInsertionEvent)) {
+                innerEvent.setReplicateIndexForIoTV2(event.getEvent().getReplicateIndexForIoTV2());
+              }
 
               if (innerEvent instanceof PipeTsFileInsertionEvent) {
                 final PipeTsFileInsertionEvent tsFileInsertionEvent =

@@ -59,7 +59,7 @@ public class ReplicateProgressDataNodeManager implements ReplicateProgressManage
   public static long assignReplicateIndexForIoTV2(String groupId) {
     return groupId2ReplicateIndex
         .compute(groupId, (k, v) -> v == null ? new AtomicLong(0) : v)
-        .getAndIncrement();
+        .incrementAndGet();
   }
 
   public static ProgressIndex extractLocalSimpleProgressIndex(ProgressIndex progressIndex) {
