@@ -50,7 +50,7 @@ public class IoTDBMQTTServiceIT {
   private static final String USER = System.getProperty("RemoteUser", "root");
   private static final String PASSWORD = System.getProperty("RemotePassword", "root");
   private static final String DATABASE = "mqtttest";
-  public static final String FORMATTER = "line";
+  public static final String FORMATTER = "table-line";
 
   @Before
   public void setUp() throws Exception {

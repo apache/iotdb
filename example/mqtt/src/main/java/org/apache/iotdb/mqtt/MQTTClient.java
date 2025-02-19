@@ -38,9 +38,9 @@ public class MQTTClient {
 
     BlockingConnection connection = mqtt.blockingConnection();
     connection.connect();
-    // the config mqttPayloadFormatter must be json
+    // the config mqttPayloadFormatter must be tree-json
     // jsonPayloadFormatter(connection);
-    // the config mqttPayloadFormatter must be line
+    // the config mqttPayloadFormatter must be table-line
     linePayloadFormatter(connection);
     connection.disconnect();
   }
