@@ -24,10 +24,11 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.read.TsFileSequenceReader;
-import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.io.File;
@@ -40,6 +41,10 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
 
   private final TsFileInsertionEventTableParserTabletIterator tabletIterator;
 
+  private final PipeMemoryBlock allocatedMemoryBlockForBatchData;
+  private final PipeMemoryBlock allocatedMemoryBlockForChunk;
+  private final PipeMemoryBlock allocatedMemoryBlockForChunkMeta;
+
   public TsFileInsertionEventTableParser(
       final File tsFile,
       final TablePattern pattern,
@@ -51,11 +56,22 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
     super(null, pattern, startTime, endTime, pipeTaskMeta, sourceEvent);
 
     try {
+      this.allocatedMemoryBlockForChunk =
+          PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+      this.allocatedMemoryBlockForBatchData =
+          PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+      this.allocatedMemoryBlockForChunkMeta =
+          PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
       tabletIterator =
           new TsFileInsertionEventTableParserTabletIterator(
               tsFileSequenceReader,
               entry -> Objects.isNull(pattern) || pattern.matchesTable(entry.getKey()),
+              allocatedMemoryBlockForTablet,
+              allocatedMemoryBlockForBatchData,
+              allocatedMemoryBlockForChunk,
+              allocatedMemoryBlockForChunkMeta,
               startTime,
               endTime);
     } catch (final Exception e) {
@@ -69,8 +85,6 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
     return () ->
         new Iterator<TabletInsertionEvent>() {
 
-          private TsFileInsertionEventTableParserTabletIterator tabletIterator = null;
-
           @Override
           public boolean hasNext() {
             return tabletIterator != null && !tabletIterator.hasNext();
@@ -83,7 +97,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
               throw new NoSuchElementException();
             }
 
-            final Pair<Tablet, Integer> tablet = tabletIterator.next();
+            final Tablet tablet = tabletIterator.next();
 
             final TabletInsertionEvent next;
             if (!hasNext()) {
@@ -145,5 +159,19 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
             return next;
           }
         };
+  }
+
+  @Override
+  public void close() {
+    super.close();
+    if (allocatedMemoryBlockForBatchData != null) {
+      allocatedMemoryBlockForBatchData.close();
+    }
+    if (allocatedMemoryBlockForChunk != null) {
+      allocatedMemoryBlockForChunk.close();
+    }
+    if (allocatedMemoryBlockForChunkMeta != null) {
+      allocatedMemoryBlockForChunkMeta.close();
+    }
   }
 }
