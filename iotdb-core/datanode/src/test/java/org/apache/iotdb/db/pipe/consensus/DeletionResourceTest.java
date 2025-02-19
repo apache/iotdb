@@ -66,21 +66,20 @@ public class DeletionResourceTest {
   private static final String[] FAKE_DATA_REGION_IDS = {"2", "3", "4", "5", "6"};
   private static final String DELETION_BASE_DIR =
       IoTDBDescriptor.getInstance().getConfig().getIotConsensusV2DeletionFileDir();
-  private static final int THIS_DATANODE_ID =
-      IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+  private static final int THIS_DATANODE_ID = 0;
   private DeletionResourceManager deletionResourceManager;
-  private int dataNodeId;
+  private int previousDataNodeId;
 
   @Before
   public void setUp() throws Exception {
-    dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(0);
+    previousDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(THIS_DATANODE_ID);
     DeletionResourceManager.buildForTest();
   }
 
   @After
   public void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(dataNodeId);
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(previousDataNodeId);
     for (String FAKE_DATA_REGION_ID : FAKE_DATA_REGION_IDS) {
       File baseDir = new File(DELETION_BASE_DIR + File.separator + FAKE_DATA_REGION_ID);
       if (baseDir.exists()) {
