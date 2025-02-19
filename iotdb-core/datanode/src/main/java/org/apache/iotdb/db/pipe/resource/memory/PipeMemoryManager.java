@@ -89,41 +89,35 @@ public class PipeMemoryManager {
   // TS_FILE_MEMORY_REJECT_THRESHOLD + TABLET_MEMORY_REJECT_THRESHOLD / 2]
 
   public boolean isEnough4TabletParsing() {
-    return (double) usedMemorySizeInBytesOfTablets
-        < 0.95 * TABLET_MEMORY_REJECT_THRESHOLD * memoryBlock.getTotalMemorySizeInBytes();
-
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
-        < 0.95 * TABLET_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
-        + 0.95 * TS_FILE_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
+            < 0.95 * TABLET_MEMORY_REJECT_THRESHOLD * memoryBlock.getTotalMemorySizeInBytes()
+                + 0.95 * TS_FILE_MEMORY_REJECT_THRESHOLD * memoryBlock.getTotalMemorySizeInBytes()
         && (double) usedMemorySizeInBytesOfTablets
-        < 0.95 * TABLET_MEMORY_REJECT_THRESHOLD / 2 * TOTAL_MEMORY_SIZE_IN_BYTES;
+            < 0.95 * TABLET_MEMORY_REJECT_THRESHOLD / 2 * memoryBlock.getTotalMemorySizeInBytes();
   }
 
   private boolean isHardEnough4TabletParsing() {
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
-        < TABLET_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
-        + TS_FILE_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
+            < TABLET_MEMORY_REJECT_THRESHOLD * memoryBlock.getTotalMemorySizeInBytes()
+                + TS_FILE_MEMORY_REJECT_THRESHOLD * memoryBlock.getTotalMemorySizeInBytes()
         && (double) usedMemorySizeInBytesOfTablets
-        < TABLET_MEMORY_REJECT_THRESHOLD / 2 * TOTAL_MEMORY_SIZE_IN_BYTES;
+            < TABLET_MEMORY_REJECT_THRESHOLD / 2 * memoryBlock.getTotalMemorySizeInBytes();
   }
 
   public boolean isEnough4TsFileSlicing() {
-    return (double) usedMemorySizeInBytesOfTsFiles
-        < 0.95 * TS_FILE_MEMORY_REJECT_THRESHOLD * memoryBlock.getTotalMemorySizeInBytes();
-
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
-        < 0.95 * TABLET_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
-        + 0.95 * TS_FILE_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
+            < 0.95 * TABLET_MEMORY_REJECT_THRESHOLD * memoryBlock.getTotalMemorySizeInBytes()
+                + 0.95 * TS_FILE_MEMORY_REJECT_THRESHOLD * memoryBlock.getTotalMemorySizeInBytes()
         && (double) usedMemorySizeInBytesOfTsFiles
-        < 0.95 * TS_FILE_MEMORY_REJECT_THRESHOLD / 2 * TOTAL_MEMORY_SIZE_IN_BYTES;
+            < 0.95 * TS_FILE_MEMORY_REJECT_THRESHOLD / 2 * memoryBlock.getTotalMemorySizeInBytes();
   }
 
   private boolean isHardEnough4TsFileSlicing() {
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
-        < TABLET_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
-        + TS_FILE_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
+            < TABLET_MEMORY_REJECT_THRESHOLD * memoryBlock.getTotalMemorySizeInBytes()
+                + TS_FILE_MEMORY_REJECT_THRESHOLD * memoryBlock.getTotalMemorySizeInBytes()
         && (double) usedMemorySizeInBytesOfTsFiles
-        < TS_FILE_MEMORY_REJECT_THRESHOLD / 2 * TOTAL_MEMORY_SIZE_IN_BYTES;
+            < TS_FILE_MEMORY_REJECT_THRESHOLD / 2 * memoryBlock.getTotalMemorySizeInBytes();
   }
 
   public synchronized PipeMemoryBlock forceAllocate(long sizeInBytes)
