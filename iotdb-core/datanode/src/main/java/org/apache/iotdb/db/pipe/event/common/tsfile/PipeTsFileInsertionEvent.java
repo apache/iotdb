@@ -74,7 +74,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   // This is true iff the modFile exists and should be transferred
   private boolean isWithMod;
   private File modFile;
-  private File sharedModFile;
+  private final File sharedModFile;
 
   private final boolean isLoaded;
   private final boolean isGeneratedByPipe;

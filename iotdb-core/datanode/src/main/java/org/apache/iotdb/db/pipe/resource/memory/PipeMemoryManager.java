@@ -117,6 +117,15 @@ public class PipeMemoryManager {
 
   public synchronized PipeMemoryBlock forceAllocate(long sizeInBytes)
       throws PipeRuntimeOutOfMemoryCriticalException {
+    if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
+      // No need to calculate the tablet size, skip it to save time
+      return new PipeMemoryBlock(0);
+    }
+
+    if (sizeInBytes == 0) {
+      return registerMemoryBlock(0);
+    }
+
     return forceAllocate(sizeInBytes, PipeMemoryBlockType.NORMAL);
   }
 
@@ -125,6 +134,10 @@ public class PipeMemoryManager {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
       // No need to calculate the tablet size, skip it to save time
       return new PipeTabletMemoryBlock(0);
+    }
+
+    if (tabletSizeInBytes == 0) {
+      return (PipeTabletMemoryBlock) registerMemoryBlock(0, PipeMemoryBlockType.TABLET);
     }
 
     for (int i = 1; i <= MEMORY_ALLOCATE_MAX_RETRIES; i++) {
@@ -160,6 +173,10 @@ public class PipeMemoryManager {
       throws PipeRuntimeOutOfMemoryCriticalException {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
       return new PipeTsFileMemoryBlock(0);
+    }
+
+    if (tsFileSizeInBytes == 0) {
+      return (PipeTsFileMemoryBlock) registerMemoryBlock(0, PipeMemoryBlockType.TS_FILE);
     }
 
     for (int i = 1; i <= MEMORY_ALLOCATE_MAX_RETRIES; i++) {
