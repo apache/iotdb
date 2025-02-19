@@ -628,21 +628,19 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             } else if (right == null) {
               return left;
             } else {
-              Operator leftOuterTimeJoinOperator =
-                  new LeftOuterTimeJoinOperator(
-                      operatorContext,
-                      left,
-                      right,
-                      leftColumnCount,
-                      outputColumnMap,
-                      dataTypes,
-                      node.getScanOrder() == Ordering.ASC
-                          ? new AscTimeComparator()
-                          : new DescTimeComparator());
-              return (node.getPushDownLimit() > 0 && cannotPushDownConjuncts.isEmpty())
-                  ? new LimitOperator(
-                      operatorContext, node.getPushDownLimit(), leftOuterTimeJoinOperator)
-                  : leftOuterTimeJoinOperator;
+              if (node.getPushDownLimit() > 0 && cannotPushDownConjuncts.isEmpty()) {
+                left = new LimitOperator(operatorContext, node.getPushDownLimit(), left);
+              }
+              return new LeftOuterTimeJoinOperator(
+                  operatorContext,
+                  left,
+                  right,
+                  leftColumnCount,
+                  outputColumnMap,
+                  dataTypes,
+                  node.getScanOrder() == Ordering.ASC
+                      ? new AscTimeComparator()
+                      : new DescTimeComparator());
             }
           }
 
