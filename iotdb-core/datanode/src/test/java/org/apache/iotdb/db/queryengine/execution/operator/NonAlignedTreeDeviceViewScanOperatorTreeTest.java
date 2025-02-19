@@ -110,7 +110,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
   }
 
   @Test
-  public void testScanWithLimitAndOffset() {
+  public void testScanWithPredicateAndLimitAndOffset() {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     Operator operator = null;
@@ -130,6 +130,11 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
       TreeNonAlignedDeviceViewScanNode node = getTreeNonAlignedDeviceViewScanNode();
       node.setPushDownOffset(500);
       node.setPushDownLimit(500);
+      node.setPushDownPredicate(
+          new ComparisonExpression(
+              ComparisonExpression.Operator.GREATER_THAN,
+              new Symbol("sensor1").toSymbolReference(),
+              new LongLiteral("1000")));
       LocalExecutionPlanContext localExecutionPlanContext =
           new LocalExecutionPlanContext(
               new TypeProvider(), fragmentInstanceContext, new DataNodeQueryContext(1));

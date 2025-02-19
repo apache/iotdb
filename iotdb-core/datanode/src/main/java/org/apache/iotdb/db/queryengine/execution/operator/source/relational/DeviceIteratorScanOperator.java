@@ -213,6 +213,8 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
   }
 
   public interface DeviceChildOperatorTreeGenerator {
+    boolean keepRootOffsetAndLimitOperator();
+
     void generateCurrentDeviceRootOperator(DeviceEntry deviceEntry);
 
     Operator getCurrentDeviceRootOperator();

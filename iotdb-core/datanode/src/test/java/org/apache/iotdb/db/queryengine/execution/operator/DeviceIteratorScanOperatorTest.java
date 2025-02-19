@@ -126,6 +126,11 @@ public class DeviceIteratorScanOperatorTest {
             private Operator currentDeviceRootOperator;
 
             @Override
+            public boolean keepRootOffsetAndLimitOperator() {
+              return true;
+            }
+
+            @Override
             public void generateCurrentDeviceRootOperator(DeviceEntry deviceEntry) {
               AlignedFullPath alignedPath =
                   new AlignedFullPath(

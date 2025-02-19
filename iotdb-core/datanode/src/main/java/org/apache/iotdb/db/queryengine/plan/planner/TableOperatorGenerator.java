@@ -385,7 +385,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         parameter.allSensors,
         TreeNonAlignedDeviceViewScanNode.class.getSimpleName());
 
-    if (parameter.isSingleColumn() || node.isPushLimitToEachDevice()) {
+    if (!parameter.generator.keepRootOffsetAndLimitOperator()) {
       return treeNonAlignedDeviceIteratorScanOperator;
     }
     Operator operator = treeNonAlignedDeviceIteratorScanOperator;
@@ -430,7 +430,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           private Operator startCloseInternalOperator;
 
           private List<Expression> cannotPushDownConjuncts;
-          private boolean removeRootLimitOperator;
+          private boolean removeRootOffsetAndLimitOperator;
+
+          @Override
+          public boolean keepRootOffsetAndLimitOperator() {
+            calculateSeriesScanOptionsList();
+            return !removeRootOffsetAndLimitOperator;
+          }
 
           @Override
           public void generateCurrentDeviceRootOperator(DeviceEntry deviceEntry) {
@@ -443,7 +449,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 || node.getAssignments().size() != node.getOutputSymbols().size()) {
               operator = getFilterAndProjectOperator(operator);
             }
-            if (!node.isPushLimitToEachDevice() || removeRootLimitOperator) {
+            if (!node.isPushLimitToEachDevice() || removeRootOffsetAndLimitOperator) {
               return;
             }
             if (node.getPushDownLimit() > 0) {
@@ -483,7 +489,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             // the left child of LeftOuterTimeJoinOperator is SeriesScanOperator
             boolean canPushDownLimitToLeftChild =
                 canPushDownLimit && pushDownConjunctsForEachMeasurement.size() == 1;
-            removeRootLimitOperator = canPushDownLimitToLeftChild || isSingleColumn;
+            removeRootOffsetAndLimitOperator =
+                canPushDownLimitToLeftChild || isSingleColumn || node.isPushLimitToEachDevice();
             for (int i = 0; i < measurementSchemas.size(); i++) {
               IMeasurementSchema measurementSchema = measurementSchemas.get(i);
               List<Expression> pushDownPredicatesForCurrentMeasurement =
@@ -517,7 +524,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               if (isSingleColumn
                   || (canPushDownLimitToLeftChild
                       && pushDownPredicateForCurrentMeasurement != null)) {
-                builder.withPushDownOffset(node.getPushDownOffset());
+                builder.withPushDownOffset(
+                    node.isPushLimitToEachDevice() ? 0 : node.getPushDownOffset());
               }
               seriesScanOptionsList.add(builder.build());
             }
@@ -644,6 +652,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               if (leftColumnCount > 1
                   && node.getPushDownLimit() > 0
                   && cannotPushDownConjuncts.isEmpty()) {
+                if (node.getPushDownOffset() > 0) {
+                  left = new OffsetOperator(operatorContext, node.getPushDownOffset(), left);
+                }
                 left = new LimitOperator(operatorContext, node.getPushDownLimit(), left);
               }
               return new LeftOuterTimeJoinOperator(
