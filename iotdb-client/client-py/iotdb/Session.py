@@ -126,7 +126,7 @@ class Session(object):
         enable_redirection=True,
         use_ssl=False,
         ca_certs=None,
-        connection_timeout_in_ms=0,
+        connection_timeout_in_ms=None,
     ):
         if node_urls is None:
             raise RuntimeError("node urls is empty")
@@ -175,7 +175,7 @@ class Session(object):
                             )
                         else:
                             error_msg = str(e)
-                        raise IoTDBConnectionException(error_msg) from None
+                        raise IoTDBConnectionException(error_msg)
                 break
         self.__client = self.__default_connection.client
         self.__session_id = self.__default_connection.session_id
