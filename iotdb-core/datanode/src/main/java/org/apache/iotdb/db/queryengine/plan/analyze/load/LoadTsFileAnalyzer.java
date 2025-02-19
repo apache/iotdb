@@ -51,7 +51,6 @@ import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public abstract class LoadTsFileAnalyzer implements AutoCloseable {
 
@@ -67,6 +66,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   private final boolean isGeneratedByPipe;
 
   protected final List<File> tsFiles;
+  private final List<File> tabletConvertionList = new java.util.ArrayList<>();
   protected final String statementString;
   protected final boolean isVerifySchema;
 
@@ -128,16 +128,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
   public abstract IAnalysis analyzeFileByFile(IAnalysis analysis);
 
   protected boolean doAnalyzeFileByFile(IAnalysis analysis) {
-
-    // 1. check if half of the files' size is less than the threshold
-    if (shouldConvertToTablet()) {
-      LOGGER.info(
-          "Load: Most of the tsfile sizes are smaller than the threshold, start to convert them to Tablets.");
-      executeTabletConversion(analysis, null);
-      return false;
-    }
-
-    // 2. analyze tsfile metadata file by file
+    // analyze tsfile metadata file by file
     for (int i = 0, tsfileNum = tsFiles.size(); i < tsfileNum; i++) {
       final File tsFile = tsFiles.get(i);
 
@@ -149,6 +140,19 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
           LOGGER.info(
               "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
               i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
+        }
+        continue;
+      }
+
+      if (tsFile.length() < tabletConversionThreshold) {
+        tabletConvertionList.add(tsFile);
+        if (LOGGER.isInfoEnabled()) {
+          LOGGER.info(
+              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, {} tsfiles have been added to the conversion list, progress: {}%",
+              i + 1,
+              tsfileNum,
+              tabletConvertionList.size(),
+              String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
         }
         continue;
       }
@@ -186,49 +190,70 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
         return false;
       }
     }
-    return true;
+
+    return handleTabletConversionList(analysis);
   }
 
   protected abstract void analyzeSingleTsFile(final File tsFile)
       throws IOException, AuthException, LoadAnalyzeException;
 
-  private boolean shouldConvertToTablet() {
-    int tabletConversionThreshold =
-        isTableModelStatement
-            ? loadTsFileTableStatement.getTabletConversionThreshold()
-            : loadTsFileTreeStatement.getTabletConversionThreshold();
-    List<File> miniFiles =
-        tsFiles.stream()
-            .filter(tsFile -> tsFile.length() < tabletConversionThreshold)
-            .collect(Collectors.toList());
+  private boolean handleTabletConversionList(IAnalysis analysis) {
+    if (tabletConvertionList.isEmpty()) {
+      return true;
+    }
 
-    return miniFiles.size() > tsFiles.size() / 2;
+    executeTabletConversion(analysis, null);
+    if (analysis.isFailed()) {
+      return false;
+    }
+
+    tsFiles.removeAll(tabletConvertionList);
+    setStatementTsFiles(tsFiles);
+    analysis.setFinishQueryAfterAnalyze(false);
+    return true;
   }
 
   protected void executeTabletConversion(final IAnalysis analysis, final LoadAnalyzeException e) {
-    final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-        new LoadTsFileDataTypeConverter(isGeneratedByPipe);
-
-    final TSStatus status =
-        (!(e instanceof LoadAnalyzeTypeMismatchException) || isConvertOnTypeMismatch)
-            ? (isTableModelStatement
-                ? loadTsFileDataTypeConverter
-                    .convertForTableModel(loadTsFileTableStatement)
-                    .orElse(null)
-                : loadTsFileDataTypeConverter
-                    .convertForTreeModel(loadTsFileTreeStatement)
-                    .orElse(null))
-            : null;
-
-    if (status == null) {
+    if (shouldSkipConversion(e)) {
       analysis.setFailStatus(
-          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
-              .setMessage(e == null ? "" : e.getMessage()));
-    } else if (!loadTsFileDataTypeConverter.isSuccessful(status)) {
-      analysis.setFailStatus(status);
+          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
+      analysis.setFinishQueryAfterAnalyze(true);
+      setRealStatement(analysis);
+      return;
     }
+
+    LoadTsFileDataTypeConverter converter = new LoadTsFileDataTypeConverter(isGeneratedByPipe);
+    setStatementTsFiles(tabletConvertionList);
+    TSStatus status = doConversion(converter);
+
+    if (status == null || !converter.isSuccessful(status)) {
+      analysis.setFailStatus(
+          status != null
+              ? status
+              : new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
+                  .setMessage(e != null ? e.getMessage() : ""));
+    }
+
     analysis.setFinishQueryAfterAnalyze(true);
     setRealStatement(analysis);
+  }
+
+  private TSStatus doConversion(LoadTsFileDataTypeConverter converter) {
+    return isTableModelStatement
+        ? converter.convertForTableModel(loadTsFileTableStatement).orElse(null)
+        : converter.convertForTreeModel(loadTsFileTreeStatement).orElse(null);
+  }
+
+  private boolean shouldSkipConversion(LoadAnalyzeException e) {
+    return (e instanceof LoadAnalyzeTypeMismatchException) && !isConvertOnTypeMismatch;
+  }
+
+  private void setStatementTsFiles(List<File> files) {
+    if (isTableModelStatement) {
+      loadTsFileTableStatement.setTsFiles(files);
+    } else {
+      loadTsFileTreeStatement.setTsFiles(files);
+    }
   }
 
   protected void setRealStatement(IAnalysis analysis) {

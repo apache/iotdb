@@ -141,6 +141,11 @@ public class LoadTsFile extends Statement {
     return tsFiles;
   }
 
+  public void setTsFiles(List<File> tsFiles) {
+    this.tsFiles.clear();
+    this.tsFiles.addAll(tsFiles);
+  }
+
   public void addTsFileResource(TsFileResource resource) {
     resources.add(resource);
   }
