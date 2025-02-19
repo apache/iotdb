@@ -2291,7 +2291,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         result.add(timePartitionSlot);
         // next init
         timePartitionSlot = new TTimePartitionSlot(endTime);
-        endTime = endTime + TimePartitionUtils.getTimePartitionInterval();
+        // beware of overflow
+        endTime =
+            endTime + TimePartitionUtils.getTimePartitionInterval() > endTime
+                ? endTime + TimePartitionUtils.getTimePartitionInterval()
+                : Long.MAX_VALUE;
       } else {
         index++;
         if (index < size) {

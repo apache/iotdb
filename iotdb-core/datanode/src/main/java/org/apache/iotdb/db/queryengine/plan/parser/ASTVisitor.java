@@ -2018,15 +2018,18 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (constant.INTEGER_LITERAL() != null) {
       try {
         if (constant.MINUS() != null) {
-          return -Long.parseLong(constant.INTEGER_LITERAL().getText());
+          return Long.parseLong("-" + constant.INTEGER_LITERAL().getText());
         }
         return Long.parseLong(constant.INTEGER_LITERAL().getText());
       } catch (NumberFormatException e) {
         throw new SemanticException(
             String.format(
-                "Current system timestamp precision is %s, "
+                "Failed to parse the timestamp: "
+                    + e.getMessage()
+                    + "Current system timestamp precision is %s, "
                     + "please check whether the timestamp %s is correct.",
-                TIMESTAMP_PRECISION, constant.INTEGER_LITERAL().getText()));
+                TIMESTAMP_PRECISION,
+                constant.INTEGER_LITERAL().getText()));
       }
     } else if (constant.dateExpression() != null) {
       return parseDateExpression(constant.dateExpression(), CommonDateTimeUtils.currentTime());
