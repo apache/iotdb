@@ -159,7 +159,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
                 String.format(
                     "exception occurred when fetching next response: %s, consumer id: %s, commit context: %s, offset: %s, prefetching queue: %s",
                     e, consumerId, commitContext, offset, this);
-            LOGGER.warn(errorMessage);
+            LOGGER.warn(errorMessage, e);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
           }
 
