@@ -83,7 +83,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_PATH_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_TIME_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_IOTDB_SKIP_IF_NO_PRIVILEGES;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE;
@@ -96,7 +95,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_SKIP_IF_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_ENABLE_KEY;
@@ -108,8 +106,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODE_STRICT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_SKIP_IF_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.extractor.IoTDBExtractor.getSkipIfNoPrivileges;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_ROOT;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
@@ -413,23 +411,11 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             PipeExtractorConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
             PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY);
 
-    final String extractorHistorySkipIfValue =
-        parameters
-            .getStringOrDefault(
-                Arrays.asList(EXTRACTOR_SKIP_IF_KEY, SOURCE_SKIP_IF_KEY),
-                EXTRACTOR_IOTDB_SKIP_IF_NO_PRIVILEGES)
-            .trim();
-    final Set<String> skipIfOptionSet =
-        Arrays.stream(extractorHistorySkipIfValue.split(","))
-            .map(String::trim)
-            .filter(s -> !s.isEmpty())
-            .map(String::toLowerCase)
-            .collect(Collectors.toSet());
-    skipIfNoPrivileges = skipIfOptionSet.remove(EXTRACTOR_IOTDB_SKIP_IF_NO_PRIVILEGES);
+    skipIfNoPrivileges = getSkipIfNoPrivileges(parameters);
 
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info(
-          "Pipe {}@{}: historical data extraction time range, start time {}({}), end time {}({}), sloppy pattern {}, sloppy time range {}, should transfer mod file {}, should terminate pipe on all historical events consumed {}",
+          "Pipe {}@{}: historical data extraction time range, start time {}({}), end time {}({}), sloppy pattern {}, sloppy time range {}, should transfer mod file {}, should terminate pipe on all historical events consumed {}, username: {}, skip if no privileges: {}",
           pipeName,
           dataRegionId,
           DateTimeUtils.convertLongToDate(historicalDataExtractionStartTime),
@@ -439,7 +425,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
           sloppyPattern,
           sloppyTimeRange,
           shouldTransferModFile,
-          shouldTerminatePipeOnAllHistoricalEventsConsumed);
+          shouldTerminatePipeOnAllHistoricalEventsConsumed,
+          userName,
+          skipIfNoPrivileges);
     }
   }
 

@@ -64,7 +64,6 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_END_TIME_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_IOTDB_SKIP_IF_NO_PRIVILEGES;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_KEY;
@@ -74,14 +73,13 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_PATH_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_TIME_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_SKIP_IF_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_LOOSE_RANGE_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_SKIP_IF_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.extractor.IoTDBExtractor.getSkipIfNoPrivileges;
 
 public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
@@ -279,19 +277,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
             PipeExtractorConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
             PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY);
 
-    final String extractorHistorySkipIfValue =
-        parameters
-            .getStringOrDefault(
-                Arrays.asList(EXTRACTOR_SKIP_IF_KEY, SOURCE_SKIP_IF_KEY),
-                EXTRACTOR_IOTDB_SKIP_IF_NO_PRIVILEGES)
-            .trim();
-    final Set<String> skipIfOptionSet =
-        Arrays.stream(extractorHistorySkipIfValue.split(","))
-            .map(String::trim)
-            .filter(s -> !s.isEmpty())
-            .map(String::toLowerCase)
-            .collect(Collectors.toSet());
-    skipIfNoPrivileges = skipIfOptionSet.remove(EXTRACTOR_IOTDB_SKIP_IF_NO_PRIVILEGES);
+    skipIfNoPrivileges = getSkipIfNoPrivileges(parameters);
 
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info(

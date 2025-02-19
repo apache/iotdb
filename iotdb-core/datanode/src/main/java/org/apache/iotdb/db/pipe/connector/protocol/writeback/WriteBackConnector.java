@@ -57,6 +57,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -71,11 +72,15 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_SKIP_IF_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_USER_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_SKIP_IF_KEY;
 import static org.apache.iotdb.db.exception.metadata.DatabaseNotSetException.DATABASE_NOT_SET;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 
@@ -93,6 +98,7 @@ public class WriteBackConnector implements PipeConnector {
 
   // Temporary, used to separate
   private IClientSession treeSession;
+  private boolean skipIfNoPrivileges;
 
   private static final String TREE_MODEL_DATABASE_NAME_IDENTIFIER = null;
 
@@ -143,6 +149,24 @@ public class WriteBackConnector implements PipeConnector {
     treeSession.setUsername(AuthorityChecker.SUPER_USER);
     treeSession.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
     treeSession.setZoneId(ZoneId.systemDefault());
+
+    final String connectorSkipIfValue =
+        parameters
+            .getStringOrDefault(
+                Arrays.asList(CONNECTOR_SKIP_IF_KEY, SINK_SKIP_IF_KEY),
+                CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES)
+            .trim();
+    final Set<String> skipIfOptionSet =
+        Arrays.stream(connectorSkipIfValue.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .map(String::toLowerCase)
+            .collect(Collectors.toSet());
+    skipIfNoPrivileges = skipIfOptionSet.remove(CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES);
+    if (!skipIfOptionSet.isEmpty()) {
+      throw new PipeParameterNotValidException(
+          String.format("Parameters in set %s are not allowed in 'skipif'", skipIfOptionSet));
+    }
   }
 
   @Override
@@ -258,6 +282,8 @@ public class WriteBackConnector implements PipeConnector {
         insertTabletStatement.isWriteToTable()
             ? executeStatementForTableModel(insertTabletStatement, dataBaseName)
             : executeStatementForTreeModel(insertTabletStatement);
+
+    if (status.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode()) {}
 
     if (status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
         && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

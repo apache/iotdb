@@ -172,23 +172,28 @@ public abstract class IoTDBExtractor implements PipeExtractor {
             PipeExtractorConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
             PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY);
 
-    final String extractorHistorySkipIfValue =
-        parameters
+    skipIfNoPrivileges = getSkipIfNoPrivileges(parameters);
+  }
+
+  public static boolean getSkipIfNoPrivileges(final PipeParameters extractorParameters) {
+    final String extractorSkipIfValue =
+        extractorParameters
             .getStringOrDefault(
                 Arrays.asList(EXTRACTOR_SKIP_IF_KEY, SOURCE_SKIP_IF_KEY),
                 EXTRACTOR_IOTDB_SKIP_IF_NO_PRIVILEGES)
             .trim();
     final Set<String> skipIfOptionSet =
-        Arrays.stream(extractorHistorySkipIfValue.split(","))
+        Arrays.stream(extractorSkipIfValue.split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
             .map(String::toLowerCase)
             .collect(Collectors.toSet());
-    skipIfNoPrivileges = skipIfOptionSet.remove(EXTRACTOR_IOTDB_SKIP_IF_NO_PRIVILEGES);
+    boolean skipIfNoPrivileges = skipIfOptionSet.remove(EXTRACTOR_IOTDB_SKIP_IF_NO_PRIVILEGES);
     if (!skipIfOptionSet.isEmpty()) {
       throw new PipeParameterNotValidException(
           String.format("Parameters in set %s are not allowed in 'skipif'", skipIfOptionSet));
     }
+    return skipIfNoPrivileges;
   }
 
   @Override
