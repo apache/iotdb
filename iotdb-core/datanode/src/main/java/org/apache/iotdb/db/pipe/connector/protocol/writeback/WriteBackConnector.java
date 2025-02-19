@@ -283,10 +283,10 @@ public class WriteBackConnector implements PipeConnector {
             ? executeStatementForTableModel(insertTabletStatement, dataBaseName)
             : executeStatementForTreeModel(insertTabletStatement);
 
-    if (status.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode()) {}
-
     if (status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
-        && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && !(skipIfNoPrivileges
+            && status.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode())) {
       throw new PipeException(
           String.format(
               "Write back PipeRawTabletInsertionEvent %s error, result status %s",
