@@ -90,6 +90,7 @@ class TableSession(object):
                 table_session_config.enable_redirection,
                 table_session_config.use_ssl,
                 table_session_config.ca_certs,
+                table_session_config.connection_timeout_in_ms,
             )
             self.__session.sql_dialect = "table"
             self.__session.database = table_session_config.database
