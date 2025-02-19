@@ -108,7 +108,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   public void invalidateCache() {
     lock.writeLock().lock();
     try {
-      // TODO: Invalidate device cache
+      // Will invalidate device cache
       databaseAndTableToExtractorsCache.invalidateAll();
     } finally {
       lock.writeLock().unlock();
