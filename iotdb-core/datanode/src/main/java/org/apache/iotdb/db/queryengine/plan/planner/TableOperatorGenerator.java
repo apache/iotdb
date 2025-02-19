@@ -430,6 +430,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           private Operator startCloseInternalOperator;
 
           private List<Expression> cannotPushDownConjuncts;
+          private boolean removeRootLimitOperator;
 
           @Override
           public void generateCurrentDeviceRootOperator(DeviceEntry deviceEntry) {
@@ -442,7 +443,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 || node.getAssignments().size() != node.getOutputSymbols().size()) {
               operator = getFilterAndProjectOperator(operator);
             }
-            if (!node.isPushLimitToEachDevice()) {
+            if (!node.isPushLimitToEachDevice() || removeRootLimitOperator) {
               return;
             }
             if (node.getPushDownLimit() > 0) {
@@ -473,14 +474,21 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               }
             }
 
+            boolean canPushDownLimit = cannotPushDownConjuncts.isEmpty();
             // only use full outer time join
             boolean canPushDownLimitToAllSeries =
-                pushDownConjunctsForEachMeasurement.isEmpty() && cannotPushDownConjuncts.isEmpty();
+                canPushDownLimit
+                    && pushDownConjunctsForEachMeasurement.isEmpty()
+                    && node.getPushDownOffset() <= 0;
+            // the left child of LeftOuterTimeJoinOperator is SeriesScanOperator
+            boolean canPushDownLimitToLeftChild =
+                canPushDownLimit && pushDownConjunctsForEachMeasurement.size() == 1;
+            removeRootLimitOperator = canPushDownLimitToLeftChild || isSingleColumn;
             for (int i = 0; i < measurementSchemas.size(); i++) {
               IMeasurementSchema measurementSchema = measurementSchemas.get(i);
               List<Expression> pushDownPredicatesForCurrentMeasurement =
                   pushDownConjunctsForEachMeasurement.get(measurementSchema.getMeasurementName());
-              Expression pushDownPredicate =
+              Expression pushDownPredicateForCurrentMeasurement =
                   isSingleColumn
                       ? node.getPushDownPredicate()
                       : (pushDownPredicatesForCurrentMeasurement == null
@@ -491,20 +499,25 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                       .map(expression -> getSeriesScanOptionsBuilder(context, expression))
                       .orElseGet(SeriesScanOptions.Builder::new);
               builder.withAllSensors(new HashSet<>(measurementColumnNames));
-              if (pushDownPredicate != null) {
+              if (pushDownPredicateForCurrentMeasurement != null) {
                 builder.withPushDownFilter(
                     convertPredicateToFilter(
-                        pushDownPredicate,
+                        pushDownPredicateForCurrentMeasurement,
                         Collections.singletonMap(measurementSchema.getMeasurementName(), 0),
                         commonParameter.columnSchemaMap,
                         commonParameter.timeColumnName));
               }
-              if (isSingleColumn || canPushDownLimitToAllSeries) {
+              if (isSingleColumn
+                  || canPushDownLimitToAllSeries
+                  || (canPushDownLimitToLeftChild
+                      && pushDownPredicateForCurrentMeasurement != null)) {
                 builder.withPushDownLimit(node.getPushDownLimit());
-              }
-              if (isSingleColumn) {
-                builder.withPushDownOffset(node.getPushDownOffset());
                 builder.withPushLimitToEachDevice(node.isPushLimitToEachDevice());
+              }
+              if (isSingleColumn
+                  || (canPushDownLimitToLeftChild
+                      && pushDownPredicateForCurrentMeasurement != null)) {
+                builder.withPushDownOffset(node.getPushDownOffset());
               }
               seriesScanOptionsList.add(builder.build());
             }
@@ -628,7 +641,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             } else if (right == null) {
               return left;
             } else {
-              if (node.getPushDownLimit() > 0 && cannotPushDownConjuncts.isEmpty()) {
+              if (leftColumnCount > 1
+                  && node.getPushDownLimit() > 0
+                  && cannotPushDownConjuncts.isEmpty()) {
                 left = new LimitOperator(operatorContext, node.getPushDownLimit(), left);
               }
               return new LeftOuterTimeJoinOperator(
