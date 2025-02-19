@@ -35,6 +35,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -108,6 +109,10 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
       long memoryRequiredInBytes =
           PipeConfig.getInstance().getPipeMemoryAllocateForTsFileSequenceReaderInBytes();
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
+
+      final Map<String, TableSchema> tableSchemaMap = tsFileSequenceReader.getTableSchemaMap();
+      isTableModelFile = tableSchemaMap != null && !tableSchemaMap.isEmpty();
+
       tsFileReader = new TsFileReader(tsFileSequenceReader);
 
       if (tsFileResourceManager.cacheObjectsIfAbsent(tsFile)) {
@@ -264,6 +269,10 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
 
   @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
+    if (isTableModelFile) {
+      return getEmptyIterator();
+    }
+
     return () ->
         new Iterator<TabletInsertionEvent>() {
 

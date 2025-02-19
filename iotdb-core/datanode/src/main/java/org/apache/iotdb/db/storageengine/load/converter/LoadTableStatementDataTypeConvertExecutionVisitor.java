@@ -77,6 +77,12 @@ public class LoadTableStatementDataTypeConvertExecutionVisitor
               Long.MAX_VALUE,
               null,
               null)) {
+
+        if (!parser.isTableModelFile()) {
+          // Skip parsing this file if it is tree-model
+          continue;
+        }
+
         for (final TabletInsertionEvent tabletInsertionEvent : parser.toTabletInsertionEvents()) {
           if (!(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
             continue;

@@ -59,6 +59,10 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
 
     try {
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
+
+      final Map<String, TableSchema> tableSchemaMap = tsFileSequenceReader.getTableSchemaMap();
+      isTableModelFile = tableSchemaMap != null && !tableSchemaMap.isEmpty();
+
       filteredTableSchemaIterator =
           tsFileSequenceReader.getTableSchemaMap().entrySet().stream()
               .filter(entry -> Objects.isNull(pattern) || pattern.matchesTable(entry.getKey()))
@@ -76,6 +80,10 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
 
   @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
+    if (!isTableModelFile) {
+      return getEmptyIterator();
+    }
+
     return () ->
         new Iterator<TabletInsertionEvent>() {
 

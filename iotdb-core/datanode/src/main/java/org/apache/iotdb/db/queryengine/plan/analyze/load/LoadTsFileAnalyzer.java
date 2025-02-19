@@ -104,6 +104,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private final List<File> tsFiles;
   private final List<Boolean> isTableModelTsFile;
+  private int isTableModelTsFileReliableIndex = -1;
 
   // User specified configs
   private final int databaseLevel;
@@ -324,6 +325,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       }
 
       this.isTableModelTsFile.set(i, isTableModelFile);
+      this.isTableModelTsFileReliableIndex = i;
 
       if (isTableModelFile) {
         doAnalyzeSingleTableFile(tsFile, reader, timeseriesMetadataIterator, tableSchemaMap);
@@ -538,36 +540,79 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   private void executeTabletConversion(final IAnalysis analysis, final LoadAnalyzeException e) {
+    if (isTableModelTsFileReliableIndex < tsFiles.size() - 1) {
+      try {
+        getFileModelInfoBeforeTabletConversion();
+      } catch (Exception e1) {
+        LOGGER.warn(
+            "Load: Failed to convert to tablets from statement {} because failed to read model info from file, message: {}.",
+            isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement,
+            e1.getMessage());
+        analysis.setFailStatus(
+            new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
+        analysis.setFinishQueryAfterAnalyze(true);
+        setRealStatement(analysis);
+        return;
+      }
+    }
+
     final LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
         new LoadTsFileDataTypeConverter(isGeneratedByPipe);
 
-    // TODO: properly convert to tablet when there are both tree and table TsFiles in one statement
-    final TSStatus status =
-        (!(e instanceof LoadAnalyzeTypeMismatchException) || isConvertOnTypeMismatch)
-            ? (isTableModelStatement
-                ? loadTsFileDataTypeConverter
-                    .convertForTableModel(loadTsFileTableStatement)
-                    .orElse(null)
-                : loadTsFileDataTypeConverter
-                    .convertForTreeModel(loadTsFileTreeStatement)
-                    .orElse(null))
-            : null;
+    for (int i = 0; i < tsFiles.size(); i++) {
+      try {
+        final TSStatus status =
+            (!(e instanceof LoadAnalyzeTypeMismatchException) || isConvertOnTypeMismatch)
+                ? (isTableModelTsFile.get(i)
+                    ? loadTsFileDataTypeConverter
+                        .convertForTableModel(
+                            new LoadTsFile(null, tsFiles.get(i).getPath(), Collections.emptyMap()))
+                        .orElse(null)
+                    : loadTsFileDataTypeConverter
+                        .convertForTreeModel(new LoadTsFileStatement(tsFiles.get(i).getPath()))
+                        .orElse(null))
+                : null;
 
-    if (status == null) {
-      LOGGER.warn(
-          "Load: Failed to convert to tablets from statement {}. Status is null.",
-          isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement);
-      analysis.setFailStatus(
-          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
-    } else if (!loadTsFileDataTypeConverter.isSuccessful(status)) {
-      LOGGER.warn(
-          "Load: Failed to convert to tablets from statement {}. Status: {}",
-          isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement,
-          status);
-      analysis.setFailStatus(status);
+        if (status == null) {
+          LOGGER.warn(
+              "Load: Failed to convert to tablets from statement {}. Status is null.",
+              isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement);
+          analysis.setFailStatus(
+              new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
+                  .setMessage(e.getMessage()));
+          break;
+        } else if (!loadTsFileDataTypeConverter.isSuccessful(status)) {
+          LOGGER.warn(
+              "Load: Failed to convert to tablets from statement {}. Status: {}",
+              isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement,
+              status);
+          analysis.setFailStatus(status);
+          break;
+        }
+      } catch (final Exception e2) {
+        LOGGER.warn(
+            "Load: Failed to convert to tablets from statement {} because exception: {}",
+            isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement,
+            e2.getMessage());
+        analysis.setFailStatus(
+            new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
+        break;
+      }
     }
+
     analysis.setFinishQueryAfterAnalyze(true);
     setRealStatement(analysis);
+  }
+
+  private void getFileModelInfoBeforeTabletConversion() throws IOException {
+    for (int i = isTableModelTsFileReliableIndex + 1; i < tsFiles.size(); i++) {
+      try (final TsFileSequenceReader reader =
+          new TsFileSequenceReader(tsFiles.get(i).getAbsolutePath())) {
+        final Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
+        isTableModelTsFile.set(i, Objects.nonNull(tableSchemaMap) && !tableSchemaMap.isEmpty());
+        isTableModelTsFileReliableIndex = i;
+      }
+    }
   }
 
   private void setFailAnalysisForAuthException(IAnalysis analysis, AuthException e) {
