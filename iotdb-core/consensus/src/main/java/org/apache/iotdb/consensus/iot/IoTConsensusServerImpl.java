@@ -146,7 +146,8 @@ public class IoTConsensusServerImpl {
     this.backgroundTaskService = backgroundTaskService;
     this.config = config;
     this.consensusGroupId = thisNode.getGroupId().toString();
-    this.consensusReqReader = (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
+    this.consensusReqReader =
+        (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
     this.searchIndex = new AtomicLong(consensusReqReader.getCurrentSearchIndex());
     this.ioTConsensusServerMetrics = new IoTConsensusServerMetrics(this);
     this.logDispatcher = new LogDispatcher(this, clientManager);
@@ -840,8 +841,8 @@ public class IoTConsensusServerImpl {
   }
 
   /**
-   * If there is only one replica, set it to Long.MAX_VALUE. If there are multiple replicas, get
-   * the latest SafelyDeletedSearchIndex again. This enables wal to be deleted in a timely manner.
+   * If there is only one replica, set it to Long.MAX_VALUE. If there are multiple replicas, get the
+   * latest SafelyDeletedSearchIndex again. This enables wal to be deleted in a timely manner.
    */
   void checkAndUpdateSafeDeletedSearchIndex() {
     if (configuration.isEmpty()) {
