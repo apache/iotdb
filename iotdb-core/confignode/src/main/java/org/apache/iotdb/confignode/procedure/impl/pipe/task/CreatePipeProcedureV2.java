@@ -224,8 +224,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                       PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY,
                       PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY),
                   connectorParameters.getStringByKeys(
-                      PipeConnectorConstant.CONNECTOR_IOTDB_USERNAME_KEY,
-                      PipeConnectorConstant.SINK_IOTDB_USERNAME_KEY));
+                      PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
+                      PipeConnectorConstant.SINK_IOTDB_PASSWORD_KEY));
       if (Objects.isNull(hashedPassword)) {
         throw new PipeException("Authentication failed.");
       }
