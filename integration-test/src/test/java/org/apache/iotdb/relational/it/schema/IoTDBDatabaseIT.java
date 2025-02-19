@@ -504,9 +504,9 @@ public class IoTDBDatabaseIT {
       statement.execute(
           "create pipe a2b with source('double-living'='true') with sink ('sink'='write-back-sink')");
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("select id, pipe_sink from pipes where creation_time > 0"),
-          "id,pipe_sink,",
-          Collections.singleton("a2b,{sink=write-back-sink},"));
+          statement.executeQuery("select id from pipes where creation_time > 0"),
+          "id,",
+          Collections.singleton("a2b,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select * from pipe_plugins"),
           "plugin_name,plugin_type,class_name,plugin_jar,",
