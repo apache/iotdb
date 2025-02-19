@@ -32,7 +32,6 @@ import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteCol
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
-import org.apache.iotdb.confignode.manager.PermissionManager;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -40,8 +39,6 @@ import java.util.Optional;
 
 public class PipeConfigPhysicalPlanTablePrivilegeParseVisitor
     extends ConfigPhysicalPlanVisitor<Optional<ConfigPhysicalPlan>, String> {
-  private static final PermissionManager permissionManager =
-      ConfigNode.getInstance().getConfigManager().getPermissionManager();
 
   @Override
   public Optional<ConfigPhysicalPlan> visitPlan(
@@ -63,7 +60,9 @@ public class PipeConfigPhysicalPlanTablePrivilegeParseVisitor
 
   public Optional<ConfigPhysicalPlan> visitDatabaseSchemaPlan(
       final DatabaseSchemaPlan databaseSchemaPlan, final String userName) {
-    return permissionManager
+    return ConfigNode.getInstance()
+                .getConfigManager()
+                .getPermissionManager()
                 .checkUserPrivileges(
                     userName, new PrivilegeUnion(databaseSchemaPlan.getSchema().getName(), null))
                 .getStatus()
@@ -76,7 +75,9 @@ public class PipeConfigPhysicalPlanTablePrivilegeParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitDeleteDatabase(
       final DeleteDatabasePlan deleteDatabasePlan, final String userName) {
-    return permissionManager
+    return ConfigNode.getInstance()
+                .getConfigManager()
+                .getPermissionManager()
                 .checkUserPrivileges(
                     userName, new PrivilegeUnion(deleteDatabasePlan.getName(), null))
                 .getStatus()
@@ -144,7 +145,9 @@ public class PipeConfigPhysicalPlanTablePrivilegeParseVisitor
 
   private boolean matchDatabaseAndTableName(
       final String database, final String tableName, final String userName) {
-    return permissionManager
+    return ConfigNode.getInstance()
+            .getConfigManager()
+            .getPermissionManager()
             .checkUserPrivileges(userName, new PrivilegeUnion(database, tableName, null))
             .getStatus()
             .getCode()
@@ -315,7 +318,9 @@ public class PipeConfigPhysicalPlanTablePrivilegeParseVisitor
 
   private Optional<ConfigPhysicalPlan> visitUserPlan(
       final AuthorRelationalPlan plan, final String userName) {
-    return permissionManager
+    return ConfigNode.getInstance()
+                .getConfigManager()
+                .getPermissionManager()
                 .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.MANAGE_USER))
                 .getStatus()
                 .getCode()
@@ -326,7 +331,9 @@ public class PipeConfigPhysicalPlanTablePrivilegeParseVisitor
 
   private Optional<ConfigPhysicalPlan> visitRolePlan(
       final AuthorRelationalPlan plan, final String userName) {
-    return permissionManager
+    return ConfigNode.getInstance()
+                .getConfigManager()
+                .getPermissionManager()
                 .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
                 .getStatus()
                 .getCode()
@@ -337,12 +344,16 @@ public class PipeConfigPhysicalPlanTablePrivilegeParseVisitor
 
   private Optional<ConfigPhysicalPlan> visitUserRolePlan(
       final AuthorRelationalPlan plan, final String userName) {
-    return permissionManager
+    return ConfigNode.getInstance()
+                    .getConfigManager()
+                    .getPermissionManager()
                     .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
                     .getStatus()
                     .getCode()
                 == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            || permissionManager
+            || ConfigNode.getInstance()
+                    .getConfigManager()
+                    .getPermissionManager()
                     .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.MANAGE_USER))
                     .getStatus()
                     .getCode()
