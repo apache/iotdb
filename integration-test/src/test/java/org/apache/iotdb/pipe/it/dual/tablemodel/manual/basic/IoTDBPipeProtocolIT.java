@@ -47,6 +47,7 @@ import java.util.function.Consumer;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualBasic.class})
 public class IoTDBPipeProtocolIT extends AbstractPipeTableModelDualManualIT {
+
   @Override
   @Before
   public void setUp() {

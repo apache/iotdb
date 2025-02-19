@@ -391,7 +391,9 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       } catch (final Exception ignored) {
       }
       throw new SubscriptionConnectionException(
-          String.format("Failed to handshake with subscription provider %s", provider), e);
+          String.format(
+              "Failed to handshake with subscription provider %s because of %s", provider, e),
+          e);
     }
 
     // update consumer id and consumer group id if not exist
@@ -933,7 +935,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
     int nextOffset = ((TabletsPayload) initialResponse.getPayload()).getNextOffset();
     while (true) {
-      if (nextOffset < 0) {
+      if (nextOffset <= 0) {
         if (!Objects.equals(tablets.size(), -nextOffset)) {
           final String errorMessage =
               String.format(

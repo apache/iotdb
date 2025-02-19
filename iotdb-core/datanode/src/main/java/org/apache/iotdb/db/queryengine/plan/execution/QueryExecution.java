@@ -72,8 +72,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.throwIfUnchecked;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.WAIT_FOR_RESULT;
-import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DISTRIBUTION_PLANNER;
-import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TREE_TYPE;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 
 /**
@@ -288,15 +286,7 @@ public class QueryExecution implements IQueryExecution {
 
   // Generate the distributed plan and split it into fragments
   public void doDistributedPlan() {
-    final long startTime = System.nanoTime();
-    this.distributedPlan = planner.doDistributionPlan(analysis, logicalPlan);
-
-    if (analysis.isQuery()) {
-      final long distributionPlanCost = System.nanoTime() - startTime;
-      context.setDistributionPlanCost(distributionPlanCost);
-      QUERY_PLAN_COST_METRIC_SET.recordPlanCost(
-          TREE_TYPE, DISTRIBUTION_PLANNER, distributionPlanCost);
-    }
+    this.distributedPlan = planner.doDistributionPlan(analysis, logicalPlan, context);
 
     // if is this Statement is ShowQueryStatement, set its instances to the highest priority, so
     // that the sub-tasks of the ShowQueries instances could be executed first.
@@ -304,7 +294,7 @@ public class QueryExecution implements IQueryExecution {
       distributedPlan.getInstances().forEach(instance -> instance.setHighestPriority(true));
     }
 
-    if (isQuery() && LOGGER.isDebugEnabled()) {
+    if (LOGGER.isDebugEnabled() && isQuery()) {
       LOGGER.debug(
           "distribution plan done. Fragment instance count is {}, details is: \n {}",
           distributedPlan.getInstances().size(),

@@ -67,6 +67,11 @@ public class PipeResourceMetrics implements IMetricSet {
         MetricLevel.IMPORTANT,
         PipeDataNodeResourceManager.tsfile(),
         PipeTsFileResourceManager::getLinkedTsfileCount);
+    metricService.createAutoGauge(
+        Metric.PIPE_LINKED_TSFILE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        PipeDataNodeResourceManager.tsfile(),
+        PipeTsFileResourceManager::getTotalLinkedTsfileSize);
     // phantom reference count
     metricService.createAutoGauge(
         Metric.PIPE_PHANTOM_REFERENCE_COUNT.toString(),
@@ -85,6 +90,7 @@ public class PipeResourceMetrics implements IMetricSet {
     // resource reference count
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_PINNED_MEMTABLE_COUNT.toString());
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_LINKED_TSFILE_COUNT.toString());
+    metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_LINKED_TSFILE_SIZE.toString());
     // phantom reference count
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_PHANTOM_REFERENCE_COUNT.toString());
   }

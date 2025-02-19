@@ -222,16 +222,24 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
       return;
     }
 
-    LoadTsFileDataTypeConverter converter = new LoadTsFileDataTypeConverter(isGeneratedByPipe);
+    LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
+        new LoadTsFileDataTypeConverter(isGeneratedByPipe);
     setStatementTsFiles(tabletConvertionList);
-    TSStatus status = doConversion(converter);
+    TSStatus status = doConversion(loadTsFileDataTypeConverter);
 
-    if (status == null || !converter.isSuccessful(status)) {
+    if (status == null) {
+      LOGGER.warn(
+          "Load: Failed to convert to tablets from statement {}. Status is null.",
+          isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement);
       analysis.setFailStatus(
-          status != null
-              ? status
-              : new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
-                  .setMessage(e != null ? e.getMessage() : ""));
+          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
+              .setMessage(e != null ? e.getMessage() : ""));
+    } else if (!loadTsFileDataTypeConverter.isSuccessful(status)) {
+      LOGGER.warn(
+          "Load: Failed to convert to tablets from statement {}. Status: {}",
+          isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement,
+          status);
+      analysis.setFailStatus(status);
     }
 
     analysis.setFinishQueryAfterAnalyze(true);

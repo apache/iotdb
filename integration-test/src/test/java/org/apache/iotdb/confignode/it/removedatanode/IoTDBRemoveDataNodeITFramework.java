@@ -407,7 +407,7 @@ public class IoTDBRemoveDataNodeITFramework {
     return sb.toString();
   }
 
-  public Connection getConnectionWithSQLType(SQLModel model) throws SQLException {
+  public static Connection getConnectionWithSQLType(SQLModel model) throws SQLException {
     if (SQLModel.TABLE_MODEL_SQL.equals(model)) {
       return EnvFactory.getEnv().getTableConnection();
     } else {
