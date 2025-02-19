@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeMiniFileConvertionException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -202,7 +203,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
       return true;
     }
 
-    executeTabletConversion(analysis, null);
+    executeTabletConversion(analysis, new LoadAnalyzeMiniFileConvertionException());
     if (analysis.isFailed()) {
       return false;
     }
@@ -232,8 +233,7 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
           "Load: Failed to convert to tablets from statement {}. Status is null.",
           isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement);
       analysis.setFailStatus(
-          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode())
-              .setMessage(e != null ? e.getMessage() : ""));
+          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
     } else if (!loadTsFileDataTypeConverter.isSuccessful(status)) {
       LOGGER.warn(
           "Load: Failed to convert to tablets from statement {}. Status: {}",
