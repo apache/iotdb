@@ -109,7 +109,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
 
     try {
-      tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), false, false);
+      tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), true, false);
 
       final Map<String, TableSchema> tableSchemaMap = tsFileSequenceReader.getTableSchemaMap();
       isTableModelFile = tableSchemaMap != null && !tableSchemaMap.isEmpty();

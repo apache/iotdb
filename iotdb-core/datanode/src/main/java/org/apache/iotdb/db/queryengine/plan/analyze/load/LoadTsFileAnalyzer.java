@@ -607,7 +607,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private void getFileModelInfoBeforeTabletConversion() throws IOException {
     for (int i = isTableModelTsFileReliableIndex + 1; i < tsFiles.size(); i++) {
       try (final TsFileSequenceReader reader =
-          new TsFileSequenceReader(tsFiles.get(i).getAbsolutePath())) {
+          new TsFileSequenceReader(tsFiles.get(i).getAbsolutePath(), true)) {
         final Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
         isTableModelTsFile.set(i, Objects.nonNull(tableSchemaMap) && !tableSchemaMap.isEmpty());
         isTableModelTsFileReliableIndex = i;
