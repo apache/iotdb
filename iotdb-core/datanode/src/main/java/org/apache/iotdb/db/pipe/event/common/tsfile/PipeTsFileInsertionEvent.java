@@ -713,8 +713,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               return null;
             });
       } catch (final Exception e) {
-        LOGGER.warn(
-            String.format("Decrease reference count for TsFile %s error.", tsFile.getPath()), e);
+        LOGGER.warn("Decrease reference count for TsFile {} error.", tsFile.getPath(), e);
       }
     }
   }

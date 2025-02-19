@@ -320,8 +320,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
           resourceManager.decreaseSnapshotReference(templateFilePath);
         }
       } catch (final Exception e) {
-        LOGGER.warn(
-            String.format("Decrease reference count for snapshot %s error.", snapshotPath), e);
+        LOGGER.warn("Decrease reference count for snapshot {} error.", snapshotPath, e);
       }
     }
   }
