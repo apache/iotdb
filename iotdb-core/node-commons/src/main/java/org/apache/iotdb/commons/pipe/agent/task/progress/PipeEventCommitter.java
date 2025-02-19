@@ -124,10 +124,6 @@ public class PipeEventCommitter {
     return committerKey.getRegionId();
   }
 
-  public int getPipeTaskRestartTimes() {
-    return committerKey.getRestartTimes();
-  }
-
   public long commitQueueSize() {
     return commitQueue.size();
   }

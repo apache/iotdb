@@ -603,15 +603,6 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
   }
 
   @Override
-  public int getConsensusPipeRestartTimes() {
-    return PipeEventCommitManager.getInstance()
-        .getGivenConsensusPipeRestartTimes(
-            consensusPipeName,
-            PipeDataNodeAgent.task().getPipeCreationTime(consensusPipeName),
-            consensusGroupId);
-  }
-
-  @Override
   public long getConsensusPipeCommitProgress() {
     return PipeEventCommitManager.getInstance()
         .getGivenConsensusPipeCommitId(
