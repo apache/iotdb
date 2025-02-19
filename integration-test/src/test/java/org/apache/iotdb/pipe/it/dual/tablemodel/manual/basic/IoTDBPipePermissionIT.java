@@ -25,6 +25,7 @@ import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
 
 import org.junit.Before;
@@ -35,6 +36,7 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collections;
 
 import static org.junit.Assert.fail;
 
@@ -132,6 +134,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
                   + "'node-urls'='%s')",
               receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()));
     } catch (final SQLException e) {
+      e.printStackTrace();
       fail("Create pipe without user shall succeed if use the current session");
     }
 
@@ -143,5 +146,40 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
     } catch (final SQLException ignore) {
       // Expected
     }
+
+    // Successfully alter
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("alter pipe a2b modify source ('user'='thulab', 'password'='passwd')");
+    } catch (final SQLException e) {
+      e.printStackTrace();
+      fail("Alter pipe shall not fail if user and password are specified");
+    }
+
+    TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
+
+    // Shall not be transferred
+    TestUtils.assertDataAlwaysOnEnv(
+        receiverEnv,
+        "count databases",
+        "count,",
+        Collections.singleton("1,"),
+        "information_schema");
+
+    // Grant some privilege
+    if (!TestUtils.tryExecuteNonQueryWithRetry(
+        "test", BaseEnv.TABLE_SQL_DIALECT, senderEnv, "grant INSERT on any to user `thulab`")) {
+      return;
+    }
+
+    TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
+
+    // Shall be transferred
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "show tables from test1",
+        "TableName,TTL(ms),",
+        Collections.singleton("test1,INF,"),
+        "information_schema");
   }
 }
