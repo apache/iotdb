@@ -203,11 +203,14 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
       return true;
     }
 
+    // 1. all mini files are converted to tablets
+    setStatementTsFiles(tabletConvertionList);
     executeTabletConversion(analysis, new LoadAnalyzeMiniFileConvertionException());
     if (analysis.isFailed()) {
       return false;
     }
 
+    // 2. remove the converted mini files from the tsFiles and load the rest
     tsFiles.removeAll(tabletConvertionList);
     setStatementTsFiles(tsFiles);
     analysis.setFinishQueryAfterAnalyze(false);
@@ -225,7 +228,6 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
 
     LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
         new LoadTsFileDataTypeConverter(isGeneratedByPipe);
-    setStatementTsFiles(tabletConvertionList);
     TSStatus status = doConversion(loadTsFileDataTypeConverter);
 
     if (status == null) {
