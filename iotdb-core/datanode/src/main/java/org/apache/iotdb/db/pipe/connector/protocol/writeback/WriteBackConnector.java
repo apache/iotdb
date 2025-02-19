@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.writeback;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -90,6 +91,9 @@ public class WriteBackConnector implements PipeConnector {
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
   private IClientSession session;
 
+  // Temporary, used to separate
+  private IClientSession treeSession;
+
   private static final String TREE_MODEL_DATABASE_NAME_IDENTIFIER = null;
 
   private static final SqlParser RELATIONAL_SQL_PARSER = new SqlParser();
@@ -117,11 +121,28 @@ public class WriteBackConnector implements PipeConnector {
                 environment.getPipeName(),
                 environment.getCreationTime(),
                 environment.getRegionId()));
-
     // Fill in the necessary information. Incomplete information will result in NPE.
-    session.setUsername(AuthorityChecker.SUPER_USER);
+    session.setUsername(
+        parameters.getStringByKeys(
+            PipeExtractorConstant.EXTRACTOR_IOTDB_USER_KEY,
+            PipeExtractorConstant.SOURCE_IOTDB_USER_KEY,
+            PipeExtractorConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+            PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY));
     session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
     session.setZoneId(ZoneId.systemDefault());
+
+    // Temporary
+    treeSession =
+        new InternalClientSession(
+            String.format(
+                "%s_%s_%s_%s_tree",
+                WriteBackConnector.class.getSimpleName(),
+                environment.getPipeName(),
+                environment.getCreationTime(),
+                environment.getRegionId()));
+    treeSession.setUsername(AuthorityChecker.SUPER_USER);
+    treeSession.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
+    treeSession.setZoneId(ZoneId.systemDefault());
   }
 
   @Override
@@ -341,15 +362,15 @@ public class WriteBackConnector implements PipeConnector {
   }
 
   private TSStatus executeStatementForTreeModel(final Statement statement) {
-    session.setDatabaseName(null);
-    session.setSqlDialect(IClientSession.SqlDialect.TREE);
-    SESSION_MANAGER.registerSession(session);
+    treeSession.setDatabaseName(null);
+    treeSession.setSqlDialect(IClientSession.SqlDialect.TREE);
+    SESSION_MANAGER.registerSession(treeSession);
     try {
       return Coordinator.getInstance()
           .executeForTreeModel(
               new PipeEnrichedStatement(statement),
               SESSION_MANAGER.requestQueryId(),
-              SESSION_MANAGER.getSessionInfo(session),
+              SESSION_MANAGER.getSessionInfo(treeSession),
               "",
               ClusterPartitionFetcher.getInstance(),
               ClusterSchemaFetcher.getInstance(),
