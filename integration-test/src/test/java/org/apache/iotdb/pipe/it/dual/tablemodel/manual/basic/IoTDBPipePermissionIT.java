@@ -181,5 +181,14 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
         "TableName,TTL(ms),",
         Collections.singleton("test1,INF,"),
         "information_schema");
+
+    // Alter pipe, throw exception if no privileges
+    try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+         final Statement statement = connection.createStatement()) {
+      statement.execute("alter pipe a2b modify source ('skipif'='')");
+    } catch (final SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 }
