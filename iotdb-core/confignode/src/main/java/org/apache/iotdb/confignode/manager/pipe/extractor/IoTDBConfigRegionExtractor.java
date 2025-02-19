@@ -218,9 +218,15 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
   @Override
   protected Optional<PipeWritePlanEvent> trimRealtimeEventByPrivilege(
       final PipeWritePlanEvent event) {
+    final ConfigPhysicalPlan plan =
+        ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan();
+    final Boolean isTableDatabasePlan = isTableDatabasePlan(plan);
+    if (Boolean.FALSE.equals(isTableDatabasePlan)) {
+      return Optional.of(event);
+    }
+
     final Optional<ConfigPhysicalPlan> result =
-        TABLE_PRIVILEGE_PARSE_VISITOR.process(
-            ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan(), userName);
+        TABLE_PRIVILEGE_PARSE_VISITOR.process(plan, userName);
     if (result.isPresent()) {
       return Optional.of(
           new PipeConfigRegionWritePlanEvent(result.get(), event.isGeneratedByPipe()));
@@ -228,9 +234,7 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
     if (skipIfNoPrivileges) {
       return Optional.empty();
     }
-    throw new AccessDeniedException(
-        "Not has privilege to transfer event: "
-            + ((PipeConfigRegionWritePlanEvent) event).getConfigPhysicalPlan());
+    throw new AccessDeniedException("Not has privilege to transfer plan: " + plan);
   }
 
   @Override
