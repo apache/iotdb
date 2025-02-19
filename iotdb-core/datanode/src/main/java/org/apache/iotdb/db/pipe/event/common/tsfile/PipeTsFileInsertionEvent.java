@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.event.common.tsfile;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
@@ -53,6 +52,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
@@ -427,17 +427,18 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
           || !tablePattern.matchesTable(deviceID.getTableName())) {
         continue;
       }
-      try {
-        Coordinator.getInstance()
-            .getAccessControl()
-            .checkCanSelectFromTable(
-                userName,
-                new QualifiedObjectName(getTableModelDatabaseName(), deviceID.getTableName()));
-      } catch (final AccessDeniedException e) {
+      if (!Coordinator.getInstance()
+          .getAccessControl()
+          .checkCanSelectFromTable4Pipe(
+              userName,
+              new QualifiedObjectName(getTableModelDatabaseName(), deviceID.getTableName()))) {
         if (skipIfNoPrivileges) {
           shouldParse4Privilege = true;
         } else {
-          throw e;
+          throw new AccessDeniedException(
+              String.format(
+                  "No privilege for SELECT for user %s at table %s.%s",
+                  userName, tableModelDatabaseName, deviceID.getTableName()));
         }
       }
     }

@@ -26,6 +26,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 
+import java.util.Objects;
+
 import static org.apache.iotdb.db.auth.AuthorityChecker.ONLY_ADMIN_ALLOWED;
 
 public class AccessControlImpl implements AccessControl {
@@ -82,14 +84,17 @@ public class AccessControlImpl implements AccessControl {
   }
 
   @Override
-  public void checkCanSelectFromDatabase4Pipe(String userName, String databaseName) {
+  public void checkCanSelectFromDatabase4Pipe(final String userName, final String databaseName) {
+    if (Objects.isNull(userName)) {
+      throw new AccessDeniedException("User not exists");
+    }
     authChecker.checkDatabasePrivilege(userName, databaseName, TableModelPrivilege.SELECT);
   }
 
   @Override
   public boolean checkCanSelectFromTable4Pipe(
       final String userName, final QualifiedObjectName tableName) {
-    return authChecker.checkTablePrivilege4Pipe(userName, tableName);
+    return Objects.nonNull(userName) && authChecker.checkTablePrivilege4Pipe(userName, tableName);
   }
 
   @Override

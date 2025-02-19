@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.event.common.tablet;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
@@ -282,13 +283,20 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     if (skipIfNoPrivileges || !isTableModelEvent()) {
       return;
     }
-    Coordinator.getInstance()
+    if (!Coordinator.getInstance()
         .getAccessControl()
-        .checkCanSelectFromTable(
+        .checkCanSelectFromTable4Pipe(
             userName,
             new QualifiedObjectName(
                 getTableModelDatabaseName(),
-                DeviceIDFactory.getInstance().getDeviceID(devicePath).getTableName()));
+                DeviceIDFactory.getInstance().getDeviceID(devicePath).getTableName()))) {
+      throw new AccessDeniedException(
+          String.format(
+              "No privilege for SELECT for user %s at table %s.%s",
+              userName,
+              tableModelDatabaseName,
+              DeviceIDFactory.getInstance().getDeviceID(devicePath).getTableName()));
+    }
   }
 
   @Override

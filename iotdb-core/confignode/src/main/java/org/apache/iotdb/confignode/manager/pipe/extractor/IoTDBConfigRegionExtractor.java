@@ -148,18 +148,38 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
     switch (((PipeConfigRegionSnapshotEvent) event).getFileType()) {
       case USER:
         return !tablePattern.isTableModelDataAllowedToBeCaptured()
-            || permissionManager
-                    .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.MANAGE_USER))
-                    .getStatus()
-                    .getCode()
-                == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+            || Objects.nonNull(userName)
+                && permissionManager
+                        .checkUserPrivileges(
+                            userName, new PrivilegeUnion(PrivilegeType.MANAGE_USER))
+                        .getStatus()
+                        .getCode()
+                    == TSStatusCode.SUCCESS_STATUS.getStatusCode();
       case ROLE:
         return !tablePattern.isTableModelDataAllowedToBeCaptured()
-            || permissionManager
-                    .checkUserPrivileges(userName, new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
-                    .getStatus()
-                    .getCode()
-                == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+            || Objects.nonNull(userName)
+                && permissionManager
+                        .checkUserPrivileges(
+                            userName, new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
+                        .getStatus()
+                        .getCode()
+                    == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+      case USER_ROLE:
+        return !tablePattern.isTableModelDataAllowedToBeCaptured()
+            || Objects.nonNull(userName)
+                && permissionManager
+                        .checkUserPrivileges(
+                            userName, new PrivilegeUnion(PrivilegeType.MANAGE_ROLE))
+                        .getStatus()
+                        .getCode()
+                    == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            || Objects.nonNull(userName)
+                && permissionManager
+                        .checkUserPrivileges(
+                            userName, new PrivilegeUnion(PrivilegeType.MANAGE_USER))
+                        .getStatus()
+                        .getCode()
+                    == TSStatusCode.SUCCESS_STATUS.getStatusCode();
       case SCHEMA:
         // Currently do not check tree model mTree
         return Objects.nonNull(((PipeConfigRegionSnapshotEvent) event).getTemplateFile())
