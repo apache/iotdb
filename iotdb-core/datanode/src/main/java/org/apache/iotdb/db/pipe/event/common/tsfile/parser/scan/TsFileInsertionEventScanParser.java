@@ -53,7 +53,6 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.File;
 import java.io.IOException;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -63,8 +62,6 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 
 public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
-
-  private static final LocalDate EMPTY_DATE = LocalDate.of(1000, 1, 1);
 
   private final long startTime;
   private final long endTime;

@@ -24,8 +24,12 @@ import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.utils.MemUtils;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.ChunkMetadata;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.BatchData;
+import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
@@ -283,6 +287,28 @@ public class PipeMemoryWeightUtil {
     }
 
     return batchData.length() * totalSizeInBytes;
+  }
+
+  public static int calculateChunkRamBytesUsed(Chunk timeChunk, List<Chunk> valueChunkList) {
+    long size = timeChunk.getRetainedSizeInBytes();
+    for (Chunk valueChunk : valueChunkList) {
+      if (valueChunk != null) {
+        size += valueChunk.getRetainedSizeInBytes();
+      }
+    }
+    return (int) size;
+  }
+
+  public static int calculateAlignedChunkMetaRamBytesUsed(
+      AbstractAlignedChunkMetadata alignedChunkMetadata) {
+    long size = 0;
+    ChunkMetadata chunkMetadata = (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
+    List<IChunkMetadata> valueChunkMetadataList = alignedChunkMetadata.getValueChunkMetadataList();
+    size += chunkMetadata.getRetainedSizeInBytes();
+    for (IChunkMetadata valueChunkMetadata : valueChunkMetadataList) {
+      size = +((ChunkMetadata) valueChunkMetadata).getRetainedSizeInBytes();
+    }
+    return (int) size;
   }
 
   /**
