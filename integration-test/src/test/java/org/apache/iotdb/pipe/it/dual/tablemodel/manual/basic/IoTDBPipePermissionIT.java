@@ -184,11 +184,28 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
     // Alter pipe, throw exception if no privileges
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
-         final Statement statement = connection.createStatement()) {
+        final Statement statement = connection.createStatement()) {
       statement.execute("alter pipe a2b modify source ('skipif'='')");
     } catch (final SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
+
+    // Write some data
+    if (!TableModelUtils.insertData("test", "test", 0, 100, senderEnv)) {
+      return;
+    }
+
+    // Exception, block here
+    TableModelUtils.assertCountDataAlwaysOnEnv("test1", "test1", 0, receiverEnv);
+
+    // Grant SELECT privilege
+    if (!TestUtils.tryExecuteNonQueryWithRetry(
+        "test", BaseEnv.TABLE_SQL_DIALECT, senderEnv, "grant SELECT on any to user `thulab`")) {
+      return;
+    }
+
+    // Will finally pass
+    TableModelUtils.assertCountData("test1", "test1", 100, receiverEnv);
   }
 }
