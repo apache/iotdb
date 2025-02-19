@@ -610,7 +610,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final Map<String, String> parameters, final List<String> fileAbsolutePaths)
       throws IllegalPathException, IOException {
     final PartialPath databasePath =
-        PartialPath.getDatabasePath(parameters.get(ColumnHeaderConstant.DATABASE));
+        PartialPath.getQualifiedDatabasePartialPath(parameters.get(ColumnHeaderConstant.DATABASE));
     final SRStatementGenerator generator =
         SchemaRegionSnapshotParser.translate2Statements(
             Paths.get(fileAbsolutePaths.get(0)),
