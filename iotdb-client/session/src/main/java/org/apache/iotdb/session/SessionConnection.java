@@ -624,7 +624,7 @@ public class SessionConnection {
             () -> {
               tsAggregationQueryReq.setSessionId(sessionId);
               tsAggregationQueryReq.setStatementId(statementId);
-              return client.executeAggregationQuery(tsAggregationQueryReq);
+              return client.executeAggregationQueryV2(tsAggregationQueryReq);
             });
 
     TSExecuteStatementResp tsExecuteStatementResp = result.getResult();
