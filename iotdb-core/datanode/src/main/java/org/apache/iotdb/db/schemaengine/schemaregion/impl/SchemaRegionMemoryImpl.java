@@ -1409,7 +1409,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       mTree.createOrUpdateTableDevice(
           tableName,
           deviceId,
-          () -> deviceAttributeStore.createAttribute(attributeNameList, attributeValueList),
+          () ->
+              deviceAttributeStore.createAttribute(
+                  attributeNameList, attributeValueList, node.getTableName()),
           pointer -> {
             updateAttribute(
                 databaseName, tableName, deviceId, pointer, attributeNameList, attributeValueList);
@@ -1427,7 +1429,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       final List<String> attributeNameList,
       final Object[] attributeValueList) {
     final Map<String, Binary> resultMap =
-        deviceAttributeStore.alterAttribute(pointer, attributeNameList, attributeValueList);
+        deviceAttributeStore.alterAttribute(
+            pointer, attributeNameList, attributeValueList, tableName);
     if (!isRecovering) {
       TableDeviceSchemaCache.getInstance()
           .updateAttributes(
@@ -1549,7 +1552,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public void deleteTableDevice(final DeleteTableDeviceNode deleteTableDeviceNode)
       throws MetadataException {
     if (mTree.deleteTableDevice(
-        deleteTableDeviceNode.getTableName(), deviceAttributeStore::removeAttribute)) {
+        deleteTableDeviceNode.getTableName(),
+        size -> deviceAttributeStore.removeAttribute(size, deleteTableDeviceNode.getTableName()))) {
       deviceAttributeCacheUpdater.invalidate(deleteTableDeviceNode.getTableName());
       writeToMLog(deleteTableDeviceNode);
     }
@@ -1622,7 +1626,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             rollbackTableDevicesBlackListNode.getPatternInfo());
     for (final PartialPath pattern : paths) {
       mTree.deleteTableDevicesInBlackList(
-          pattern, deviceAttributeStore::removeAttribute, deviceAttributeCacheUpdater::invalidate);
+          pattern,
+          size ->
+              deviceAttributeStore.removeAttribute(
+                  size, rollbackTableDevicesBlackListNode.getTableName()),
+          deviceAttributeCacheUpdater::invalidate);
     }
     writeToMLog(rollbackTableDevicesBlackListNode);
   }

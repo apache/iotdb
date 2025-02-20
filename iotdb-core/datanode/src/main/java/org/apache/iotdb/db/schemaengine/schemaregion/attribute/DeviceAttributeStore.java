@@ -129,7 +129,8 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public synchronized int createAttribute(final List<String> nameList, final Object[] valueList) {
+  public synchronized int createAttribute(
+      final List<String> nameList, final Object[] valueList, final String tableName) {
     // todo implement storage for device of diverse data types
     long memUsage = MAP_SIZE + RamUsageEstimator.NUM_BYTES_OBJECT_REF;
     final Map<String, Binary> attributeMap = new HashMap<>();
@@ -147,7 +148,10 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
 
   @Override
   public Map<String, Binary> alterAttribute(
-      final int pointer, final List<String> nameList, final Object[] valueList) {
+      final int pointer,
+      final List<String> nameList,
+      final Object[] valueList,
+      final String tableName) {
     // todo implement storage for device of diverse data types
     long memUsageDelta = 0L;
     long originMemUsage;
@@ -184,14 +188,15 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public void removeAttribute(final int pointer) {
+  public void removeAttribute(final int pointer, final String tableName) {
     releaseMemory(
         MAP_SIZE + UpdateDetailContainer.sizeOfMapEntries(deviceAttributeList.get(pointer)));
     deviceAttributeList.set(pointer, null);
   }
 
   @Override
-  public void removeAttribute(final int pointer, final String attributeName) {
+  public void removeAttribute(
+      final int pointer, final String attributeName, final String tableName) {
     final Map<String, Binary> attributeMap = deviceAttributeList.get(pointer);
     if (Objects.isNull(attributeMap)) {
       return;
