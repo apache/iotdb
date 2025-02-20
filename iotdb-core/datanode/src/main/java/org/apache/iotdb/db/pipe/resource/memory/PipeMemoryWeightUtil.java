@@ -295,13 +295,22 @@ public class PipeMemoryWeightUtil {
 
   public static long calculateAlignedChunkMetaRamBytesUsed(
       AbstractAlignedChunkMetadata alignedChunkMetadata) {
-    long size = 0;
-    ChunkMetadata chunkMetadata = (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
-    List<IChunkMetadata> valueChunkMetadataList = alignedChunkMetadata.getValueChunkMetadataList();
-    size += chunkMetadata.getRetainedSizeInBytes();
-    for (IChunkMetadata valueChunkMetadata : valueChunkMetadataList) {
-      size += ((ChunkMetadata) valueChunkMetadata).getRetainedSizeInBytes();
+    if (alignedChunkMetadata == null) {
+      return 0L;
     }
+
+    ChunkMetadata timeChunkMetadata = (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
+    List<IChunkMetadata> valueChunkMetadataList = alignedChunkMetadata.getValueChunkMetadataList();
+
+    long size = timeChunkMetadata != null ? timeChunkMetadata.getRetainedSizeInBytes() : 0;
+    if (valueChunkMetadataList != null && !valueChunkMetadataList.isEmpty()) {
+      for (IChunkMetadata valueChunkMetadata : valueChunkMetadataList) {
+        if (valueChunkMetadata != null) {
+          size += ((ChunkMetadata) valueChunkMetadata).getRetainedSizeInBytes();
+        }
+      }
+    }
+
     return size;
   }
 
