@@ -261,6 +261,7 @@ public class PipeMemoryManager {
     if (oldSize == 0) {
       // If the memory block is not registered, we need to register it first.
       // Otherwise, the memory usage will be inconsistent.
+      // See registerMemoryBlock for more details.
       allocatedBlocks.add(block);
     }
 
