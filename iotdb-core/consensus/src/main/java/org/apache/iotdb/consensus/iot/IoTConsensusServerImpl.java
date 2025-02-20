@@ -678,10 +678,6 @@ public class IoTConsensusServerImpl {
     return !exceptionHappened;
   }
 
-  public static String generateConfigurationDatFileName(int nodeId, String suffix) {
-    return nodeId + "_" + suffix;
-  }
-
   public IndexedConsensusRequest buildIndexedConsensusRequestForLocalRequest(
       IConsensusRequest request) {
     if (request instanceof ComparableConsensusRequest) {
