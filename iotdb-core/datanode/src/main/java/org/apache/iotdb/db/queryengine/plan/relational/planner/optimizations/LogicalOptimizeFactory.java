@@ -236,7 +236,7 @@ public class LogicalOptimizeFactory {
         new IterativeOptimizer(
             plannerContext, ruleStats, ImmutableSet.of(new PruneDistinctAggregation())),
         simplifyOptimizer,
-        new PushPredicateIntoTableScan(plannerContext, typeAnalyzer),
+        new PushPredicateIntoTableScan(plannerContext, typeAnalyzer), // *
         // Currently, Distinct is not supported, so we cant use this rule for now.
         //        new IterativeOptimizer(
         //            plannerContext,
@@ -248,7 +248,7 @@ public class LogicalOptimizeFactory {
         new IterativeOptimizer(plannerContext, ruleStats, limitPushdownRules),
         new PushLimitOffsetIntoTableScan(),
         new TransformAggregationToStreamable(),
-        new PushAggregationIntoTableScan(),
+        new PushAggregationIntoTableScan(), // *
         new TransformSortToStreamSort(),
         new IterativeOptimizer(
             plannerContext,

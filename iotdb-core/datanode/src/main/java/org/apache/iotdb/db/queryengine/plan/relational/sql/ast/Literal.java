@@ -44,4 +44,19 @@ public abstract class Literal extends Expression {
    * @return a value that can be processed by IoTDB storage engine
    */
   public abstract Object getTsValue();
+
+  // For literalMarker
+  private int literalIndex = -1;
+
+  public void setLiteralIndex(int literalIndex) {
+    this.literalIndex = literalIndex;
+  }
+
+  public int getLiteralIndex() {
+    return literalIndex;
+  }
+
+  public boolean isLiteralMarker() {
+    return literalIndex != -1;
+  }
 }
