@@ -229,6 +229,7 @@ public class CommonConfig {
   private int pipeConnectorHandshakeTimeoutMs = 10 * 1000; // 10 seconds
   private int pipeConnectorTransferTimeoutMs = 15 * 60 * 1000; // 15 minutes
   private int pipeConnectorReadFileBufferSize = 8388608;
+  private boolean isPipeConnectorReadFileBufferMemoryControlEnabled = true;
   private long pipeConnectorRetryIntervalMs = 1000L;
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
 
@@ -272,7 +273,7 @@ public class CommonConfig {
   private int pipeWalPinMaxLogIntervalRounds = 90;
 
   private boolean pipeMemoryManagementEnabled = true;
-  private long pipeMemoryAllocateRetryIntervalMs = 1000;
+  private long pipeMemoryAllocateRetryIntervalMs = 50;
   private int pipeMemoryAllocateMaxRetries = 10;
   private long pipeMemoryAllocateMinSizeInBytes = 32;
   private long pipeMemoryAllocateForTsFileSequenceReaderInBytes = (long) 2 * 1024 * 1024; // 2MB
@@ -831,6 +832,16 @@ public class CommonConfig {
 
   public void setPipeConnectorReadFileBufferSize(int pipeConnectorReadFileBufferSize) {
     this.pipeConnectorReadFileBufferSize = pipeConnectorReadFileBufferSize;
+  }
+
+  public boolean isPipeConnectorReadFileBufferMemoryControlEnabled() {
+    return isPipeConnectorReadFileBufferMemoryControlEnabled;
+  }
+
+  public void setIsPipeConnectorReadFileBufferMemoryControlEnabled(
+      boolean isPipeConnectorReadFileBufferMemoryControlEnabled) {
+    this.isPipeConnectorReadFileBufferMemoryControlEnabled =
+        isPipeConnectorReadFileBufferMemoryControlEnabled;
   }
 
   public void setPipeConnectorRPCThriftCompressionEnabled(
