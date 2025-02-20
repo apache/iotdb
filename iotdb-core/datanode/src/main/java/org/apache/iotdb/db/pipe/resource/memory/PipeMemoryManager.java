@@ -64,6 +64,7 @@ public class PipeMemoryManager {
       PipeConfig.getInstance().getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold();
   private volatile long usedMemorySizeInBytesOfTsFiles;
 
+  // Only non-zero memory blocks will be added to this set.
   private final Set<PipeMemoryBlock> allocatedBlocks = new HashSet<>();
 
   public PipeMemoryManager() {
@@ -126,7 +127,7 @@ public class PipeMemoryManager {
       return registerMemoryBlock(0);
     }
 
-    return forceAllocate(sizeInBytes, PipeMemoryBlockType.NORMAL);
+    return forceAllocateWithRetry(sizeInBytes, PipeMemoryBlockType.NORMAL);
   }
 
   public PipeTabletMemoryBlock forceAllocateForTabletWithRetry(long tabletSizeInBytes)
@@ -163,7 +164,8 @@ public class PipeMemoryManager {
 
     synchronized (this) {
       final PipeTabletMemoryBlock block =
-          (PipeTabletMemoryBlock) forceAllocate(tabletSizeInBytes, PipeMemoryBlockType.TABLET);
+          (PipeTabletMemoryBlock)
+              forceAllocateWithRetry(tabletSizeInBytes, PipeMemoryBlockType.TABLET);
       usedMemorySizeInBytesOfTablets += block.getMemoryUsageInBytes();
       return block;
     }
@@ -202,13 +204,14 @@ public class PipeMemoryManager {
 
     synchronized (this) {
       final PipeTsFileMemoryBlock block =
-          (PipeTsFileMemoryBlock) forceAllocate(tsFileSizeInBytes, PipeMemoryBlockType.TS_FILE);
+          (PipeTsFileMemoryBlock)
+              forceAllocateWithRetry(tsFileSizeInBytes, PipeMemoryBlockType.TS_FILE);
       usedMemorySizeInBytesOfTsFiles += block.getMemoryUsageInBytes();
       return block;
     }
   }
 
-  private PipeMemoryBlock forceAllocate(long sizeInBytes, PipeMemoryBlockType type)
+  private PipeMemoryBlock forceAllocateWithRetry(long sizeInBytes, PipeMemoryBlockType type)
       throws PipeRuntimeOutOfMemoryCriticalException {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
       switch (type) {
@@ -274,6 +277,11 @@ public class PipeMemoryManager {
         usedMemorySizeInBytesOfTsFiles -= oldSize - targetSize;
       }
       block.setMemoryUsageInBytes(targetSize);
+
+      // If no memory is used in the block, we can remove it from the allocated blocks.
+      if (targetSize == 0) {
+        allocatedBlocks.remove(block);
+      }
       return;
     }
 
