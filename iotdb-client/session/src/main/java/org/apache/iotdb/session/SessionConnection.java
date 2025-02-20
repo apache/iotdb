@@ -382,16 +382,21 @@ public class SessionConnection {
     execReq.setFetchSize(session.fetchSize);
     execReq.setTimeout(timeout);
     execReq.setEnableRedirectQuery(enableRedirect);
-    TSExecuteStatementResp execResp =
-        callWithReconnect(
-                () -> {
-                  execReq.setSessionId(sessionId);
-                  execReq.setStatementId(statementId);
-                  return client.executeQueryStatementV2(execReq);
-                })
-            .getResult();
 
-    RpcUtils.verifySuccess(execResp.getStatus());
+    RetryResult<TSExecuteStatementResp> result =
+        callWithReconnect(
+            () -> {
+              execReq.setSessionId(sessionId);
+              execReq.setStatementId(statementId);
+              return client.executeQueryStatementV2(execReq);
+            });
+    TSExecuteStatementResp execResp = result.getResult();
+    if (result.getRetryAttempts() == 0) {
+      RpcUtils.verifySuccessWithRedirection(execResp.getStatus());
+    } else {
+      RpcUtils.verifySuccess(execResp.getStatus());
+    }
+
     return new SessionDataSet(
         sql,
         execResp.getColumns(),
@@ -634,7 +639,6 @@ public class SessionConnection {
       RpcUtils.verifySuccess(tsExecuteStatementResp.getStatus());
     }
 
-    RpcUtils.verifySuccess(tsExecuteStatementResp.getStatus());
     return new SessionDataSet(
         "",
         tsExecuteStatementResp.getColumns(),
@@ -775,7 +779,8 @@ public class SessionConnection {
 
   protected void insertTablets(TSInsertTabletsReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
-    callWithRetryAndVerify(() -> insertTabletsInternal(request));
+    callWithRetryAndVerifyWithRedirectionForMultipleDevices(
+        () -> insertTabletsInternal(request), request::getPrefixPaths);
   }
 
   private TSStatus insertTabletsInternal(TSInsertTabletsReq request) throws TException {
