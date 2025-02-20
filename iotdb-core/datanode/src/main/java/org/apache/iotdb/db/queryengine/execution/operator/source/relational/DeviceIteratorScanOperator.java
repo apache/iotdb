@@ -71,6 +71,9 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
     if (currentDeviceRootOperator != null && currentDeviceRootOperator.hasNext()) {
       return true;
     } else {
+      if (!currentDeviceInit) {
+        return true;
+      }
       if (currentDeviceIndex + 1 >= deviceEntries.size()) {
         return false;
       } else {
