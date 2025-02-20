@@ -131,7 +131,7 @@ public class DeviceIteratorScanOperatorTest {
             }
 
             @Override
-            public void generateCurrentDeviceRootOperator(DeviceEntry deviceEntry) {
+            public void generateCurrentDeviceOperatorTree(DeviceEntry deviceEntry) {
               AlignedFullPath alignedPath =
                   new AlignedFullPath(
                       deviceEntry.getDeviceID(),

@@ -112,7 +112,7 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
     }
     DeviceEntry deviceEntry = this.deviceEntries.get(this.currentDeviceIndex);
 
-    deviceChildOperatorTreeGenerator.generateCurrentDeviceRootOperator(deviceEntry);
+    deviceChildOperatorTreeGenerator.generateCurrentDeviceOperatorTree(deviceEntry);
     currentDeviceRootOperator = deviceChildOperatorTreeGenerator.getCurrentDeviceRootOperator();
     seriesScanOperators = deviceChildOperatorTreeGenerator.getCurrentDeviceDataSourceOperators();
     currentDeviceInit = false;
@@ -209,21 +209,23 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
       this.measurementSchemas = measurementSchemas;
       this.generator = generator;
     }
-
-    public boolean isSingleColumn() {
-      return measurementSchemas.size() == 1;
-    }
   }
 
   public interface DeviceChildOperatorTreeGenerator {
+    // Do the offset and limit operator need to keep after the device iterator
     boolean keepOffsetAndLimitOperatorAfterDeviceIterator();
 
-    void generateCurrentDeviceRootOperator(DeviceEntry deviceEntry);
+    // Generate the following operator subtree based on the current deviceEntry
+    void generateCurrentDeviceOperatorTree(DeviceEntry deviceEntry);
 
+    // Returns the root operator of the subtree
     Operator getCurrentDeviceRootOperator();
 
+    // Returns all DataSourceOperators created this time for use in initQueryDataSource in
+    // DeviceIterator
     List<Operator> getCurrentDeviceDataSourceOperators();
 
+    // Returns which operator to close after switching device
     Operator getCurrentDeviceStartCloseOperator();
   }
 }

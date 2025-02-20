@@ -445,7 +445,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           }
 
           @Override
-          public void generateCurrentDeviceRootOperator(DeviceEntry deviceEntry) {
+          public void generateCurrentDeviceOperatorTree(DeviceEntry deviceEntry) {
             calculateSeriesScanOptionsList();
             operator = constructTreeToTableViewAdaptorOperator(deviceEntry);
             if (isSingleColumn) {
@@ -489,9 +489,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             boolean canPushDownLimit = cannotPushDownConjuncts.isEmpty();
             // only use full outer time join
             boolean canPushDownLimitToAllSeriesScanOptions =
-                canPushDownLimit
-                    && pushDownConjunctsForEachMeasurement.isEmpty()
-                    && node.getPushDownOffset() <= 0;
+                canPushDownLimit && pushDownConjunctsForEachMeasurement.isEmpty();
             // the left child of LeftOuterTimeJoinOperator is SeriesScanOperator
             boolean pushDownLimitToLeftChildSeriesScanOperator =
                 canPushDownLimit && pushDownConjunctsForEachMeasurement.size() == 1;
@@ -526,11 +524,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                         commonParameter.timeColumnName));
               }
               if (isSingleColumn
-                  || canPushDownLimitToAllSeriesScanOptions
                   || (pushDownLimitToLeftChildSeriesScanOperator
                       && pushDownPredicateForCurrentMeasurement != null)) {
                 builder.withPushDownLimit(node.getPushDownLimit());
                 builder.withPushLimitToEachDevice(node.isPushLimitToEachDevice());
+              }
+              if (canPushDownLimitToAllSeriesScanOptions) {
+                builder.withPushDownLimit(node.getPushDownLimit() + node.getPushDownOffset());
               }
               if (isSingleColumn
                   || (pushDownLimitToLeftChildSeriesScanOperator

@@ -42,6 +42,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedAlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -61,7 +63,6 @@ import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -72,12 +73,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.Operator.NOT_BLOCKED;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
@@ -158,7 +161,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     Operator operator = getOperator(node, instanceNotificationExecutor);
-    Assert.assertTrue(operator instanceof DeviceIteratorScanOperator);
+    assertTrue(operator instanceof DeviceIteratorScanOperator);
     try {
       checkResult(operator, outputColumnList, 500);
     } catch (Exception e) {
@@ -184,7 +187,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     Operator operator = getOperator(node, instanceNotificationExecutor);
-    Assert.assertTrue(operator instanceof DeviceIteratorScanOperator);
+    assertTrue(operator instanceof DeviceIteratorScanOperator);
     try {
       checkResult(operator, outputColumnList, 1320);
     } catch (Exception e) {
@@ -232,7 +235,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
                     new Symbol("sensor3").toSymbolReference(),
                     new LongLiteral("1000")))));
     Operator operator = getOperator(node, instanceNotificationExecutor);
-    Assert.assertTrue(operator instanceof DeviceIteratorScanOperator);
+    assertTrue(operator instanceof DeviceIteratorScanOperator);
     try {
       checkResult(operator, outputColumnList, 300);
     } catch (Exception e) {
@@ -261,7 +264,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     Operator operator = getOperator(node, instanceNotificationExecutor);
-    Assert.assertTrue(operator instanceof DeviceIteratorScanOperator);
+    assertTrue(operator instanceof DeviceIteratorScanOperator);
     try {
       checkResult(operator, outputColumnList, 30);
     } catch (Exception e) {
@@ -294,7 +297,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     Operator operator = getOperator(node, instanceNotificationExecutor);
-    Assert.assertTrue(operator instanceof LimitOperator);
+    assertTrue(operator instanceof LimitOperator);
     try {
       checkResult(operator, outputColumnList, 500);
     } catch (Exception e) {
@@ -314,7 +317,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     Operator operator = getOperator(node, instanceNotificationExecutor);
-    Assert.assertTrue(operator instanceof LimitOperator);
+    assertTrue(operator instanceof LimitOperator);
     try {
       checkResult(operator, outputColumnList, 500);
     } catch (Exception e) {
@@ -335,7 +338,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     Operator operator = getOperator(node, instanceNotificationExecutor);
-    Assert.assertTrue(operator instanceof DeviceIteratorScanOperator);
+    assertTrue(operator instanceof DeviceIteratorScanOperator);
     try {
       checkResult(operator, outputColumnList, 1500);
     } catch (Exception e) {
@@ -360,7 +363,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     Operator operator = getOperator(node, instanceNotificationExecutor);
-    Assert.assertTrue(operator instanceof DeviceIteratorScanOperator);
+    assertTrue(operator instanceof DeviceIteratorScanOperator);
     try {
       checkResult(operator, outputColumnList, 500);
     } catch (Exception e) {
@@ -386,7 +389,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     Operator operator = getOperator(node, instanceNotificationExecutor);
-    Assert.assertTrue(operator instanceof DeviceIteratorScanOperator);
+    assertTrue(operator instanceof DeviceIteratorScanOperator);
     try {
       checkResult(operator, outputColumnList, 1320);
     } catch (Exception e) {
@@ -406,7 +409,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     Operator operator = getOperator(node, instanceNotificationExecutor);
-    Assert.assertTrue(operator instanceof OffsetOperator);
+    assertTrue(operator instanceof OffsetOperator);
     try {
       checkResult(operator, outputColumnList, 300);
     } catch (Exception e) {
@@ -431,7 +434,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     Operator operator = getOperator(node, instanceNotificationExecutor);
-    Assert.assertTrue(operator instanceof DeviceIteratorScanOperator);
+    assertTrue(operator instanceof DeviceIteratorScanOperator);
     try {
       checkResult(operator, outputColumnList, 300);
     } catch (Exception e) {
@@ -463,7 +466,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     Operator operator = getOperator(node, instanceNotificationExecutor);
-    Assert.assertTrue(operator instanceof DeviceIteratorScanOperator);
+    assertTrue(operator instanceof DeviceIteratorScanOperator);
     try {
       checkResult(operator, outputColumnList, 300);
     } catch (Exception e) {
@@ -499,6 +502,41 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
       operator.close();
       instanceNotificationExecutor.shutdown();
     }
+  }
+
+  @Test
+  public void testUtils() {
+    Expression expression =
+        new LogicalExpression(
+            LogicalExpression.Operator.AND,
+            Arrays.asList(
+                new LogicalExpression(
+                    LogicalExpression.Operator.OR,
+                    Arrays.asList(
+                        new ComparisonExpression(
+                            ComparisonExpression.Operator.GREATER_THAN,
+                            new Symbol("sensor0").toSymbolReference(),
+                            new LongLiteral("1000")),
+                        new ComparisonExpression(
+                            ComparisonExpression.Operator.GREATER_THAN,
+                            new Symbol("sensor1").toSymbolReference(),
+                            new LongLiteral("1000")))),
+                new ComparisonExpression(
+                    ComparisonExpression.Operator.GREATER_THAN,
+                    new Symbol("sensor2").toSymbolReference(),
+                    new LongLiteral("1000")),
+                new ComparisonExpression(
+                    ComparisonExpression.Operator.GREATER_THAN,
+                    new Symbol("sensor3").toSymbolReference(),
+                    new LongLiteral("1000"))));
+    List<Expression> conjuncts = IrUtils.extractConjuncts(expression);
+    assertEquals(3, conjuncts.size());
+    Set<Symbol> symbols = SymbolsExtractor.extractUnique(expression);
+    assertEquals(4, symbols.size());
+    assertTrue(symbols.contains(new Symbol("sensor0")));
+    assertTrue(symbols.contains(new Symbol("sensor1")));
+    assertTrue(symbols.contains(new Symbol("sensor2")));
+    assertTrue(symbols.contains(new Symbol("sensor3")));
   }
 
   private Operator getOperator(
