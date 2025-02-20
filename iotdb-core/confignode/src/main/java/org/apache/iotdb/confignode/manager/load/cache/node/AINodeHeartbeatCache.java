@@ -56,7 +56,7 @@ public class AINodeHeartbeatCache extends BaseNodeCache {
     long currentNanoTime = System.nanoTime();
     if (lastSample != null && NodeStatus.Removing.equals(lastSample.getStatus())) {
       status = NodeStatus.Removing;
-    } else if (failureDetector.isAvailable(heartbeatHistory)) {
+    } else if (!failureDetector.isAvailable(heartbeatHistory)) {
       /* Failure detector decides that this DataNode is UNKNOWN */
       status = NodeStatus.Unknown;
     } else if (lastSample != null) {

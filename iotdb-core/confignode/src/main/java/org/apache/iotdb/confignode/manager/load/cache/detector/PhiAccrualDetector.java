@@ -54,12 +54,12 @@ public class PhiAccrualDetector implements IFailureDetector {
       return true;
     }
     final PhiAccrual phiAccrual = create(history);
+    // TODO(szywilliam) we should log the status change and dump the heartbeat history
     return phiAccrual.phi() < (double) this.threshold;
   }
 
   PhiAccrual create(List<AbstractHeartbeatSample> history) {
     final int size = history.size();
-    Preconditions.checkArgument(size >= 1);
 
     final List<Double> heartbeatIntervals = new ArrayList<>();
     /*
