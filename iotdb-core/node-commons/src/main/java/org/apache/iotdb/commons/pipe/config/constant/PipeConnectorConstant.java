@@ -251,6 +251,11 @@ public class PipeConnectorConstant {
   public static final String SINK_MARK_AS_PIPE_REQUEST_KEY = "sink.mark-as-pipe-request";
   public static final boolean CONNECTOR_MARK_AS_PIPE_REQUEST_DEFAULT_VALUE = true;
 
+  public static final String CONNECTOR_DATA_DISTRIBUTION_STRATEGY =
+      "connector.data-distribution-strategy";
+  public static final String SINK_DATA_DISTRIBUTION_STRATEGY = "sink.data-distribution-strategy";
+  public static final String CONNECTOR_DATA_DISTRIBUTION_STRATEGY_DEFAULT_VALUE = "any";
+
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");
   }

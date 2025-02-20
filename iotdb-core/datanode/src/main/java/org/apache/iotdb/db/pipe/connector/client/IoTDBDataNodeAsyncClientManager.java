@@ -39,6 +39,7 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -169,6 +170,29 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     }
 
     return borrowClient();
+  }
+
+  public List<AsyncPipeDataTransferServiceClient> borrowAllClients() {
+    final List<AsyncPipeDataTransferServiceClient> clients = new ArrayList<>();
+    for (final TEndPoint targetNodeUrl : endPointList) {
+      while (true) {
+        try {
+          final AsyncPipeDataTransferServiceClient client =
+              endPoint2Client.borrowClient(targetNodeUrl);
+          if (handshakeIfNecessary(targetNodeUrl, client)) {
+            clients.add(client);
+            break;
+          }
+        } catch (final Exception e) {
+          LOGGER.warn(
+              "failed to borrow client {}:{} when borrowing all clients.",
+              targetNodeUrl.getIp(),
+              targetNodeUrl.getPort(),
+              e);
+        }
+      }
+    }
+    return clients;
   }
 
   /**

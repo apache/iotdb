@@ -59,6 +59,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       new ConcurrentHashMap<>();
   private final Map<TEndPoint, String> endPoint2HandshakeErrorMessage = new ConcurrentHashMap<>();
 
+  private final boolean shouldSendToAllClients;
+
   private final LoadBalancer loadBalancer;
 
   protected IoTDBSyncClientManager(
@@ -75,7 +77,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       boolean shouldReceiverConvertOnTypeMismatch,
       String loadTsFileStrategy,
       boolean validateTsFile,
-      boolean shouldMarkAsPipeRequest) {
+      boolean shouldMarkAsPipeRequest,
+      boolean shouldSendToAllClients) {
     super(
         endPoints,
         useLeaderCache,
@@ -89,6 +92,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
     this.useSSL = useSSL;
     this.trustStorePath = trustStorePath;
     this.trustStorePwd = trustStorePwd;
+    this.shouldSendToAllClients = shouldSendToAllClients;
 
     for (final TEndPoint endPoint : endPoints) {
       endPoint2ClientAndStatus.put(endPoint, new Pair<>(null, false));
@@ -123,18 +127,40 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       reconstructClient(entry.getKey());
     }
 
-    // Check whether any clients are available
-    for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : endPoint2ClientAndStatus.values()) {
-      if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
+    // Check whether all clients are available when shouldSendToAllClients is true
+    if (shouldSendToAllClients) {
+      boolean allClientsAreAvailable = true;
+      for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus :
+          endPoint2ClientAndStatus.values()) {
+        if (Boolean.FALSE.equals(clientAndStatus.getRight())) {
+          allClientsAreAvailable = false;
+          break;
+        }
+      }
+      if (allClientsAreAvailable) {
         return;
+      }
+    } // check where any client is available when shouldSendToAllClients is false
+    else {
+      for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus :
+          endPoint2ClientAndStatus.values()) {
+        if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
+          return;
+        }
       }
     }
 
-    // If all clients are not available, throw an exception
-    final StringBuilder errorMessage =
-        new StringBuilder(
-            String.format(
-                "All target servers %s are not available.", endPoint2ClientAndStatus.keySet()));
+    final StringBuilder errorMessage = new StringBuilder();
+    if (shouldSendToAllClients) {
+      errorMessage.append(
+          String.format(
+              "Some target servers %s are not available when sink.data-distribution-strategy is all.",
+              endPoint2HandshakeErrorMessage.keySet()));
+    } else {
+      errorMessage.append(
+          String.format(
+              "All target servers %s are not available.", endPoint2ClientAndStatus.keySet()));
+    }
     for (final Map.Entry<TEndPoint, String> entry : endPoint2HandshakeErrorMessage.entrySet()) {
       errorMessage
           .append(" (")

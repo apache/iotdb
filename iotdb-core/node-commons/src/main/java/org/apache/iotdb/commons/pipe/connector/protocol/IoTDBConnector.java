@@ -58,6 +58,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_ZSTD_LEVEL_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MAX_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MIN_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_DATA_DISTRIBUTION_STRATEGY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_DATA_DISTRIBUTION_STRATEGY_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXCEPTION_CONFLICT_RECORD_IGNORED_DATA_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXCEPTION_CONFLICT_RECORD_IGNORED_DATA_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_DEFAULT_VALUE;
@@ -101,6 +103,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_RATE_LIMIT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_COMPRESSOR_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_COMPRESSOR_ZSTD_LEVEL_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_DATA_DISTRIBUTION_STRATEGY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_EXCEPTION_CONFLICT_RECORD_IGNORED_DATA_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_EXCEPTION_CONFLICT_RETRY_MAX_TIME_SECONDS_KEY;
@@ -145,6 +148,8 @@ public abstract class IoTDBConnector implements PipeConnector {
   protected boolean loadTsFileValidation;
 
   protected boolean shouldMarkAsPipeRequest;
+
+  protected boolean shouldSendToAllClients;
 
   private boolean isRpcCompressionEnabled;
   private final List<PipeCompressor> compressors = new ArrayList<>();
@@ -331,6 +336,22 @@ public abstract class IoTDBConnector implements PipeConnector {
         CONNECTOR_FORMAT_TABLET_VALUE,
         CONNECTOR_FORMAT_HYBRID_VALUE,
         CONNECTOR_FORMAT_TS_FILE_VALUE);
+
+    final String dataDistributionStrategy =
+        parameters
+            .getStringOrDefault(
+                Arrays.asList(
+                    CONNECTOR_DATA_DISTRIBUTION_STRATEGY, SINK_DATA_DISTRIBUTION_STRATEGY),
+                CONNECTOR_DATA_DISTRIBUTION_STRATEGY_DEFAULT_VALUE)
+            .trim()
+            .toLowerCase();
+    validator.validate(
+        arg -> arg.equals("any") || arg.equals("all"),
+        String.format(
+            "The value of key %s or %s must be either 'retry' or 'ignore'.",
+            CONNECTOR_DATA_DISTRIBUTION_STRATEGY, SINK_DATA_DISTRIBUTION_STRATEGY),
+        dataDistributionStrategy);
+    shouldSendToAllClients = "all".equals(dataDistributionStrategy);
   }
 
   @Override

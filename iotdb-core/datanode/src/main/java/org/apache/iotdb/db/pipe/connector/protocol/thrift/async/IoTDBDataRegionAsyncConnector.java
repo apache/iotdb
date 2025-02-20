@@ -128,12 +128,16 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     super.customize(parameters, configuration);
     retryConnector.customize(parameters, configuration);
 
+    final boolean useLeaderCache =
+        !shouldSendToAllClients
+            && parameters.getBooleanOrDefault(
+                Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
+                CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE);
+
     clientManager =
         new IoTDBDataNodeAsyncClientManager(
             nodeUrls,
-            parameters.getBooleanOrDefault(
-                Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
-                CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE),
+            useLeaderCache,
             loadBalanceStrategy,
             username,
             password,
@@ -189,29 +193,39 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     final PipeTabletEventBatch batch = endPointAndBatch.getRight();
 
     if (batch instanceof PipeTabletEventPlainBatch) {
-      transfer(
-          endPointAndBatch.getLeft(),
-          new PipeTransferTabletBatchEventHandler((PipeTabletEventPlainBatch) batch, this));
-    } else if (batch instanceof PipeTabletEventTsFileBatch) {
-      final PipeTabletEventTsFileBatch tsFileBatch = (PipeTabletEventTsFileBatch) batch;
-      final List<Pair<String, File>> dbTsFilePairs = tsFileBatch.sealTsFiles();
-      final Map<Pair<String, Long>, Double> pipe2WeightMap = tsFileBatch.deepCopyPipe2WeightMap();
-      final List<EnrichedEvent> events = tsFileBatch.deepCopyEvents();
-      final AtomicInteger eventsReferenceCount = new AtomicInteger(dbTsFilePairs.size());
-      final AtomicBoolean eventsHadBeenAddedToRetryQueue = new AtomicBoolean(false);
-
-      for (final Pair<String, File> sealedFile : dbTsFilePairs) {
+      if (shouldSendToAllClients) {
+        transferAllClients(
+            new PipeTransferTabletBatchEventHandler((PipeTabletEventPlainBatch) batch, this));
+      } else {
         transfer(
-            new PipeTransferTsFileHandler(
-                this,
-                pipe2WeightMap,
-                events,
-                eventsReferenceCount,
-                eventsHadBeenAddedToRetryQueue,
-                sealedFile.right,
-                null,
-                false,
-                sealedFile.left));
+            endPointAndBatch.getLeft(),
+            new PipeTransferTabletBatchEventHandler((PipeTabletEventPlainBatch) batch, this));
+      }
+    } else if (batch instanceof PipeTabletEventTsFileBatch) {
+      if (shouldSendToAllClients) {
+        transferAllClients((PipeTabletEventTsFileBatch) batch);
+      } else {
+
+        final PipeTabletEventTsFileBatch tsFileBatch = (PipeTabletEventTsFileBatch) batch;
+        final List<Pair<String, File>> dbTsFilePairs = tsFileBatch.sealTsFiles();
+        final Map<Pair<String, Long>, Double> pipe2WeightMap = tsFileBatch.deepCopyPipe2WeightMap();
+        final List<EnrichedEvent> events = tsFileBatch.deepCopyEvents();
+        final AtomicInteger eventsReferenceCount = new AtomicInteger(dbTsFilePairs.size());
+        final AtomicBoolean eventsHadBeenAddedToRetryQueue = new AtomicBoolean(false);
+
+        for (final Pair<String, File> sealedFile : dbTsFilePairs) {
+          transfer(
+              new PipeTransferTsFileHandler(
+                  this,
+                  pipe2WeightMap,
+                  events,
+                  eventsReferenceCount,
+                  eventsHadBeenAddedToRetryQueue,
+                  sealedFile.right,
+                  null,
+                  false,
+                  sealedFile.left));
+        }
       }
     } else {
       LOGGER.warn(
@@ -247,10 +261,13 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       final PipeTransferTabletInsertNodeEventHandler pipeTransferInsertNodeReqHandler =
           new PipeTransferTabletInsertNodeEventHandler(
               pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
-
-      transfer(
-          // getDeviceId() may return null for InsertRowsNode
-          pipeInsertNodeTabletInsertionEvent.getDeviceId(), pipeTransferInsertNodeReqHandler);
+      if (shouldSendToAllClients) {
+        transferAllClients(pipeTransferInsertNodeReqHandler);
+      } else {
+        transfer(
+            // getDeviceId() may return null for InsertRowsNode
+            pipeInsertNodeTabletInsertionEvent.getDeviceId(), pipeTransferInsertNodeReqHandler);
+      }
     } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
       final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
           (PipeRawTabletInsertionEvent) tabletInsertionEvent;
@@ -271,8 +288,11 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       final PipeTransferTabletRawEventHandler pipeTransferTabletReqHandler =
           new PipeTransferTabletRawEventHandler(
               pipeRawTabletInsertionEvent, pipeTransferTabletRawReq, this);
-
-      transfer(pipeRawTabletInsertionEvent.getDeviceId(), pipeTransferTabletReqHandler);
+      if (shouldSendToAllClients) {
+        transferAllClients(pipeTransferTabletReqHandler);
+      } else {
+        transfer(pipeRawTabletInsertionEvent.getDeviceId(), pipeTransferTabletReqHandler);
+      }
     }
   }
 
@@ -289,6 +309,20 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     }
   }
 
+  private void transferAllClients(
+      final PipeTransferTabletBatchEventHandler pipeTransferTabletBatchEventHandler) {
+
+    final List<AsyncPipeDataTransferServiceClient> clients = clientManager.borrowAllClients();
+    for (final AsyncPipeDataTransferServiceClient client : clients) {
+      try {
+        pipeTransferTabletBatchEventHandler.transfer(client);
+      } catch (final Exception ex) {
+        logOnClientException(client, ex);
+        pipeTransferTabletBatchEventHandler.onError(ex);
+      }
+    }
+  }
+
   private void transfer(
       final String deviceId,
       final PipeTransferTabletInsertNodeEventHandler pipeTransferInsertNodeReqHandler) {
@@ -302,6 +336,19 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     }
   }
 
+  private void transferAllClients(
+      final PipeTransferTabletInsertNodeEventHandler pipeTransferInsertNodeReqHandler) {
+    final List<AsyncPipeDataTransferServiceClient> clients = clientManager.borrowAllClients();
+    for (final AsyncPipeDataTransferServiceClient client : clients) {
+      try {
+        pipeTransferInsertNodeReqHandler.transfer(client);
+      } catch (final Exception ex) {
+        logOnClientException(client, ex);
+        pipeTransferInsertNodeReqHandler.onError(ex);
+      }
+    }
+  }
+
   private void transfer(
       final String deviceId, final PipeTransferTabletRawEventHandler pipeTransferTabletReqHandler) {
     AsyncPipeDataTransferServiceClient client = null;
@@ -311,6 +358,19 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     } catch (final Exception ex) {
       logOnClientException(client, ex);
       pipeTransferTabletReqHandler.onError(ex);
+    }
+  }
+
+  private void transferAllClients(
+      final PipeTransferTabletRawEventHandler pipeTransferTabletReqHandler) {
+    final List<AsyncPipeDataTransferServiceClient> clients = clientManager.borrowAllClients();
+    for (final AsyncPipeDataTransferServiceClient client : clients) {
+      try {
+        pipeTransferTabletReqHandler.transfer(client);
+      } catch (final Exception ex) {
+        logOnClientException(client, ex);
+        pipeTransferTabletReqHandler.onError(ex);
+      }
     }
   }
 
@@ -346,6 +406,73 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         throw new FileNotFoundException(pipeTsFileInsertionEvent.getTsFile().getAbsolutePath());
       }
 
+      if (shouldSendToAllClients) {
+        transferAllClients(pipeTsFileInsertionEvent);
+      } else {
+        final PipeTransferTsFileHandler pipeTransferTsFileHandler =
+            new PipeTransferTsFileHandler(
+                this,
+                Collections.singletonMap(
+                    new Pair<>(
+                        pipeTsFileInsertionEvent.getPipeName(),
+                        pipeTsFileInsertionEvent.getCreationTime()),
+                    1.0),
+                Collections.singletonList(pipeTsFileInsertionEvent),
+                new AtomicInteger(1),
+                new AtomicBoolean(false),
+                pipeTsFileInsertionEvent.getTsFile(),
+                pipeTsFileInsertionEvent.getModFile(),
+                pipeTsFileInsertionEvent.isWithMod()
+                    && clientManager.supportModsIfIsDataNodeReceiver(),
+                pipeTsFileInsertionEvent.isTableModelEvent()
+                    ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
+                    : null);
+        transfer(pipeTransferTsFileHandler);
+      }
+    } catch (final Exception e) {
+      // Just in case. To avoid the case that exception occurred when constructing the handler.
+      pipeTsFileInsertionEvent.decreaseReferenceCount(
+          IoTDBDataRegionAsyncConnector.class.getName(), false);
+      throw e;
+    }
+  }
+
+  private void transferAllClients(final PipeTabletEventTsFileBatch tsFileBatch)
+      throws IOException, WriteProcessException, InterruptedException {
+    final List<AsyncPipeDataTransferServiceClient> clients = clientManager.borrowAllClients();
+    for (final AsyncPipeDataTransferServiceClient client : clients) {
+      final List<Pair<String, File>> dbTsFilePairs = tsFileBatch.sealTsFiles();
+      final Map<Pair<String, Long>, Double> pipe2WeightMap = tsFileBatch.deepCopyPipe2WeightMap();
+      final List<EnrichedEvent> events = tsFileBatch.deepCopyEvents();
+      final AtomicInteger eventsReferenceCount = new AtomicInteger(dbTsFilePairs.size());
+      final AtomicBoolean eventsHadBeenAddedToRetryQueue = new AtomicBoolean(false);
+
+      for (final Pair<String, File> sealedFile : dbTsFilePairs) {
+        final PipeTransferTsFileHandler pipeTransferTsFileHandler =
+            new PipeTransferTsFileHandler(
+                this,
+                pipe2WeightMap,
+                events,
+                eventsReferenceCount,
+                eventsHadBeenAddedToRetryQueue,
+                sealedFile.right,
+                null,
+                false,
+                sealedFile.left);
+        try {
+          pipeTransferTsFileHandler.transfer(clientManager, client);
+        } catch (final Exception ex) {
+          logOnClientException(client, ex);
+          pipeTransferTsFileHandler.onError(ex);
+        }
+      }
+    }
+  }
+
+  private void transferAllClients(final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
+      throws FileNotFoundException, InterruptedException {
+    final List<AsyncPipeDataTransferServiceClient> clients = clientManager.borrowAllClients();
+    for (final AsyncPipeDataTransferServiceClient client : clients) {
       final PipeTransferTsFileHandler pipeTransferTsFileHandler =
           new PipeTransferTsFileHandler(
               this,
@@ -364,13 +491,12 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
               pipeTsFileInsertionEvent.isTableModelEvent()
                   ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
                   : null);
-
-      transfer(pipeTransferTsFileHandler);
-    } catch (final Exception e) {
-      // Just in case. To avoid the case that exception occurred when constructing the handler.
-      pipeTsFileInsertionEvent.decreaseReferenceCount(
-          IoTDBDataRegionAsyncConnector.class.getName(), false);
-      throw e;
+      try {
+        pipeTransferTsFileHandler.transfer(clientManager, client);
+      } catch (final Exception ex) {
+        logOnClientException(client, ex);
+        pipeTransferTsFileHandler.onError(ex);
+      }
     }
   }
 

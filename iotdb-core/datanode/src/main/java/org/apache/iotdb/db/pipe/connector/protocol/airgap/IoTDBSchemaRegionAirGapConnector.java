@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.Objects;
 
 @TreeModel
@@ -69,16 +70,26 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
 
     try {
       if (event instanceof PipeSchemaRegionWritePlanEvent) {
-        doTransferWrapper(socket, (PipeSchemaRegionWritePlanEvent) event);
+        if (shouldSendToAllClients) {
+          doTransferAllClientsWrapper((PipeSchemaRegionWritePlanEvent) event);
+        } else {
+          doTransferWrapper(socket, (PipeSchemaRegionWritePlanEvent) event);
+        }
       } else if (event instanceof PipeSchemaRegionSnapshotEvent) {
-        doTransferWrapper(socket, (PipeSchemaRegionSnapshotEvent) event);
+        if (shouldSendToAllClients) {
+          doTransferAllClientsWrapper((PipeSchemaRegionSnapshotEvent) event);
+        } else {
+          doTransferWrapper(socket, (PipeSchemaRegionSnapshotEvent) event);
+        }
       } else if (!(event instanceof PipeHeartbeatEvent)) {
         LOGGER.warn(
             "IoTDBSchemaRegionAirGapConnector does not support transferring generic event: {}.",
             event);
       }
     } catch (final IOException e) {
-      isSocketAlive.set(socketIndex, false);
+      if (!shouldSendToAllClients) {
+        isSocketAlive.set(socketIndex, false);
+      }
 
       throw new PipeConnectionException(
           String.format(
@@ -99,6 +110,31 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
     }
     try {
       doTransfer(socket, pipeSchemaRegionWritePlanEvent);
+    } finally {
+      pipeSchemaRegionWritePlanEvent.decreaseReferenceCount(
+          IoTDBDataNodeAirGapConnector.class.getName(), false);
+    }
+  }
+
+  private void doTransferAllClientsWrapper(
+      final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
+      throws PipeException, IOException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeSchemaRegionWritePlanEvent.increaseReferenceCount(
+        IoTDBDataNodeAirGapConnector.class.getName())) {
+      return;
+    }
+    try {
+      final List<Integer> aliveSockets = allAliveSocketsIndex();
+      for (final int socketIndex : aliveSockets) {
+        final AirGapSocket socket = sockets.get(socketIndex);
+        try {
+          doTransfer(socket, pipeSchemaRegionWritePlanEvent);
+        } catch (final Exception e) {
+          isSocketAlive.set(socketIndex, false);
+          throw e;
+        }
+      }
     } finally {
       pipeSchemaRegionWritePlanEvent.decreaseReferenceCount(
           IoTDBDataNodeAirGapConnector.class.getName(), false);
@@ -137,6 +173,31 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
     }
     try {
       doTransfer(socket, pipeSchemaRegionSnapshotEvent);
+    } finally {
+      pipeSchemaRegionSnapshotEvent.decreaseReferenceCount(
+          IoTDBSchemaRegionAirGapConnector.class.getName(), false);
+    }
+  }
+
+  private void doTransferAllClientsWrapper(
+      final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
+      throws PipeException, IOException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeSchemaRegionSnapshotEvent.increaseReferenceCount(
+        IoTDBSchemaRegionAirGapConnector.class.getName())) {
+      return;
+    }
+    try {
+      final List<Integer> aliveSockets = allAliveSocketsIndex();
+      for (final int socketIndex : aliveSockets) {
+        final AirGapSocket socket = sockets.get(socketIndex);
+        try {
+          doTransfer(socket, pipeSchemaRegionSnapshotEvent);
+        } catch (final Exception e) {
+          isSocketAlive.set(socketIndex, false);
+          throw e;
+        }
+      }
     } finally {
       pipeSchemaRegionSnapshotEvent.decreaseReferenceCount(
           IoTDBSchemaRegionAirGapConnector.class.getName(), false);

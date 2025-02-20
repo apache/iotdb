@@ -115,9 +115,10 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
 
     // leader cache configuration
     final boolean useLeaderCache =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
-            CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE);
+        !shouldSendToAllClients
+            && parameters.getBooleanOrDefault(
+                Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
+                CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE);
 
     clientManager =
         constructClient(
@@ -132,7 +133,8 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
             shouldReceiverConvertOnTypeMismatch,
             loadTsFileStrategy,
             loadTsFileValidation,
-            shouldMarkAsPipeRequest);
+            shouldMarkAsPipeRequest,
+            shouldSendToAllClients);
   }
 
   protected abstract IoTDBSyncClientManager constructClient(
@@ -149,7 +151,8 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
       final boolean validateTsFile,
-      final boolean shouldMarkAsPipeRequest);
+      final boolean shouldMarkAsPipeRequest,
+      final boolean shouldSendToAllClients);
 
   @Override
   public void handshake() throws Exception {
