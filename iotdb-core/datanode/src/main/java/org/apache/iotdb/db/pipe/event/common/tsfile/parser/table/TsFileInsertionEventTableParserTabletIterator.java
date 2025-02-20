@@ -303,6 +303,9 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       }
     }
 
+    // The metadata obtained by alignedChunkMetadata.getValueChunkMetadataList may not be continuous
+    // when reading TSFile Chunks, so reordering the metadata here has little effect on the
+    // efficiency of reading chunks.
     for (Pair<String, Integer> m : measurementColumIndexList) {
       final ChunkMetadata metadata = metadataMap.get(m.getLeft());
       if (metadata != null) {
