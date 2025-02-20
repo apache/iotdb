@@ -44,6 +44,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -315,7 +316,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     final Map<Pair<String, Long>, Double> pipe2WeightMap = batchToTransfer.deepCopyPipe2WeightMap();
 
     for (final Pair<String, File> dbTsFile : dbTsFilePairs) {
-      doTransfer(pipe2WeightMap, dbTsFile.right, null, dbTsFile.left);
+      doTransfer(pipe2WeightMap, dbTsFile.right, null, null, 0, dbTsFile.left);
       try {
         RetryUtils.retryOnException(
             () -> {
@@ -484,7 +485,15 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
                   pipeTsFileInsertionEvent.getCreationTime()),
               1.0),
           pipeTsFileInsertionEvent.getTsFile(),
-          pipeTsFileInsertionEvent.isWithMod() ? pipeTsFileInsertionEvent.getModFile() : null,
+          pipeTsFileInsertionEvent.isWithExclusiveMod()
+              ? pipeTsFileInsertionEvent.getExclusiveModFile()
+              : null,
+          pipeTsFileInsertionEvent.isWithSharedMod()
+              ? pipeTsFileInsertionEvent.getSharedModFile()
+              : null,
+          pipeTsFileInsertionEvent.isWithSharedMod()
+              ? pipeTsFileInsertionEvent.getSharedModFileOffset()
+              : 0,
           pipeTsFileInsertionEvent.isTableModelEvent()
               ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
               : null);
@@ -494,19 +503,65 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     }
   }
 
+  /**
+   * Combine the exclusive mod file and the shared mod file of the sender as the receiver's
+   * exclusive mod file.
+   *
+   * @return the combined mod file and its length
+   */
+  private Pair<File, Long> doTransferModFile(
+      final Map<Pair<String, Long>, Double> pipeName2WeightMap,
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
+      final File tsFile,
+      final File exclusiveModFile,
+      final File sharedModFile,
+      final long sharedModFileOffset)
+      throws IOException {
+    File targetModFile = ModificationFile.getExclusiveMods(tsFile);
+    long lengthSent = 0;
+    if (exclusiveModFile != null) {
+      transferFilePieces(
+          pipeName2WeightMap, exclusiveModFile, 0, targetModFile, 0, clientAndStatus, true);
+      lengthSent = exclusiveModFile.length();
+    }
+
+    if (sharedModFile != null) {
+      transferFilePieces(
+          pipeName2WeightMap,
+          sharedModFile,
+          sharedModFileOffset,
+          targetModFile,
+          lengthSent,
+          clientAndStatus,
+          true);
+      lengthSent += sharedModFile.length() - sharedModFileOffset;
+    }
+    return new Pair<>(targetModFile, lengthSent);
+  }
+
   private void doTransfer(
       final Map<Pair<String, Long>, Double> pipeName2WeightMap,
       final File tsFile,
-      final File modFile,
+      final File exclusiveModFile,
+      final File sharedModFile,
+      final long sharedModFileOffset,
       final String dataBaseName)
       throws PipeException, IOException {
 
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
     final TPipeTransferResp resp;
 
+    boolean haveModFile = Objects.nonNull(exclusiveModFile) || Objects.nonNull(sharedModFile);
     // 1. Transfer tsFile, and mod file if exists and receiver's version >= 2
-    if (Objects.nonNull(modFile) && clientManager.supportModsIfIsDataNodeReceiver()) {
-      transferFilePieces(pipeName2WeightMap, modFile, clientAndStatus, true);
+    if (haveModFile && clientManager.supportModsIfIsDataNodeReceiver()) {
+      Pair<File, Long> modFileAndOffset =
+          doTransferModFile(
+              pipeName2WeightMap,
+              clientAndStatus,
+              tsFile,
+              exclusiveModFile,
+              sharedModFile,
+              sharedModFileOffset);
       transferFilePieces(pipeName2WeightMap, tsFile, clientAndStatus, true);
 
       // 2. Transfer file seal signal with mod, which means the file is transferred completely
@@ -514,8 +569,8 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
         final TPipeTransferReq req =
             compressIfNeeded(
                 PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    modFile.getName(),
-                    modFile.length(),
+                    modFileAndOffset.getLeft().getName(),
+                    modFileAndOffset.getRight(),
                     tsFile.getName(),
                     tsFile.length(),
                     dataBaseName));
