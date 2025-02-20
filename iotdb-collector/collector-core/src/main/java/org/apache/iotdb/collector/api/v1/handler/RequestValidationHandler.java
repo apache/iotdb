@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.collector.api.v1.handler;
 
-import org.apache.iotdb.collector.api.v1.model.CreatePipeRequest;
-import org.apache.iotdb.collector.api.v1.model.StopPipeRequest;
+import org.apache.iotdb.application.protocol.rest.v1.model.CreatePipeRequest;
+import org.apache.iotdb.application.protocol.rest.v1.model.StopPipeRequest;
 
 import java.util.Objects;
 
