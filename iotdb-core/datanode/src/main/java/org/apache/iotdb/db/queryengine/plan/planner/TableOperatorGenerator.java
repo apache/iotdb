@@ -69,8 +69,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFil
 import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFillWoGroupWoMoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.InnerTimeJoinOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.join.LeftOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.SimpleNestedLoopCrossJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.TableLeftOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.ColumnMerger;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.DescTimeComparator;
@@ -385,7 +385,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         parameter.allSensors,
         TreeNonAlignedDeviceViewScanNode.class.getSimpleName());
 
-    if (!parameter.generator.keepRootOffsetAndLimitOperator()) {
+    if (!parameter.generator.keepOffsetAndLimitOperatorAfterDeviceIterator()) {
       return treeNonAlignedDeviceIteratorScanOperator;
     }
     Operator operator = treeNonAlignedDeviceIteratorScanOperator;
@@ -404,6 +404,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           LocalExecutionPlanContext context,
           String className,
           Map<String, String> fieldColumnsRenameMap) {
+    if (node.isPushLimitToEachDevice() && node.getPushDownOffset() > 0) {
+      throw new IllegalArgumentException(
+          "PushDownOffset should not be set when isPushLimitToEachDevice is true.");
+    }
     CommonTableScanOperatorParameters commonParameter =
         new CommonTableScanOperatorParameters(node, fieldColumnsRenameMap, true);
     List<IMeasurementSchema> measurementSchemas = commonParameter.measurementSchemas;
@@ -427,15 +431,17 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           private List<SeriesScanOptions> seriesScanOptionsList;
           private List<Operator> seriesScanOperators;
           private FilterAndProjectOperator filterAndProjectOperator;
+          private OffsetOperator reuseOffsetOperator;
+          private LimitOperator reuseLimitOperator;
           private Operator startCloseInternalOperator;
 
           private List<Expression> cannotPushDownConjuncts;
-          private boolean removeRootOffsetAndLimitOperator;
+          private boolean removeUpperOffsetAndLimitOperator;
 
           @Override
-          public boolean keepRootOffsetAndLimitOperator() {
+          public boolean keepOffsetAndLimitOperatorAfterDeviceIterator() {
             calculateSeriesScanOptionsList();
-            return !removeRootOffsetAndLimitOperator;
+            return !removeUpperOffsetAndLimitOperator && !node.isPushLimitToEachDevice();
           }
 
           @Override
@@ -449,7 +455,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 || node.getAssignments().size() != node.getOutputSymbols().size()) {
               operator = getFilterAndProjectOperator(operator);
             }
-            if (!node.isPushLimitToEachDevice() || removeRootOffsetAndLimitOperator) {
+            if (!node.isPushLimitToEachDevice() || removeUpperOffsetAndLimitOperator) {
               return;
             }
             if (node.getPushDownLimit() > 0) {
@@ -482,15 +488,20 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
             boolean canPushDownLimit = cannotPushDownConjuncts.isEmpty();
             // only use full outer time join
-            boolean canPushDownLimitToAllSeries =
+            boolean canPushDownLimitToAllSeriesScanOptions =
                 canPushDownLimit
                     && pushDownConjunctsForEachMeasurement.isEmpty()
                     && node.getPushDownOffset() <= 0;
             // the left child of LeftOuterTimeJoinOperator is SeriesScanOperator
-            boolean canPushDownLimitToLeftChild =
+            boolean pushDownLimitToLeftChildSeriesScanOperator =
                 canPushDownLimit && pushDownConjunctsForEachMeasurement.size() == 1;
-            removeRootOffsetAndLimitOperator =
-                canPushDownLimitToLeftChild || isSingleColumn || node.isPushLimitToEachDevice();
+            // the left child of LeftOuterTimeJoinOperator is InnerTimeJoinOperator
+            boolean pushDownOffsetAndLimitAfterInnerJoinOperator =
+                canPushDownLimit && pushDownConjunctsForEachMeasurement.size() > 1;
+            removeUpperOffsetAndLimitOperator =
+                pushDownLimitToLeftChildSeriesScanOperator
+                    || pushDownOffsetAndLimitAfterInnerJoinOperator
+                    || isSingleColumn;
             for (int i = 0; i < measurementSchemas.size(); i++) {
               IMeasurementSchema measurementSchema = measurementSchemas.get(i);
               List<Expression> pushDownPredicatesForCurrentMeasurement =
@@ -515,14 +526,14 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                         commonParameter.timeColumnName));
               }
               if (isSingleColumn
-                  || canPushDownLimitToAllSeries
-                  || (canPushDownLimitToLeftChild
+                  || canPushDownLimitToAllSeriesScanOptions
+                  || (pushDownLimitToLeftChildSeriesScanOperator
                       && pushDownPredicateForCurrentMeasurement != null)) {
                 builder.withPushDownLimit(node.getPushDownLimit());
                 builder.withPushLimitToEachDevice(node.isPushLimitToEachDevice());
               }
               if (isSingleColumn
-                  || (canPushDownLimitToLeftChild
+                  || (pushDownLimitToLeftChildSeriesScanOperator
                       && pushDownPredicateForCurrentMeasurement != null)) {
                 builder.withPushDownOffset(
                     node.isPushLimitToEachDevice() ? 0 : node.getPushDownOffset());
@@ -600,14 +611,26 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             for (int i = 0; i < operators.size(); i++) {
               outputColumnMap.put(new InputLocation(i, 0), i);
             }
-            return new InnerTimeJoinOperator(
-                operatorContext,
-                operators,
-                dataTypes,
-                node.getScanOrder() == Ordering.ASC
-                    ? new AscTimeComparator()
-                    : new DescTimeComparator(),
-                outputColumnMap);
+            Operator currentOperator =
+                new InnerTimeJoinOperator(
+                    operatorContext,
+                    operators,
+                    dataTypes,
+                    node.getScanOrder() == Ordering.ASC
+                        ? new AscTimeComparator()
+                        : new DescTimeComparator(),
+                    outputColumnMap);
+            boolean addOffsetAndLimitOperatorAfterLeftChild =
+                operators.size() > 1 && cannotPushDownConjuncts.isEmpty();
+            if (addOffsetAndLimitOperatorAfterLeftChild) {
+              if (node.getPushDownOffset() > 0) {
+                currentOperator = getReuseOffsetOperator(currentOperator);
+              }
+              if (node.getPushDownLimit() > 0) {
+                currentOperator = getReuseLimitOperator(currentOperator);
+              }
+            }
+            return currentOperator;
           }
 
           private Operator generateFullOuterTimeJoinOperator(
@@ -649,15 +672,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             } else if (right == null) {
               return left;
             } else {
-              if (leftColumnCount > 1
-                  && node.getPushDownLimit() > 0
-                  && cannotPushDownConjuncts.isEmpty()) {
-                if (node.getPushDownOffset() > 0) {
-                  left = new OffsetOperator(operatorContext, node.getPushDownOffset(), left);
-                }
-                left = new LimitOperator(operatorContext, node.getPushDownLimit(), left);
-              }
-              return new LeftOuterTimeJoinOperator(
+              return new TableLeftOuterTimeJoinOperator(
                   operatorContext,
                   left,
                   right,
@@ -668,6 +683,24 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                       ? new AscTimeComparator()
                       : new DescTimeComparator());
             }
+          }
+
+          private Operator getReuseOffsetOperator(Operator child) {
+            if (reuseOffsetOperator != null) {
+              return new OffsetOperator(reuseOffsetOperator, child);
+            }
+            this.reuseOffsetOperator =
+                new OffsetOperator(operatorContext, node.getPushDownOffset(), child);
+            return this.reuseOffsetOperator;
+          }
+
+          private Operator getReuseLimitOperator(Operator child) {
+            if (reuseLimitOperator != null) {
+              return new LimitOperator(reuseLimitOperator, child);
+            }
+            this.reuseLimitOperator =
+                new LimitOperator(operatorContext, node.getPushDownLimit(), child);
+            return this.reuseLimitOperator;
           }
 
           private Operator getFilterAndProjectOperator(Operator childOperator) {

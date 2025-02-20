@@ -24,7 +24,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.TimeComparator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
@@ -37,7 +36,6 @@ import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
@@ -56,8 +54,7 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
   private final TsBlockBuilder resultBuilder;
 
   private final Operator left;
-  private final int leftColumnCount;
-  private Map<InputLocation, Integer> outputColumnMap;
+  protected final int leftColumnCount;
 
   private TsBlock leftTsBlock;
 
@@ -91,24 +88,6 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
     this.left = leftChild;
     this.leftColumnCount = leftColumnCount;
     this.right = rightChild;
-  }
-
-  public LeftOuterTimeJoinOperator(
-      OperatorContext operatorContext,
-      Operator leftChild,
-      Operator rightChild,
-      int leftColumnCount,
-      Map<InputLocation, Integer> outputColumnMap,
-      List<TSDataType> dataTypes,
-      TimeComparator comparator) {
-    this.operatorContext = operatorContext;
-    this.resultBuilder = new TsBlockBuilder(dataTypes);
-    this.outputColumnCount = dataTypes.size();
-    this.comparator = comparator;
-    this.left = leftChild;
-    this.right = rightChild;
-    this.leftColumnCount = leftColumnCount;
-    this.outputColumnMap = outputColumnMap;
   }
 
   @Override
@@ -215,9 +194,7 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
   private void appendLeftTableRow() {
     for (int i = 0; i < leftColumnCount; i++) {
       Column leftColumn = leftTsBlock.getColumn(i);
-      int targetColumnIndex =
-          outputColumnMap == null ? i : outputColumnMap.get(new InputLocation(0, i));
-      ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(targetColumnIndex);
+      ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(getOutputColumnIndex(i, true));
       if (leftColumn.isNull(leftIndex)) {
         columnBuilder.appendNull();
       } else {
@@ -254,11 +231,8 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
       // right table has this time, append right table's corresponding row
       for (int i = leftColumnCount; i < outputColumnCount; i++) {
         Column rightColumn = rightTsBlock.getColumn(i - leftColumnCount);
-        int targetColumnIndex =
-            outputColumnMap == null
-                ? i
-                : outputColumnMap.get(new InputLocation(1, i - leftColumnCount));
-        ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(targetColumnIndex);
+        ColumnBuilder columnBuilder =
+            resultBuilder.getColumnBuilder(getOutputColumnIndex(i, false));
         if (rightColumn.isNull(rightIndex)) {
           columnBuilder.appendNull();
         } else {
@@ -300,9 +274,7 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
 
   private void appendValueColumnForLeftTable(int rowSize) {
     for (int i = 0; i < leftColumnCount; i++) {
-      int targetColumnIdx =
-          outputColumnMap == null ? i : outputColumnMap.get(new InputLocation(0, i));
-      ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(targetColumnIdx);
+      ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(getOutputColumnIndex(i, true));
       Column valueColumn = leftTsBlock.getColumn(i);
 
       if (valueColumn.mayHaveNull()) {
@@ -325,11 +297,7 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
   private void appendNullForRightTable(int rowSize) {
     int nullCount = rowSize - leftIndex;
     for (int i = leftColumnCount; i < outputColumnCount; i++) {
-      int targetColumnIdx =
-          outputColumnMap == null
-              ? i
-              : outputColumnMap.get(new InputLocation(1, i - leftColumnCount));
-      ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(targetColumnIdx);
+      ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(getOutputColumnIndex(i, false));
       columnBuilder.appendNull(nullCount);
     }
   }
@@ -352,6 +320,10 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
   @Override
   public boolean isFinished() throws Exception {
     return !tsBlockIsNotEmpty(leftTsBlock, leftIndex) && left.isFinished();
+  }
+
+  protected int getOutputColumnIndex(int inputColumnIndex, boolean isLeftTable) {
+    return inputColumnIndex;
   }
 
   @Override

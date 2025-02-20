@@ -45,6 +45,12 @@ public class OffsetOperator implements ProcessOperator {
     this.child = requireNonNull(child, "child operator is null");
   }
 
+  public OffsetOperator(OffsetOperator offsetOperator, Operator child) {
+    this.operatorContext = offsetOperator.operatorContext;
+    this.remainingOffset = offsetOperator.remainingOffset;
+    this.child = child;
+  }
+
   @Override
   public OperatorContext getOperatorContext() {
     return operatorContext;

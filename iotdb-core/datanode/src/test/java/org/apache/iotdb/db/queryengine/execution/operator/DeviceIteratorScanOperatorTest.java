@@ -126,7 +126,7 @@ public class DeviceIteratorScanOperatorTest {
             private Operator currentDeviceRootOperator;
 
             @Override
-            public boolean keepRootOffsetAndLimitOperator() {
+            public boolean keepOffsetAndLimitOperatorAfterDeviceIterator() {
               return true;
             }
 
