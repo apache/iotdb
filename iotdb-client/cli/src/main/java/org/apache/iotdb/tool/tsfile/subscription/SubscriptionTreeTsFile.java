@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.session.subscription.model.Topic;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
@@ -66,8 +67,9 @@ public class SubscriptionTreeTsFile extends AbstractSubscriptionTsFile {
 
   @Override
   public void doClean() throws Exception {
-    for (int i = commonParam.getStartIndex(); i < commonParam.getConsumerCount(); i++) {
-      SubscriptionTreePullConsumer consumer = commonParam.getPullTreeConsumers().get(i);
+    List<SubscriptionTreePullConsumer> pullTreeConsumers = commonParam.getPullTreeConsumers();
+    for (int i = commonParam.getStartIndex(); i < pullTreeConsumers.size(); i++) {
+      SubscriptionTreePullConsumer consumer = pullTreeConsumers.get(i);
       String path =
           commonParam.getTargetDir()
               + File.separator
@@ -80,10 +82,12 @@ public class SubscriptionTreeTsFile extends AbstractSubscriptionTsFile {
       }
     }
     for (Topic topic : commonParam.getTreeSubs().getTopics()) {
-      commonParam.getTreeSubs().dropTopicIfExists(topic.getTopicName());
+      try {
+        commonParam.getTreeSubs().dropTopicIfExists(topic.getTopicName());
+      } catch (Exception e) {
+
+      }
     }
-    commonParam.getTreeSubs().getSubscriptions().forEach(out::println);
-    commonParam.getTreeSubs().getTopics().forEach(out::println);
     commonParam.getTreeSubs().close();
   }
 
@@ -104,16 +108,25 @@ public class SubscriptionTreeTsFile extends AbstractSubscriptionTsFile {
                   .fileSaveDir(commonParam.getTargetDir())
                   .buildPullConsumer());
     }
-    for (SubscriptionTreePullConsumer consumer : commonParam.getPullTreeConsumers()) {
-      consumer.open();
-    }
+    commonParam
+        .getPullTreeConsumers()
+        .removeIf(
+            consumer -> {
+              try {
+                consumer.open();
+                return false;
+              } catch (SubscriptionException e) {
+                return true;
+              }
+            });
+    commonParam.setConsumerCount(commonParam.getPullTreeConsumers().size());
   }
 
   @Override
   public void subscribe(String topicName)
       throws IoTDBConnectionException, StatementExecutionException {
     List<SubscriptionTreePullConsumer> pullTreeConsumers = commonParam.getPullTreeConsumers();
-    for (int i = 0; i < commonParam.getConsumerCount(); i++) {
+    for (int i = 0; i < pullTreeConsumers.size(); i++) {
       try {
         pullTreeConsumers.get(i).subscribe(topicName);
       } catch (Exception e) {
@@ -124,7 +137,8 @@ public class SubscriptionTreeTsFile extends AbstractSubscriptionTsFile {
 
   @Override
   public void consumerPoll(ExecutorService executor, String topicName) {
-    for (int i = commonParam.getStartIndex(); i < commonParam.getConsumerCount(); i++) {
+    List<SubscriptionTreePullConsumer> pullTreeConsumers = commonParam.getPullTreeConsumers();
+    for (int i = commonParam.getStartIndex(); i < pullTreeConsumers.size(); i++) {
       SubscriptionTreePullConsumer consumer = commonParam.getPullTreeConsumers().get(i);
       executor.submit(
           new Runnable() {
