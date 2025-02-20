@@ -219,6 +219,10 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   public synchronized void resetForIteration() {
     currentEnrichedEventsIterator = enrichedEvents.iterator();
     currentTabletInsertionEventsIterator = null;
+    if (Objects.nonNull(currentTsFileInsertionEvent)
+        && currentTsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
+      ((PipeTsFileInsertionEvent) currentTsFileInsertionEvent).close();
+    }
     currentTsFileInsertionEvent = null;
 
     if (Objects.nonNull(iterationSnapshot)) {
