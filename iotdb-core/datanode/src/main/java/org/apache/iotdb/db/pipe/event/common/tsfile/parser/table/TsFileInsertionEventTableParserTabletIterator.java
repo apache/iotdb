@@ -183,6 +183,8 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               final Map.Entry<String, TableSchema> entry = filteredTableSchemaIterator.next();
               tableName = entry.getKey();
               final TableSchema tableSchema = entry.getValue();
+              // The table name has changed, set to false
+              isSameTableName = false;
 
               final MetadataIndexNode tableRoot = fileMetadata.getTableMetadataIndexNode(tableName);
               deviceMetaIterator = metadataQuerier.deviceIterator(tableRoot, null);
