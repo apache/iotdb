@@ -98,7 +98,7 @@ public class LogDispatcher {
 
   public synchronized void start() {
     if (!threads.isEmpty()) {
-      threads.forEach(executorService::submit);
+      threads.forEach(logDispatcherThread -> executorService.submit(logDispatcherThread));
     }
   }
 
@@ -120,7 +120,8 @@ public class LogDispatcher {
     stopped = true;
   }
 
-  public synchronized void addLogDispatcherThread(Peer peer, long initialSyncIndex) {
+  public synchronized void addLogDispatcherThread(
+      Peer peer, long initialSyncIndex, boolean startNow) {
     if (stopped) {
       return;
     }
@@ -131,7 +132,9 @@ public class LogDispatcher {
     if (this.executorService == null) {
       initLogSyncThreadPool();
     }
-    executorService.submit(thread);
+    if (startNow) {
+      executorService.submit(thread);
+    }
   }
 
   public synchronized void removeLogDispatcherThread(Peer peer) throws IOException {

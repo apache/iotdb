@@ -174,7 +174,8 @@ class PipeAgentLauncher {
                         return pipeMeta;
                       })
                   .collect(Collectors.toList()));
-    } catch (Exception e) {
+    } catch (Exception | Error e) {
+      // Ignore unexpected exceptions to ensure that DataNode can start normally
       LOGGER.info(
           "Failed to get pipe task meta from config node. Ignore the exception, "
               + "because config node may not be ready yet, and "
