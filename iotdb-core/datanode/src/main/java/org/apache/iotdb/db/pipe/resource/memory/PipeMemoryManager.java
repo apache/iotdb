@@ -258,6 +258,11 @@ public class PipeMemoryManager {
     }
 
     final long oldSize = block.getMemoryUsageInBytes();
+    if (oldSize == 0) {
+      // If the memory block is not registered, we need to register it first.
+      // Otherwise, the memory usage will be inconsistent.
+      allocatedBlocks.add(block);
+    }
 
     if (oldSize >= targetSize) {
       usedMemorySizeInBytes -= oldSize - targetSize;
@@ -324,6 +329,10 @@ public class PipeMemoryManager {
       return new PipeMemoryBlock(sizeInBytes);
     }
 
+    if (sizeInBytes == 0) {
+      return registerMemoryBlock(0);
+    }
+
     if (TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes >= sizeInBytes
         && (float) usedMemorySizeInBytes / TOTAL_MEMORY_SIZE_IN_BYTES < usedThreshold) {
       return forceAllocate(sizeInBytes);
@@ -349,7 +358,7 @@ public class PipeMemoryManager {
       return new PipeMemoryBlock(sizeInBytes);
     }
 
-    if (TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes >= sizeInBytes) {
+    if (sizeInBytes == 0 || TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes >= sizeInBytes) {
       return registerMemoryBlock(sizeInBytes);
     }
 
@@ -423,8 +432,6 @@ public class PipeMemoryManager {
   }
 
   private PipeMemoryBlock registerMemoryBlock(long sizeInBytes, PipeMemoryBlockType type) {
-    usedMemorySizeInBytes += sizeInBytes;
-
     final PipeMemoryBlock returnedMemoryBlock;
     switch (type) {
       case TABLET:
@@ -438,7 +445,14 @@ public class PipeMemoryManager {
         break;
     }
 
-    allocatedBlocks.add(returnedMemoryBlock);
+    // For memory block whose size is 0, we do not need to add it to the allocated blocks now.
+    // It's good for performance and will not trigger concurrent issues.
+    // If forceResize is called on it, we will add it to the allocated blocks.
+    if (sizeInBytes > 0) {
+      usedMemorySizeInBytes += sizeInBytes;
+      allocatedBlocks.add(returnedMemoryBlock);
+    }
+
     return returnedMemoryBlock;
   }
 
