@@ -246,4 +246,10 @@ public class RelationalInsertRowNode extends InsertRowNode {
     TableDeviceSchemaCache.getInstance()
         .updateLastCacheIfExists(databaseName, getDeviceID(), rawMeasurements, timeValuePairs);
   }
+
+  @Override
+  public boolean allMeasurementFailed() {
+    // time column never fail for table model
+    return false;
+  }
 }

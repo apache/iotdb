@@ -365,6 +365,35 @@ public class IoTDBSessionRelationalIT {
             "616: Unknown column category for m2. Cannot auto create column.", e.getMessage());
       }
 
+      session.executeNonQueryStatement("CREATE TABLE partial_insert (s1 boolean)");
+      try {
+        session.executeNonQueryStatement(
+            "insert into partial_insert(time, s1) values (10000,true),(20000,false),(35000,-1.5),(30000,-1),(40000,0),(50000,1),(60000,1.5),(70000,'string'),(80000,'1989-06-15'),(90000,638323200000)");
+        fail("Exception expected");
+      } catch (StatementExecutionException e) {
+        assertEquals(
+            "507: Fail to insert measurements [s1] caused by [The BOOLEAN should be true/TRUE, false/FALSE or 0/1]",
+            e.getMessage());
+      }
+
+      SessionDataSet dataSet = session.executeQueryStatement("select * from partial_insert");
+      long[] timestamps =
+          new long[] {10000, 20000, 30000, 35000, 40000, 50000, 60000, 70000, 80000, 90000};
+      Boolean[] values =
+          new Boolean[] {true, false, null, null, false, true, null, null, null, null, null};
+      int cnt = 0;
+      while (dataSet.hasNext()) {
+        RowRecord rec = dataSet.next();
+        assertEquals(timestamps[cnt], rec.getFields().get(0).getLongV());
+        if (values[cnt] != null) {
+          assertEquals(values[cnt], rec.getFields().get(1).getBoolV());
+        } else {
+          assertEquals(null, rec.getFields().get(1).getDataType());
+        }
+        cnt++;
+      }
+      assertEquals(10, cnt);
+
     } finally {
       try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
         session.executeNonQueryStatement(
