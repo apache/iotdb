@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
+import org.apache.iotdb.db.queryengine.plan.ConnectivityManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
@@ -31,6 +32,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,6 +47,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class AsyncPlanNodeSender {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AsyncPlanNodeSender.class);
+
+  private final ConnectivityManager connectivityManager = ConnectivityManager.getInstance();
   private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
       asyncInternalServiceClientManager;
   private final List<FragmentInstance> instances;
@@ -95,8 +99,12 @@ public class AsyncPlanNodeSender {
         AsyncDataNodeInternalServiceClient client =
             asyncInternalServiceClientManager.borrowClient(entry.getKey());
         client.sendBatchPlanNode(entry.getValue().getBatchRequest(), handler);
+        connectivityManager.reportSuccess(entry.getKey());
       } catch (Exception e) {
         handler.onError(e);
+        if (e instanceof TException) {
+          connectivityManager.reportFailure(entry.getKey(), (TException) e);
+        }
       }
     }
   }

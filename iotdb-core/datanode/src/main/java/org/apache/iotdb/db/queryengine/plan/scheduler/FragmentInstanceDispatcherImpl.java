@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionReadExecutor;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
+import org.apache.iotdb.db.queryengine.plan.ConnectivityManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -87,6 +88,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       syncInternalServiceClientManager;
   private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
       asyncInternalServiceClientManager;
+
+  private final ConnectivityManager connectivityManager = ConnectivityManager.getInstance();
 
   private static final QueryExecutionMetricSet QUERY_EXECUTION_METRIC_SET =
       QueryExecutionMetricSet.getInstance();
@@ -413,6 +416,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     // If the DataNode cannot be connected, its endPoint will be put into black list
     // so that the following retry will avoid dispatching instance towards this DataNode.
     queryContext.addFailedEndPoint(endPoint);
+    if (e instanceof TException) {
+      connectivityManager.reportFailure(endPoint, (TException) e);
+    }
     throw new FragmentInstanceDispatchException(status);
   }
 
@@ -421,6 +427,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
     try {
       dispatchRemoteHelper(instance, endPoint);
+      connectivityManager.reportSuccess(endPoint);
     } catch (ClientManagerException | TException | RatisReadUnavailableException e) {
       LOGGER.warn(
           "can't execute request on node {}, error msg is {}, and we try to reconnect this node.",
