@@ -275,7 +275,7 @@ public class MemoryManager {
 
     block.markAsReleased();
     allocatedMemorySizeInBytes -= block.getTotalMemorySizeInBytes();
-    allocatedMemoryBlocks.remove(block);
+    allocatedMemoryBlocks.remove(block.getName());
     try {
       block.close();
     } catch (Exception e) {
