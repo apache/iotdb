@@ -324,7 +324,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
                 regionGroupId);
           } else {
             LOGGER.warn(
-                "[IoTConsensusV2 Leader Changed] Failed flush old leader {} for region {}",
+                "[IoTConsensusV2 Leader Changed] Failed to flush old leader {} for region {}",
                 oldLeaderId,
                 regionGroupId);
           }
@@ -422,9 +422,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     }
   }
 
-  /**
-   * @return Map<RegionGroupId, RegionPriority>
-   */
+  /** @return Map<RegionGroupId, RegionPriority> */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRegionPriorityMap() {
     priorityMapLock.readLock().lock();
     try {
