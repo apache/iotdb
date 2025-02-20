@@ -141,20 +141,20 @@ public class MemoryManager {
    *
    * @param name the name of memory block
    * @param sizeInBytes the size in bytes of memory block try to allocate
-   * @param usedThreshold the used threshold of allocatedMemorySizeInBytes / totalMemorySizeInBytes
+   * @param maxRatio the used threshold of allocatedMemorySizeInBytes / totalMemorySizeInBytes
    * @param memoryBlockType the type of memory block
    * @return the memory block if success, otherwise null
    */
   public synchronized IMemoryBlock forceAllocateIfSufficient(
-      String name, long sizeInBytes, float usedThreshold, MemoryBlockType memoryBlockType) {
-    if (usedThreshold < 0.0f || usedThreshold > 1.0f) {
+      String name, long sizeInBytes, float maxRatio, MemoryBlockType memoryBlockType) {
+    if (maxRatio < 0.0f || maxRatio > 1.0f) {
       return null;
     }
     if (!enable) {
       return registerMemoryBlock(name, sizeInBytes, memoryBlockType);
     }
     if (totalMemorySizeInBytes - allocatedMemorySizeInBytes >= sizeInBytes
-        && (float) allocatedMemorySizeInBytes / totalMemorySizeInBytes < usedThreshold) {
+        && (float) allocatedMemorySizeInBytes / totalMemorySizeInBytes < maxRatio) {
       return forceAllocate(name, sizeInBytes, memoryBlockType);
     } else {
       // TODO @spricoder: consider to find more memory in active way
@@ -165,7 +165,7 @@ public class MemoryManager {
           totalMemorySizeInBytes,
           allocatedMemorySizeInBytes,
           sizeInBytes,
-          usedThreshold);
+          maxRatio);
     }
 
     return null;
