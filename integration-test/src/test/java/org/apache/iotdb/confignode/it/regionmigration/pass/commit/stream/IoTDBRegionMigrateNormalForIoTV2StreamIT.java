@@ -33,7 +33,7 @@ import org.junit.runner.RunWith;
 
 @Category({ClusterIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateNormalITForIoTV2Stream
+public class IoTDBRegionMigrateNormalForIoTV2StreamIT
     extends IoTDBRegionOperationReliabilityITFramework {
 
   @Override
