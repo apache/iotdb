@@ -108,27 +108,27 @@ public class PipeMemoryManager {
 
   public boolean isEnough4TabletParsing() {
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
-        < EXCEED_PROTECT_THRESHOLD * allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
+            < EXCEED_PROTECT_THRESHOLD * allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
         && (double) usedMemorySizeInBytesOfTablets
-        < EXCEED_PROTECT_THRESHOLD * allowedMaxMemorySizeInBytesOfTablets();
+            < EXCEED_PROTECT_THRESHOLD * allowedMaxMemorySizeInBytesOfTablets();
   }
 
   private boolean isHardEnough4TabletParsing() {
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
-        < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
+            < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
         && (double) usedMemorySizeInBytesOfTablets < allowedMaxMemorySizeInBytesOfTablets();
   }
 
   public boolean isEnough4TsFileSlicing() {
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
-        < EXCEED_PROTECT_THRESHOLD * allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
+            < EXCEED_PROTECT_THRESHOLD * allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
         && (double) usedMemorySizeInBytesOfTsFiles
-        < EXCEED_PROTECT_THRESHOLD * allowedMaxMemorySizeInBytesOfTsTiles();
+            < EXCEED_PROTECT_THRESHOLD * allowedMaxMemorySizeInBytesOfTsTiles();
   }
 
   private boolean isHardEnough4TsFileSlicing() {
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
-        < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
+            < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
         && (double) usedMemorySizeInBytesOfTsFiles < allowedMaxMemorySizeInBytesOfTsTiles();
   }
 
