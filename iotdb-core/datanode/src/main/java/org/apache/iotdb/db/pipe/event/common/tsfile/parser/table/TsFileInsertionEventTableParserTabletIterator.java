@@ -248,7 +248,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
           isSameTableName = true;
 
           // Calculate row count and memory size of the tablet based on the first row
-          Pair<Integer, Integer> rowCountAndMemorySize =
+          final Pair<Integer, Integer> rowCountAndMemorySize =
               PipeMemoryWeightUtil.calculateTabletRowCountAndMemory(batchData);
           PipeDataNodeResourceManager.memory()
               .forceResize(allocatedMemoryBlockForTablet, rowCountAndMemorySize.getLeft());
