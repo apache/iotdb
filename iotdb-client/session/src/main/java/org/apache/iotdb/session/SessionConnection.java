@@ -489,7 +489,6 @@ public class SessionConnection {
     req.setEnableRedirectQuery(enableRedirect);
     req.setLegalPathNodes(isLegalPathNodes);
     req.setTimeout(timeOut);
-    TSExecuteStatementResp tsExecuteStatementResp = null;
     TEndPoint redirectedEndPoint = null;
 
     RetryResult<TSExecuteStatementResp> result =
@@ -500,18 +499,17 @@ public class SessionConnection {
               return client.executeFastLastDataQueryForOneDeviceV2(req);
             });
 
-    TSExecuteStatementResp execResp = result.getResult();
+    TSExecuteStatementResp tsExecuteStatementResp = result.getResult();
     if (result.getRetryAttempts() == 0) {
       try {
-        RpcUtils.verifySuccessWithRedirection(execResp.getStatus());
+        RpcUtils.verifySuccessWithRedirection(tsExecuteStatementResp.getStatus());
       } catch (RedirectException e) {
         redirectedEndPoint = e.getEndPoint();
       }
     } else {
-      RpcUtils.verifySuccess(execResp.getStatus());
+      RpcUtils.verifySuccess(tsExecuteStatementResp.getStatus());
     }
 
-    RpcUtils.verifySuccess(tsExecuteStatementResp.getStatus());
     return new Pair<>(
         new SessionDataSet(
             "",
