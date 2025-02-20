@@ -1566,7 +1566,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         dropTableAttributeNode.getTableName(),
         pointer ->
             deviceAttributeStore.removeAttribute(
-                pointer, dropTableAttributeNode.getColumnName()))) {
+                pointer,
+                dropTableAttributeNode.getColumnName(),
+                dropTableAttributeNode.getTableName()))) {
       deviceAttributeCacheUpdater.invalidate(
           dropTableAttributeNode.getTableName(), dropTableAttributeNode.getColumnName());
       writeToMLog(dropTableAttributeNode);
