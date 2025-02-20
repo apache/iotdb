@@ -316,7 +316,18 @@ public class RouteBalancer implements IClusterStatusSubscriber {
           TFlushReq flushReq = new TFlushReq();
           flushReq.setRegionIds(Collections.singletonList(String.valueOf(regionGroupId.getId())));
           // Do our best to flush. If flush failed, never retry
-          configManager.flushOnSpecificDN(flushReq, oldLeaderDataNodeLocation);
+          TSStatus result = configManager.flushOnSpecificDN(flushReq, oldLeaderDataNodeLocation);
+          if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            LOGGER.info(
+                "[IoTConsensusV2 Leader Changed] Successfully flush old leader {} for region {}",
+                oldLeaderId,
+                regionGroupId);
+          } else {
+            LOGGER.warn(
+                "[IoTConsensusV2 Leader Changed] Failed flush old leader {} for region {}",
+                oldLeaderId,
+                regionGroupId);
+          }
         };
     lastBalancedOldLeaderId2RegionMap.forEach(consumer);
     // after flush, clear map for next balance
