@@ -86,6 +86,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected final AtomicBoolean isUsingAsyncLoadTsFileStrategy = new AtomicBoolean(false);
   protected final AtomicBoolean validateTsFile = new AtomicBoolean(true);
 
+  protected final AtomicBoolean shouldMarkAsPipeRequest = new AtomicBoolean(true);
+
   @Override
   public IoTDBConnectorRequestVersion getVersion() {
     return IoTDBConnectorRequestVersion.VERSION_1;
@@ -288,6 +290,12 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             req.getParams()
                 .getOrDefault(
                     PipeTransferHandshakeConstant.HANDSHAKE_KEY_VALIDATE_TSFILE, "true")));
+
+    shouldMarkAsPipeRequest.set(
+        Boolean.parseBoolean(
+            req.getParams()
+                .getOrDefault(
+                    PipeTransferHandshakeConstant.HANDSHAKE_KEY_MARK_AS_PIPE_REQUEST, "true")));
 
     // Handle the handshake request as a v1 request.
     // Here we construct a fake "dataNode" request to valid from v1 validation logic, though

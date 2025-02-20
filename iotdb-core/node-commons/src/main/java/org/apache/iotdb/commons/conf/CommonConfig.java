@@ -256,12 +256,13 @@ public class CommonConfig {
   private long pipeReceiverLoginPeriodicVerificationIntervalMs = 300000;
 
   private int pipeMaxAllowedHistoricalTsFilePerDataRegion = 100;
-  private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 2;
-  private int pipeMaxAllowedPinnedMemTableCount = 50;
-  private long pipeMaxAllowedLinkedTsFileCount = 100;
+  private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 10;
+  private int pipeMaxAllowedPinnedMemTableCount = 1000;
+  private long pipeMaxAllowedLinkedTsFileCount = 300;
   private float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage = 0.1F;
   private long pipeStuckRestartIntervalSeconds = 120;
   private long pipeStuckRestartMinIntervalMs = 5 * 60 * 1000L; // 5 minutes
+  private long pipeStorageEngineFlushTimeIntervalMs = Long.MAX_VALUE;
 
   private int pipeMetaReportMaxLogNumPerRound = 10;
   private int pipeMetaReportMaxLogIntervalRounds = 36;
@@ -276,7 +277,7 @@ public class CommonConfig {
   private long pipeMemoryAllocateMinSizeInBytes = 32;
   private long pipeMemoryAllocateForTsFileSequenceReaderInBytes = (long) 2 * 1024 * 1024; // 2MB
   private long pipeMemoryExpanderIntervalSeconds = (long) 3 * 60; // 3Min
-  private volatile long pipeTsFileParserCheckMemoryEnoughIntervalMs = 10L;
+  private volatile long pipeCheckMemoryEnoughIntervalMs = 10L;
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
   private long pipeListeningQueueTransferSnapshotThreshold = 1000;
   private int pipeSnapshotExecutionMaxBatchSize = 1000;
@@ -308,7 +309,7 @@ public class CommonConfig {
   private long subscriptionTsFileDeduplicationWindowSeconds = 120; // 120s
   private volatile long subscriptionCheckMemoryEnoughIntervalMs = 10L;
 
-  private boolean subscriptionPrefetchEnabled = true;
+  private boolean subscriptionPrefetchEnabled = false;
   private float subscriptionPrefetchMemoryThreshold = 0.5F;
   private float subscriptionPrefetchMissingRateThreshold = 0.9F;
   private int subscriptionPrefetchEventLocalCountThreshold = 10;
@@ -1061,12 +1062,20 @@ public class CommonConfig {
     return pipeStuckRestartMinIntervalMs;
   }
 
+  public long getPipeStorageEngineFlushTimeIntervalMs() {
+    return pipeStorageEngineFlushTimeIntervalMs;
+  }
+
   public void setPipeStuckRestartIntervalSeconds(long pipeStuckRestartIntervalSeconds) {
     this.pipeStuckRestartIntervalSeconds = pipeStuckRestartIntervalSeconds;
   }
 
   public void setPipeStuckRestartMinIntervalMs(long pipeStuckRestartMinIntervalMs) {
     this.pipeStuckRestartMinIntervalMs = pipeStuckRestartMinIntervalMs;
+  }
+
+  public void setPipeStorageEngineFlushTimeIntervalMs(long pipeStorageEngineFlushTimeIntervalMs) {
+    this.pipeStorageEngineFlushTimeIntervalMs = pipeStorageEngineFlushTimeIntervalMs;
   }
 
   public int getPipeMetaReportMaxLogNumPerRound() {
@@ -1143,13 +1152,12 @@ public class CommonConfig {
     this.pipeMemoryExpanderIntervalSeconds = pipeMemoryExpanderIntervalSeconds;
   }
 
-  public long getPipeTsFileParserCheckMemoryEnoughIntervalMs() {
-    return pipeTsFileParserCheckMemoryEnoughIntervalMs;
+  public long getPipeCheckMemoryEnoughIntervalMs() {
+    return pipeCheckMemoryEnoughIntervalMs;
   }
 
-  public void setPipeTsFileParserCheckMemoryEnoughIntervalMs(
-      long pipeTsFileParserCheckMemoryEnoughIntervalMs) {
-    this.pipeTsFileParserCheckMemoryEnoughIntervalMs = pipeTsFileParserCheckMemoryEnoughIntervalMs;
+  public void setPipeCheckMemoryEnoughIntervalMs(long pipeCheckMemoryEnoughIntervalMs) {
+    this.pipeCheckMemoryEnoughIntervalMs = pipeCheckMemoryEnoughIntervalMs;
   }
 
   public int getPipeMemoryAllocateMaxRetries() {

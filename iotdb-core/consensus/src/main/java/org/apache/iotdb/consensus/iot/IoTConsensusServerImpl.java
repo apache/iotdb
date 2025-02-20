@@ -146,17 +146,11 @@ public class IoTConsensusServerImpl {
     this.backgroundTaskService = backgroundTaskService;
     this.config = config;
     this.consensusGroupId = thisNode.getGroupId().toString();
-    consensusReqReader = (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
+    this.consensusReqReader =
+        (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
     this.searchIndex = new AtomicLong(consensusReqReader.getCurrentSearchIndex());
     this.ioTConsensusServerMetrics = new IoTConsensusServerMetrics(this);
     this.logDispatcher = new LogDispatcher(this, clientManager);
-    // Since the underlying wal does not persist safelyDeletedSearchIndex, IoTConsensus needs to
-    // update wal with its syncIndex recovered from the consensus layer when initializing.
-    // This prevents wal from being piled up if the safelyDeletedSearchIndex is not updated after
-    // the restart and Leader migration occurs
-    checkAndUpdateSafeDeletedSearchIndex();
-    // see message in logs for details
-    checkAndUpdateSearchIndex();
   }
 
   public IStateMachine getStateMachine() {
@@ -164,6 +158,7 @@ public class IoTConsensusServerImpl {
   }
 
   public void start() {
+    checkAndUpdateIndex();
     MetricService.getInstance().addMetricSet(this.ioTConsensusServerMetrics);
     stateMachine.start();
     logDispatcher.start();
@@ -835,12 +830,25 @@ public class IoTConsensusServerImpl {
     }
   }
 
+  void checkAndUpdateIndex() {
+    // Since the underlying wal does not persist safelyDeletedSearchIndex, IoTConsensus needs to
+    // update wal with its syncIndex recovered from the consensus layer when initializing.
+    // This prevents wal from being piled up if the safelyDeletedSearchIndex is not updated after
+    // the restart and Leader migration occurs
+    checkAndUpdateSafeDeletedSearchIndex();
+    // see message in logs for details
+    checkAndUpdateSearchIndex();
+  }
+
   /**
-   * If there is only one replica, set it to Long.MAX_VALUE.、 If there are multiple replicas, get
-   * the latest SafelyDeletedSearchIndex again. This enables wal to be deleted in a timely manner.
+   * If there is only one replica, set it to Long.MAX_VALUE. If there are multiple replicas, get the
+   * latest SafelyDeletedSearchIndex again. This enables wal to be deleted in a timely manner.
    */
-  public void checkAndUpdateSafeDeletedSearchIndex() {
-    if (configuration.size() == 1) {
+  void checkAndUpdateSafeDeletedSearchIndex() {
+    if (configuration.isEmpty()) {
+      logger.error(
+          "Configuration is empty, which is unexpected. Safe deleted search index won't be updated this time.");
+    } else if (configuration.size() == 1) {
       consensusReqReader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
     } else {
       consensusReqReader.setSafelyDeletedSearchIndex(getMinFlushedSyncIndex());
