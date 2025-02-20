@@ -64,10 +64,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 /** The RouteBalancer guides the cluster RegionGroups' leader distribution and routing priority. */
@@ -117,11 +119,14 @@ public class RouteBalancer implements IClusterStatusSubscriber {
   private static final long BALANCE_RATIS_LEADER_FAILED_INTERVAL_IN_NS = 20 * 1000L * 1000L * 1000L;
   private final Map<TConsensusGroupId, Long> lastFailedTimeForLeaderBalance;
 
+  private final Map<Integer, TConsensusGroupId> lastBalancedOldLeaderId2RegionMap;
+
   public RouteBalancer(IManager configManager) {
     this.configManager = configManager;
     this.priorityMapLock = new ReentrantReadWriteLock();
     this.regionPriorityMap = new TreeMap<>();
     this.lastFailedTimeForLeaderBalance = new TreeMap<>();
+    this.lastBalancedOldLeaderId2RegionMap = new ConcurrentHashMap<>();
 
     switch (CONF.getLeaderDistributionPolicy()) {
       case AbstractLeaderBalancer.GREEDY_POLICY:
@@ -200,18 +205,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
                 // region leader
                 successTransferMap.put(
                     regionGroupId, new ConsensusGroupHeartbeatSample(currentTime, newLeaderId));
-                // flush on old leader
-                TDataNodeConfiguration configuration =
-                    getNodeManager().getRegisteredDataNode(oldLeaderId);
-                Map<Integer, TDataNodeLocation> oldLeaderDataNodeLocation = new HashMap<>();
-                oldLeaderDataNodeLocation.put(
-                    configuration.getLocation().dataNodeId, configuration.getLocation());
-
-                TFlushReq flushReq = new TFlushReq();
-                flushReq.setRegionIds(
-                    Collections.singletonList(String.valueOf(regionGroupId.getId())));
-                // Do our best to flush. If flush failed, never retry
-                configManager.flushOnSpecificDN(flushReq, oldLeaderDataNodeLocation);
+                lastBalancedOldLeaderId2RegionMap.put(oldLeaderId, regionGroupId);
                 break;
               case ConsensusFactory.RATIS_CONSENSUS:
               default:
@@ -304,9 +298,35 @@ public class RouteBalancer implements IClusterStatusSubscriber {
         .sendAsyncRequest(invalidateSchemaCacheRequestHandler);
   }
 
+  private void flushOldLeaderIfIoTV2() {
+    if (!IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION
+        || !Objects.equals(
+            DATA_REGION_CONSENSUS_PROTOCOL_CLASS, ConsensusFactory.IOT_CONSENSUS_V2)) {
+      return;
+    }
+
+    BiConsumer<Integer, TConsensusGroupId> consumer =
+        (oldLeaderId, regionGroupId) -> {
+          TDataNodeConfiguration configuration =
+              getNodeManager().getRegisteredDataNode(oldLeaderId);
+          Map<Integer, TDataNodeLocation> oldLeaderDataNodeLocation = new HashMap<>();
+          oldLeaderDataNodeLocation.put(
+              configuration.getLocation().dataNodeId, configuration.getLocation());
+
+          TFlushReq flushReq = new TFlushReq();
+          flushReq.setRegionIds(Collections.singletonList(String.valueOf(regionGroupId.getId())));
+          // Do our best to flush. If flush failed, never retry
+          configManager.flushOnSpecificDN(flushReq, oldLeaderDataNodeLocation);
+        };
+    lastBalancedOldLeaderId2RegionMap.forEach(consumer);
+    // after flush, clear map for next balance
+    lastBalancedOldLeaderId2RegionMap.clear();
+  }
+
   public synchronized void balanceRegionLeaderAndPriority() {
     balanceRegionLeader();
     balanceRegionPriority();
+    flushOldLeaderIfIoTV2();
   }
 
   /** Balance cluster RegionGroup route priority through configured algorithm. */
@@ -391,9 +411,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     }
   }
 
-  /**
-   * @return Map<RegionGroupId, RegionPriority>
-   */
+  /** @return Map<RegionGroupId, RegionPriority> */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRegionPriorityMap() {
     priorityMapLock.readLock().lock();
     try {
@@ -478,16 +496,19 @@ public class RouteBalancer implements IClusterStatusSubscriber {
   @Override
   public void onNodeStatisticsChanged(NodeStatisticsChangeEvent event) {
     balanceRegionLeader();
+    flushOldLeaderIfIoTV2();
   }
 
   @Override
   public void onRegionGroupStatisticsChanged(RegionGroupStatisticsChangeEvent event) {
     balanceRegionLeader();
+    flushOldLeaderIfIoTV2();
   }
 
   @Override
   public void onConsensusGroupStatisticsChanged(ConsensusGroupStatisticsChangeEvent event) {
     balanceRegionLeader();
     balanceRegionPriority();
+    flushOldLeaderIfIoTV2();
   }
 }
