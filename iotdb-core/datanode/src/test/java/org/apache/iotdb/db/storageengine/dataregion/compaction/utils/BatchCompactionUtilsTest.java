@@ -34,7 +34,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.header.PageHeader;
-import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -108,7 +107,7 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
             true);
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(seqResource1.getTsFile().getAbsolutePath())) {
-      AbstractAlignedChunkMetadata alignedChunkMetadata =
+      AlignedChunkMetadata alignedChunkMetadata =
           reader
               .getAlignedChunkMetadata(
                   IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d0"), true)
@@ -312,14 +311,14 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
             new MeasurementSchema("s1", TSDataType.INT32),
             new MeasurementSchema("s2", TSDataType.INT32),
             new MeasurementSchema("s4", TSDataType.INT32));
-    AbstractAlignedChunkMetadata newAlignedChunkMetadata =
+    AlignedChunkMetadata newAlignedChunkMetadata =
         AlignedSeriesBatchCompactionUtils.fillAlignedChunkMetadataBySchemaList(
             alignedChunkMetadata, measurementSchemas);
     Assert.assertEquals(
-        Arrays.asList("s0", "s1", "s2", "s4"),
         newAlignedChunkMetadata.getValueChunkMetadataList().stream()
             .map(IChunkMetadata::getMeasurementUid)
-            .collect(Collectors.toList()));
+            .collect(Collectors.toList()),
+        Arrays.asList("s0", "s1", "s2", "s4"));
   }
 
   @Test
@@ -334,14 +333,14 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
         Arrays.asList(
             new MeasurementSchema("s0", TSDataType.INT32),
             new MeasurementSchema("s4", TSDataType.INT32));
-    AbstractAlignedChunkMetadata newAlignedChunkMetadata =
+    AlignedChunkMetadata newAlignedChunkMetadata =
         AlignedSeriesBatchCompactionUtils.fillAlignedChunkMetadataBySchemaList(
             alignedChunkMetadata, measurementSchemas);
     Assert.assertEquals(
-        Arrays.asList(null, "s4"),
         newAlignedChunkMetadata.getValueChunkMetadataList().stream()
             .map(chunkMetadata -> chunkMetadata == null ? null : chunkMetadata.getMeasurementUid())
-            .collect(Collectors.toList()));
+            .collect(Collectors.toList()),
+        Arrays.asList(null, "s4"));
   }
 
   @Test
@@ -369,23 +368,23 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
             new MeasurementSchema("s2", TSDataType.INT32),
             new MeasurementSchema("s3", TSDataType.INT32),
             new MeasurementSchema("s4", TSDataType.INT32));
-    AbstractAlignedChunkMetadata newAlignedChunkMetadata1 =
+    AlignedChunkMetadata newAlignedChunkMetadata1 =
         AlignedSeriesBatchCompactionUtils.fillAlignedChunkMetadataBySchemaList(
             alignedChunkMetadata1, measurementSchemas);
     Assert.assertEquals(
-        Arrays.asList("s0", "s1", "s2", null, null),
         newAlignedChunkMetadata1.getValueChunkMetadataList().stream()
             .map(chunkMetadata -> chunkMetadata == null ? null : chunkMetadata.getMeasurementUid())
-            .collect(Collectors.toList()));
+            .collect(Collectors.toList()),
+        Arrays.asList("s0", "s1", "s2", null, null));
 
-    AbstractAlignedChunkMetadata newAlignedChunkMetadata2 =
+    AlignedChunkMetadata newAlignedChunkMetadata2 =
         AlignedSeriesBatchCompactionUtils.fillAlignedChunkMetadataBySchemaList(
             alignedChunkMetadata2, measurementSchemas);
     Assert.assertEquals(
-        Arrays.asList(null, null, null, "s3", "s4"),
         newAlignedChunkMetadata2.getValueChunkMetadataList().stream()
             .map(chunkMetadata -> chunkMetadata == null ? null : chunkMetadata.getMeasurementUid())
-            .collect(Collectors.toList()));
+            .collect(Collectors.toList()),
+        Arrays.asList(null, null, null, "s3", "s4"));
   }
 
   @Test
@@ -412,22 +411,22 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
         Arrays.asList(
             new MeasurementSchema("s2", TSDataType.INT32),
             new MeasurementSchema("s4", TSDataType.INT32));
-    AbstractAlignedChunkMetadata newAlignedChunkMetadata1 =
+    AlignedChunkMetadata newAlignedChunkMetadata1 =
         AlignedSeriesBatchCompactionUtils.fillAlignedChunkMetadataBySchemaList(
             alignedChunkMetadata1, measurementSchemas);
     Assert.assertEquals(
-        Arrays.asList("s2", null),
         newAlignedChunkMetadata1.getValueChunkMetadataList().stream()
             .map(chunkMetadata -> chunkMetadata == null ? null : chunkMetadata.getMeasurementUid())
-            .collect(Collectors.toList()));
+            .collect(Collectors.toList()),
+        Arrays.asList("s2", null));
 
-    AbstractAlignedChunkMetadata newAlignedChunkMetadata2 =
+    AlignedChunkMetadata newAlignedChunkMetadata2 =
         AlignedSeriesBatchCompactionUtils.fillAlignedChunkMetadataBySchemaList(
             alignedChunkMetadata2, measurementSchemas);
     Assert.assertEquals(
-        Arrays.asList(null, "s4"),
         newAlignedChunkMetadata2.getValueChunkMetadataList().stream()
             .map(chunkMetadata -> chunkMetadata == null ? null : chunkMetadata.getMeasurementUid())
-            .collect(Collectors.toList()));
+            .collect(Collectors.toList()),
+        Arrays.asList(null, "s4"));
   }
 }

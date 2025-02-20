@@ -110,7 +110,7 @@ fi
 echo "Installing AINode..."
 cd "$SCRIPT_DIR/../lib/"
 shopt -s nullglob
-for i in *.whl; do
+for i in *.whl *.tar.gz; do
   if [[ $i =~ "ainode" ]]; then
     echo Installing AINode body: $i
     if [ -z "$p_pypi_mirror" ]; then

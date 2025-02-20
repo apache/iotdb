@@ -29,7 +29,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 public abstract class BlockingPendingQueue<E extends Event> {
@@ -43,8 +42,6 @@ public abstract class BlockingPendingQueue<E extends Event> {
 
   protected final PipeEventCounter eventCounter;
 
-  protected final AtomicBoolean isClosed = new AtomicBoolean(false);
-
   protected BlockingPendingQueue(
       final BlockingQueue<E> pendingQueue, final PipeEventCounter eventCounter) {
     this.pendingQueue = pendingQueue;
@@ -52,7 +49,6 @@ public abstract class BlockingPendingQueue<E extends Event> {
   }
 
   public boolean waitedOffer(final E event) {
-    checkBeforeOffer(event);
     try {
       final boolean offered =
           pendingQueue.offer(event, MAX_BLOCKING_TIME_MS, TimeUnit.MILLISECONDS);
@@ -68,7 +64,6 @@ public abstract class BlockingPendingQueue<E extends Event> {
   }
 
   public boolean directOffer(final E event) {
-    checkBeforeOffer(event);
     final boolean offered = pendingQueue.offer(event);
     if (offered) {
       eventCounter.increaseEventCount(event);
@@ -77,7 +72,6 @@ public abstract class BlockingPendingQueue<E extends Event> {
   }
 
   public boolean put(final E event) {
-    checkBeforeOffer(event);
     try {
       pendingQueue.put(event);
       eventCounter.increaseEventCount(event);
@@ -108,7 +102,6 @@ public abstract class BlockingPendingQueue<E extends Event> {
   }
 
   public void clear() {
-    isClosed.set(true);
     pendingQueue.clear();
     eventCounter.reset();
   }
@@ -119,7 +112,6 @@ public abstract class BlockingPendingQueue<E extends Event> {
   }
 
   public void discardAllEvents() {
-    isClosed.set(true);
     pendingQueue.removeIf(
         event -> {
           if (event instanceof EnrichedEvent) {
@@ -165,11 +157,5 @@ public abstract class BlockingPendingQueue<E extends Event> {
 
   public int getPipeHeartbeatEventCount() {
     return eventCounter.getPipeHeartbeatEventCount();
-  }
-
-  protected void checkBeforeOffer(final E event) {
-    if (isClosed.get() && event instanceof EnrichedEvent) {
-      ((EnrichedEvent) event).clearReferenceCount(BlockingPendingQueue.class.getName());
-    }
   }
 }

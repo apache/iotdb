@@ -140,12 +140,4 @@ public interface AccessControl {
    */
   void checkUserCanRunRelationalAuthorStatement(
       String userName, RelationalAuthorStatement statement);
-
-  /**
-   * Check if user is admin user
-   *
-   * @param userName name of user
-   * @throws AccessDeniedException if not allowed
-   */
-  void checkUserIsAdmin(String userName);
 }

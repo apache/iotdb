@@ -541,15 +541,6 @@ public class TableMetadataImpl implements Metadata {
                 + " must have at least two arguments, and first argument must be char type.");
       }
       return STRING;
-    } else if (TableBuiltinScalarFunction.GREATEST.getFunctionName().equalsIgnoreCase(functionName)
-        || TableBuiltinScalarFunction.LEAST.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (argumentTypes.size() < 2 || !areAllTypesSameAndComparable(argumentTypes)) {
-        throw new SemanticException(
-            "Scalar function "
-                + functionName.toLowerCase(Locale.ENGLISH)
-                + " must have at least two arguments, and all type must be the same.");
-      }
-      return argumentTypes.get(0);
     }
 
     // builtin aggregation function
@@ -891,17 +882,6 @@ public class TableMetadataImpl implements Metadata {
         || (isCharType(left) && isCharType(right))
         || (isUnknownType(left) && (isNumericType(right) || isCharType(right)))
         || ((isNumericType(left) || isCharType(left)) && isUnknownType(right));
-  }
-
-  public static boolean areAllTypesSameAndComparable(List<? extends Type> argumentTypes) {
-    if (argumentTypes == null || argumentTypes.isEmpty()) {
-      return true;
-    }
-    Type firstType = argumentTypes.get(0);
-    if (!firstType.isComparable()) {
-      return false;
-    }
-    return argumentTypes.stream().allMatch(type -> type.equals(firstType));
   }
 
   public static boolean isArithmeticType(Type type) {

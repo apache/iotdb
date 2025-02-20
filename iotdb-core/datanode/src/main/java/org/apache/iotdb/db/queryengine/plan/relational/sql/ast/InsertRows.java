@@ -61,7 +61,7 @@ public class InsertRows extends WrappedInsertStatement {
 
   @Override
   public String getTableName() {
-    return getInnerTreeStatement().getInsertRowStatementList().get(0).getDevicePath().getFullPath();
+    return getInnerTreeStatement().getDevicePath().getFullPath();
   }
 
   @Override

@@ -85,8 +85,7 @@ final class AbstractSubscriptionProviders {
       try {
         defaultProvider = consumer.constructProviderAndHandshake(endPoint);
       } catch (final Exception e) {
-        LOGGER.warn(
-            "{} failed to create connection with {} because of {}", consumer, endPoint, e, e);
+        LOGGER.warn("Failed to create connection with {}", endPoint, e);
         continue; // try next endpoint
       }
       defaultDataNodeId = defaultProvider.getDataNodeId();
@@ -96,9 +95,8 @@ final class AbstractSubscriptionProviders {
       try {
         allEndPoints = defaultProvider.getSessionConnection().fetchAllEndPoints();
       } catch (final Exception e) {
-        LOGGER.warn(
-            "{} failed to fetch all endpoints from {} because of {}", consumer, endPoint, e, e);
-        break;
+        LOGGER.warn("Failed to fetch all endpoints from {}, will retry later...", endPoint, e);
+        break; // retry later
       }
 
       for (final Map.Entry<Integer, TEndPoint> entry : allEndPoints.entrySet()) {
@@ -111,12 +109,8 @@ final class AbstractSubscriptionProviders {
           provider = consumer.constructProviderAndHandshake(entry.getValue());
         } catch (final Exception e) {
           LOGGER.warn(
-              "{} failed to create connection with {} because of {}",
-              consumer,
-              entry.getValue(),
-              e,
-              e);
-          continue;
+              "Failed to create connection with {}, will retry later...", entry.getValue(), e);
+          continue; // retry later
         }
         addProvider(entry.getKey(), provider);
       }
@@ -140,7 +134,7 @@ final class AbstractSubscriptionProviders {
       try {
         provider.close();
       } catch (final Exception e) {
-        LOGGER.warn("Failed to close subscription provider {} because of {}", provider, e, e);
+        LOGGER.warn(e.getMessage());
       }
     }
     subscriptionProviders.clear();
@@ -248,10 +242,8 @@ final class AbstractSubscriptionProviders {
         provider.setAvailable();
       } catch (final Exception e) {
         LOGGER.warn(
-            "{} failed to sending heartbeat to subscription provider {} because of {}, set subscription provider unavailable",
-            consumer,
+            "something unexpected happened when sending heartbeat to subscription provider {}, set subscription provider unavailable",
             provider,
-            e,
             e);
         provider.setUnavailable();
       }
@@ -278,7 +270,7 @@ final class AbstractSubscriptionProviders {
       try {
         openProviders(consumer);
       } catch (final Exception e) {
-        LOGGER.warn("Failed to open providers for consumer {} because of {}", consumer, e, e);
+        LOGGER.warn("something unexpected happened when syncing subscription endpoints...", e);
         return;
       }
     }
@@ -287,8 +279,8 @@ final class AbstractSubscriptionProviders {
     try {
       allEndPoints = consumer.fetchAllEndPointsWithRedirection();
     } catch (final Exception e) {
-      LOGGER.warn("Failed to fetch all endpoints for consumer {} because of {}", consumer, e, e);
-      return;
+      LOGGER.warn("Failed to fetch all endpoints, will retry later...", e);
+      return; // retry later
     }
 
     // add new providers or handshake existing providers
@@ -302,8 +294,8 @@ final class AbstractSubscriptionProviders {
           newProvider = consumer.constructProviderAndHandshake(endPoint);
         } catch (final Exception e) {
           LOGGER.warn(
-              "{} failed to create connection with {} because of {}", consumer, endPoint, e, e);
-          continue;
+              "Failed to create connection with endpoint {}, will retry later...", endPoint, e);
+          continue; // retry later
         }
         addProvider(entry.getKey(), newProvider);
       } else {
@@ -313,10 +305,8 @@ final class AbstractSubscriptionProviders {
           provider.setAvailable();
         } catch (final Exception e) {
           LOGGER.warn(
-              "{} failed to sending heartbeat to subscription provider {} because of {}, set subscription provider unavailable",
-              consumer,
+              "something unexpected happened when sending heartbeat to subscription provider {}, set subscription provider unavailable",
               provider,
-              e,
               e);
           provider.setUnavailable();
         }
@@ -326,10 +316,8 @@ final class AbstractSubscriptionProviders {
             closeAndRemoveProvider(entry.getKey());
           } catch (final Exception e) {
             LOGGER.warn(
-                "Exception occurred when {} closing and removing subscription provider {} because of {}",
-                consumer,
-                provider,
-                e,
+                "Exception occurred when closing and removing subscription provider with data node id {}",
+                entry.getKey(),
                 e);
           }
         }
@@ -344,10 +332,8 @@ final class AbstractSubscriptionProviders {
           closeAndRemoveProvider(dataNodeId);
         } catch (final Exception e) {
           LOGGER.warn(
-              "Exception occurred when {} closing and removing subscription provider {} because of {}",
-              consumer,
-              provider,
-              e,
+              "Exception occurred when closing and removing subscription provider with data node id {}",
+              dataNodeId,
               e);
         }
       }

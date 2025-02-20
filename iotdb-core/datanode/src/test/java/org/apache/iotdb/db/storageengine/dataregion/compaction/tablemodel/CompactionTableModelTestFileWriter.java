@@ -54,7 +54,7 @@ public class CompactionTableModelTestFileWriter extends CompactionTestFileWriter
     for (String idColumnName : idColumnNames) {
       measurementSchemas.add(
           new MeasurementSchema(
-              idColumnName, TSDataType.STRING, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
+              idColumnName, TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
       columnTypes.add(ColumnCategory.TAG);
     }
     tableSchema.merge(new TableSchema(tableName, measurementSchemas, columnTypes));

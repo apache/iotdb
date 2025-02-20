@@ -88,9 +88,4 @@ public class AllowAllAccessControl implements AccessControl {
       String userName, RelationalAuthorStatement statement) {
     // allow anything
   }
-
-  @Override
-  public void checkUserIsAdmin(String userName) {
-    // allow anything
-  }
 }

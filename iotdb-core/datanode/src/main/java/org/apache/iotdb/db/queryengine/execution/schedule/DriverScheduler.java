@@ -43,6 +43,7 @@ import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.multilevelqueue.MultilevelPriorityQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTaskStatus;
+import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaManager;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -65,10 +66,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
+import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.READY_QUEUED_TIME;
+
 /** The manager of fragment instances scheduling. */
 public class DriverScheduler implements IDriverScheduler, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(DriverScheduler.class);
+  private static final DriverSchedulerMetricSet DRIVER_SCHEDULER_METRIC_SET =
+      DriverSchedulerMetricSet.getInstance();
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static final double LEVEL_TIME_MULTIPLIER = 2;
@@ -479,6 +485,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
             .getDriverContext()
             .getFragmentInstanceContext()
             .addBlockQueuedTime(blockQueuedTime);
+        DRIVER_SCHEDULER_METRIC_SET.recordTaskQueueTime(BLOCK_QUEUED_TIME, blockQueuedTime);
         task.setLastEnterReadyQueueTime(currentTime);
         task.resetLevelScheduledTime();
         readyQueue.repush(task);
@@ -502,6 +509,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
             .getDriverContext()
             .getFragmentInstanceContext()
             .addReadyQueuedTime(readyQueuedTime);
+        DRIVER_SCHEDULER_METRIC_SET.recordTaskQueueTime(READY_QUEUED_TIME, readyQueuedTime);
       } finally {
         task.unlock();
       }

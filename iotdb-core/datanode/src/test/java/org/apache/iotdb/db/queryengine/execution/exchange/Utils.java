@@ -41,7 +41,6 @@ public class Utils {
     for (int i = 0; i < numOfTsBlocks; i++) {
       TsBlock mockTsBlock = Mockito.mock(TsBlock.class);
       Mockito.when(mockTsBlock.getRetainedSizeInBytes()).thenReturn(mockTsBlockSize);
-      Mockito.when(mockTsBlock.getSizeInBytes()).thenReturn(mockTsBlockSize);
       mockTsBlocks.add(mockTsBlock);
     }
 
@@ -51,7 +50,6 @@ public class Utils {
   public static TsBlock createMockTsBlock(long mockTsBlockSize) {
     TsBlock mockTsBlock = Mockito.mock(TsBlock.class);
     Mockito.when(mockTsBlock.getRetainedSizeInBytes()).thenReturn(mockTsBlockSize);
-    Mockito.when(mockTsBlock.getSizeInBytes()).thenReturn(mockTsBlockSize);
     return mockTsBlock;
   }
 
@@ -146,7 +144,6 @@ public class Utils {
     TsBlockSerde mockTsBlockSerde = Mockito.mock(TsBlockSerde.class);
     TsBlock mockTsBlock = Mockito.mock(TsBlock.class);
     Mockito.when(mockTsBlock.getRetainedSizeInBytes()).thenReturn(mockTsBlockSize);
-    Mockito.when(mockTsBlock.getSizeInBytes()).thenReturn(mockTsBlockSize);
     Mockito.when(mockTsBlockSerde.deserialize(Mockito.any(ByteBuffer.class)))
         .thenReturn(mockTsBlock);
     return mockTsBlockSerde;

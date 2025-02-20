@@ -85,9 +85,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
-import static org.apache.iotdb.session.Session.TABLE;
-import static org.apache.iotdb.session.Session.TREE;
-
 @SuppressWarnings("java:S2142")
 public class SessionConnection {
 
@@ -110,7 +107,7 @@ public class SessionConnection {
 
   private final long retryIntervalInMs;
 
-  private String sqlDialect;
+  private final String sqlDialect;
 
   private String database;
 
@@ -473,13 +470,6 @@ public class SessionConnection {
       String dbName = resp.getDatabase();
       session.changeDatabase(dbName);
       this.database = dbName;
-    }
-    if (resp.isSetTableModel()) {
-      String sqlDialect = resp.tableModel ? TABLE : TREE;
-      if (!sqlDialect.equalsIgnoreCase(this.sqlDialect)) {
-        session.changeSqlDialect(sqlDialect);
-        this.sqlDialect = sqlDialect;
-      }
     }
     return resp.status;
   }

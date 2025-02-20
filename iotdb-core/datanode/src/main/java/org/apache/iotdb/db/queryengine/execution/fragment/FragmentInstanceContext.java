@@ -29,7 +29,6 @@ import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
@@ -58,13 +57,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
-import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.READY_QUEUED_TIME;
 
 public class FragmentInstanceContext extends QueryContext {
 
@@ -376,32 +371,19 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public FragmentInstanceInfo getInstanceInfo() {
-    FragmentInstanceState state = stateMachine.getState();
-    long endTime = getEndTime();
-    LinkedBlockingQueue<Throwable> failures = stateMachine.getFailureCauses();
-    String failureCause = "";
-    List<FragmentInstanceFailureInfo> failureInfoList = new ArrayList<>();
-    TSStatus status = null;
-
-    for (Throwable failure : failures) {
-      if (failureCause.isEmpty()) {
-        failureCause = failure.getMessage();
-      }
-      failureInfoList.add(FragmentInstanceFailureInfo.toFragmentInstanceFailureInfo(failure));
-      if (failure instanceof IoTDBException) {
-        status = new TSStatus(((IoTDBException) failure).getErrorCode());
-        status.setMessage(failure.getMessage());
-      } else if (failure instanceof IoTDBRuntimeException) {
-        status = new TSStatus(((IoTDBRuntimeException) failure).getErrorCode());
-        status.setMessage(failure.getMessage());
-      }
-    }
-
-    if (status == null) {
-      return new FragmentInstanceInfo(state, endTime, failureCause, failureInfoList);
-    } else {
-      return new FragmentInstanceInfo(state, endTime, failureCause, failureInfoList, status);
-    }
+    return getErrorCode()
+        .map(
+            s ->
+                new FragmentInstanceInfo(
+                    stateMachine.getState(),
+                    getEndTime(),
+                    getFailedCause(),
+                    getFailureInfoList(),
+                    s))
+        .orElseGet(
+            () ->
+                new FragmentInstanceInfo(
+                    stateMachine.getState(), getEndTime(), getFailedCause(), getFailureInfoList()));
   }
 
   public FragmentInstanceStateMachine getStateMachine() {
@@ -693,11 +675,6 @@ public class FragmentInstanceContext extends QueryContext {
 
     // record fragment instance execution time and metadata get time to metrics
     long durationTime = System.currentTimeMillis() - executionStartTime.get();
-    DriverSchedulerMetricSet.getInstance()
-        .recordTaskQueueTime(BLOCK_QUEUED_TIME, blockQueueTime.get());
-    DriverSchedulerMetricSet.getInstance()
-        .recordTaskQueueTime(READY_QUEUED_TIME, readyQueueTime.get());
-
     QueryRelatedResourceMetricSet.getInstance().updateFragmentInstanceTime(durationTime);
 
     SeriesScanCostMetricSet.getInstance()

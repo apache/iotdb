@@ -45,6 +45,8 @@ public class HashAggregationOperator extends AbstractOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(HashAggregationOperator.class);
 
+  private final OperatorContext operatorContext;
+
   private final Operator child;
 
   private final List<Type> groupByTypes;
@@ -79,7 +81,7 @@ public class HashAggregationOperator extends AbstractOperator {
       long maxPartialMemory,
       boolean spillEnabled,
       long unspillMemoryLimit) {
-    super.operatorContext = operatorContext;
+    this.operatorContext = operatorContext;
     this.child = child;
     this.groupByTypes = ImmutableList.copyOf(groupByTypes);
     this.groupByChannels = ImmutableList.copyOf(groupByChannels);
