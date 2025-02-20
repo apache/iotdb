@@ -87,7 +87,16 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
 
           @Override
           public boolean hasNext() {
-            return tabletIterator != null && tabletIterator.hasNext();
+            try {
+              if (!(tabletIterator != null && tabletIterator.hasNext())) {
+                close();
+                return false;
+              }
+              return true;
+            } catch (Exception e) {
+              close();
+              throw e;
+            }
           }
 
           @Override

@@ -48,11 +48,11 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -61,32 +61,39 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private final long startTime;
   private final long endTime;
 
+  // Used to read or record TSFileMeta tools or meta information
   private final TsFileSequenceReader reader;
   private final IMetadataQuerier metadataQuerier;
   private final TsFileMetadata fileMetadata;
   private final Iterator<Map.Entry<String, TableSchema>> filteredTableSchemaIterator;
 
+  // For memory control
   private final PipeMemoryBlock allocatedMemoryBlockForTablet;
   private final PipeMemoryBlock allocatedMemoryBlockForBatchData;
   private final PipeMemoryBlock allocatedMemoryBlockForChunk;
   private final PipeMemoryBlock allocatedMemoryBlockForChunkMeta;
 
+  // Used to read tsfile data
   private IChunkReader chunkReader;
   private BatchData batchData;
 
+  // Record the metadata information of the currently read Table
   private Set<String> measurementNames;
   private Iterator<Pair<IDeviceID, MetadataIndexNode>> deviceMetaIterator;
   private Iterator<List<IChunkMetadata>> chunkMetadataList;
 
+  // Record the information of the currently read Table
   private String tableName;
   private IDeviceID deviceID;
   private List<Tablet.ColumnCategory> columnTypes;
   private List<String> measurementList;
   private List<TSDataType> dataTypeList;
 
-  private List<String> measurementColumIndexList;
+  private List<Pair<String, Integer>> measurementColumIndexList;
   private List<Integer> measurementIdIndexList;
 
+  // Used to record whether the same Tablet is generated when parsing starts. Different table
+  // information cannot be placed in the same Tablet.
   private boolean isSameTableName;
 
   public TsFileInsertionEventTableParserTabletIterator(
@@ -158,10 +165,9 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                 }
                 AbstractAlignedChunkMetadata alignedChunkMetadata =
                     (AbstractAlignedChunkMetadata) chunkMetadata.get(0);
-                size =
-                    size
-                        + PipeMemoryWeightUtil.calculateAlignedChunkMetaRamBytesUsed(
-                            alignedChunkMetadata);
+                size +=
+                    PipeMemoryWeightUtil.calculateAlignedChunkMetaRamBytesUsed(
+                        alignedChunkMetadata);
                 PipeDataNodeResourceManager.memory()
                     .forceResize(allocatedMemoryBlockForChunkMeta, size);
               }
@@ -174,11 +180,12 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
             }
           case INIT_DEVICE_META:
             if (filteredTableSchemaIterator != null && filteredTableSchemaIterator.hasNext()) {
-              Map.Entry<String, TableSchema> entry = filteredTableSchemaIterator.next();
+              final Map.Entry<String, TableSchema> entry = filteredTableSchemaIterator.next();
               tableName = entry.getKey();
-              MetadataIndexNode tableRoot = fileMetadata.getTableMetadataIndexNode(tableName);
-              deviceMetaIterator = metadataQuerier.deviceIterator(tableRoot, null);
               final TableSchema tableSchema = entry.getValue();
+
+              final MetadataIndexNode tableRoot = fileMetadata.getTableMetadataIndexNode(tableName);
+              deviceMetaIterator = metadataQuerier.deviceIterator(tableRoot, null);
 
               final int columnSchemaSize = tableSchema.getColumnSchemas().size();
               dataTypeList = new ArrayList<>(columnSchemaSize);
@@ -197,9 +204,9 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                   measurementList.add(schema.getMeasurementName());
                   dataTypeList.add(schema.getType());
                   if (!Tablet.ColumnCategory.TAG.equals(columnCategory)) {
-                    String measurementName = schema.getMeasurementName();
+                    final String measurementName = schema.getMeasurementName();
                     measurementNames.add(measurementName);
-                    measurementColumIndexList.add(measurementName);
+                    measurementColumIndexList.add(new Pair<>(measurementName, i));
                   } else {
                     measurementIdIndexList.add(i);
                   }
@@ -282,25 +289,30 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
 
   private void initChunkReader(AbstractAlignedChunkMetadata alignedChunkMetadata)
       throws IOException {
-    Chunk timeChunk =
+    final Chunk timeChunk =
         reader.readMemChunk((ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
     long size = PipeMemoryWeightUtil.calculateChunkRamBytesUsed(timeChunk);
     PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForChunk, size);
 
     final List<Chunk> valueChunkList =
         new ArrayList<>(alignedChunkMetadata.getValueChunkMetadataList().size());
-    go:
-    for (String m : measurementColumIndexList) {
-      for (IChunkMetadata metadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-        if (metadata != null && metadata.getMeasurementUid().equals(m)) {
-          final Chunk chunk = reader.readMemChunk((ChunkMetadata) metadata);
+    final Map<String, ChunkMetadata> metadataMap = new HashMap<>();
+    for (IChunkMetadata metadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+      if (metadata != null) {
+        metadataMap.put(metadata.getMeasurementUid(), (ChunkMetadata) metadata);
+      }
+    }
 
-          size = +PipeMemoryWeightUtil.calculateChunkRamBytesUsed(chunk);
-          PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForChunk, size);
+    for (Pair<String, Integer> m : measurementColumIndexList) {
+      final ChunkMetadata metadata = metadataMap.get(m.getLeft());
+      if (metadata != null) {
+        final Chunk chunk = reader.readMemChunk(metadata);
 
-          valueChunkList.add(chunk);
-          continue go;
-        }
+        size += PipeMemoryWeightUtil.calculateChunkRamBytesUsed(chunk);
+        PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForChunk, size);
+
+        valueChunkList.add(chunk);
+        continue;
       }
       valueChunkList.add(null);
     }
@@ -313,36 +325,36 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     final TsPrimitiveType[] primitiveTypes = data.getVector();
     final List<IMeasurementSchema> measurementSchemas = tablet.getSchemas();
     int j = 0;
-    for (int i = 0, size = measurementSchemas.size(); i < size; ++i) {
-      final TsPrimitiveType primitiveType;
-      if (Tablet.ColumnCategory.TAG == tablet.getColumnTypes().get(i)
-          || Objects.isNull(primitiveType = primitiveTypes[j++])) {
+    for (Pair<String, Integer> valueIndexPair : measurementColumIndexList) {
+      final TsPrimitiveType primitiveType = primitiveTypes[j++];
+      if (primitiveType == null) {
         continue;
       }
-      switch (measurementSchemas.get(i).getType()) {
+      int index = valueIndexPair.getRight();
+      switch (measurementSchemas.get(index).getType()) {
         case BOOLEAN:
-          tablet.addValue(rowIndex, i, primitiveType.getBoolean());
+          tablet.addValue(rowIndex, index, primitiveType.getBoolean());
           break;
         case INT32:
-          tablet.addValue(rowIndex, i, primitiveType.getInt());
+          tablet.addValue(rowIndex, index, primitiveType.getInt());
           break;
         case DATE:
-          tablet.addValue(rowIndex, i, DateUtils.parseIntToLocalDate(primitiveType.getInt()));
+          tablet.addValue(rowIndex, index, DateUtils.parseIntToLocalDate(primitiveType.getInt()));
           break;
         case INT64:
         case TIMESTAMP:
-          tablet.addValue(rowIndex, i, primitiveType.getLong());
+          tablet.addValue(rowIndex, index, primitiveType.getLong());
           break;
         case FLOAT:
-          tablet.addValue(rowIndex, i, primitiveType.getFloat());
+          tablet.addValue(rowIndex, index, primitiveType.getFloat());
           break;
         case DOUBLE:
-          tablet.addValue(rowIndex, i, primitiveType.getDouble());
+          tablet.addValue(rowIndex, index, primitiveType.getDouble());
           break;
         case TEXT:
         case BLOB:
         case STRING:
-          tablet.addValue(rowIndex, i, primitiveType.getBinary().getValues());
+          tablet.addValue(rowIndex, index, primitiveType.getBinary().getValues());
           break;
         default:
           throw new UnSupportedDataTypeException("UnSupported" + primitiveType.getDataType());
