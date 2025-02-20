@@ -289,14 +289,8 @@ public class PipeMemoryWeightUtil {
     return batchData.length() * totalSizeInBytes;
   }
 
-  public static int calculateChunkRamBytesUsed(Chunk timeChunk, List<Chunk> valueChunkList) {
-    long size = timeChunk.getRetainedSizeInBytes();
-    for (Chunk valueChunk : valueChunkList) {
-      if (valueChunk != null) {
-        size += valueChunk.getRetainedSizeInBytes();
-      }
-    }
-    return (int) size;
+  public static long calculateChunkRamBytesUsed(Chunk chunk) {
+    return chunk != null ? chunk.getRetainedSizeInBytes() : 0L;
   }
 
   public static int calculateAlignedChunkMetaRamBytesUsed(
