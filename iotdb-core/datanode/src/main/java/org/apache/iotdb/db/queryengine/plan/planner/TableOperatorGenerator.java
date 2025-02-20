@@ -686,20 +686,18 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           }
 
           private Operator getReuseOffsetOperator(Operator child) {
-            if (reuseOffsetOperator != null) {
-              return new OffsetOperator(reuseOffsetOperator, child);
-            }
             this.reuseOffsetOperator =
-                new OffsetOperator(operatorContext, node.getPushDownOffset(), child);
+                reuseOffsetOperator == null
+                    ? new OffsetOperator(operatorContext, node.getPushDownOffset(), child)
+                    : new OffsetOperator(reuseOffsetOperator, child);
             return this.reuseOffsetOperator;
           }
 
           private Operator getReuseLimitOperator(Operator child) {
-            if (reuseLimitOperator != null) {
-              return new LimitOperator(reuseLimitOperator, child);
-            }
             this.reuseLimitOperator =
-                new LimitOperator(operatorContext, node.getPushDownLimit(), child);
+                reuseLimitOperator == null
+                    ? new LimitOperator(operatorContext, node.getPushDownLimit(), child)
+                    : new LimitOperator(reuseLimitOperator, child);
             return this.reuseLimitOperator;
           }
 

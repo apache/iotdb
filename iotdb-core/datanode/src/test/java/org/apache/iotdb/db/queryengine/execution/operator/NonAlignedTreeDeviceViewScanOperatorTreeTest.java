@@ -29,6 +29,8 @@ import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
+import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DeviceIteratorScanOperator;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanContext;
@@ -54,16 +56,12 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.column.BinaryColumn;
-import org.apache.tsfile.read.common.block.column.IntColumn;
-import org.apache.tsfile.read.common.block.column.LongColumn;
-import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -75,11 +73,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.operator.Operator.NOT_BLOCKED;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
@@ -94,6 +92,9 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
   private final List<TsFileResource> seqResources = new ArrayList<>();
   private final List<TsFileResource> unSeqResources = new ArrayList<>();
 
+  private final Map<Symbol, ColumnSchema> columnSchemaMap = new HashMap<>();
+  private TypeProvider typeProvider;
+
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
     SeriesReaderTestUtil.setUp(
@@ -102,6 +103,40 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
         seqResources,
         unSeqResources,
         NON_ALIGNED_TREE_DEVICE_VIEW_SCAN_OPERATOR_TREE_TEST);
+
+    columnSchemaMap.put(
+        new Symbol("tag1"),
+        new ColumnSchema(
+            "tag1", TypeFactory.getType(TSDataType.TEXT), false, TsTableColumnCategory.TAG));
+    columnSchemaMap.put(
+        new Symbol("time"),
+        new ColumnSchema(
+            "time", TypeFactory.getType(TSDataType.INT64), false, TsTableColumnCategory.TIME));
+    columnSchemaMap.put(
+        new Symbol("sensor0"),
+        new ColumnSchema(
+            "sensor0", TypeFactory.getType(TSDataType.INT32), false, TsTableColumnCategory.FIELD));
+    columnSchemaMap.put(
+        new Symbol("sensor1"),
+        new ColumnSchema(
+            "sensor1", TypeFactory.getType(TSDataType.INT32), false, TsTableColumnCategory.FIELD));
+    columnSchemaMap.put(
+        new Symbol("sensor2"),
+        new ColumnSchema(
+            "sensor2", TypeFactory.getType(TSDataType.INT32), false, TsTableColumnCategory.FIELD));
+    columnSchemaMap.put(
+        new Symbol("sensor3"),
+        new ColumnSchema(
+            "sensor3", TypeFactory.getType(TSDataType.INT32), false, TsTableColumnCategory.FIELD));
+
+    Map<Symbol, Type> symbolTSDataTypeMap = new HashMap<>();
+    symbolTSDataTypeMap.put(new Symbol("sensor0"), TypeFactory.getType(TSDataType.INT32));
+    symbolTSDataTypeMap.put(new Symbol("sensor1"), TypeFactory.getType(TSDataType.INT32));
+    symbolTSDataTypeMap.put(new Symbol("sensor2"), TypeFactory.getType(TSDataType.INT32));
+    symbolTSDataTypeMap.put(new Symbol("sensor3"), TypeFactory.getType(TSDataType.INT32));
+    symbolTSDataTypeMap.put(new Symbol("time"), TypeFactory.getType(TypeEnum.INT64));
+    symbolTSDataTypeMap.put(new Symbol("tag1"), TypeFactory.getType(TSDataType.TEXT));
+    typeProvider = new TypeProvider(symbolTSDataTypeMap);
   }
 
   @After
@@ -110,421 +145,353 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
   }
 
   @Test
-  public void testScanWithPredicateAndLimitAndOffset() {
+  public void testScanWithPushDownPredicateAndLimitAndOffset() throws Exception {
+    List<String> outputColumnList = Arrays.asList("sensor0", "sensor1", "sensor2", "time", "tag1");
+    TreeNonAlignedDeviceViewScanNode node = getTreeNonAlignedDeviceViewScanNode(outputColumnList);
+    node.setPushDownOffset(500);
+    node.setPushDownLimit(500);
+    node.setPushDownPredicate(
+        new ComparisonExpression(
+            ComparisonExpression.Operator.GREATER_THAN,
+            new Symbol("sensor1").toSymbolReference(),
+            new LongLiteral("1000")));
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
-    Operator operator = null;
+    Operator operator = getOperator(node, instanceNotificationExecutor);
+    Assert.assertTrue(operator instanceof DeviceIteratorScanOperator);
     try {
-      QueryId queryId = new QueryId("stub_query");
-      FragmentInstanceId instanceId =
-          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
-      FragmentInstanceStateMachine stateMachine =
-          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
-      FragmentInstanceContext fragmentInstanceContext =
-          createFragmentInstanceContext(instanceId, stateMachine);
-      DataDriverContext driverContext = new DataDriverContext(fragmentInstanceContext, 0);
-      PlanNodeId planNodeId = new PlanNodeId("1");
-      driverContext.addOperatorContext(
-          1, planNodeId, DeviceIteratorScanOperator.class.getSimpleName());
-
-      TreeNonAlignedDeviceViewScanNode node = getTreeNonAlignedDeviceViewScanNode();
-      node.setPushDownOffset(500);
-      node.setPushDownLimit(500);
-      node.setPushDownPredicate(
-          new ComparisonExpression(
-              ComparisonExpression.Operator.GREATER_THAN,
-              new Symbol("sensor1").toSymbolReference(),
-              new LongLiteral("1000")));
-      LocalExecutionPlanContext localExecutionPlanContext =
-          new LocalExecutionPlanContext(
-              new TypeProvider(), fragmentInstanceContext, new DataNodeQueryContext(1));
-      operator =
-          tableOperatorGenerator.visitTreeNonAlignedDeviceViewScan(node, localExecutionPlanContext);
-      ((DataDriverContext) localExecutionPlanContext.getDriverContext())
-          .getSourceOperators()
-          .forEach(
-              sourceOperator ->
-                  sourceOperator.initQueryDataSource(
-                      new QueryDataSource(seqResources, unSeqResources)));
-
-      int count = 0;
-      while (operator.isBlocked().get() != NOT_BLOCKED && operator.hasNext()) {
-        TsBlock tsBlock = operator.next();
-        if (tsBlock == null) {
-          continue;
-        }
-        assertEquals(node.getOutputSymbols().size(), tsBlock.getValueColumnCount());
-        assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
-        assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
-        assertTrue(tsBlock.getColumn(2) instanceof IntColumn);
-        assertTrue(tsBlock.getColumn(3) instanceof TimeColumn);
-        assertTrue(tsBlock.getColumn(4) instanceof RunLengthEncodedColumn);
-        count += tsBlock.getPositionCount();
-      }
-      assertEquals(500, count);
+      checkResult(operator, outputColumnList, 500);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
-      if (operator != null) {
-        try {
-          operator.close();
-        } catch (Exception ignored) {
-
-        }
-      }
+      operator.close();
       instanceNotificationExecutor.shutdown();
     }
   }
 
   @Test
-  public void testScanAndPushLimitToEachDevice() {
+  public void testScanWithPushDownPredicateAndPushLimitToEachDevice() throws Exception {
+    List<String> outputColumnList = Arrays.asList("sensor0", "sensor1", "sensor2", "time", "tag1");
+    TreeNonAlignedDeviceViewScanNode node = getTreeNonAlignedDeviceViewScanNode(outputColumnList);
+    node.setPushLimitToEachDevice(true);
+    node.setPushDownLimit(500);
+    node.setPushDownPredicate(
+        new ComparisonExpression(
+            ComparisonExpression.Operator.GREATER_THAN,
+            new Symbol("sensor1").toSymbolReference(),
+            new LongLiteral("1000")));
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
-    Operator operator = null;
+    Operator operator = getOperator(node, instanceNotificationExecutor);
+    Assert.assertTrue(operator instanceof DeviceIteratorScanOperator);
     try {
-      QueryId queryId = new QueryId("stub_query");
-      FragmentInstanceId instanceId =
-          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
-      FragmentInstanceStateMachine stateMachine =
-          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
-      FragmentInstanceContext fragmentInstanceContext =
-          createFragmentInstanceContext(instanceId, stateMachine);
-      DataDriverContext driverContext = new DataDriverContext(fragmentInstanceContext, 0);
-      PlanNodeId planNodeId = new PlanNodeId("1");
-      driverContext.addOperatorContext(
-          1, planNodeId, DeviceIteratorScanOperator.class.getSimpleName());
-
-      TreeNonAlignedDeviceViewScanNode node = getTreeNonAlignedDeviceViewScanNode();
-      node.setPushLimitToEachDevice(true);
-      node.setPushDownLimit(500);
-      LocalExecutionPlanContext localExecutionPlanContext =
-          new LocalExecutionPlanContext(
-              new TypeProvider(), fragmentInstanceContext, new DataNodeQueryContext(1));
-      operator =
-          tableOperatorGenerator.visitTreeNonAlignedDeviceViewScan(node, localExecutionPlanContext);
-      ((DataDriverContext) localExecutionPlanContext.getDriverContext())
-          .getSourceOperators()
-          .forEach(
-              sourceOperator ->
-                  sourceOperator.initQueryDataSource(
-                      new QueryDataSource(seqResources, unSeqResources)));
-
-      int count = 0;
-      while (operator.isBlocked().get() != NOT_BLOCKED && operator.hasNext()) {
-        TsBlock tsBlock = operator.next();
-        if (tsBlock == null) {
-          continue;
-        }
-        assertEquals(node.getOutputSymbols().size(), tsBlock.getValueColumnCount());
-        assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
-        assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
-        assertTrue(tsBlock.getColumn(2) instanceof IntColumn);
-        assertTrue(tsBlock.getColumn(3) instanceof TimeColumn);
-        assertTrue(tsBlock.getColumn(4) instanceof RunLengthEncodedColumn);
-        count += tsBlock.getPositionCount();
-      }
-      assertEquals(1500, count);
+      checkResult(operator, outputColumnList, 1320);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
-      if (operator != null) {
-        try {
-          operator.close();
-        } catch (Exception ignored) {
-        }
-      }
+      operator.close();
       instanceNotificationExecutor.shutdown();
     }
   }
 
   @Test
-  public void testScanWithPushDownPredicate() {
+  public void testScanWithCanPushDownPredicateAndCannotPushDownPredicateAndPushLimitToEachDevice()
+      throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
-    Operator operator = null;
+    List<String> outputColumnList = Arrays.asList("sensor0", "sensor1", "sensor2", "time", "tag1");
+    TreeNonAlignedDeviceViewScanNode node =
+        getTreeNonAlignedDeviceViewScanNode(
+            outputColumnList,
+            Arrays.asList("sensor0", "sensor1", "sensor2", "time", "tag1", "sensor3"));
+    node.setPushDownLimit(100);
+    node.setPushLimitToEachDevice(true);
+    node.setPushDownPredicate(
+        new LogicalExpression(
+            LogicalExpression.Operator.AND,
+            Arrays.asList(
+                new LogicalExpression(
+                    LogicalExpression.Operator.OR,
+                    Arrays.asList(
+                        new ComparisonExpression(
+                            ComparisonExpression.Operator.GREATER_THAN,
+                            new Symbol("sensor0").toSymbolReference(),
+                            new LongLiteral("1000")),
+                        new ComparisonExpression(
+                            ComparisonExpression.Operator.GREATER_THAN,
+                            new Symbol("sensor1").toSymbolReference(),
+                            new LongLiteral("1000")))),
+                new ComparisonExpression(
+                    ComparisonExpression.Operator.GREATER_THAN,
+                    new Symbol("sensor2").toSymbolReference(),
+                    new LongLiteral("1000")),
+                new ComparisonExpression(
+                    ComparisonExpression.Operator.GREATER_THAN,
+                    new Symbol("sensor3").toSymbolReference(),
+                    new LongLiteral("1000")))));
+    Operator operator = getOperator(node, instanceNotificationExecutor);
+    Assert.assertTrue(operator instanceof DeviceIteratorScanOperator);
     try {
-      QueryId queryId = new QueryId("stub_query");
-      FragmentInstanceId instanceId =
-          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
-      FragmentInstanceStateMachine stateMachine =
-          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
-      FragmentInstanceContext fragmentInstanceContext =
-          createFragmentInstanceContext(instanceId, stateMachine);
-      DataDriverContext driverContext = new DataDriverContext(fragmentInstanceContext, 0);
-      PlanNodeId planNodeId = new PlanNodeId("1");
-      driverContext.addOperatorContext(
-          1, planNodeId, DeviceIteratorScanOperator.class.getSimpleName());
-
-      TreeNonAlignedDeviceViewScanNode node = getTreeNonAlignedDeviceViewScanNode();
-      node.setPushDownPredicate(
-          new ComparisonExpression(
-              ComparisonExpression.Operator.GREATER_THAN,
-              new Symbol("sensor3").toSymbolReference(),
-              new LongLiteral("1000")));
-      node.getAssignments()
-          .put(
-              new Symbol("sensor3"),
-              new ColumnSchema(
-                  "sensor3",
-                  TypeFactory.getType(TSDataType.INT32),
-                  false,
-                  TsTableColumnCategory.FIELD));
-
-      Map<Symbol, Type> symbolTSDataTypeMap = new HashMap<>();
-      symbolTSDataTypeMap.put(new Symbol("sensor0"), TypeFactory.getType(TSDataType.INT32));
-      symbolTSDataTypeMap.put(new Symbol("sensor1"), TypeFactory.getType(TSDataType.INT32));
-      symbolTSDataTypeMap.put(new Symbol("sensor2"), TypeFactory.getType(TSDataType.INT32));
-      symbolTSDataTypeMap.put(new Symbol("sensor3"), TypeFactory.getType(TSDataType.INT32));
-      symbolTSDataTypeMap.put(new Symbol("time"), TypeFactory.getType(TypeEnum.TIMESTAMP));
-      symbolTSDataTypeMap.put(new Symbol("tag1"), TypeFactory.getType(TSDataType.STRING));
-      TypeProvider typeProvider = new TypeProvider(symbolTSDataTypeMap);
-      LocalExecutionPlanContext localExecutionPlanContext =
-          new LocalExecutionPlanContext(
-              typeProvider, fragmentInstanceContext, new DataNodeQueryContext(1));
-      operator =
-          tableOperatorGenerator.visitTreeNonAlignedDeviceViewScan(node, localExecutionPlanContext);
-      ((DataDriverContext) localExecutionPlanContext.getDriverContext())
-          .getSourceOperators()
-          .forEach(
-              sourceOperator ->
-                  sourceOperator.initQueryDataSource(
-                      new QueryDataSource(seqResources, unSeqResources)));
-
-      int count = 0;
-      while (operator.isBlocked().get() != NOT_BLOCKED && operator.hasNext()) {
-        TsBlock tsBlock = operator.next();
-        if (tsBlock == null) {
-          continue;
-        }
-        assertEquals(node.getOutputSymbols().size(), tsBlock.getValueColumnCount());
-        assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
-        assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
-        assertTrue(tsBlock.getColumn(2) instanceof IntColumn);
-        assertTrue(tsBlock.getColumn(3) instanceof TimeColumn);
-        assertTrue(tsBlock.getColumn(4) instanceof RunLengthEncodedColumn);
-        count += tsBlock.getPositionCount();
-      }
-      assertEquals(1320, count);
+      checkResult(operator, outputColumnList, 300);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
-      if (operator != null) {
-        try {
-          operator.close();
-        } catch (Exception ignored) {
-        }
-      }
+      operator.close();
       instanceNotificationExecutor.shutdown();
     }
   }
 
   @Test
-  public void testScanWithCannotPushDownPredicate() {
+  public void testScanWithPushDownPredicateAndPushLimitToEachDevice1() throws Exception {
+    List<String> outputColumnList = Arrays.asList("sensor0", "sensor1", "sensor2", "time", "tag1");
+    TreeNonAlignedDeviceViewScanNode node =
+        getTreeNonAlignedDeviceViewScanNode(
+            outputColumnList,
+            Arrays.asList("sensor0", "sensor1", "sensor2", "time", "tag1", "sensor3"));
+    node.setPushDownPredicate(
+        new ComparisonExpression(
+            ComparisonExpression.Operator.GREATER_THAN,
+            new Symbol("sensor3").toSymbolReference(),
+            new LongLiteral("1000")));
+    node.setPushLimitToEachDevice(true);
+    node.setPushDownLimit(10);
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
-    Operator operator = null;
+    Operator operator = getOperator(node, instanceNotificationExecutor);
+    Assert.assertTrue(operator instanceof DeviceIteratorScanOperator);
     try {
-      QueryId queryId = new QueryId("stub_query");
-      FragmentInstanceId instanceId =
-          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
-      FragmentInstanceStateMachine stateMachine =
-          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
-      FragmentInstanceContext fragmentInstanceContext =
-          createFragmentInstanceContext(instanceId, stateMachine);
-      DataDriverContext driverContext = new DataDriverContext(fragmentInstanceContext, 0);
-      PlanNodeId planNodeId = new PlanNodeId("1");
-      driverContext.addOperatorContext(
-          1, planNodeId, DeviceIteratorScanOperator.class.getSimpleName());
-
-      TreeNonAlignedDeviceViewScanNode node = getTreeNonAlignedDeviceViewScanNode();
-      node.setPushDownPredicate(
-          new LogicalExpression(
-              LogicalExpression.Operator.OR,
-              Arrays.asList(
-                  new ComparisonExpression(
-                      ComparisonExpression.Operator.GREATER_THAN,
-                      new Symbol("sensor3").toSymbolReference(),
-                      new LongLiteral("1000")),
-                  new ComparisonExpression(
-                      ComparisonExpression.Operator.GREATER_THAN,
-                      new Symbol("sensor1").toSymbolReference(),
-                      new LongLiteral("1000")))));
-
-      node.getAssignments()
-          .put(
-              new Symbol("sensor3"),
-              new ColumnSchema(
-                  "sensor3",
-                  TypeFactory.getType(TSDataType.INT32),
-                  false,
-                  TsTableColumnCategory.FIELD));
-
-      Map<Symbol, Type> symbolTSDataTypeMap = new HashMap<>();
-      symbolTSDataTypeMap.put(new Symbol("sensor0"), TypeFactory.getType(TSDataType.INT32));
-      symbolTSDataTypeMap.put(new Symbol("sensor1"), TypeFactory.getType(TSDataType.INT32));
-      symbolTSDataTypeMap.put(new Symbol("sensor2"), TypeFactory.getType(TSDataType.INT32));
-      symbolTSDataTypeMap.put(new Symbol("sensor3"), TypeFactory.getType(TSDataType.INT32));
-      symbolTSDataTypeMap.put(new Symbol("time"), TypeFactory.getType(TypeEnum.TIMESTAMP));
-      symbolTSDataTypeMap.put(new Symbol("tag1"), TypeFactory.getType(TSDataType.STRING));
-      TypeProvider typeProvider = new TypeProvider(symbolTSDataTypeMap);
-      LocalExecutionPlanContext localExecutionPlanContext =
-          new LocalExecutionPlanContext(
-              typeProvider, fragmentInstanceContext, new DataNodeQueryContext(1));
-      operator =
-          tableOperatorGenerator.visitTreeNonAlignedDeviceViewScan(node, localExecutionPlanContext);
-      ((DataDriverContext) localExecutionPlanContext.getDriverContext())
-          .getSourceOperators()
-          .forEach(
-              sourceOperator ->
-                  sourceOperator.initQueryDataSource(
-                      new QueryDataSource(seqResources, unSeqResources)));
-
-      int count = 0;
-      while (operator.isBlocked().get() != NOT_BLOCKED && operator.hasNext()) {
-        TsBlock tsBlock = operator.next();
-        if (tsBlock == null) {
-          continue;
-        }
-        assertEquals(node.getOutputSymbols().size(), tsBlock.getValueColumnCount());
-        assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
-        assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
-        assertTrue(tsBlock.getColumn(2) instanceof IntColumn);
-        assertTrue(tsBlock.getColumn(3) instanceof LongColumn);
-        assertTrue(tsBlock.getColumn(4) instanceof BinaryColumn);
-        count += tsBlock.getPositionCount();
-      }
-      assertEquals(1320, count);
+      checkResult(operator, outputColumnList, 30);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
-      if (operator != null) {
-        try {
-          operator.close();
-        } catch (Exception ignored) {
-        }
-      }
+      operator.close();
       instanceNotificationExecutor.shutdown();
     }
   }
 
   @Test
-  public void testScanWithPushDownPredicateAndPushLimitToEachDevice() {
+  public void testScanWithCannotPushDownPredicateAndLimitAndOffset2() throws Exception {
+    List<String> outputColumnList = Arrays.asList("sensor0", "sensor1", "sensor2", "time", "tag1");
+    TreeNonAlignedDeviceViewScanNode node = getTreeNonAlignedDeviceViewScanNode(outputColumnList);
+    node.setPushDownOffset(500);
+    node.setPushDownLimit(500);
+    node.setPushDownPredicate(
+        new LogicalExpression(
+            LogicalExpression.Operator.OR,
+            Arrays.asList(
+                new ComparisonExpression(
+                    ComparisonExpression.Operator.GREATER_THAN,
+                    new Symbol("sensor1").toSymbolReference(),
+                    new LongLiteral("1000")),
+                new ComparisonExpression(
+                    ComparisonExpression.Operator.GREATER_THAN,
+                    new Symbol("sensor2").toSymbolReference(),
+                    new LongLiteral("1000")))));
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
-    Operator operator = null;
+    Operator operator = getOperator(node, instanceNotificationExecutor);
+    Assert.assertTrue(operator instanceof LimitOperator);
     try {
-      QueryId queryId = new QueryId("stub_query");
-      FragmentInstanceId instanceId =
-          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
-      FragmentInstanceStateMachine stateMachine =
-          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
-      FragmentInstanceContext fragmentInstanceContext =
-          createFragmentInstanceContext(instanceId, stateMachine);
-      DataDriverContext driverContext = new DataDriverContext(fragmentInstanceContext, 0);
-      PlanNodeId planNodeId = new PlanNodeId("1");
-      driverContext.addOperatorContext(
-          1, planNodeId, DeviceIteratorScanOperator.class.getSimpleName());
-
-      TreeNonAlignedDeviceViewScanNode node = getTreeNonAlignedDeviceViewScanNode();
-      node.setPushDownPredicate(
-          new ComparisonExpression(
-              ComparisonExpression.Operator.GREATER_THAN,
-              new Symbol("sensor3").toSymbolReference(),
-              new LongLiteral("1000")));
-      node.getAssignments()
-          .put(
-              new Symbol("sensor3"),
-              new ColumnSchema(
-                  "sensor3",
-                  TypeFactory.getType(TSDataType.INT32),
-                  false,
-                  TsTableColumnCategory.FIELD));
-      node.setPushLimitToEachDevice(true);
-      node.setPushDownLimit(10);
-
-      Map<Symbol, Type> symbolTSDataTypeMap = new HashMap<>();
-      symbolTSDataTypeMap.put(new Symbol("sensor0"), TypeFactory.getType(TSDataType.INT32));
-      symbolTSDataTypeMap.put(new Symbol("sensor1"), TypeFactory.getType(TSDataType.INT32));
-      symbolTSDataTypeMap.put(new Symbol("sensor2"), TypeFactory.getType(TSDataType.INT32));
-      symbolTSDataTypeMap.put(new Symbol("sensor3"), TypeFactory.getType(TSDataType.INT32));
-      symbolTSDataTypeMap.put(new Symbol("time"), TypeFactory.getType(TypeEnum.TIMESTAMP));
-      symbolTSDataTypeMap.put(new Symbol("tag1"), TypeFactory.getType(TSDataType.STRING));
-      TypeProvider typeProvider = new TypeProvider(symbolTSDataTypeMap);
-      LocalExecutionPlanContext localExecutionPlanContext =
-          new LocalExecutionPlanContext(
-              typeProvider, fragmentInstanceContext, new DataNodeQueryContext(1));
-      operator =
-          tableOperatorGenerator.visitTreeNonAlignedDeviceViewScan(node, localExecutionPlanContext);
-      ((DataDriverContext) localExecutionPlanContext.getDriverContext())
-          .getSourceOperators()
-          .forEach(
-              sourceOperator ->
-                  sourceOperator.initQueryDataSource(
-                      new QueryDataSource(seqResources, unSeqResources)));
-
-      int count = 0;
-      while (operator.isBlocked().get() != NOT_BLOCKED && operator.hasNext()) {
-        TsBlock tsBlock = operator.next();
-        if (tsBlock == null) {
-          continue;
-        }
-        assertEquals(node.getOutputSymbols().size(), tsBlock.getValueColumnCount());
-        assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
-        assertTrue(tsBlock.getColumn(1) instanceof IntColumn);
-        assertTrue(tsBlock.getColumn(2) instanceof IntColumn);
-        assertTrue(tsBlock.getColumn(3) instanceof TimeColumn);
-        assertTrue(tsBlock.getColumn(4) instanceof RunLengthEncodedColumn);
-        count += tsBlock.getPositionCount();
-      }
-      assertEquals(30, count);
+      checkResult(operator, outputColumnList, 500);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
-      if (operator != null) {
-        try {
-          operator.close();
-        } catch (Exception ignored) {
-        }
-      }
+      operator.close();
       instanceNotificationExecutor.shutdown();
     }
   }
 
-  private TreeNonAlignedDeviceViewScanNode getTreeNonAlignedDeviceViewScanNode() {
+  @Test
+  public void testScanWithLimit() throws Exception {
+    List<String> outputColumnList = Arrays.asList("sensor0", "sensor1", "sensor2", "time", "tag1");
+    TreeNonAlignedDeviceViewScanNode node = getTreeNonAlignedDeviceViewScanNode(outputColumnList);
+    node.setPushDownLimit(500);
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    Operator operator = getOperator(node, instanceNotificationExecutor);
+    Assert.assertTrue(operator instanceof LimitOperator);
+    try {
+      checkResult(operator, outputColumnList, 500);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      operator.close();
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
+  public void testScanWithOffset() throws Exception {
+    List<String> outputColumnList = Arrays.asList("sensor0", "sensor1", "sensor2", "time", "tag1");
+    TreeNonAlignedDeviceViewScanNode node = getTreeNonAlignedDeviceViewScanNode(outputColumnList);
+    node.setPushDownOffset(1200);
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    Operator operator = getOperator(node, instanceNotificationExecutor);
+    Assert.assertTrue(operator instanceof OffsetOperator);
+    try {
+      checkResult(operator, outputColumnList, 300);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      operator.close();
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
+  public void testScanWithPushDownPredicateAndOffset1() throws Exception {
+    List<String> outputColumnList = Arrays.asList("sensor0", "sensor1", "sensor2", "time", "tag1");
+    TreeNonAlignedDeviceViewScanNode node = getTreeNonAlignedDeviceViewScanNode(outputColumnList);
+    node.setPushDownOffset(1200);
+    node.setPushDownPredicate(
+        new ComparisonExpression(
+            ComparisonExpression.Operator.GREATER_THAN,
+            new Symbol("sensor1").toSymbolReference(),
+            new LongLiteral("0")));
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    Operator operator = getOperator(node, instanceNotificationExecutor);
+    Assert.assertTrue(operator instanceof DeviceIteratorScanOperator);
+    try {
+      checkResult(operator, outputColumnList, 300);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      operator.close();
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
+  public void testScanWithPushDownPredicateAndOffset2() throws Exception {
+    List<String> outputColumnList = Arrays.asList("sensor0", "sensor1", "sensor2", "time", "tag1");
+    TreeNonAlignedDeviceViewScanNode node = getTreeNonAlignedDeviceViewScanNode(outputColumnList);
+    node.setPushDownOffset(1200);
+    node.setPushDownPredicate(
+        new LogicalExpression(
+            LogicalExpression.Operator.AND,
+            Arrays.asList(
+                new ComparisonExpression(
+                    ComparisonExpression.Operator.GREATER_THAN,
+                    new Symbol("sensor1").toSymbolReference(),
+                    new LongLiteral("0")),
+                new ComparisonExpression(
+                    ComparisonExpression.Operator.GREATER_THAN,
+                    new Symbol("sensor2").toSymbolReference(),
+                    new LongLiteral("0")))));
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    Operator operator = getOperator(node, instanceNotificationExecutor);
+    Assert.assertTrue(operator instanceof DeviceIteratorScanOperator);
+    try {
+      checkResult(operator, outputColumnList, 300);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      operator.close();
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
+  public void testScanWithPushDownPredicate() throws Exception {
+    List<String> outputColumnList = Arrays.asList("sensor0", "sensor1", "sensor2", "time", "tag1");
+    TreeNonAlignedDeviceViewScanNode node =
+        getTreeNonAlignedDeviceViewScanNode(
+            outputColumnList,
+            Arrays.asList("sensor0", "sensor1", "sensor2", "time", "tag1", "sensor3"));
+    node.setPushDownPredicate(
+        new ComparisonExpression(
+            ComparisonExpression.Operator.GREATER_THAN,
+            new Symbol("sensor3").toSymbolReference(),
+            new LongLiteral("1000")));
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    Operator operator = getOperator(node, instanceNotificationExecutor);
+    try {
+      checkResult(operator, outputColumnList, 1320);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      operator.close();
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  private Operator getOperator(
+      TreeNonAlignedDeviceViewScanNode node, ExecutorService instanceNotificationExecutor) {
+    QueryId queryId = new QueryId("stub_query");
+    FragmentInstanceId instanceId =
+        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+    FragmentInstanceStateMachine stateMachine =
+        new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+    FragmentInstanceContext fragmentInstanceContext =
+        createFragmentInstanceContext(instanceId, stateMachine);
+    DataDriverContext driverContext = new DataDriverContext(fragmentInstanceContext, 0);
+    PlanNodeId planNodeId = new PlanNodeId("1");
+    driverContext.addOperatorContext(
+        1, planNodeId, DeviceIteratorScanOperator.class.getSimpleName());
+
+    LocalExecutionPlanContext localExecutionPlanContext =
+        new LocalExecutionPlanContext(
+            typeProvider, fragmentInstanceContext, new DataNodeQueryContext(1));
+    Operator operator =
+        tableOperatorGenerator.visitTreeNonAlignedDeviceViewScan(node, localExecutionPlanContext);
+    ((DataDriverContext) localExecutionPlanContext.getDriverContext())
+        .getSourceOperators()
+        .forEach(
+            sourceOperator ->
+                sourceOperator.initQueryDataSource(
+                    new QueryDataSource(seqResources, unSeqResources)));
+    return operator;
+  }
+
+  private void checkResult(Operator operator, List<String> outputColumnList, int expectedCount)
+      throws Exception {
+    int count = 0;
+    while (operator.isBlocked().get() != NOT_BLOCKED && operator.hasNext()) {
+      TsBlock tsBlock = operator.next();
+      if (tsBlock == null) {
+        continue;
+      }
+      assertEquals(outputColumnList.size(), tsBlock.getValueColumnCount());
+      for (int i = 0; i < outputColumnList.size(); i++) {
+        Symbol symbol = new Symbol(outputColumnList.get(i));
+        assertEquals(
+            columnSchemaMap.get(symbol).getType(),
+            TypeFactory.getType(tsBlock.getColumn(i).getDataType()));
+      }
+      count += tsBlock.getPositionCount();
+    }
+    assertEquals(expectedCount, count);
+  }
+
+  private TreeNonAlignedDeviceViewScanNode getTreeNonAlignedDeviceViewScanNode(
+      List<String> outputColumns) {
+    return getTreeNonAlignedDeviceViewScanNode(outputColumns, outputColumns);
+  }
+
+  private TreeNonAlignedDeviceViewScanNode getTreeNonAlignedDeviceViewScanNode(
+      List<String> outputColumns, List<String> assignmentColumns) {
     List<Symbol> outputSymbols =
-        Arrays.asList(
-            new Symbol("sensor0"),
-            new Symbol("sensor1"),
-            new Symbol("sensor2"),
-            new Symbol("time"),
-            new Symbol("tag1"));
+        outputColumns.stream().map(Symbol::new).collect(Collectors.toList());
 
     Map<Symbol, ColumnSchema> assignments = new HashMap<>();
-    assignments.put(
-        new Symbol("tag1"),
-        new ColumnSchema(
-            "tag1", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.TAG));
-    assignments.put(
-        new Symbol("time"),
-        new ColumnSchema(
-            "time", TypeFactory.getType(TSDataType.TIMESTAMP), false, TsTableColumnCategory.TIME));
-    assignments.put(
-        new Symbol("sensor0"),
-        new ColumnSchema(
-            "sensor0", TypeFactory.getType(TSDataType.INT32), false, TsTableColumnCategory.FIELD));
-    assignments.put(
-        new Symbol("sensor1"),
-        new ColumnSchema(
-            "sensor1", TypeFactory.getType(TSDataType.INT32), false, TsTableColumnCategory.FIELD));
-    assignments.put(
-        new Symbol("sensor2"),
-        new ColumnSchema(
-            "sensor2", TypeFactory.getType(TSDataType.INT32), false, TsTableColumnCategory.FIELD));
+    for (String assignmentColumn : assignmentColumns) {
+      Symbol symbol = new Symbol(assignmentColumn);
+      assignments.put(symbol, columnSchemaMap.get(symbol));
+    }
 
     Map<Symbol, Integer> idAndAttributeIndexMap = new HashMap<>();
     idAndAttributeIndexMap.put(new Symbol("tag1"), 0);
