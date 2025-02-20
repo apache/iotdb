@@ -53,6 +53,8 @@ public class PipeMemoryManager {
 
   private long usedMemorySizeInBytes;
 
+  private static final double EXCEED_PROTECT_THRESHOLD = 0.95;
+
   // To avoid too much parsed events causing OOM. If total tablet memory size exceeds this
   // threshold, allocations of memory block for tablets will be rejected.
   private static final double TABLET_MEMORY_REJECT_THRESHOLD =
@@ -76,43 +78,53 @@ public class PipeMemoryManager {
 
   // NOTE: Here we unify the memory threshold judgment for tablet and tsfile memory block, because
   // introducing too many heuristic rules not conducive to flexible dynamic adjustment of memory
-  // configuration.
-
-  // Proportion of Memory Occupied by Tablet Memory Block: [TABLET_MEMORY_REJECT_THRESHOLD / 2,
+  // configuration:
+  // 1. Proportion of memory occupied by tablet memory block: [TABLET_MEMORY_REJECT_THRESHOLD / 2,
   // TABLET_MEMORY_REJECT_THRESHOLD + TS_FILE_MEMORY_REJECT_THRESHOLD / 2]
-  // Proportion of Memory Occupied by TsFile Memory Block: [TS_FILE_MEMORY_REJECT_THRESHOLD / 2,
+  // 2. Proportion of memory occupied by tsfile memory block: [TS_FILE_MEMORY_REJECT_THRESHOLD / 2,
   // TS_FILE_MEMORY_REJECT_THRESHOLD + TABLET_MEMORY_REJECT_THRESHOLD / 2]
+  // 3. The sum of the memory proportion occupied by the tablet memory block and the tsfile memory
+  // block does not exceed TABLET_MEMORY_REJECT_THRESHOLD + TS_FILE_MEMORY_REJECT_THRESHOLD
+
+  private static double allowedMaxMemorySizeInBytesOfTabletsAndTsFiles() {
+    return (TABLET_MEMORY_REJECT_THRESHOLD + TS_FILE_MEMORY_REJECT_THRESHOLD)
+        * TOTAL_MEMORY_SIZE_IN_BYTES;
+  }
+
+  private static double allowedMaxMemorySizeInBytesOfTablets() {
+    return (TABLET_MEMORY_REJECT_THRESHOLD + TS_FILE_MEMORY_REJECT_THRESHOLD / 2)
+        * TOTAL_MEMORY_SIZE_IN_BYTES;
+  }
+
+  private static double allowedMaxMemorySizeInBytesOfTsTiles() {
+    return (TS_FILE_MEMORY_REJECT_THRESHOLD + TABLET_MEMORY_REJECT_THRESHOLD / 2)
+        * TOTAL_MEMORY_SIZE_IN_BYTES;
+  }
 
   public boolean isEnough4TabletParsing() {
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
-            < 0.95 * TABLET_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
-                + 0.95 * TS_FILE_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
+            < EXCEED_PROTECT_THRESHOLD * allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
         && (double) usedMemorySizeInBytesOfTablets
-            < 0.95 * TABLET_MEMORY_REJECT_THRESHOLD / 2 * TOTAL_MEMORY_SIZE_IN_BYTES;
+            < EXCEED_PROTECT_THRESHOLD * allowedMaxMemorySizeInBytesOfTablets();
   }
 
   private boolean isHardEnough4TabletParsing() {
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
-            < TABLET_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
-                + TS_FILE_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
-        && (double) usedMemorySizeInBytesOfTablets
-            < TABLET_MEMORY_REJECT_THRESHOLD / 2 * TOTAL_MEMORY_SIZE_IN_BYTES;
+            < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
+        && (double) usedMemorySizeInBytesOfTablets < allowedMaxMemorySizeInBytesOfTablets();
   }
 
   public boolean isEnough4TsFileSlicing() {
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
-            < 0.95 * TABLET_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
-                + 0.95 * TS_FILE_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
+            < EXCEED_PROTECT_THRESHOLD * allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
         && (double) usedMemorySizeInBytesOfTsFiles
-            < 0.95 * TS_FILE_MEMORY_REJECT_THRESHOLD / 2 * TOTAL_MEMORY_SIZE_IN_BYTES;
+            < EXCEED_PROTECT_THRESHOLD * allowedMaxMemorySizeInBytesOfTsTiles();
   }
 
   private boolean isHardEnough4TsFileSlicing() {
     return (double) usedMemorySizeInBytesOfTablets + (double) usedMemorySizeInBytesOfTsFiles
-            < TABLET_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
-                + TS_FILE_MEMORY_REJECT_THRESHOLD * TOTAL_MEMORY_SIZE_IN_BYTES
-        && (double) usedMemorySizeInBytesOfTsFiles
-            < TS_FILE_MEMORY_REJECT_THRESHOLD / 2 * TOTAL_MEMORY_SIZE_IN_BYTES;
+            < allowedMaxMemorySizeInBytesOfTabletsAndTsFiles()
+        && (double) usedMemorySizeInBytesOfTsFiles < allowedMaxMemorySizeInBytesOfTsTiles();
   }
 
   public synchronized PipeMemoryBlock forceAllocate(long sizeInBytes)
@@ -144,8 +156,8 @@ public class PipeMemoryManager {
       throw new PipeRuntimeOutOfMemoryCriticalException(
           String.format(
               "forceAllocateForTablet: failed to allocate because there's too much memory for tablets, "
-                  + "total memory size %d bytes, used memory for tablet size %d bytes",
-              TOTAL_MEMORY_SIZE_IN_BYTES, usedMemorySizeInBytesOfTablets));
+                  + "total memory size %d bytes, used memory for tablet size %d bytes, requested memory size %d bytes",
+              TOTAL_MEMORY_SIZE_IN_BYTES, usedMemorySizeInBytesOfTablets, tabletSizeInBytes));
     }
 
     synchronized (this) {
@@ -179,8 +191,8 @@ public class PipeMemoryManager {
       throw new PipeRuntimeOutOfMemoryCriticalException(
           String.format(
               "forceAllocateForTsFile: failed to allocate because there's too much memory for tsfiles, "
-                  + "total memory size %d bytes, used memory for tsfile size %d bytes",
-              TOTAL_MEMORY_SIZE_IN_BYTES, usedMemorySizeInBytesOfTsFiles));
+                  + "total memory size %d bytes, used memory for tsfile size %d bytes, requested memory size %d bytes",
+              TOTAL_MEMORY_SIZE_IN_BYTES, usedMemorySizeInBytesOfTsFiles, tsFileSizeInBytes));
     }
 
     synchronized (this) {
@@ -524,6 +536,14 @@ public class PipeMemoryManager {
 
   public long getUsedMemorySizeInBytes() {
     return usedMemorySizeInBytes;
+  }
+
+  public long getUsedMemorySizeInBytesOfTablets() {
+    return usedMemorySizeInBytesOfTablets;
+  }
+
+  public long getUsedMemorySizeInBytesOfTsFiles() {
+    return usedMemorySizeInBytesOfTsFiles;
   }
 
   public long getFreeMemorySizeInBytes() {
