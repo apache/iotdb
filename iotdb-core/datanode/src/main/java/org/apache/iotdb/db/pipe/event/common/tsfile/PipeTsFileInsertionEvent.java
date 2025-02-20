@@ -77,7 +77,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   // This is true iff the modFile exists and should be transferred
   private boolean isWithMod;
   private File modFile;
-  private File sharedModFile;
+  private final File sharedModFile;
   private boolean shouldParse4Privilege = false;
 
   private final boolean isLoaded;
@@ -760,8 +760,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               return null;
             });
       } catch (final Exception e) {
-        LOGGER.warn(
-            String.format("Decrease reference count for TsFile %s error.", tsFile.getPath()), e);
+        LOGGER.warn("Decrease reference count for TsFile {} error.", tsFile.getPath(), e);
       }
     }
   }

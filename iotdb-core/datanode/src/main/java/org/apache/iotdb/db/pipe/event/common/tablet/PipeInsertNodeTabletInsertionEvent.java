@@ -583,9 +583,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         allocatedMemoryBlock.close();
       } catch (final Exception e) {
         LOGGER.warn(
-            String.format(
-                "Decrease reference count for memTable %d error.", walEntryHandler.getMemTableId()),
-            e);
+            "Decrease reference count for memTable {} error.", walEntryHandler.getMemTableId(), e);
       }
     }
   }
