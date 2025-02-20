@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -56,6 +57,8 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -178,19 +181,37 @@ public class RouteBalancer implements IClusterStatusSubscriber {
             return;
           }
 
-          if (newLeaderId != -1 && !newLeaderId.equals(currentLeaderMap.get(regionGroupId))) {
+          int oldLeaderId = currentLeaderMap.get(regionGroupId);
+          if (newLeaderId != -1 && !newLeaderId.equals(oldLeaderId)) {
             LOGGER.info(
                 "[LeaderBalancer] Try to change the leader of Region: {} to DataNode: {} ",
                 regionGroupId,
                 newLeaderId);
             switch (consensusProtocolClass) {
-              case ConsensusFactory.IOT_CONSENSUS_V2:
               case ConsensusFactory.IOT_CONSENSUS:
               case ConsensusFactory.SIMPLE_CONSENSUS:
-                // For IoTConsensus or SimpleConsensus or PipeConsensus protocol, change
+                // For IoTConsensus or SimpleConsensus protocol, change
                 // RegionRouteMap is enough
                 successTransferMap.put(
                     regionGroupId, new ConsensusGroupHeartbeatSample(currentTime, newLeaderId));
+                break;
+              case ConsensusFactory.IOT_CONSENSUS_V2:
+                // For IoTConsensusV2 protocol, change RegionRouteMap and execute flush on old
+                // region leader
+                successTransferMap.put(
+                    regionGroupId, new ConsensusGroupHeartbeatSample(currentTime, newLeaderId));
+                // flush on old leader
+                TDataNodeConfiguration configuration =
+                    getNodeManager().getRegisteredDataNode(oldLeaderId);
+                Map<Integer, TDataNodeLocation> oldLeaderDataNodeLocation = new HashMap<>();
+                oldLeaderDataNodeLocation.put(
+                    configuration.getLocation().dataNodeId, configuration.getLocation());
+
+                TFlushReq flushReq = new TFlushReq();
+                flushReq.setRegionIds(
+                    Collections.singletonList(String.valueOf(regionGroupId.getId())));
+                // Do our best to flush. If flush failed, never retry
+                configManager.flushOnSpecificDN(flushReq, oldLeaderDataNodeLocation);
                 break;
               case ConsensusFactory.RATIS_CONSENSUS:
               default:
