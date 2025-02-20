@@ -145,7 +145,7 @@ public class LoadTsFileConfigurator {
         loadAttributes.getOrDefault(
             TABLET_CONVERSION_THRESHOLD_KEY,
             String.valueOf(
-                IoTDBDescriptor.getInstance().getConfig().getTabletConversionThreshold())));
+                IoTDBDescriptor.getInstance().getConfig().getLoadTabletConversionThreshold())));
   }
 
   public static final String VERIFY_KEY = "verify";

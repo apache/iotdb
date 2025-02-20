@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeException;
-import org.apache.iotdb.db.exception.load.LoadAnalyzeMiniFileConvertionException;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.load.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -205,7 +204,8 @@ public abstract class LoadTsFileAnalyzer implements AutoCloseable {
 
     // 1. all mini files are converted to tablets
     setStatementTsFiles(tabletConvertionList);
-    executeTabletConversion(analysis, new LoadAnalyzeMiniFileConvertionException());
+    executeTabletConversion(
+        analysis, new LoadAnalyzeException("Failed to convert mini file to tablet"));
     if (analysis.isFailed()) {
       return false;
     }
