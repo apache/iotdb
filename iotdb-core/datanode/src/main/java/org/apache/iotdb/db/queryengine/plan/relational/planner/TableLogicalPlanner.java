@@ -68,6 +68,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.util.SqlFormatter;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import com.google.common.collect.ImmutableList;
@@ -80,6 +81,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -100,6 +102,7 @@ public class TableLogicalPlanner {
   private final Metadata metadata;
   private final WarningCollector warningCollector;
   private final Logger logger = LoggerFactory.getLogger(TableLogicalPlanner.class);
+  private final HashMap<String, PlanNode> planCache = new HashMap<String, PlanNode>();
 
   @TestOnly
   public TableLogicalPlanner(
@@ -138,24 +141,29 @@ public class TableLogicalPlanner {
     literalMarkerReplacer.process(query);
   }
 
+  private String calculateCacheKey(Statement statement, Analysis analysis) {
+    StringBuilder sb = new StringBuilder();
+    sb.append(analysis.getDatabaseName());
+    sb.append(SqlFormatter.formatSql(statement));
+    sb.append(queryContext.getZoneId());
+    return sb.toString();
+  }
+
   public LogicalQueryPlan plan(final Analysis analysis) {
     long startTime = System.nanoTime();
     Statement statement = analysis.getStatement();
 
     // Try to use plan cache
     // We should check if statement is Query in enablePlanCache() method
-    //    if(analysis.enablePlanCache()){
-    //      generalizeStatement((Query) statement);
-    //
-    //      String cachedKey = calculateCacheKey(generalizedStatement, analysis);
-    //      PlanNode cachedPlan = queryContext.getPlanCache().get(cachedKey);
-    //      if (cachedPlan != null) {
-    //          // deal with the device stuff
-    //          return new LogicalQueryPlan(queryContext, cachedPlan);
-    //      }
-    //      // Following implementation of plan should be based on the generalizedStatement
-    //      statement = generalizedStatement;
-    //    }
+    generalizeStatement((Query) statement);
+
+    String cachedKey = calculateCacheKey(statement, analysis);
+    PlanNode cachedPlan = planCache.get(cachedKey);
+    if (cachedPlan != null) {
+      // deal with the device stuff
+      return new LogicalQueryPlan(queryContext, cachedPlan);
+    }
+    // Following implementation of plan should be based on the generalizedStatement
 
     PlanNode planNode = planStatement(analysis, statement);
 

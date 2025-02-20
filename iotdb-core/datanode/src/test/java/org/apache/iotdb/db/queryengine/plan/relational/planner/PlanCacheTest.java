@@ -40,7 +40,8 @@ public class PlanCacheTest {
     Mockito.when(clientSession.getDatabaseName()).thenReturn(databaseName);
 
     SqlParser sqlParser = new SqlParser();
-    String sql = "select id + 1 from table1 where id > 10 and time=13289078 order by rank+1";
+    String sql =
+        "select id + 1 from table1 where id > 10 and time=13289078 and deviceId = 'test' order by rank+1";
     long startTime = System.nanoTime();
     Statement originalStatement =
         sqlParser.createStatement(sql, ZoneId.systemDefault(), clientSession);
@@ -53,5 +54,6 @@ public class PlanCacheTest {
     String newSql = SqlFormatter.formatSql(originalStatement);
     System.out.println("Time to replace: " + (System.nanoTime() - startTime));
     System.out.println(newSql);
+    System.out.println(literalMarkerReplacer.getLiteralList());
   }
 }
