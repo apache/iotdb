@@ -70,6 +70,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
   private static final Map<String, IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>>
       ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER = new ConcurrentHashMap<>();
   private final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> endPoint2Client;
+  private final Map<TEndPoint, String> endPoint2HandshakeErrorMessage = new ConcurrentHashMap<>();
 
   private final LoadBalancer loadBalancer;
 
@@ -169,6 +170,31 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     }
 
     return borrowClient();
+  }
+
+  public void checkTargetServersStatus() throws Exception {
+    for (final TEndPoint targetNodeUrl : endPointList) {
+      final AsyncPipeDataTransferServiceClient client = endPoint2Client.borrowClient(targetNodeUrl);
+      if (handshakeIfNecessary(targetNodeUrl, client)) {
+        return;
+      }
+    }
+
+    // If all clients are not available, throw an exception
+    final StringBuilder errorMessage =
+        new StringBuilder(String.format("All target servers %s are not available.", endPointList));
+    for (final Map.Entry<TEndPoint, String> entry : endPoint2HandshakeErrorMessage.entrySet()) {
+      errorMessage
+          .append(" (")
+          .append("host: ")
+          .append(entry.getKey().getIp())
+          .append(", port: ")
+          .append(entry.getKey().getPort())
+          .append(", because: ")
+          .append(entry.getValue())
+          .append(")");
+    }
+    throw new PipeConnectionException(errorMessage.toString());
   }
 
   /**
