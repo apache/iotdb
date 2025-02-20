@@ -22,7 +22,6 @@ package org.apache.iotdb.tool.tsfile;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.session.pool.SessionPool;
-import org.apache.iotdb.tool.common.ImportTsFileOperation;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -78,8 +77,8 @@ public class ImportTsFile extends AbstractTsFileTool {
   private static String successDir = "success/";
   private static String failDir = "fail/";
 
-  private static ImportTsFileOperation successOperation;
-  private static ImportTsFileOperation failOperation;
+  private static Operation successOperation;
+  private static Operation failOperation;
 
   private static int threadNum = 8;
 
@@ -268,28 +267,27 @@ public class ImportTsFile extends AbstractTsFileTool {
 
     final String onSuccess = commandLine.getOptionValue(ON_SUCCESS_ARGS).trim().toLowerCase();
     final String onFail = commandLine.getOptionValue(ON_FAIL_ARGS).trim().toLowerCase();
-    if (!ImportTsFileOperation.isValidOperation(onSuccess)
-        || !ImportTsFileOperation.isValidOperation(onFail)) {
+    if (!Operation.isValidOperation(onSuccess) || !Operation.isValidOperation(onFail)) {
       IOT_PRINTER.println("Args error: os/of must be one of none, mv, cp, delete");
       System.exit(CODE_ERROR);
     }
 
     boolean isSuccessDirEqualsSourceDir = false;
-    if (ImportTsFileOperation.MV.name().equalsIgnoreCase(onSuccess)
-        || ImportTsFileOperation.CP.name().equalsIgnoreCase(onSuccess)) {
+    if (Operation.MV.name().equalsIgnoreCase(onSuccess)
+        || Operation.CP.name().equalsIgnoreCase(onSuccess)) {
       File dir = createSuccessDir(commandLine);
       isSuccessDirEqualsSourceDir = isFileStoreEquals(source, dir);
     }
 
     boolean isFailDirEqualsSourceDir = false;
-    if (ImportTsFileOperation.MV.name().equalsIgnoreCase(onFail)
-        || ImportTsFileOperation.CP.name().equalsIgnoreCase(onFail)) {
+    if (Operation.MV.name().equalsIgnoreCase(onFail)
+        || Operation.CP.name().equalsIgnoreCase(onFail)) {
       File dir = createFailDir(commandLine);
       isFailDirEqualsSourceDir = isFileStoreEquals(source, dir);
     }
 
-    successOperation = ImportTsFileOperation.getOperation(onSuccess, isSuccessDirEqualsSourceDir);
-    failOperation = ImportTsFileOperation.getOperation(onFail, isFailDirEqualsSourceDir);
+    successOperation = Operation.getOperation(onSuccess, isSuccessDirEqualsSourceDir);
+    failOperation = Operation.getOperation(onFail, isFailDirEqualsSourceDir);
 
     if (commandLine.getOptionValue(THREAD_NUM_ARGS) != null) {
       threadNum = Integer.parseInt(commandLine.getOptionValue(THREAD_NUM_ARGS));
@@ -431,5 +429,42 @@ public class ImportTsFile extends AbstractTsFileTool {
             IOT_PRINTER.println("ImportTsFile thread join interrupted: " + e.getMessage());
           }
         });
+  }
+
+  public enum Operation {
+    NONE,
+    MV,
+    HARDLINK,
+    CP,
+    DELETE,
+    ;
+
+    public static boolean isValidOperation(String operation) {
+      return "none".equalsIgnoreCase(operation)
+          || "mv".equalsIgnoreCase(operation)
+          || "cp".equalsIgnoreCase(operation)
+          || "delete".equalsIgnoreCase(operation);
+    }
+
+    public static Operation getOperation(String operation, boolean isFileStoreEquals) {
+      switch (operation.toLowerCase()) {
+        case "none":
+          return Operation.NONE;
+        case "mv":
+          return Operation.MV;
+        case "cp":
+          if (isFileStoreEquals) {
+            return Operation.HARDLINK;
+          } else {
+            return Operation.CP;
+          }
+        case "delete":
+          return Operation.DELETE;
+        default:
+          IOT_PRINTER.println("Args error: os/of must be one of none, mv, cp, delete");
+          System.exit(CODE_ERROR);
+          return null;
+      }
+    }
   }
 }

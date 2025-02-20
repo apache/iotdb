@@ -536,18 +536,15 @@ public class StatementAnalyzer {
       InsertBaseStatement innerInsert = insert.getInnerTreeStatement();
 
       innerInsert.semanticCheck();
-      innerInsert.toLowerCase();
-
       innerInsert =
           AnalyzeUtils.analyzeInsert(
               context,
               innerInsert,
-              () -> SchemaValidator.validate(metadata, insert, context, accessControl),
+              () -> SchemaValidator.validate(metadata, insert, context),
               metadata::getOrCreateDataPartition,
               AnalyzeUtils::computeTableDataPartitionParams,
               analysis,
               false);
-
       insert.setInnerTreeStatement(innerInsert);
       analysis.setScope(insert, ret);
 
@@ -557,13 +554,7 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitDelete(Delete node, Optional<Scope> scope) {
       final Scope ret = Scope.create();
-      accessControl.checkCanDeleteFromTable(
-          sessionContext.getUserName(),
-          new QualifiedObjectName(
-              AnalyzeUtils.getDatabaseName(node, queryContext),
-              node.getTable().getName().getSuffix()));
       AnalyzeUtils.analyzeDelete(node, queryContext);
-
       analysis.setScope(node, ret);
       return ret;
     }

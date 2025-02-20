@@ -66,9 +66,6 @@ public class AuthorityChecker {
 
   public static final TSStatus SUCCEED = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
-  public static final String ONLY_ADMIN_ALLOWED =
-      "No permissions for this operation, only root user is allowed";
-
   private static final String NO_PERMISSION_PROMOTION =
       "No permissions for this operation, please add privilege ";
 

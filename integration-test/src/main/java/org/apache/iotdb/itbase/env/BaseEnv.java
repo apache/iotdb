@@ -210,9 +210,6 @@ public interface BaseEnv {
 
   ITableSession getTableSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException;
 
-  ITableSession getTableSessionConnection(String userName, String password)
-      throws IoTDBConnectionException;
-
   /**
    * Get the index of the first dataNode with a SchemaRegion leader.
    *

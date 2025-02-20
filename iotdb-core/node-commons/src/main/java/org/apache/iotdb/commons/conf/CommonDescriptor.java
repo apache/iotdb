@@ -306,13 +306,13 @@ public class CommonDescriptor {
                 "pipe_realtime_queue_poll_history_threshold",
                 Integer.toString(config.getPipeRealTimeQueuePollHistoryThreshold()))));
 
-    int pipeSubtaskExecutorMaxThreadNum =
+    config.setPipeSubtaskExecutorMaxThreadNum(
         Integer.parseInt(
             properties.getProperty(
                 "pipe_subtask_executor_max_thread_num",
-                Integer.toString(config.getPipeSubtaskExecutorMaxThreadNum())));
-    if (pipeSubtaskExecutorMaxThreadNum > 0) {
-      config.setPipeSubtaskExecutorMaxThreadNum(pipeSubtaskExecutorMaxThreadNum);
+                Integer.toString(config.getPipeSubtaskExecutorMaxThreadNum()))));
+    if (config.getPipeSubtaskExecutorMaxThreadNum() <= 0) {
+      config.setPipeSubtaskExecutorMaxThreadNum(5);
     }
     config.setPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount(
         Integer.parseInt(
@@ -405,26 +405,22 @@ public class CommonDescriptor {
                     properties.getProperty(
                         "pipe_connector_rpc_thrift_compression_enabled",
                         String.valueOf(config.isPipeConnectorRPCThriftCompressionEnabled())))));
-    int pipeAsyncConnectorSelectorNumber =
+
+    config.setPipeAsyncConnectorSelectorNumber(
         Integer.parseInt(
             Optional.ofNullable(properties.getProperty("pipe_sink_selector_number"))
                 .orElse(
                     properties.getProperty(
                         "pipe_async_connector_selector_number",
-                        String.valueOf(config.getPipeAsyncConnectorSelectorNumber()))));
-    if (pipeAsyncConnectorSelectorNumber > 0) {
-      config.setPipeAsyncConnectorSelectorNumber(pipeAsyncConnectorSelectorNumber);
-    }
-    int pipeAsyncConnectorMaxClientNumber =
+                        String.valueOf(config.getPipeAsyncConnectorSelectorNumber())))));
+    config.setPipeAsyncConnectorMaxClientNumber(
         Integer.parseInt(
             Optional.ofNullable(properties.getProperty("pipe_sink_max_client_number"))
                 .orElse(
                     properties.getProperty(
                         "pipe_async_connector_max_client_number",
-                        String.valueOf(config.getPipeAsyncConnectorMaxClientNumber()))));
-    if (pipeAsyncConnectorMaxClientNumber > 0) {
-      config.setPipeAsyncConnectorMaxClientNumber(pipeAsyncConnectorMaxClientNumber);
-    }
+                        String.valueOf(config.getPipeAsyncConnectorMaxClientNumber())))));
+
     config.setPipeAllSinksRateLimitBytesPerSecond(
         Double.parseDouble(
             properties.getProperty(

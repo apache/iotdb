@@ -26,7 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
-import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -97,8 +97,8 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
   @Override
   public boolean flushAlignedChunk(ChunkMetadataElement chunkMetadataElement, int subTaskId)
       throws IOException {
-    AbstractAlignedChunkMetadata alignedChunkMetadata =
-        (AbstractAlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
+    AlignedChunkMetadata alignedChunkMetadata =
+        (AlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
     IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
     List<IChunkMetadata> valueChunkMetadatas = alignedChunkMetadata.getValueChunkMetadataList();
     Chunk timeChunk = chunkMetadataElement.chunk;
@@ -132,8 +132,8 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
       int subTaskId,
       AbstractCompactionFlushController flushController)
       throws IOException {
-    AbstractAlignedChunkMetadata alignedChunkMetadata =
-        (AbstractAlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
+    AlignedChunkMetadata alignedChunkMetadata =
+        (AlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
     IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
     List<IChunkMetadata> valueChunkMetadatas = alignedChunkMetadata.getValueChunkMetadataList();
     List<Chunk> valueChunks = chunkMetadataElement.valueChunks;

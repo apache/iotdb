@@ -53,6 +53,8 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(StreamingHashAggregationOperator.class);
 
+  private final OperatorContext operatorContext;
+
   private final Operator child;
 
   private final int[] preGroupedChannels;
@@ -101,7 +103,7 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
       long maxPartialMemory,
       boolean spillEnabled,
       long unSpillMemoryLimit) {
-    super.operatorContext = operatorContext;
+    this.operatorContext = operatorContext;
     this.child = child;
 
     this.preGroupedChannels = Ints.toArray(preGroupedChannels);

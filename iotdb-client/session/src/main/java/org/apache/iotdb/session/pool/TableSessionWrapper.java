@@ -121,21 +121,6 @@ public class TableSessionWrapper implements ITableSession {
           return;
         }
       }
-
-      if (!Objects.equals(session.getSqlDialect(), sessionPool.sqlDialect)) {
-        try {
-          session.executeNonQueryStatement("set sql_dialect=" + sessionPool.sqlDialect);
-        } catch (StatementExecutionException e) {
-          LOGGER.warn(
-              "Failed to change back sql_dialect by executing: set sql_dialect={}",
-              sessionPool.sqlDialect,
-              e);
-          session.close();
-          session = null;
-          return;
-        }
-      }
-
       sessionPool.putBack(session);
       session = null;
     }

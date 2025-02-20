@@ -27,8 +27,6 @@ import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 
-import static org.apache.iotdb.session.Session.TABLE;
-
 /**
  * A builder class for constructing instances of {@link ITableSession}.
  *
@@ -269,7 +267,7 @@ public class TableSessionBuilder extends AbstractSessionBuilder {
       this.nodeUrls =
           Collections.singletonList(SessionConfig.DEFAULT_HOST + ":" + SessionConfig.DEFAULT_PORT);
     }
-    this.sqlDialect = TABLE;
+    this.sqlDialect = "table";
     Session newSession = new Session(this);
     newSession.open(enableCompression, connectionTimeoutInMs);
     return new TableSession(newSession);

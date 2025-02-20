@@ -20,7 +20,6 @@
 package org.apache.iotdb.tool.tsfile;
 
 import org.apache.iotdb.cli.utils.IoTPrinter;
-import org.apache.iotdb.tool.common.ImportTsFileOperation;
 
 import java.io.File;
 import java.nio.file.FileAlreadyExistsException;
@@ -41,9 +40,9 @@ public abstract class ImportTsFileBase implements Runnable {
   private static final LongAdder processingLoadFailedFileSuccessfulNum = new LongAdder();
   private static String timePrecision = "ms";
   private static String successDir;
-  private static ImportTsFileOperation successOperation;
+  private static ImportTsFile.Operation successOperation;
   private static String failDir;
-  private static ImportTsFileOperation failOperation;
+  private static ImportTsFile.Operation failOperation;
 
   @Override
   public void run() {
@@ -233,9 +232,9 @@ public abstract class ImportTsFileBase implements Runnable {
 
   public static void setSuccessAndFailDirAndOperation(
       final String successDir,
-      final ImportTsFileOperation successOperation,
+      final ImportTsFile.Operation successOperation,
       final String failDir,
-      final ImportTsFileOperation failOperation) {
+      final ImportTsFile.Operation failOperation) {
     ImportTsFileBase.successDir = successDir;
     ImportTsFileBase.successOperation = successOperation;
     ImportTsFileBase.failDir = failDir;

@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.io;
 
-import org.apache.iotdb.db.service.metrics.CompactionMetrics;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionIoDataType;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
-
 import org.apache.tsfile.exception.StopReadTsFileByInterruptException;
 import org.apache.tsfile.read.reader.TsFileInput;
 
@@ -34,31 +29,8 @@ import java.nio.ByteBuffer;
 public class CompactionTsFileInput implements TsFileInput {
   private final TsFileInput tsFileInput;
 
-  private long metadataOffset = -1;
-
-  /** The type of compaction running. */
-  private final CompactionType compactionType;
-
-  /** A flag that indicates if an aligned series is being read. */
-  private volatile boolean readingAlignedSeries = false;
-
-  public CompactionTsFileInput(CompactionType compactionType, TsFileInput tsFileInput) {
-    this.compactionType = compactionType;
+  public CompactionTsFileInput(TsFileInput tsFileInput) {
     this.tsFileInput = tsFileInput;
-  }
-
-  public void setMetadataOffset(long metadataOffset) {
-    this.metadataOffset = metadataOffset;
-  }
-
-  /** Marks the start of reading an aligned series. */
-  public void markStartOfAlignedSeries() {
-    readingAlignedSeries = true;
-  }
-
-  /** Marks the end of reading an aligned series. */
-  public void markEndOfAlignedSeries() {
-    readingAlignedSeries = false;
   }
 
   @Override
@@ -99,9 +71,7 @@ public class CompactionTsFileInput implements TsFileInput {
 
   @Override
   public int read(ByteBuffer dst) throws IOException {
-    acquireReadDataSizeWithCompactionReadRateLimiter(dst.remaining());
     int readSize = tsFileInput.read(dst);
-    updateMetrics(position(), readSize);
     if (Thread.currentThread().isInterrupted()) {
       throw new StopReadTsFileByInterruptException();
     }
@@ -110,9 +80,7 @@ public class CompactionTsFileInput implements TsFileInput {
 
   @Override
   public int read(ByteBuffer dst, long position) throws IOException {
-    acquireReadDataSizeWithCompactionReadRateLimiter(dst.remaining());
     int readSize = tsFileInput.read(dst, position);
-    updateMetrics(position, readSize);
     if (Thread.currentThread().isInterrupted()) {
       throw new StopReadTsFileByInterruptException();
     }
@@ -121,7 +89,7 @@ public class CompactionTsFileInput implements TsFileInput {
 
   @Override
   public InputStream wrapAsInputStream() throws IOException {
-    return new CompactionTsFileInputStreamWrapper(tsFileInput.wrapAsInputStream());
+    return tsFileInput.wrapAsInputStream();
   }
 
   @Override
@@ -132,91 +100,5 @@ public class CompactionTsFileInput implements TsFileInput {
   @Override
   public String getFilePath() {
     return tsFileInput.getFilePath();
-  }
-
-  private void acquireReadDataSizeWithCompactionReadRateLimiter(int readDataSize) {
-    CompactionTaskManager.getInstance().getCompactionReadOperationRateLimiter().acquire(1);
-    CompactionTaskManager.getInstance().getCompactionReadRateLimiter().acquire(readDataSize);
-  }
-
-  private void updateMetrics(long position, long totalSize) {
-    if (position >= metadataOffset) {
-      CompactionMetrics.getInstance()
-          .recordReadInfo(compactionType, CompactionIoDataType.METADATA, totalSize);
-    } else {
-      CompactionMetrics.getInstance()
-          .recordReadInfo(
-              compactionType,
-              readingAlignedSeries
-                  ? CompactionIoDataType.ALIGNED
-                  : CompactionIoDataType.NOT_ALIGNED,
-              totalSize);
-    }
-  }
-
-  private class CompactionTsFileInputStreamWrapper extends InputStream {
-
-    private final InputStream inputStream;
-
-    public CompactionTsFileInputStreamWrapper(InputStream inputStream) {
-      this.inputStream = inputStream;
-    }
-
-    @Override
-    public int read() throws IOException {
-      acquireReadDataSizeWithCompactionReadRateLimiter(1);
-      long position = position();
-      int readSize = inputStream.read();
-      updateMetrics(position, readSize);
-      return readSize;
-    }
-
-    @Override
-    public int read(byte[] b) throws IOException {
-      acquireReadDataSizeWithCompactionReadRateLimiter(b.length);
-      long position = position();
-      int readSize = inputStream.read(b);
-      updateMetrics(position, readSize);
-      return readSize;
-    }
-
-    @Override
-    public int read(byte[] b, int off, int len) throws IOException {
-      acquireReadDataSizeWithCompactionReadRateLimiter(len);
-      long position = position();
-      int readSize = inputStream.read(b, off, len);
-      updateMetrics(position, readSize);
-      return readSize;
-    }
-
-    @Override
-    public long skip(long n) throws IOException {
-      return inputStream.skip(n);
-    }
-
-    @Override
-    public int available() throws IOException {
-      return inputStream.available();
-    }
-
-    @Override
-    public void close() throws IOException {
-      inputStream.close();
-    }
-
-    @Override
-    public synchronized void mark(int readlimit) {
-      inputStream.mark(readlimit);
-    }
-
-    @Override
-    public synchronized void reset() throws IOException {
-      inputStream.reset();
-    }
-
-    @Override
-    public boolean markSupported() {
-      return inputStream.markSupported();
-    }
   }
 }

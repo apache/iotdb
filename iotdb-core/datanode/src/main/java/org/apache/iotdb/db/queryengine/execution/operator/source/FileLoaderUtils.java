@@ -41,7 +41,7 @@ import org.apache.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
-import org.apache.tsfile.file.metadata.TableDeviceTimeSeriesMetadata;
+import org.apache.tsfile.file.metadata.TableDeviceMetadata;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.controller.IChunkLoader;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -395,7 +395,7 @@ public class FileLoaderUtils {
     AbstractAlignedTimeSeriesMetadata alignedTimeSeriesMetadata =
         ignoreAllNullRows
             ? new AlignedTimeSeriesMetadata(timeColumnMetadata, valueColumnMetadataList)
-            : new TableDeviceTimeSeriesMetadata(timeColumnMetadata, valueColumnMetadataList);
+            : new TableDeviceMetadata(timeColumnMetadata, valueColumnMetadataList);
 
     alignedTimeSeriesMetadata.setChunkMetadataLoader(
         new DiskAlignedChunkMetadataLoader(

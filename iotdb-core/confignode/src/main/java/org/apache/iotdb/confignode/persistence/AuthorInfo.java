@@ -320,21 +320,6 @@ public class AuthorInfo implements SnapshotProcessor {
           }
           break;
         case RGrantUserAll:
-          // database scope and table scope all
-          if (!database.isEmpty()) {
-            for (PrivilegeType privilege : privileges) {
-              if (privilege.isRelationalPrivilege()) {
-                if (table.isEmpty()) {
-                  authorizer.grantPrivilegeToUser(
-                      userName, new PrivilegeUnion(database, privilege, grantOpt));
-                } else {
-                  authorizer.grantPrivilegeToUser(
-                      userName, new PrivilegeUnion(database, table, privilege, grantOpt));
-                }
-              }
-            }
-            break;
-          }
           for (PrivilegeType privilege : PrivilegeType.values()) {
             if (privilege.forRelationalSys()) {
               authorizer.grantPrivilegeToUser(userName, new PrivilegeUnion(privilege, grantOpt));
@@ -346,21 +331,6 @@ public class AuthorInfo implements SnapshotProcessor {
           }
           break;
         case RGrantRoleAll:
-          // database scope and table scope all
-          if (!database.isEmpty()) {
-            for (PrivilegeType privilege : privileges) {
-              if (privilege.isRelationalPrivilege()) {
-                if (table.isEmpty()) {
-                  authorizer.grantPrivilegeToRole(
-                      roleName, new PrivilegeUnion(database, privilege, grantOpt));
-                } else {
-                  authorizer.grantPrivilegeToRole(
-                      roleName, new PrivilegeUnion(database, table, privilege, grantOpt));
-                }
-              }
-            }
-            break;
-          }
           for (PrivilegeType privilege : PrivilegeType.values()) {
             if (privilege.forRelationalSys()) {
               authorizer.grantPrivilegeToRole(roleName, new PrivilegeUnion(privilege, grantOpt));
@@ -408,38 +378,26 @@ public class AuthorInfo implements SnapshotProcessor {
           }
           break;
         case RRevokeUserAll:
-          if (!database.isEmpty()) {
-            for (PrivilegeType privilege : PrivilegeType.values()) {
-              if (privilege.isRelationalPrivilege()) {
-                if (table.isEmpty()) {
-                  authorizer.revokePrivilegeFromUser(
-                      userName, new PrivilegeUnion(database, privilege, grantOpt));
-                } else {
-                  authorizer.revokePrivilegeFromUser(
-                      userName, new PrivilegeUnion(database, table, privilege, grantOpt));
-                }
-              }
+          for (PrivilegeType privilege : PrivilegeType.values()) {
+            if (privilege.forRelationalSys()) {
+              authorizer.revokePrivilegeFromUser(userName, new PrivilegeUnion(privilege, grantOpt));
             }
-            break;
+            if (privilege.isRelationalPrivilege()) {
+              authorizer.revokePrivilegeFromUser(
+                  userName, new PrivilegeUnion(privilege, grantOpt, true));
+            }
           }
-          authorizer.revokeAllPrivilegeFromUser(userName);
           break;
         case RRevokeRoleAll:
-          if (!database.isEmpty()) {
-            for (PrivilegeType privilege : PrivilegeType.values()) {
-              if (privilege.isRelationalPrivilege()) {
-                if (table.isEmpty()) {
-                  authorizer.revokePrivilegeFromRole(
-                      roleName, new PrivilegeUnion(database, privilege, grantOpt));
-                } else {
-                  authorizer.revokePrivilegeFromRole(
-                      roleName, new PrivilegeUnion(database, table, privilege, grantOpt));
-                }
-              }
+          for (PrivilegeType privilege : PrivilegeType.values()) {
+            if (privilege.forRelationalSys()) {
+              authorizer.revokePrivilegeFromRole(roleName, new PrivilegeUnion(privilege, grantOpt));
             }
-            break;
+            if (privilege.isRelationalPrivilege()) {
+              authorizer.revokePrivilegeFromRole(
+                  roleName, new PrivilegeUnion(privilege, grantOpt, true));
+            }
           }
-          authorizer.revokeAllPrivilegeFromRole(roleName);
           break;
         case RRevokeUserDBPriv:
           for (PrivilegeType privilege : privileges) {

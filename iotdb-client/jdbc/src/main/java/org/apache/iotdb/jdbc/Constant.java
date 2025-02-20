@@ -42,9 +42,6 @@ public class Constant {
   public static final String STATISTICS_RESULT_LINES = "* Lines of result: %d";
   public static final String STATISTICS_PRC_INFO = "* Num of RPC: %d, avg cost: %d ms";
 
-  public static final String TREE = "tree";
-  public static final String TABLE = "table";
-
   // version number
   public enum Version {
     V_0_12,

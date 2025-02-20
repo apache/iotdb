@@ -97,9 +97,6 @@ public abstract class SubscriptionPrefetchingQueue {
 
   private final SubscriptionPrefetchingQueueStates states;
 
-  private static final long STATE_REPORT_INTERVAL_IN_MS = 10_000L;
-  private long lastStateReportTimestamp = System.currentTimeMillis();
-
   private volatile boolean isCompleted = false;
   private volatile boolean isClosed = false;
 
@@ -262,7 +259,6 @@ public abstract class SubscriptionPrefetchingQueue {
       if (isClosed()) {
         return false;
       }
-      reportStateIfNeeded();
       // TODO: more refined behavior (prefetch/serialize/...) control
       if (states.shouldPrefetch()) {
         tryPrefetch();
@@ -275,13 +271,6 @@ public abstract class SubscriptionPrefetchingQueue {
       }
     } finally {
       releaseReadLock();
-    }
-  }
-
-  private void reportStateIfNeeded() {
-    if (System.currentTimeMillis() - lastStateReportTimestamp > STATE_REPORT_INTERVAL_IN_MS) {
-      LOGGER.info("Subscription: SubscriptionPrefetchingQueue state {}", this);
-      lastStateReportTimestamp = System.currentTimeMillis();
     }
   }
 

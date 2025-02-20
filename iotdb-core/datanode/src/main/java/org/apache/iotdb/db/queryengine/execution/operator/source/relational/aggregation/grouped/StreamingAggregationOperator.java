@@ -23,7 +23,7 @@ import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.AbstractOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
@@ -51,6 +51,8 @@ import static java.util.Objects.requireNonNull;
 public class StreamingAggregationOperator extends AbstractOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(StreamingAggregationOperator.class);
+
+  private final OperatorContext operatorContext;
 
   private final Operator child;
 
@@ -83,7 +85,7 @@ public class StreamingAggregationOperator extends AbstractOperator {
       long maxPartialMemory,
       boolean spillEnabled,
       long unSpillMemoryLimit) {
-    super.operatorContext = operatorContext;
+    this.operatorContext = operatorContext;
     this.child = child;
     this.groupByChannels = Ints.toArray(groupByChannels);
     this.groupKeyComparator = groupKeyComparator;
@@ -206,8 +208,7 @@ public class StreamingAggregationOperator extends AbstractOperator {
       outputs.add(
           resultBuilder.build(
               new RunLengthEncodedColumn(
-                  AbstractTableScanOperator.TIME_COLUMN_TEMPLATE,
-                  resultBuilder.getPositionCount())));
+                  TableScanOperator.TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount())));
       resultBuilder.reset();
     }
 

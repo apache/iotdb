@@ -201,7 +201,7 @@ public class SinkChannel implements ISinkChannel {
       if (noMoreTsBlocks) {
         return;
       }
-      long sizeInBytes = tsBlock.getSizeInBytes();
+      long retainedSizeInBytes = tsBlock.getRetainedSizeInBytes();
       int startSequenceId;
       startSequenceId = nextSequenceId;
       blocked =
@@ -211,16 +211,17 @@ public class SinkChannel implements ISinkChannel {
                   localFragmentInstanceId.getQueryId(),
                   fullFragmentInstanceId,
                   localPlanNodeId,
-                  sizeInBytes,
+                  retainedSizeInBytes,
                   maxBytesCanReserve)
               .left;
-      bufferRetainedSizeInBytes += sizeInBytes;
+      bufferRetainedSizeInBytes += retainedSizeInBytes;
 
       sequenceIdToTsBlock.put(nextSequenceId, new Pair<>(tsBlock, currentTsBlockSize));
       nextSequenceId += 1;
-      currentTsBlockSize = sizeInBytes;
+      currentTsBlockSize = retainedSizeInBytes;
 
-      submitSendNewDataBlockEventTask(startSequenceId, ImmutableList.of(sizeInBytes));
+      // TODO: consider merge multiple NewDataBlockEvent for less network traffic.
+      submitSendNewDataBlockEventTask(startSequenceId, ImmutableList.of(retainedSizeInBytes));
     } finally {
       DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
           SINK_HANDLE_SEND_TSBLOCK_REMOTE, System.nanoTime() - startTime);

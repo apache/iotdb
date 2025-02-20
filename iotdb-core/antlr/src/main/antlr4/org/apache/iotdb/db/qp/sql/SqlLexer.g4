@@ -205,14 +205,6 @@ CREATE
     : C R E A T E
     ;
 
-CURRENT_SQL_DIALECT
-    : C U R R E N T '_' S Q L '_' D I A L E C T
-    ;
-
-CURRENT_USER
-    : C U R R E N T '_' U S E R
-    ;
-
 DATA
     : D A T A
     ;
@@ -770,10 +762,6 @@ SPACE
     : S P A C E
     ;
 
-SQL_DIALECT
-    : S Q L '_' D I A L E C T
-    ;
-
 STORAGE
     : S T O R A G E
     ;
@@ -812,10 +800,6 @@ SUBSTRING
 
 SYSTEM
     : S Y S T E M
-    ;
-
-TABLE
-    : T A B L E
     ;
 
 TAGS
@@ -888,10 +872,6 @@ TOPICS
 
 TRACING
     : T R A C I N G
-    ;
-
-TREE
-    : T R E E
     ;
 
 TRIGGER

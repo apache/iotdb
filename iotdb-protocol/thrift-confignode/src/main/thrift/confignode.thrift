@@ -310,25 +310,21 @@ struct TMigrateRegionReq {
     1: required i32 regionId
     2: required i32 fromId
     3: required i32 toId
-    4: required common.Model model
 }
 
 struct TReconstructRegionReq {
     1: required list<i32> regionIds
     2: required i32 dataNodeId
-    3: required common.Model model
 }
 
 struct TExtendRegionReq {
     1: required i32 regionId
     2: required i32 dataNodeId
-    3: required common.Model model
 }
 
 struct TRemoveRegionReq {
     1: required i32 regionId
     2: required i32 dataNodeId
-    3: required common.Model model
 }
 
 // Authorize

@@ -17,8 +17,9 @@
 
 package org.apache.iotdb.collector.api.impl;
 
-import org.apache.iotdb.application.protocol.rest.PingApiService;
-import org.apache.iotdb.application.protocol.rest.v1.model.ExecutionStatus;
+import org.apache.iotdb.collector.api.NotFoundException;
+import org.apache.iotdb.collector.api.PingApiService;
+import org.apache.iotdb.collector.api.v1.model.ExecutionStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import javax.ws.rs.core.Response;
@@ -27,7 +28,7 @@ import javax.ws.rs.core.SecurityContext;
 public class PingApiServiceImpl extends PingApiService {
 
   @Override
-  public Response tryPing(final SecurityContext securityContext) {
+  public Response tryPing(final SecurityContext securityContext) throws NotFoundException {
     return Response.ok()
         .entity(
             new ExecutionStatus()

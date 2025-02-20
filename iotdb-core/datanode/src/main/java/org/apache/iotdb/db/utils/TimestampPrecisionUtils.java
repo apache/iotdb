@@ -70,7 +70,7 @@ public class TimestampPrecisionUtils {
     }
     switch (TIMESTAMP_PRECISION) {
       case "ms":
-        if (time > 10_000_000_000_000L || time < -10_000_000_000_000L) {
+        if (time > 10_000_000_000_000L) {
           throw new SemanticException(
               String.format(
                   "Current system timestamp precision is %s, "
@@ -79,7 +79,7 @@ public class TimestampPrecisionUtils {
         }
         break;
       case "us":
-        if (time > 10_000_000_000_000_000L || time < -10_000_000_000_000L) {
+        if (time > 10_000_000_000_000_000L) {
           throw new SemanticException(
               String.format(
                   "Current system timestamp precision is %s, "

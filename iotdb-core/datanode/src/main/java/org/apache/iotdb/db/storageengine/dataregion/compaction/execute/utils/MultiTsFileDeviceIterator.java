@@ -34,7 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -384,14 +384,14 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * @throws IOException if io errors occurred
    */
   @SuppressWarnings({"squid:S1319", "squid:S135"})
-  public LinkedList<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
+  public LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
       getReaderAndChunkMetadataForCurrentAlignedSeries() throws IOException, IllegalPathException {
     if (currentDevice == null || !currentDevice.right) {
       return new LinkedList<>();
     }
 
-    LinkedList<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
-        readerAndChunkMetadataList = new LinkedList<>();
+    LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList =
+        new LinkedList<>();
     for (TsFileResource tsFileResource : tsFileResourcesSortedByAsc) {
       if (!deviceIteratorMap.containsKey(tsFileResource)) {
         continue;
@@ -403,7 +403,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       MetadataIndexNode firstMeasurementNodeOfCurrentDevice =
           iterator.getFirstMeasurementNodeOfCurrentDevice();
       TsFileSequenceReader reader = readerMap.get(tsFileResource);
-      List<AbstractAlignedChunkMetadata> alignedChunkMetadataList =
+      List<AlignedChunkMetadata> alignedChunkMetadataList =
           reader.getAlignedChunkMetadataByMetadataIndexNode(
               currentDevice.left, firstMeasurementNodeOfCurrentDevice, ignoreAllNullRows);
       applyModificationForAlignedChunkMetadataList(tsFileResource, alignedChunkMetadataList);
@@ -420,7 +420,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * @param alignedChunkMetadataList list of aligned chunk metadata
    */
   private void applyModificationForAlignedChunkMetadataList(
-      TsFileResource tsFileResource, List<AbstractAlignedChunkMetadata> alignedChunkMetadataList)
+      TsFileResource tsFileResource, List<AlignedChunkMetadata> alignedChunkMetadataList)
       throws IllegalPathException {
     if (alignedChunkMetadataList.isEmpty()) {
       // all the value chunks is empty chunk
@@ -437,7 +437,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
             tsFileResource, r -> new ArrayList<>(tsFileResource.getAllModEntries()));
 
     // construct the input params List<List<Modification>> for QueryUtils.modifyAlignedChunkMetaData
-    AbstractAlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(0);
+    AlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(0);
     List<IChunkMetadata> valueChunkMetadataList = alignedChunkMetadata.getValueChunkMetadataList();
 
     // match time column modifications

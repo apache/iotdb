@@ -124,7 +124,9 @@ public class LocalSourceHandle implements ISourceHandle {
       if (tsBlock != null) {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
-              "[GetTsBlockFromQueue] TsBlock:{} size:{}", currSequenceId, tsBlock.getSizeInBytes());
+              "[GetTsBlockFromQueue] TsBlock:{} size:{}",
+              currSequenceId,
+              tsBlock.getRetainedSizeInBytes());
         }
         currSequenceId++;
       }

@@ -36,7 +36,6 @@ import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
-import org.apache.tsfile.write.writer.tsmiterator.TSMIterator;
 
 import java.io.File;
 import java.io.IOException;
@@ -149,14 +148,6 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     long writtenDataSize = this.getPos() - beforeSize;
     CompactionMetrics.getInstance()
         .recordWriteInfo(type, CompactionIoDataType.METADATA, writtenDataSize);
-  }
-
-  @Override
-  protected TSMIterator getTSMIterator() throws IOException {
-    return hasChunkMetadataInDisk
-        ? new CompactionDiskTSMIterator(
-            type, chunkMetadataTempFile, chunkGroupMetadataList, endPosInCMTForDevice)
-        : TSMIterator.getTSMIteratorInMemory(chunkGroupMetadataList);
   }
 
   public boolean isEmptyTargetFile() {

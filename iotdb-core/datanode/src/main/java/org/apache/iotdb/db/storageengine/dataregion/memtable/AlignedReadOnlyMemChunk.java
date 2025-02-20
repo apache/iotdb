@@ -30,7 +30,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
-import org.apache.tsfile.file.metadata.TableDeviceChunkMetadata;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.TimeRange;
@@ -76,11 +75,10 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
                 timeColumnDeletion,
                 valueColumnsDeletionList,
                 context.isIgnoreAllNullRows());
-    initAlignedChunkMetaFromTsBlock(context.isIgnoreAllNullRows());
+    initAlignedChunkMetaFromTsBlock();
   }
 
-  private void initAlignedChunkMetaFromTsBlock(boolean ignoreAllNullRows)
-      throws QueryProcessException {
+  private void initAlignedChunkMetaFromTsBlock() throws QueryProcessException {
     // Time chunk
     Statistics timeStatistics = Statistics.getStatsByType(TSDataType.VECTOR);
     IChunkMetadata timeChunkMetadata =
@@ -162,9 +160,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       }
     }
     IChunkMetadata alignedChunkMetadata =
-        ignoreAllNullRows
-            ? new AlignedChunkMetadata(timeChunkMetadata, valueChunkMetadataList)
-            : new TableDeviceChunkMetadata(timeChunkMetadata, valueChunkMetadataList);
+        new AlignedChunkMetadata(timeChunkMetadata, valueChunkMetadataList);
     alignedChunkMetadata.setChunkLoader(new MemAlignedChunkLoader(context, this));
     alignedChunkMetadata.setVersion(Long.MAX_VALUE);
     cachedMetaData = alignedChunkMetadata;

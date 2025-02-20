@@ -76,9 +76,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.U
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.view.AlterLogicalViewTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.view.DeleteLogicalViewTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.view.RenameLogicalViewTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.session.SetSqlDialectTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentSqlDialectTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.session.ShowCurrentUserTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.AuthorizerTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.ClearCacheTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.FlushTask;
@@ -175,10 +172,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentSqlDialectStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowCurrentUserStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.TestConnectionStatement;
@@ -708,12 +702,6 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     return new ShowThrottleQuotaTask(showThrottleQuotaStatement);
   }
 
-  @Override
-  public IConfigTask visitSetSqlDialect(
-      SetSqlDialectStatement setSqlDialectStatement, MPPQueryContext context) {
-    return new SetSqlDialectTask(setSqlDialectStatement.getSqlDialect());
-  }
-
   /** AI Model Management */
   @Override
   public IConfigTask visitCreateModel(
@@ -738,16 +726,5 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitShowModels(
       ShowModelsStatement showModelsStatement, MPPQueryContext context) {
     return new ShowModelsTask(showModelsStatement.getModelName());
-  }
-
-  @Override
-  public IConfigTask visitShowCurrentUser(ShowCurrentUserStatement node, MPPQueryContext context) {
-    return new ShowCurrentUserTask(context.getSession().getUserName());
-  }
-
-  @Override
-  public IConfigTask visitShowCurrentSqlDialect(
-      ShowCurrentSqlDialectStatement node, MPPQueryContext context) {
-    return new ShowCurrentSqlDialectTask(context.getSession().getSqlDialect().name());
   }
 }

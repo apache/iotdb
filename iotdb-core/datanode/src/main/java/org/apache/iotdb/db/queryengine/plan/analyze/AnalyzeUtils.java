@@ -329,7 +329,8 @@ public class AnalyzeUtils {
   }
 
   @SuppressWarnings("java:S3655") // optional is checked
-  public static String getDatabaseName(final Delete node, final MPPQueryContext queryContext) {
+  private static void validateSchema(final Delete node, final MPPQueryContext queryContext) {
+    final String tableName = node.getTable().getName().getSuffix();
     final String databaseName;
     if (node.getTable().getName().getPrefix().isPresent()) {
       databaseName = node.getTable().getName().getPrefix().get().toString();
@@ -338,12 +339,6 @@ public class AnalyzeUtils {
     } else {
       throw new SemanticException(DATABASE_NOT_SPECIFIED);
     }
-    return databaseName;
-  }
-
-  private static void validateSchema(final Delete node, final MPPQueryContext queryContext) {
-    final String tableName = node.getTable().getName().getSuffix();
-    final String databaseName = getDatabaseName(node, queryContext);
     InformationSchemaUtils.checkDBNameInWrite(databaseName);
     node.setDatabaseName(databaseName);
 

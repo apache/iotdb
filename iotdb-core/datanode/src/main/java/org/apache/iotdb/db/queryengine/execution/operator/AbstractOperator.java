@@ -44,7 +44,7 @@ public abstract class AbstractOperator implements Operator {
     long oneTupleSize =
         Math.max(
             1,
-            (tsBlock.getSizeInBytes() - tsBlock.getTotalInstanceSize())
+            (tsBlock.getRetainedSizeInBytes() - tsBlock.getTotalInstanceSize())
                 / tsBlock.getPositionCount());
     if (oneTupleSize > maxReturnSize) {
       // make sure at least one-tuple-at-a-time

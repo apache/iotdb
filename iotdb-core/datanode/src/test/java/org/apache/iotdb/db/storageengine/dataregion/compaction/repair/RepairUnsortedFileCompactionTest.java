@@ -46,7 +46,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -682,10 +682,10 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     Assert.assertTrue(task.start());
     TsFileResource target = tsFileManager.getTsFileList(false).get(0);
     try (TsFileSequenceReader reader = new TsFileSequenceReader(target.getTsFilePath())) {
-      List<AbstractAlignedChunkMetadata> chunkMetadataList =
+      List<AlignedChunkMetadata> chunkMetadataList =
           reader.getAlignedChunkMetadata(
               IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"), true);
-      for (AbstractAlignedChunkMetadata alignedChunkMetadata : chunkMetadataList) {
+      for (AlignedChunkMetadata alignedChunkMetadata : chunkMetadataList) {
         ChunkMetadata timeChunkMetadata =
             (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
         Chunk timeChunk = reader.readMemChunk(timeChunkMetadata);
@@ -796,7 +796,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     Assert.assertTrue(task.start());
     TsFileResource target = tsFileManager.getTsFileList(false).get(0);
     try (TsFileSequenceReader reader = new TsFileSequenceReader(target.getTsFilePath())) {
-      List<AbstractAlignedChunkMetadata> chunkMetadataList =
+      List<AlignedChunkMetadata> chunkMetadataList =
           reader.getAlignedChunkMetadata(
               IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"), true);
       Assert.assertEquals(3, chunkMetadataList.size());

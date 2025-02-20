@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
@@ -141,7 +140,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.schemaengine.template.Template;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -716,8 +714,7 @@ public class ProcedureManager {
             Arrays.asList(
                 new Pair<>("Original DataNode", originalDataNode),
                 new Pair<>("Destination DataNode", destDataNode),
-                new Pair<>("Coordinator for add peer", coordinatorForAddPeer)),
-            migrateRegionReq.getModel());
+                new Pair<>("Coordinator for add peer", coordinatorForAddPeer)));
     if (configManager
         .getPartitionManager()
         .getAllReplicaSets(originalDataNode.getDataNodeId())
@@ -758,8 +755,7 @@ public class ProcedureManager {
             targetDataNode,
             Arrays.asList(
                 new Pair<>("Target DataNode", targetDataNode),
-                new Pair<>("Coordinator", coordinator)),
-            req.getModel());
+                new Pair<>("Coordinator", coordinator)));
 
     ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     if (configManager
@@ -800,8 +796,7 @@ public class ProcedureManager {
             targetDataNode,
             Arrays.asList(
                 new Pair<>("Target DataNode", targetDataNode),
-                new Pair<>("Coordinator", coordinator)),
-            req.getModel());
+                new Pair<>("Coordinator", coordinator)));
     if (configManager
         .getPartitionManager()
         .getAllReplicaSets(targetDataNode.getDataNodeId())
@@ -833,9 +828,9 @@ public class ProcedureManager {
             targetDataNode,
             Arrays.asList(
                 new Pair<>("Target DataNode", targetDataNode),
-                new Pair<>("Coordinator", coordinator)),
-            req.getModel());
+                new Pair<>("Coordinator", coordinator)));
 
+    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     if (configManager
             .getPartitionManager()
             .getAllReplicaSetsMap(regionId.getType())
@@ -874,11 +869,10 @@ public class ProcedureManager {
   private String regionOperationCommonCheck(
       TConsensusGroupId regionId,
       TDataNodeLocation targetDataNode,
-      List<Pair<String, TDataNodeLocation>> relatedDataNodes,
-      Model model) {
+      List<Pair<String, TDataNodeLocation>> relatedDataNodes) {
     String failMessage;
-    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
 
+    ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     if (TConsensusGroupType.DataRegion == regionId.getType()
         && ConsensusFactory.SIMPLE_CONSENSUS.equals(conf.getDataRegionConsensusProtocolClass())) {
       failMessage = "SimpleConsensus not supports region operation.";
@@ -904,8 +898,6 @@ public class ProcedureManager {
               "Target DataNode %s is not in Running status.", targetDataNode.getDataNodeId());
     } else if ((failMessage = checkRegionOperationWithRemoveDataNode(regionId, targetDataNode))
         != null) {
-      // need to do nothing more
-    } else if ((failMessage = checkRegionOperationModelCorrectness(regionId, model)) != null) {
       // need to do nothing more
     }
 
@@ -969,20 +961,6 @@ public class ProcedureManager {
           regionId, otherRegionMemberChangeProcedures);
     }
     return null;
-  }
-
-  private String checkRegionOperationModelCorrectness(TConsensusGroupId regionId, Model model) {
-    String databaseName = configManager.getPartitionManager().getRegionDatabase(regionId);
-    boolean isTreeModelDatabase = databaseName.startsWith(SqlConstant.TREE_MODEL_DATABASE_PREFIX);
-    if (Model.TREE == model && isTreeModelDatabase
-        || Model.TABLE == model && !isTreeModelDatabase) {
-      return null;
-    }
-    return String.format(
-        "The region's database %s is belong to %s model, but the model you are operating is %s",
-        databaseName,
-        isTreeModelDatabase ? Model.TREE.toString() : Model.TABLE.toString(),
-        model.toString());
   }
 
   // end region

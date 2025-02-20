@@ -35,7 +35,6 @@ import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -424,63 +423,6 @@ public class IoTDBSessionInsertNullIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void insertTabletNullMeasurementTest() {
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String deviceId = "root.sg1.clsu.aligned_d1";
-      Tablet tablet =
-          new Tablet(
-              deviceId,
-              Arrays.asList(
-                  new MeasurementSchema("s1", TSDataType.BOOLEAN),
-                  new MeasurementSchema(null, TSDataType.INT32)),
-              1);
-      tablet.addTimestamp(0, 300);
-      tablet.addValue("s1", 0, true);
-      tablet.addValue(null, 0, 1);
-      session.insertAlignedTablet(tablet);
-      fail();
-    } catch (Exception e) {
-      Assert.assertEquals("measurement should be non null value", e.getMessage());
-    }
-
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String deviceId = "root.sg1.clsu.aligned_d1";
-      Tablet tablet =
-          new Tablet(
-              deviceId,
-              Arrays.asList(
-                  new MeasurementSchema("s1", TSDataType.BOOLEAN),
-                  new MeasurementSchema(null, TSDataType.INT32)),
-              1);
-      tablet.addTimestamp(0, 300);
-      tablet.addValue(0, 0, true);
-      tablet.addValue(0, 1, 1);
-      session.insertAlignedTablet(tablet);
-      fail();
-    } catch (Exception e) {
-      Assert.assertEquals("measurement should be non null value", e.getMessage());
-    }
-
-    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      String deviceId = "root.sg1.clsu.aligned_d1";
-      Tablet tablet =
-          new Tablet(
-              deviceId,
-              Arrays.asList(
-                  new MeasurementSchema("s1", TSDataType.BOOLEAN),
-                  new MeasurementSchema(null, TSDataType.INT32)),
-              1);
-      tablet.addTimestamp(0, 300);
-      tablet.addValue("s1", 0, true);
-      // doesn't insert 2nd measurement
-      session.insertAlignedTablet(tablet);
-      fail();
-    } catch (Exception e) {
-      Assert.assertEquals("measurement should be non null value", e.getMessage());
     }
   }
 }

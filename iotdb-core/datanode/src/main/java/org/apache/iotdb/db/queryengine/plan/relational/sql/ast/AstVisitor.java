@@ -433,14 +433,6 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
-  protected R visitLoadConfiguration(LoadConfiguration node, C context) {
-    return visitStatement(node, context);
-  }
-
-  protected R visitSetSystemStatus(SetSystemStatus node, C context) {
-    return visitStatement(node, context);
-  }
-
   protected R visitInsertRow(InsertRow node, C context) {
     return visitStatement(node, context);
   }
@@ -642,26 +634,6 @@ public abstract class AstVisitor<R, C> {
   }
 
   protected R visitRelationalAuthorPlan(RelationalAuthorStatement node, C context) {
-    return visitStatement(node, context);
-  }
-
-  protected R visitMigrateRegion(MigrateRegion node, C context) {
-    return visitStatement(node, context);
-  }
-
-  protected R visitReconstructRegion(ReconstructRegion node, C context) {
-    return visitStatement(node, context);
-  }
-
-  protected R visitExtendRegion(ExtendRegion node, C context) {
-    return visitStatement(node, context);
-  }
-
-  protected R visitRemoveRegion(RemoveRegion node, C context) {
-    return visitStatement(node, context);
-  }
-
-  protected R visitSetSqlDialect(SetSqlDialect node, C context) {
     return visitStatement(node, context);
   }
 }

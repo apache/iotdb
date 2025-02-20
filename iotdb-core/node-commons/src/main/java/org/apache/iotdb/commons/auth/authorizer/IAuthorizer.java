@@ -81,8 +81,6 @@ public interface IAuthorizer extends SnapshotProcessor {
    */
   void revokePrivilegeFromUser(String userName, PrivilegeUnion union) throws AuthException;
 
-  void revokeAllPrivilegeFromUser(String userName) throws AuthException;
-
   /**
    * Create a role.
    *
@@ -116,8 +114,6 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal
    */
   void revokePrivilegeFromRole(String roleName, PrivilegeUnion union) throws AuthException;
-
-  void revokeAllPrivilegeFromRole(String roleName) throws AuthException;
 
   /**
    * Grant a role to a user.
