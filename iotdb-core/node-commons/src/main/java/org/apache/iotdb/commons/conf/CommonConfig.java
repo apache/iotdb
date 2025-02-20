@@ -207,7 +207,7 @@ public class CommonConfig {
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor. */
   private int pipeSubtaskExecutorMaxThreadNum =
-      Math.max(5, Runtime.getRuntime().availableProcessors());
+      Math.max(5, Runtime.getRuntime().availableProcessors() / 2);
 
   private int pipeNonForwardingEventsProgressReportInterval = 100;
 
@@ -234,9 +234,9 @@ public class CommonConfig {
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
 
   private int pipeAsyncConnectorSelectorNumber =
-      Math.max(4, Runtime.getRuntime().availableProcessors());
+      Math.max(4, Runtime.getRuntime().availableProcessors() / 2);
   private int pipeAsyncConnectorMaxClientNumber =
-      Math.max(16, Runtime.getRuntime().availableProcessors());
+      Math.max(16, Runtime.getRuntime().availableProcessors() / 2);
 
   private double pipeAllSinksRateLimitBytesPerSecond = -1;
   private int rateLimiterHotReloadCheckIntervalMs = 1000;
