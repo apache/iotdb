@@ -566,7 +566,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
                 ? (isTableModelTsFile.get(i)
                     ? loadTsFileDataTypeConverter
                         .convertForTableModel(
-                            new LoadTsFile(null, tsFiles.get(i).getPath(), Collections.emptyMap()))
+                            new LoadTsFile(null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                                .setDatabase(databaseForTableData))
                         .orElse(null)
                     : loadTsFileDataTypeConverter
                         .convertForTreeModel(new LoadTsFileStatement(tsFiles.get(i).getPath()))
