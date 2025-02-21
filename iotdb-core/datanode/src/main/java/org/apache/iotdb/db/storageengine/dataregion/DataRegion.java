@@ -339,10 +339,6 @@ public class DataRegion implements IDataRegionForQuery {
     this.databaseName = databaseName;
     this.fileFlushPolicy = fileFlushPolicy;
     acquireDirectBufferMemory();
-    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-        || config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
-      WALManager.getInstance().applyForWALNode(databaseName + FILE_NAME_SEPARATOR + dataRegionId);
-    }
 
     dataRegionSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
     this.tsFileManager = new TsFileManager(databaseName, dataRegionId, dataRegionSysDir.getPath());
@@ -663,6 +659,12 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     if (StorageEngine.getInstance().isReadyForReadAndWrite()) {
+      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+          || config
+              .getDataRegionConsensusProtocolClass()
+              .equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
+        WALManager.getInstance().applyForWALNode(databaseName + FILE_NAME_SEPARATOR + dataRegionId);
+      }
       logger.info("The data region {}[{}] is created successfully", databaseName, dataRegionId);
     } else {
       logger.info("The data region {}[{}] is recovered successfully", databaseName, dataRegionId);
