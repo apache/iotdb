@@ -44,6 +44,7 @@ class PoolConfig(object):
         enable_compression: bool = False,
         use_ssl: bool = False,
         ca_certs: str = None,
+        connection_timeout_in_ms: int = None,
     ):
         self.host = host
         self.port = port
@@ -62,6 +63,7 @@ class PoolConfig(object):
         self.enable_compression = enable_compression
         self.use_ssl = use_ssl
         self.ca_certs = ca_certs
+        self.connection_timeout_in_ms = connection_timeout_in_ms
 
 
 class SessionPool(object):
@@ -86,6 +88,7 @@ class SessionPool(object):
                 self.__pool_config.time_zone,
                 use_ssl=self.__pool_config.use_ssl,
                 ca_certs=self.__pool_config.ca_certs,
+                connection_timeout_in_ms=self.__pool_config.connection_timeout_in_ms,
             )
 
         else:
@@ -98,6 +101,7 @@ class SessionPool(object):
                 self.__pool_config.time_zone,
                 use_ssl=self.__pool_config.use_ssl,
                 ca_certs=self.__pool_config.ca_certs,
+                connection_timeout_in_ms=self.__pool_config.connection_timeout_in_ms,
             )
 
         session.open(self.__pool_config.enable_compression)
