@@ -565,6 +565,7 @@ public class MemoryManager {
   }
 
   public void updateAllocate() {
+    LOGGER.info("Update Allocate for {}", this);
     if (children.isEmpty()) {
       double ratio = (double) totalMemorySizeInBytes / allocateTotalMemorySizeInBytes;
       for (IMemoryBlock memoryBlock : allocatedMemoryBlocks.values()) {
