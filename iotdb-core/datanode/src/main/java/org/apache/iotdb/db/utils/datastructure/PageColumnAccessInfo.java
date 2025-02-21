@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,16 +17,36 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.util;
+package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.iotdb.rpc.StatementExecutionException;
+public class PageColumnAccessInfo {
+  // time -> (selectedTVList, selectedIndex)
+  private final int[][] indices;
+  private int count;
 
-/** Supplier with a throws-clause. */
-@FunctionalInterface
-public interface CheckedSupplier<OUTPUT, THROWABLE extends Throwable> {
-  /**
-   * The same as {@link java.util.function.Supplier#get()} except that this method is declared with
-   * a throws-clause.
-   */
-  OUTPUT get() throws THROWABLE, StatementExecutionException;
+  public PageColumnAccessInfo(int maxNumberOfPointsInPage) {
+    this.indices = new int[maxNumberOfPointsInPage][];
+    for (int i = 0; i < maxNumberOfPointsInPage; i++) {
+      indices[i] = new int[2];
+    }
+    this.count = 0;
+  }
+
+  public int[] get(int index) {
+    return indices[index];
+  }
+
+  public void add(int[] columnAccess) {
+    indices[count][0] = columnAccess[0];
+    indices[count][1] = columnAccess[1];
+    count++;
+  }
+
+  public int count() {
+    return count;
+  }
+
+  public void reset() {
+    count = 0;
+  }
 }
