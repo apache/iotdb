@@ -289,7 +289,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     }
   }
 
-  private synchronized void invalidateSchemaCacheOfOldLeaders() {
+  private void invalidateSchemaCacheOfOldLeaders() {
     BiConsumer<Map<TConsensusGroupId, Integer>, Set<TConsensusGroupId>> consumer =
         (oldLeaderMap, successTransferSet) -> {
           final DataNodeAsyncRequestContext<String, TSStatus> invalidateSchemaCacheRequestHandler =
@@ -332,7 +332,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     }
   }
 
-  private synchronized void flushOldLeaderIfIoTV2() {
+  private void flushOldLeaderIfIoTV2() {
     if (!IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION
         || !Objects.equals(
             DATA_REGION_CONSENSUS_PROTOCOL_CLASS, ConsensusFactory.IOT_CONSENSUS_V2)) {
@@ -368,11 +368,15 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     lastBalancedOldLeaderId2RegionMap.clear();
   }
 
+  private synchronized void handleBalanceAction() {
+    invalidateSchemaCacheOfOldLeaders();
+    flushOldLeaderIfIoTV2();
+  }
+
   public synchronized void balanceRegionLeaderAndPriority() {
     balanceRegionLeader();
     balanceRegionPriority();
-    invalidateSchemaCacheOfOldLeaders();
-    flushOldLeaderIfIoTV2();
+    handleBalanceAction();
   }
 
   /** Balance cluster RegionGroup route priority through configured algorithm. */
@@ -544,22 +548,19 @@ public class RouteBalancer implements IClusterStatusSubscriber {
   @Override
   public void onNodeStatisticsChanged(NodeStatisticsChangeEvent event) {
     balanceRegionLeader();
-    invalidateSchemaCacheOfOldLeaders();
-    flushOldLeaderIfIoTV2();
+    handleBalanceAction();
   }
 
   @Override
   public void onRegionGroupStatisticsChanged(RegionGroupStatisticsChangeEvent event) {
     balanceRegionLeader();
-    invalidateSchemaCacheOfOldLeaders();
-    flushOldLeaderIfIoTV2();
+    handleBalanceAction();
   }
 
   @Override
   public void onConsensusGroupStatisticsChanged(ConsensusGroupStatisticsChangeEvent event) {
     balanceRegionLeader();
     balanceRegionPriority();
-    invalidateSchemaCacheOfOldLeaders();
-    flushOldLeaderIfIoTV2();
+    handleBalanceAction();
   }
 }
