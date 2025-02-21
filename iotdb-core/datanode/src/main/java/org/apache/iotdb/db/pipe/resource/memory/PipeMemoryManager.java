@@ -484,7 +484,7 @@ public class PipeMemoryManager {
     // It's good for performance and will not trigger concurrent issues.
     // If forceResize is called on it, we will add it to the allocated blocks.
     if (sizeInBytes > 0) {
-      usedMemorySizeInBytes += sizeInBytes;
+      memoryBlock.forceAllocate(sizeInBytes);
       allocatedBlocks.add(returnedMemoryBlock);
     }
 
