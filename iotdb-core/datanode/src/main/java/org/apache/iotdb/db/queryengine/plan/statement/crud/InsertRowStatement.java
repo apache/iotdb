@@ -206,6 +206,9 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void transferType(ZoneId zoneId) throws QueryProcessException {
+    if (measurementSchemas == null) {
+      return;
+    }
 
     for (int i = 0; i < measurementSchemas.length; i++) {
       // null when time series doesn't exist
