@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -300,6 +301,20 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
 
   public Pair<IoTDBSyncClient, Boolean> getClient() {
     return loadBalancer.getClient();
+  }
+
+  public List<Pair<IoTDBSyncClient, Boolean>> getAllClients() {
+    List<Pair<IoTDBSyncClient, Boolean>> clients = new ArrayList<>();
+    for (final TEndPoint endPoint : endPointList) {
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus = endPoint2ClientAndStatus.get(endPoint);
+      if (Boolean.FALSE.equals(clientAndStatus.getRight())) {
+        LOGGER.warn(
+            "Failed to get client for endpoint {}:{}.", endPoint.getIp(), endPoint.getPort());
+      } else {
+        clients.add(clientAndStatus);
+      }
+    }
+    return clients;
   }
 
   @Override

@@ -33,7 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -109,20 +108,6 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
             && Boolean.TRUE.equals(endPoint2ClientAndStatus.get(endPoint).getRight())
         ? endPoint2ClientAndStatus.get(endPoint)
         : getClient();
-  }
-
-  public List<Pair<IoTDBSyncClient, Boolean>> getAllClients() {
-    List<Pair<IoTDBSyncClient, Boolean>> clients = new ArrayList<>();
-    for (final TEndPoint endPoint : endPointList) {
-      final Pair<IoTDBSyncClient, Boolean> clientAndStatus = endPoint2ClientAndStatus.get(endPoint);
-      if (Boolean.FALSE.equals(clientAndStatus.getRight())) {
-        LOGGER.warn(
-            "Failed to get client for endpoint {}:{}.", endPoint.getIp(), endPoint.getPort());
-      } else {
-        clients.add(clientAndStatus);
-      }
-    }
-    return clients;
   }
 
   public void updateLeaderCache(final String deviceId, final TEndPoint endPoint) {

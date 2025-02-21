@@ -87,11 +87,7 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
       return;
     }
     try {
-      if (shouldSendToAllClients) {
-        doTransferAllClients(pipeSchemaRegionWritePlanEvent);
-      } else {
-        doTransfer(pipeSchemaRegionWritePlanEvent);
-      }
+      doTransfer(pipeSchemaRegionWritePlanEvent);
     } finally {
       pipeSchemaRegionWritePlanEvent.decreaseReferenceCount(
           IoTDBDataNodeSyncConnector.class.getName(), false);
@@ -100,50 +96,13 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
 
   private void doTransfer(final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
       throws PipeException {
-    final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
-
-    final TPipeTransferResp resp;
-    try {
-      final TPipeTransferReq req =
-          compressIfNeeded(
-              PipeTransferPlanNodeReq.toTPipeTransferReq(
-                  pipeSchemaRegionWritePlanEvent.getPlanNode()));
-      rateLimitIfNeeded(
-          pipeSchemaRegionWritePlanEvent.getPipeName(),
-          pipeSchemaRegionWritePlanEvent.getCreationTime(),
-          clientAndStatus.getLeft().getEndPoint(),
-          req.getBody().length);
-      resp = clientAndStatus.getLeft().pipeTransfer(req);
-    } catch (final Exception e) {
-      clientAndStatus.setRight(false);
-      throw new PipeConnectionException(
-          String.format(
-              "Network error when transfer schema region write plan %s, because %s.",
-              pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), e.getMessage()),
-          e);
+    final List<Pair<IoTDBSyncClient, Boolean>> clientsAndStatuses;
+    if (shouldSendToAllClients) {
+      clientsAndStatuses = clientManager.getAllClients();
+    } else {
+      clientsAndStatuses = Collections.singletonList(clientManager.getClient());
     }
-
-    final TSStatus status = resp.getStatus();
-    // Only handle the failed statuses to avoid string format performance overhead
-    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && resp.getStatus().getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-      receiverStatusHandler.handle(
-          status,
-          String.format(
-              "Transfer data node write plan %s error, result status %s.",
-              pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), status),
-          pipeSchemaRegionWritePlanEvent.getPlanNode().toString());
-    }
-
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Successfully transferred schema event {}.", pipeSchemaRegionWritePlanEvent);
-    }
-  }
-
-  private void doTransferAllClients(
-      final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent) throws PipeException {
-    final List<Pair<IoTDBSyncClient, Boolean>> clients = clientManager.getAllClients();
-    for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : clients) {
+    for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : clientsAndStatuses) {
       final TPipeTransferResp resp;
       try {
         final TPipeTransferReq req =
@@ -190,11 +149,7 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
       return;
     }
     try {
-      if (shouldSendToAllClients) {
-        doTransferAllClients(pipeSchemaRegionSnapshotEvent);
-      } else {
-        doTransfer(pipeSchemaRegionSnapshotEvent);
-      }
+      doTransfer(pipeSchemaRegionSnapshotEvent);
     } finally {
       pipeSchemaRegionSnapshotEvent.decreaseReferenceCount(
           IoTDBSchemaRegionConnector.class.getName(), false);
@@ -208,91 +163,16 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
     final File mTreeSnapshotFile = snapshotEvent.getMTreeSnapshotFile();
     final File tagLogSnapshotFile = snapshotEvent.getTagLogSnapshotFile();
     final File attributeSnapshotFile = snapshotEvent.getAttributeSnapshotFile();
-    final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
-    final TPipeTransferResp resp;
-
-    // 1. Transfer mTreeSnapshotFile, and tLog file if exists
-    transferFilePieces(
-        Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0),
-        mTreeSnapshotFile,
-        clientAndStatus,
-        true);
-    if (Objects.nonNull(tagLogSnapshotFile)) {
-      transferFilePieces(
-          Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0),
-          tagLogSnapshotFile,
-          clientAndStatus,
-          true);
-    }
-    if (Objects.nonNull(attributeSnapshotFile)) {
-      transferFilePieces(
-          Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0),
-          attributeSnapshotFile,
-          clientAndStatus,
-          true);
-    }
-    // 2. Transfer file seal signal, which means the snapshots are transferred completely
-    try {
-      final TPipeTransferReq req =
-          compressIfNeeded(
-              PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
-                  // The pattern is surely Non-null
-                  snapshotEvent.getTreePattern().getPattern(),
-                  snapshotEvent.getTablePattern().getDatabasePattern(),
-                  snapshotEvent.getTablePattern().getTablePattern(),
-                  snapshotEvent.getTreePattern().isTreeModelDataAllowedToBeCaptured(),
-                  snapshotEvent.getTablePattern().isTableModelDataAllowedToBeCaptured(),
-                  mTreeSnapshotFile.getName(),
-                  mTreeSnapshotFile.length(),
-                  Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,
-                  Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
-                  Objects.nonNull(attributeSnapshotFile) ? attributeSnapshotFile.getName() : null,
-                  Objects.nonNull(attributeSnapshotFile) ? attributeSnapshotFile.length() : 0,
-                  snapshotEvent.getDatabaseName(),
-                  snapshotEvent.toSealTypeString()));
-      rateLimitIfNeeded(
-          snapshotEvent.getPipeName(),
-          snapshotEvent.getCreationTime(),
-          clientAndStatus.getLeft().getEndPoint(),
-          req.getBody().length);
-      resp = clientAndStatus.getLeft().pipeTransfer(req);
-    } catch (final Exception e) {
-      clientAndStatus.setRight(false);
-      throw new PipeConnectionException(
-          String.format(
-              "Network error when seal snapshot file %s and %s, because %s.",
-              mTreeSnapshotFile, tagLogSnapshotFile, e.getMessage()),
-          e);
+    final List<Pair<IoTDBSyncClient, Boolean>> clientsAndStatuses;
+    if (shouldSendToAllClients) {
+      clientsAndStatuses = clientManager.getAllClients();
+    } else {
+      clientsAndStatuses = Collections.singletonList(clientManager.getClient());
     }
 
-    // Only handle the failed statuses to avoid string format performance overhead
-    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && resp.getStatus().getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-      receiverStatusHandler.handle(
-          resp.getStatus(),
-          String.format(
-              "Seal file %s and %s error, result status %s.",
-              mTreeSnapshotFile, tagLogSnapshotFile, resp.getStatus()),
-          snapshotEvent.toString());
-    }
-
-    LOGGER.info(
-        "Successfully transferred file {}, {} and {}.",
-        mTreeSnapshotFile,
-        tagLogSnapshotFile,
-        attributeSnapshotFile);
-  }
-
-  private void doTransferAllClients(final PipeSchemaRegionSnapshotEvent snapshotEvent)
-      throws PipeException, IOException {
-    final String pipeName = snapshotEvent.getPipeName();
-    final long creationTime = snapshotEvent.getCreationTime();
-    final File mTreeSnapshotFile = snapshotEvent.getMTreeSnapshotFile();
-    final File tagLogSnapshotFile = snapshotEvent.getTagLogSnapshotFile();
-    final File attributeSnapshotFile = snapshotEvent.getAttributeSnapshotFile();
-    final List<Pair<IoTDBSyncClient, Boolean>> clients = clientManager.getAllClients();
-    for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : clients) {
+    for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : clientsAndStatuses) {
       final TPipeTransferResp resp;
+
       // 1. Transfer mTreeSnapshotFile, and tLog file if exists
       transferFilePieces(
           Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0),
@@ -346,6 +226,8 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
                 mTreeSnapshotFile, tagLogSnapshotFile, e.getMessage()),
             e);
       }
+
+      // Only handle the failed statuses to avoid string format performance overhead
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && resp.getStatus().getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         receiverStatusHandler.handle(
