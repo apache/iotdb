@@ -413,11 +413,10 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "tvlist_sort_algorithm", conf.getTvListSortAlgorithm().toString())));
 
-    conf.setAvgSeriesPointNumberThreshold(
+    conf.setTVListSortThreshold(
         Integer.parseInt(
             properties.getProperty(
-                "avg_series_point_number_threshold",
-                Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
+                "tvlist_sort_threshold", Integer.toString(conf.getTvListSortThreshold()))));
 
     conf.setCheckPeriodWhenInsertBlocked(
         Integer.parseInt(
@@ -2023,6 +2022,12 @@ public class IoTDBDescriptor {
       // update trusted_uri_pattern
       loadTrustedUriPattern(properties);
 
+      // tvlist_sort_threshold
+      conf.setTVListSortThreshold(
+          Integer.parseInt(
+              properties.getProperty(
+                  "tvlist_sort_threshold",
+                  ConfigurationFileUtils.getConfigurationDefaultValue("tvlist_sort_threshold"))));
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();

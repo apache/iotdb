@@ -2141,7 +2141,9 @@ public class DataRegion implements IDataRegionForQuery {
         if (tsFileResource.isClosed()) {
           tsfileResourcesForQuery.add(tsFileResource);
         } else {
-          tsFileResource.getProcessor().query(pathList, context, tsfileResourcesForQuery);
+          tsFileResource
+              .getProcessor()
+              .query(pathList, context, tsfileResourcesForQuery, globalTimeFilter);
         }
       } catch (IOException e) {
         throw new MetadataException(e);

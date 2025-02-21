@@ -205,7 +205,8 @@ public class DataRegionTest {
       tsfileProcessor.query(
           Collections.singletonList(fullPath),
           EnvironmentUtils.TEST_QUERY_CONTEXT,
-          tsfileResourcesForQuery);
+          tsfileResourcesForQuery,
+          null);
     }
 
     Assert.assertEquals(1, tsfileResourcesForQuery.size());
@@ -946,8 +947,6 @@ public class DataRegionTest {
           QueryProcessException,
           DataRegionException,
           TsFileProcessorException {
-    int defaultAvgSeriesPointNumberThreshold = config.getAvgSeriesPointNumberThreshold();
-    config.setAvgSeriesPointNumberThreshold(2);
     DataRegion dataRegion1 = new DummyDataRegion(systemDir, "root.Rows");
     long[] time = new long[] {3, 4, 1, 2};
     List<Integer> indexList = new ArrayList<>();
@@ -974,7 +973,6 @@ public class DataRegionTest {
       Assert.assertTrue(resource.isClosed());
     }
     dataRegion1.syncDeleteDataFiles();
-    config.setAvgSeriesPointNumberThreshold(defaultAvgSeriesPointNumberThreshold);
   }
 
   @Test
