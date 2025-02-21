@@ -139,6 +139,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
       if (valueList[i] != null) {
         attributeMap.put(nameList.get(i), value);
         memUsage += MemUsageUtil.computeKVMemUsageInMap(nameList.get(i), value);
+        addTableAttributeMemory(tableName, value.ramBytesUsed());
       }
     }
     deviceAttributeList.add(attributeMap);
@@ -203,7 +204,8 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     }
     final Binary value = attributeMap.remove(attributeName);
     if (Objects.nonNull(value)) {
-      releaseMemory(UpdateDetailContainer.sizeOfMapEntries(deviceAttributeList.get(pointer)));
+      releaseMemory(MemUsageUtil.computeKVMemUsageInMap(attributeName, value));
+      decreaseTableAttributeMemory(tableName, value.ramBytesUsed());
     }
   }
 
