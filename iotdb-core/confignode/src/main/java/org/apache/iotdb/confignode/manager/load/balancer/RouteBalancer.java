@@ -120,6 +120,10 @@ public class RouteBalancer implements IClusterStatusSubscriber {
   private final Map<TConsensusGroupId, Long> lastFailedTimeForLeaderBalance;
 
   private final Map<Integer, List<String>> lastBalancedOldLeaderId2RegionMap;
+  private Map<TConsensusGroupId, Integer> lastSchemaRegion2OldLeaderMap;
+  private Set<TConsensusGroupId> lastBalancedSchemaRegionSet;
+  private Map<TConsensusGroupId, Integer> lastDataRegion2OldLeaderMap;
+  private Set<TConsensusGroupId> lastBalancedDataRegionSet;
 
   public RouteBalancer(IManager configManager) {
     this.configManager = configManager;
@@ -272,44 +276,63 @@ public class RouteBalancer implements IClusterStatusSubscriber {
 
     getLoadManager().forceUpdateConsensusGroupCache(successTransferMap);
 
-    invalidateSchemaCacheOfOldLeaders(currentLeaderMap, successTransferMap.keySet());
+    // Prepare data for invalidSchemaCacheOfOldLeaders
+    switch (regionGroupType) {
+      case SchemaRegion:
+        lastBalancedSchemaRegionSet = successTransferMap.keySet();
+        lastSchemaRegion2OldLeaderMap = currentLeaderMap;
+        break;
+      case DataRegion:
+        lastBalancedDataRegionSet = successTransferMap.keySet();
+        lastDataRegion2OldLeaderMap = currentLeaderMap;
+        break;
+    }
   }
 
-  private void invalidateSchemaCacheOfOldLeaders(
-      final Map<TConsensusGroupId, Integer> oldLeaderMap,
-      final Set<TConsensusGroupId> successTransferSet) {
-    final DataNodeAsyncRequestContext<String, TSStatus> invalidateSchemaCacheRequestHandler =
-        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.INVALIDATE_LAST_CACHE);
-    final AtomicInteger requestIndex = new AtomicInteger(0);
-    oldLeaderMap.entrySet().stream()
-        .filter(entry -> TConsensusGroupType.DataRegion == entry.getKey().getType())
-        .filter(entry -> successTransferSet.contains(entry.getKey()))
-        .forEach(
-            entry -> {
-              // set target
-              final Integer dataNodeId = entry.getValue();
-              if (dataNodeId == -1) {
-                return;
-              }
-              final TDataNodeLocation dataNodeLocation =
-                  getNodeManager().getRegisteredDataNode(dataNodeId).getLocation();
-              if (dataNodeLocation == null) {
-                LOGGER.warn("DataNodeLocation is null, datanodeId {}", dataNodeId);
-                return;
-              }
-              invalidateSchemaCacheRequestHandler.putNodeLocation(
-                  requestIndex.get(), dataNodeLocation);
-              // set req
-              final TConsensusGroupId consensusGroupId = entry.getKey();
-              final String database = getPartitionManager().getRegionDatabase(consensusGroupId);
-              invalidateSchemaCacheRequestHandler.putRequest(requestIndex.get(), database);
-              requestIndex.incrementAndGet();
-            });
-    CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequest(invalidateSchemaCacheRequestHandler);
+  private synchronized void invalidateSchemaCacheOfOldLeaders() {
+    BiConsumer<Map<TConsensusGroupId, Integer>, Set<TConsensusGroupId>> consumer =
+        (oldLeaderMap, successTransferSet) -> {
+          final DataNodeAsyncRequestContext<String, TSStatus> invalidateSchemaCacheRequestHandler =
+              new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.INVALIDATE_LAST_CACHE);
+          final AtomicInteger requestIndex = new AtomicInteger(0);
+          oldLeaderMap.entrySet().stream()
+              .filter(entry -> TConsensusGroupType.DataRegion == entry.getKey().getType())
+              .filter(entry -> successTransferSet.contains(entry.getKey()))
+              .forEach(
+                  entry -> {
+                    // set target
+                    final Integer dataNodeId = entry.getValue();
+                    if (dataNodeId == -1) {
+                      return;
+                    }
+                    final TDataNodeLocation dataNodeLocation =
+                        getNodeManager().getRegisteredDataNode(dataNodeId).getLocation();
+                    if (dataNodeLocation == null) {
+                      LOGGER.warn("DataNodeLocation is null, datanodeId {}", dataNodeId);
+                      return;
+                    }
+                    invalidateSchemaCacheRequestHandler.putNodeLocation(
+                        requestIndex.get(), dataNodeLocation);
+                    // set req
+                    final TConsensusGroupId consensusGroupId = entry.getKey();
+                    final String database =
+                        getPartitionManager().getRegionDatabase(consensusGroupId);
+                    invalidateSchemaCacheRequestHandler.putRequest(requestIndex.get(), database);
+                    requestIndex.incrementAndGet();
+                  });
+          CnToDnInternalServiceAsyncRequestManager.getInstance()
+              .sendAsyncRequest(invalidateSchemaCacheRequestHandler);
+        };
+
+    if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION) {
+      consumer.accept(lastSchemaRegion2OldLeaderMap, lastBalancedSchemaRegionSet);
+    }
+    if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION) {
+      consumer.accept(lastDataRegion2OldLeaderMap, lastBalancedDataRegionSet);
+    }
   }
 
-  private void flushOldLeaderIfIoTV2() {
+  private synchronized void flushOldLeaderIfIoTV2() {
     if (!IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION
         || !Objects.equals(
             DATA_REGION_CONSENSUS_PROTOCOL_CLASS, ConsensusFactory.IOT_CONSENSUS_V2)) {
@@ -348,6 +371,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
   public synchronized void balanceRegionLeaderAndPriority() {
     balanceRegionLeader();
     balanceRegionPriority();
+    invalidateSchemaCacheOfOldLeaders();
     flushOldLeaderIfIoTV2();
   }
 
@@ -520,12 +544,14 @@ public class RouteBalancer implements IClusterStatusSubscriber {
   @Override
   public void onNodeStatisticsChanged(NodeStatisticsChangeEvent event) {
     balanceRegionLeader();
+    invalidateSchemaCacheOfOldLeaders();
     flushOldLeaderIfIoTV2();
   }
 
   @Override
   public void onRegionGroupStatisticsChanged(RegionGroupStatisticsChangeEvent event) {
     balanceRegionLeader();
+    invalidateSchemaCacheOfOldLeaders();
     flushOldLeaderIfIoTV2();
   }
 
@@ -533,6 +559,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
   public void onConsensusGroupStatisticsChanged(ConsensusGroupStatisticsChangeEvent event) {
     balanceRegionLeader();
     balanceRegionPriority();
+    invalidateSchemaCacheOfOldLeaders();
     flushOldLeaderIfIoTV2();
   }
 }
