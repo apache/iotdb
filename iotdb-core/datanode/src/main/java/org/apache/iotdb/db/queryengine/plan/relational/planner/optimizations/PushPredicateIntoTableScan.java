@@ -558,16 +558,20 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         }
       }
 
+      List<Expression> metaDataExpression =
+          metadataExpressions.stream()
+              .map(
+                  expression ->
+                      ReplaceSymbolInExpression.transform(
+                          expression, tableScanNode.getAssignments()))
+              .collect(Collectors.toList());
+      queryContext.setMetaDataExpressionList(metaDataExpression);
+      queryContext.setAttributeColumns(attributeColumns);
       long startTime = System.nanoTime();
       final List<DeviceEntry> deviceEntries =
           metadata.indexScan(
               tableScanNode.getQualifiedObjectName(),
-              metadataExpressions.stream()
-                  .map(
-                      expression ->
-                          ReplaceSymbolInExpression.transform(
-                              expression, tableScanNode.getAssignments()))
-                  .collect(Collectors.toList()),
+              metaDataExpression,
               attributeColumns,
               queryContext);
       tableScanNode.setDeviceEntries(deviceEntries);

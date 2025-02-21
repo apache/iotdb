@@ -31,8 +31,8 @@ import static java.util.Objects.requireNonNull;
 
 public class LongLiteral extends Literal {
 
-  private final String value;
-  private final long parsedValue;
+  private String value;
+  private long parsedValue;
 
   public LongLiteral(String value) {
     super(null);
@@ -133,5 +133,12 @@ public class LongLiteral extends Literal {
   @Override
   public Object getTsValue() {
     return parsedValue;
+  }
+
+  @Override
+  public void replace(Literal literal) {
+    LongLiteral longLiteral = (LongLiteral) literal;
+    this.value = longLiteral.getValue();
+    this.parsedValue = longLiteral.getParsedValue();
   }
 }

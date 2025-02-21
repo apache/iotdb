@@ -59,4 +59,9 @@ public abstract class Literal extends Expression {
   public boolean isLiteralMarker() {
     return literalIndex != -1;
   }
+
+  public void replace(Literal literal) {
+    throw new UnsupportedOperationException("Literal Replacement is not supported in current type");
+  }
+  ;
 }
