@@ -561,7 +561,6 @@ public class MemoryManager {
   }
 
   public void updateAllocate() {
-    LOGGER.info("Update Allocate for {}", this);
     if (children.isEmpty()) {
       double ratio = (double) totalMemorySizeInBytes / allocateTotalMemorySizeInBytes;
       for (IMemoryBlock memoryBlock : allocatedMemoryBlocks.values()) {
@@ -587,9 +586,13 @@ public class MemoryManager {
       }
       if (higherMemoryManager != null && !higherMemoryManager.equals(lowerMemoryManager)) {
         // transfer
-        long transferSize = lowerMemoryManager.shrink();
-        higherMemoryManager.expandTotalMemorySizeInBytes(transferSize);
-        LOGGER.info("Transfer Memory Size from {} to {}", higherMemoryManager, lowerMemoryManager);
+        long transferSize = higherMemoryManager.shrink();
+        lowerMemoryManager.expandTotalMemorySizeInBytes(transferSize);
+        LOGGER.info(
+            "Transfer Memory Size {} from {} to {}",
+            transferSize,
+            lowerMemoryManager,
+            higherMemoryManager);
       }
       for (MemoryManager memoryManager : children.values()) {
         memoryManager.updateAllocate();
