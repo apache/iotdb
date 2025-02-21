@@ -32,6 +32,7 @@ import java.time.ZonedDateTime;
 import java.util.TimeZone;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class DateTimeUtilsTest {
 
@@ -75,6 +76,19 @@ public class DateTimeUtilsTest {
     // 2019-01-02T00:00:00.000+08:00
     long timestamp1 = 1546358400000L;
     testConvertDateStrToLong(zoneOffset, zoneId, timestamp1 + delta);
+  }
+
+  @Test
+  public void convertDatetimeStrToLongTest4() {
+    zoneOffset = ZoneOffset.UTC;
+    try {
+      DateTimeUtils.convertDatetimeStrToLong("1999-02-29T00:00:00.000", zoneOffset, 0, "ms");
+      fail();
+    } catch (Exception e) {
+      assertEquals(
+          "Text '1999-02-29T00:00:00.000+00:00' could not be parsed: Invalid date 'February 29' as '1999' is not a leap year",
+          e.getMessage());
+    }
   }
 
   /** Test time precision is ms. */
