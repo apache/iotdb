@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.commons.memory;
 
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.slf4j.Logger;
@@ -499,15 +497,13 @@ public class MemoryManager {
 
     private static final MemoryManager GLOBAL =
         new MemoryManager("GlobalMemoryManager", null, Runtime.getRuntime().totalMemory());
-    private static final MemoryPeriodicalJobExecutor EXECUTOR =
-        new MemoryPeriodicalJobExecutor(
-            IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-                ThreadName.MEMORY_PERIODICAL_JOB_EXECUTOR.getName()),
-            20);
 
     static {
-      EXECUTOR.register(
-          "GlobalMemoryManager#updateAllocate()", MemoryManagerHolder.GLOBAL::updateAllocate, 20);
+      MemoryRuntimeAgent.getInstance()
+          .registerPeriodicalJob(
+              "GlobalMemoryManager#updateAllocate()",
+              MemoryManagerHolder.GLOBAL::updateAllocate,
+              20);
     }
 
     private MemoryManagerHolder() {}
