@@ -18,7 +18,6 @@
 
 import logging
 import random
-import struct
 import sys
 import struct
 import time
