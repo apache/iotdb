@@ -505,10 +505,12 @@ public class MemoryManager {
                 ThreadName.MEMORY_PERIODICAL_JOB_EXECUTOR.getName()),
             20);
 
-    private MemoryManagerHolder() {
+    static {
       EXECUTOR.register(
-          "GlobalMemoryManager#updateAllocate()", MemoryManagerHolder.GLOBAL::updateAllocate, 60);
+          "GlobalMemoryManager#updateAllocate()", MemoryManagerHolder.GLOBAL::updateAllocate, 20);
     }
+
+    private MemoryManagerHolder() {}
   }
 
   // endregion
