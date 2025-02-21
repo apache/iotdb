@@ -62,7 +62,7 @@ public interface CommonConfig {
 
   CommonConfig setPrimitiveArraySize(int primitiveArraySize);
 
-  CommonConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold);
+  CommonConfig setTargetChunkPointNum(int targetChunkPointNum);
 
   CommonConfig setMaxTsBlockLineNumber(int maxTsBlockLineNumber);
 
