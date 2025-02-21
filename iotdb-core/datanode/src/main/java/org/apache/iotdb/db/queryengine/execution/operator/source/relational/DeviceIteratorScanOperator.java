@@ -23,7 +23,6 @@ import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractSeriesScanOperator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -49,7 +48,7 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
   private QueryDataSource queryDataSource;
   private int currentDeviceIndex;
   private Operator currentDeviceRootOperator;
-  private List<Operator> seriesScanOperators;
+  private List<Operator> dataSourceOperators;
   private boolean currentDeviceInit;
 
   public DeviceIteratorScanOperator(
@@ -114,18 +113,18 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
 
     deviceChildOperatorTreeGenerator.generateCurrentDeviceOperatorTree(deviceEntry);
     currentDeviceRootOperator = deviceChildOperatorTreeGenerator.getCurrentDeviceRootOperator();
-    seriesScanOperators = deviceChildOperatorTreeGenerator.getCurrentDeviceDataSourceOperators();
+    dataSourceOperators = deviceChildOperatorTreeGenerator.getCurrentDeviceDataSourceOperators();
     currentDeviceInit = false;
   }
 
   @Override
   public void initQueryDataSource(IQueryDataSource dataSource) {
     this.queryDataSource = (QueryDataSource) dataSource;
-    if (seriesScanOperators == null || seriesScanOperators.isEmpty()) {
+    if (dataSourceOperators == null || dataSourceOperators.isEmpty()) {
       return;
     }
-    for (Operator operator : seriesScanOperators) {
-      ((AbstractSeriesScanOperator) operator).initQueryDataSource(dataSource);
+    for (Operator operator : dataSourceOperators) {
+      ((AbstractDataSourceOperator) operator).initQueryDataSource(dataSource);
     }
   }
 
