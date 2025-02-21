@@ -57,7 +57,7 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -119,7 +119,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
   private static final long BALANCE_RATIS_LEADER_FAILED_INTERVAL_IN_NS = 20 * 1000L * 1000L * 1000L;
   private final Map<TConsensusGroupId, Long> lastFailedTimeForLeaderBalance;
 
-  private final Map<Integer, TConsensusGroupId> lastBalancedOldLeaderId2RegionMap;
+  private final Map<Integer, List<String>> lastBalancedOldLeaderId2RegionMap;
 
   public RouteBalancer(IManager configManager) {
     this.configManager = configManager;
@@ -205,7 +205,18 @@ public class RouteBalancer implements IClusterStatusSubscriber {
                 // region leader
                 successTransferMap.put(
                     regionGroupId, new ConsensusGroupHeartbeatSample(currentTime, newLeaderId));
-                lastBalancedOldLeaderId2RegionMap.put(oldLeaderId, regionGroupId);
+                // Prepare data for flushOldLeader
+                lastBalancedOldLeaderId2RegionMap.compute(
+                    oldLeaderId,
+                    (k, v) -> {
+                      if (v == null) {
+                        List<String> value = new ArrayList<>();
+                        value.add(String.valueOf(regionGroupId.getId()));
+                        return value;
+                      }
+                      v.add(String.valueOf(regionGroupId.getId()));
+                      return v;
+                    });
                 break;
               case ConsensusFactory.RATIS_CONSENSUS:
               default:
@@ -305,8 +316,8 @@ public class RouteBalancer implements IClusterStatusSubscriber {
       return;
     }
 
-    BiConsumer<Integer, TConsensusGroupId> consumer =
-        (oldLeaderId, regionGroupId) -> {
+    BiConsumer<Integer, List<String>> consumer =
+        (oldLeaderId, regionGroupIds) -> {
           TDataNodeConfiguration configuration =
               getNodeManager().getRegisteredDataNode(oldLeaderId);
           Map<Integer, TDataNodeLocation> oldLeaderDataNodeLocation = new HashMap<>();
@@ -314,19 +325,19 @@ public class RouteBalancer implements IClusterStatusSubscriber {
               configuration.getLocation().dataNodeId, configuration.getLocation());
 
           TFlushReq flushReq = new TFlushReq();
-          flushReq.setRegionIds(Collections.singletonList(String.valueOf(regionGroupId.getId())));
+          flushReq.setRegionIds(regionGroupIds);
           // Do our best to flush. If flush failed, never retry
           TSStatus result = configManager.flushOnSpecificDN(flushReq, oldLeaderDataNodeLocation);
           if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             LOGGER.info(
                 "[IoTConsensusV2 Leader Changed] Successfully flush old leader {} for region {}",
                 oldLeaderId,
-                regionGroupId);
+                regionGroupIds);
           } else {
-            LOGGER.warn(
+            LOGGER.info(
                 "[IoTConsensusV2 Leader Changed] Failed to flush old leader {} for region {}",
                 oldLeaderId,
-                regionGroupId);
+                regionGroupIds);
           }
         };
     lastBalancedOldLeaderId2RegionMap.forEach(consumer);
