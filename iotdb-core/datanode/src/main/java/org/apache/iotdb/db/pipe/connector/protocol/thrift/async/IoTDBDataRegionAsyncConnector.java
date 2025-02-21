@@ -23,6 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeAsyncClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventBatch;
@@ -67,16 +70,19 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_KEY;
@@ -112,6 +118,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     super.validate(validator);
 
     final PipeParameters parameters = validator.getParameters();
+    final IoTDBConfig iotdbConfig = IoTDBDescriptor.getInstance().getConfig();
+    final Set<TEndPoint> givenNodeUrls = parseNodeUrls(validator.getParameters());
 
     validator.validate(
         args -> !((boolean) args[0] || (boolean) args[1] || (boolean) args[2]),
@@ -119,6 +127,25 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false),
         parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY),
         parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY));
+
+    validator.validate(
+        empty -> {
+          try {
+            // Ensure the sink doesn't point to the thrift receiver on DataNode itself
+            return !NodeUrlUtils.containsLocalAddress(
+                givenNodeUrls.stream()
+                    .filter(tEndPoint -> tEndPoint.getPort() == iotdbConfig.getRpcPort())
+                    .map(TEndPoint::getIp)
+                    .collect(Collectors.toList()));
+          } catch (final UnknownHostException e) {
+            LOGGER.warn("Unknown host when checking pipe sink IP.", e);
+            return false;
+          }
+        },
+        String.format(
+            "One of the endpoints %s of the receivers is pointing back to the thrift receiver %s on sender itself, "
+                + "or unknown host when checking pipe sink IP.",
+            givenNodeUrls, new TEndPoint(iotdbConfig.getRpcAddress(), iotdbConfig.getRpcPort())));
   }
 
   @Override
@@ -593,19 +620,19 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       throws PipeException {
     AsyncPipeDataTransferServiceClient client = null;
     TPipeTransferReq req;
-    PipeTransferEnrichedEventHandler pipeTransferInsertNodeReqHandler = null;
+    PipeTransferEnrichedEventHandler pipeTransferEnrichedEventHandler = null;
     try {
       req =
           compressIfNeeded(
               PipeTransferPlanNodeReq.toTPipeTransferReq(
                   pipeDeleteDataNodeEvent.getDeleteDataNode()));
-      pipeTransferInsertNodeReqHandler =
+      pipeTransferEnrichedEventHandler =
           new PipeTransferEnrichedEventHandler(pipeDeleteDataNodeEvent, req, this);
       client = clientManager.borrowClient();
-      pipeTransferInsertNodeReqHandler.transfer(client);
+      pipeTransferEnrichedEventHandler.transfer(client);
     } catch (final Exception e) {
       logOnClientException(client, e);
-      pipeTransferInsertNodeReqHandler.onError(e);
+      pipeTransferEnrichedEventHandler.onError(e);
     }
 
     if (LOGGER.isDebugEnabled()) {
@@ -616,13 +643,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private void doTransferWrapper() throws Exception {
     for (final Pair<TEndPoint, PipeTabletEventBatch> nonEmptyBatch :
         tabletBatchBuilder.getAllNonEmptyBatches()) {
-      doTransferWrapper(nonEmptyBatch);
+      transferInBatchWithoutCheck(nonEmptyBatch);
     }
-  }
-
-  private void doTransferWrapper(final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch)
-      throws Exception {
-    transferInBatchWithoutCheck(endPointAndBatch);
   }
 
   //////////////////////////// Operations for close ////////////////////////////

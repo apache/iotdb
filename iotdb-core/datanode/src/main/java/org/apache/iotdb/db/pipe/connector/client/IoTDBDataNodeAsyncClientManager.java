@@ -311,6 +311,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
         waitHandshakeFinished(isHandshakeFinished);
       }
       if (exception.get() != null) {
+        endPoint2HandshakeErrorMessage.put(targetNodeUrl, exception.get().getMessage());
         throw new PipeConnectionException("Failed to handshake.", exception.get());
       }
     } finally {
