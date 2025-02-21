@@ -282,9 +282,21 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     }
   }
 
+  private void addTableAttributeMemory(final String tableName, final long size) {
+    if (Objects.nonNull(regionStatistics)) {
+      regionStatistics.addTableAttributeMemory(tableName, size);
+    }
+  }
+
   private void releaseMemory(final long size) {
     if (regionStatistics != null) {
       regionStatistics.releaseMemory(size);
+    }
+  }
+
+  private void decreaseTableAttributeMemory(final String tableName, final long size) {
+    if (Objects.nonNull(regionStatistics)) {
+      regionStatistics.decreaseTableAttributeMemory(tableName, size);
     }
   }
 }
