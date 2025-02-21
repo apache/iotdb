@@ -32,8 +32,13 @@ import static org.junit.platform.commons.function.Try.success;
 
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
+<<<<<<<< HEAD:integration-test/src/test/java/org/apache/iotdb/confignode/it/regionmigration/pass/datanodecrash/IoTDBRegionMigrateOriginalCrashWhenDeleteLocalPeerIT.java
 public class IoTDBRegionMigrateOriginalCrashWhenDeleteLocalPeerIT
     extends IoTDBRegionOperationReliabilityITFramework {
+========
+public class IoTDBRegionMigrateOriginalCrashWhenDeleteLocalPeerForIoTV2BatchIT
+    extends IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV2 {
+>>>>>>>> 083ae4858f (Fix IT names & Fix region operation related IT (#14905)):integration-test/src/test/java/org/apache/iotdb/confignode/it/regionmigration/pass/datanodecrash/IoTDBRegionMigrateOriginalCrashWhenDeleteLocalPeerForIoTV2BatchIT.java
   @Test
   public void crashBeforeDelete() throws Exception {
     success(IoTConsensusDeleteLocalPeerKillPoints.BEFORE_DELETE);

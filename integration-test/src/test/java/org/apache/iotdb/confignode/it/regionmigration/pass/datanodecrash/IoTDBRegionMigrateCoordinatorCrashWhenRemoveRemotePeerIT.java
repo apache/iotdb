@@ -30,8 +30,13 @@ import org.junit.runner.RunWith;
 
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
+<<<<<<<< HEAD:integration-test/src/test/java/org/apache/iotdb/confignode/it/regionmigration/pass/datanodecrash/IoTDBRegionMigrateCoordinatorCrashWhenRemoveRemotePeerIT.java
 public class IoTDBRegionMigrateCoordinatorCrashWhenRemoveRemotePeerIT
     extends IoTDBRegionMigrateDataNodeCrashITFramework {
+========
+public class IoTDBRegionMigrateCoordinatorCrashWhenRemoveRemotePeerForIoTV2BatchIT
+    extends IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV2 {
+>>>>>>>> 083ae4858f (Fix IT names & Fix region operation related IT (#14905)):integration-test/src/test/java/org/apache/iotdb/confignode/it/regionmigration/pass/datanodecrash/IoTDBRegionMigrateCoordinatorCrashWhenRemoveRemotePeerForIoTV2BatchIT.java
 
   @Test
   public void initCrash() throws Exception {
