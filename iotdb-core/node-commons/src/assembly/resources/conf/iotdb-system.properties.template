@@ -1948,8 +1948,9 @@ mqtt_handler_pool_size=1
 
 # the mqtt message payload formatter.
 # effectiveMode: restart
+# Options: [tree-json, table-line]
 # Datatype: String
-mqtt_payload_formatter=json
+mqtt_payload_formatter=tree-json
 
 # max length of mqtt message in byte
 # effectiveMode: restart
