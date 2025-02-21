@@ -58,12 +58,7 @@ public class KillQueryStatement extends Statement implements IConfigStatement {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MAINTAIN),
-        PrivilegeType.MAINTAIN);
+    return AuthorityChecker.checkSuperUserOrMaintain(userName);
   }
 
   @Override

@@ -51,12 +51,7 @@ public class ReconstructRegionStatement extends Statement implements IConfigStat
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MAINTAIN),
-        PrivilegeType.MAINTAIN);
+    return AuthorityChecker.checkSuperUserOrMaintain(userName);
   }
 
   @Override
