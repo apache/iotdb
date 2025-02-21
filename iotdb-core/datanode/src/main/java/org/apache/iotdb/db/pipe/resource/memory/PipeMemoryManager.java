@@ -71,6 +71,7 @@ public class PipeMemoryManager {
       PipeConfig.getInstance().getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold();
   private volatile long usedMemorySizeInBytesOfTsFiles;
 
+  // Only non-zero memory blocks will be added to this set.
   private final Set<PipeMemoryBlock> allocatedBlocks = new HashSet<>();
 
   public PipeMemoryManager() {
@@ -134,7 +135,16 @@ public class PipeMemoryManager {
 
   public synchronized PipeMemoryBlock forceAllocate(long sizeInBytes)
       throws PipeRuntimeOutOfMemoryCriticalException {
-    return forceAllocate(sizeInBytes, PipeMemoryBlockType.NORMAL);
+    if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
+      // No need to calculate the tablet size, skip it to save time
+      return new PipeMemoryBlock(0);
+    }
+
+    if (sizeInBytes == 0) {
+      return registerMemoryBlock(0);
+    }
+
+    return forceAllocateWithRetry(sizeInBytes, PipeMemoryBlockType.NORMAL);
   }
 
   public PipeTabletMemoryBlock forceAllocateForTabletWithRetry(long tabletSizeInBytes)
@@ -142,6 +152,10 @@ public class PipeMemoryManager {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
       // No need to calculate the tablet size, skip it to save time
       return new PipeTabletMemoryBlock(0);
+    }
+
+    if (tabletSizeInBytes == 0) {
+      return (PipeTabletMemoryBlock) registerMemoryBlock(0, PipeMemoryBlockType.TABLET);
     }
 
     for (int i = 1; i <= MEMORY_ALLOCATE_MAX_RETRIES; i++) {
@@ -167,7 +181,8 @@ public class PipeMemoryManager {
 
     synchronized (this) {
       final PipeTabletMemoryBlock block =
-          (PipeTabletMemoryBlock) forceAllocate(tabletSizeInBytes, PipeMemoryBlockType.TABLET);
+          (PipeTabletMemoryBlock)
+              forceAllocateWithRetry(tabletSizeInBytes, PipeMemoryBlockType.TABLET);
       usedMemorySizeInBytesOfTablets += block.getMemoryUsageInBytes();
       return block;
     }
@@ -177,6 +192,10 @@ public class PipeMemoryManager {
       throws PipeRuntimeOutOfMemoryCriticalException {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
       return new PipeTsFileMemoryBlock(0);
+    }
+
+    if (tsFileSizeInBytes == 0) {
+      return (PipeTsFileMemoryBlock) registerMemoryBlock(0, PipeMemoryBlockType.TS_FILE);
     }
 
     for (int i = 1; i <= MEMORY_ALLOCATE_MAX_RETRIES; i++) {
@@ -202,13 +221,14 @@ public class PipeMemoryManager {
 
     synchronized (this) {
       final PipeTsFileMemoryBlock block =
-          (PipeTsFileMemoryBlock) forceAllocate(tsFileSizeInBytes, PipeMemoryBlockType.TS_FILE);
+          (PipeTsFileMemoryBlock)
+              forceAllocateWithRetry(tsFileSizeInBytes, PipeMemoryBlockType.TS_FILE);
       usedMemorySizeInBytesOfTsFiles += block.getMemoryUsageInBytes();
       return block;
     }
   }
 
-  private PipeMemoryBlock forceAllocate(long sizeInBytes, PipeMemoryBlockType type)
+  private PipeMemoryBlock forceAllocateWithRetry(long sizeInBytes, PipeMemoryBlockType type)
       throws PipeRuntimeOutOfMemoryCriticalException {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
       switch (type) {
@@ -259,6 +279,12 @@ public class PipeMemoryManager {
     }
 
     final long oldSize = block.getMemoryUsageInBytes();
+    if (oldSize == 0) {
+      // If the memory block is not registered, we need to register it first.
+      // Otherwise, the memory usage will be inconsistent.
+      // See registerMemoryBlock for more details.
+      allocatedBlocks.add(block);
+    }
 
     if (oldSize >= targetSize) {
       memoryBlock.release(oldSize - targetSize);
@@ -269,6 +295,11 @@ public class PipeMemoryManager {
         usedMemorySizeInBytesOfTsFiles -= oldSize - targetSize;
       }
       block.setMemoryUsageInBytes(targetSize);
+
+      // If no memory is used in the block, we can remove it from the allocated blocks.
+      if (targetSize == 0) {
+        allocatedBlocks.remove(block);
+      }
       return;
     }
 
@@ -326,6 +357,10 @@ public class PipeMemoryManager {
       return new PipeMemoryBlock(sizeInBytes);
     }
 
+    if (sizeInBytes == 0) {
+      return registerMemoryBlock(0);
+    }
+
     if (memoryBlock.getTotalMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes() >= sizeInBytes
         && (float) memoryBlock.getUsedMemoryInBytes() / memoryBlock.getTotalMemorySizeInBytes()
             < usedThreshold) {
@@ -353,7 +388,7 @@ public class PipeMemoryManager {
       return new PipeMemoryBlock(sizeInBytes);
     }
 
-    if (memoryBlock.getTotalMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
+    if (sizeInBytes == 0 || memoryBlock.getTotalMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
         >= sizeInBytes) {
       return registerMemoryBlock(sizeInBytes);
     }
@@ -445,7 +480,14 @@ public class PipeMemoryManager {
         break;
     }
 
-    allocatedBlocks.add(returnedMemoryBlock);
+    // For memory block whose size is 0, we do not need to add it to the allocated blocks now.
+    // It's good for performance and will not trigger concurrent issues.
+    // If forceResize is called on it, we will add it to the allocated blocks.
+    if (sizeInBytes > 0) {
+      usedMemorySizeInBytes += sizeInBytes;
+      allocatedBlocks.add(returnedMemoryBlock);
+    }
+
     return returnedMemoryBlock;
   }
 

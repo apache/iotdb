@@ -36,6 +36,7 @@ class TableSessionPoolConfig(object):
         max_retry: int = 3,
         use_ssl: bool = False,
         ca_certs: str = None,
+        connection_timeout_in_ms: int = None,
     ):
         """
         Initialize a TableSessionPoolConfig object with the provided parameters.
@@ -75,6 +76,7 @@ class TableSessionPoolConfig(object):
             enable_compression=enable_compression,
             use_ssl=use_ssl,
             ca_certs=ca_certs,
+            connection_timeout_in_ms=connection_timeout_in_ms,
         )
         self.max_pool_size = max_pool_size
         self.wait_timeout_in_ms = wait_timeout_in_ms
