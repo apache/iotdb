@@ -69,7 +69,7 @@ public class ExportTsFile {
       }
     }
     commonParam.getSubscriptionTsFile().doClean();
-    ioTPrinter.println("Export TsFile Count:" + commonParam.getCountFile().get());
+    ioTPrinter.println("Export TsFile Count: " + commonParam.getCountFile().get());
   }
 
   private static void parseParams(String[] args, Options options) {
