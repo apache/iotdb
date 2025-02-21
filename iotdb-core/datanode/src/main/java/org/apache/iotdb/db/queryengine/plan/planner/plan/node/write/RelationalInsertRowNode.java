@@ -249,9 +249,6 @@ public class RelationalInsertRowNode extends InsertRowNode {
 
   @Override
   public boolean allMeasurementFailed() {
-    if (measurements != null && measurements.length > 0) {
-      return failedMeasurementNumber >= measurements.length;
-    }
     return false;
   }
 }
