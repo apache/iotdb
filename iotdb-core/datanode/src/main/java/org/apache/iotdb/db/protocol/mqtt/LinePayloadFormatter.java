@@ -32,9 +32,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * The JSON payload formatter. myMeasurement,tag1=value1,tag2=value2 attr1=value1,attr2=value2
- * fieldKey="fieldValue" 1556813561098000000 \n myMeasurement,tag1=value1,tag2=value2
- * fieldKey="fieldValue" 1556813561098000000
+ * The Line payload formatter. myTable,tag1=value1,tag2=value2 attr1=value1,attr2=value2
+ * fieldKey="fieldValue" 1740109006000 \n myTable,tag1=value1,tag2=value2 fieldKey="fieldValue"
+ * 1740109006000
  */
 public class LinePayloadFormatter implements PayloadFormatter {
 
