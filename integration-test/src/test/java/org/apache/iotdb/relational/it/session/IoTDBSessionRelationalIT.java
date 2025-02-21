@@ -376,7 +376,7 @@ public class IoTDBSessionRelationalIT {
             e.getMessage());
       }
 
-      SessionDataSet dataSet = session.executeQueryStatement("select * from partial_insert");
+      SessionDataSet dataSet = session.executeQueryStatement("select * from partial_insert order by time");
       long[] timestamps =
           new long[] {10000, 20000, 30000, 35000, 40000, 50000, 60000, 70000, 80000, 90000};
       Boolean[] values =
