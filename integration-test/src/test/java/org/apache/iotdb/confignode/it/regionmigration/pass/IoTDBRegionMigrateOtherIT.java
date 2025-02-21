@@ -32,12 +32,7 @@ import org.junit.runner.RunWith;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-<<<<<<<< HEAD:integration-test/src/test/java/org/apache/iotdb/confignode/it/regionmigration/pass/IoTDBRegionMigrateOtherIT.java
 public class IoTDBRegionMigrateOtherIT extends IoTDBRegionOperationReliabilityITFramework {
-========
-public class IoTDBRegionMigrateOtherForIoTV2BatchIT
-    extends IoTDBRegionOperationReliabilityITFramework {
->>>>>>>> 083ae4858f (Fix IT names & Fix region operation related IT (#14905)):integration-test/src/test/java/org/apache/iotdb/confignode/it/regionmigration/pass/IoTDBRegionMigrateOtherForIoTV2BatchIT.java
   @Test
   public void badKillPoint() throws Exception {
     try {
