@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
 
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateConfigNodeCrashIoTV2Batch
+public class IoTDBRegionMigrateConfigNodeCrashIoTV2BatchIT
     extends IoTDBRegionOperationReliabilityITFramework {
   @Test
   @Ignore

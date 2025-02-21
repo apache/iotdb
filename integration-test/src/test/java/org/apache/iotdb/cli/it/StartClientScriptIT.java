@@ -35,7 +35,7 @@ import java.io.IOException;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class StartClientScriptIT extends AbstractScript {
+public class StartClientScriptIT extends AbstractScriptIT {
 
   private static String ip;
 

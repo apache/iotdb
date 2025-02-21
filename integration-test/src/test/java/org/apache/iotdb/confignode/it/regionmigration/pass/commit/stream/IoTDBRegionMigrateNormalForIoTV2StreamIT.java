@@ -20,22 +20,20 @@
 package org.apache.iotdb.confignode.it.regionmigration.pass.commit.stream;
 
 import org.apache.iotdb.commons.utils.KillPoint.KillNode;
-import org.apache.iotdb.commons.utils.KillPoint.NeverTriggeredKillPoint;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-@RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-public class IoTDBRegionMigrateOtherITForIoTV2Stream
+@RunWith(IoTDBTestRunner.class)
+public class IoTDBRegionMigrateNormalForIoTV2StreamIT
     extends IoTDBRegionOperationReliabilityITFramework {
 
   @Override
@@ -49,19 +47,12 @@ public class IoTDBRegionMigrateOtherITForIoTV2Stream
   }
 
   @Test
-  public void badKillPoint() throws Exception {
-    try {
-      successTest(
-          1,
-          1,
-          1,
-          2,
-          buildSet(NeverTriggeredKillPoint.NEVER_TRIGGERED_KILL_POINT),
-          noKillPoints(),
-          KillNode.ALL_NODES);
-    } catch (AssertionError e) {
-      return;
-    }
-    Assert.fail("kill point not triggered but test pass");
+  public void normal1C2DTest() throws Exception {
+    successTest(1, 1, 1, 2, noKillPoints(), noKillPoints(), KillNode.ALL_NODES);
+  }
+
+  @Test
+  public void normal3C3DTest() throws Exception {
+    successTest(2, 3, 3, 3, noKillPoints(), noKillPoints(), KillNode.ALL_NODES);
   }
 }
