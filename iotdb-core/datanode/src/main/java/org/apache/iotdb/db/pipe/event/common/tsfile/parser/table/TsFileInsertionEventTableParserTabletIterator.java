@@ -198,7 +198,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               measurementColumIndexList = new ArrayList<>(columnSchemaSize);
               measurementIdIndexList = new ArrayList<>(columnSchemaSize);
 
-              for (int i = 0; i < columnSchemaSize; i++) {
+              for (int i = 0, j = 0; i < columnSchemaSize; i++) {
                 final IMeasurementSchema schema = tableSchema.getColumnSchemas().get(i);
                 final Tablet.ColumnCategory columnCategory = tableSchema.getColumnTypes().get(i);
                 if (schema != null
@@ -210,10 +210,11 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
                   dataTypeList.add(schema.getType());
                   if (!Tablet.ColumnCategory.TAG.equals(columnCategory)) {
                     measurementNames.add(measurementName);
-                    measurementColumIndexList.add(new Pair<>(measurementName, i));
+                    measurementColumIndexList.add(new Pair<>(measurementName, j));
                   } else {
-                    measurementIdIndexList.add(i);
+                    measurementIdIndexList.add(j);
                   }
+                  j++;
                 }
               }
               state = State.INIT_CHUNK_METADATA;
