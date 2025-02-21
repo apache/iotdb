@@ -388,8 +388,9 @@ public class PipeMemoryManager {
       return new PipeMemoryBlock(sizeInBytes);
     }
 
-    if (sizeInBytes == 0 || memoryBlock.getTotalMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
-        >= sizeInBytes) {
+    if (sizeInBytes == 0
+        || memoryBlock.getTotalMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
+            >= sizeInBytes) {
       return registerMemoryBlock(sizeInBytes);
     }
 
