@@ -198,15 +198,17 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               measurementColumIndexList = new ArrayList<>(columnSchemaSize);
               measurementIdIndexList = new ArrayList<>(columnSchemaSize);
 
-              for (int i = 0, size = tableSchema.getColumnSchemas().size(); i < size; i++) {
+              for (int i = 0; i < columnSchemaSize; i++) {
                 final IMeasurementSchema schema = tableSchema.getColumnSchemas().get(i);
                 final Tablet.ColumnCategory columnCategory = tableSchema.getColumnTypes().get(i);
-                if (schema.getMeasurementName() != null && !schema.getMeasurementName().isEmpty()) {
+                if (schema != null
+                    && schema.getMeasurementName() != null
+                    && !schema.getMeasurementName().isEmpty()) {
+                  final String measurementName = schema.getMeasurementName();
                   columnTypes.add(columnCategory);
-                  measurementList.add(schema.getMeasurementName());
+                  measurementList.add(measurementName);
                   dataTypeList.add(schema.getType());
                   if (!Tablet.ColumnCategory.TAG.equals(columnCategory)) {
-                    final String measurementName = schema.getMeasurementName();
                     measurementNames.add(measurementName);
                     measurementColumIndexList.add(new Pair<>(measurementName, i));
                   } else {
@@ -329,13 +331,14 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       final BatchData data, final Tablet tablet, final int rowIndex) {
     final TsPrimitiveType[] primitiveTypes = data.getVector();
     final List<IMeasurementSchema> measurementSchemas = tablet.getSchemas();
-    int j = 0;
-    for (Pair<String, Integer> valueIndexPair : measurementColumIndexList) {
-      final TsPrimitiveType primitiveType = primitiveTypes[j++];
+
+    for (int i = 0, size = measurementColumIndexList.size(); i < size; i++) {
+      final TsPrimitiveType primitiveType = primitiveTypes[i];
       if (primitiveType == null) {
         continue;
       }
-      int index = valueIndexPair.getRight();
+
+      final int index = measurementColumIndexList.get(i).getRight();
       switch (measurementSchemas.get(index).getType()) {
         case BOOLEAN:
           tablet.addValue(rowIndex, index, primitiveType.getBoolean());
