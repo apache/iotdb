@@ -121,7 +121,7 @@ public class PartitionCache {
     this.memoryBlock =
         config
             .getPartitionCacheMemoryManager()
-            .forceAllocate("PartitionCache", MemoryBlockType.FUNCTION);
+            .forceAllocate("PartitionCache", MemoryBlockType.STATIC);
     this.memoryBlock.allocate(this.memoryBlock.getTotalMemorySizeInBytes());
     // TODO @spricoder: PartitionCache need to be controlled according to memory
     this.schemaPartitionCache =

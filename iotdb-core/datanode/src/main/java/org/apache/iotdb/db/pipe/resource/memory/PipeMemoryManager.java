@@ -56,7 +56,7 @@ public class PipeMemoryManager {
       IoTDBDescriptor.getInstance()
           .getConfig()
           .getPipeMemoryManager()
-          .forceAllocate("Stream", MemoryBlockType.FUNCTION);
+          .forceAllocate("Stream", MemoryBlockType.DYNAMIC);
 
   private static final double EXCEED_PROTECT_THRESHOLD = 0.95;
 
@@ -388,8 +388,9 @@ public class PipeMemoryManager {
       return new PipeMemoryBlock(sizeInBytes);
     }
 
-    if (sizeInBytes == 0 || memoryBlock.getTotalMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
-        >= sizeInBytes) {
+    if (sizeInBytes == 0
+        || memoryBlock.getTotalMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
+            >= sizeInBytes) {
       return registerMemoryBlock(sizeInBytes);
     }
 

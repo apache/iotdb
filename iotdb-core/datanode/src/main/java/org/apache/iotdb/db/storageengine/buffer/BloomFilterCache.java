@@ -60,7 +60,7 @@ public class BloomFilterCache {
     CACHE_MEMORY_BLOCK =
         CONFIG
             .getBloomFilterCacheMemoryManager()
-            .forceAllocate("BloomFilterCache", MemoryBlockType.PERFORMANCE);
+            .forceAllocate("BloomFilterCache", MemoryBlockType.STATIC);
     // TODO @spricoder: find a way to get the size of the BloomFilterCache
     CACHE_MEMORY_BLOCK.allocate(CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
   }

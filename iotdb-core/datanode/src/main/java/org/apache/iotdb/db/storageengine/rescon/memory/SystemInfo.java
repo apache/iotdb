@@ -78,13 +78,13 @@ public class SystemInfo {
 
   private SystemInfo() {
     compactionMemoryBlock =
-        config.getCompactionMemoryManager().forceAllocate("Compaction", MemoryBlockType.FUNCTION);
+        config.getCompactionMemoryManager().forceAllocate("Compaction", MemoryBlockType.DYNAMIC);
     walBufferQueueMemoryBlock =
-        config.getWalBufferQueueManager().forceAllocate("WalBufferQueue", MemoryBlockType.FUNCTION);
+        config.getWalBufferQueueManager().forceAllocate("WalBufferQueue", MemoryBlockType.DYNAMIC);
     directBufferMemoryBlock =
         config
             .getDirectBufferMemoryManager()
-            .forceAllocate("DirectBuffer", MemoryBlockType.FUNCTION);
+            .forceAllocate("DirectBuffer", MemoryBlockType.DYNAMIC);
     loadWriteMemory();
   }
 

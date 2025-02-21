@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.memory;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.slf4j.Logger;
@@ -46,6 +48,9 @@ public class MemoryManager {
   /** Whether memory management is enabled */
   private final boolean enable;
 
+  /** The total allocate memory size in byte of memory manager */
+  private final long allocateTotalMemorySizeInBytes;
+
   /** The total memory size in byte of memory manager */
   private long totalMemorySizeInBytes;
 
@@ -65,6 +70,7 @@ public class MemoryManager {
   public MemoryManager(long totalMemorySizeInBytes) {
     this.name = "Test";
     this.parentMemoryManager = null;
+    this.allocateTotalMemorySizeInBytes = totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
     this.enable = false;
   }
@@ -73,6 +79,7 @@ public class MemoryManager {
       String name, MemoryManager parentMemoryManager, long totalMemorySizeInBytes) {
     this.name = name;
     this.parentMemoryManager = parentMemoryManager;
+    this.allocateTotalMemorySizeInBytes = totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
     this.enable = false;
   }
@@ -81,6 +88,7 @@ public class MemoryManager {
       String name, MemoryManager parentMemoryManager, long totalMemorySizeInBytes, boolean enable) {
     this.name = name;
     this.parentMemoryManager = parentMemoryManager;
+    this.allocateTotalMemorySizeInBytes = totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
     this.enable = enable;
   }
@@ -446,6 +454,10 @@ public class MemoryManager {
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
   }
 
+  public void expandTotalMemorySizeInBytes(long totalMemorySizeInBytes) {
+    this.totalMemorySizeInBytes += totalMemorySizeInBytes;
+  }
+
   public void setTotalMemorySizeInBytesWithReload(long totalMemorySizeInBytes) {
     reAllocateMemoryAccordingToRatio((double) totalMemorySizeInBytes / this.totalMemorySizeInBytes);
   }
@@ -458,6 +470,11 @@ public class MemoryManager {
   /** Get allocated memory size in bytes of memory manager */
   public long getAllocatedMemorySizeInBytes() {
     return allocatedMemorySizeInBytes;
+  }
+
+  /** Get used memory ratio */
+  public double getUsedMemoryRatio() {
+    return (double) getUsedMemorySizeInBytes() / totalMemorySizeInBytes;
   }
 
   /** Get actual used memory size in bytes of memory manager */
@@ -482,8 +499,16 @@ public class MemoryManager {
 
     private static final MemoryManager GLOBAL =
         new MemoryManager("GlobalMemoryManager", null, Runtime.getRuntime().totalMemory());
+    private static final MemoryPeriodicalJobExecutor EXECUTOR =
+        new MemoryPeriodicalJobExecutor(
+            IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+                ThreadName.MEMORY_PERIODICAL_JOB_EXECUTOR.getName()),
+            20);
 
-    private MemoryManagerHolder() {}
+    private MemoryManagerHolder() {
+      EXECUTOR.register(
+          "GlobalMemoryManager#updateAllocate()", MemoryManagerHolder.GLOBAL::updateAllocate, 60);
+    }
   }
 
   // endregion
@@ -514,10 +539,62 @@ public class MemoryManager {
     sb.append(this);
     LOGGER.info(sb.toString());
     for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
-      block.print(index + 1);
+      block.print(index + 2);
     }
     for (MemoryManager child : children.values()) {
       child.print(index + 1);
+    }
+  }
+
+  /** Whether is able to shrink */
+  public synchronized long shrink() {
+    long shrinkSize =
+        Math.min(
+            getAvailableMemorySizeInBytes() / 10,
+            totalMemorySizeInBytes - allocatedMemorySizeInBytes * 9 / 10);
+    totalMemorySizeInBytes -= shrinkSize;
+    return shrinkSize;
+  }
+
+  /** Whether is available to shrink */
+  public boolean isAvailableToShrink() {
+    return allocateTotalMemorySizeInBytes - totalMemorySizeInBytes
+        < allocateTotalMemorySizeInBytes / 10;
+  }
+
+  public void updateAllocate() {
+    if (children.isEmpty()) {
+      double ratio = (double) totalMemorySizeInBytes / allocateTotalMemorySizeInBytes;
+      for (IMemoryBlock memoryBlock : allocatedMemoryBlocks.values()) {
+        memoryBlock.resizeByRatio(ratio);
+      }
+    } else {
+      MemoryManager higherMemoryManager = null;
+      MemoryManager lowerMemoryManager = null;
+      // search the highest and lowest memory manager
+      for (MemoryManager child : children.values()) {
+        if (higherMemoryManager == null) {
+          higherMemoryManager = child;
+          lowerMemoryManager = child;
+        } else {
+          if (child.getUsedMemorySizeInBytes() > higherMemoryManager.getUsedMemorySizeInBytes()) {
+            higherMemoryManager = child;
+          }
+          if (lowerMemoryManager.isAvailableToShrink()
+              && child.getUsedMemorySizeInBytes() < lowerMemoryManager.getUsedMemorySizeInBytes()) {
+            lowerMemoryManager = child;
+          }
+        }
+      }
+      if (higherMemoryManager != null && !higherMemoryManager.equals(lowerMemoryManager)) {
+        // transfer
+        long transferSize = lowerMemoryManager.shrink();
+        higherMemoryManager.expandTotalMemorySizeInBytes(transferSize);
+        LOGGER.info("Transfer Memory Size from {} to {}", higherMemoryManager, lowerMemoryManager);
+      }
+      for (MemoryManager memoryManager : children.values()) {
+        memoryManager.updateAllocate();
+      }
     }
   }
 }

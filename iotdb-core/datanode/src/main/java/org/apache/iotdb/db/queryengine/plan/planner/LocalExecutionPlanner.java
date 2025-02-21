@@ -69,7 +69,7 @@ public class LocalExecutionPlanner {
     IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
     OPERATORS_MEMORY_BLOCK =
-        CONFIG.getOperatorsMemoryManager().forceAllocate("Operators", MemoryBlockType.FUNCTION);
+        CONFIG.getOperatorsMemoryManager().forceAllocate("Operators", MemoryBlockType.DYNAMIC);
     MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD =
         (long)
             ((OPERATORS_MEMORY_BLOCK.getTotalMemorySizeInBytes())

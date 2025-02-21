@@ -87,7 +87,7 @@ public class TimeSeriesMetadataCache {
     CACHE_MEMORY_BLOCK =
         config
             .getTimeSeriesMetaDataCacheMemoryManager()
-            .forceAllocate("TimeSeriesMetadataCache", MemoryBlockType.PERFORMANCE);
+            .forceAllocate("TimeSeriesMetadataCache", MemoryBlockType.STATIC);
     // TODO @spricoder find a better way to get the size of cache
     CACHE_MEMORY_BLOCK.allocate(CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
   }

@@ -21,8 +21,8 @@ package org.apache.iotdb.commons.memory;
 
 public enum MemoryBlockType {
   NONE,
-  // function related memory
-  FUNCTION,
-  // performance related memory
-  PERFORMANCE,
+  // static memory
+  STATIC,
+  // dynamic memory
+  DYNAMIC,
 }

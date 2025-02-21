@@ -59,7 +59,7 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
         IoTDBDescriptor.getInstance()
             .getConfig()
             .getSchemaRegionMemoryManager()
-            .forceAllocate("SchemaRegion", MemoryBlockType.FUNCTION);
+            .forceAllocate("SchemaRegion", MemoryBlockType.DYNAMIC);
   }
 
   @Override

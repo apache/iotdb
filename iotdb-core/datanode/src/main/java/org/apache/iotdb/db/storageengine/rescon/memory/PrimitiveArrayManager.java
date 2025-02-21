@@ -55,7 +55,7 @@ public class PrimitiveArrayManager {
   private static final IMemoryBlock POOLED_ARRAYS_MEMORY_BLOCK =
       CONFIG
           .getBufferedArraysMemoryManager()
-          .forceAllocate("BufferedArrays", MemoryBlockType.FUNCTION);
+          .forceAllocate("BufferedArrays", MemoryBlockType.DYNAMIC);
 
   /** threshold total size of arrays for all data types */
   private static final double POOLED_ARRAYS_MEMORY_THRESHOLD =
