@@ -249,7 +249,6 @@ public class RelationalInsertRowNode extends InsertRowNode {
 
   @Override
   public boolean allMeasurementFailed() {
-    // time column never fail for table model
     return false;
   }
 }

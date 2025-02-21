@@ -389,7 +389,7 @@ public class IoTDBSessionRelationalIT {
         if (values[cnt] != null) {
           assertEquals(values[cnt], rec.getFields().get(1).getBoolV());
         } else {
-          assertEquals(null, rec.getFields().get(1).getDataType());
+          assertNull(rec.getFields().get(1).getDataType());
         }
         cnt++;
       }
@@ -620,6 +620,40 @@ public class IoTDBSessionRelationalIT {
         cnt++;
       }
       assertEquals(30, cnt);
+    }
+  }
+
+  @Test
+  public void insertTimeOnlyTest() throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      session.executeNonQueryStatement("CREATE TABLE IF NOT EXISTS time_only (time time)");
+
+      List<IMeasurementSchema> schemaList = Collections.emptyList();
+      final List<ColumnCategory> columnTypes = Collections.emptyList();
+
+      Tablet tablet =
+          new Tablet(
+              "time_only",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes);
+
+      long timestamp = 0;
+      for (int row = 0; row < 10; row++) {
+        tablet.addTimestamp(row, timestamp++);
+      }
+      session.insert(tablet);
+      tablet.reset();
+
+      for (int i = 0; i < 10; i++) {
+        session.executeNonQueryStatement(
+            String.format("INSERT INTO time_only (time) VALUES (%d)", timestamp++));
+      }
+
+      SessionDataSet dataSet = session.executeQueryStatement("select count(time) from time_only");
+      RowRecord rec = dataSet.next();
+      assertEquals(20, rec.getFields().get(0).getLongV());
     }
   }
 
