@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.memory;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.slf4j.Logger;
@@ -30,6 +32,9 @@ import java.util.function.LongUnaryOperator;
 
 public class MemoryManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(MemoryManager.class);
+  private static final CommonConfig CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final boolean ENABLE_MEMORY_TRANSFER = CONFIG.isEnableMemoryTransfer();
+  private static final long MEMORY_CHECK_INTERVAL_IN_S = CONFIG.getMemoryCheckIntervalInS();
 
   /** The max retry times for memory allocation */
   private static final int MEMORY_ALLOCATE_MAX_RETRIES = 3;
@@ -499,11 +504,16 @@ public class MemoryManager {
         new MemoryManager("GlobalMemoryManager", null, Runtime.getRuntime().totalMemory());
 
     static {
-      MemoryRuntimeAgent.getInstance()
-          .registerPeriodicalJob(
-              "GlobalMemoryManager#updateAllocate()",
-              MemoryManagerHolder.GLOBAL::updateAllocate,
-              20);
+      if (ENABLE_MEMORY_TRANSFER) {
+        LOGGER.info(
+            "Enable automatic memory transfer with an interval of {} s",
+            MEMORY_CHECK_INTERVAL_IN_S);
+        MemoryRuntimeAgent.getInstance()
+            .registerPeriodicalJob(
+                "GlobalMemoryManager#updateAllocate()",
+                MemoryManagerHolder.GLOBAL::updateAllocate,
+                MEMORY_CHECK_INTERVAL_IN_S);
+      }
     }
 
     private MemoryManagerHolder() {}
