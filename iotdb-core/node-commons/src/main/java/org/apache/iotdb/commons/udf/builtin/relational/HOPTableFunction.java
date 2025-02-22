@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.function.table;
+package org.apache.iotdb.commons.udf.builtin.relational;
 
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
@@ -55,6 +55,7 @@ public class HOPTableFunction implements TableFunction {
     return Arrays.asList(
         TableParameterSpecification.builder()
             .name(DATA_PARAMETER_NAME)
+            .rowSemantics()
             .passThroughColumns()
             .keepWhenEmpty()
             .build(),
@@ -67,7 +68,7 @@ public class HOPTableFunction implements TableFunction {
         ScalarParameterSpecification.builder()
             .name(START_PARAMETER_NAME)
             .type(Type.TIMESTAMP)
-            .defaultValue(Long.MIN_VALUE)
+            .defaultValue(0L)
             .build());
   }
 
@@ -122,13 +123,13 @@ public class HOPTableFunction implements TableFunction {
 
     private final long slide;
     private final long size;
-    private long curTime;
+    private final long start;
     private long curIndex = 0;
 
     public HOPDataProcessor(long startTime, long slide, long size) {
       this.slide = slide;
       this.size = size;
-      this.curTime = startTime;
+      this.start = startTime;
     }
 
     @Override
@@ -136,21 +137,15 @@ public class HOPTableFunction implements TableFunction {
         Record input,
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder) {
+      // find the first windows that satisfy the condition: start + n*slide <= time < start +
+      // n*slide + size
       long timeValue = input.getLong(0);
-      if (curTime == Long.MIN_VALUE) {
-        curTime = timeValue;
-      }
-      if (curTime + size <= timeValue) {
-        // jump to appropriate window
-        long move = (timeValue - curTime - size) / slide + 1;
-        curTime += move * slide;
-      }
-      long slideTime = curTime;
-      while (slideTime <= timeValue && slideTime + size > timeValue) {
-        properColumnBuilders.get(0).writeLong(slideTime);
-        properColumnBuilders.get(1).writeLong(slideTime + size);
+      long window_start = (timeValue - start - size + slide) / slide * slide;
+      while (window_start <= timeValue && window_start + size > timeValue) {
+        properColumnBuilders.get(0).writeLong(window_start);
+        properColumnBuilders.get(1).writeLong(window_start + size - 1);
         passThroughIndexBuilder.writeLong(curIndex);
-        slideTime += slide;
+        window_start += slide;
       }
       curIndex++;
     }

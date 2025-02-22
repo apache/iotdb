@@ -27,12 +27,13 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.HOPTableFunction;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.execution.function.table.ExcludeColumnFunction;
-import org.apache.iotdb.db.queryengine.execution.function.table.HOPTableFunction;
-import org.apache.iotdb.db.queryengine.execution.function.table.SplitFunction;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.function.Exclude;
+import org.apache.iotdb.db.queryengine.plan.function.Repeat;
+import org.apache.iotdb.db.queryengine.plan.function.Split;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnMetadata;
@@ -448,9 +449,11 @@ public class TestMatadata implements Metadata {
     if ("HOP".equalsIgnoreCase(functionName)) {
       return new HOPTableFunction();
     } else if ("EXCLUDE".equalsIgnoreCase(functionName)) {
-      return new ExcludeColumnFunction();
+      return new Exclude();
+    } else if ("REPEAT".equalsIgnoreCase(functionName)) {
+      return new Repeat();
     } else if ("SPLIT".equalsIgnoreCase(functionName)) {
-      return new SplitFunction();
+      return new Split();
     } else {
       return null;
     }

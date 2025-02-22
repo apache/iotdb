@@ -42,7 +42,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * This is an internal example of the TableFunction implementation. This function is declared as row
+ * This is an internal example of the TableFunction implementation. This function is declared as set
  * semantic with pass through columns.
  *
  * <p>CREATE DATABASE test;
@@ -67,11 +67,7 @@ public class RepeatExample implements TableFunction {
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
     return Arrays.asList(
-        TableParameterSpecification.builder()
-            .name(TBL_PARAM)
-            .rowSemantics()
-            .passThroughColumns()
-            .build(),
+        TableParameterSpecification.builder().name(TBL_PARAM).passThroughColumns().build(),
         ScalarParameterSpecification.builder().name(N_PARAM).type(Type.INT32).build());
   }
 
@@ -108,11 +104,19 @@ public class RepeatExample implements TableFunction {
               Record input,
               List<ColumnBuilder> properColumnBuilders,
               ColumnBuilder passThroughIndexBuilder) {
-            for (int i = 0; i < n; i++) {
-              properColumnBuilders.get(0).writeInt(i);
-              passThroughIndexBuilder.writeLong(recordIndex);
+            properColumnBuilders.get(0).writeInt(0);
+            passThroughIndexBuilder.writeLong(recordIndex++);
+          }
+
+          @Override
+          public void finish(
+              List<ColumnBuilder> columnBuilders, ColumnBuilder passThroughIndexBuilder) {
+            for (int i = 1; i < n; i++) {
+              for (int j = 0; j < recordIndex; j++) {
+                columnBuilders.get(0).writeInt(i);
+                passThroughIndexBuilder.writeLong(j);
+              }
             }
-            recordIndex++;
           }
         };
       }

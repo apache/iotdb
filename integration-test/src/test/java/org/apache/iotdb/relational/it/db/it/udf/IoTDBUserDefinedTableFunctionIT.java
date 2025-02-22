@@ -250,5 +250,9 @@ public class IoTDBUserDefinedTableFunctionIT {
         "SELECT * FROM TABLE(error(TABLE(vehicle), 4))",
         "specifies required columns from table argument TIMECHO which cannot be found",
         DATABASE_NAME);
+    tableAssertTestFail(
+        "SELECT * FROM TABLE(not_register(TABLE(vehicle), 4))",
+        "Unknown function: not_register",
+        DATABASE_NAME);
   }
 }

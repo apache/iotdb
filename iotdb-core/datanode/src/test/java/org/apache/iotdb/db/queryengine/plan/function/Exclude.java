@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.function.table;
+package org.apache.iotdb.db.queryengine.plan.function;
 
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
@@ -26,73 +26,64 @@ import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 import org.apache.iotdb.udf.api.relational.table.argument.DescribedSchema;
 import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
-import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionLeafProcessor;
+import org.apache.iotdb.udf.api.relational.table.argument.TableArgument;
+import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
 import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSpecification;
+import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
 import org.apache.iotdb.udf.api.type.Type;
 
-import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.common.conf.TSFileConfig;
-import org.apache.tsfile.utils.Binary;
-
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
-public class SplitFunction implements TableFunction {
-  private final String INPUT_PARAMETER_NAME = "INPUT";
-  private final String SPLIT_PARAMETER_NAME = "SPLIT";
+public class Exclude implements TableFunction {
+  private final String TBL_PARAM = "DATA";
+  private final String COL_PARAM = "EXCLUDE";
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
     return Arrays.asList(
-        ScalarParameterSpecification.builder().name(INPUT_PARAMETER_NAME).type(Type.STRING).build(),
-        ScalarParameterSpecification.builder()
-            .name(SPLIT_PARAMETER_NAME)
-            .type(Type.STRING)
-            .defaultValue(",")
-            .build());
+        TableParameterSpecification.builder().name(TBL_PARAM).rowSemantics().build(),
+        ScalarParameterSpecification.builder().name(COL_PARAM).type(Type.STRING).build());
   }
 
   @Override
   public TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException {
-    DescribedSchema schema = DescribedSchema.builder().addField("output", Type.STRING).build();
-    return TableFunctionAnalysis.builder().properColumnSchema(schema).build();
+    TableArgument tableArgument = (TableArgument) arguments.get(TBL_PARAM);
+    String excludeColumn = (String) ((ScalarArgument) arguments.get(COL_PARAM)).getValue();
+    List<Integer> requiredColumns = new ArrayList<>();
+    DescribedSchema.Builder schemaBuilder = DescribedSchema.builder();
+    for (int i = 0; i < tableArgument.getFieldNames().size(); i++) {
+      Optional<String> fieldName = tableArgument.getFieldNames().get(i);
+      if (!fieldName.isPresent() || !fieldName.get().equalsIgnoreCase(excludeColumn)) {
+        requiredColumns.add(i);
+        schemaBuilder.addField(fieldName, tableArgument.getFieldTypes().get(i));
+      }
+    }
+    return TableFunctionAnalysis.builder()
+        .properColumnSchema(schemaBuilder.build())
+        .requiredColumns(TBL_PARAM, requiredColumns)
+        .build();
   }
 
   @Override
   public TableFunctionProcessorProvider getProcessorProvider(Map<String, Argument> arguments) {
     return new TableFunctionProcessorProvider() {
       @Override
-      public TableFunctionLeafProcessor getSplitProcessor() {
-        return new SplitProcessor(
-            (String) ((ScalarArgument) arguments.get(INPUT_PARAMETER_NAME)).getValue(),
-            (String) ((ScalarArgument) arguments.get(SPLIT_PARAMETER_NAME)).getValue());
+      public TableFunctionDataProcessor getDataProcessor() {
+        return (input, properColumnBuilders, passThroughIndexBuilder) -> {
+          for (int i = 0; i < input.size(); i++) {
+            if (input.isNull(i)) {
+              properColumnBuilders.get(i).appendNull();
+            } else {
+              properColumnBuilders.get(i).writeObject(input.getObject(i));
+            }
+          }
+        };
       }
     };
-  }
-
-  private static class SplitProcessor implements TableFunctionLeafProcessor {
-    private final String input;
-    private final String split;
-    private boolean finish = false;
-
-    SplitProcessor(String input, String split) {
-      this.input = input;
-      this.split = split;
-    }
-
-    @Override
-    public void process(List<ColumnBuilder> columnBuilders) {
-      for (String s : input.split(split)) {
-        columnBuilders.get(0).writeBinary(new Binary(s, TSFileConfig.STRING_CHARSET));
-      }
-      finish = true;
-    }
-
-    @Override
-    public boolean isFinish() {
-      return finish;
-    }
   }
 }
