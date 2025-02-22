@@ -34,7 +34,7 @@ public class SliceCache {
     for (Slice slice : slices) {
       long currentSize = slice.getSize();
       if (index < previousSize + currentSize) {
-        return slice.getOriginalRecord((int) (index - previousSize));
+        return slice.getPassThroughRecord((int) (index - previousSize));
       }
       previousSize += currentSize;
     }

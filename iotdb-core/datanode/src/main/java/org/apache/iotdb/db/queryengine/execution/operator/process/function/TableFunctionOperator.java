@@ -25,7 +25,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperato
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.PartitionState;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.Slice;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.SliceCache;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
@@ -42,7 +41,6 @@ import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Optional;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
 
@@ -73,14 +71,15 @@ public class TableFunctionOperator implements ProcessOperator {
       List<TSDataType> outputDataTypes,
       int properChannelCount,
       List<Integer> requiredChannels,
-      Optional<TableFunctionNode.PassThroughSpecification> passThroughSpecifications,
+      List<Integer> passThroughChannels,
       List<Integer> partitionChannels) {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.properChannelCount = properChannelCount;
     this.processorProvider = processorProvider;
     this.partitionRecognizer =
-        new PartitionRecognizer(partitionChannels, requiredChannels, inputDataTypes);
+        new PartitionRecognizer(
+            partitionChannels, requiredChannels, passThroughChannels, inputDataTypes);
     this.needPassThrough = properChannelCount != outputDataTypes.size();
     this.partitionState = null;
     this.blockBuilder = new TsBlockBuilder(outputDataTypes);

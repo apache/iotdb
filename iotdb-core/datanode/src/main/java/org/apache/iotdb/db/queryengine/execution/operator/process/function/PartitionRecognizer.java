@@ -35,7 +35,8 @@ public class PartitionRecognizer {
 
   private final List<Integer> partitionChannels;
   private final List<Object> partitionValues;
-  private final int[] requiredChannels;
+  private final List<Integer> requiredChannels;
+  private final List<Integer> passThroughChannels;
   private final List<Type> inputDataTypes;
   private TsBlock currentTsBlock = null;
   private boolean noMoreData = false;
@@ -45,13 +46,15 @@ public class PartitionRecognizer {
   public PartitionRecognizer(
       List<Integer> partitionChannels,
       List<Integer> requiredChannels,
+      List<Integer> passThroughChannels,
       List<TSDataType> inputDataTypes) {
     this.partitionChannels = partitionChannels;
     this.partitionValues = new ArrayList<>(partitionChannels.size());
     for (int i = 0; i < partitionChannels.size(); i++) {
       partitionValues.add(null);
     }
-    this.requiredChannels = requiredChannels.stream().mapToInt(i -> i).toArray();
+    this.requiredChannels = requiredChannels;
+    this.passThroughChannels = passThroughChannels;
     this.inputDataTypes = UDFDataTypeTransformer.transformToUDFDataTypeList(inputDataTypes);
   }
 
@@ -178,6 +181,7 @@ public class PartitionRecognizer {
         endPartitionIndex,
         currentTsBlock.getValueColumns(),
         requiredChannels,
+        passThroughChannels,
         inputDataTypes);
   }
 }

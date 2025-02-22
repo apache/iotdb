@@ -2384,7 +2384,16 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
       List<Integer> requiredChannels =
           getChannelsForSymbols(node.getRequiredSymbols(), childLayout);
-
+      List<Integer> passThroughChannels =
+          passThroughSpecification
+              .map(
+                  passThrough ->
+                      getChannelsForSymbols(
+                          passThrough.getColumns().stream()
+                              .map(TableFunctionNode.PassThroughColumn::getSymbol)
+                              .collect(Collectors.toList()),
+                          childLayout))
+              .orElse(Collections.emptyList());
       List<Integer> partitionChannels;
       if (node.getDataOrganizationSpecification().isPresent()) {
         partitionChannels =
@@ -2401,7 +2410,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           outputDataTypes,
           properChannelCount,
           requiredChannels,
-          passThroughSpecification,
+          passThroughChannels,
           partitionChannels);
     }
   }
