@@ -202,6 +202,7 @@ public class TableFunctionOperatorTest {
           new PartitionRecognizer(
               Collections.singletonList(1),
               Arrays.asList(0, 1, 3),
+              Arrays.asList(0, 1, 2, 3),
               Arrays.asList(TSDataType.TIMESTAMP, TSDataType.STRING, TSDataType.INT32));
       PartitionState state = partitionRecognizer.nextState();
       Assert.assertEquals(PartitionState.INIT_STATE, state);

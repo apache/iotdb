@@ -225,6 +225,7 @@ public class TableFunctionOperator implements ProcessOperator {
   @Override
   public void close() throws Exception {
     sliceCache.close();
+    inputOperator.close();
   }
 
   @Override
