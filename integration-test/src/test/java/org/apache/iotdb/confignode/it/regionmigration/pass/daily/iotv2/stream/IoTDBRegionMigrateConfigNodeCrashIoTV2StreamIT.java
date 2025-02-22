@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
 
 @Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateConfigNodeCrashIoTV2Stream
+public class IoTDBRegionMigrateConfigNodeCrashIoTV2StreamIT
     extends IoTDBRegionOperationReliabilityITFramework {
 
   @Override

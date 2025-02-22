@@ -404,6 +404,14 @@ public class CommonDescriptor {
                     properties.getProperty(
                         "pipe_connector_read_file_buffer_size",
                         String.valueOf(config.getPipeConnectorReadFileBufferSize())))));
+    config.setIsPipeConnectorReadFileBufferMemoryControlEnabled(
+        Boolean.parseBoolean(
+            Optional.ofNullable(properties.getProperty("pipe_sink_read_file_buffer_memory_control"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_connector_read_file_buffer_memory_control",
+                        String.valueOf(
+                            config.isPipeConnectorReadFileBufferMemoryControlEnabled())))));
     config.setPipeConnectorRetryIntervalMs(
         Long.parseLong(
             Optional.ofNullable(properties.getProperty("pipe_sink_retry_interval_ms"))
