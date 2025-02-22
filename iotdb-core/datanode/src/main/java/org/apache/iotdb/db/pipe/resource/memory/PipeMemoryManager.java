@@ -176,7 +176,9 @@ public class PipeMemoryManager {
           String.format(
               "forceAllocateForTablet: failed to allocate because there's too much memory for tablets, "
                   + "total memory size %d bytes, used memory for tablet size %d bytes, requested memory size %d bytes",
-              memoryBlock.getTotalMemorySizeInBytes(), usedMemorySizeInBytesOfTablets));
+              memoryBlock.getTotalMemorySizeInBytes(),
+              usedMemorySizeInBytesOfTablets,
+              tabletSizeInBytes));
     }
 
     synchronized (this) {
@@ -216,7 +218,9 @@ public class PipeMemoryManager {
           String.format(
               "forceAllocateForTsFile: failed to allocate because there's too much memory for tsfiles, "
                   + "total memory size %d bytes, used memory for tsfile size %d bytes, requested memory size %d bytes",
-              memoryBlock.getTotalMemorySizeInBytes(), usedMemorySizeInBytesOfTsFiles));
+              memoryBlock.getTotalMemorySizeInBytes(),
+              usedMemorySizeInBytesOfTsFiles,
+              tsFileSizeInBytes));
     }
 
     synchronized (this) {
@@ -466,8 +470,6 @@ public class PipeMemoryManager {
   }
 
   private PipeMemoryBlock registerMemoryBlock(long sizeInBytes, PipeMemoryBlockType type) {
-    memoryBlock.forceAllocate(sizeInBytes);
-
     final PipeMemoryBlock returnedMemoryBlock;
     switch (type) {
       case TABLET:
