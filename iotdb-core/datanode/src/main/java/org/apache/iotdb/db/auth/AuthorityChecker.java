@@ -214,7 +214,7 @@ public class AuthorityChecker {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MAINTAIN),
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MAINTAIN.ordinal()),
         PrivilegeType.MAINTAIN);
   }
 
