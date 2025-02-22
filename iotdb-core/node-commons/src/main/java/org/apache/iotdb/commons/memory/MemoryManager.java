@@ -546,6 +546,20 @@ public class MemoryManager {
     return shrinkSize;
   }
 
+  public boolean isAvailableToExpand() {
+    for (MemoryManager memoryManager : children.values()) {
+      if (memoryManager.isAvailableToExpand()) {
+        return true;
+      }
+    }
+    for (IMemoryBlock memoryBlock : allocatedMemoryBlocks.values()) {
+      if (memoryBlock.getMemoryBlockType() != MemoryBlockType.STATIC) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /** Whether is available to shrink */
   public boolean isAvailableToShrink() {
     return allocateTotalMemorySizeInBytes - totalMemorySizeInBytes
@@ -567,7 +581,9 @@ public class MemoryManager {
           higherMemoryManager = child;
           lowerMemoryManager = child;
         } else {
-          if (child.getUsedMemorySizeInBytes() > higherMemoryManager.getUsedMemorySizeInBytes()) {
+          if (higherMemoryManager.isAvailableToExpand()
+              && child.getUsedMemorySizeInBytes()
+                  > higherMemoryManager.getUsedMemorySizeInBytes()) {
             higherMemoryManager = child;
           }
           if (lowerMemoryManager.isAvailableToShrink()
@@ -578,8 +594,8 @@ public class MemoryManager {
       }
       if (higherMemoryManager != null && !higherMemoryManager.equals(lowerMemoryManager)) {
         // transfer
-        long transferSize = higherMemoryManager.shrink();
-        lowerMemoryManager.expandTotalMemorySizeInBytes(transferSize);
+        long transferSize = lowerMemoryManager.shrink();
+        higherMemoryManager.expandTotalMemorySizeInBytes(transferSize);
         LOGGER.info(
             "Transfer Memory Size {} from {} to {}",
             transferSize,
