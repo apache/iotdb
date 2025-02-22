@@ -51,12 +51,12 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 public class TableFunctionTest {
 
   @Test
-  public void testSimpleSetSemantic() {
+  public void testSimpleRowSemantic() {
     PlanTester planTester = new PlanTester();
 
     String sql =
         "SELECT * FROM TABLE(HOP("
-            + "DATA => TABLE(table1) PARTITION BY (tag1,tag2,tag3), "
+            + "DATA => TABLE(table1), "
             + "TIMECOL => 'time', "
             + "SLIDE => 30m, "
             + "SIZE => 1h))";
@@ -75,28 +75,22 @@ public class TableFunctionTest {
                 .addScalarArgument("TIMECOL", "time")
                 .addScalarArgument("SIZE", 3600000L)
                 .addScalarArgument("SLIDE", 1800000L)
-                .addScalarArgument("START", Long.MIN_VALUE)
+                .addScalarArgument("START", 0L)
                 .addTableArgument(
                     "DATA",
                     tableArgument()
-                        .specification(
-                            specification(
-                                ImmutableList.of("tag1", "tag2", "tag3"),
-                                ImmutableList.of(),
-                                ImmutableMap.of()))
+                        .rowSemantics()
                         .passThroughSymbols(
                             "time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"));
     // Verify full LogicalPlan
-    // Output - TableFunctionProcessor - StreamSort - TableScan
-    assertPlan(
-        logicalQueryPlan,
-        anyTree(tableFunctionProcessor(tableFunctionMatcher, streamSort(tableScan))));
+    // Output - TableFunctionProcessor - TableScan
+    assertPlan(logicalQueryPlan, anyTree(tableFunctionProcessor(tableFunctionMatcher, tableScan)));
     // Verify DistributionPlan
 
     /*
      *   └──OutputNode
      *         └──TableFunctionProcessor
-     *               └──MergeSortNode
+     *               └──CollectNode
      *                   ├──ExchangeNode: [SourceAddress:192.0.12.1/test_query.2.0/31]
      *                   ├──TableScanNode
      *                   └──ExchangeNode: [SourceAddress:192.0.10.1/test_query.3.0/32]
@@ -105,13 +99,13 @@ public class TableFunctionTest {
         planTester.getFragmentPlan(0),
         anyTree(
             tableFunctionProcessor(
-                tableFunctionMatcher, mergeSort(exchange(), tableScan, exchange()))));
+                tableFunctionMatcher, collect(exchange(), tableScan, exchange()))));
     assertPlan(planTester.getFragmentPlan(1), tableScan);
     assertPlan(planTester.getFragmentPlan(2), tableScan);
   }
 
   @Test
-  public void testSimpleRowSemantic() {
+  public void testSimpleRowSemantic2() {
     PlanTester planTester = new PlanTester();
     String sql = "SELECT * FROM TABLE(EXCLUDE(DATA => TABLE(table1), EXCLUDE => 'attr1'))";
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
@@ -154,6 +148,58 @@ public class TableFunctionTest {
         anyTree(
             tableFunctionProcessor(
                 tableFunctionMatcher, collect(exchange(), tableScan, exchange()))));
+    assertPlan(planTester.getFragmentPlan(1), tableScan);
+    assertPlan(planTester.getFragmentPlan(2), tableScan);
+  }
+
+  @Test
+  public void testSimpleSetSemantic() {
+    PlanTester planTester = new PlanTester();
+    String sql =
+        "SELECT * FROM TABLE(REPEAT(DATA => TABLE(table1) PARTITION BY (tag1,tag2,tag3), N => 2))";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan =
+        tableScan(
+            "testdb.table1",
+            ImmutableList.of("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"),
+            ImmutableSet.of("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"));
+
+    Consumer<TableFunctionProcessorMatcher.Builder> tableFunctionMatcher =
+        builder ->
+            builder
+                .name("repeat")
+                .properOutputs("repeat_index")
+                .requiredSymbols("time")
+                .addScalarArgument("N", 2)
+                .addTableArgument(
+                    "DATA",
+                    tableArgument()
+                        .specification(
+                            specification(
+                                ImmutableList.of("tag1", "tag2", "tag3"),
+                                ImmutableList.of(),
+                                ImmutableMap.of()))
+                        .passThroughSymbols(
+                            "time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"));
+    // Verify full LogicalPlan
+    // Output - TableFunctionProcessor - StreamSort - TableScan
+    assertPlan(
+        logicalQueryPlan,
+        anyTree(tableFunctionProcessor(tableFunctionMatcher, streamSort(tableScan))));
+    // Verify DistributionPlan
+    /*
+     *   └──OutputNode
+     *        └──TableFunctionProcessor
+     *               └──CollectNode
+     *                   ├──ExchangeNode: [SourceAddress:192.0.12.1/test_query.2.0/31]
+     *                   ├──TableScanNode
+     *                   └──ExchangeNode: [SourceAddress:192.0.10.1/test_query.3.0/32]
+     */
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        anyTree(
+            tableFunctionProcessor(
+                tableFunctionMatcher, mergeSort(exchange(), tableScan, exchange()))));
     assertPlan(planTester.getFragmentPlan(1), tableScan);
     assertPlan(planTester.getFragmentPlan(2), tableScan);
   }
@@ -210,7 +256,7 @@ public class TableFunctionTest {
     PlanTester planTester = new PlanTester();
     String sql =
         "SELECT tag1, tag2, tag3, window_start, window_end, count(*) FROM TABLE(HOP("
-            + "DATA => TABLE(SELECT * FROM TABLE(EXCLUDE(TABLE(table1), 'attr1'))) PARTITION BY (tag1,tag2,tag3), "
+            + "DATA => TABLE(SELECT * FROM TABLE(EXCLUDE(TABLE(table1), 'attr1'))), "
             + "TIMECOL => 'time', "
             + "SLIDE => 30m, "
             + "SIZE => 1h))"
@@ -230,13 +276,7 @@ public class TableFunctionTest {
                 .requiredSymbols(
                     "time_0", "tag1_1", "tag2_2", "tag3_3", "attr2_4", "s1_5", "s2_6", "s3_7")
                 .addScalarArgument("EXCLUDE", "attr1")
-                .addTableArgument(
-                    "DATA",
-                    tableArgument()
-                        .specification(
-                            specification(
-                                ImmutableList.of(), ImmutableList.of(), ImmutableMap.of()))
-                        .rowSemantics());
+                .addTableArgument("DATA", tableArgument().rowSemantics());
     Consumer<TableFunctionProcessorMatcher.Builder> hopMatcher =
         builder ->
             builder
@@ -246,25 +286,18 @@ public class TableFunctionTest {
                 .addScalarArgument("TIMECOL", "time")
                 .addScalarArgument("SIZE", 3600000L)
                 .addScalarArgument("SLIDE", 1800000L)
-                .addScalarArgument("START", Long.MIN_VALUE)
+                .addScalarArgument("START", 0L)
                 .addTableArgument(
                     "DATA",
-                    tableArgument()
-                        .specification(
-                            specification(
-                                ImmutableList.of("tag1", "tag2", "tag3"),
-                                ImmutableList.of(),
-                                ImmutableMap.of()))
-                        .passThroughSymbols("tag1", "tag2", "tag3"));
+                    tableArgument().rowSemantics().passThroughSymbols("tag1", "tag2", "tag3"));
     // Verify full LogicalPlan
-    // Output - Aggregation - HOP - Sort - Project - EXCLUDE - TableScan
+    // Output - Aggregation - HOP - Project - EXCLUDE - TableScan
     assertPlan(
         logicalQueryPlan,
         anyTree(
             aggregation(
                 ImmutableMap.of("count", aggregationFunction("count", ImmutableList.of())),
                 tableFunctionProcessor(
-                    hopMatcher,
-                    sort(project(tableFunctionProcessor(excludeMatcher, tableScan)))))));
+                    hopMatcher, project(tableFunctionProcessor(excludeMatcher, tableScan))))));
   }
 }

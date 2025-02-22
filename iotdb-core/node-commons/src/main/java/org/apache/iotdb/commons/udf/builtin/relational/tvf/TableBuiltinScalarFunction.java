@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.udf.builtin.relational;
+package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
 import java.util.Arrays;
 import java.util.HashSet;

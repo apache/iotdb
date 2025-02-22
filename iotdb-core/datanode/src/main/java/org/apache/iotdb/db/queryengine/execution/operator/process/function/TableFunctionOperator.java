@@ -122,10 +122,10 @@ public class TableFunctionOperator implements ProcessOperator {
   public TsBlock next() throws Exception {
     PartitionState.StateType stateType = partitionState.getStateType();
     Slice slice = partitionState.getSlice();
-    partitionState = null;
     if (stateType == PartitionState.StateType.INIT
         || stateType == PartitionState.StateType.NEED_MORE_DATA) {
-      isBlocked = null;
+      consumeCurrentPartitionState();
+      consumeCurrentSourceTsBlock();
       return null;
     } else {
       List<ColumnBuilder> properColumnBuilders = getProperColumnBuilders();
@@ -135,20 +135,29 @@ public class TableFunctionOperator implements ProcessOperator {
           processor.finish(properColumnBuilders, passThroughIndexBuilder);
         }
         finished = true;
-        return buildTsBlock(properColumnBuilders, passThroughIndexBuilder);
+        TsBlock tsBlock = buildTsBlock(properColumnBuilders, passThroughIndexBuilder);
+        sliceCache.clear();
+        consumeCurrentPartitionState();
+        return tsBlock;
       }
       if (stateType == PartitionState.StateType.NEW_PARTITION) {
         if (processor != null) {
+          // previous partition state has not finished consuming yet
           processor.finish(properColumnBuilders, passThroughIndexBuilder);
+          TsBlock tsBlock = buildTsBlock(properColumnBuilders, passThroughIndexBuilder);
+          sliceCache.clear();
+          processor = null;
+          return tsBlock;
+        } else {
+          processor = processorProvider.getDataProcessor();
         }
-        sliceCache.clear();
-        processor = processorProvider.getDataProcessor();
       }
       sliceCache.addSlice(slice);
       Iterator<Record> recordIterator = slice.getRequiredRecordIterator();
       while (recordIterator.hasNext()) {
         processor.process(recordIterator.next(), properColumnBuilders, passThroughIndexBuilder);
       }
+      consumeCurrentPartitionState();
       return buildTsBlock(properColumnBuilders, passThroughIndexBuilder);
     }
   }
@@ -195,6 +204,14 @@ public class TableFunctionOperator implements ProcessOperator {
       }
     }
     return blockBuilder.build(new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, positionCount));
+  }
+
+  private void consumeCurrentPartitionState() {
+    partitionState = null;
+  }
+
+  private void consumeCurrentSourceTsBlock() {
+    isBlocked = null;
   }
 
   @Override
