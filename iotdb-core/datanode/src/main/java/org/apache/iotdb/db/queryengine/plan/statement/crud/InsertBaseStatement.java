@@ -51,6 +51,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -309,6 +310,8 @@ public abstract class InsertBaseStatement extends Statement {
           idColumnIndices.add(i);
         }
       }
+    } else if (columnCategories == null) {
+      return Collections.emptyList();
     }
     return idColumnIndices;
   }
@@ -367,6 +370,55 @@ public abstract class InsertBaseStatement extends Statement {
                 })
             .collect(Collectors.toList());
   }
+
+  @TableModel
+  public void removeAttributeColumns() {
+    if (columnCategories == null) {
+      return;
+    }
+
+    List<Integer> columnsToKeep = new ArrayList<>();
+    for (int i = 0; i < columnCategories.length; i++) {
+      if (!columnCategories[i].equals(TsTableColumnCategory.ATTRIBUTE)) {
+        columnsToKeep.add(i);
+      }
+    }
+
+    if (columnsToKeep.size() == columnCategories.length) {
+      return;
+    }
+
+    if (failedMeasurementIndex2Info != null) {
+      failedMeasurementIndex2Info =
+          failedMeasurementIndex2Info.entrySet().stream()
+              .collect(Collectors.toMap(e -> columnsToKeep.indexOf(e.getKey()), Entry::getValue));
+    }
+
+    if (measurementSchemas != null) {
+      measurementSchemas =
+          columnsToKeep.stream().map(i -> measurementSchemas[i]).toArray(MeasurementSchema[]::new);
+    }
+    if (measurements != null) {
+      measurements = columnsToKeep.stream().map(i -> measurements[i]).toArray(String[]::new);
+    }
+    if (dataTypes != null) {
+      dataTypes = columnsToKeep.stream().map(i -> dataTypes[i]).toArray(TSDataType[]::new);
+    }
+    if (columnCategories != null) {
+      columnCategories =
+          columnsToKeep.stream()
+              .map(i -> columnCategories[i])
+              .toArray(TsTableColumnCategory[]::new);
+    }
+
+    subRemoveAttributeColumns(columnsToKeep);
+
+    // to reconstruct indices
+    idColumnIndices = null;
+    attrColumnIndices = null;
+  }
+
+  protected abstract void subRemoveAttributeColumns(List<Integer> columnsToKeep);
 
   public static class FailedMeasurementInfo {
     protected String measurement;
@@ -492,7 +544,18 @@ public abstract class InsertBaseStatement extends Statement {
       throw new ArrayIndexOutOfBoundsException(pos);
     }
 
-    if (measurementSchemas != null) {
+    String[] tmpMeasurements = new String[measurements.length + 1];
+    System.arraycopy(measurements, 0, tmpMeasurements, 0, pos);
+    tmpMeasurements[pos] = columnSchema.getName();
+    System.arraycopy(measurements, pos, tmpMeasurements, pos + 1, measurements.length - pos);
+    measurements = tmpMeasurements;
+
+    if (measurementSchemas == null) {
+      measurementSchemas = new MeasurementSchema[measurements.length];
+      measurementSchemas[pos] =
+          new MeasurementSchema(
+              columnSchema.getName(), InternalTypeManager.getTSDataType(columnSchema.getType()));
+    } else {
       final MeasurementSchema[] tmp = new MeasurementSchema[measurementSchemas.length + 1];
       System.arraycopy(measurementSchemas, 0, tmp, 0, pos);
       tmp[pos] =
@@ -502,15 +565,9 @@ public abstract class InsertBaseStatement extends Statement {
       measurementSchemas = tmp;
     }
 
-    String[] tmpMeasurements = new String[measurements.length + 1];
-    System.arraycopy(measurements, 0, tmpMeasurements, 0, pos);
-    tmpMeasurements[pos] = columnSchema.getName();
-    System.arraycopy(measurements, pos, tmpMeasurements, pos + 1, measurements.length - pos);
-    measurements = tmpMeasurements;
-
     if (dataTypes == null) {
       // sql insertion
-      dataTypes = new TSDataType[measurements.length + 1];
+      dataTypes = new TSDataType[measurements.length];
       dataTypes[pos] = InternalTypeManager.getTSDataType(columnSchema.getType());
     } else {
       final TSDataType[] tmpTypes = new TSDataType[dataTypes.length + 1];
@@ -521,7 +578,7 @@ public abstract class InsertBaseStatement extends Statement {
     }
 
     if (columnCategories == null) {
-      columnCategories = new TsTableColumnCategory[measurements.length + 1];
+      columnCategories = new TsTableColumnCategory[measurements.length];
       columnCategories[pos] = columnSchema.getColumnCategory();
     } else {
       final TsTableColumnCategory[] tmpCategories =
@@ -599,6 +656,9 @@ public abstract class InsertBaseStatement extends Statement {
 
   @TableModel
   public List<String> getAttributeColumnNameList() {
+    if (getColumnCategories() == null) {
+      return Collections.emptyList();
+    }
     final List<String> attributeColumnNameList = new ArrayList<>();
     for (int i = 0; i < getColumnCategories().length; i++) {
       if (getColumnCategories()[i] == TsTableColumnCategory.ATTRIBUTE) {

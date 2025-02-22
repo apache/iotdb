@@ -27,18 +27,22 @@ import org.apache.iotdb.session.subscription.consumer.base.AbstractSubscriptionP
 final class SubscriptionTableProvider extends AbstractSubscriptionProvider {
 
   SubscriptionTableProvider(
-      TEndPoint endPoint,
-      String username,
-      String password,
-      String consumerId,
-      String consumerGroupId,
-      int thriftMaxFrameSize) {
+      final TEndPoint endPoint,
+      final String username,
+      final String password,
+      final String consumerId,
+      final String consumerGroupId,
+      final int thriftMaxFrameSize) {
     super(endPoint, username, password, consumerId, consumerGroupId, thriftMaxFrameSize);
   }
 
   @Override
   protected AbstractSessionBuilder constructSubscriptionSessionBuilder(
-      String host, int port, String username, String password, int thriftMaxFrameSize) {
+      final String host,
+      final int port,
+      final String username,
+      final String password,
+      final int thriftMaxFrameSize) {
     return new SubscriptionTableSessionBuilder()
         .host(host)
         .port(port)

@@ -197,7 +197,6 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.DEVICE
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
-import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TREE_TYPE;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.removeLogicalView;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.validateSchema;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.bindSchemaForExpression;
@@ -534,8 +533,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       logger.debug("[EndFetchSchema]");
       long schemaFetchCost = System.nanoTime() - startTime;
       context.setFetchSchemaCost(schemaFetchCost);
-      QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TREE_TYPE, SCHEMA_FETCHER, schemaFetchCost);
+      QueryPlanCostMetricSet.getInstance().recordTreePlanCost(SCHEMA_FETCHER, schemaFetchCost);
     }
 
     analysis.setSchemaTree(schemaTree);
@@ -2224,7 +2222,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     } finally {
       long partitionFetchCost = System.nanoTime() - startTime;
       QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TREE_TYPE, PARTITION_FETCHER, partitionFetchCost);
+          .recordTreePlanCost(PARTITION_FETCHER, partitionFetchCost);
       context.setFetchPartitionCost(partitionFetchCost);
     }
   }
@@ -2293,7 +2291,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         result.add(timePartitionSlot);
         // next init
         timePartitionSlot = new TTimePartitionSlot(endTime);
-        endTime = endTime + TimePartitionUtils.getTimePartitionInterval();
+        // beware of overflow
+        endTime =
+            endTime + TimePartitionUtils.getTimePartitionInterval() > endTime
+                ? endTime + TimePartitionUtils.getTimePartitionInterval()
+                : Long.MAX_VALUE;
       } else {
         index++;
         if (index < size) {
@@ -2387,7 +2389,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     long startTime = System.nanoTime();
     ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree, true, context);
     QueryPlanCostMetricSet.getInstance()
-        .recordPlanCost(TREE_TYPE, SCHEMA_FETCHER, System.nanoTime() - startTime);
+        .recordTreePlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
     deviceViewIntoPathDescriptor.bindType(targetSchemaTree);
 
     analysis.setDeviceViewIntoPathDescriptor(deviceViewIntoPathDescriptor);
@@ -2465,7 +2467,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree, true, context);
     updateSchemaTreeByViews(analysis, targetSchemaTree, context);
     QueryPlanCostMetricSet.getInstance()
-        .recordPlanCost(TREE_TYPE, SCHEMA_FETCHER, System.nanoTime() - startTime);
+        .recordTreePlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
     intoPathDescriptor.bindType(targetSchemaTree);
 
     analysis.setIntoPathDescriptor(intoPathDescriptor);

@@ -120,7 +120,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
+  public CommonConfig setTargetChunkPointNum(int targetChunkPointNum) {
     return this;
   }
 
@@ -223,6 +223,11 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setEnableMQTTService(boolean enableMQTTService) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
     return this;
   }
 
