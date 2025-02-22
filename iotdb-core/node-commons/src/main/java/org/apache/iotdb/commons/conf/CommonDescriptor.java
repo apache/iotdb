@@ -24,12 +24,16 @@ import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Optional;
 
 public class CommonDescriptor {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(CommonDescriptor.class);
   private final CommonConfig config = new CommonConfig();
 
   private CommonDescriptor() {}
@@ -255,10 +259,12 @@ public class CommonDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "enable_memory_transfer", Boolean.toString(config.isEnableMemoryTransfer()))));
+    LOGGER.error("Memory transfer enabled: {}", config.isEnableMemoryTransfer());
     config.setMemoryCheckIntervalInS(
         Integer.parseInt(
             properties.getProperty(
                 "memory_check_interval", String.valueOf(config.getMemoryCheckIntervalInS()))));
+    LOGGER.error("Memory check interval: {}", config.getMemoryCheckIntervalInS());
   }
 
   private void loadPipeProps(TrimProperties properties) {
