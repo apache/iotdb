@@ -47,7 +47,7 @@ public class MemoryManager {
   private final boolean enable;
 
   /** The total allocate memory size in byte of memory manager */
-  private final long allocateTotalMemorySizeInBytes;
+  private final long totalAllocatedMemorySizeInBytes;
 
   /** The total memory size in byte of memory manager */
   private long totalMemorySizeInBytes;
@@ -68,7 +68,7 @@ public class MemoryManager {
   public MemoryManager(long totalMemorySizeInBytes) {
     this.name = "Test";
     this.parentMemoryManager = null;
-    this.allocateTotalMemorySizeInBytes = totalMemorySizeInBytes;
+    this.totalAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
     this.enable = false;
   }
@@ -77,7 +77,7 @@ public class MemoryManager {
       String name, MemoryManager parentMemoryManager, long totalMemorySizeInBytes) {
     this.name = name;
     this.parentMemoryManager = parentMemoryManager;
-    this.allocateTotalMemorySizeInBytes = totalMemorySizeInBytes;
+    this.totalAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
     this.enable = false;
   }
@@ -86,7 +86,7 @@ public class MemoryManager {
       String name, MemoryManager parentMemoryManager, long totalMemorySizeInBytes, boolean enable) {
     this.name = name;
     this.parentMemoryManager = parentMemoryManager;
-    this.allocateTotalMemorySizeInBytes = totalMemorySizeInBytes;
+    this.totalAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
     this.enable = enable;
   }
@@ -541,7 +541,7 @@ public class MemoryManager {
     long shrinkSize =
         Math.min(
             getAvailableMemorySizeInBytes() / 10,
-            totalMemorySizeInBytes - allocatedMemorySizeInBytes * 9 / 10);
+            totalMemorySizeInBytes - totalAllocatedMemorySizeInBytes * 9 / 10);
     totalMemorySizeInBytes -= shrinkSize;
     return shrinkSize;
   }
@@ -562,13 +562,14 @@ public class MemoryManager {
 
   /** Whether is available to shrink */
   public boolean isAvailableToShrink() {
-    return allocateTotalMemorySizeInBytes - totalMemorySizeInBytes
-        < allocateTotalMemorySizeInBytes / 10;
+    return totalAllocatedMemorySizeInBytes - totalMemorySizeInBytes
+            < totalAllocatedMemorySizeInBytes / 10
+        && totalMemorySizeInBytes != allocatedMemorySizeInBytes;
   }
 
   public void updateAllocate() {
     if (children.isEmpty()) {
-      double ratio = (double) totalMemorySizeInBytes / allocateTotalMemorySizeInBytes;
+      double ratio = (double) totalMemorySizeInBytes / totalAllocatedMemorySizeInBytes;
       for (IMemoryBlock memoryBlock : allocatedMemoryBlocks.values()) {
         memoryBlock.resizeByRatio(ratio);
       }
@@ -595,12 +596,14 @@ public class MemoryManager {
       if (higherMemoryManager != null && !higherMemoryManager.equals(lowerMemoryManager)) {
         // transfer
         long transferSize = lowerMemoryManager.shrink();
-        higherMemoryManager.expandTotalMemorySizeInBytes(transferSize);
-        LOGGER.info(
-            "Transfer Memory Size {} from {} to {}",
-            transferSize,
-            lowerMemoryManager,
-            higherMemoryManager);
+        if (transferSize != 0) {
+          higherMemoryManager.expandTotalMemorySizeInBytes(transferSize);
+          LOGGER.info(
+              "Transfer Memory Size {} from {} to {}",
+              transferSize,
+              lowerMemoryManager,
+              higherMemoryManager);
+        }
       }
       for (MemoryManager memoryManager : children.values()) {
         memoryManager.updateAllocate();
