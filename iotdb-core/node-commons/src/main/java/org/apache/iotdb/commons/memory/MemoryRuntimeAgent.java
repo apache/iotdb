@@ -36,8 +36,11 @@ public class MemoryRuntimeAgent implements IService {
   private static final Logger LOGGER = LoggerFactory.getLogger(MemoryRuntimeAgent.class);
   private static final CommonConfig CONFIG = CommonDescriptor.getInstance().getConfig();
   private static final boolean ENABLE_MEMORY_TRANSFER = CONFIG.isEnableMemoryTransfer();
+  private static final boolean ENABLE_MEMORY_ADAPT = CONFIG.isEnableMemoryAdapt();
   private static final long MEMORY_CHECK_INTERVAL_IN_S = CONFIG.getMemoryCheckIntervalInS();
-  private final AtomicBoolean isShutdown = new AtomicBoolean(false);
+
+  private static final double ratio = 0.05;
+  private static final AtomicBoolean isShutdown = new AtomicBoolean(false);
 
   private static final MemoryPeriodicalJobExecutor memoryPeriodicalJobExecutor =
       new MemoryPeriodicalJobExecutor(
@@ -58,8 +61,30 @@ public class MemoryRuntimeAgent implements IService {
               MemoryManager.global()::updateAllocate,
               MEMORY_CHECK_INTERVAL_IN_S);
     }
+    if (ENABLE_MEMORY_ADAPT) {
+      LOGGER.info(
+          "Enable automatic memory adapt with an interval of {} s", MEMORY_CHECK_INTERVAL_IN_S);
+      MemoryRuntimeAgent.getInstance()
+          .registerPeriodicalJob(
+              "MemoryRuntimeAgent#adaptTotalMemory()",
+              this::adaptTotalMemory,
+              MEMORY_CHECK_INTERVAL_IN_S);
+    }
 
     isShutdown.set(false);
+  }
+
+  private void adaptTotalMemory() {
+    long totalMemory = Runtime.getRuntime().totalMemory();
+    MemoryManager memoryManager = MemoryManager.global().getMemoryManager("OnHeap");
+    if (memoryManager != null) {
+      long originMemorySize = memoryManager.getTotalAllocatedMemorySizeInBytes();
+      if (totalMemory >= (1 + ratio) * originMemorySize
+          || totalMemory <= (1 - ratio) * originMemorySize) {
+        LOGGER.info("Total memory size changed from {} to {}", originMemorySize, totalMemory);
+        memoryManager.setTotalAllocatedMemorySizeInBytesWithReload(totalMemory);
+      }
+    }
   }
 
   @Override

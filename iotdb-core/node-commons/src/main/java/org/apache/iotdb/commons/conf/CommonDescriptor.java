@@ -263,6 +263,10 @@ public class CommonDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "memory_check_interval", String.valueOf(config.getMemoryCheckIntervalInS()))));
+    config.setEnableMemoryAdapt(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_memory_adapt", Boolean.toString(config.isEnableMemoryAdapt()))));
   }
 
   private void loadPipeProps(TrimProperties properties) {

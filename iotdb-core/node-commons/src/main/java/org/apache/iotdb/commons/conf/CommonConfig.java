@@ -373,6 +373,7 @@ public class CommonConfig {
   // memory management
   private boolean enableMemoryTransfer = false;
 
+  private boolean enableMemoryAdapt = false;
   private long memoryCheckIntervalInS = 20;
 
   CommonConfig() {
@@ -1695,5 +1696,13 @@ public class CommonConfig {
 
   public void setEnableMemoryTransfer(boolean enableMemoryTransfer) {
     this.enableMemoryTransfer = enableMemoryTransfer;
+  }
+
+  public boolean isEnableMemoryAdapt() {
+    return enableMemoryAdapt;
+  }
+
+  public void setEnableMemoryAdapt(boolean enableMemoryAdapt) {
+    this.enableMemoryAdapt = enableMemoryAdapt;
   }
 }

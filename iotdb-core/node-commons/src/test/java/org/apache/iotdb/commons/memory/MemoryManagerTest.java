@@ -28,7 +28,7 @@ public class MemoryManagerTest {
   @Before
   public void reset() {
     GLOBAL_MEMORY_MANAGER.clearAll();
-    GLOBAL_MEMORY_MANAGER.setTotalMemorySizeInBytes(100);
+    GLOBAL_MEMORY_MANAGER.setTotalAllocatedMemorySizeInBytes(100);
   }
 
   @Test

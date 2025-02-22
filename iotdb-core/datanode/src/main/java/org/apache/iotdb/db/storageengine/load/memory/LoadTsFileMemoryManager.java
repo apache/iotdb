@@ -117,7 +117,7 @@ public class LoadTsFileMemoryManager {
 
       if (memoryBlock.getMemoryUsageInBytes() > newSizeInBytes) {
         LOGGER.error(
-            "Load: Failed to setTotalMemorySizeInBytes memory block {} to {} bytes, current memory usage {} bytes",
+            "Load: Failed to setTotalAllocatedMemorySizeInBytes memory block {} to {} bytes, current memory usage {} bytes",
             memoryBlock,
             newSizeInBytes,
             memoryBlock.getMemoryUsageInBytes());

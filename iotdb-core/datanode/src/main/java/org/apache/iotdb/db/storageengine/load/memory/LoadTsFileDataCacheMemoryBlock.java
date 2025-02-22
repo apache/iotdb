@@ -74,7 +74,7 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
   @Override
   public synchronized void forceResize(long newSizeInBytes) {
     throw new UnsupportedOperationException(
-        "setTotalMemorySizeInBytes is not supported for LoadTsFileDataCacheMemoryBlock");
+        "setTotalAllocatedMemorySizeInBytes is not supported for LoadTsFileDataCacheMemoryBlock");
   }
 
   @Override

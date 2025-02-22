@@ -47,7 +47,7 @@ public class MemoryManager {
   private final boolean enable;
 
   /** The total allocate memory size in byte of memory manager */
-  private final long totalAllocatedMemorySizeInBytes;
+  private long totalAllocatedMemorySizeInBytes;
 
   /** The total memory size in byte of memory manager */
   private long totalMemorySizeInBytes;
@@ -354,7 +354,10 @@ public class MemoryManager {
    */
   private void reAllocateMemoryAccordingToRatio(double ratio) {
     // first increase the total memory size of this memory manager
+    long beforeTotalMemorySizeInBytes = this.totalMemorySizeInBytes;
     this.totalMemorySizeInBytes *= ratio;
+    this.totalAllocatedMemorySizeInBytes +=
+        (this.totalMemorySizeInBytes - beforeTotalMemorySizeInBytes);
     // then re-allocate memory for all memory blocks
     for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
       block.setTotalMemorySizeInBytes((long) (block.getTotalMemorySizeInBytes() * ratio));
@@ -448,16 +451,28 @@ public class MemoryManager {
     return totalMemorySizeInBytes;
   }
 
-  public void setTotalMemorySizeInBytes(long totalMemorySizeInBytes) {
-    this.totalMemorySizeInBytes = totalMemorySizeInBytes;
+  public void setTotalAllocatedMemorySizeInBytes(long totalAllocatedMemorySizeInBytes) {
+    this.totalMemorySizeInBytes +=
+        (totalAllocatedMemorySizeInBytes - this.totalAllocatedMemorySizeInBytes);
+    this.totalAllocatedMemorySizeInBytes = totalAllocatedMemorySizeInBytes;
+  }
+
+  public void setTotalAllocatedMemorySizeInBytesWithReload(long totalAllocatedMemorySizeInBytes) {
+    long beforeTotalMemorySizeInBytes = this.totalMemorySizeInBytes;
+    long afterTotalMemorySizeInBytes =
+        this.totalMemorySizeInBytes
+            + totalAllocatedMemorySizeInBytes
+            - this.totalAllocatedMemorySizeInBytes;
+    reAllocateMemoryAccordingToRatio(
+        (double) afterTotalMemorySizeInBytes / beforeTotalMemorySizeInBytes);
   }
 
   public void expandTotalMemorySizeInBytes(long totalMemorySizeInBytes) {
     this.totalMemorySizeInBytes += totalMemorySizeInBytes;
   }
 
-  public void setTotalMemorySizeInBytesWithReload(long totalMemorySizeInBytes) {
-    reAllocateMemoryAccordingToRatio((double) totalMemorySizeInBytes / this.totalMemorySizeInBytes);
+  public long getTotalAllocatedMemorySizeInBytes() {
+    return totalAllocatedMemorySizeInBytes;
   }
 
   /** Get available memory size in bytes of memory manager */
