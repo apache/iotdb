@@ -43,7 +43,7 @@ import java.util.concurrent.TimeUnit;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-public class IoTDBPartitionTableAutoCleanTest {
+public class IoTDBPartitionTableAutoCleanIT {
 
   private static final int TEST_REPLICATION_FACTOR = 1;
   private static final long TEST_TIME_PARTITION_INTERVAL = 604800000;

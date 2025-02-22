@@ -56,10 +56,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-public class IoTDBAutoRegionGroupExtensionIT2 {
+public class IoTDBAutoRegionGroupExtension2IT {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(IoTDBAutoRegionGroupExtensionIT2.class);
+      LoggerFactory.getLogger(IoTDBAutoRegionGroupExtension2IT.class);
 
   private static final String testDataRegionGroupExtensionPolicy = "AUTO";
   private static final String testConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
