@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.relational;
 
-import org.apache.iotdb.commons.udf.builtin.relational.tvf.TableBuiltinScalarFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
