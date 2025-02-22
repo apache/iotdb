@@ -2196,35 +2196,35 @@ public class IoTDBDescriptor {
       }
     }
 
-    long storageEngineMemorySize = Runtime.getRuntime().maxMemory() * 3 / 10;
-    long queryEngineMemorySize = Runtime.getRuntime().maxMemory() * 3 / 10;
-    long schemaEngineMemorySize = Runtime.getRuntime().maxMemory() / 10;
-    long consensusMemorySize = Runtime.getRuntime().maxMemory() / 10;
-    long pipeMemorySize = Runtime.getRuntime().maxMemory() / 10;
+    long storageEngineMemorySize = Runtime.getRuntime().totalMemory() * 3 / 10;
+    long queryEngineMemorySize = Runtime.getRuntime().totalMemory() * 3 / 10;
+    long schemaEngineMemorySize = Runtime.getRuntime().totalMemory() / 10;
+    long consensusMemorySize = Runtime.getRuntime().totalMemory() / 10;
+    long pipeMemorySize = Runtime.getRuntime().totalMemory() / 10;
     if (memoryAllocateProportion != null) {
       String[] proportions = memoryAllocateProportion.split(":");
       int proportionSum = 0;
       for (String proportion : proportions) {
         proportionSum += Integer.parseInt(proportion.trim());
       }
-      long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
+      long memoryAvailable = Runtime.getRuntime().totalMemory();
 
       if (proportionSum != 0) {
         storageEngineMemorySize =
-            maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum;
+            memoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum;
         queryEngineMemorySize =
-            maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum;
+            memoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum;
         schemaEngineMemorySize =
-            maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum;
+            memoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum;
         consensusMemorySize =
-            maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum;
+            memoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum;
         // if pipe proportion is set, use it, otherwise use the default value
         if (proportions.length >= 6) {
           pipeMemorySize =
-              maxMemoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum;
+              memoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum;
         } else {
           pipeMemorySize =
-              (maxMemoryAvailable
+              (memoryAvailable
                       - (conf.getStorageEngineMemoryManager().getTotalMemorySizeInBytes()
                           + conf.getQueryEngineMemoryManager().getTotalMemorySizeInBytes()
                           + conf.getSchemaEngineMemoryManager().getTotalMemorySizeInBytes()
@@ -2235,7 +2235,7 @@ public class IoTDBDescriptor {
     }
     // on heap memory manager
     MemoryManager onheapMemoryManager =
-        globalMemoryManager.getOrCreateMemoryManager("OnHeap", Runtime.getRuntime().maxMemory());
+        globalMemoryManager.getOrCreateMemoryManager("OnHeap", Runtime.getRuntime().totalMemory());
     conf.setOnHeapMemoryManager(onheapMemoryManager);
     // storage engine memory manager
     MemoryManager storageEngineMemoryManager =
@@ -2449,15 +2449,15 @@ public class IoTDBDescriptor {
 
     String queryMemoryAllocateProportion =
         properties.getProperty("chunk_timeseriesmeta_free_memory_proportion");
-    long maxMemoryAvailable = queryEngineMemoryManager.getTotalMemorySizeInBytes();
+    long memoryAvailable = queryEngineMemoryManager.getTotalMemorySizeInBytes();
 
-    long bloomFilterCacheMemorySize = maxMemoryAvailable / 1001;
-    long chunkCacheMemorySize = maxMemoryAvailable * 100 / 1001;
-    long timeSeriesMetaDataCacheMemorySize = maxMemoryAvailable * 200 / 1001;
-    long coordinatorMemorySize = maxMemoryAvailable * 50 / 1001;
-    long operatorsMemorySize = maxMemoryAvailable * 200 / 1001;
-    long dataExchangeMemorySize = maxMemoryAvailable * 200 / 1001;
-    long timeIndexMemorySize = maxMemoryAvailable * 200 / 1001;
+    long bloomFilterCacheMemorySize = memoryAvailable / 1001;
+    long chunkCacheMemorySize = memoryAvailable * 100 / 1001;
+    long timeSeriesMetaDataCacheMemorySize = memoryAvailable * 200 / 1001;
+    long coordinatorMemorySize = memoryAvailable * 50 / 1001;
+    long operatorsMemorySize = memoryAvailable * 200 / 1001;
+    long dataExchangeMemorySize = memoryAvailable * 200 / 1001;
+    long timeIndexMemorySize = memoryAvailable * 200 / 1001;
     if (queryMemoryAllocateProportion != null) {
       String[] proportions = queryMemoryAllocateProportion.split(":");
       int proportionSum = 0;
@@ -2467,19 +2467,19 @@ public class IoTDBDescriptor {
       if (proportionSum != 0) {
         try {
           bloomFilterCacheMemorySize =
-              maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum;
+              memoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum;
           chunkCacheMemorySize =
-              maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum;
+              memoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum;
           timeSeriesMetaDataCacheMemorySize =
-              maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum;
+              memoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum;
           coordinatorMemorySize =
-              maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum;
+              memoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum;
           operatorsMemorySize =
-              maxMemoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum;
+              memoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum;
           dataExchangeMemorySize =
-              maxMemoryAvailable * Integer.parseInt(proportions[5].trim()) / proportionSum;
+              memoryAvailable * Integer.parseInt(proportions[5].trim()) / proportionSum;
           timeIndexMemorySize =
-              maxMemoryAvailable * Integer.parseInt(proportions[6].trim()) / proportionSum;
+              memoryAvailable * Integer.parseInt(proportions[6].trim()) / proportionSum;
         } catch (Exception e) {
           throw new RuntimeException(
               "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
@@ -2699,14 +2699,14 @@ public class IoTDBDescriptor {
       for (String proportion : proportions) {
         proportionSum += Integer.parseInt(proportion.trim());
       }
-      float maxMemoryAvailable = conf.getUdfMemoryBudgetInMB();
+      float memoryAvailable = conf.getUdfMemoryBudgetInMB();
       try {
         conf.setUdfReaderMemoryBudgetInMB(
-            maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+            memoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
         conf.setUdfTransformerMemoryBudgetInMB(
-            maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+            memoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
         conf.setUdfCollectorMemoryBudgetInMB(
-            maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+            memoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
       } catch (Exception e) {
         throw new RuntimeException(
             "Each subsection of configuration item udf_reader_transformer_collector_memory_proportion"

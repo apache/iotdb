@@ -138,7 +138,10 @@ calculate_memory_sizes()
     fi
     off_heap_memory_size_in_mb=`expr $memory_size_in_mb - $on_heap_memory_size_in_mb`
 
+    on_heap_memory_size_in_mb_min=`expr $on_heap_memory_size_in_mb / 2`
+
     ON_HEAP_MEMORY="${on_heap_memory_size_in_mb}M"
+    ON_HEAP_MEMORY_MIN="${on_heap_memory_size_in_mb_min}M"
     OFF_HEAP_MEMORY="${off_heap_memory_size_in_mb}M"
 }
 
@@ -309,7 +312,7 @@ else
 fi
 
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Diotdb.jmx.local=$JMX_LOCAL"
-IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xms${ON_HEAP_MEMORY}"
+IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xms${ON_HEAP_MEMORY_MIN}"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xmx${ON_HEAP_MEMORY}"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:MaxDirectMemorySize=${OFF_HEAP_MEMORY}"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Djdk.nio.maxCachedBufferSize=${MAX_CACHED_BUFFER_SIZE}"
@@ -343,6 +346,6 @@ IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+SafepointTimeout"
 # IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=${heap_dump_dir}/datanode_heapdump.hprof"
 
 
-echo "DataNode on heap memory size = ${ON_HEAP_MEMORY}B, off heap memory size = ${OFF_HEAP_MEMORY}B"
+echo "DataNode on max heap memory size = ${ON_HEAP_MEMORY}B, min heap memory size = ${ON_HEAP_MEMORY_MIN}B, off heap memory size = ${OFF_HEAP_MEMORY}B"
 echo "If you want to change this configuration, please check conf/datanode-env.sh."
 
