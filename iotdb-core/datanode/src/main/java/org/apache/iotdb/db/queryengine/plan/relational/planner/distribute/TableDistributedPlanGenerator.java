@@ -576,10 +576,13 @@ public class TableDistributedPlanGenerator
             .max(Comparator.comparingInt(Map.Entry::getValue))
             .map(Map.Entry::getKey)
             .orElse(null);
-    if(!crossRegionDevices.isEmpty()) {
+    if (!crossRegionDevices.isEmpty()) {
       node.setDeviceEntries(crossRegionDevices);
       result.add(
-              new CollectNode(queryId.genPlanNodeId(), constructDeviceTableScanByRegionReplicaSet(node, context), node.getOutputSymbols()));
+          new CollectNode(
+              queryId.genPlanNodeId(),
+              constructDeviceTableScanByRegionReplicaSet(node, context),
+              node.getOutputSymbols()));
     }
     return result;
   }

@@ -437,16 +437,16 @@ public class IoTDBConfig {
   private int avgSeriesPointNumberThreshold = 100000;
 
   /** Enable inner space compaction for sequence files */
-  private volatile boolean enableSeqSpaceCompaction = true;
+  private volatile boolean enableSeqSpaceCompaction = false;
 
   /** Enable inner space compaction for unsequence files */
-  private volatile boolean enableUnseqSpaceCompaction = true;
+  private volatile boolean enableUnseqSpaceCompaction = false;
 
   /** Compact the unsequence files into the overlapped sequence files */
-  private volatile boolean enableCrossSpaceCompaction = true;
+  private volatile boolean enableCrossSpaceCompaction = false;
 
   /** Enable auto repair compaction */
-  private volatile boolean enableAutoRepairCompaction = true;
+  private volatile boolean enableAutoRepairCompaction = false;
 
   /** The buffer for sort operation */
   private long sortBufferSize = 1024 * 1024L;
