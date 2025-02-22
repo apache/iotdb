@@ -65,9 +65,9 @@ import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.commons.udf.builtin.relational.tvf.TableBuiltinAggregationFunction.FIRST_BY;
-import static org.apache.iotdb.commons.udf.builtin.relational.tvf.TableBuiltinAggregationFunction.LAST;
-import static org.apache.iotdb.commons.udf.builtin.relational.tvf.TableBuiltinAggregationFunction.LAST_BY;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.FIRST_BY;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST_BY;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 

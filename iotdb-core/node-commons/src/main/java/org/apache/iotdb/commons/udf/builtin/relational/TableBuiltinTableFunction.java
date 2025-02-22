@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.udf.builtin.relational.tvf;
+package org.apache.iotdb.commons.udf.builtin.relational;
 
-import org.apache.iotdb.commons.udf.builtin.relational.HOPTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.HOPTableFunction;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import java.util.Arrays;

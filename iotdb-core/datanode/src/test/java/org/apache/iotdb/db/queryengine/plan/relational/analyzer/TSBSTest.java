@@ -38,7 +38,7 @@ import org.junit.Test;
 
 import java.util.Optional;
 
-import static org.apache.iotdb.commons.udf.builtin.relational.tvf.TableBuiltinScalarFunction.DATE_BIN;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationFunction;

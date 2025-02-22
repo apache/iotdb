@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.udf.builtin.relational.tvf;
+package org.apache.iotdb.commons.udf.builtin.relational;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 

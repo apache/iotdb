@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.udf.builtin.relational;
+package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
