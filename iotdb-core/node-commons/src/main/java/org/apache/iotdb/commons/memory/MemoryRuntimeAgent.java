@@ -79,6 +79,7 @@ public class MemoryRuntimeAgent implements IService {
     MemoryManager memoryManager = MemoryManager.global().getMemoryManager("OnHeap");
     if (memoryManager != null) {
       long originMemorySize = memoryManager.getTotalAllocatedMemorySizeInBytes();
+      LOGGER.info("[Origin]Total memory size changed from {} to {}", originMemorySize, totalMemory);
       if (totalMemory >= (1 + ratio) * originMemorySize
           || totalMemory <= (1 - ratio) * originMemorySize) {
         LOGGER.info("Total memory size changed from {} to {}", originMemorySize, totalMemory);
