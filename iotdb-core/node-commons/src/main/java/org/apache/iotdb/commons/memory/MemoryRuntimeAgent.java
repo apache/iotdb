@@ -43,7 +43,7 @@ public class MemoryRuntimeAgent implements IService {
       new MemoryPeriodicalJobExecutor(
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
               ThreadName.MEMORY_PERIODICAL_JOB_EXECUTOR.getName()),
-          20);
+          MEMORY_CHECK_INTERVAL_IN_S);
 
   @Override
   public void start() throws StartupException {

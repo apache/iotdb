@@ -578,8 +578,8 @@ public class MemoryManager {
       }
       if (higherMemoryManager != null && !higherMemoryManager.equals(lowerMemoryManager)) {
         // transfer
-        long transferSize = higherMemoryManager.shrink();
-        lowerMemoryManager.expandTotalMemorySizeInBytes(transferSize);
+        long transferSize = lowerMemoryManager.shrink();
+        higherMemoryManager.expandTotalMemorySizeInBytes(transferSize);
         LOGGER.info(
             "Transfer Memory Size {} from {} to {}",
             transferSize,
