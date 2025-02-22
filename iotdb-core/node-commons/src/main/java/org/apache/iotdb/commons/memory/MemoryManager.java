@@ -504,10 +504,11 @@ public class MemoryManager {
         new MemoryManager("GlobalMemoryManager", null, Runtime.getRuntime().totalMemory());
 
     static {
+      LOGGER.info(
+          "{} Enable automatic memory transfer with an interval of {} s",
+          ENABLE_MEMORY_TRANSFER,
+          MEMORY_CHECK_INTERVAL_IN_S);
       if (ENABLE_MEMORY_TRANSFER) {
-        LOGGER.info(
-            "Enable automatic memory transfer with an interval of {} s",
-            MEMORY_CHECK_INTERVAL_IN_S);
         MemoryRuntimeAgent.getInstance()
             .registerPeriodicalJob(
                 "GlobalMemoryManager#updateAllocate()",

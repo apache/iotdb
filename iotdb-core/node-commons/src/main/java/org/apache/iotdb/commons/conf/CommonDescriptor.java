@@ -259,12 +259,10 @@ public class CommonDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "enable_memory_transfer", Boolean.toString(config.isEnableMemoryTransfer()))));
-    LOGGER.error("Memory transfer enabled: {}", config.isEnableMemoryTransfer());
     config.setMemoryCheckIntervalInS(
         Integer.parseInt(
             properties.getProperty(
                 "memory_check_interval", String.valueOf(config.getMemoryCheckIntervalInS()))));
-    LOGGER.error("Memory check interval: {}", config.getMemoryCheckIntervalInS());
   }
 
   private void loadPipeProps(TrimProperties properties) {
