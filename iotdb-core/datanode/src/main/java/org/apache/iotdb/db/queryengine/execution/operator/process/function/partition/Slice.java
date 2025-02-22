@@ -38,21 +38,25 @@ public class Slice {
   private final int startIndex;
   private final int endIndex;
   private final Column[] requiredColumns;
-  private final Column[] originalColumns;
+  private final Column[] passThroughColumns;
   private final List<Type> dataTypes;
 
   public Slice(
       int startIndex,
       int endIndex,
       Column[] columns,
-      int[] requiredChannels,
+      List<Integer> requiredChannels,
+      List<Integer> passThroughChannels,
       List<Type> dataTypes) {
     this.startIndex = startIndex;
     this.endIndex = endIndex;
-    this.originalColumns = columns;
-    this.requiredColumns = new Column[requiredChannels.length];
-    for (int i = 0; i < requiredChannels.length; i++) {
-      requiredColumns[i] = columns[requiredChannels[i]];
+    this.requiredColumns = new Column[requiredChannels.size()];
+    for (int i = 0; i < requiredChannels.size(); i++) {
+      requiredColumns[i] = columns[requiredChannels.get(i)];
+    }
+    this.passThroughColumns = new Column[passThroughChannels.size()];
+    for (int i = 0; i < passThroughChannels.size(); i++) {
+      passThroughColumns[i] = columns[passThroughChannels.get(i)];
     }
     this.dataTypes = dataTypes;
   }
@@ -61,8 +65,8 @@ public class Slice {
     return endIndex - startIndex;
   }
 
-  public Record getOriginalRecord(int offset) {
-    return getRecord(startIndex + offset, originalColumns);
+  public Record getPassThroughRecord(int offset) {
+    return getRecord(startIndex + offset, passThroughColumns);
   }
 
   public Iterator<Record> getRequiredRecordIterator() {

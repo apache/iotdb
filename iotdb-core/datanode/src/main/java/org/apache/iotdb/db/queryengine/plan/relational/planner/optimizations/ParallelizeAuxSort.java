@@ -67,13 +67,6 @@ public class ParallelizeAuxSort implements PlanOptimizer {
     //        return plan.accept(new Rewriter(context.getAnalysis()), new Context());
   }
 
-  private void print(PlanNode node) {
-    PlanGraphPrinter.print(node);
-    for (PlanNode child : node.getChildren()) {
-      print(child);
-    }
-  }
-
   private static class Rewriter extends PlanVisitor<PlanNode, Context> {
     private final Analysis analysis;
 

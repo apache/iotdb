@@ -97,7 +97,7 @@ public class ConfigNodeConfig {
 
   /** The policy of extension DataRegionGroup for each Database. */
   private RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy =
-      RegionGroupExtensionPolicy.AUTO;
+      RegionGroupExtensionPolicy.CUSTOM;
 
   /**
    * When set data_region_group_extension_policy=CUSTOM, this parameter is the default number of
@@ -110,7 +110,7 @@ public class ConfigNodeConfig {
    * The maximum number of DataRegions expected to be managed by each DataNode. Set to 0 means that
    * each dataNode automatically has the number of CPU cores / 2 regions.
    */
-  private int dataRegionPerDataNode = 0;
+  private int dataRegionPerDataNode = 1;
 
   /** each dataNode automatically has the number of CPU cores / 2 regions. */
   private double dataRegionPerDataNodeProportion = 0.5;
