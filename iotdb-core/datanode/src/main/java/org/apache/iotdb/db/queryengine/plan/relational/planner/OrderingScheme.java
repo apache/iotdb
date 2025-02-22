@@ -53,6 +53,18 @@ public class OrderingScheme {
     this.orderings = ImmutableMap.copyOf(orderings);
   }
 
+  public static OrderingScheme combine(OrderingScheme a, OrderingScheme b) {
+    List<Symbol> orderBy = new ArrayList<>(a.orderBy);
+    Map<Symbol, SortOrder> orderings = new HashMap<>(a.orderings);
+    for (Symbol symbol : b.orderBy) {
+      if (!orderings.containsKey(symbol)) {
+        orderBy.add(symbol);
+        orderings.put(symbol, b.orderings.get(symbol));
+      }
+    }
+    return new OrderingScheme(orderBy, orderings);
+  }
+
   public List<Symbol> getOrderBy() {
     return orderBy;
   }

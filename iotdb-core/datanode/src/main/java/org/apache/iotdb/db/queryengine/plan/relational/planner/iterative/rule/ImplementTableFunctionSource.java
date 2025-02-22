@@ -24,16 +24,19 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AuxSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -125,26 +128,30 @@ public class ImplementTableFunctionSource implements Rule<TableFunctionNode> {
           .getDataOrganizationSpecification()
           .ifPresent(
               dataOrganizationSpecification -> {
-                ImmutableList.Builder<Symbol> orderBy = ImmutableList.builder();
-                ImmutableMap.Builder<Symbol, SortOrder> orderings = ImmutableMap.builder();
+                List<Symbol> sortSymbols = new ArrayList<>();
+                Map<Symbol, SortOrder> sortOrderings = new HashMap<>();
                 for (Symbol symbol : dataOrganizationSpecification.getPartitionBy()) {
-                  orderBy.add(symbol);
-                  orderings.put(symbol, ASC_NULLS_LAST);
+                  sortSymbols.add(symbol);
+                  sortOrderings.put(symbol, ASC_NULLS_LAST);
                 }
+                int sortKeyOffset = sortSymbols.size();
                 dataOrganizationSpecification
                     .getOrderingScheme()
                     .ifPresent(
                         orderingScheme -> {
-                          orderBy.addAll(orderingScheme.getOrderBy());
-                          orderings.putAll(orderingScheme.getOrderings());
+                          for (Symbol symbol : orderingScheme.getOrderBy()) {
+                            if (!sortOrderings.containsKey(symbol)) {
+                              sortSymbols.add(symbol);
+                              sortOrderings.put(symbol, orderingScheme.getOrdering(symbol));
+                            }
+                          }
                         });
                 child.set(
-                    new SortNode(
+                    new AuxSortNode(
                         context.getIdAllocator().genPlanNodeId(),
                         child.get(),
-                        new OrderingScheme(orderBy.build(), orderings.build()),
-                        false,
-                        false));
+                        new OrderingScheme(sortSymbols, sortOrderings),
+                        sortKeyOffset));
               });
       return Result.ofPlanNode(
           new TableFunctionProcessorNode(

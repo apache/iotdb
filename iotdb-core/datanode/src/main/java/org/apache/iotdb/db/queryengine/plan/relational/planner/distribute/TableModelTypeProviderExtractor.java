@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AuxSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
@@ -199,6 +200,12 @@ public class TableModelTypeProviderExtractor {
 
     @Override
     public Void visitStreamSort(StreamSortNode node, Void context) {
+      node.getChild().accept(this, context);
+      return null;
+    }
+
+    @Override
+    public Void visitAuxSort(AuxSortNode node, Void context) {
       node.getChild().accept(this, context);
       return null;
     }

@@ -260,7 +260,8 @@ public class LogicalOptimizeFactory {
         new IterativeOptimizer(
             plannerContext,
             ruleStats,
-            ImmutableSet.of(new MergeLimitWithSort(), new MergeLimitOverProjectWithSort())));
+            ImmutableSet.of(new MergeLimitWithSort(), new MergeLimitOverProjectWithSort())),
+        new ParallelizeAuxSort());
 
     this.planOptimizers = optimizerBuilder.build();
   }

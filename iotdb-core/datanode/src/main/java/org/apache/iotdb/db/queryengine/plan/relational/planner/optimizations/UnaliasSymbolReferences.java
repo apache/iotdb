@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AuxSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
@@ -420,6 +421,26 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               newOrderingScheme,
               node.isPartial(),
               node.isOrderByAllIdsAndTime()),
+          mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitAuxSort(AuxSortNode node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+      Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      OrderingScheme newOrderingScheme = mapper.map(node.getOrderingScheme());
+
+      return new PlanAndMappings(
+          new AuxSortNode(
+              node.getPlanNodeId(),
+              rewrittenSource.getRoot(),
+              newOrderingScheme,
+              node.isPartial(),
+              node.isOrderByAllIdsAndTime(),
+              node.isEnableParalleled(),
+              node.getPartitionKeyCount()),
           mapping);
     }
 

@@ -67,6 +67,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewInt
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AuxSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
@@ -923,6 +924,16 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("OrderingScheme: %s", node.getOrderingScheme()));
     boxValue.add(String.format("StreamCompareKeyEndIndex: %s", node.getStreamCompareKeyEndIndex()));
     boxValue.add(String.format("OrderByAllIdsAndTime: %s", node.isOrderByAllIdsAndTime()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitAuxSort(AuxSortNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("AuxSort-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("EnableParalleled: %s", node.isEnableParalleled()));
+    boxValue.add(String.format("PartitionKeyCount: %s", node.getPartitionKeyCount()));
+    boxValue.add(String.format("OrderingScheme: %s", node.getOrderingScheme()));
     return render(node, boxValue, context);
   }
 

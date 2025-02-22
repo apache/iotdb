@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GapFillStartAndEndTimeExtractVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AuxSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -821,8 +822,11 @@ public class QueryPlanner {
     OrderingScheme orderingScheme = new OrderingScheme(orderBySymbols.build(), orderings);
     analysis.setSortNode(true);
     return subPlan.withNewRoot(
-        new SortNode(
-            queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), orderingScheme, false, false));
+        new AuxSortNode(
+            queryIdAllocator.genPlanNodeId(),
+            subPlan.getRoot(),
+            orderingScheme,
+            groupingKeys.size()));
   }
 
   private PlanBuilder distinct(

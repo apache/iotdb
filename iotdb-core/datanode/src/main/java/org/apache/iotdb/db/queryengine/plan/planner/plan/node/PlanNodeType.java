@@ -117,6 +117,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AuxSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
@@ -296,6 +297,7 @@ public enum PlanNodeType {
   MARK_DISTINCT_NODE((short) 1026),
   TABLE_FUNCTION_NODE((short) 1027),
   TABLE_FUNCTION_PROCESSOR_NODE((short) 1028),
+  TABLE_AUX_SORT_NODE((short) 1029),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -669,6 +671,8 @@ public enum PlanNodeType {
         return TableFunctionNode.deserialize(buffer);
       case 1028:
         return TableFunctionProcessorNode.deserialize(buffer);
+      case 1029:
+        return AuxSortNode.deserialize(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:
