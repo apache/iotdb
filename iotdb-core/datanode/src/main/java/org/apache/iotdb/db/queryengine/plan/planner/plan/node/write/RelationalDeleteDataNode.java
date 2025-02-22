@@ -318,7 +318,9 @@ public class RelationalDeleteDataNode extends AbstractDeleteDataNode {
     if (relationalDeleteDataNodeList.stream()
         .anyMatch(
             relationalDeleteDataNode ->
-                !this.getDatabaseName().equals(relationalDeleteDataNode.getDatabaseName()))) {
+                this.getDatabaseName() != null
+                    && !this.getDatabaseName()
+                        .equals(relationalDeleteDataNode.getDatabaseName()))) {
       throw new IllegalArgumentException("All database name need to be same");
     }
     List<TableDeletionEntry> allTableDeletionEntries =

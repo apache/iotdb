@@ -93,7 +93,9 @@ public class ConfigExecution implements IQueryExecution {
                   TSStatusCode.ROLE_NOT_EXIST.getStatusCode(),
                   TSStatusCode.USER_ALREADY_HAS_ROLE.getStatusCode(),
                   TSStatusCode.USER_NOT_HAS_ROLE.getStatusCode(),
-                  TSStatusCode.NOT_HAS_PRIVILEGE_GRANTOPT.getStatusCode())));
+                  TSStatusCode.NOT_HAS_PRIVILEGE_GRANTOPT.getStatusCode(),
+                  TSStatusCode.SEMANTIC_ERROR.getStatusCode(),
+                  TSStatusCode.NO_SUCH_QUERY.getStatusCode())));
 
   private final MPPQueryContext context;
   private final ExecutorService executor;
@@ -307,5 +309,10 @@ public class ConfigExecution implements IQueryExecution {
   @Override
   public IClientSession.SqlDialect getSQLDialect() {
     return context.getSession().getSqlDialect();
+  }
+
+  @Override
+  public String getUser() {
+    return context.getSession().getUserName();
   }
 }

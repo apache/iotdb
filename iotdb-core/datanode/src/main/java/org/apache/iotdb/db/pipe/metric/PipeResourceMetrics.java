@@ -35,6 +35,10 @@ public class PipeResourceMetrics implements IMetricSet {
 
   private static final String PIPE_USED_MEMORY = "PipeUsedMemory";
 
+  private static final String PIPE_TABLET_USED_MEMORY = "PipeTabletUsedMemory";
+
+  private static final String PIPE_TS_FILE_USED_MEMORY = "PipeTsFileUsedMemory";
+
   private static final String PIPE_TOTAL_MEMORY = "PipeTotalMemory";
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
@@ -53,6 +57,20 @@ public class PipeResourceMetrics implements IMetricSet {
         Metric.PIPE_MEM.toString(),
         MetricLevel.IMPORTANT,
         PipeDataNodeResourceManager.memory(),
+        PipeMemoryManager::getUsedMemorySizeInBytesOfTablets,
+        Tag.NAME.toString(),
+        PIPE_TABLET_USED_MEMORY);
+    metricService.createAutoGauge(
+        Metric.PIPE_MEM.toString(),
+        MetricLevel.IMPORTANT,
+        PipeDataNodeResourceManager.memory(),
+        PipeMemoryManager::getUsedMemorySizeInBytesOfTsFiles,
+        Tag.NAME.toString(),
+        PIPE_TS_FILE_USED_MEMORY);
+    metricService.createAutoGauge(
+        Metric.PIPE_MEM.toString(),
+        MetricLevel.IMPORTANT,
+        PipeDataNodeResourceManager.memory(),
         PipeMemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         PIPE_TOTAL_MEMORY);
@@ -67,6 +85,11 @@ public class PipeResourceMetrics implements IMetricSet {
         MetricLevel.IMPORTANT,
         PipeDataNodeResourceManager.tsfile(),
         PipeTsFileResourceManager::getLinkedTsfileCount);
+    metricService.createAutoGauge(
+        Metric.PIPE_LINKED_TSFILE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        PipeDataNodeResourceManager.tsfile(),
+        PipeTsFileResourceManager::getTotalLinkedTsfileSize);
     // phantom reference count
     metricService.createAutoGauge(
         Metric.PIPE_PHANTOM_REFERENCE_COUNT.toString(),
@@ -81,10 +104,21 @@ public class PipeResourceMetrics implements IMetricSet {
     metricService.remove(
         MetricType.AUTO_GAUGE, Metric.PIPE_MEM.toString(), Tag.NAME.toString(), PIPE_USED_MEMORY);
     metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_MEM.toString(),
+        Tag.NAME.toString(),
+        PIPE_TABLET_USED_MEMORY);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_MEM.toString(),
+        Tag.NAME.toString(),
+        PIPE_TS_FILE_USED_MEMORY);
+    metricService.remove(
         MetricType.AUTO_GAUGE, Metric.PIPE_MEM.toString(), Tag.NAME.toString(), PIPE_TOTAL_MEMORY);
     // resource reference count
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_PINNED_MEMTABLE_COUNT.toString());
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_LINKED_TSFILE_COUNT.toString());
+    metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_LINKED_TSFILE_SIZE.toString());
     // phantom reference count
     metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_PHANTOM_REFERENCE_COUNT.toString());
   }

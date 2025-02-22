@@ -225,6 +225,10 @@
             <artifactId>jcip-annotations</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.fusesource.mqtt-client</groupId>
+            <artifactId>mqtt-client</artifactId>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
@@ -445,7 +449,7 @@
             </activation>
             <properties>
                 <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>
-                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT1,org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema,org.apache.iotdb.itbase.category.MultiClusterIT2ManualCreateSchema,org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionArchVerification,org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionConsumer,org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionMisc,org.apache.iotdb.itbase.category.MultiClusterIT3,org.apache.iotdb.itbase.category.MultiClusterIT2TableModel</integrationTest.includedGroups>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT1,org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoBasic,org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoEnhanced,org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeManual,org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionArchVerification,org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionConsumer,org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionMisc,org.apache.iotdb.itbase.category.MultiClusterIT3,org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic,org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualEnhanced</integrationTest.includedGroups>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
                 <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
@@ -467,13 +471,13 @@
             </properties>
         </profile>
         <profile>
-            <id>MultiClusterIT2AutoCreateSchema</id>
+            <id>MultiClusterIT2DualTreeAutoBasic</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
                 <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>
-                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema</integrationTest.includedGroups>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoBasic</integrationTest.includedGroups>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
                 <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
@@ -481,13 +485,13 @@
             </properties>
         </profile>
         <profile>
-            <id>MultiClusterIT2ManualCreateSchema</id>
+            <id>MultiClusterIT2DualTreeAutoEnhanced</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
                 <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>
-                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2ManualCreateSchema</integrationTest.includedGroups>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoEnhanced</integrationTest.includedGroups>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
                 <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
@@ -495,13 +499,41 @@
             </properties>
         </profile>
         <profile>
-            <id>MultiClusterIT2TableModel</id>
+            <id>MultiClusterIT2DualTableManualBasic</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
                 <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>
-                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2TableModel</integrationTest.includedGroups>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic</integrationTest.includedGroups>
+                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
+                <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
+            </properties>
+        </profile>
+        <profile>
+            <id>MultiClusterIT2DualTableManualEnhanced</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualEnhanced</integrationTest.includedGroups>
+                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
+                <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
+            </properties>
+        </profile>
+        <profile>
+            <id>MultiClusterIT2DualTreeManual</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <integrationTest.excludedGroups>org.apache.iotdb.itbase.category.ManualIT</integrationTest.excludedGroups>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeManual</integrationTest.includedGroups>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
                 <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
                 <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
