@@ -261,7 +261,7 @@ public class LogicalOptimizeFactory {
             plannerContext,
             ruleStats,
             ImmutableSet.of(new MergeLimitWithSort(), new MergeLimitOverProjectWithSort())),
-        new ParallelizeAuxSort());
+        new ParallelizeGrouping());
 
     this.planOptimizers = optimizerBuilder.build();
   }

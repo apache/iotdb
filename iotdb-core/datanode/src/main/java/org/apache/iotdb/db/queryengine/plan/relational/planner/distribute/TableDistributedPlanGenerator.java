@@ -43,7 +43,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AuxSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
@@ -60,6 +59,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortBasedGroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
@@ -190,8 +190,8 @@ public class TableDistributedPlanGenerator
       context.clearExpectedOrderingScheme();
     }
     boolean parallel =
-        (node.getChild() instanceof AuxSortNode)
-            && ((AuxSortNode) node.getChild()).isEnableParalleled();
+        (node.getChild() instanceof SortBasedGroupNode)
+            && ((SortBasedGroupNode) node.getChild()).isEnableParalleled();
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
     if (childOrdering != null) {
@@ -315,7 +315,7 @@ public class TableDistributedPlanGenerator
   }
 
   @Override
-  public List<PlanNode> visitAuxSort(AuxSortNode node, PlanContext context) {
+  public List<PlanNode> visitSortBasedGroup(SortBasedGroupNode node, PlanContext context) {
     boolean pushDown = context.pushDownAuxSort;
     try {
       context.setPushDownAuxSort(node.isEnableParalleled());
@@ -973,14 +973,15 @@ public class TableDistributedPlanGenerator
     if (node.getChildren().isEmpty()) {
       return Collections.singletonList(node);
     }
-    boolean parallel =
-        (node.getChild() instanceof AuxSortNode)
-            && ((AuxSortNode) node.getChild()).isEnableParalleled();
+    boolean canSplitPushDown =
+        node.isRowSemantic()
+            || (node.getChild() instanceof SortBasedGroupNode)
+                && ((SortBasedGroupNode) node.getChild()).isEnableParalleled();
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     if (childrenNodes.size() == 1) {
       node.setChild(childrenNodes.get(0));
       return Collections.singletonList(node);
-    } else if (!parallel) {
+    } else if (!canSplitPushDown) {
       CollectNode collectNode =
           new CollectNode(queryId.genPlanNodeId(), node.getChildren().get(0).getOutputSymbols());
       childrenNodes.forEach(collectNode::addChild);

@@ -22,18 +22,21 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.DataOrganizationSpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -119,6 +122,22 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
         }
       }
       return ImmutableList.of();
+    }
+
+    @Override
+    public List<Symbol> visitTableFunctionProcessor(
+        TableFunctionProcessorNode node, GroupContext context) {
+      if (node.getChildren().isEmpty()) {
+        // leaf node
+        return ImmutableList.of();
+      }
+      Optional<DataOrganizationSpecification> dataOrganizationSpecification =
+          node.getDataOrganizationSpecification();
+      return dataOrganizationSpecification
+          .<List<Symbol>>map(
+              organizationSpecification ->
+                  ImmutableList.copyOf(organizationSpecification.getPartitionBy()))
+          .orElseGet(ImmutableList::of);
     }
 
     @Override

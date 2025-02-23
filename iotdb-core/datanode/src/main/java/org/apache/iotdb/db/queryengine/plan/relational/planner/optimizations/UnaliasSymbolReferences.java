@@ -32,7 +32,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AuxSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
@@ -49,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortBasedGroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
@@ -425,7 +425,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
     }
 
     @Override
-    public PlanAndMappings visitAuxSort(AuxSortNode node, UnaliasContext context) {
+    public PlanAndMappings visitSortBasedGroup(SortBasedGroupNode node, UnaliasContext context) {
       PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
       Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
       SymbolMapper mapper = symbolMapper(mapping);
@@ -433,7 +433,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
       OrderingScheme newOrderingScheme = mapper.map(node.getOrderingScheme());
 
       return new PlanAndMappings(
-          new AuxSortNode(
+          new SortBasedGroupNode(
               node.getPlanNodeId(),
               rewrittenSource.getRoot(),
               newOrderingScheme,
@@ -872,6 +872,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
                 Optional.empty(),
                 ImmutableList.of(),
                 Optional.empty(),
+                false,
                 node.getArguments()),
             mapping);
       }
@@ -908,6 +909,7 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               newPassThroughSpecification,
               newRequiredSymbols,
               newSpecification,
+              node.isRowSemantic(),
               node.getArguments());
 
       return new PlanAndMappings(rewrittenTableFunctionProcessor, mapping);
