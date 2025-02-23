@@ -186,6 +186,9 @@ public class TableFunctionOperator implements ProcessOperator {
       // if there is no proper column, use pass through column's position count
       positionCount = passThroughIndexBuilder.getPositionCount();
     }
+    if (positionCount == 0) {
+      return null;
+    }
     blockBuilder.declarePositions(positionCount);
     if (needPassThrough) {
       // handle pass through column only if needed
