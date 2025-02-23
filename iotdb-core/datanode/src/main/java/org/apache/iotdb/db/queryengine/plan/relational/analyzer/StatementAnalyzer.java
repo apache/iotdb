@@ -3295,7 +3295,6 @@ public class StatementAnalyzer {
 
       ImmutableMap.Builder<String, Argument> passedArguments = ImmutableMap.builder();
       ImmutableList.Builder<TableArgumentAnalysis> tableArgumentAnalyses = ImmutableList.builder();
-      // TODO(UDF): args passed positionally - can one only pass some prefix of args?
       if (argumentsPassedByName) {
         Map<String, ParameterSpecification> argumentSpecificationsByName = new HashMap<>();
         for (ParameterSpecification parameterSpecification : parameterSpecifications) {

@@ -156,7 +156,7 @@ public class ImplementTableFunctionSource implements Rule<TableFunctionNode> {
               sourceProperties.getDataOrganizationSpecification(),
               node.getArguments()));
     } else {
-      // TODO(UDF): we dont support multiple source now.
+      // we don't support multiple source now.
       throw new IllegalArgumentException("table function does not support multiple source now.");
     }
   }

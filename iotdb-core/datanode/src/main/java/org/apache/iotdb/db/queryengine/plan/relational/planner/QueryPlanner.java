@@ -695,7 +695,6 @@ public class QueryPlanner {
       @Nonnull Expression wherePredicate) {
     Symbol gapFillColumnSymbol = subPlan.translate(gapFillColumn);
     List<Symbol> groupingKeys = new ArrayList<>(gapFillGroupingKeys.size());
-    // TODO(UDF): 类似这里添加 sort node
     subPlan = fillGroup(subPlan, gapFillGroupingKeys, groupingKeys, gapFillColumnSymbol);
 
     int monthDuration = (int) ((LongLiteral) gapFillColumn.getChildren().get(0)).getParsedValue();
