@@ -839,7 +839,6 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
             new TableFunctionNode.TableArgumentProperties(
                 properties.getArgumentName(),
                 properties.isRowSemantics(),
-                properties.isPruneWhenEmpty(),
                 newPassThroughSpecification,
                 inputMapper.map(properties.getRequiredColumns()),
                 newSpecification));
@@ -868,7 +867,6 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
                 node.getName(),
                 mapper.map(node.getProperOutputs()),
                 Optional.empty(),
-                node.isPruneWhenEmpty(),
                 Optional.empty(),
                 ImmutableList.of(),
                 Optional.empty(),
@@ -905,7 +903,6 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               node.getName(),
               mapper.map(node.getProperOutputs()),
               Optional.of(rewrittenSource.getRoot()),
-              node.isPruneWhenEmpty(),
               newPassThroughSpecification,
               newRequiredSymbols,
               newSpecification,

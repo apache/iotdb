@@ -288,11 +288,6 @@ public class TableFunctionOperatorTest {
     }
   }
 
-  @Test
-  public void testConstructResult() {
-    // TODO(UDF)
-  }
-
   private void checkIteratorSimply(Slice slice, List<List<Object>> expected) {
     Iterator<Record> recordIterable = slice.getRequiredRecordIterator();
     int i = 0;

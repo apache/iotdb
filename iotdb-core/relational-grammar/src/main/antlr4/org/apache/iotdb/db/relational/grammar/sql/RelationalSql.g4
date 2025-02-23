@@ -893,7 +893,6 @@ tableFunctionArgument
 tableArgument
     : tableArgumentRelation
         (PARTITION BY ('(' (expression (',' expression)*)? ')' | expression))?
-        (PRUNE WHEN EMPTY | KEEP WHEN EMPTY)?
         (ORDER BY ('(' sortItem (',' sortItem)* ')' | sortItem))?
     ;
 

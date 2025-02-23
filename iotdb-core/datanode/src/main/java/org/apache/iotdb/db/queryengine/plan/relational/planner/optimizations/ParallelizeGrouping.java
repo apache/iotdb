@@ -32,7 +32,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationT
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortBasedGroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
@@ -202,20 +201,6 @@ public class ParallelizeGrouping implements PlanOptimizer {
           context.canParalleled = UNABLE;
         } else {
           checkPrefixMatch(context, dataOrganizationSpecification.get().getPartitionBy());
-        }
-      }
-      return visitPlan(node, context);
-    }
-
-    @Override
-    public PlanNode visitProject(ProjectNode node, Context context) {
-      if (!context.canSkip()) {
-        OrderingScheme sortKey = context.sortKey;
-        for (int i = 0; i < sortKey.getOrderBy().size(); i++) {
-          if (!node.getAssignments().contains(sortKey.getOrderBy().get(i))) {
-            context.canParalleled = UNABLE;
-            break;
-          }
         }
       }
       return visitPlan(node, context);

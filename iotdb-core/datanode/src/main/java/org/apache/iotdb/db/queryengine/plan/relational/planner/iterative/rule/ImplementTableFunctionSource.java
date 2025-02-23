@@ -48,45 +48,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.
  *
  * <p>It rewrites TableFunctionNode with potentially many sources into a TableFunctionProcessorNode.
  * The new node has one source being a combination of the original sources.
- *
- * <p>The original sources are combined with joins. The join conditions depend on the prune when
- * empty property, and on the co-partitioning of sources.
- *
- * <p>The resulting source should be partitioned and ordered according to combined schemas from the
- * component sources.
- *
- * <p>Example transformation for two sources, both with set semantics and KEEP WHEN EMPTY property:
- *
- * <pre>{@code
- * - TableFunction foo
- *      - source T1(a1, b1) PARTITION BY a1 ORDER BY b1
- *      - source T2(a2, b2) PARTITION BY a2
- * }</pre>
- *
- * Is transformed into:
- *
- * <pre>{@code
- * - TableFunctionProcessor foo
- *      PARTITION BY (a1, a2), ORDER BY combined_row_number
- *      - Project
- *          marker_1 <= IF(table1_row_number = combined_row_number, table1_row_number, CAST(null AS bigint))
- *          marker_2 <= IF(table2_row_number = combined_row_number, table2_row_number, CAST(null AS bigint))
- *          - Project
- *              combined_row_number <= IF(COALESCE(table1_row_number, BIGINT '-1') > COALESCE(table2_row_number, BIGINT '-1'), table1_row_number, table2_row_number)
- *              combined_partition_size <= IF(COALESCE(table1_partition_size, BIGINT '-1') > COALESCE(table2_partition_size, BIGINT '-1'), table1_partition_size, table2_partition_size)
- *              - FULL Join
- *                  [table1_row_number = table2_row_number OR
- *                   table1_row_number > table2_partition_size AND table2_row_number = BIGINT '1' OR
- *                   table2_row_number > table1_partition_size AND table1_row_number = BIGINT '1']
- *                  - Window [PARTITION BY a1 ORDER BY b1]
- *                      table1_row_number <= row_number()
- *                      table1_partition_size <= count()
- *                          - source T1(a1, b1)
- *                  - Window [PARTITION BY a2]
- *                      table2_row_number <= row_number()
- *                      table2_partition_size <= count()
- *                          - source T2(a2, b2)
- * }</pre>
  */
 public class ImplementTableFunctionSource implements Rule<TableFunctionNode> {
 
@@ -108,7 +69,6 @@ public class ImplementTableFunctionSource implements Rule<TableFunctionNode> {
               node.getName(),
               node.getProperOutputs(),
               Optional.empty(),
-              false,
               Optional.empty(),
               ImmutableList.of(),
               Optional.empty(),
@@ -160,14 +120,13 @@ public class ImplementTableFunctionSource implements Rule<TableFunctionNode> {
               node.getName(),
               node.getProperOutputs(),
               Optional.of(child.get()),
-              sourceProperties.isPruneWhenEmpty(),
               Optional.ofNullable(sourceProperties.getPassThroughSpecification()),
               sourceProperties.getRequiredColumns(),
               sourceProperties.getDataOrganizationSpecification(),
               sourceProperties.isRowSemantics(),
               node.getArguments()));
     } else {
-      // TODO(UDF): we dont support multiple source now.
+      // we don't support multiple source now.
       throw new IllegalArgumentException("table function does not support multiple source now.");
     }
   }

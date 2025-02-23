@@ -316,9 +316,9 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitSortBasedGroup(SortBasedGroupNode node, PlanContext context) {
-    boolean pushDown = context.pushDownAuxSort;
+    boolean pushDown = context.isPushDownGrouping();
     try {
-      context.setPushDownAuxSort(node.isEnableParalleled());
+      context.setPushDownGrouping(node.isEnableParalleled());
       if (node.isEnableParalleled()) {
         List<PlanNode> result = new ArrayList<>();
         context.setExpectedOrderingScheme(node.getOrderingScheme());
@@ -340,7 +340,7 @@ public class TableDistributedPlanGenerator
         return visitSort(node, context);
       }
     } finally {
-      context.pushDownAuxSort = pushDown;
+      context.setPushDownGrouping(pushDown);
     }
   }
 
@@ -515,7 +515,7 @@ public class TableDistributedPlanGenerator
 
   public List<PlanNode> visitDeviceTableScan(
       final DeviceTableScanNode node, final PlanContext context) {
-    if (context.isPushDownAuxSort()) {
+    if (context.isPushDownGrouping()) {
       return constructDeviceTableScanByTags(node, context);
     } else {
       return constructDeviceTableScanByRegionReplicaSet(node, context);
@@ -973,22 +973,28 @@ public class TableDistributedPlanGenerator
     if (node.getChildren().isEmpty()) {
       return Collections.singletonList(node);
     }
-    boolean canSplitPushDown =
-        node.isRowSemantic()
-            || (node.getChild() instanceof SortBasedGroupNode)
-                && ((SortBasedGroupNode) node.getChild()).isEnableParalleled();
-    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
-    if (childrenNodes.size() == 1) {
-      node.setChild(childrenNodes.get(0));
-      return Collections.singletonList(node);
-    } else if (!canSplitPushDown) {
-      CollectNode collectNode =
-          new CollectNode(queryId.genPlanNodeId(), node.getChildren().get(0).getOutputSymbols());
-      childrenNodes.forEach(collectNode::addChild);
-      node.setChild(collectNode);
-      return Collections.singletonList(node);
-    } else {
-      return splitForEachChild(node, childrenNodes);
+    boolean pushDown = context.isPushDownGrouping();
+    try {
+      context.setPushDownGrouping(node.isRowSemantic());
+      boolean canSplitPushDown =
+          node.isRowSemantic()
+              || (node.getChild() instanceof SortBasedGroupNode)
+                  && ((SortBasedGroupNode) node.getChild()).isEnableParalleled();
+      List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+      if (childrenNodes.size() == 1) {
+        node.setChild(childrenNodes.get(0));
+        return Collections.singletonList(node);
+      } else if (!canSplitPushDown) {
+        CollectNode collectNode =
+            new CollectNode(queryId.genPlanNodeId(), node.getChildren().get(0).getOutputSymbols());
+        childrenNodes.forEach(collectNode::addChild);
+        node.setChild(collectNode);
+        return Collections.singletonList(node);
+      } else {
+        return splitForEachChild(node, childrenNodes);
+      }
+    } finally {
+      context.setPushDownGrouping(pushDown);
     }
   }
 
@@ -1388,7 +1394,7 @@ public class TableDistributedPlanGenerator
     final Map<PlanNodeId, NodeDistribution> nodeDistributionMap;
     boolean hasExchangeNode = false;
     boolean hasSortProperty = false;
-    boolean pushDownAuxSort = false;
+    boolean pushDownGrouping = false;
     OrderingScheme expectedOrderingScheme;
     TRegionReplicaSet mostUsedRegion;
 
@@ -1410,12 +1416,12 @@ public class TableDistributedPlanGenerator
       hasSortProperty = true;
     }
 
-    public void setPushDownAuxSort(boolean pushDownAuxSort) {
-      this.pushDownAuxSort = pushDownAuxSort;
+    public void setPushDownGrouping(boolean pushDownGrouping) {
+      this.pushDownGrouping = pushDownGrouping;
     }
 
-    public boolean isPushDownAuxSort() {
-      return pushDownAuxSort;
+    public boolean isPushDownGrouping() {
+      return pushDownGrouping;
     }
   }
 }

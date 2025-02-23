@@ -39,6 +39,7 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 
 public class OrderingScheme {
+
   private final List<Symbol> orderBy;
   private final Map<Symbol, SortOrder> orderings;
 
@@ -51,18 +52,6 @@ public class OrderingScheme {
         "orderBy keys and orderings don't match");
     this.orderBy = ImmutableList.copyOf(orderBy);
     this.orderings = ImmutableMap.copyOf(orderings);
-  }
-
-  public static OrderingScheme combine(OrderingScheme a, OrderingScheme b) {
-    List<Symbol> orderBy = new ArrayList<>(a.orderBy);
-    Map<Symbol, SortOrder> orderings = new HashMap<>(a.orderings);
-    for (Symbol symbol : b.orderBy) {
-      if (!orderings.containsKey(symbol)) {
-        orderBy.add(symbol);
-        orderings.put(symbol, b.orderings.get(symbol));
-      }
-    }
-    return new OrderingScheme(orderBy, orderings);
   }
 
   public List<Symbol> getOrderBy() {

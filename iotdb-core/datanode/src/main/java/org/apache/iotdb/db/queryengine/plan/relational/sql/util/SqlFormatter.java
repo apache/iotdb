@@ -1522,12 +1522,6 @@ public final class SqlFormatter {
                     .map(SqlFormatter::formatExpression)
                     .collect(joining(", ")));
       }
-      node.getEmptyTableTreatment()
-          .ifPresent(
-              treatment -> {
-                builder.append("\n");
-                append(indent, treatment.getTreatment().name() + " WHEN EMPTY");
-              });
       node.getOrderBy()
           .ifPresent(
               orderBy -> {

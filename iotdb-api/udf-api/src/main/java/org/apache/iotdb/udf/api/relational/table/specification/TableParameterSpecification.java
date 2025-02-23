@@ -24,25 +24,18 @@ import java.util.Optional;
 public class TableParameterSpecification extends ParameterSpecification {
   // set semantics or row semantics (default is set semantics)
   private final boolean rowSemantics;
-  // prune when empty or keep when empty (default is keep when empty)
-  private final boolean pruneWhenEmpty;
   private final boolean passThroughColumns;
 
   private TableParameterSpecification(
-      String name, boolean rowSemantics, boolean pruneWhenEmpty, boolean passThroughColumns) {
+      String name, boolean rowSemantics, boolean passThroughColumns) {
     // table arguments are always required
     super(name, true, Optional.empty());
     this.rowSemantics = rowSemantics;
-    this.pruneWhenEmpty = pruneWhenEmpty;
     this.passThroughColumns = passThroughColumns;
   }
 
   public boolean isRowSemantics() {
     return rowSemantics;
-  }
-
-  public boolean isPruneWhenEmpty() {
-    return pruneWhenEmpty;
   }
 
   public boolean isPassThroughColumns() {
@@ -56,7 +49,6 @@ public class TableParameterSpecification extends ParameterSpecification {
   public static final class Builder {
     private String name;
     private boolean rowSemantics;
-    private boolean pruneWhenEmpty;
     private boolean passThroughColumns;
 
     private Builder() {}
@@ -76,19 +68,13 @@ public class TableParameterSpecification extends ParameterSpecification {
       return this;
     }
 
-    public Builder keepWhenEmpty() {
-      this.pruneWhenEmpty = false;
-      return this;
-    }
-
     public Builder passThroughColumns() {
       this.passThroughColumns = true;
       return this;
     }
 
     public TableParameterSpecification build() {
-      return new TableParameterSpecification(
-          name, rowSemantics, pruneWhenEmpty, passThroughColumns);
+      return new TableParameterSpecification(name, rowSemantics, passThroughColumns);
     }
   }
 }

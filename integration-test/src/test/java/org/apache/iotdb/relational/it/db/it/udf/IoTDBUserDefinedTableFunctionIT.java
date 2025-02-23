@@ -135,7 +135,7 @@ public class IoTDBUserDefinedTableFunctionIT {
           "1,1970-01-01T00:00:00.005Z,d1,4,null,",
         };
     tableResultSetEqualTest(
-        "select * from TABLE(repeat1(TABLE(vehicle), 2)) order by time",
+        "select * from TABLE(repeat1(TABLE(vehicle), 2)) order by time,repeat_index",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -180,7 +180,8 @@ public class IoTDBUserDefinedTableFunctionIT {
             + "TABLE(REPEAT(TABLE(select * from TABLE(EXCLUDE(TABLE(vehicle), 's2'))), 3)) a "
             + "JOIN "
             + "TABLE(SPLIT('1,4,6,8,10')) b "
-            + "ON a.s1=CAST(b.output AS INT32)",
+            + "ON a.s1=CAST(b.output AS INT32)"
+            + "ORDER BY time",
         expectedHeader,
         retArray,
         DATABASE_NAME);

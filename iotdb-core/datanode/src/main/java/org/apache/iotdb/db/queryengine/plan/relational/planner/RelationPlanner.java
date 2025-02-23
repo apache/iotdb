@@ -908,7 +908,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           new TableFunctionNode.TableArgumentProperties(
               tableArgument.getArgumentName(),
               tableArgument.isRowSemantics(),
-              tableArgument.isPruneWhenEmpty(),
               new TableFunctionNode.PassThroughSpecification(
                   tableArgument.isPassThroughColumns(), passThroughColumns.build()),
               requiredColumns,

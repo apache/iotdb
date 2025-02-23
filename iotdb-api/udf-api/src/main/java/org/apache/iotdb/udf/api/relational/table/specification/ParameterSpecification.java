@@ -47,7 +47,6 @@ import java.util.Optional;
  *
  * <p>Default values are allowed for all arguments except Table arguments.
  */
-// TODO:函数注册的时候需要检查 name 不重复
 public abstract class ParameterSpecification {
   private final String name;
   private final boolean required;

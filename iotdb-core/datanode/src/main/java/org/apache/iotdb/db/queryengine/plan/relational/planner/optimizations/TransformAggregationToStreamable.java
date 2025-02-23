@@ -128,9 +128,12 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
     public List<Symbol> visitTableFunctionProcessor(
         TableFunctionProcessorNode node, GroupContext context) {
       if (node.getChildren().isEmpty()) {
-        // leaf node
         return ImmutableList.of();
+      } else if (node.isRowSemantic()) {
+        return visitPlan(node, context);
       }
+
+      //      return ImmutableList.of();
       Optional<DataOrganizationSpecification> dataOrganizationSpecification =
           node.getDataOrganizationSpecification();
       return dataOrganizationSpecification

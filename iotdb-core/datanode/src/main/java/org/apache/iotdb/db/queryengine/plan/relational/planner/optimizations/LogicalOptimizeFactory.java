@@ -175,7 +175,6 @@ public class LogicalOptimizeFactory {
                         new RemoveRedundantIdentityProjections(),
                         new MergeLimits(),
                         new RemoveTrivialFilters(),
-                        //                            TODO(UDF): new RemoveRedundantTableFunction(),
                         //                        new RemoveRedundantLimit(),
                         //                        new RemoveRedundantOffset(),
                         //                        new RemoveRedundantSort(),

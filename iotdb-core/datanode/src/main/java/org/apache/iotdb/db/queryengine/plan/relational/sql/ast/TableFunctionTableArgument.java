@@ -33,19 +33,16 @@ public class TableFunctionTableArgument extends Node {
   private final Relation table;
   private final Optional<List<Expression>> partitionBy; // it is allowed to partition by empty list
   private final Optional<OrderBy> orderBy;
-  private final Optional<EmptyTableTreatment> emptyTableTreatment;
 
   public TableFunctionTableArgument(
       NodeLocation location,
       Relation table,
       Optional<List<Expression>> partitionBy,
-      Optional<OrderBy> orderBy,
-      Optional<EmptyTableTreatment> emptyTableTreatment) {
+      Optional<OrderBy> orderBy) {
     super(location);
     this.table = requireNonNull(table, "table is null");
     this.partitionBy = requireNonNull(partitionBy, "partitionBy is null");
     this.orderBy = requireNonNull(orderBy, "orderBy is null");
-    this.emptyTableTreatment = requireNonNull(emptyTableTreatment, "emptyTableTreatment is null");
   }
 
   public Relation getTable() {
@@ -60,10 +57,6 @@ public class TableFunctionTableArgument extends Node {
     return orderBy;
   }
 
-  public Optional<EmptyTableTreatment> getEmptyTableTreatment() {
-    return emptyTableTreatment;
-  }
-
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
     return visitor.visitTableArgument(this, context);
@@ -75,7 +68,6 @@ public class TableFunctionTableArgument extends Node {
     builder.add(table);
     partitionBy.ifPresent(builder::addAll);
     orderBy.ifPresent(builder::add);
-    emptyTableTreatment.ifPresent(builder::add);
 
     return builder.build();
   }
@@ -92,13 +84,12 @@ public class TableFunctionTableArgument extends Node {
     TableFunctionTableArgument other = (TableFunctionTableArgument) o;
     return Objects.equals(table, other.table)
         && Objects.equals(partitionBy, other.partitionBy)
-        && Objects.equals(orderBy, other.orderBy)
-        && Objects.equals(emptyTableTreatment, other.emptyTableTreatment);
+        && Objects.equals(orderBy, other.orderBy);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(table, partitionBy, orderBy, emptyTableTreatment);
+    return Objects.hash(table, partitionBy, orderBy);
   }
 
   @Override

@@ -149,7 +149,6 @@ public class TableFunctionNode extends MultiChildProcessNode {
         properties -> {
           ReadWriteIOUtils.write(properties.getArgumentName(), byteBuffer);
           ReadWriteIOUtils.write(properties.isRowSemantics(), byteBuffer);
-          ReadWriteIOUtils.write(properties.isPruneWhenEmpty(), byteBuffer);
           properties.getPassThroughSpecification().serialize(byteBuffer);
           ReadWriteIOUtils.write(properties.getRequiredColumns().size(), byteBuffer);
           properties.getRequiredColumns().forEach(symbol -> Symbol.serialize(symbol, byteBuffer));
@@ -176,7 +175,6 @@ public class TableFunctionNode extends MultiChildProcessNode {
     for (TableArgumentProperties properties : tableArgumentProperties) {
       ReadWriteIOUtils.write(properties.getArgumentName(), stream);
       ReadWriteIOUtils.write(properties.isRowSemantics(), stream);
-      ReadWriteIOUtils.write(properties.isPruneWhenEmpty(), stream);
       properties.getPassThroughSpecification().serialize(stream);
       ReadWriteIOUtils.write(properties.getRequiredColumns().size(), stream);
       for (Symbol symbol : properties.getRequiredColumns()) {
@@ -208,7 +206,6 @@ public class TableFunctionNode extends MultiChildProcessNode {
     for (int i = 0; i < size; i++) {
       String argumentName = ReadWriteIOUtils.readString(byteBuffer);
       boolean rowSemantics = ReadWriteIOUtils.readBoolean(byteBuffer);
-      boolean pruneWhenEmpty = ReadWriteIOUtils.readBoolean(byteBuffer);
       PassThroughSpecification passThroughSpecification =
           PassThroughSpecification.deserialize(byteBuffer);
       int requiredColumnsSize = ReadWriteIOUtils.readInt(byteBuffer);
@@ -225,7 +222,6 @@ public class TableFunctionNode extends MultiChildProcessNode {
           new TableArgumentProperties(
               argumentName,
               rowSemantics,
-              pruneWhenEmpty,
               passThroughSpecification,
               requiredColumns.build(),
               dataOrganizationSpecification));
@@ -247,7 +243,6 @@ public class TableFunctionNode extends MultiChildProcessNode {
   public static class TableArgumentProperties {
     private final String argumentName;
     private final boolean rowSemantics;
-    private final boolean pruneWhenEmpty;
     private final PassThroughSpecification passThroughSpecification;
     private final List<Symbol> requiredColumns;
     private final Optional<DataOrganizationSpecification> dataOrganizationSpecification;
@@ -255,13 +250,11 @@ public class TableFunctionNode extends MultiChildProcessNode {
     public TableArgumentProperties(
         String argumentName,
         boolean rowSemantics,
-        boolean pruneWhenEmpty,
         PassThroughSpecification passThroughSpecification,
         List<Symbol> requiredColumns,
         Optional<DataOrganizationSpecification> dataOrganizationSpecification) {
       this.argumentName = requireNonNull(argumentName, "argumentName is null");
       this.rowSemantics = rowSemantics;
-      this.pruneWhenEmpty = pruneWhenEmpty;
       this.passThroughSpecification =
           requireNonNull(passThroughSpecification, "passThroughSpecification is null");
       this.requiredColumns = ImmutableList.copyOf(requiredColumns);
@@ -279,10 +272,6 @@ public class TableFunctionNode extends MultiChildProcessNode {
 
     public boolean isRowSemantics() {
       return rowSemantics;
-    }
-
-    public boolean isPruneWhenEmpty() {
-      return pruneWhenEmpty;
     }
 
     public PassThroughSpecification getPassThroughSpecification() {
