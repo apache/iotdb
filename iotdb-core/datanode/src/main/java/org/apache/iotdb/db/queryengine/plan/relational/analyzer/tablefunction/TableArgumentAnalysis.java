@@ -38,7 +38,6 @@ public class TableArgumentAnalysis {
   private final Relation relation;
   private final Optional<List<Expression>> partitionBy; // it is allowed to partition by empty list
   private final Optional<OrderBy> orderBy;
-  private final boolean pruneWhenEmpty;
   private final boolean rowSemantics;
   private final boolean passThroughColumns;
 
@@ -48,7 +47,6 @@ public class TableArgumentAnalysis {
       Relation relation,
       Optional<List<Expression>> partitionBy,
       Optional<OrderBy> orderBy,
-      boolean pruneWhenEmpty,
       boolean rowSemantics,
       boolean passThroughColumns) {
     this.argumentName = requireNonNull(argumentName, "argumentName is null");
@@ -57,7 +55,6 @@ public class TableArgumentAnalysis {
     this.partitionBy =
         requireNonNull(partitionBy, "partitionBy is null").map(ImmutableList::copyOf);
     this.orderBy = requireNonNull(orderBy, "orderBy is null");
-    this.pruneWhenEmpty = pruneWhenEmpty;
     this.rowSemantics = rowSemantics;
     this.passThroughColumns = passThroughColumns;
   }
@@ -82,10 +79,6 @@ public class TableArgumentAnalysis {
     return orderBy;
   }
 
-  public boolean isPruneWhenEmpty() {
-    return pruneWhenEmpty;
-  }
-
   public boolean isRowSemantics() {
     return rowSemantics;
   }
@@ -104,7 +97,6 @@ public class TableArgumentAnalysis {
     private Relation relation;
     private Optional<List<Expression>> partitionBy = Optional.empty();
     private Optional<OrderBy> orderBy = Optional.empty();
-    private boolean pruneWhenEmpty;
     private boolean rowSemantics;
     private boolean passThroughColumns;
 
@@ -141,12 +133,6 @@ public class TableArgumentAnalysis {
     }
 
     @CanIgnoreReturnValue
-    public Builder withPruneWhenEmpty(boolean pruneWhenEmpty) {
-      this.pruneWhenEmpty = pruneWhenEmpty;
-      return this;
-    }
-
-    @CanIgnoreReturnValue
     public Builder withRowSemantics(boolean rowSemantics) {
       this.rowSemantics = rowSemantics;
       return this;
@@ -160,14 +146,7 @@ public class TableArgumentAnalysis {
 
     public TableArgumentAnalysis build() {
       return new TableArgumentAnalysis(
-          argumentName,
-          name,
-          relation,
-          partitionBy,
-          orderBy,
-          pruneWhenEmpty,
-          rowSemantics,
-          passThroughColumns);
+          argumentName, name, relation, partitionBy, orderBy, rowSemantics, passThroughColumns);
     }
   }
 }

@@ -52,10 +52,6 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
   // symbols produced by the function
   private final List<Symbol> properOutputs;
 
-  // specifies whether the function should be pruned or executed when the input is empty
-  // pruneWhenEmpty is false if and only if all original input tables are KEEP WHEN EMPTY
-  private final boolean pruneWhenEmpty;
-
   // all source symbols to be produced on output, ordered as table argument specifications
   private final Optional<TableFunctionNode.PassThroughSpecification> passThroughSpecification;
 
@@ -72,7 +68,6 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
       String name,
       List<Symbol> properOutputs,
       Optional<PlanNode> source,
-      boolean pruneWhenEmpty,
       Optional<TableFunctionNode.PassThroughSpecification> passThroughSpecification,
       List<Symbol> requiredSymbols,
       Optional<DataOrganizationSpecification> dataOrganizationSpecification,
@@ -80,7 +75,6 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
     super(id, source.orElse(null));
     this.name = requireNonNull(name, "name is null");
     this.properOutputs = ImmutableList.copyOf(properOutputs);
-    this.pruneWhenEmpty = pruneWhenEmpty;
     this.passThroughSpecification = passThroughSpecification;
     this.requiredSymbols = ImmutableList.copyOf(requiredSymbols);
     this.dataOrganizationSpecification =
@@ -92,7 +86,6 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
       PlanNodeId id,
       String name,
       List<Symbol> properOutputs,
-      boolean pruneWhenEmpty,
       Optional<TableFunctionNode.PassThroughSpecification> passThroughSpecification,
       List<Symbol> requiredSymbols,
       Optional<DataOrganizationSpecification> dataOrganizationSpecification,
@@ -100,7 +93,6 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
     super(id);
     this.name = requireNonNull(name, "name is null");
     this.properOutputs = ImmutableList.copyOf(properOutputs);
-    this.pruneWhenEmpty = pruneWhenEmpty;
     this.passThroughSpecification = passThroughSpecification;
     this.requiredSymbols = ImmutableList.copyOf(requiredSymbols);
     this.dataOrganizationSpecification =
@@ -114,10 +106,6 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
 
   public List<Symbol> getProperOutputs() {
     return properOutputs;
-  }
-
-  public boolean isPruneWhenEmpty() {
-    return pruneWhenEmpty;
   }
 
   public Optional<TableFunctionNode.PassThroughSpecification> getPassThroughSpecification() {
@@ -142,7 +130,6 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
         id,
         name,
         properOutputs,
-        pruneWhenEmpty,
         passThroughSpecification,
         requiredSymbols,
         dataOrganizationSpecification,
@@ -185,7 +172,6 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
     ReadWriteIOUtils.write(name, byteBuffer);
     ReadWriteIOUtils.write(properOutputs.size(), byteBuffer);
     properOutputs.forEach(symbol -> Symbol.serialize(symbol, byteBuffer));
-    ReadWriteIOUtils.write(pruneWhenEmpty, byteBuffer);
     ReadWriteIOUtils.write(passThroughSpecification.isPresent(), byteBuffer);
     passThroughSpecification.ifPresent(
         passThroughSpecification1 -> passThroughSpecification1.serialize(byteBuffer));
@@ -211,7 +197,6 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
     for (Symbol symbol : properOutputs) {
       Symbol.serialize(symbol, stream);
     }
-    ReadWriteIOUtils.write(pruneWhenEmpty, stream);
     ReadWriteIOUtils.write(passThroughSpecification.isPresent(), stream);
     if (passThroughSpecification.isPresent()) {
       passThroughSpecification.get().serialize(stream);
@@ -238,7 +223,6 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
     while (size-- > 0) {
       properOutputs.add(Symbol.deserialize(byteBuffer));
     }
-    boolean pruneWhenEmpty = ReadWriteIOUtils.readBoolean(byteBuffer);
     boolean hasPassThroughSpecification = ReadWriteIOUtils.readBoolean(byteBuffer);
     Optional<TableFunctionNode.PassThroughSpecification> passThroughSpecification =
         hasPassThroughSpecification
@@ -267,7 +251,6 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
         planNodeId,
         name,
         properOutputs,
-        pruneWhenEmpty,
         passThroughSpecification,
         requiredSymbols,
         dataOrganizationSpecification,
@@ -283,7 +266,6 @@ public class TableFunctionProcessorNode extends SingleChildProcessNode {
         name,
         properOutputs,
         newSource,
-        pruneWhenEmpty,
         passThroughSpecification,
         requiredSymbols,
         dataOrganizationSpecification,

@@ -78,7 +78,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.EmptyTableTreatment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
@@ -2257,21 +2256,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
               new OrderBy(getLocation(context.ORDER()), visit(context.sortItem(), SortItem.class)));
     }
 
-    Optional<EmptyTableTreatment> emptyTableTreatment = Optional.empty();
-    if (context.PRUNE() != null) {
-      emptyTableTreatment =
-          Optional.of(
-              new EmptyTableTreatment(
-                  getLocation(context.PRUNE()), EmptyTableTreatment.Treatment.PRUNE));
-    } else if (context.KEEP() != null) {
-      emptyTableTreatment =
-          Optional.of(
-              new EmptyTableTreatment(
-                  getLocation(context.KEEP()), EmptyTableTreatment.Treatment.KEEP));
-    }
-
-    return new TableFunctionTableArgument(
-        getLocation(context), table, partitionBy, orderBy, emptyTableTreatment);
+    return new TableFunctionTableArgument(getLocation(context), table, partitionBy, orderBy);
   }
 
   @Override

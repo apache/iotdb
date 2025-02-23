@@ -78,7 +78,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.EmptyTableTreatment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainAnalyze;
@@ -3506,21 +3505,6 @@ public class StatementAnalyzer {
                     })
                 .collect(toImmutableList());
       }
-
-      // analyze the PRUNE/KEEP WHEN EMPTY property
-      boolean pruneWhenEmpty = argumentSpecification.isPruneWhenEmpty();
-      if (tableArgument.getEmptyTableTreatment().isPresent()) {
-        if (argumentSpecification.isRowSemantics()) {
-          throw new SemanticException(
-              String.format(
-                  "Invalid argument %s. Empty behavior specified for table argument with row semantics",
-                  argumentSpecification.getName()));
-        }
-        pruneWhenEmpty =
-            tableArgument.getEmptyTableTreatment().get().getTreatment()
-                == EmptyTableTreatment.Treatment.PRUNE;
-      }
-      analysisBuilder.withPruneWhenEmpty(pruneWhenEmpty);
 
       // record remaining properties
       analysisBuilder.withRowSemantics(argumentSpecification.isRowSemantics());

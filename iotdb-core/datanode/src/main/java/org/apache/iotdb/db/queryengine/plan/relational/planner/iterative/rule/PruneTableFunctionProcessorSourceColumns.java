@@ -87,7 +87,6 @@ public class PruneTableFunctionProcessorSourceColumns implements Rule<TableFunct
                         node.getName(),
                         node.getProperOutputs(),
                         Optional.of(child),
-                        node.isPruneWhenEmpty(),
                         node.getPassThroughSpecification(),
                         node.getRequiredSymbols(),
                         node.getDataOrganizationSpecification(),
