@@ -120,7 +120,7 @@ public class ParallelizeGrouping implements PlanOptimizer {
       if (context.canSkip()) {
         return;
       }
-      OrderingScheme prefix = context.orderKey;
+      OrderingScheme prefix = context.sortKey;
       if (prefix.getOrderBy().size() != context.partitionKeyCount) {
         context.canParalleled = UNABLE;
         return;
@@ -210,9 +210,9 @@ public class ParallelizeGrouping implements PlanOptimizer {
     @Override
     public PlanNode visitProject(ProjectNode node, Context context) {
       if (!context.canSkip()) {
-        OrderingScheme orderKey = context.orderKey;
-        for (int i = 0; i < orderKey.getOrderBy().size(); i++) {
-          if (!node.getAssignments().contains(orderKey.getOrderBy().get(i))) {
+        OrderingScheme sortKey = context.sortKey;
+        for (int i = 0; i < sortKey.getOrderBy().size(); i++) {
+          if (!node.getAssignments().contains(sortKey.getOrderBy().get(i))) {
             context.canParalleled = UNABLE;
             break;
           }
@@ -224,29 +224,29 @@ public class ParallelizeGrouping implements PlanOptimizer {
     @Override
     public PlanNode visitDeviceTableScan(DeviceTableScanNode node, Context context) {
       if (!context.canSkip()) {
-        OrderingScheme orderKey = context.orderKey;
+        OrderingScheme sortKey = context.sortKey;
         Map<Symbol, ColumnSchema> tableColumnSchema =
             analysis.getTableColumnSchema(node.getQualifiedObjectName());
         // 1. It is possible for the last sort key to be a time column
-        if (orderKey.getOrderBy().size() > context.partitionKeyCount + 1) {
+        if (sortKey.getOrderBy().size() > context.partitionKeyCount + 1) {
           context.canParalleled = UNABLE;
           return node;
-        } else if (orderKey.getOrderBy().size() == context.partitionKeyCount + 1) {
-          Symbol lastSymbol = orderKey.getOrderBy().get(context.partitionKeyCount);
+        } else if (sortKey.getOrderBy().size() == context.partitionKeyCount + 1) {
+          Symbol lastSymbol = sortKey.getOrderBy().get(context.partitionKeyCount);
           if (!tableColumnSchema.containsKey(lastSymbol)
               || tableColumnSchema.get(lastSymbol).getColumnCategory() != TIME) {
             context.canParalleled = UNABLE;
             return node;
           }
         }
-        // 2. check there are no field in orderKey and all tags in orderKey
+        // 2. check there are no field in sortKey and all tags in sortKey
         Set<Symbol> tagSymbols =
             tableColumnSchema.entrySet().stream()
                 .filter(entry -> entry.getValue().getColumnCategory() == TAG)
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toSet());
         for (int i = 0; i < context.partitionKeyCount; i++) {
-          Symbol symbol = orderKey.getOrderBy().get(i);
+          Symbol symbol = sortKey.getOrderBy().get(i);
           if (!tableColumnSchema.containsKey(symbol)) {
             context.canParalleled = UNABLE;
             return node;
@@ -286,17 +286,17 @@ public class ParallelizeGrouping implements PlanOptimizer {
   }
 
   private static class Context {
-    private final OrderingScheme orderKey;
+    private final OrderingScheme sortKey;
     private final int partitionKeyCount;
     private CanParalleled canParalleled = PENDING;
 
-    private Context(OrderingScheme orderKey, int sortKeyOffset) {
-      this.orderKey = orderKey;
-      this.partitionKeyCount = sortKeyOffset;
+    private Context(OrderingScheme sortKey, int partitionKeyCount) {
+      this.sortKey = sortKey;
+      this.partitionKeyCount = partitionKeyCount;
     }
 
     private boolean canSkip() {
-      return orderKey == null || canParalleled != PENDING;
+      return sortKey == null || canParalleled != PENDING;
     }
   }
 

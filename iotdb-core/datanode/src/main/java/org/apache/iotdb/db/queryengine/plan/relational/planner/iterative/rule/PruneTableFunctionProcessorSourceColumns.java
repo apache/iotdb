@@ -91,6 +91,7 @@ public class PruneTableFunctionProcessorSourceColumns implements Rule<TableFunct
                         node.getPassThroughSpecification(),
                         node.getRequiredSymbols(),
                         node.getDataOrganizationSpecification(),
+                        node.isRowSemantic(),
                         node.getArguments())))
         .orElse(Result.empty());
   }

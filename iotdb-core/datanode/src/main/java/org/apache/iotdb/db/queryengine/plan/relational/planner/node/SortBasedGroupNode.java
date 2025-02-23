@@ -38,15 +38,15 @@ import java.util.List;
  * based on SortNode. It will only be generated some special node that required grouping source,
  * such as FillNode and TableFunctionNode.
  *
- * <p>SortBasedGroupNode's ordering schema consists of two parts: PartitionKey and SortKey. It
- * guarantees to return data grouped by PartitionKey and sorted by SortKey. For example, PARTITION
+ * <p>SortBasedGroupNode's ordering schema consists of two parts: PartitionKey and OrderKey. It
+ * guarantees to return data grouped by PartitionKey and sorted by OrderKey. For example, PARTITION
  * BY device_id ORDER BY time will return data grouped by device_id, and in each group, data will be
  * sorted by time.
  */
 public class SortBasedGroupNode extends SortNode {
 
   /**
-   * orderingScheme may include two parts: PartitionKey and SortKey. It marks the number of
+   * orderingScheme may include two parts: PartitionKey and OrderKey. It marks the number of
    * PartitionKey.
    */
   private int partitionKeyCount;
