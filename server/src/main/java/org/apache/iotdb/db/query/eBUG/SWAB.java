@@ -147,7 +147,7 @@ public class SWAB {
     }
 
     // 设置三角形的前后关系
-    for (int i = 0; i < nTriangles; i++) { // TODO 这个可以和上一个循环合并吗？？好像不可以
+    for (int i = 0; i < nTriangles; i++) {
       triangles[i].prev = (i == 0 ? null : triangles[i - 1]);
       triangles[i].next = (i == nTriangles - 1 ? null : triangles[i + 1]);
     }
@@ -155,10 +155,10 @@ public class SWAB {
     // 使用优先队列构建 minHeap
     PriorityQueue<Triangle> triangleHeap =
         new PriorityQueue<>(Comparator.comparingDouble(t -> t.area));
-    Collections.addAll(triangleHeap, triangles); // complexity TODO O(n) or O(nlogn)?
+    Collections.addAll(triangleHeap, triangles);
 
     int fakeCnt = 0;
-    while (!triangleHeap.isEmpty() && triangleHeap.peek().area < maxError) { // TODO
+    while (!triangleHeap.isEmpty() && triangleHeap.peek().area < maxError) {
       // 注意peek只需要直接访问该位置的元素，不涉及任何重排或堆化操作
       // 而poll是删除堆顶元素，需要重新堆化以维护堆的性质，复杂度是O(logk),k是当前堆的大小
       Triangle tri = triangleHeap.poll(); // O(logn)

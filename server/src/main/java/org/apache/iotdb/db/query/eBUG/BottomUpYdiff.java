@@ -42,7 +42,7 @@ public class BottomUpYdiff {
     }
 
     // 设置三角形的前后关系
-    for (int i = 0; i < nTriangles; i++) { // TODO 这个可以和上一个循环合并吗？？好像不可以
+    for (int i = 0; i < nTriangles; i++) {
       triangles[i].prev = (i == 0 ? null : triangles[i - 1]);
       triangles[i].next = (i == nTriangles - 1 ? null : triangles[i + 1]);
     }
@@ -50,7 +50,7 @@ public class BottomUpYdiff {
     // 使用优先队列构建 minHeap
     PriorityQueue<Triangle> triangleHeap =
         new PriorityQueue<>(Comparator.comparingDouble(t -> t.area));
-    Collections.addAll(triangleHeap, triangles); // complexity TODO O(n) or O(nlogn)?
+    Collections.addAll(triangleHeap, triangles);
 
     int remainNonTerminalPoint = m - 2;
     int fakeCnt = 0;

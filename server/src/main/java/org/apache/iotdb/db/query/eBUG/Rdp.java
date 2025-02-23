@@ -48,7 +48,7 @@ public class Rdp {
     keep[0] = true;
     keep[points.size() - 1] = true;
 
-    int count = 0; // TODO debug
+    int count = 0;
 
     while (!stack.isEmpty()) {
       int[] range = stack.pop();

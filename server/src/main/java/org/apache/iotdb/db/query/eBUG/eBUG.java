@@ -123,7 +123,7 @@ public class eBUG {
     }
 
     // 设置三角形的前后关系
-    for (int i = 0; i < nTriangles; i++) { // TODO 这个可以和上一个循环合并吗？？好像不可以
+    for (int i = 0; i < nTriangles; i++) {
       triangles[i].prev = (i == 0 ? null : triangles[i - 1]);
       triangles[i].next = (i == nTriangles - 1 ? null : triangles[i + 1]);
     }
@@ -131,7 +131,7 @@ public class eBUG {
     // 使用优先队列构建 minHeap
     PriorityQueue<Triangle> triangleHeap =
         new PriorityQueue<>(Comparator.comparingDouble(t -> t.area));
-    Collections.addAll(triangleHeap, triangles); // complexity TODO O(n) or O(nlogn)?
+    Collections.addAll(triangleHeap, triangles);
 
     double previousEA = -1;
     //        while (!triangleHeap.isEmpty()) { // TODO 注意triangleHeap里装的是non-terminal point对应的三角形
@@ -374,7 +374,7 @@ public class eBUG {
     int[] eParamList = {100_0000};
     for (int eParam : eParamList) {
       try (PrintWriter writer = new PrintWriter(new File("exp_varyN_e" + eParam + ".csv"))) {
-        for (int n = 100_0000; n < 2000_0000; n += 200_0000) { // 超过两千万就都变得慢多了，感觉可能是内存有限的原因，而不是算法复杂度
+        for (int n = 100_0000; n < 2000_0000; n += 200_0000) {
           // TODO 注意 要有一个点是n=300w
 
           Polyline polyline = new Polyline();
