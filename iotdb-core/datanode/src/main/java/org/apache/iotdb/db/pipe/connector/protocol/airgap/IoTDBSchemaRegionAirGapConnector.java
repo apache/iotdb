@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -65,32 +66,17 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
 
   @Override
   public void transfer(final Event event) throws Exception {
-    final int socketIndex = nextSocketIndex();
-    final AirGapSocket socket = sockets.get(socketIndex);
-
     try {
       if (event instanceof PipeSchemaRegionWritePlanEvent) {
-        if (shouldSendToAllClients) {
-          doTransferAllClientsWrapper((PipeSchemaRegionWritePlanEvent) event);
-        } else {
-          doTransferWrapper(socket, (PipeSchemaRegionWritePlanEvent) event);
-        }
+        doTransferWrapper((PipeSchemaRegionWritePlanEvent) event);
       } else if (event instanceof PipeSchemaRegionSnapshotEvent) {
-        if (shouldSendToAllClients) {
-          doTransferAllClientsWrapper((PipeSchemaRegionSnapshotEvent) event);
-        } else {
-          doTransferWrapper(socket, (PipeSchemaRegionSnapshotEvent) event);
-        }
+        doTransferWrapper((PipeSchemaRegionSnapshotEvent) event);
       } else if (!(event instanceof PipeHeartbeatEvent)) {
         LOGGER.warn(
             "IoTDBSchemaRegionAirGapConnector does not support transferring generic event: {}.",
             event);
       }
     } catch (final IOException e) {
-      if (!shouldSendToAllClients) {
-        isSocketAlive.set(socketIndex, false);
-      }
-
       throw new PipeConnectionException(
           String.format(
               "Network error when transfer event %s, because %s.",
@@ -100,7 +86,6 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
   }
 
   private void doTransferWrapper(
-      final AirGapSocket socket,
       final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
       throws PipeException, IOException {
     // We increase the reference count for this event to determine if the event may be released.
@@ -109,62 +94,48 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
       return;
     }
     try {
-      doTransfer(socket, pipeSchemaRegionWritePlanEvent);
+      doTransfer(pipeSchemaRegionWritePlanEvent);
     } finally {
       pipeSchemaRegionWritePlanEvent.decreaseReferenceCount(
           IoTDBDataNodeAirGapConnector.class.getName(), false);
     }
   }
 
-  private void doTransferAllClientsWrapper(
-      final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
+  private void doTransfer(final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
       throws PipeException, IOException {
-    // We increase the reference count for this event to determine if the event may be released.
-    if (!pipeSchemaRegionWritePlanEvent.increaseReferenceCount(
-        IoTDBDataNodeAirGapConnector.class.getName())) {
-      return;
+    final List<Integer> socketIndexes;
+    if (shouldSendToAllClients) {
+      socketIndexes = allAliveSocketsIndex();
+    } else {
+      socketIndexes = Collections.singletonList(nextSocketIndex());
     }
-    try {
-      final List<Integer> aliveSockets = allAliveSocketsIndex();
-      for (final int socketIndex : aliveSockets) {
-        final AirGapSocket socket = sockets.get(socketIndex);
-        try {
-          doTransfer(socket, pipeSchemaRegionWritePlanEvent);
-        } catch (final Exception e) {
-          isSocketAlive.set(socketIndex, false);
-          throw e;
+    for (final int socketIndex : socketIndexes) {
+      final AirGapSocket socket = sockets.get(socketIndex);
+      try {
+        if (!send(
+            pipeSchemaRegionWritePlanEvent.getPipeName(),
+            pipeSchemaRegionWritePlanEvent.getCreationTime(),
+            socket,
+            PipeTransferPlanNodeReq.toTPipeTransferBytes(
+                pipeSchemaRegionWritePlanEvent.getPlanNode()))) {
+          final String errorMessage =
+              String.format(
+                  "Transfer data node write plan %s error. Socket: %s.",
+                  pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), socket);
+          receiverStatusHandler.handle(
+              new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+                  .setMessage(errorMessage),
+              errorMessage,
+              pipeSchemaRegionWritePlanEvent.toString());
         }
+      } catch (final IOException e) {
+        isSocketAlive.set(socketIndex, false);
+        throw e;
       }
-    } finally {
-      pipeSchemaRegionWritePlanEvent.decreaseReferenceCount(
-          IoTDBDataNodeAirGapConnector.class.getName(), false);
     }
   }
 
-  private void doTransfer(
-      final AirGapSocket socket,
-      final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
-      throws PipeException, IOException {
-    if (!send(
-        pipeSchemaRegionWritePlanEvent.getPipeName(),
-        pipeSchemaRegionWritePlanEvent.getCreationTime(),
-        socket,
-        PipeTransferPlanNodeReq.toTPipeTransferBytes(
-            pipeSchemaRegionWritePlanEvent.getPlanNode()))) {
-      final String errorMessage =
-          String.format(
-              "Transfer data node write plan %s error. Socket: %s.",
-              pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), socket);
-      receiverStatusHandler.handle(
-          new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
-              .setMessage(errorMessage),
-          errorMessage,
-          pipeSchemaRegionWritePlanEvent.toString());
-    }
-  }
-
-  private void doTransferWrapper(
-      final AirGapSocket socket, final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
+  private void doTransferWrapper(final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
       throws PipeException, IOException {
     // We increase the reference count for this event to determine if the event may be released.
     if (!pipeSchemaRegionSnapshotEvent.increaseReferenceCount(
@@ -172,40 +143,14 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
       return;
     }
     try {
-      doTransfer(socket, pipeSchemaRegionSnapshotEvent);
+      doTransfer(pipeSchemaRegionSnapshotEvent);
     } finally {
       pipeSchemaRegionSnapshotEvent.decreaseReferenceCount(
           IoTDBSchemaRegionAirGapConnector.class.getName(), false);
     }
   }
 
-  private void doTransferAllClientsWrapper(
-      final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
-      throws PipeException, IOException {
-    // We increase the reference count for this event to determine if the event may be released.
-    if (!pipeSchemaRegionSnapshotEvent.increaseReferenceCount(
-        IoTDBSchemaRegionAirGapConnector.class.getName())) {
-      return;
-    }
-    try {
-      final List<Integer> aliveSockets = allAliveSocketsIndex();
-      for (final int socketIndex : aliveSockets) {
-        final AirGapSocket socket = sockets.get(socketIndex);
-        try {
-          doTransfer(socket, pipeSchemaRegionSnapshotEvent);
-        } catch (final Exception e) {
-          isSocketAlive.set(socketIndex, false);
-          throw e;
-        }
-      }
-    } finally {
-      pipeSchemaRegionSnapshotEvent.decreaseReferenceCount(
-          IoTDBSchemaRegionAirGapConnector.class.getName(), false);
-    }
-  }
-
-  private void doTransfer(
-      final AirGapSocket socket, final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
+  private void doTransfer(final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
       throws PipeException, IOException {
     final String pipeName = pipeSchemaRegionSnapshotEvent.getPipeName();
     final long creationTime = pipeSchemaRegionSnapshotEvent.getCreationTime();
@@ -213,49 +158,67 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
     final File tagLogSnapshotFile = pipeSchemaRegionSnapshotEvent.getTagLogSnapshotFile();
     final File attributeSnapshotFile = pipeSchemaRegionSnapshotEvent.getAttributeSnapshotFile();
 
-    // 1. Transfer mTreeSnapshotFile, and tLog file if exists
-    transferFilePieces(pipeName, creationTime, mtreeSnapshotFile, socket, true);
-    if (Objects.nonNull(tagLogSnapshotFile)) {
-      transferFilePieces(pipeName, creationTime, tagLogSnapshotFile, socket, true);
-    }
-    if (Objects.nonNull(attributeSnapshotFile)) {
-      transferFilePieces(pipeName, creationTime, attributeSnapshotFile, socket, true);
-    }
-    // 2. Transfer file seal signal, which means the snapshots is transferred completely
-    if (!send(
-        pipeName,
-        creationTime,
-        socket,
-        PipeTransferSchemaSnapshotSealReq.toTPipeTransferBytes(
-            // The pattern is surely Non-null
-            pipeSchemaRegionSnapshotEvent.getTreePatternString(),
-            pipeSchemaRegionSnapshotEvent.getTablePattern().getDatabasePattern(),
-            pipeSchemaRegionSnapshotEvent.getTablePattern().getTablePattern(),
-            pipeSchemaRegionSnapshotEvent.getTreePattern().isTreeModelDataAllowedToBeCaptured(),
-            pipeSchemaRegionSnapshotEvent.getTablePattern().isTableModelDataAllowedToBeCaptured(),
-            mtreeSnapshotFile.getName(),
-            mtreeSnapshotFile.length(),
-            Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,
-            Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
-            Objects.nonNull(attributeSnapshotFile) ? attributeSnapshotFile.getName() : null,
-            Objects.nonNull(attributeSnapshotFile) ? attributeSnapshotFile.length() : 0,
-            pipeSchemaRegionSnapshotEvent.getDatabaseName(),
-            pipeSchemaRegionSnapshotEvent.toSealTypeString()))) {
-      final String errorMessage =
-          String.format(
-              "Seal schema region snapshot file %s and %s error. Socket %s.",
-              mtreeSnapshotFile, tagLogSnapshotFile, socket);
-      receiverStatusHandler.handle(
-          new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
-              .setMessage(errorMessage),
-          errorMessage,
-          pipeSchemaRegionSnapshotEvent.toString());
+    final List<Integer> socketIndexes;
+    if (shouldSendToAllClients) {
+      socketIndexes = allAliveSocketsIndex();
     } else {
-      LOGGER.info(
-          "Successfully transferred schema region snapshot {}, {} and {}.",
-          mtreeSnapshotFile,
-          tagLogSnapshotFile,
-          attributeSnapshotFile);
+      socketIndexes = Collections.singletonList(nextSocketIndex());
+    }
+
+    for (final int socketIndex : socketIndexes) {
+      final AirGapSocket socket = sockets.get(socketIndex);
+
+      try {
+        // 1. Transfer mTreeSnapshotFile, and tLog file if exists
+        transferFilePieces(pipeName, creationTime, mtreeSnapshotFile, socket, true);
+        if (Objects.nonNull(tagLogSnapshotFile)) {
+          transferFilePieces(pipeName, creationTime, tagLogSnapshotFile, socket, true);
+        }
+        if (Objects.nonNull(attributeSnapshotFile)) {
+          transferFilePieces(pipeName, creationTime, attributeSnapshotFile, socket, true);
+        }
+        // 2. Transfer file seal signal, which means the snapshots is transferred completely
+        if (!send(
+            pipeName,
+            creationTime,
+            socket,
+            PipeTransferSchemaSnapshotSealReq.toTPipeTransferBytes(
+                // The pattern is surely Non-null
+                pipeSchemaRegionSnapshotEvent.getTreePatternString(),
+                pipeSchemaRegionSnapshotEvent.getTablePattern().getDatabasePattern(),
+                pipeSchemaRegionSnapshotEvent.getTablePattern().getTablePattern(),
+                pipeSchemaRegionSnapshotEvent.getTreePattern().isTreeModelDataAllowedToBeCaptured(),
+                pipeSchemaRegionSnapshotEvent
+                    .getTablePattern()
+                    .isTableModelDataAllowedToBeCaptured(),
+                mtreeSnapshotFile.getName(),
+                mtreeSnapshotFile.length(),
+                Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,
+                Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
+                Objects.nonNull(attributeSnapshotFile) ? attributeSnapshotFile.getName() : null,
+                Objects.nonNull(attributeSnapshotFile) ? attributeSnapshotFile.length() : 0,
+                pipeSchemaRegionSnapshotEvent.getDatabaseName(),
+                pipeSchemaRegionSnapshotEvent.toSealTypeString()))) {
+          final String errorMessage =
+              String.format(
+                  "Seal schema region snapshot file %s and %s error. Socket %s.",
+                  mtreeSnapshotFile, tagLogSnapshotFile, socket);
+          receiverStatusHandler.handle(
+              new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+                  .setMessage(errorMessage),
+              errorMessage,
+              pipeSchemaRegionSnapshotEvent.toString());
+        } else {
+          LOGGER.info(
+              "Successfully transferred schema region snapshot {}, {} and {}.",
+              mtreeSnapshotFile,
+              tagLogSnapshotFile,
+              attributeSnapshotFile);
+        }
+      } catch (final IOException e) {
+        isSocketAlive.set(socketIndex, false);
+        throw e;
+      }
     }
   }
 
