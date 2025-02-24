@@ -121,19 +121,13 @@ public class ExampleTest {
      *           └──OffsetNode-6
      *             └──ProjectNode
      *               └──MergeSortNode-25
-     *                   ├──ExchangeNode-29: [SourceAddress:192.0.12.1/test_query.2.0/31]
-     *                   ├──SortNode-27
-     *                   │   └──ProjectNode-23
-     *                   │           └──FilterNode-17
-     *                   │               └──TableScanNode-14
-     *                   └──ExchangeNode-30: [SourceAddress:192.0.10.1/test_query.3.0/32]
+     *                   ├──ExchangeNode-28: [SourceAddress:192.0.10.1/test_query.2.0/30]
+     *                   ├──ExchangeNode-29: [SourceAddress:192.0.11.1/test_query.3.0/31]
+     *                   └──ExchangeNode-30: [SourceAddress:192.0.12.1/test_query.4.0/32]
      */
     assertPlan(
         planTester.getFragmentPlan(0),
-        anyTree(
-            project(
-                mergeSort(
-                    exchange(), sort(project(filter(filterPredicate, tableScan))), exchange()))));
+        anyTree(project(mergeSort(exchange(), exchange(), exchange()))));
 
     /*
      *    SortNode-26
@@ -141,17 +135,11 @@ public class ExampleTest {
      *               └──FilterNode-16
      *                   └──TableScanNode-13
      */
-    assertPlan(
-        planTester.getFragmentPlan(1),
-        any( // use any() to match any one node
-            project(filter(filterPredicate, tableScan))));
-
-    /*
-     *    SortNode-26
-     *           └──ProjectNode-19
-     *               └──FilterNode-16
-     *                   └──TableScanNode-13
-     */
-    assertPlan(planTester.getFragmentPlan(2), any(project(filter(filterPredicate, tableScan))));
+    for (int i = 1; i <= 3; i++) {
+      assertPlan(
+          planTester.getFragmentPlan(i),
+          any( // use any() to match any one node
+              project(filter(filterPredicate, tableScan))));
+    }
   }
 }
