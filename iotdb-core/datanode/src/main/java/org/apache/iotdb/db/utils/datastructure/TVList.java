@@ -86,7 +86,6 @@ public abstract class TVList implements WALEntryValue {
 
   protected TVList() {
     timestamps = new ArrayList<>();
-    indices = new ArrayList<>();
     rowCount = 0;
     seqRowCount = 0;
     maxTime = Long.MIN_VALUE;
@@ -197,6 +196,15 @@ public abstract class TVList implements WALEntryValue {
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
+    // prepare indices for sorting
+    if (indices == null) {
+      indices = new ArrayList<>();
+      for (int i = 0; i < timestamps.size(); i++) {
+        indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
+        int offset = i * ARRAY_SIZE;
+        Arrays.setAll(indices.get(i), j -> offset + j);
+      }
+    }
     indices.get(arrayIndex)[elementIndex] = valueIndex;
   }
 
@@ -213,6 +221,10 @@ public abstract class TVList implements WALEntryValue {
     if (index >= rowCount) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
+    if (indices == null) {
+      return index;
+    }
+
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
     return indices.get(arrayIndex)[elementIndex];
@@ -374,12 +386,6 @@ public abstract class TVList implements WALEntryValue {
     return clone();
   }
 
-  protected abstract void releaseLastValueArray();
-
-  protected void releaseLastTimeArray() {
-    PrimitiveArrayManager.release(timestamps.remove(timestamps.size() - 1));
-  }
-
   public int delete(long lowerBound, long upperBound) {
     int deletedNumber = 0;
     long maxTime = Long.MIN_VALUE;
@@ -409,8 +415,11 @@ public abstract class TVList implements WALEntryValue {
       cloneList.timestamps.add(cloneTime(timestampArray));
     }
     // clone indices
-    for (int[] indicesArray : indices) {
-      cloneList.indices.add(cloneIndex(indicesArray));
+    if (indices != null) {
+      cloneList.indices = new ArrayList<>();
+      for (int[] indicesArray : indices) {
+        cloneList.indices.add(cloneIndex(indicesArray));
+      }
     }
     cloneList.rowCount = rowCount;
     cloneList.seqRowCount = seqRowCount;

@@ -228,7 +228,9 @@ public abstract class AlignedTVList extends TVList {
           break;
       }
     }
-    indices.get(arrayIndex)[elementIndex] = rowCount;
+    if (indices != null) {
+      indices.get(arrayIndex)[elementIndex] = rowCount;
+    }
     rowCount++;
     if (sorted) {
       if (rowCount > 1 && timestamp < getTime(rowCount - 2)) {
@@ -261,9 +263,8 @@ public abstract class AlignedTVList extends TVList {
     if (index >= rowCount) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
-    int arrayIndex = index / ARRAY_SIZE;
-    int elementIndex = index % ARRAY_SIZE;
-    int valueIndex = indices.get(arrayIndex)[elementIndex];
+    int valueIndex =
+        (indices != null) ? indices.get(index / ARRAY_SIZE)[index % ARRAY_SIZE] : index;
     return getAlignedValueByValueIndex(valueIndex, null, floatPrecision, encodingList);
   }
 
@@ -692,7 +693,9 @@ public abstract class AlignedTVList extends TVList {
 
   @Override
   protected void expandValues() {
-    indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
+    if (indices != null) {
+      indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
+    }
     for (int i = 0; i < dataTypes.size(); i++) {
       values.get(i).add(getPrimitiveArraysByType(dataTypes.get(i)));
       if (bitMaps != null && bitMaps.get(i) != null) {
@@ -750,14 +753,6 @@ public abstract class AlignedTVList extends TVList {
         time, (TsPrimitiveType) getAlignedValueForQuery(index, floatPrecision, encodingList));
   }
 
-  @Override
-  protected void releaseLastValueArray() {
-    PrimitiveArrayManager.release(indices.remove(indices.size() - 1));
-    for (List<Object> valueList : values) {
-      PrimitiveArrayManager.release(valueList.remove(valueList.size() - 1));
-    }
-  }
-
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public synchronized void putAlignedValues(
@@ -777,7 +772,9 @@ public abstract class AlignedTVList extends TVList {
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, inputRemaining);
         arrayCopy(value, idx, arrayIdx, elementIdx, inputRemaining);
         for (int i = 0; i < inputRemaining; i++) {
-          indices.get(arrayIdx)[elementIdx + i] = rowCount;
+          if (indices != null) {
+            indices.get(arrayIdx)[elementIdx + i] = rowCount;
+          }
           for (int j = 0; j < values.size(); j++) {
             if (value[j] == null
                 || bitMaps != null && bitMaps[j] != null && bitMaps[j].isMarked(idx + i)
@@ -796,7 +793,9 @@ public abstract class AlignedTVList extends TVList {
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, internalRemaining);
         arrayCopy(value, idx, arrayIdx, elementIdx, internalRemaining);
         for (int i = 0; i < internalRemaining; i++) {
-          indices.get(arrayIdx)[elementIdx + i] = rowCount;
+          if (indices != null) {
+            indices.get(arrayIdx)[elementIdx + i] = rowCount;
+          }
           for (int j = 0; j < values.size(); j++) {
             if (value[j] == null
                 || bitMaps != null && bitMaps[j] != null && bitMaps[j].isMarked(idx + i)
