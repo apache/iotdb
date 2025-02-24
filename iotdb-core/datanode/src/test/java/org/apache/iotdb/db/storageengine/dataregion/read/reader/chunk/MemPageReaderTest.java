@@ -35,6 +35,7 @@ import org.mockito.Mockito;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import static org.apache.tsfile.read.filter.factory.ValueFilterApi.DEFAULT_MEASUREMENT_INDEX;
 
@@ -61,7 +62,16 @@ public class MemPageReaderTest {
   }
 
   private MemPageReader generatePageReader() {
-    return new MemPageReader(tsBlock, chunkMetadata, null);
+    Supplier<TsBlock> tsBlockSupplier = () -> tsBlock;
+    return new MemPageReader(
+        tsBlockSupplier,
+        null,
+        null,
+        null,
+        chunkMetadata.getDataType(),
+        chunkMetadata.getMeasurementUid(),
+        null,
+        null);
   }
 
   @Test

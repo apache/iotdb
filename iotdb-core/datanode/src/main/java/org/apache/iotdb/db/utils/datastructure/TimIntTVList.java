@@ -18,115 +18,29 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
+public class TimIntTVList extends IntTVList {
+  private final TimSort policy;
 
-import org.apache.tsfile.enums.TSDataType;
-
-import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
-
-public class TimIntTVList extends IntTVList implements TimSort {
-
-  private long[][] sortedTimestamps;
-  private int[][] sortedValues;
-
-  private int pivotValue;
-  private long pivotTime;
+  TimIntTVList() {
+    policy = new TimSort(this);
+  }
 
   @Override
-  public void sort() {
-    if (sortedTimestamps == null
-        || sortedTimestamps.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
-      sortedTimestamps =
-          (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, rowCount);
-    }
-    if (sortedValues == null
-        || sortedValues.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
-      sortedValues =
-          (int[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT32, rowCount);
-    }
+  public synchronized void sort() {
+    policy.checkSortedTimestampsAndIndices();
     if (!sorted) {
-      sort(0, rowCount);
+      policy.sort(0, rowCount);
     }
-    clearSortedValue();
-    clearSortedTime();
+    policy.clearSortedValue();
+    policy.clearSortedTime();
     sorted = true;
-  }
-
-  @Override
-  public void tim_set(int src, int dest) {
-    set(src, dest);
-  }
-
-  @Override
-  public void set(int src, int dest) {
-    long srcT = getTime(src);
-    int srcV = getInt(src);
-    set(dest, srcT, srcV);
-  }
-
-  @Override
-  public void setToSorted(int src, int dest) {
-    sortedTimestamps[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getTime(src);
-    sortedValues[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getInt(src);
-  }
-
-  @Override
-  public void saveAsPivot(int pos) {
-    pivotTime = getTime(pos);
-    pivotValue = getInt(pos);
-  }
-
-  @Override
-  public void setFromSorted(int src, int dest) {
-    set(
-        dest,
-        sortedTimestamps[src / ARRAY_SIZE][src % ARRAY_SIZE],
-        sortedValues[src / ARRAY_SIZE][src % ARRAY_SIZE]);
-  }
-
-  @Override
-  public void setPivotTo(int pos) {
-    set(pos, pivotTime, pivotValue);
-  }
-
-  @Override
-  public void clearSortedTime() {
-    if (sortedTimestamps != null) {
-      sortedTimestamps = null;
-    }
-  }
-
-  @Override
-  public void clearSortedValue() {
-    if (sortedValues != null) {
-      sortedValues = null;
-    }
-  }
-
-  @Override
-  public int compare(int idx1, int idx2) {
-    long t1 = getTime(idx1);
-    long t2 = getTime(idx2);
-    return Long.compare(t1, t2);
-  }
-
-  @Override
-  public void reverseRange(int lo, int hi) {
-    hi--;
-    while (lo < hi) {
-      long loT = getTime(lo);
-      int loV = getInt(lo);
-      long hiT = getTime(hi);
-      int hiV = getInt(hi);
-      set(lo++, hiT, hiV);
-      set(hi--, loT, loV);
-    }
+    seqRowCount = rowCount;
   }
 
   @Override
   public void clear() {
     super.clear();
-    clearSortedTime();
-    clearSortedValue();
+    policy.clearSortedTime();
+    policy.clearSortedValue();
   }
 }

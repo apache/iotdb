@@ -105,7 +105,7 @@
         <jjwt.version>0.11.5</jjwt.version>
         <jline.version>3.26.2</jline.version>
         <jna.version>5.14.0</jna.version>
-        <json-smart.version>2.5.0</json-smart.version>
+        <json-smart.version>2.5.2</json-smart.version>
         <jtransforms.version>3.1</jtransforms.version>
         <junit.version>4.13.2</junit.version>
         <!-- This was the last version to support Java 8 -->
@@ -167,7 +167,7 @@
         <thrift.version>0.14.1</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>2.1.0-250207-SNAPSHOT</tsfile.version>
+        <tsfile.version>2.1.0-250219-SNAPSHOT</tsfile.version>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim
@@ -890,7 +890,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-jar-plugin</artifactId>
-                    <version>3.2.2</version>
+                    <version>3.4.2</version>
                 </plugin>
                 <plugin>
                     <groupId>org.eluder.coveralls</groupId>
@@ -1666,6 +1666,19 @@
                                     <generator>go:package_prefix=github.com/apache/iotdb-client-go/</generator>
                                     <includes>**/common.thrift,**/client.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-go</outputDirectory>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>generate-thrift-sources-csharp</id>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <phase>generate-sources</phase>
+                                <configuration>
+                                    <generator>netstd:no_deepcopy</generator>
+                                    <includes>**/common.thrift,**/client.thrift</includes>
+                                    <!-- The output directory is set to the parent of the generated sources for copying-->
+                                    <outputDirectory>${project.parent.build.directory}/generated-sources-csharp</outputDirectory>
                                 </configuration>
                             </execution>
                         </executions>

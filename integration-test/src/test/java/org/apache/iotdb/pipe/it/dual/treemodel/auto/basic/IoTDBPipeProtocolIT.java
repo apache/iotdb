@@ -47,6 +47,7 @@ import java.util.Map;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoBasic.class})
 public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
+
   @Override
   @Before
   public void setUp() {
