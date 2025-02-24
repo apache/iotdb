@@ -71,12 +71,6 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
       try (final TsFileInsertionEventScanParser parser =
           new TsFileInsertionEventScanParser(
               file, new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, null, null)) {
-
-        if (parser.isTableModelFile()) {
-          // Skip parsing this file if it is table-model
-          continue;
-        }
-
         for (final Pair<Tablet, Boolean> tabletWithIsAligned : parser.toTabletWithIsAligneds()) {
           final LoadConvertedInsertTabletStatement statement =
               new LoadConvertedInsertTabletStatement(

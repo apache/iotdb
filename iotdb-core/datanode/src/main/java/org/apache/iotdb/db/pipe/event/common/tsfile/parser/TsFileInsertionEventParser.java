@@ -34,8 +34,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
 
 public abstract class TsFileInsertionEventParser implements AutoCloseable {
 
@@ -53,8 +51,6 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
   protected final PipeMemoryBlock allocatedMemoryBlockForTablet;
 
   protected TsFileSequenceReader tsFileSequenceReader;
-
-  protected boolean isTableModelFile;
 
   protected TsFileInsertionEventParser(
       final TreePattern treePattern,
@@ -80,31 +76,10 @@ public abstract class TsFileInsertionEventParser implements AutoCloseable {
         PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
   }
 
-  public boolean isTableModelFile() {
-    return isTableModelFile;
-  }
-
   /**
    * @return {@link TabletInsertionEvent} in a streaming way
    */
   public abstract Iterable<TabletInsertionEvent> toTabletInsertionEvents();
-
-  protected Iterable<TabletInsertionEvent> getEmptyIterator() {
-    return () ->
-        new Iterator<TabletInsertionEvent>() {
-
-          @Override
-          public boolean hasNext() {
-            return false;
-          }
-
-          @Override
-          public TabletInsertionEvent next() {
-            close();
-            throw new NoSuchElementException();
-          }
-        };
-  }
 
   @Override
   public void close() {

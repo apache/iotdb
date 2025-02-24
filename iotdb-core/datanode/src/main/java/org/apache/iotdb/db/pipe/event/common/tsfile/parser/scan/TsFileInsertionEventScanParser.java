@@ -36,7 +36,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.Chunk;
@@ -109,11 +108,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
 
     try {
-      tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), true, false);
-
-      final Map<String, TableSchema> tableSchemaMap = tsFileSequenceReader.getTableSchemaMap();
-      isTableModelFile = tableSchemaMap != null && !tableSchemaMap.isEmpty();
-
+      tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath(), false, false);
       tsFileSequenceReader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
 
       prepareData();
@@ -125,10 +120,6 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
   @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
-    if (isTableModelFile) {
-      return getEmptyIterator();
-    }
-
     return () ->
         new Iterator<TabletInsertionEvent>() {
 
