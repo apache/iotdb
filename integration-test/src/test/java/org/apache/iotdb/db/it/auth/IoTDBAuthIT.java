@@ -50,8 +50,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
-import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
-import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
