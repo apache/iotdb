@@ -45,7 +45,9 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.zip.CRC32;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_E_LANGUAGE_ENABLE_DEFAULT_VALUE;
@@ -97,6 +99,8 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
 
   // The air gap connector does not use clientManager thus we put handshake type here
   protected boolean supportModsIfIsDataNodeReceiver = true;
+
+  private final Map<TEndPoint, Long> failLogTimes = new HashMap<>();
 
   @Override
   public void customize(
@@ -181,11 +185,17 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
         sockets.set(i, socket);
         LOGGER.info("Successfully connected to target server ip: {}, port: {}.", ip, port);
       } catch (final Exception e) {
-        LOGGER.warn(
-            "Failed to connect to target server ip: {}, port: {}, because: {}. Ignore it.",
-            ip,
-            port,
-            e.getMessage());
+        final TEndPoint endPoint = nodeUrls.get(i);
+        final long currentTimeMillis = System.currentTimeMillis();
+        final Long lastFailLogTime = failLogTimes.get(nodeUrls.get(i));
+        if (lastFailLogTime == null || currentTimeMillis - lastFailLogTime > 60000) {
+          failLogTimes.put(endPoint, currentTimeMillis);
+          LOGGER.warn(
+              "Failed to connect to target server ip: {}, port: {}, because: {}. Ignore it.",
+              ip,
+              port,
+              e.getMessage());
+        }
         continue;
       }
 
