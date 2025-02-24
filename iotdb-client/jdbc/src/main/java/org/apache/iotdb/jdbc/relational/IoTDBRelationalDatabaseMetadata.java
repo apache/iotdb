@@ -308,7 +308,7 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
     }
 
     // Setup Fields
-    Field[] fields = new Field[7];
+    Field[] fields = new Field[11];
     fields[0] = new Field("", ORDINAL_POSITION, INT32);
     fields[1] = new Field("", COLUMN_NAME, "TEXT");
     fields[2] = new Field("", DATA_TYPE, INT32);
@@ -316,6 +316,10 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
     fields[4] = new Field("", IS_AUTOINCREMENT, "TEXT");
     fields[5] = new Field("", IS_NULLABLE, "TEXT");
     fields[6] = new Field("", NULLABLE, INT32);
+    fields[7] = new Field("", COLUMN_SIZE, INT32);
+    fields[8] = new Field("", DECIMAL_DIGITS, INT32);
+    fields[9] = new Field("", REMARKS, "TEXT");
+    fields[10] = new Field("", "COLUMN_DEF", "TEXT");
     List<TSDataType> tsDataTypeList =
         Arrays.asList(
             TSDataType.INT32,
@@ -324,7 +328,11 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
             TSDataType.TEXT,
             TSDataType.TEXT,
             TSDataType.TEXT,
-            TSDataType.INT32);
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.TEXT,
+            TSDataType.TEXT);
     List<String> columnNameList = new ArrayList<>();
     List<String> columnTypeList = new ArrayList<>();
     Map<String, Integer> columnNameIndex = new HashMap<>();
@@ -351,6 +359,26 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
         } else if (i == 3) {
           valueInRow.add(type);
         } else if (i == 4) {
+          valueInRow.add("");
+        } else if (i == 5) {
+          if (!columnName.equals("time")) {
+            valueInRow.add("YES");
+          } else {
+            valueInRow.add("NO");
+          }
+        } else if (i == 6) {
+          if (!columnName.equals("time")) {
+            valueInRow.add(ResultSetMetaData.columnNullableUnknown);
+          } else {
+            valueInRow.add(ResultSetMetaData.columnNoNulls);
+          }
+        } else if (i == 7) {
+          valueInRow.add(getTypePrecision(fields[i].getSqlType()));
+        } else if (i == 8) {
+          valueInRow.add(getTypeScale(fields[i].getSqlType()));
+        } else if (i == 9) {
+          valueInRow.add("");
+        } else if (i == 10) {
           valueInRow.add("");
         } else {
           if (!columnName.equals("time")) {

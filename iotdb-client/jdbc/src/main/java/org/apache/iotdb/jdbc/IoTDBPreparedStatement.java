@@ -24,9 +24,12 @@ import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.io.StringReader;
@@ -235,7 +238,17 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setBinaryStream(int parameterIndex, InputStream x, int length) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    byte[] bytes = null;
+    try {
+      bytes = ReadWriteIOUtils.readBytes(x, length);
+      StringBuilder sb = new StringBuilder();
+      for (byte b : bytes) {
+        sb.append(String.format("%02x", b));
+      }
+      this.parameters.put(parameterIndex, "X'"+sb.toString()+"'");
+    } catch (IOException e) {
+      throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    }
   }
 
   @Override
@@ -309,7 +322,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setDate(int parameterIndex, Date x) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+    this.parameters.put(parameterIndex, "'"+dateFormat.format(x)+"'");
   }
 
   @Override
@@ -370,7 +384,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setNull(int parameterIndex, int sqlType) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_NOT_NULL);
+    this.parameters.put(parameterIndex,"NULL");
   }
 
   @Override
@@ -394,6 +408,10 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       setBoolean(parameterIndex, (Boolean) x);
     } else if (x instanceof Timestamp) {
       setTimestamp(parameterIndex, (Timestamp) x);
+    } else if (x instanceof Date) {
+      setDate(parameterIndex, (Date) x);
+    } else if (x instanceof Blob) {
+      setBlob(parameterIndex, (Blob) x);
     } else if (x instanceof Time) {
       setTime(parameterIndex, (Time) x);
     } else {
@@ -896,9 +914,9 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   public void setString(int parameterIndex, String x) {
     // if the sql is an insert statement and the value is not a string literal, add single quotes
     // The table model only supports single quotes, the tree model sql both single and double quotes
-    if (sql.trim().toUpperCase().startsWith("INSERT")
-        && !((x.startsWith("'") && x.endsWith("'"))
-            || ((x.startsWith("\"") && x.endsWith("\"")) && "tree".equals(getSqlDialect())))) {
+    if("table".equalsIgnoreCase(getSqlDialect()) || (sql.trim().toUpperCase().startsWith("INSERT")
+        && !((x.startsWith("'") && x.endsWith("'"))))
+            || ((x.startsWith("\"") && x.endsWith("\"")) && "tree".equals(getSqlDialect()))) {
       this.parameters.put(parameterIndex, "'" + x + "'");
     } else {
       this.parameters.put(parameterIndex, x);

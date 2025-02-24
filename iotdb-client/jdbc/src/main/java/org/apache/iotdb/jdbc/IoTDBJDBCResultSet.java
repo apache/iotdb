@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.IoTDBRpcDataSet;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -33,6 +34,8 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.sql.rowset.serial.SerialBlob;
 
 import java.io.InputStream;
 import java.io.Reader;
@@ -297,12 +300,28 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public Blob getBlob(int arg0) throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+    try {
+      Binary binary = ioTDBRpcDataSet.getBinary(arg0);
+      if(ObjectUtils.isNotEmpty(binary)) {
+        return new SerialBlob(binary.getValues());
+      }
+      return null;
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 
   @Override
   public Blob getBlob(String arg0) throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+    try {
+      Binary binary = ioTDBRpcDataSet.getBinary(arg0);
+      if(ObjectUtils.isNotEmpty(binary)) {
+        return new SerialBlob(binary.getValues());
+      }
+      return null;
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 
   @Override
