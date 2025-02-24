@@ -461,7 +461,9 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     }
   }
 
-  /** @return Map<RegionGroupId, RegionPriority> */
+  /**
+   * @return Map<RegionGroupId, RegionPriority>
+   */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRegionPriorityMap() {
     priorityMapLock.readLock().lock();
     try {
@@ -546,15 +548,11 @@ public class RouteBalancer implements IClusterStatusSubscriber {
   @Override
   public void onNodeStatisticsChanged(NodeStatisticsChangeEvent event) {
     balanceRegionLeader();
-    balanceRegionPriority();
-    handleBalanceAction();
   }
 
   @Override
   public void onRegionGroupStatisticsChanged(RegionGroupStatisticsChangeEvent event) {
     balanceRegionLeader();
-    balanceRegionPriority();
-    handleBalanceAction();
   }
 
   @Override
