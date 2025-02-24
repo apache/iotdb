@@ -787,7 +787,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             false,
             false,
             true,
-            true,
             pipeName,
             creationTime,
             pipeTaskMeta,

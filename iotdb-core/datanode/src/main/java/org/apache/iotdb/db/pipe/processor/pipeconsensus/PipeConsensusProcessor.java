@@ -52,7 +52,12 @@ public class PipeConsensusProcessor implements PipeProcessor {
       throws Exception {}
 
   private static boolean isContainLocalData(EnrichedEvent enrichedEvent) {
-    final ProgressIndex progressIndex = enrichedEvent.getProgressIndex();
+    ProgressIndex progressIndex;
+    if (enrichedEvent instanceof PipeTsFileInsertionEvent) {
+      progressIndex = ((PipeTsFileInsertionEvent) enrichedEvent).forceGetProgressIndex();
+    } else {
+      progressIndex = enrichedEvent.getProgressIndex();
+    }
     if (progressIndex instanceof RecoverProgressIndex) {
       return ((RecoverProgressIndex) progressIndex)
           .getDataNodeId2LocalIndex()

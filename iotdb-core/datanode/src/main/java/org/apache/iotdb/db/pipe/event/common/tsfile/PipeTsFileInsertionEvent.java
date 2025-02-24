@@ -26,9 +26,6 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
-import org.apache.iotdb.consensus.pipe.PipeConsensus;
-import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
-import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -37,7 +34,6 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventP
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserProvider;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
-import org.apache.iotdb.db.pipe.processor.pipeconsensus.PipeConsensusProcessor;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
@@ -110,7 +106,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         isLoaded,
         isGeneratedByPipe,
         isGeneratedByHistoricalExtractor,
-        false,
         null,
         0,
         null,
@@ -128,7 +123,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final boolean isLoaded,
       final boolean isGeneratedByPipe,
       final boolean isGeneratedByHistoricalExtractor,
-      final boolean isReallyTransferred,
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
@@ -171,38 +165,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               synchronized (isClosed) {
                 isClosed.set(true);
                 isClosed.notifyAll();
-                // if using IoTV2, assign a replicateIndex for this event.
-                // only copied event can be transferred to receiver, so we only consider to order
-                // the copied event instead of the original event.
-                if (isReallyTransferred
-                    && DataRegionConsensusImpl.getInstance() instanceof PipeConsensus
-                    && PipeConsensusProcessor.isShouldReplicate(this)) {
-                  this.setReplicateIndexForIoTV2(
-                      ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(
-                          resource.getDataRegionId()));
-                  LOGGER.info(
-                      "Set {} for region {} for {}",
-                      this.getReplicateIndexForIoTV2(),
-                      resource.getDataRegionId(),
-                      this);
-                }
                 // Update flushPointCount after TsFile is closed
                 flushPointCount = processor.getMemTableFlushPointCount();
               }
             });
-      }
-    } else {
-      if (isReallyTransferred
-          && DataRegionConsensusImpl.getInstance() instanceof PipeConsensus
-          && PipeConsensusProcessor.isShouldReplicate(this)) {
-        this.setReplicateIndexForIoTV2(
-            ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(
-                resource.getDataRegionId()));
-        LOGGER.info(
-            "Set {} for region {} for {}",
-            this.getReplicateIndexForIoTV2(),
-            resource.getDataRegionId(),
-            this);
       }
     }
     // Check again after register close listener in case TsFile is closed during the process
@@ -384,6 +350,22 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     }
   }
 
+  /**
+   * Get ProgressIndex without waiting for tsfile close. Can be used in getting progressIndex when
+   * memTable becomes immutable.
+   */
+  public ProgressIndex forceGetProgressIndex() {
+    if (resource.isEmpty()) {
+      LOGGER.warn(
+          "Skipping temporary TsFile {}'s progressIndex, will report MinimumProgressIndex", tsFile);
+      return MinimumProgressIndex.INSTANCE;
+    }
+    if (Objects.nonNull(overridingProgressIndex)) {
+      return overridingProgressIndex;
+    }
+    return resource.getMaxProgressIndexAfterClose();
+  }
+
   @Override
   protected void reportProgress() {
     super.reportProgress();
@@ -417,7 +399,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         isLoaded,
         isGeneratedByPipe,
         isGeneratedByHistoricalExtractor,
-        true,
         pipeName,
         creationTime,
         pipeTaskMeta,

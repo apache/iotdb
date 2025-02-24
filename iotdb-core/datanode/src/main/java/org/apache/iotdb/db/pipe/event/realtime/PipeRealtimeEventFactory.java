@@ -34,20 +34,38 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class PipeRealtimeEventFactory {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeRealtimeEventFactory.class);
   private static final TsFileEpochManager TS_FILE_EPOCH_MANAGER = new TsFileEpochManager();
 
   public static PipeRealtimeEvent createRealtimeEvent(
+      final String dataRegionId,
       final Boolean isTableModel,
       final String databaseNameFromDataRegion,
       final TsFileResource resource,
       final boolean isLoaded,
       final boolean isGeneratedByPipe) {
-    return TS_FILE_EPOCH_MANAGER.bindPipeTsFileInsertionEvent(
+    PipeTsFileInsertionEvent tsFileInsertionEvent =
         new PipeTsFileInsertionEvent(
-            isTableModel, databaseNameFromDataRegion, resource, isLoaded, isGeneratedByPipe, false),
-        resource);
+            isTableModel, databaseNameFromDataRegion, resource, isLoaded, isGeneratedByPipe, false);
+
+    // if using IoTV2, assign a replicateIndex for this event
+    if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus
+        && PipeConsensusProcessor.isShouldReplicate(tsFileInsertionEvent)) {
+      tsFileInsertionEvent.setReplicateIndexForIoTV2(
+          ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(dataRegionId));
+      LOGGER.info(
+          "[Region{}]Set {} for event {}",
+          dataRegionId,
+          tsFileInsertionEvent.getReplicateIndexForIoTV2(),
+          tsFileInsertionEvent);
+    }
+
+    return TS_FILE_EPOCH_MANAGER.bindPipeTsFileInsertionEvent(tsFileInsertionEvent, resource);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(
@@ -72,6 +90,11 @@ public class PipeRealtimeEventFactory {
         && PipeConsensusProcessor.isShouldReplicate(insertionEvent)) {
       insertionEvent.setReplicateIndexForIoTV2(
           ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(dataRegionId));
+      LOGGER.info(
+          "[Region{}]Set {} for event {}",
+          dataRegionId,
+          insertionEvent.getReplicateIndexForIoTV2(),
+          insertionEvent);
     }
 
     return TS_FILE_EPOCH_MANAGER.bindPipeInsertNodeTabletInsertionEvent(
@@ -94,6 +117,11 @@ public class PipeRealtimeEventFactory {
         && PipeConsensusProcessor.isShouldReplicate(deleteDataNodeEvent)) {
       deleteDataNodeEvent.setReplicateIndexForIoTV2(
           ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(dataRegionId));
+      LOGGER.info(
+          "[Region{}]Set {} for event {}",
+          dataRegionId,
+          deleteDataNodeEvent.getReplicateIndexForIoTV2(),
+          deleteDataNodeEvent);
     }
 
     return new PipeRealtimeEvent(deleteDataNodeEvent, null, null, null, null);
