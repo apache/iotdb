@@ -146,12 +146,10 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
 
   private void doTransfer(final PipeConfigRegionWritePlanEvent pipeConfigRegionWritePlanEvent)
       throws PipeException {
-    final List<Pair<IoTDBSyncClient, Boolean>> clientsAndStatuses;
-    if (shouldSendToAllClients) {
-      clientsAndStatuses = clientManager.getAllClients();
-    } else {
-      clientsAndStatuses = Collections.singletonList(clientManager.getClient());
-    }
+    final List<Pair<IoTDBSyncClient, Boolean>> clientsAndStatuses =
+        shouldSendToAllClients
+            ? clientManager.getAllClients()
+            : Collections.singletonList(clientManager.getClient());
     for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : clientsAndStatuses) {
       final TPipeTransferResp resp;
       try {
@@ -216,12 +214,10 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
     final long creationTime = snapshotEvent.getCreationTime();
     final File snapshotFile = snapshotEvent.getSnapshotFile();
     final File templateFile = snapshotEvent.getTemplateFile();
-    final List<Pair<IoTDBSyncClient, Boolean>> clientsAndStatuses;
-    if (shouldSendToAllClients) {
-      clientsAndStatuses = clientManager.getAllClients();
-    } else {
-      clientsAndStatuses = Collections.singletonList(clientManager.getClient());
-    }
+    final List<Pair<IoTDBSyncClient, Boolean>> clientsAndStatuses =
+        shouldSendToAllClients
+            ? clientManager.getAllClients()
+            : Collections.singletonList(clientManager.getClient());
     for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : clientsAndStatuses) {
 
       // 1. Transfer snapshotFile, and template File if exists

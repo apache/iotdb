@@ -160,12 +160,10 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
 
   private void doTransfer(final PipeConfigRegionWritePlanEvent pipeConfigRegionWritePlanEvent)
       throws PipeException, IOException {
-    final List<Integer> socketIndexes;
-    if (shouldSendToAllClients) {
-      socketIndexes = allAliveSocketsIndex();
-    } else {
-      socketIndexes = Collections.singletonList(nextSocketIndex());
-    }
+    final List<Integer> socketIndexes =
+        shouldSendToAllClients
+            ? allAliveSocketsIndex()
+            : Collections.singletonList(nextSocketIndex());
     for (final int socketIndex : socketIndexes) {
       final AirGapSocket socket = sockets.get(socketIndex);
       try {
@@ -217,12 +215,10 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
     final File snapshot = pipeConfigRegionSnapshotEvent.getSnapshotFile();
     final File templateFile = pipeConfigRegionSnapshotEvent.getTemplateFile();
 
-    final List<Integer> socketIndexes;
-    if (shouldSendToAllClients) {
-      socketIndexes = allAliveSocketsIndex();
-    } else {
-      socketIndexes = Collections.singletonList(nextSocketIndex());
-    }
+    final List<Integer> socketIndexes =
+        shouldSendToAllClients
+            ? allAliveSocketsIndex()
+            : Collections.singletonList(nextSocketIndex());
     for (final int socketIndex : socketIndexes) {
       final AirGapSocket socket = sockets.get(socketIndex);
       try {

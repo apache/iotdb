@@ -96,12 +96,11 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
 
   private void doTransfer(final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
       throws PipeException {
-    final List<Pair<IoTDBSyncClient, Boolean>> clientsAndStatuses;
-    if (shouldSendToAllClients) {
-      clientsAndStatuses = clientManager.getAllClients();
-    } else {
-      clientsAndStatuses = Collections.singletonList(clientManager.getClient());
-    }
+    final List<Pair<IoTDBSyncClient, Boolean>> clientsAndStatuses =
+        shouldSendToAllClients
+            ? clientManager.getAllClients()
+            : Collections.singletonList(clientManager.getClient());
+
     for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : clientsAndStatuses) {
       final TPipeTransferResp resp;
       try {
@@ -163,12 +162,10 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
     final File mTreeSnapshotFile = snapshotEvent.getMTreeSnapshotFile();
     final File tagLogSnapshotFile = snapshotEvent.getTagLogSnapshotFile();
     final File attributeSnapshotFile = snapshotEvent.getAttributeSnapshotFile();
-    final List<Pair<IoTDBSyncClient, Boolean>> clientsAndStatuses;
-    if (shouldSendToAllClients) {
-      clientsAndStatuses = clientManager.getAllClients();
-    } else {
-      clientsAndStatuses = Collections.singletonList(clientManager.getClient());
-    }
+    final List<Pair<IoTDBSyncClient, Boolean>> clientsAndStatuses =
+        shouldSendToAllClients
+            ? clientManager.getAllClients()
+            : Collections.singletonList(clientManager.getClient());
 
     for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : clientsAndStatuses) {
       final TPipeTransferResp resp;

@@ -27,14 +27,17 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import org.apache.thrift.TException;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class PipeTransferTabletInsertNodeEventHandler
     extends PipeTransferTabletInsertionEventHandler {
 
   public PipeTransferTabletInsertNodeEventHandler(
       final PipeInsertNodeTabletInsertionEvent event,
       final TPipeTransferReq req,
-      final IoTDBDataRegionAsyncConnector connector) {
-    super(event, req, connector);
+      final IoTDBDataRegionAsyncConnector connector,
+      final AtomicInteger eventsReferenceCount) {
+    super(event, req, connector, eventsReferenceCount);
   }
 
   @Override

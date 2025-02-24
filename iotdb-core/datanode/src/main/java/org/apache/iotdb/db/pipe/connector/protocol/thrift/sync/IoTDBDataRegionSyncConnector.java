@@ -201,12 +201,10 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
   private void doTransfer(final PipeDeleteDataNodeEvent pipeDeleteDataNodeEvent)
       throws PipeException {
-    final List<Pair<IoTDBSyncClient, Boolean>> clientsAndStatuses;
-    if (shouldSendToAllClients) {
-      clientsAndStatuses = clientManager.getAllClients();
-    } else {
-      clientsAndStatuses = Collections.singletonList(clientManager.getClient());
-    }
+    final List<Pair<IoTDBSyncClient, Boolean>> clientsAndStatuses =
+        shouldSendToAllClients
+            ? clientManager.getAllClients()
+            : Collections.singletonList(clientManager.getClient());
 
     for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : clientsAndStatuses) {
       final TPipeTransferResp resp;
@@ -270,12 +268,10 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
   private void doTransfer(
       final TEndPoint endPoint, final PipeTabletEventPlainBatch batchToTransfer) {
-    final List<Pair<IoTDBSyncClient, Boolean>> clientsAndStatuses;
-    if (shouldSendToAllClients) {
-      clientsAndStatuses = clientManager.getAllClients();
-    } else {
-      clientsAndStatuses = Collections.singletonList(clientManager.getClient(endPoint));
-    }
+    final List<Pair<IoTDBSyncClient, Boolean>> clientsAndStatuses =
+        shouldSendToAllClients
+            ? clientManager.getAllClients()
+            : Collections.singletonList(clientManager.getClient(endPoint));
 
     for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : clientsAndStatuses) {
       final TPipeTransferResp resp;
@@ -394,14 +390,12 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException {
 
-    List<Pair<IoTDBSyncClient, Boolean>> clientsAndStatuses = null;
-    if (shouldSendToAllClients) {
-      clientsAndStatuses = clientManager.getAllClients();
-    } else {
-      clientsAndStatuses =
-          Collections.singletonList(
-              clientManager.getClient(pipeInsertNodeTabletInsertionEvent.getDeviceId()));
-    }
+    List<Pair<IoTDBSyncClient, Boolean>> clientsAndStatuses =
+        shouldSendToAllClients
+            ? clientManager.getAllClients()
+            : Collections.singletonList(
+                clientManager.getClient(pipeInsertNodeTabletInsertionEvent.getDeviceId()));
+
     for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : clientsAndStatuses) {
       final TPipeTransferResp resp;
       try {
@@ -454,14 +448,11 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
   private void doTransfer(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException {
-    final List<Pair<IoTDBSyncClient, Boolean>> clientsAndStatuses;
-    if (shouldSendToAllClients) {
-      clientsAndStatuses = clientManager.getAllClients();
-    } else {
-      clientsAndStatuses =
-          Collections.singletonList(
-              clientManager.getClient(pipeRawTabletInsertionEvent.getDeviceId()));
-    }
+    final List<Pair<IoTDBSyncClient, Boolean>> clientsAndStatuses =
+        shouldSendToAllClients
+            ? clientManager.getAllClients()
+            : Collections.singletonList(
+                clientManager.getClient(pipeRawTabletInsertionEvent.getDeviceId()));
 
     for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : clientsAndStatuses) {
 
@@ -541,12 +532,11 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       final String dataBaseName)
       throws PipeException, IOException {
 
-    final List<Pair<IoTDBSyncClient, Boolean>> clientsAndStatuses;
-    if (shouldSendToAllClients) {
-      clientsAndStatuses = clientManager.getAllClients();
-    } else {
-      clientsAndStatuses = Collections.singletonList(clientManager.getClient());
-    }
+    final List<Pair<IoTDBSyncClient, Boolean>> clientsAndStatuses =
+        shouldSendToAllClients
+            ? clientManager.getAllClients()
+            : Collections.singletonList(clientManager.getClient());
+
     for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : clientsAndStatuses) {
       final TPipeTransferResp resp;
 
