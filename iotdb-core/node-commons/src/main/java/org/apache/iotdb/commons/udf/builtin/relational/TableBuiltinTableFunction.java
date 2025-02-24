@@ -28,8 +28,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public enum TableBuiltinTableFunction {
-  HOP("hop"),
-  ;
+// TODO(UDF): support built in function
+// HOP("hop"),
+;
 
   private final String functionName;
 
