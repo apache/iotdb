@@ -348,7 +348,7 @@ public abstract class IoTDBConnector implements PipeConnector {
     validator.validate(
         arg -> arg.equals("any") || arg.equals("all"),
         String.format(
-            "The value of key %s or %s must be either 'retry' or 'ignore'.",
+            "The value of key %s or %s must be either 'any' or 'all'.",
             CONNECTOR_DATA_DISTRIBUTION_STRATEGY, SINK_DATA_DISTRIBUTION_STRATEGY),
         dataDistributionStrategy);
     shouldSendToAllClients = "all".equals(dataDistributionStrategy);
