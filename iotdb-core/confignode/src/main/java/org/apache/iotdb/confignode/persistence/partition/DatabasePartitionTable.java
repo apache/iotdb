@@ -616,7 +616,19 @@ public class DatabasePartitionTable {
    * @param currentTimeSlot The current TimeSlot
    */
   public void autoCleanPartitionTable(long TTL, TTimePartitionSlot currentTimeSlot) {
-    dataPartitionTable.autoCleanPartitionTable(TTL, currentTimeSlot);
+    long[] removedTimePartitionSlots =
+        dataPartitionTable.autoCleanPartitionTable(TTL, currentTimeSlot).stream()
+            .map(TTimePartitionSlot::getStartTime)
+            .collect(Collectors.toList())
+            .stream()
+            .mapToLong(Long::longValue)
+            .toArray();
+    if (removedTimePartitionSlots.length > 0) {
+      LOGGER.info(
+          "[PartitionTableCleaner] The TimePartitions: {} are removed from Database: {}",
+          removedTimePartitionSlots,
+          databaseName);
+    }
   }
 
   @Override
