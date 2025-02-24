@@ -175,7 +175,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   @Override
   public void handshake() throws Exception {
-    clientManager.checkTargetServersStatus();
+    clientManager.checkTargetServerStatus();
   }
 
   @Override
