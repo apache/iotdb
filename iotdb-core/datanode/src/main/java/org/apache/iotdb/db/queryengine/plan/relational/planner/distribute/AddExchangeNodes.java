@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
@@ -74,20 +73,15 @@ public class AddExchangeNodes
 
     for (PlanNode child : node.getChildren()) {
       PlanNode rewriteNode = child.accept(this, context);
-
-      TRegionReplicaSet region =
-          context.nodeDistributionMap.get(rewriteNode.getPlanNodeId()).getRegion();
-      if (!region.equals(context.mostUsedRegion)) {
-        ExchangeNode exchangeNode = new ExchangeNode(queryContext.getQueryId().genPlanNodeId());
-        exchangeNode.addChild(rewriteNode);
-        exchangeNode.setOutputSymbols(rewriteNode.getOutputSymbols());
-        newNode.addChild(exchangeNode);
-        context.hasExchangeNode = true;
-      } else {
-        newNode.addChild(rewriteNode);
-      }
+      ExchangeNode exchangeNode = new ExchangeNode(queryContext.getQueryId().genPlanNodeId());
+      exchangeNode.addChild(rewriteNode);
+      exchangeNode.setOutputSymbols(rewriteNode.getOutputSymbols());
+      newNode.addChild(exchangeNode);
+      context.hasExchangeNode = true;
+      context.nodeDistributionMap.put(
+          exchangeNode.getPlanNodeId(),
+          new NodeDistribution(SAME_WITH_SOME_CHILD, context.mostUsedRegion));
     }
-
     context.nodeDistributionMap.put(
         node.getPlanNodeId(), new NodeDistribution(SAME_WITH_SOME_CHILD, context.mostUsedRegion));
 

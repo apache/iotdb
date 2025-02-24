@@ -36,6 +36,7 @@ public class CollectOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
   private final List<Operator> children;
+  private boolean inited = false;
 
   private int currentIndex;
 
@@ -68,6 +69,12 @@ public class CollectOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
+    if (!inited) {
+      inited = true;
+      for (Operator child : children) {
+        child.isBlocked();
+      }
+    }
     if (currentIndex >= children.size()) {
       return NOT_BLOCKED;
     }
