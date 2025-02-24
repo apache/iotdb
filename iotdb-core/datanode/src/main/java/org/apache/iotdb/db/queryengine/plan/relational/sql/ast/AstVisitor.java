@@ -660,4 +660,8 @@ public abstract class AstVisitor<R, C> {
   protected R visitRemoveRegion(RemoveRegion node, C context) {
     return visitStatement(node, context);
   }
+
+  protected R visitColumns(Columns node, C context) {
+    return visitExpression(node, context);
+  }
 }

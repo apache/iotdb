@@ -906,6 +906,7 @@ primaryExpression
     | dateExpression                                                                      #dateTimeExpression
     | '(' expression (',' expression)+ ')'                                                #rowConstructor
     | ROW '(' expression (',' expression)* ')'                                            #rowConstructor
+    | COLUMNS '(' (ASTERISK | pattern=string) ')'                                         #columns
     | qualifiedName '(' (label=identifier '.')? ASTERISK ')'                              #functionCall
     | qualifiedName '(' (setQuantifier? expression (',' expression)*)?')'                 #functionCall
     | '(' query ')'                                                                       #subqueryExpression
