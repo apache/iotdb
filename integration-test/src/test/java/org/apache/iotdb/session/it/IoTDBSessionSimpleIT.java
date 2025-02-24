@@ -48,6 +48,7 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
@@ -1785,6 +1786,42 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void insertPartialSQLTest() throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.createAlignedTimeseries(
+          "root.partial_insert.d1",
+          Collections.singletonList("s1"),
+          Collections.singletonList(TSDataType.BOOLEAN),
+          Collections.singletonList(TSEncoding.PLAIN),
+          Collections.singletonList(CompressionType.UNCOMPRESSED),
+          null);
+      try {
+        session.executeNonQueryStatement(
+            "insert into root.partial_insert.d1(time, s1) values (10000,true),(20000,false),(35000,-1.5),(30000,-1),(40000,0),(50000,1),(60000,1.5),(70000,'string'),(80000,'1989-06-15'),(90000,638323200000)");
+        fail("Exception expected");
+      } catch (StatementExecutionException e) {
+        assertEquals(
+            "507: Fail to insert measurements [s1] caused by [The BOOLEAN should be true/TRUE, false/FALSE or 0/1]",
+            e.getMessage());
+      }
+
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from root.partial_insert.d1");
+      long[] timestamps = new long[] {10000, 20000, 40000, 50000};
+      Boolean[] values = new Boolean[] {true, false, false, true};
+      int cnt = 0;
+      while (dataSet.hasNext()) {
+        RowRecord rec = dataSet.next();
+        assertEquals(timestamps[cnt], rec.getTimestamp());
+        assertEquals(values[cnt], rec.getFields().get(0).getBoolV());
+        cnt++;
+      }
+      assertEquals(4, cnt);
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertBinaryAsTextTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       // prepare binary data
@@ -1904,6 +1941,52 @@ public class IoTDBSessionSimpleIT {
       assertEquals(1000, dataSet.next().getFields().get(0).getLongV());
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       e.printStackTrace();
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void insertTimeOnlyTest() throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+
+      List<IMeasurementSchema> schemaList = Collections.emptyList();
+      final List<ColumnCategory> columnTypes = Collections.emptyList();
+
+      Tablet tablet =
+          new Tablet(
+              "root.sg1.d1",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes);
+
+      long timestamp = 0;
+      for (int row = 0; row < 10; row++) {
+        tablet.addTimestamp(row, timestamp++);
+      }
+      session.insertTablet(tablet);
+      tablet.setDeviceId("root.sg1.d2");
+      session.insertAlignedTablet(tablet);
+      tablet.reset();
+
+      try {
+        session.executeNonQueryStatement(
+            String.format("INSERT INTO root.sg1.d3 (time) VALUES (%d)", timestamp++));
+        fail("Exception expected");
+      } catch (StatementExecutionException e) {
+        assertEquals(
+            "701: InsertStatement should contain at least one measurement", e.getMessage());
+      }
+
+      try {
+        session.executeNonQueryStatement(
+            String.format("INSERT INTO root.sg1.d4 (time) ALIGNED VALUES (%d)", timestamp++));
+      } catch (StatementExecutionException e) {
+        assertEquals(
+            "701: InsertStatement should contain at least one measurement", e.getMessage());
+      }
+
+      SessionDataSet dataSet = session.executeQueryStatement("select count(*) from root.sg1.**");
+      assertFalse(dataSet.hasNext());
     }
   }
 
@@ -2070,6 +2153,7 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void testWriteRestartAndDeleteDB()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {

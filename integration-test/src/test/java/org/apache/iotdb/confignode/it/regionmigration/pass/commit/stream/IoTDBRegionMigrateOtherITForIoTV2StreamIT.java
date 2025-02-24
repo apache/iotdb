@@ -17,24 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration.pass.daily.iotv2.stream;
+package org.apache.iotdb.confignode.it.regionmigration.pass.commit.stream;
 
+import org.apache.iotdb.commons.utils.KillPoint.KillNode;
+import org.apache.iotdb.commons.utils.KillPoint.NeverTriggeredKillPoint;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
-import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
-import org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.DailyIT;
+import org.apache.iotdb.itbase.category.ClusterIT;
 
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-@Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateClusterCrashIoTV2Stream
+@Category({ClusterIT.class})
+public class IoTDBRegionMigrateOtherITForIoTV2StreamIT
     extends IoTDBRegionOperationReliabilityITFramework {
 
   @Override
@@ -48,37 +49,19 @@ public class IoTDBRegionMigrateClusterCrashIoTV2Stream
   }
 
   @Test
-  public void clusterCrash1() throws Exception {
-    killClusterTest(buildSet(AddRegionPeerState.CREATE_NEW_REGION_PEER), true);
-  }
-
-  @Test
-  public void clusterCrash2() throws Exception {
-    killClusterTest(buildSet(AddRegionPeerState.DO_ADD_REGION_PEER), false);
-  }
-
-  @Test
-  public void clusterCrash3() throws Exception {
-    killClusterTest(buildSet(AddRegionPeerState.UPDATE_REGION_LOCATION_CACHE), true);
-  }
-
-  @Test
-  public void clusterCrash4() throws Exception {
-    killClusterTest(buildSet(RemoveRegionPeerState.TRANSFER_REGION_LEADER), true);
-  }
-
-  @Test
-  public void clusterCrash6() throws Exception {
-    killClusterTest(buildSet(RemoveRegionPeerState.REMOVE_REGION_PEER), true);
-  }
-
-  @Test
-  public void clusterCrash7() throws Exception {
-    killClusterTest(buildSet(RemoveRegionPeerState.DELETE_OLD_REGION_PEER), true);
-  }
-
-  @Test
-  public void clusterCrash8() throws Exception {
-    killClusterTest(buildSet(RemoveRegionPeerState.REMOVE_REGION_LOCATION_CACHE), true);
+  public void badKillPoint() throws Exception {
+    try {
+      successTest(
+          1,
+          1,
+          1,
+          2,
+          buildSet(NeverTriggeredKillPoint.NEVER_TRIGGERED_KILL_POINT),
+          noKillPoints(),
+          KillNode.ALL_NODES);
+    } catch (AssertionError e) {
+      return;
+    }
+    Assert.fail("kill point not triggered but test pass");
   }
 }

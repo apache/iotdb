@@ -33,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -83,8 +84,6 @@ public interface IMemTable extends WALEntryValue {
   /** only used when mem control enabled */
   long getTVListsRamCost();
 
-  boolean reachChunkSizeOrPointNumThreshold();
-
   int getSeriesNumber();
 
   long getTotalPointsNum();
@@ -117,7 +116,8 @@ public interface IMemTable extends WALEntryValue {
       QueryContext context,
       IFullPath fullPath,
       long ttlLowerBound,
-      List<Pair<ModEntry, IMemTable>> modsToMemtabled)
+      List<Pair<ModEntry, IMemTable>> modsToMemtabled,
+      Filter globalTimeFilter)
       throws IOException, QueryProcessException, MetadataException;
 
   void queryForSeriesRegionScan(
@@ -169,7 +169,7 @@ public interface IMemTable extends WALEntryValue {
   boolean chunkNotExist(IDeviceID deviceId, String measurement);
 
   /** only used when mem control enabled */
-  long getCurrentTVListSize(IDeviceID deviceId, String measurement);
+  long getMeasurementSize(IDeviceID deviceId, String measurement);
 
   /** only used when mem control enabled */
   void addTextDataSize(long textDataIncrement);

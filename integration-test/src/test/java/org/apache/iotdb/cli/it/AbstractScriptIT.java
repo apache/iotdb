@@ -34,7 +34,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-public abstract class AbstractScript {
+public abstract class AbstractScriptIT {
 
   protected void testOutput(ProcessBuilder builder, @Nullable String[] output, int statusCode)
       throws IOException {

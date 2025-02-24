@@ -843,7 +843,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         .getConfig()
         .setRpcImplClassName(ClientRPCServiceImpl.class.getName());
     if (config.isEnableRpcService()) {
-      registerManager.register(RPCService.getInstance());
+      registerManager.register(ExternalRPCService.getInstance());
     }
     // init service protocols
     initProtocols();

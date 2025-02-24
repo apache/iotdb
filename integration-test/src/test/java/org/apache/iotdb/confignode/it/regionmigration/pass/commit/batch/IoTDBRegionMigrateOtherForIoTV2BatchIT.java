@@ -17,28 +17,37 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.regionmigration.pass.daily.datanodecrash.iotv2.batch;
+package org.apache.iotdb.confignode.it.regionmigration.pass.commit.batch;
 
-import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusInactivatePeerKillPoints;
-import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV2;
+import org.apache.iotdb.commons.utils.KillPoint.KillNode;
+import org.apache.iotdb.commons.utils.KillPoint.NeverTriggeredKillPoint;
+import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.DailyIT;
+import org.apache.iotdb.itbase.category.ClusterIT;
 
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-@Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBRegionMigrateOriginalCrashWhenRemoveRemotePeerForIoTV2Batch
-    extends IoTDBRegionMigrateDataNodeCrashITFrameworkForIoTV2 {
+@Category({ClusterIT.class})
+public class IoTDBRegionMigrateOtherForIoTV2BatchIT
+    extends IoTDBRegionOperationReliabilityITFramework {
   @Test
-  public void crashBeforeInactivate() throws Exception {
-    success(IoTConsensusInactivatePeerKillPoints.BEFORE_INACTIVATE);
-  }
-
-  @Test
-  public void crashAfterInactivate() throws Exception {
-    success(IoTConsensusInactivatePeerKillPoints.AFTER_INACTIVATE);
+  public void badKillPoint() throws Exception {
+    try {
+      successTest(
+          1,
+          1,
+          1,
+          2,
+          buildSet(NeverTriggeredKillPoint.NEVER_TRIGGERED_KILL_POINT),
+          noKillPoints(),
+          KillNode.ALL_NODES);
+    } catch (AssertionError e) {
+      return;
+    }
+    Assert.fail("kill point not triggered but test pass");
   }
 }
