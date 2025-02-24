@@ -36,8 +36,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
@@ -249,15 +251,17 @@ public class SeriesPartitionTable {
   public List<TTimePartitionSlot> autoCleanPartitionTable(
       long TTL, TTimePartitionSlot currentTimeSlot) {
     List<TTimePartitionSlot> removedTimePartitions = new ArrayList<>();
-    seriesPartitionMap.forEach(
-        (timePartitionSlot, consensusGroupIds) -> {
-          if (timePartitionSlot.getStartTime() + TTL < currentTimeSlot.getStartTime()) {
-            removedTimePartitions.add(timePartitionSlot);
-          }
-        });
-    seriesPartitionMap
-        .entrySet()
-        .removeIf(entry -> entry.getKey().getStartTime() + TTL < currentTimeSlot.getStartTime());
+    Iterator<Entry<TTimePartitionSlot, List<TConsensusGroupId>>> iterator =
+        seriesPartitionMap.entrySet().iterator();
+
+    while (iterator.hasNext()) {
+      Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> entry = iterator.next();
+      TTimePartitionSlot timePartitionSlot = entry.getKey();
+      if (timePartitionSlot.getStartTime() + TTL < currentTimeSlot.getStartTime()) {
+        removedTimePartitions.add(timePartitionSlot);
+        iterator.remove();
+      }
+    }
     return removedTimePartitions;
   }
 
@@ -309,8 +313,12 @@ public class SeriesPartitionTable {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     SeriesPartitionTable that = (SeriesPartitionTable) o;
     return seriesPartitionMap.equals(that.seriesPartitionMap);
   }
