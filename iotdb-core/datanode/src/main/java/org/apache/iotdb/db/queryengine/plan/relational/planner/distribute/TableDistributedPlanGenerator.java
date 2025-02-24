@@ -236,6 +236,47 @@ public class TableDistributedPlanGenerator
     return Collections.singletonList(node);
   }
 
+  // @Override
+  public List<PlanNode> visitProject2(ProjectNode node, PlanContext context) {
+    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
+    boolean containAllSortItem = false;
+    if (childOrdering != null) {
+      // the column used for order by has been pruned, we can't copy this node to sub nodeTrees.
+      containAllSortItem =
+          ImmutableSet.copyOf(node.getOutputSymbols()).containsAll(childOrdering.getOrderBy());
+    }
+    if (childrenNodes.size() == 1) {
+      if (containAllSortItem) {
+        nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
+      }
+      node.setChild(childrenNodes.get(0));
+      return Collections.singletonList(node);
+    }
+
+    boolean containsDiff =
+        node.getAssignments().getMap().values().stream()
+            .anyMatch(PushPredicateIntoTableScan::containsDiffFunction);
+    if (containsDiff) {
+      if (containAllSortItem) {
+        nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
+      }
+      node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
+      return Collections.singletonList(node);
+    }
+
+    List<PlanNode> resultNodeList = new ArrayList<>(childrenNodes.size());
+    for (PlanNode child : childrenNodes) {
+      ProjectNode subProjectNode =
+          new ProjectNode(queryId.genPlanNodeId(), child, node.getAssignments());
+      resultNodeList.add(subProjectNode);
+      if (containAllSortItem) {
+        nodeOrderingMap.put(subProjectNode.getPlanNodeId(), childOrdering);
+      }
+    }
+    return resultNodeList;
+  }
+
   @Override
   public List<PlanNode> visitProject(ProjectNode node, PlanContext context) {
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
@@ -292,8 +333,7 @@ public class TableDistributedPlanGenerator
     }
 
     TopKNode newTopKNode = (TopKNode) node.clone();
-    for (int i = 0; i < childrenNodes.size(); i++) {
-      PlanNode child = childrenNodes.get(i);
+    for (PlanNode child : childrenNodes) {
       TopKNode subTopKNode =
           new TopKNode(
               queryId.genPlanNodeId(),
@@ -412,6 +452,7 @@ public class TableDistributedPlanGenerator
   public List<PlanNode> visitFilter(FilterNode node, PlanContext context) {
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
+    // TODO examine allSortItem
     if (childOrdering != null) {
       nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
     }
@@ -560,12 +601,7 @@ public class TableDistributedPlanGenerator
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
         boolean aligned = deviceEntry instanceof AlignedDeviceEntry;
         Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode> pair =
-            tableScanNodeMap.get(regionReplicaSet);
-
-        if (pair == null) {
-          pair = new Pair<>(null, null);
-          tableScanNodeMap.put(regionReplicaSet, pair);
-        }
+            tableScanNodeMap.computeIfAbsent(regionReplicaSet, k -> new Pair<>(null, null));
 
         if (pair.left == null && aligned) {
           TreeAlignedDeviceViewScanNode scanNode =
