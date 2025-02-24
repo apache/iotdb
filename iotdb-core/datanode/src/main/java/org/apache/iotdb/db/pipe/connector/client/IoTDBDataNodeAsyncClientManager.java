@@ -35,6 +35,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -287,6 +288,10 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       if (exception.get() != null) {
         throw new PipeConnectionException("Failed to handshake.", exception.get());
       }
+    } catch (TException e) {
+      client.resetMethodStateIfStopped();
+      throw new PipeConnectionException(
+          "Handshake failed because the ClientManager has been closed.", e);
     } finally {
       client.setShouldReturnSelf(true);
       client.returnSelf();

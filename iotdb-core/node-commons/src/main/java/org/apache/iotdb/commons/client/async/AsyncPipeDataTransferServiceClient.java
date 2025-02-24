@@ -157,6 +157,19 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
     LOGGER.info("Handshake finished for client {}", this);
   }
 
+  // To ensure that the socket will be closed eventually, we need to manually close the socket here,
+  // because the Client object may have thrown an exception before entering the asynchronous thread,
+  // and the returnSelf method may not be called, resulting in resource leakage.
+  public void resetMethodStateIfStopped() {
+    if (!___manager.isRunning()) {
+      if (___transport != null && ___transport.isOpen()) {
+        ___transport.close();
+      }
+
+      ___currentMethod = null;
+    }
+  }
+
   public String getIp() {
     return endpoint.getIp();
   }
