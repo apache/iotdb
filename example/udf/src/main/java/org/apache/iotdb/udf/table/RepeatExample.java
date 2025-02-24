@@ -111,11 +111,6 @@ public class RepeatExample implements TableFunction {
           @Override
           public void finish(
               List<ColumnBuilder> columnBuilders, ColumnBuilder passThroughIndexBuilder) {
-            try {
-              Thread.sleep(100);
-            } catch (InterruptedException e) {
-              throw new RuntimeException(e);
-            }
             for (int i = 1; i < n; i++) {
               for (int j = 0; j < recordIndex; j++) {
                 columnBuilders.get(0).writeInt(i);

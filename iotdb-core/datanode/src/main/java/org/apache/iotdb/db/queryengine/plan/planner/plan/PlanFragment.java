@@ -25,8 +25,10 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.SubPlanTypeExtractor;
+import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.IPartitionRelatedNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
@@ -39,6 +41,8 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.Map;
 import java.util.Objects;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -107,8 +111,13 @@ public class PlanFragment {
   // In current version, one PlanFragment should contain at least one SourceNode,
   // and the DataRegions of all SourceNodes should be same in one PlanFragment.
   // So we can use the DataRegion of one SourceNode as the PlanFragment's DataRegion.
-  public TRegionReplicaSet getTargetRegion() {
-    return getNodeRegion(planNodeTree);
+  public TRegionReplicaSet getTargetRegionForTreeModel() {
+    return getNodeRegion(planNodeTree, Collections.emptyMap());
+
+  }
+
+  public TRegionReplicaSet getTargetRegionForTableModel(final Map<PlanNodeId, NodeDistribution> nodeDistributionMap) {
+    return getNodeRegion(planNodeTree, nodeDistributionMap);
   }
 
   // If a Fragment is not related with DataPartition,
@@ -118,12 +127,14 @@ public class PlanFragment {
     return getNodeLocation(planNodeTree);
   }
 
-  private TRegionReplicaSet getNodeRegion(PlanNode root) {
-    if (root instanceof IPartitionRelatedNode) {
+  private TRegionReplicaSet getNodeRegion(PlanNode root, final Map<PlanNodeId, NodeDistribution> nodeDistributionMap) {
+    if(nodeDistributionMap.containsKey(root.getPlanNodeId())) {
+      return nodeDistributionMap.get(root.getPlanNodeId()).getRegion();
+    } else if (root instanceof IPartitionRelatedNode) {
       return ((IPartitionRelatedNode) root).getRegionReplicaSet();
     }
     for (PlanNode child : root.getChildren()) {
-      TRegionReplicaSet result = getNodeRegion(child);
+      TRegionReplicaSet result = getNodeRegion(child, nodeDistributionMap);
       if (result != null && result != DataPartition.NOT_ASSIGNED) {
         return result;
       }

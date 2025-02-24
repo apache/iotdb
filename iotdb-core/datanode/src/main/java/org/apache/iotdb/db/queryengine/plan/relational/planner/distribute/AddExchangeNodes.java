@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceSourceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
@@ -76,26 +77,20 @@ public class AddExchangeNodes
 
     for (PlanNode child : node.getChildren()) {
       PlanNode rewriteNode = child.accept(this, context);
-
-      TRegionReplicaSet region =
-          context.nodeDistributionMap.get(rewriteNode.getPlanNodeId()).getRegion();
-      if (region.equals(DataPartition.NOT_ASSIGNED) || region.equals(context.mostUsedRegion)) {
-        // if region equals NOT_ASSIGNED, it can be executed on any node
-        newNode.addChild(rewriteNode);
-      } else {
         ExchangeNode exchangeNode = new ExchangeNode(queryContext.getQueryId().genPlanNodeId());
         exchangeNode.addChild(rewriteNode);
         exchangeNode.setOutputSymbols(rewriteNode.getOutputSymbols());
         newNode.addChild(exchangeNode);
         context.hasExchangeNode = true;
-      }
+        context.nodeDistributionMap.put(
+                exchangeNode.getPlanNodeId(), new NodeDistribution(SAME_WITH_SOME_CHILD, context.mostUsedRegion));
     }
-
     context.nodeDistributionMap.put(
         node.getPlanNodeId(), new NodeDistribution(SAME_WITH_SOME_CHILD, context.mostUsedRegion));
 
     return newNode;
   }
+
 
   @Override
   public PlanNode visitTableScan(
