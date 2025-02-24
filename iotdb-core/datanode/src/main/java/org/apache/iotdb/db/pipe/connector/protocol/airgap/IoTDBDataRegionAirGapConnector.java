@@ -154,12 +154,10 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
 
   private void doTransfer(final PipeDeleteDataNodeEvent pipeDeleteDataNodeEvent)
       throws PipeException, IOException {
-    final List<Integer> socketIndexes;
-    if (shouldSendToAllClients) {
-      socketIndexes = allAliveSocketsIndex();
-    } else {
-      socketIndexes = Collections.singletonList(nextSocketIndex());
-    }
+    final List<Integer> socketIndexes =
+        shouldSendToAllClients
+            ? allAliveSocketsIndex()
+            : Collections.singletonList(nextSocketIndex());
 
     for (final int socketIndex : socketIndexes) {
       final AirGapSocket socket = sockets.get(socketIndex);
@@ -206,12 +204,10 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
   private void doTransfer(
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException, IOException {
-    final List<Integer> socketIndexes;
-    if (shouldSendToAllClients) {
-      socketIndexes = allAliveSocketsIndex();
-    } else {
-      socketIndexes = Collections.singletonList(nextSocketIndex());
-    }
+    final List<Integer> socketIndexes =
+        shouldSendToAllClients
+            ? allAliveSocketsIndex()
+            : Collections.singletonList(nextSocketIndex());
 
     for (final int socketIndex : socketIndexes) {
       final AirGapSocket socket = sockets.get(socketIndex);
@@ -270,12 +266,11 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
 
   private void doTransfer(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException, IOException {
-    final List<Integer> socketIndexes;
-    if (shouldSendToAllClients) {
-      socketIndexes = allAliveSocketsIndex();
-    } else {
-      socketIndexes = Collections.singletonList(nextSocketIndex());
-    }
+    final List<Integer> socketIndexes =
+        shouldSendToAllClients
+            ? allAliveSocketsIndex()
+            : Collections.singletonList(nextSocketIndex());
+
     for (final int socketIndex : socketIndexes) {
       final AirGapSocket socket = sockets.get(socketIndex);
       try {
@@ -327,12 +322,10 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
     final long creationTime = pipeTsFileInsertionEvent.getCreationTime();
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
 
-    final List<Integer> socketIndexes;
-    if (shouldSendToAllClients) {
-      socketIndexes = allAliveSocketsIndex();
-    } else {
-      socketIndexes = Collections.singletonList(nextSocketIndex());
-    }
+    final List<Integer> socketIndexes =
+        shouldSendToAllClients
+            ? allAliveSocketsIndex()
+            : Collections.singletonList(nextSocketIndex());
 
     for (final int socketIndex : socketIndexes) {
       final AirGapSocket socket = sockets.get(socketIndex);
