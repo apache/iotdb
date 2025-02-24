@@ -36,6 +36,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -249,9 +250,8 @@ public class SeriesPartitionTable {
   public List<TTimePartitionSlot> autoCleanPartitionTable(
       long TTL, TTimePartitionSlot currentTimeSlot) {
     List<TTimePartitionSlot> removedTimePartitions = new ArrayList<>();
-    Iterator<Entry<TTimePartitionSlot, List<TConsensusGroupId>>> iterator =
+    Iterator<Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>>> iterator =
         seriesPartitionMap.entrySet().iterator();
-
     while (iterator.hasNext()) {
       Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> entry = iterator.next();
       TTimePartitionSlot timePartitionSlot = entry.getKey();
