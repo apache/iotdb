@@ -180,14 +180,14 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   @Override
   public void heartbeat() throws Exception {
-    try {
-      handshake();
-    } catch (final Exception e) {
-      LOGGER.warn(
-          "Failed to reconnect to target server, because: {}. Try to reconnect later.",
-          e.getMessage(),
-          e);
-    }
+    //    try {
+    //      handshake();
+    //    } catch (final Exception e) {
+    //      LOGGER.warn(
+    //          "Failed to reconnect to target server, because: {}. Try to reconnect later.",
+    //          e.getMessage(),
+    //          e);
+    //    }
   }
 
   @Override
