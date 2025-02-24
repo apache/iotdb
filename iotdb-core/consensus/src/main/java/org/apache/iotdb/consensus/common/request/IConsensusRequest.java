@@ -36,6 +36,8 @@ public interface IConsensusRequest {
    */
   ByteBuffer serializeToByteBuffer();
 
+  // TODO: getMemorySize
+
   default void markAsGeneratedByRemoteConsensusLeader() {
     // do nothing by default
   }

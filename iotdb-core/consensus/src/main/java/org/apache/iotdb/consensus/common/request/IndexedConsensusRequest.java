@@ -53,6 +53,7 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   public void buildSerializedRequests() {
     this.requests.forEach(
         r -> {
+          // max(buffer, getSize)
           ByteBuffer buffer = r.serializeToByteBuffer();
           this.serializedRequests.add(buffer);
           this.serializedSize += buffer.capacity();
@@ -72,6 +73,7 @@ public class IndexedConsensusRequest implements IConsensusRequest {
     return serializedRequests;
   }
 
+  // rename memorySize
   public long getSerializedSize() {
     return serializedSize;
   }
