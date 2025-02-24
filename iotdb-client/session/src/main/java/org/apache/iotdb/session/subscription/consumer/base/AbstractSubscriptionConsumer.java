@@ -63,6 +63,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -124,7 +125,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
 
   public boolean allSnapshotTopicMessagesHaveBeenConsumed() {
-    return subscribedTopics.values().stream()
+    return allTopicMessagesHaveBeenConsumed(subscribedTopics.values());
+  }
+
+  private boolean allTopicMessagesHaveBeenConsumed(final Collection<TopicConfig> configs) {
+    return configs.stream()
         .noneMatch(
             (config) -> config.getAttributesWithSourceMode().containsValue(MODE_SNAPSHOT_VALUE));
   }
@@ -495,7 +500,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                         final String topicNameToUnsubscribe = commitContext.getTopicName();
                         LOGGER.info(
                             "Termination occurred when SubscriptionConsumer {} polling topics, unsubscribe topic {} automatically",
-                            this,
+                            coreReportMessage(),
                             topicNameToUnsubscribe);
                         unsubscribe(Collections.singleton(topicNameToUnsubscribe), false);
                         return Optional.empty();
@@ -666,6 +671,15 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
         // TODO: maybe we can poll a few more times
         if (!messages.isEmpty()) {
+          break;
+        }
+
+        // check if all topic messages have been consumed
+        if (allTopicMessagesHaveBeenConsumed(
+            topicNames.stream()
+                .map(subscribedTopics::get)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList()))) {
           break;
         }
 
