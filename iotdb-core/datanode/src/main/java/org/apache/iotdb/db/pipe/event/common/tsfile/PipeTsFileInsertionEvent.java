@@ -363,7 +363,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     if (Objects.nonNull(overridingProgressIndex)) {
       return overridingProgressIndex;
     }
-    return resource.getMaxProgressIndexAfterClose();
+    return resource.getMaxProgressIndex();
   }
 
   @Override
