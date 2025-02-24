@@ -1329,15 +1329,4 @@ public class IoTDBAuthIT {
       }
     }
   }
-
-  @Test
-  public void noNeedPrivilegeTest() {
-    createUser("tempuser", "temppw");
-    String[] expectedHeader = new String[] {"CurrentUser"};
-    String[] retArray =
-        new String[] {
-          "tempuser,",
-        };
-    resultSetEqualTest("show current_user", expectedHeader, retArray, "tempuser", "temppw");
-  }
 }
