@@ -249,15 +249,17 @@ public class SeriesPartitionTable {
   public List<TTimePartitionSlot> autoCleanPartitionTable(
       long TTL, TTimePartitionSlot currentTimeSlot) {
     List<TTimePartitionSlot> removedTimePartitions = new ArrayList<>();
-    seriesPartitionMap.forEach(
-        (timePartitionSlot, consensusGroupIds) -> {
-          if (timePartitionSlot.getStartTime() + TTL < currentTimeSlot.getStartTime()) {
-            removedTimePartitions.add(timePartitionSlot);
-          }
-        });
-    seriesPartitionMap
-        .entrySet()
-        .removeIf(entry -> entry.getKey().getStartTime() + TTL < currentTimeSlot.getStartTime());
+    Iterator<Entry<TTimePartitionSlot, List<TConsensusGroupId>>> iterator =
+        seriesPartitionMap.entrySet().iterator();
+
+    while (iterator.hasNext()) {
+      Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> entry = iterator.next();
+      TTimePartitionSlot timePartitionSlot = entry.getKey();
+      if (timePartitionSlot.getStartTime() + TTL < currentTimeSlot.getStartTime()) {
+        removedTimePartitions.add(timePartitionSlot);
+        iterator.remove();
+      }
+    }
     return removedTimePartitions;
   }
 
