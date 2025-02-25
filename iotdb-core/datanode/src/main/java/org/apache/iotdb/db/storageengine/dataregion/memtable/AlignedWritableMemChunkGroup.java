@@ -63,7 +63,7 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
       List<IMeasurementSchema> schemaList,
       int start,
       int end) {
-    return memChunk.writeAlignedTablet(times, columns, bitMaps, schemaList, start, end);
+    memChunk.writeAlignedTablet(times, columns, bitMaps, schemaList, start, end);
   }
 
   @Override

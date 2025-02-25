@@ -1317,11 +1317,9 @@ public abstract class AlignedTVList extends TVList {
   public AlignedTVListIterator iterator(
       List<TSDataType> dataTypeList,
       List<Integer> columnIndexList,
-      boolean ignoreAllNullRows,
       Integer floatPrecision,
       List<TSEncoding> encodingList) {
-    return new AlignedTVListIterator(
-        dataTypeList, columnIndexList, ignoreAllNullRows, floatPrecision, encodingList);
+    return new AlignedTVListIterator(dataTypeList, columnIndexList, floatPrecision, encodingList);
   }
 
   /* AlignedTVList Iterator */
@@ -1345,7 +1343,6 @@ public abstract class AlignedTVList extends TVList {
     public AlignedTVListIterator(
         List<TSDataType> dataTypeList,
         List<Integer> columnIndexList,
-        boolean ignoreAllNullRows,
         Integer floatPrecision,
         List<TSEncoding> encodingList) {
       super(null, null);
@@ -1354,7 +1351,7 @@ public abstract class AlignedTVList extends TVList {
           (columnIndexList == null)
               ? IntStream.range(0, dataTypes.size()).toArray()
               : columnIndexList.stream().mapToInt(Integer::intValue).toArray();
-      this.allValueColDeletedMap = ignoreAllNullRows ? getAllValueColDeletedMap() : null;
+      this.allValueColDeletedMap = getAllValueColDeletedMap();
       this.floatPrecision = floatPrecision;
       this.encodingArray = encodingList == null ? null : encodingList.toArray(new TSEncoding[0]);
       this.selectedIndex = new int[dataTypeList.size()];
