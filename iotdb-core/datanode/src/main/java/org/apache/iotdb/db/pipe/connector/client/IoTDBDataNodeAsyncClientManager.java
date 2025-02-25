@@ -171,29 +171,6 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     return borrowClient();
   }
 
-  public void checkTargetServerStatus() throws PipeConnectionException {
-    Map<TEndPoint, String> errorMessages = new HashMap<>();
-
-    for (final TEndPoint targetNodeUrl : endPointList) {
-      try {
-        final AsyncPipeDataTransferServiceClient client =
-            endPoint2Client.borrowClient(targetNodeUrl);
-        handshakeIfNecessary(targetNodeUrl, client);
-        return;
-      } catch (Exception e) {
-        errorMessages.put(targetNodeUrl, e.getMessage());
-      }
-    }
-
-    StringBuilder errorMessage = new StringBuilder("All target servers are not available: ");
-    for (Map.Entry<TEndPoint, String> entry : errorMessages.entrySet()) {
-      errorMessage.append(
-          String.format(
-              "(%s:%d - %s)", entry.getKey().getIp(), entry.getKey().getPort(), entry.getValue()));
-    }
-    throw new PipeConnectionException(errorMessage.toString());
-  }
-
   /**
    * Handshake with the target if necessary.
    *

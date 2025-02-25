@@ -56,6 +56,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
@@ -178,9 +179,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     if (isTabletBatchModeEnabled) {
       final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch =
           tabletBatchBuilder.onEvent(tabletInsertionEvent);
-      if (Objects.isNull(endPointAndBatch)) {
-        return;
-      }
       transferInBatchWithoutCheck(endPointAndBatch);
     } else {
       transferInEventWithoutCheck(tabletInsertionEvent);
@@ -190,6 +188,10 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private void transferInBatchWithoutCheck(
       final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch)
       throws IOException, WriteProcessException, InterruptedException {
+    if (Objects.isNull(endPointAndBatch)) {
+      return;
+    }
+
     final PipeTabletEventBatch batch = endPointAndBatch.getRight();
 
     if (batch instanceof PipeTabletEventPlainBatch) {
@@ -552,6 +554,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   }
 
   private void retryTransfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+    // Directly transfers TsFile insertion event
     transferWithoutCheck(tsFileInsertionEvent);
   }
 
@@ -561,15 +564,18 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    // in order to commit in order
+    // Commit pending batches to maintain event order before processing this event
     if (isTabletBatchModeEnabled && !tabletBatchBuilder.isEmpty()) {
       doTransferWrapper();
     }
 
-    if (!(event instanceof PipeHeartbeatEvent || event instanceof PipeTerminateEvent)) {
-      LOGGER.warn(
-          "IoTDBThriftAsyncConnector does not support transferring generic event: {}.", event);
+    if (!isSpecialEvent(event)) {
+      LOGGER.warn("Unsupported event type in IoTDBThriftAsyncConnector: {}.", event.getClass());
     }
+  }
+
+  private boolean isSpecialEvent(final Event event) {
+    return event instanceof PipeHeartbeatEvent || event instanceof PipeTerminateEvent;
   }
 
   private void doTransferWrapper(final PipeDeleteDataNodeEvent pipeDeleteDataNodeEvent)
@@ -591,10 +597,9 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private void doTransfer(final PipeDeleteDataNodeEvent pipeDeleteDataNodeEvent)
       throws PipeException {
     AsyncPipeDataTransferServiceClient client = null;
-    TPipeTransferReq req;
     PipeTransferEnrichedEventHandler pipeTransferEnrichedEventHandler = null;
     try {
-      req =
+      final TPipeTransferReq req =
           compressIfNeeded(
               PipeTransferPlanNodeReq.toTPipeTransferReq(
                   pipeDeleteDataNodeEvent.getDeleteDataNode()));
@@ -602,13 +607,17 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
           new PipeTransferEnrichedEventHandler(pipeDeleteDataNodeEvent, req, this);
       client = clientManager.borrowClient();
       pipeTransferEnrichedEventHandler.transfer(client);
-    } catch (final Exception e) {
-      logOnClientException(client, e);
-      pipeTransferEnrichedEventHandler.onError(e);
-    }
 
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Successfully transferred deletion event {}.", pipeDeleteDataNodeEvent);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Successfully transferred deletion event {}.", pipeDeleteDataNodeEvent);
+      }
+    } catch (final Exception ex) {
+      logOnClientException(client, ex);
+      if (pipeTransferEnrichedEventHandler != null) {
+        pipeTransferEnrichedEventHandler.onError(ex);
+      } else {
+        throw new PipeConnectionException("Failed to transfer deletion event.", ex);
+      }
     }
   }
 
