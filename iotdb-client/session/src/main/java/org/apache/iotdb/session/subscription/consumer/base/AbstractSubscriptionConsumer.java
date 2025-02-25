@@ -84,7 +84,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.rpc.subscription.config.TopicConstant.MODE_SNAPSHOT_VALUE;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.ERROR;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.FILE_INIT;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.TABLETS;
@@ -129,9 +128,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   }
 
   private boolean allTopicMessagesHaveBeenConsumed(final Collection<TopicConfig> configs) {
-    return configs.stream()
-        .noneMatch(
-            (config) -> config.getAttributesWithSourceMode().containsValue(MODE_SNAPSHOT_VALUE));
+    return configs.isEmpty();
   }
 
   /////////////////////////////// getter ///////////////////////////////
