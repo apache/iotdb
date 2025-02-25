@@ -77,7 +77,11 @@ public class TableModelQueryFragmentPlanner {
 
   private final Map<PlanNodeId, NodeDistribution> nodeDistributionMap;
 
-  TableModelQueryFragmentPlanner(SubPlan subPlan, Analysis analysis, MPPQueryContext queryContext, final Map<PlanNodeId, NodeDistribution> nodeDistributionMap) {
+  TableModelQueryFragmentPlanner(
+      SubPlan subPlan,
+      Analysis analysis,
+      MPPQueryContext queryContext,
+      final Map<PlanNodeId, NodeDistribution> nodeDistributionMap) {
     this.subPlan = subPlan;
     this.analysis = analysis;
     this.queryContext = queryContext;
@@ -105,7 +109,8 @@ public class TableModelQueryFragmentPlanner {
     root.getChildren().forEach(child -> recordPlanNodeRelation(child, planFragmentId));
   }
 
-  private void produceFragmentInstance(PlanFragment fragment, final Map<PlanNodeId, NodeDistribution> nodeDistributionMap) {
+  private void produceFragmentInstance(
+      PlanFragment fragment, final Map<PlanNodeId, NodeDistribution> nodeDistributionMap) {
     FragmentInstance fragmentInstance =
         new FragmentInstance(
             fragment,
@@ -119,7 +124,6 @@ public class TableModelQueryFragmentPlanner {
     // Get the target region for origin PlanFragment, then its instance will be distributed one
     // of them.
     TRegionReplicaSet regionReplicaSet = fragment.getTargetRegionForTableModel(nodeDistributionMap);
-
 
     // Set ExecutorType and target host for the instance,
     // We need to store all the replica host in case of the scenario that the instance need to be

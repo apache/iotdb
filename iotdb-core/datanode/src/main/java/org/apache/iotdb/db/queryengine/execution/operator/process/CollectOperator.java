@@ -69,7 +69,7 @@ public class CollectOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    if(!inited) {
+    if (!inited) {
       inited = true;
       for (Operator child : children) {
         child.isBlocked();

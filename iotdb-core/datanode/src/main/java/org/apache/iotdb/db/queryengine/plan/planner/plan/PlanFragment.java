@@ -113,10 +113,10 @@ public class PlanFragment {
   // So we can use the DataRegion of one SourceNode as the PlanFragment's DataRegion.
   public TRegionReplicaSet getTargetRegionForTreeModel() {
     return getNodeRegion(planNodeTree, Collections.emptyMap());
-
   }
 
-  public TRegionReplicaSet getTargetRegionForTableModel(final Map<PlanNodeId, NodeDistribution> nodeDistributionMap) {
+  public TRegionReplicaSet getTargetRegionForTableModel(
+      final Map<PlanNodeId, NodeDistribution> nodeDistributionMap) {
     return getNodeRegion(planNodeTree, nodeDistributionMap);
   }
 
@@ -127,8 +127,9 @@ public class PlanFragment {
     return getNodeLocation(planNodeTree);
   }
 
-  private TRegionReplicaSet getNodeRegion(PlanNode root, final Map<PlanNodeId, NodeDistribution> nodeDistributionMap) {
-    if(nodeDistributionMap.containsKey(root.getPlanNodeId())) {
+  private TRegionReplicaSet getNodeRegion(
+      PlanNode root, final Map<PlanNodeId, NodeDistribution> nodeDistributionMap) {
+    if (nodeDistributionMap.containsKey(root.getPlanNodeId())) {
       return nodeDistributionMap.get(root.getPlanNodeId()).getRegion();
     } else if (root instanceof IPartitionRelatedNode) {
       return ((IPartitionRelatedNode) root).getRegionReplicaSet();

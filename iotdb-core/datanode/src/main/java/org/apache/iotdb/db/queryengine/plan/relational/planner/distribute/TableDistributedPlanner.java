@@ -154,7 +154,9 @@ public class TableDistributedPlanner {
     return new AddExchangeNodes(mppQueryContext).addExchangeNodes(distributedPlan, planContext);
   }
 
-  private DistributedQueryPlan generateDistributedPlan(PlanNode outputNodeWithExchange, final Map<PlanNodeId, NodeDistribution> nodeDistributionMap) {
+  private DistributedQueryPlan generateDistributedPlan(
+      PlanNode outputNodeWithExchange,
+      final Map<PlanNodeId, NodeDistribution> nodeDistributionMap) {
     // generate subPlan
     SubPlan subPlan =
         new SubPlanGenerator()
@@ -164,7 +166,9 @@ public class TableDistributedPlanner {
     // generate fragment instances
     List<FragmentInstance> fragmentInstances =
         mppQueryContext.getQueryType() == QueryType.READ
-            ? new TableModelQueryFragmentPlanner(subPlan, analysis, mppQueryContext, nodeDistributionMap).plan()
+            ? new TableModelQueryFragmentPlanner(
+                    subPlan, analysis, mppQueryContext, nodeDistributionMap)
+                .plan()
             : new WriteFragmentParallelPlanner(
                     subPlan, analysis, mppQueryContext, WritePlanNode::splitByPartition)
                 .parallelPlan();

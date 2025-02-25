@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
@@ -27,7 +26,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceSourceNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
@@ -77,20 +75,20 @@ public class AddExchangeNodes
 
     for (PlanNode child : node.getChildren()) {
       PlanNode rewriteNode = child.accept(this, context);
-        ExchangeNode exchangeNode = new ExchangeNode(queryContext.getQueryId().genPlanNodeId());
-        exchangeNode.addChild(rewriteNode);
-        exchangeNode.setOutputSymbols(rewriteNode.getOutputSymbols());
-        newNode.addChild(exchangeNode);
-        context.hasExchangeNode = true;
-        context.nodeDistributionMap.put(
-                exchangeNode.getPlanNodeId(), new NodeDistribution(SAME_WITH_SOME_CHILD, context.mostUsedRegion));
+      ExchangeNode exchangeNode = new ExchangeNode(queryContext.getQueryId().genPlanNodeId());
+      exchangeNode.addChild(rewriteNode);
+      exchangeNode.setOutputSymbols(rewriteNode.getOutputSymbols());
+      newNode.addChild(exchangeNode);
+      context.hasExchangeNode = true;
+      context.nodeDistributionMap.put(
+          exchangeNode.getPlanNodeId(),
+          new NodeDistribution(SAME_WITH_SOME_CHILD, context.mostUsedRegion));
     }
     context.nodeDistributionMap.put(
         node.getPlanNodeId(), new NodeDistribution(SAME_WITH_SOME_CHILD, context.mostUsedRegion));
 
     return newNode;
   }
-
 
   @Override
   public PlanNode visitTableScan(
