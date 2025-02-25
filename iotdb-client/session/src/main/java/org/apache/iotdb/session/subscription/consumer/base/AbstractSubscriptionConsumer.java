@@ -124,11 +124,16 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
 
   public boolean allSnapshotTopicMessagesHaveBeenConsumed() {
-    return allTopicMessagesHaveBeenConsumed(subscribedTopics.values());
+    return allTopicMessagesHaveBeenConsumed(subscribedTopics.keySet());
   }
 
-  private boolean allTopicMessagesHaveBeenConsumed(final Collection<TopicConfig> configs) {
-    return configs.isEmpty();
+  private boolean allTopicMessagesHaveBeenConsumed(final Collection<String> topicNames) {
+    // For the topic that needs to be detected, there are two scenarios to consider:
+    //   1. If it is live, it cannot be determined whether it has been fully consumed.
+    //   2. If it is a snapshot, it means the current topic has not been automatically unsubscribed.
+    // Therefore, the logic can be summarized as follows: if there is a matching topic in subscribed
+    // topics, then it has not been fully consumed.
+    return topicNames.stream().map(subscribedTopics::get).noneMatch(Objects::nonNull);
   }
 
   /////////////////////////////// getter ///////////////////////////////
@@ -672,11 +677,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         }
 
         // check if all topic messages have been consumed
-        if (allTopicMessagesHaveBeenConsumed(
-            topicNames.stream()
-                .map(subscribedTopics::get)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList()))) {
+        if (allTopicMessagesHaveBeenConsumed(topicNames)) {
           break;
         }
 
