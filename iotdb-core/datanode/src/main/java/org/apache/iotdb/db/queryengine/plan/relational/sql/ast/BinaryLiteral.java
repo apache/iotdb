@@ -40,7 +40,7 @@ public class BinaryLiteral extends Literal {
   private static final CharMatcher HEX_DIGIT_MATCHER =
       CharMatcher.inRange('A', 'F').or(CharMatcher.inRange('0', '9')).precomputed();
 
-  private final byte[] value;
+  private byte[] value;
 
   public BinaryLiteral(String value) {
     super(null);
@@ -141,5 +141,11 @@ public class BinaryLiteral extends Literal {
   @Override
   public Object getTsValue() {
     return new Binary(value);
+  }
+
+  @Override
+  public void replace(Literal literal) {
+    BinaryLiteral binaryLiteral = (BinaryLiteral) literal;
+    this.value = ((BinaryLiteral) literal).getValue();
   }
 }

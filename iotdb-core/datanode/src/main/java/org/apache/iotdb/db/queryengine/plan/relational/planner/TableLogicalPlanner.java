@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -90,6 +91,8 @@ import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -102,6 +105,7 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLANNER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLAN_OPTIMIZE;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
+import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TABLE_TYPE;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice.COUNT_DEVICE_HEADER_STRING;
@@ -161,7 +165,7 @@ public class TableLogicalPlanner {
     sb.append(queryContext.getZoneId());
     return sb.toString();
   }
-
+  private static final Logger logger = LoggerFactory.getLogger(TableLogicalPlanner.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private DataPartition fetchDataPartitionByDevices(
@@ -202,6 +206,7 @@ public class TableLogicalPlanner {
       }
       return;
     }
+    long startTime = System.nanoTime();
     DeviceTableScanNode deviceTableScanNode = (DeviceTableScanNode) planNode;
     final List<DeviceEntry> deviceEntries =
         metadata.indexScan(
@@ -210,11 +215,16 @@ public class TableLogicalPlanner {
                 .map(
                     expression ->
                         ReplaceSymbolInExpression.transform(
-                            expression, deviceTableScanNode.getAssignments()))
+                            expression, cachedValue.getAssignments()))
                 .collect(Collectors.toList()),
             cachedValue.getAttributeColumns(),
             queryContext);
     deviceTableScanNode.setDeviceEntries(deviceEntries);
+
+    final long schemaFetchCost = System.nanoTime() - startTime;
+    QueryPlanCostMetricSet.getInstance()
+            .recordPlanCost(TABLE_TYPE, SCHEMA_FETCHER, schemaFetchCost);
+    queryContext.setFetchSchemaCost(schemaFetchCost);
 
     if (deviceEntries.isEmpty()) {
       if (analysis.noAggregates() && !analysis.hasJoinNode()) {
@@ -231,7 +241,7 @@ public class TableLogicalPlanner {
 
       deviceTableScanNode.setTimeFilter(timeFilter);
 
-      long startTime = System.nanoTime();
+      startTime = System.nanoTime();
       final DataPartition dataPartition =
           fetchDataPartitionByDevices(
               // for tree view, we need to pass actual tree db name to this method
@@ -263,21 +273,25 @@ public class TableLogicalPlanner {
     }
   }
 
+  boolean enableCache = false;
+
   public LogicalQueryPlan plan(final Analysis analysis) {
     long startTime = System.nanoTime();
+    long totalStartTime = startTime;
     Statement statement = analysis.getStatement();
-
     // Try to use plan cache
     // We should check if statement gis Query in enablePlanCache() method\
     String cachedKey = "";
 
     List<Literal> literalReference = null;
-    if (statement instanceof Query) {
+    if (enableCache && statement instanceof Query) {
       List<Literal> literalList = generalizeStatement((Query) statement);
       cachedKey = calculateCacheKey(statement, analysis);
       CachedValue cachedValue = PlanCacheManager.getInstance().getCachedValue(cachedKey);
       if (cachedValue != null) {
         // deal with the device stuff
+        long curTime = System.nanoTime();
+        logger.info("CachedKey generated cost time: {}", curTime - totalStartTime);
         symbolAllocator.fill(cachedValue.getSymbolMap());
         analysis.setRespDatasetHeader(cachedValue.getRespHeader());
         adjustBySchema(cachedValue.planNode, cachedValue, analysis);
@@ -286,6 +300,9 @@ public class TableLogicalPlanner {
           cachedValue.getLiteralReference().get(i).replace(literalList.get(i));
         }
 
+        logger.info("Logical plan is cached, adjustment cost time: {}", System.nanoTime() - curTime);
+        logger.info("Logical plan is cached, cost time: {}", System.nanoTime() - totalStartTime);
+        logger.info("Logical plan is cached, fetch schema cost time: {}", queryContext.getFetchPartitionCost() + queryContext.getFetchSchemaCost());
         return new LogicalQueryPlan(queryContext, cachedValue.getPlanNode());
       }
       // Following implementation of plan should be based on the generalizedStatement
@@ -315,6 +332,7 @@ public class TableLogicalPlanner {
                     warningCollector,
                     PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
       }
+      logger.info("Logical plan is generated, optimization cost time: {}", System.nanoTime() - startTime);
       long logicalOptimizationCost =
           System.nanoTime()
               - startTime
@@ -331,10 +349,12 @@ public class TableLogicalPlanner {
               literalReference,
               analysis.getRespDatasetHeader(),
               symbolAllocator.cloneSymbolMap(),
+              queryContext.getAssignments(),
               queryContext.getMetaDataExpressionList(),
               queryContext.getAttributeColumns());
     }
-
+    logger.info("Logical plan is generated, fetch schema cost time: {}", queryContext.getFetchPartitionCost() + queryContext.getFetchSchemaCost());
+    logger.info("Logical plan is generated, cost time: {}", System.nanoTime() - totalStartTime);
     return new LogicalQueryPlan(queryContext, planNode);
   }
 
