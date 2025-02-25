@@ -162,9 +162,4 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
     }
     return buffer.limit() + databaseEstimateSize;
   }
-
-  @Override
-  public synchronized void close() {
-    super.close();
-  }
 }
