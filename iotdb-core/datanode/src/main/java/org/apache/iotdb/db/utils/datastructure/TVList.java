@@ -118,16 +118,22 @@ public abstract class TVList implements WALEntryValue {
     return null;
   }
 
+  // get array memory cost of working TVList
+  public long tvListArrayMemCost() {
+    long size = tvListArrayMemCost(getDataType());
+    // index array mem size
+    size += indices != null ? PrimitiveArrayManager.ARRAY_SIZE * 4L : 0;
+    // bimap array mem size
+    size += bitMap != null ? PrimitiveArrayManager.ARRAY_SIZE / 8 + 1L : 0;
+    return size;
+  }
+
   public static long tvListArrayMemCost(TSDataType type) {
     long size = 0;
     // time array mem size
     size += PrimitiveArrayManager.ARRAY_SIZE * 8L;
     // value array mem size
     size += PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
-    // index array mem size
-    size += PrimitiveArrayManager.ARRAY_SIZE * 4L;
-    // bimap array mem size
-    size += PrimitiveArrayManager.ARRAY_SIZE / 8 + 1L;
     // two array headers mem size
     size += NUM_BYTES_ARRAY_HEADER * 2L;
     // Object references size in ArrayList
@@ -136,7 +142,7 @@ public abstract class TVList implements WALEntryValue {
   }
 
   public long calculateRamSize() {
-    return timestamps.size() * tvListArrayMemCost(getDataType());
+    return timestamps.size() * tvListArrayMemCost();
   }
 
   public synchronized boolean isSorted() {

@@ -659,10 +659,11 @@ public class TsFileProcessor {
       } else {
         // here currentChunkPointNum >= 1
         long currentChunkPointNum = workMemTable.getMeasurementSize(deviceId, measurements[i]);
-        memTableIncrement +=
-            (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
-                ? TVList.tvListArrayMemCost(dataTypes[i])
-                : 0;
+        IWritableMemChunk memChunk = workMemTable.getWritableMemChunk(deviceId, measurements[i]);
+        if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
+          memTableIncrement +=
+              memChunk != null ? memChunk.getWorkingTVList().tvListArrayMemCost() : 0;
+        }
       }
       // TEXT data mem size
       if (dataTypes[i].isBinary() && values[i] != null) {
@@ -704,14 +705,17 @@ public class TsFileProcessor {
         } else {
           // here currentChunkPointNum >= 1
           long currentChunkPointNum = workMemTable.getMeasurementSize(deviceId, measurements[i]);
+          IWritableMemChunk memChunk = workMemTable.getWritableMemChunk(deviceId, measurements[i]);
           int addingPointNum =
               increasingMemTableInfo
                   .computeIfAbsent(deviceId, k -> new HashMap<>())
                   .computeIfAbsent(measurements[i], k -> 0);
-          memTableIncrement +=
-              ((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE) == 0
-                  ? TVList.tvListArrayMemCost(dataTypes[i])
-                  : 0;
+          if ((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE == 0) {
+            memTableIncrement +=
+                memChunk != null
+                    ? memChunk.getWorkingTVList().tvListArrayMemCost()
+                    : TVList.tvListArrayMemCost(dataTypes[i]);
+          }
           increasingMemTableInfo.get(deviceId).computeIfPresent(measurements[i], (k, v) -> v + 1);
         }
         // TEXT data mem size
@@ -773,7 +777,7 @@ public class TsFileProcessor {
       if ((alignedMemChunk.alignedListSize() % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
         dataTypesInTVList.addAll(
             ((AlignedTVList) alignedMemChunk.getWorkingTVList()).getTsDataTypes());
-        memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypesInTVList);
+        memTableIncrement += alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost();
       }
     }
 
@@ -867,7 +871,11 @@ public class TsFileProcessor {
                 ((AlignedTVList) alignedMemChunk.getWorkingTVList()).getTsDataTypes());
           }
           dataTypesInTVList.addAll(addingPointNumInfo.left.values());
-          memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypesInTVList);
+          memTableIncrement +=
+              alignedMemChunk != null
+                  ? alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost()
+                  : AlignedTVList.alignedTvListArrayMemCost(
+                      dataTypesInTVList.toArray(new TSDataType[0]), null);
         }
         addingPointNumInfo.setRight(addingPointNum + 1);
       }
@@ -969,16 +977,23 @@ public class TsFileProcessor {
               * TVList.tvListArrayMemCost(dataType);
     } else {
       long currentChunkPointNum = workMemTable.getMeasurementSize(deviceId, measurement);
+      IWritableMemChunk memChunk = workMemTable.getWritableMemChunk(deviceId, measurement);
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
         memIncrements[0] +=
             ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
-                * TVList.tvListArrayMemCost(dataType);
+                * (memChunk != null
+                    ? memChunk.getWorkingTVList().tvListArrayMemCost()
+                    : TVList.tvListArrayMemCost(dataType));
       } else {
         long acquireArray =
             (end - start - 1 + (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE))
                 / PrimitiveArrayManager.ARRAY_SIZE;
         if (acquireArray != 0) {
-          memIncrements[0] += acquireArray * TVList.tvListArrayMemCost(dataType);
+          memIncrements[0] +=
+              acquireArray
+                  * (memChunk != null
+                      ? memChunk.getWorkingTVList().tvListArrayMemCost()
+                      : TVList.tvListArrayMemCost(dataType));
         }
       }
     }
@@ -1078,7 +1093,7 @@ public class TsFileProcessor {
         dataTypesInTVList.addAll(
             ((AlignedTVList) alignedMemChunk.getWorkingTVList()).getTsDataTypes());
         memIncrements[0] +=
-            acquireArray * AlignedTVList.alignedTvListArrayMemCost(dataTypesInTVList);
+            acquireArray * alignedMemChunk.getWorkingTVList().alignedTvListArrayMemCost();
       }
     }
 
