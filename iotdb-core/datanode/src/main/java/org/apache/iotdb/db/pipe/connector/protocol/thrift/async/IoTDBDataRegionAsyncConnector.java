@@ -23,8 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeAsyncClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventBatch;
@@ -75,7 +73,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -100,7 +97,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private static final String THRIFT_ERROR_FORMATTER_WITH_ENDPOINT =
       "Exception occurred while sending to receiver %s:%s.";
 
-  private final IoTDBDataRegionSyncConnector retryConnector = new IoTDBDataRegionSyncConnector();
+  private final IoTDBDataRegionSyncConnector syncConnector = new IoTDBDataRegionSyncConnector();
 
   private final BlockingQueue<Event> retryEventQueue = new LinkedBlockingQueue<>();
 
@@ -116,11 +113,9 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
     super.validate(validator);
-    retryConnector.validate(validator);
+    syncConnector.validate(validator);
 
     final PipeParameters parameters = validator.getParameters();
-    final IoTDBConfig iotdbConfig = IoTDBDescriptor.getInstance().getConfig();
-    final Set<TEndPoint> givenNodeUrls = parseNodeUrls(validator.getParameters());
 
     validator.validate(
         args -> !((boolean) args[0] || (boolean) args[1] || (boolean) args[2]),
@@ -135,7 +130,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
-    retryConnector.customize(parameters, configuration);
+    syncConnector.customize(parameters, configuration);
 
     clientManager =
         new IoTDBDataNodeAsyncClientManager(
@@ -159,12 +154,12 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   @Override
   // Synchronized to avoid close connector when transfer event
   public synchronized void handshake() throws Exception {
-    retryConnector.handshake();
+    syncConnector.handshake();
   }
 
   @Override
   public void heartbeat() throws Exception {
-    retryConnector.heartbeat();
+    syncConnector.heartbeat();
   }
 
   @Override
