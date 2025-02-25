@@ -55,6 +55,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class TsFileInsertionEventTableParserTabletIterator implements Iterator<Tablet> {
 
@@ -72,6 +73,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
   private final PipeMemoryBlock allocatedMemoryBlockForBatchData;
   private final PipeMemoryBlock allocatedMemoryBlockForChunk;
   private final PipeMemoryBlock allocatedMemoryBlockForChunkMeta;
+  private final PipeMemoryBlock allocatedMemoryBlockForTableSchema;
 
   // Used to read tsfile data
   private IChunkReader chunkReader;
@@ -103,6 +105,7 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
       final PipeMemoryBlock allocatedMemoryBlockForBatchData,
       final PipeMemoryBlock allocatedMemoryBlockForChunk,
       final PipeMemoryBlock allocatedMemoryBlockForChunkMeta,
+      final PipeMemoryBlock allocatedMemoryBlockForTableSchema,
       final long startTime,
       final long endTime)
       throws IOException {
@@ -113,13 +116,27 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
     this.reader = tsFileSequenceReader;
     this.metadataQuerier = new MetadataQuerierByFileImpl(reader);
     fileMetadata = this.metadataQuerier.getWholeFileMetadata();
-    filteredTableSchemaIterator =
-        fileMetadata.getTableSchemaMap().entrySet().stream().filter(predicate).iterator();
+    final List<Map.Entry<String, TableSchema>> tableSchemaList =
+        fileMetadata.getTableSchemaMap().entrySet().stream()
+            .filter(predicate)
+            .collect(Collectors.toList());
 
     this.allocatedMemoryBlockForTablet = allocatedMemoryBlockForTablet;
     this.allocatedMemoryBlockForBatchData = allocatedMemoryBlockForBatchData;
     this.allocatedMemoryBlockForChunk = allocatedMemoryBlockForChunk;
     this.allocatedMemoryBlockForChunkMeta = allocatedMemoryBlockForChunkMeta;
+    this.allocatedMemoryBlockForTableSchema = allocatedMemoryBlockForTableSchema;
+
+    long tableSchemaSize = fileMetadata.getBloomFilter().getRetainedSizeInBytes();
+    for (Map.Entry<String, TableSchema> tableSchemaEntry : tableSchemaList) {
+      tableSchemaSize +=
+          tableSchemaEntry.getKey().length()
+              + PipeMemoryWeightUtil.calculateTableSchemaBytesUsed(tableSchemaEntry.getValue());
+      PipeDataNodeResourceManager.memory()
+          .forceResize(this.allocatedMemoryBlockForTableSchema, tableSchemaSize);
+    }
+
+    filteredTableSchemaIterator = tableSchemaList.iterator();
   }
 
   @Override
@@ -156,18 +173,28 @@ public class TsFileInsertionEventTableParserTabletIterator implements Iterator<T
               List<List<IChunkMetadata>> iChunkMetadataList =
                   reader.getIChunkMetadataList(pair.left, measurementNames, pair.right);
 
-              for (List<IChunkMetadata> chunkMetadata : iChunkMetadataList) {
+              Iterator<List<IChunkMetadata>> chunkMetadataIterator = iChunkMetadataList.iterator();
+              while (chunkMetadataIterator.hasNext()) {
+                final List<IChunkMetadata> chunkMetadata = chunkMetadataIterator.next();
                 if (chunkMetadata == null
                     || chunkMetadata.isEmpty()
                     || !(chunkMetadata.get(0) instanceof AbstractAlignedChunkMetadata)) {
                   throw new PipeException(
                       "Table model tsfile parsing does not support this type of ChunkMeta");
                 }
-                AbstractAlignedChunkMetadata alignedChunkMetadata =
+
+                final AbstractAlignedChunkMetadata alignedChunkMetadata =
                     (AbstractAlignedChunkMetadata) chunkMetadata.get(0);
+
+                // Reduce the number of times Chunks are read
+                if (alignedChunkMetadata.getEndTime() < startTime
+                    || alignedChunkMetadata.getStartTime() > endTime) {
+                  chunkMetadataIterator.remove();
+                  continue;
+                }
+
                 size +=
-                    PipeMemoryWeightUtil.calculateAlignedChunkMetaRamBytesUsed(
-                        alignedChunkMetadata);
+                    PipeMemoryWeightUtil.calculateAlignedChunkMetaBytesUsed(alignedChunkMetadata);
                 PipeDataNodeResourceManager.memory()
                     .forceResize(allocatedMemoryBlockForChunkMeta, size);
               }
