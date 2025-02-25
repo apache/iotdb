@@ -333,8 +333,10 @@ public class PipeMemoryWeightUtil {
       return 0L;
     }
 
-    ChunkMetadata timeChunkMetadata = (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
-    List<IChunkMetadata> valueChunkMetadataList = alignedChunkMetadata.getValueChunkMetadataList();
+    final ChunkMetadata timeChunkMetadata =
+        (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
+    final List<IChunkMetadata> valueChunkMetadataList =
+        alignedChunkMetadata.getValueChunkMetadataList();
 
     long size = timeChunkMetadata != null ? timeChunkMetadata.getRetainedSizeInBytes() : 0;
     if (valueChunkMetadataList != null && !valueChunkMetadataList.isEmpty()) {

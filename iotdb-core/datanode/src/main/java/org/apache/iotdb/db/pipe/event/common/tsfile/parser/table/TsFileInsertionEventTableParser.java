@@ -190,14 +190,21 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
   @Override
   public void close() {
     super.close();
+
     if (allocatedMemoryBlockForBatchData != null) {
       allocatedMemoryBlockForBatchData.close();
     }
+
     if (allocatedMemoryBlockForChunk != null) {
       allocatedMemoryBlockForChunk.close();
     }
+
     if (allocatedMemoryBlockForChunkMeta != null) {
       allocatedMemoryBlockForChunkMeta.close();
+    }
+
+    if (allocatedMemoryBlockForTableSchemas != null) {
+      allocatedMemoryBlockForTableSchemas.close();
     }
   }
 }
