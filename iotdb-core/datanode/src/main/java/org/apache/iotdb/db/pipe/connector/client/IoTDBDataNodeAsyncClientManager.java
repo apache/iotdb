@@ -290,8 +290,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       }
     } catch (TException e) {
       client.resetMethodStateIfStopped();
-      throw new PipeConnectionException(
-          "Handshake failed because the ClientManager has been closed.", e);
+      throw e;
     } finally {
       client.setShouldReturnSelf(true);
       client.returnSelf();
