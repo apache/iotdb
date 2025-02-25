@@ -24,7 +24,6 @@ import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -245,7 +244,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       for (byte b : bytes) {
         sb.append(String.format("%02x", b));
       }
-      this.parameters.put(parameterIndex, "X'"+sb.toString()+"'");
+      this.parameters.put(parameterIndex, "X'" + sb.toString() + "'");
     } catch (IOException e) {
       throw new SQLException(Constant.PARAMETER_SUPPORTED);
     }
@@ -323,7 +322,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   @Override
   public void setDate(int parameterIndex, Date x) throws SQLException {
     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-    this.parameters.put(parameterIndex, "'"+dateFormat.format(x)+"'");
+    this.parameters.put(parameterIndex, "'" + dateFormat.format(x) + "'");
   }
 
   @Override
@@ -384,7 +383,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setNull(int parameterIndex, int sqlType) throws SQLException {
-    this.parameters.put(parameterIndex,"NULL");
+    this.parameters.put(parameterIndex, "NULL");
   }
 
   @Override
@@ -914,9 +913,10 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   public void setString(int parameterIndex, String x) {
     // if the sql is an insert statement and the value is not a string literal, add single quotes
     // The table model only supports single quotes, the tree model sql both single and double quotes
-    if("table".equalsIgnoreCase(getSqlDialect()) || (sql.trim().toUpperCase().startsWith("INSERT")
-        && !((x.startsWith("'") && x.endsWith("'"))))
-            || ((x.startsWith("\"") && x.endsWith("\"")) && "tree".equals(getSqlDialect()))) {
+    if ("table".equalsIgnoreCase(getSqlDialect())
+        || (sql.trim().toUpperCase().startsWith("INSERT")
+            && !((x.startsWith("'") && x.endsWith("'"))))
+        || ((x.startsWith("\"") && x.endsWith("\"")) && "tree".equals(getSqlDialect()))) {
       this.parameters.put(parameterIndex, "'" + x + "'");
     } else {
       this.parameters.put(parameterIndex, x);

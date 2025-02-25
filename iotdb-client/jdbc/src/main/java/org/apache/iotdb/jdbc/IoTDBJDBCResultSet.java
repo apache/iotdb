@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.jdbc;
 
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.IoTDBRpcDataSet;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -27,6 +26,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -302,7 +302,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   public Blob getBlob(int arg0) throws SQLException {
     try {
       Binary binary = ioTDBRpcDataSet.getBinary(arg0);
-      if(ObjectUtils.isNotEmpty(binary)) {
+      if (ObjectUtils.isNotEmpty(binary)) {
         return new SerialBlob(binary.getValues());
       }
       return null;
@@ -315,7 +315,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   public Blob getBlob(String arg0) throws SQLException {
     try {
       Binary binary = ioTDBRpcDataSet.getBinary(arg0);
-      if(ObjectUtils.isNotEmpty(binary)) {
+      if (ObjectUtils.isNotEmpty(binary)) {
         return new SerialBlob(binary.getValues());
       }
       return null;
@@ -1272,7 +1272,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   protected String getValueByName(String columnName) throws SQLException {
     try {
       return ioTDBRpcDataSet.getString(columnName);
-    } catch (StatementExecutionException e) {
+    } catch (StatementExecutionException | IllegalArgumentException e) {
       throw new SQLException(e.getMessage());
     }
   }

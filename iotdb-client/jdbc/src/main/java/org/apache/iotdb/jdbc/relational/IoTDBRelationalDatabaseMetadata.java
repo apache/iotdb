@@ -220,13 +220,21 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
     }
 
     // Setup Fields
-    Field[] fields = new Field[4];
+    Field[] fields = new Field[6];
     fields[0] = new Field("", TABLE_SCHEM, "TEXT");
     fields[1] = new Field("", TABLE_NAME, "TEXT");
     fields[2] = new Field("", TABLE_TYPE, "TEXT");
     fields[3] = new Field("", REMARKS, "TEXT");
+    fields[4] = new Field("", COLUMN_SIZE, INT32);
+    fields[5] = new Field("", DECIMAL_DIGITS, INT32);
     List<TSDataType> tsDataTypeList =
-        Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT);
+        Arrays.asList(
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.INT32,
+            TSDataType.INT32);
     List<String> columnNameList = new ArrayList<>();
     List<String> columnTypeList = new ArrayList<>();
     Map<String, Integer> columnNameIndex = new HashMap<>();
@@ -249,8 +257,14 @@ public class IoTDBRelationalDatabaseMetadata extends IoTDBAbstractDatabaseMetada
           valueInRow.add(rs.getString(2));
         } else if (i == 2) {
           valueInRow.add("TABLE");
-        } else {
+        } else if (i == 3) {
           valueInRow.add("TTL(ms): " + rs.getString(3));
+        } else if (i == 4) {
+          valueInRow.add(getTypePrecision(fields[i].getSqlType()));
+        } else if (i == 5) {
+          valueInRow.add(getTypeScale(fields[i].getSqlType()));
+        } else {
+          valueInRow.add("TABLE");
         }
       }
       LOGGER.info("Table: {}", valueInRow);
