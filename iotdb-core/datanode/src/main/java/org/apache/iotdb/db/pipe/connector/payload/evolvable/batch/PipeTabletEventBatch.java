@@ -45,15 +45,14 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   private long firstEventProcessingTime = Long.MIN_VALUE;
 
   protected long totalBufferSize = 0;
+  private final PipeMemoryBlock allocatedMemoryBlock;
 
   protected volatile boolean isClosed = false;
-
-  // limit in buffer size
-  private final PipeMemoryBlock allocatedMemoryBlock;
 
   protected PipeTabletEventBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
     this.maxDelayInMs = maxDelayInMs;
 
+    // limit in buffer size
     this.allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory()
             .tryAllocate(requestMaxBatchSizeInBytes)
@@ -128,7 +127,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
         || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
   }
 
-  protected long getMaxBatchSizeInBytes() {
+  private long getMaxBatchSizeInBytes() {
     return allocatedMemoryBlock.getMemoryUsageInBytes();
   }
 
