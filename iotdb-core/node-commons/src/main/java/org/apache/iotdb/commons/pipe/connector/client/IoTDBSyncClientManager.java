@@ -308,8 +308,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
     for (final TEndPoint endPoint : endPointList) {
       final Pair<IoTDBSyncClient, Boolean> clientAndStatus = endPoint2ClientAndStatus.get(endPoint);
       if (Boolean.FALSE.equals(clientAndStatus.getRight())) {
-        LOGGER.warn(
-            "Failed to get client for endpoint {}:{}.", endPoint.getIp(), endPoint.getPort());
+        throw new PipeConnectionException(
+            "Some clients are dead, please check the connection to the receiver.");
       } else {
         clients.add(clientAndStatus);
       }

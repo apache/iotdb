@@ -323,7 +323,8 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       if (Boolean.TRUE.equals(isSocketAlive.get(clientIndex))) {
         indexes.add(clientIndex);
       } else {
-        LOGGER.warn("Socket {} is not alive.", clientIndex);
+        throw new PipeConnectionException(
+            String.format("Socket %s is closed, will try to handshake", sockets.get(clientIndex)));
       }
     }
     return indexes;

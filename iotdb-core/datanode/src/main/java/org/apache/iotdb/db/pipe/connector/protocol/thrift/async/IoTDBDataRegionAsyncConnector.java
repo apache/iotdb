@@ -57,14 +57,12 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import com.google.common.collect.ImmutableSet;
-import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -188,8 +186,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   }
 
   private void transferInBatchWithoutCheck(
-      final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch)
-      throws IOException, WriteProcessException, InterruptedException {
+      final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch) throws Exception {
     final PipeTabletEventBatch batch = endPointAndBatch.getRight();
 
     if (batch instanceof PipeTabletEventPlainBatch) {
@@ -467,8 +464,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     }
   }
 
-  private void transferAllClients(final PipeTabletEventTsFileBatch tsFileBatch)
-      throws IOException, WriteProcessException, InterruptedException {
+  private void transferAllClients(final PipeTabletEventTsFileBatch tsFileBatch) throws Exception {
     final List<AsyncPipeDataTransferServiceClient> clients = clientManager.borrowAllClients();
     final List<Pair<String, File>> dbTsFilePairs = tsFileBatch.sealTsFiles();
     final Map<Pair<String, Long>, Double> pipe2WeightMap = tsFileBatch.deepCopyPipe2WeightMap();
@@ -500,7 +496,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   }
 
   private void transferAllClients(final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
-      throws FileNotFoundException, InterruptedException {
+      throws Exception {
     final List<AsyncPipeDataTransferServiceClient> clients = clientManager.borrowAllClients();
     final AtomicInteger eventsReferenceCount = new AtomicInteger(clients.size());
     for (final AsyncPipeDataTransferServiceClient client : clients) {
@@ -620,8 +616,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   }
 
   /** Try its best to commit data in order. Flush can also be a trigger to transfer batched data. */
-  private void transferBatchedEventsIfNecessary()
-      throws IOException, WriteProcessException, InterruptedException {
+  private void transferBatchedEventsIfNecessary() throws Exception {
     if (!isTabletBatchModeEnabled || tabletBatchBuilder.isEmpty()) {
       return;
     }

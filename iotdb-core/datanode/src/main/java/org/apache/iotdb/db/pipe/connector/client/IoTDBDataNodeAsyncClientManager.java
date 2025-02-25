@@ -172,7 +172,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     return borrowClient();
   }
 
-  public List<AsyncPipeDataTransferServiceClient> borrowAllClients() {
+  public List<AsyncPipeDataTransferServiceClient> borrowAllClients() throws Exception {
     final List<AsyncPipeDataTransferServiceClient> clients = new ArrayList<>();
     for (final TEndPoint targetNodeUrl : endPointList) {
       while (true) {
@@ -189,6 +189,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
               targetNodeUrl.getIp(),
               targetNodeUrl.getPort(),
               e);
+          throw e;
         }
       }
     }
