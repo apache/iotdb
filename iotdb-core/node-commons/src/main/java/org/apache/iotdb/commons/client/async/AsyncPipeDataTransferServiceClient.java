@@ -164,9 +164,10 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
     if (!___manager.isRunning()) {
       if (___transport != null && ___transport.isOpen()) {
         ___transport.close();
+        LOGGER.warn("Manually closing transport to prevent resource leakage.");
       }
-
       ___currentMethod = null;
+      LOGGER.info("Method state has been reset due to manager not running.");
     }
   }
 
