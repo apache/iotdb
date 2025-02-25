@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.AlignedFullPath;
-import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -33,6 +33,7 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
@@ -62,7 +63,7 @@ public class MemChunkDeserializeTest {
   private String storageGroup = "sg1";
   private String dataRegionId = "1";
 
-  private IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create("d1");
+  private IDeviceID deviceID = new PlainDeviceID("d1");
   double delta;
 
   @Before
@@ -239,7 +240,7 @@ public class MemChunkDeserializeTest {
             new MeasurementSchema("s4", TSDataType.FLOAT),
             new MeasurementSchema("s5", TSDataType.DOUBLE),
             new MeasurementSchema("s6", TSDataType.TEXT));
-    AlignedWritableMemChunk series = new AlignedWritableMemChunk(schemaList, false);
+    AlignedWritableMemChunk series = new AlignedWritableMemChunk(schemaList);
 
     int count = 1000;
     for (int i = 0; i < count; i++) {
@@ -261,7 +262,7 @@ public class MemChunkDeserializeTest {
     series.serializeToWAL(walBuffer);
     DataInputStream inputStream =
         new DataInputStream(new ByteArrayInputStream(walBuffer.getBuffer().array()));
-    AlignedWritableMemChunk memChunk = AlignedWritableMemChunk.deserialize(inputStream, false);
+    AlignedWritableMemChunk memChunk = AlignedWritableMemChunk.deserialize(inputStream);
 
     AlignedReadOnlyMemChunk readableChunk =
         (AlignedReadOnlyMemChunk) getAlignedReadOnlyChunk(memChunk, schemaList, measurementList);
@@ -302,9 +303,10 @@ public class MemChunkDeserializeTest {
     IMemTable memTable = new PrimitiveMemTable(storageGroup, dataRegionId, memTableMap);
 
     QueryContext context = new QueryContext();
-    NonAlignedFullPath nonAlignedFullPath =
-        new NonAlignedFullPath(
+    MeasurementPath nonAlignedFullPath =
+        new MeasurementPath(
             deviceID,
+            "s1",
             new MeasurementSchema(
                 "s1",
                 dataType,
@@ -326,7 +328,7 @@ public class MemChunkDeserializeTest {
     IMemTable memTable = new PrimitiveMemTable(storageGroup, dataRegionId, memTableMap);
 
     QueryContext context = new QueryContext();
-    AlignedFullPath alignedFullPath = new AlignedFullPath(deviceID, measurementList, schemaList);
+    AlignedPath alignedFullPath = new AlignedPath("d1", measurementList, schemaList);
     return memTable.query(context, alignedFullPath, Long.MIN_VALUE, null, null);
   }
 }
