@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtask;
@@ -42,6 +41,7 @@ import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTran
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletRawEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTrackableHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTsFileHandler;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBDataRegionSyncConnector;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -70,7 +70,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -82,7 +81,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_KEY;
@@ -102,6 +100,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private static final String THRIFT_ERROR_FORMATTER_WITH_ENDPOINT =
       "Exception occurred while sending to receiver %s:%s.";
 
+  private final IoTDBDataRegionSyncConnector retryConnector = new IoTDBDataRegionSyncConnector();
+
   private final BlockingQueue<Event> retryEventQueue = new LinkedBlockingQueue<>();
 
   private IoTDBDataNodeAsyncClientManager clientManager;
@@ -116,6 +116,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
     super.validate(validator);
+    retryConnector.validate(validator);
 
     final PipeParameters parameters = validator.getParameters();
     final IoTDBConfig iotdbConfig = IoTDBDescriptor.getInstance().getConfig();
@@ -127,25 +128,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         parameters.getBooleanOrDefault(SINK_IOTDB_SSL_ENABLE_KEY, false),
         parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY),
         parameters.hasAttribute(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY));
-
-    validator.validate(
-        empty -> {
-          try {
-            // Ensure the sink doesn't point to the thrift receiver on DataNode itself
-            return !NodeUrlUtils.containsLocalAddress(
-                givenNodeUrls.stream()
-                    .filter(tEndPoint -> tEndPoint.getPort() == iotdbConfig.getRpcPort())
-                    .map(TEndPoint::getIp)
-                    .collect(Collectors.toList()));
-          } catch (final UnknownHostException e) {
-            LOGGER.warn("Unknown host when checking pipe sink IP.", e);
-            return false;
-          }
-        },
-        String.format(
-            "One of the endpoints %s of the receivers is pointing back to the thrift receiver %s on sender itself, "
-                + "or unknown host when checking pipe sink IP.",
-            givenNodeUrls, new TEndPoint(iotdbConfig.getRpcAddress(), iotdbConfig.getRpcPort())));
   }
 
   @Override
@@ -153,6 +135,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
+    retryConnector.customize(parameters, configuration);
 
     clientManager =
         new IoTDBDataNodeAsyncClientManager(
@@ -174,20 +157,14 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   }
 
   @Override
-  public void handshake() throws Exception {
-    clientManager.checkTargetServerStatus();
+  // Synchronized to avoid close connector when transfer event
+  public synchronized void handshake() throws Exception {
+    retryConnector.handshake();
   }
 
   @Override
   public void heartbeat() throws Exception {
-    //    try {
-    //      handshake();
-    //    } catch (final Exception e) {
-    //      LOGGER.warn(
-    //          "Failed to reconnect to target server, because: {}. Try to reconnect later.",
-    //          e.getMessage(),
-    //          e);
-    //    }
+    retryConnector.heartbeat();
   }
 
   @Override
