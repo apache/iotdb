@@ -1054,39 +1054,35 @@ public class StatementAnalyzer {
     private void analyzeWhere(Node node, Scope scope, Expression predicate) {
       verifyNoAggregateWindowOrGroupingFunctions(predicate, "WHERE clause");
 
+      // contains Columns, expand them and concat them
       if (containsColumns(predicate)) {
         ExpandColumnsVisitor visitor = new ExpandColumnsVisitor(null);
         List<Expression> expandedExpressions = visitor.process(predicate, scope);
         if (expandedExpressions.isEmpty()) {
           throw new IllegalStateException("There is at least one result of expanded");
         }
-        for (Expression expression : expandedExpressions) {
-          ExpressionAnalysis expressionAnalysis = analyzeExpression(expression, scope);
-          analysis.recordSubqueries(node, expressionAnalysis);
+        if (expandedExpressions.size() >= 2) {
+          predicate = new LogicalExpression(LogicalExpression.Operator.AND, expandedExpressions);
+        } else {
+          predicate = expandedExpressions.get(0);
         }
-        analysis.setWhere(
-            node,
-            expandedExpressions.size() >= 2
-                ? new LogicalExpression(LogicalExpression.Operator.AND, expandedExpressions)
-                : expandedExpressions.get(0));
-      } else {
-
-        ExpressionAnalysis expressionAnalysis = analyzeExpression(predicate, scope);
-        analysis.recordSubqueries(node, expressionAnalysis);
-
-        Type predicateType = expressionAnalysis.getType(predicate);
-        if (!predicateType.equals(BOOLEAN)) {
-          //        if (!predicateType.equals(UNKNOWN)) {
-          throw new SemanticException(
-              String.format(
-                  "WHERE clause must evaluate to a boolean: actual type %s", predicateType));
-          //        }
-          // coerce null to boolean
-          //        analysis.addCoercion(predicate, BOOLEAN, false);
-        }
-
-        analysis.setWhere(node, predicate);
       }
+
+      ExpressionAnalysis expressionAnalysis = analyzeExpression(predicate, scope);
+      analysis.recordSubqueries(node, expressionAnalysis);
+
+      Type predicateType = expressionAnalysis.getType(predicate);
+      if (!predicateType.equals(BOOLEAN)) {
+        //        if (!predicateType.equals(UNKNOWN)) {
+        throw new SemanticException(
+            String.format(
+                "WHERE clause must evaluate to a boolean: actual type %s", predicateType));
+        //        }
+        // coerce null to boolean
+        //        analysis.addCoercion(predicate, BOOLEAN, false);
+      }
+
+      analysis.setWhere(node, predicate);
     }
 
     private List<Expression> analyzeSelect(QuerySpecification node, Scope scope) {
@@ -1141,27 +1137,34 @@ public class StatementAnalyzer {
      * @throws SemanticException if there are multi Columns functions but different
      */
     private boolean containsColumns(Expression expression) {
-      if (expression instanceof Columns) {
-        return true;
+      return containsColumnsHelper(expression) != null;
+    }
+
+    private Node containsColumnsHelper(Node node) {
+      if (node instanceof Columns) {
+        return node;
       }
 
-      // record Columns
       Node target = null;
-      for (Node child : expression.getChildren()) {
-        if (child instanceof Columns) {
-          // initialize target
-          if (target == null) {
-            target = child;
-            continue;
-          }
+      for (Node child : node.getChildren()) {
+        Node childResult = containsColumnsHelper(child);
 
-          if (!child.equals(target)) {
-            throw new SemanticException(
-                "Multiple different COLUMNS in the same expression are not supported");
-          }
+        if (childResult == null) {
+          continue;
+        }
+
+        // initialize target
+        if (target == null) {
+          target = childResult;
+          continue;
+        }
+
+        if (!childResult.equals(target)) {
+          throw new SemanticException(
+              "Multiple different COLUMNS in the same expression are not supported");
         }
       }
-      return target != null;
+      return target;
     }
 
     private class ExpandColumnsVisitor extends AstVisitor<List<Expression>, Scope> {
@@ -1709,32 +1712,8 @@ public class StatementAnalyzer {
 
       @Override
       protected List<Expression> visitNullIfExpression(NullIfExpression node, Scope context) {
-        List<Expression> leftResult = process(node.getFirst(), context);
-        List<Expression> rightResult = process(node.getSecond(), context);
-
-        if (expandedExpressions == null) {
-          // no Columns need to be expanded
-          return Collections.singletonList(node);
-        }
-
-        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
-        int leftSize = leftResult.size();
-        int rightSize = rightResult.size();
-        int maxSize = Math.max(leftSize, rightSize);
-
-        AtomicInteger baseIndex = new AtomicInteger(0);
-        // if child is expanded, index of it reference the baseIndex, else the index of it always be
-        // 0
-        AtomicInteger leftIndex = (leftSize == maxSize) ? baseIndex : new AtomicInteger(0);
-        AtomicInteger rightIndex = (rightSize == maxSize) ? baseIndex : new AtomicInteger(0);
-        for (int i = 0; i < maxSize; i++) {
-          resultBuilder.add(
-              new NullIfExpression(
-                  leftResult.get(leftIndex.get()), rightResult.get(rightIndex.get())));
-          baseIndex.getAndIncrement();
-        }
-
-        return resultBuilder.build();
+        throw new SemanticException(
+            String.format("%s are not supported now", node.getClass().getSimpleName()));
       }
 
       @Override
@@ -1758,37 +1737,8 @@ public class StatementAnalyzer {
 
       @Override
       protected List<Expression> visitRow(Row node, Scope context) {
-        ImmutableList.Builder<List<Expression>> childrenResultListBuilder =
-            new ImmutableList.Builder<>();
-        node.getItems()
-            .forEach(operand -> childrenResultListBuilder.add(process(operand, context)));
-        List<List<Expression>> childrenResultList = childrenResultListBuilder.build();
-        if (expandedExpressions == null) {
-          // no Columns need to be expanded
-          return Collections.singletonList(node);
-        }
-
-        ImmutableList.Builder<Expression> resultBuilder = new ImmutableList.Builder<>();
-        int maxSize = childrenResultList.stream().mapToInt(List::size).max().orElse(0);
-
-        AtomicInteger baseIndex = new AtomicInteger(0);
-        // if child is expanded, index of it reference the baseIndex, else the index of it always be
-        // 0
-        AtomicInteger[] childrenIndexes = new AtomicInteger[childrenResultList.size()];
-        for (int i = 0; i < childrenIndexes.length; i++) {
-          childrenIndexes[i] =
-              (childrenResultList.get(i).size() == maxSize) ? baseIndex : new AtomicInteger(0);
-        }
-        for (int i = 0; i < maxSize; i++) {
-          ImmutableList.Builder<Expression> operandListBuilder = new ImmutableList.Builder<>();
-          for (int j = 0; j < childrenIndexes.length; j++) {
-            int operandIndexInResult = childrenIndexes[j].get();
-            operandListBuilder.add(childrenResultList.get(j).get(operandIndexInResult));
-          }
-          resultBuilder.add(new Row(operandListBuilder.build()));
-          baseIndex.getAndIncrement();
-        }
-        return resultBuilder.build();
+        throw new SemanticException(
+            String.format("%s are not supported now", node.getClass().getSimpleName()));
       }
 
       @Override
@@ -1862,7 +1812,7 @@ public class StatementAnalyzer {
         int firstSize = firstResult.size();
         int secondSize = secondResult == null ? 0 : secondResult.size();
         int maxSize = whenResultList.stream().mapToInt(List::size).max().orElse(0);
-        maxSize = Math.max(maxSize, secondSize);
+        maxSize = Math.max(Math.max(firstSize, maxSize), secondSize);
 
         AtomicInteger baseIndex = new AtomicInteger(0);
         // if child is expanded, index of it reference the baseIndex, else the index of it always be
@@ -1918,13 +1868,13 @@ public class StatementAnalyzer {
         // if child is expanded, index of it reference the baseIndex, else the index of it always be
         // 0
         AtomicInteger firstIndex = (firstSize == maxSize) ? baseIndex : new AtomicInteger(0);
-        AtomicInteger thirdIndex = (secondSize == maxSize) ? baseIndex : new AtomicInteger(0);
+        AtomicInteger secondIndex = (secondSize == maxSize) ? baseIndex : new AtomicInteger(0);
         for (int i = 0; i < maxSize; i++) {
           resultBuilder.add(
               new Trim(
                   node.getSpecification(),
                   firstResult.get(firstIndex.get()),
-                  secondResult == null ? null : secondResult.get(thirdIndex.get())));
+                  secondResult == null ? null : secondResult.get(secondIndex.get())));
           baseIndex.getAndIncrement();
         }
 
