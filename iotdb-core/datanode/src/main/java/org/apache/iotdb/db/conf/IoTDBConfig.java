@@ -170,7 +170,7 @@ public class IoTDBConfig {
   private double bufferedArraysMemoryProportion = 0.6;
 
   /** Flush proportion for system */
-  private double flushProportion = 0.4;
+  private double flushProportion = 0.5;
 
   /** Reject proportion for system */
   private double rejectProportion = 0.8;

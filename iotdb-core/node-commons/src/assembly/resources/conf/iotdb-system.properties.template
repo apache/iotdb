@@ -725,11 +725,11 @@ primitive_array_size=64
 # Datatype: double
 chunk_metadata_size_proportion=0.1
 
-# Ratio of memtable memory for invoking flush disk, 0.4 by default
+# Ratio of memtable memory for invoking flush disk, 0.5 by default
 # If you have extremely high write load (like batch=1000), it can be set lower than the default value like 0.2
 # effectiveMode: restart
 # Datatype: double
-flush_proportion=0.4
+flush_proportion=0.5
 
 # Ratio of memtable memory allocated for buffered arrays, 0.6 by default
 # effectiveMode: restart
