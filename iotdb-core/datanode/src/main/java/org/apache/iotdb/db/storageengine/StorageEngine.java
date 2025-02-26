@@ -857,6 +857,10 @@ public class StorageEngine implements IService {
     return new ArrayList<>(dataRegionMap.keySet());
   }
 
+  public int getDataRegionNumber() {
+    return dataRegionMap.size();
+  }
+
   /** This method is not thread-safe */
   public void setDataRegion(DataRegionId regionId, DataRegion newRegion) {
     if (dataRegionMap.containsKey(regionId)) {
