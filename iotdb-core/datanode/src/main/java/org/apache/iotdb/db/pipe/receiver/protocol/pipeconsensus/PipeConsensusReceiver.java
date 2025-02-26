@@ -936,8 +936,6 @@ public class PipeConsensusReceiver {
   }
 
   private void initiateTsFileBufferFolder(List<String> receiverBaseDirsName) throws IOException {
-    clearAllReceiverBaseDir();
-
     // initiate receiverFileDirs
     for (String receiverFileBaseDir : receiverBaseDirsName) {
       // Create a new receiver file dir
@@ -977,7 +975,7 @@ public class PipeConsensusReceiver {
                 "PipeConsensus-PipeName-%s: Failed to create receiver file dir %s. May because authority or dir already exists etc.",
                 consensusPipeName, newReceiverDir.getPath()));
       }
-      this.receiveDirs.add(newReceiverDir.getName());
+      this.receiveDirs.add(newReceiverDir.getPath());
     }
   }
 
@@ -1230,10 +1228,9 @@ public class PipeConsensusReceiver {
         rollToNextWritingPath();
       }
       LOGGER.info(
-          "PipeConsensus-PipeName-{}: tsFileWriter-{} returned self, roll to new writing path {}",
+          "PipeConsensus-PipeName-{}: tsFileWriter-{} returned self",
           consensusPipeName.toString(),
-          index,
-          localWritingDir.getPath());
+          index);
     }
 
     public void closeSelf(ConsensusPipeName consensusPipeName) {
