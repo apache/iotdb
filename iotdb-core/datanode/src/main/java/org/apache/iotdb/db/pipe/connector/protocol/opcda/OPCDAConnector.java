@@ -83,6 +83,7 @@ public class OPCDAConnector implements PipeConnector {
   private OPCDAHeader.IOPCItemMgt itemMgt;
   private OPCDAHeader.IOPCSyncIO syncIO;
   private final Map<String, Integer> serverHandleMap = new HashMap<>();
+  private final Map<String, Long> serverTimestampMap = new HashMap<>();
 
   // Save it here to avoid memory leakage
   private WTypes.BSTR bstr;
@@ -206,8 +207,11 @@ public class OPCDAConnector implements PipeConnector {
         if (Objects.isNull(tablet.getBitMaps())
             || Objects.isNull(tablet.getBitMaps()[i])
             || !tablet.getBitMaps()[i].isMarked(j)) {
-          writeData(
-              itemId, getTabletObjectValue4Opc(tablet.getValues()[i], j, schemas.get(i).getType()));
+          if (serverTimestampMap.get(itemId) <= tablet.getTimestamp(j)) {
+            writeData(
+                itemId,
+                getTabletObjectValue4Opc(tablet.getValues()[i], j, schemas.get(i).getType()));
+          }
           break;
         }
       }
@@ -264,6 +268,7 @@ public class OPCDAConnector implements PipeConnector {
     itemResults[0].read();
 
     serverHandleMap.put(itemId, itemResults[0].hServer);
+    serverTimestampMap.put(itemId, Long.MIN_VALUE);
   }
 
   private void writeData(final String itemId, final Variant.VARIANT value) {
@@ -377,6 +382,11 @@ public class OPCDAConnector implements PipeConnector {
 
   @Override
   public void close() throws Exception {
+    // Help gc
+    serverTimestampMap.clear();
+    serverHandleMap.clear();
+
+    // Release resource
     if (Objects.nonNull(ppvServer.getValue())) {
       Ole32.INSTANCE.CoTaskMemFree(ppvServer.getValue());
     }
