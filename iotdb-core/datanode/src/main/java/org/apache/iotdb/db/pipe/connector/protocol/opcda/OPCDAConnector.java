@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.opcda;
 
-import org.apache.iotdb.db.pipe.connector.protocol.OpcDaCreateGroupDemo;
 import org.apache.iotdb.db.pipe.connector.protocol.opcua.OpcUaConnector;
 import org.apache.iotdb.db.pipe.connector.util.sorter.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -216,8 +215,8 @@ public class OPCDAConnector implements PipeConnector {
   }
 
   private void addItem(final String itemId, final TSDataType type) {
-    final OpcDaCreateGroupDemo.OPCITEMDEF[] itemDefs = new OpcDaCreateGroupDemo.OPCITEMDEF[1];
-    itemDefs[0] = new OpcDaCreateGroupDemo.OPCITEMDEF();
+    final OPCDAHeader.OPCITEMDEF[] itemDefs = new OPCDAHeader.OPCITEMDEF[1];
+    itemDefs[0] = new OPCDAHeader.OPCITEMDEF();
     itemDefs[0].szAccessPath = new WString("");
     itemDefs[0].szItemID = new WString(itemId + "\0");
     itemDefs[0].bActive = 1;
@@ -260,9 +259,8 @@ public class OPCDAConnector implements PipeConnector {
 
     final Pointer pItemResults = ppItemResults.getValue();
 
-    final OpcDaCreateGroupDemo.OPCITEMRESULT[] itemResults =
-        new OpcDaCreateGroupDemo.OPCITEMRESULT[1];
-    itemResults[0] = new OpcDaCreateGroupDemo.OPCITEMRESULT(pItemResults);
+    final OPCDAHeader.OPCITEMRESULT[] itemResults = new OPCDAHeader.OPCITEMRESULT[1];
+    itemResults[0] = new OPCDAHeader.OPCITEMRESULT(pItemResults);
     itemResults[0].read();
 
     serverHandleMap.put(itemId, itemResults[0].hServer);

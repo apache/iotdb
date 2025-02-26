@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.opcda;
 
-import org.apache.iotdb.db.pipe.connector.protocol.OpcDaCreateGroupDemo;
-
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 import com.sun.jna.WString;
@@ -110,7 +108,7 @@ public class OPCDAHeader {
 
     public int addItems(
         final int dwCount, // Data count
-        final OpcDaCreateGroupDemo.OPCITEMDEF[] pItemArray, // Items array to create
+        final OPCITEMDEF[] pItemArray, // Items array to create
         final PointerByReference pResults, // Results' handles
         final PointerByReference pErrors // Error's pointers
         ) {
