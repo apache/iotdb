@@ -305,4 +305,17 @@ public abstract class FloatTVList extends TVList {
     tvList.putFloats(times, values, bitMap, 0, rowCount);
     return tvList;
   }
+
+  public static FloatTVList deserializeWithoutBitMap(DataInputStream stream) throws IOException {
+    FloatTVList tvList = FloatTVList.newList();
+    int rowCount = stream.readInt();
+    long[] times = new long[rowCount];
+    float[] values = new float[rowCount];
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      times[rowIdx] = stream.readLong();
+      values[rowIdx] = stream.readFloat();
+    }
+    tvList.putFloats(times, values, null, 0, rowCount);
+    return tvList;
+  }
 }
