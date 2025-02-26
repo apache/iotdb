@@ -125,9 +125,7 @@ public class ExampleTest {
      *                   ├──ExchangeNode-29: [SourceAddress:192.0.11.1/test_query.3.0/31]
      *                   └──ExchangeNode-30: [SourceAddress:192.0.12.1/test_query.4.0/32]
      */
-    assertPlan(
-        planTester.getFragmentPlan(0),
-        anyTree(project(mergeSort(exchange(), exchange(), exchange()))));
+    assertPlan(planTester.getFragmentPlan(0), anyTree(project(mergeSort(any(exchange())))));
 
     /*
      *    SortNode-26

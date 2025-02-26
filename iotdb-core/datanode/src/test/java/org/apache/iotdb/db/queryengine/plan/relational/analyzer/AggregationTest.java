@@ -702,16 +702,19 @@ public class AggregationTest {
                     aggregationFunction("count", ImmutableList.of("count_0"))),
                 Optional.empty(),
                 FINAL,
-                collect(
-                    aggregationTableScan(
-                        singleGroupingSet(),
-                        ImmutableList.of(),
-                        Optional.empty(),
-                        PARTIAL,
-                        "testdb.table1",
-                        ImmutableList.of("count_0"),
-                        ImmutableSet.of("s1")),
-                    exchange()))));
+                collect(exchange(), exchange()))));
+    for (int i = 1; i <= 2; i++) {
+      assertPlan(
+          planTester.getFragmentPlan(i),
+          aggregationTableScan(
+              singleGroupingSet(),
+              ImmutableList.of(),
+              Optional.empty(),
+              PARTIAL,
+              "testdb.table1",
+              ImmutableList.of("count_0"),
+              ImmutableSet.of("s1")));
+    }
 
     logicalQueryPlan =
         planTester.createPlan(
@@ -743,15 +746,18 @@ public class AggregationTest {
                     ImmutableList.of("tag1", "tag2", "tag3"),
                     Optional.empty(),
                     FINAL,
-                    mergeSort(
-                        aggregationTableScan(
-                            singleGroupingSet("tag1", "tag2", "tag3"),
-                            ImmutableList.of("tag1", "tag2", "tag3"),
-                            Optional.empty(),
-                            PARTIAL,
-                            "testdb.table1",
-                            ImmutableList.of("tag1", "tag2", "tag3", "count_0"),
-                            ImmutableSet.of("tag1", "tag2", "tag3", "s1")),
-                        exchange())))));
+                    mergeSort(exchange(), exchange())))));
+    for (int i = 1; i <= 2; i++) {
+      assertPlan(
+          planTester.getFragmentPlan(i),
+          aggregationTableScan(
+              singleGroupingSet("tag1", "tag2", "tag3"),
+              ImmutableList.of("tag1", "tag2", "tag3"),
+              Optional.empty(),
+              PARTIAL,
+              "testdb.table1",
+              ImmutableList.of("tag1", "tag2", "tag3", "count_0"),
+              ImmutableSet.of("tag1", "tag2", "tag3", "s1")));
+    }
   }
 }
