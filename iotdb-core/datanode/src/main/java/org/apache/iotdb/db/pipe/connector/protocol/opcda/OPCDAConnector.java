@@ -36,20 +36,30 @@ import com.sun.jna.WString;
 import com.sun.jna.platform.win32.COM.IUnknown;
 import com.sun.jna.platform.win32.COM.Unknown;
 import com.sun.jna.platform.win32.Guid;
+import com.sun.jna.platform.win32.OaIdl;
 import com.sun.jna.platform.win32.Ole32;
+import com.sun.jna.platform.win32.OleAuto;
 import com.sun.jna.platform.win32.Variant;
+import com.sun.jna.platform.win32.WTypes;
+import com.sun.jna.platform.win32.WinDef;
 import com.sun.jna.platform.win32.WinError;
 import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.PointerByReference;
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.Date;
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -72,6 +82,9 @@ public class OPCDAConnector implements PipeConnector {
   private OPCDAHeader.IOPCItemMgt itemMgt;
   private OPCDAHeader.IOPCSyncIO syncIO;
   private final Map<String, Integer> serverHandleMap = new HashMap<>();
+
+  // Save it here to avoid memory leakage
+  private WTypes.BSTR bstr;
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -178,8 +191,25 @@ public class OPCDAConnector implements PipeConnector {
 
   private void transfer(final Tablet tablet) {
     new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+    final List<IMeasurementSchema> schemas = tablet.getSchemas();
 
+    for (int i = 0; i < schemas.size(); ++i) {
+      final String itemId =
+          tablet.getDeviceId()
+              + TsFileConstant.PATH_SEPARATOR
+              + schemas.get(i).getMeasurementName();
+      if (!serverHandleMap.containsKey(itemId)) {
+        addItem(itemId, schemas.get(i).getType());
+      }
+      for (int j = tablet.getRowSize() - 1; j >= 0; --j) {
+        if (Objects.isNull(tablet.getBitMaps())
+            || Objects.isNull(tablet.getBitMaps()[i])
+            || !tablet.getBitMaps()[i].isMarked(j)) {
 
+          break;
+        }
+      }
+    }
   }
 
   private void addItem(final String itemId, final TSDataType type) {
@@ -227,6 +257,8 @@ public class OPCDAConnector implements PipeConnector {
     serverHandleMap.put(itemId, itemResults[0].hServer);
   }
 
+  private void writeData() {}
+
   private short convertTsDataType2VariantType(final TSDataType dataType) {
     switch (dataType) {
       case BOOLEAN:
@@ -250,6 +282,59 @@ public class OPCDAConnector implements PipeConnector {
       default:
         throw new UnSupportedDataTypeException("UnSupported dataType " + dataType);
     }
+  }
+
+  private Variant.VARIANT getTabletObjectValue4Opc(
+      final Object column, final int rowIndex, final TSDataType type) {
+    // WTypes.BSTR bstr = OleAuto.INSTANCE.SysAllocString("FuckYourMotherTwice");
+    // value.setValue(Variant.VT_BSTR, bstr);
+
+    // value.setValue(Variant.VT_I4, new WinDef.LONG(0));
+    // value.setValue(Variant.VT_I8, new WinDef.LONGLONG(0));
+
+    // value.setValue(Variant.VT_R8, 0.134);
+    // value.setValue(Variant.VT_R4, 0.134f);
+
+    // value.setValue(Variant.VT_BOOL, Variant.VARIANT_TRUE);
+
+    // value.setValue(Variant.VT_DATE, new OaIdl.DATE(1.35));
+    final Variant.VARIANT value = new Variant.VARIANT();
+    switch (type) {
+      case BOOLEAN:
+        value.setValue(
+            Variant.VT_BOOL,
+            ((boolean[]) column)[rowIndex] ? Variant.VARIANT_TRUE : Variant.VARIANT_FALSE);
+        break;
+      case INT32:
+        value.setValue(Variant.VT_I4, new WinDef.LONG(((int[]) column)[rowIndex]));
+        break;
+      case DATE:
+        value.setValue(
+            Variant.VT_DATE, new OaIdl.DATE((Date.valueOf(((LocalDate[]) column)[rowIndex]))));
+        break;
+      case INT64:
+        value.setValue(Variant.VT_I8, new WinDef.LONGLONG(((long[]) column)[rowIndex]));
+        break;
+      case TIMESTAMP:
+        value.setValue(
+            Variant.VT_DATE, new OaIdl.DATE(new java.util.Date(((long[]) column)[rowIndex])));
+        break;
+      case FLOAT:
+        value.setValue(Variant.VT_R4, ((float[]) column)[rowIndex]);
+        break;
+      case DOUBLE:
+        value.setValue(Variant.VT_R8, ((double[]) column)[rowIndex]);
+        break;
+      case TEXT:
+      case STRING:
+        bstr = OleAuto.INSTANCE.SysAllocString(((Binary[]) column)[rowIndex].toString());
+        value.setValue(Variant.VT_BSTR, bstr);
+        break;
+      case BLOB:
+      default:
+        throw new UnSupportedDataTypeException("UnSupported dataType " + type);
+    }
+    return value;
   }
 
   @Override
