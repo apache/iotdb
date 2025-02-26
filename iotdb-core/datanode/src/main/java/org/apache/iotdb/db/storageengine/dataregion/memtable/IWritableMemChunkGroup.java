@@ -53,5 +53,7 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
 
   long getMeasurementSize(String measurement);
 
+  IWritableMemChunk getWritableMemChunk(String measurement);
+
   long getMaxTime();
 }

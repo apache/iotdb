@@ -145,6 +145,11 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
+  public IWritableMemChunk getWritableMemChunk(String measurement) {
+    return memChunk;
+  }
+
+  @Override
   public long getMaxTime() {
     return memChunk.getMaxTime();
   }

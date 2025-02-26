@@ -395,6 +395,15 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
+  public IWritableMemChunk getWritableMemChunk(IDeviceID deviceId, String measurement) {
+    IWritableMemChunkGroup memChunkGroup = memTableMap.get(deviceId);
+    if (null == memChunkGroup) {
+      return null;
+    }
+    return memChunkGroup.getWritableMemChunk(measurement);
+  }
+
+  @Override
   public int getSeriesNumber() {
     return seriesNumber;
   }
