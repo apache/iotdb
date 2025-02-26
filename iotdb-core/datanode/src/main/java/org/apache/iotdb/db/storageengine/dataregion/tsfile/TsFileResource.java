@@ -410,7 +410,6 @@ public class TsFileResource implements PersistentResource {
     } finally {
       sourceModFile.writeUnlock();
     }
-    LOGGER.error("Set modification file {}", targetModsFile);
     target.setExclusiveModFile(targetModsFileObject);
     if (sharedModFileExists()) {
       modFileManagement.addReference(target, sharedModFile);
