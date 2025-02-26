@@ -11,6 +11,7 @@ import com.sun.jna.platform.win32.Guid;
 import com.sun.jna.platform.win32.Guid.IID;
 import com.sun.jna.platform.win32.Ole32;
 import com.sun.jna.platform.win32.Variant;
+import com.sun.jna.platform.win32.WinBase;
 import com.sun.jna.platform.win32.WinError;
 import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.ptr.IntByReference;
@@ -18,6 +19,7 @@ import com.sun.jna.ptr.PointerByReference;
 import org.jinterop.dcom.core.JIVariant;
 
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 import static com.sun.jna.platform.win32.WTypes.CLSCTX_LOCAL_SERVER;
@@ -221,6 +223,26 @@ public class OpcDaCreateGroupDemo {
         System.err.println("写入失败，错误码: 0x" + Integer.toHexString(hr2));
       }
 
+      //      int dwSource = OPCConstants.OPC_DS_CACHE; // 从缓存读取时间戳
+      //      int[] phClientItems = new int[] { itemHandle };
+      //      WinNT.HRESULT[] ppErrors = new WinNT.HRESULT[1];
+      //      OPCITEMSTATE[] ppItemValues = new OPCITEMSTATE[1];
+      //
+      //      // 调用 Read 方法
+      //      syncIO.Read(
+      //              dwSource,
+      //              phClientItems.length,
+      //              phClientItems,
+      //              ppItemValues,
+      //              ppErrors
+      //      );
+      //
+      //      // 检查错误
+      //      COMUtils.checkRC(ppErrors[0]);
+      //
+      //      // 返回时间戳（FILETIME 格式）
+      //      return ppItemValues[0].ftTimeStamp;
+
       // 8. 释放资源
       // OleAuto.INSTANCE.SysFreeString(bstr);
       syncIO.Release();
@@ -234,6 +256,18 @@ public class OpcDaCreateGroupDemo {
       // 卸载 COM 库
       Ole32.INSTANCE.CoUninitialize();
     }
+  }
+
+  public Date fileTimeToDate(WinBase.FILETIME ft) {
+    long high = ft.dwHighDateTime;
+    long low = ft.dwLowDateTime & 0xFFFFFFFFL;
+    long fileTime = (high << 32) | low;
+
+    // FILETIME 是 100 纳秒单位，从 1601-01-01 开始
+    long epochOffset = 11644473600000L; // 从 1601 到 1970 的毫秒数
+    long javaTime = (fileTime / 10000) - epochOffset;
+
+    return new Date(javaTime);
   }
 
   // 定义 IOPCServer 接口（部分方法）

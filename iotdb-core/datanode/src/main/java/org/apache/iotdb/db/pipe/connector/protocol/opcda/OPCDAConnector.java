@@ -44,10 +44,10 @@ import java.util.Objects;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_DA_CLSID_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_OPC_DA_CLSID_KEY;
-import static org.apache.iotdb.db.pipe.connector.protocol.opcda.OPCDAConstant.IID_IOPCItemMgt;
-import static org.apache.iotdb.db.pipe.connector.protocol.opcda.OPCDAConstant.IID_IOPCServer;
-import static org.apache.iotdb.db.pipe.connector.protocol.opcda.OPCDAConstant.IID_IOPCSyncIO;
-import static org.apache.iotdb.db.pipe.connector.protocol.opcda.OPCDAConstant.IID_IUNKNOWN;
+import static org.apache.iotdb.db.pipe.connector.protocol.opcda.OPCDAHeader.IID_IOPCItemMgt;
+import static org.apache.iotdb.db.pipe.connector.protocol.opcda.OPCDAHeader.IID_IOPCServer;
+import static org.apache.iotdb.db.pipe.connector.protocol.opcda.OPCDAHeader.IID_IOPCSyncIO;
+import static org.apache.iotdb.db.pipe.connector.protocol.opcda.OPCDAHeader.IID_IUNKNOWN;
 
 /**
  * Send data in IoTDB based on Opc Da protocol, using JNA. All data are converted into tablets, and

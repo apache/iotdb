@@ -35,6 +35,17 @@ import java.util.List;
 
 /** We define the OPC DA Classes and interfaces here like C's .h file. */
 public class OPCDAHeader {
+  // IOPCServer
+  static final Guid.IID IID_IOPCServer = new Guid.IID("39C13A4D-011E-11D0-9675-0020AFD8ADB3");
+
+  // IOPCItemMgt
+  static final Guid.IID IID_IOPCItemMgt = new Guid.IID("39C13A54-011E-11D0-9675-0020AFD8ADB3");
+
+  // IOPCSyncIO
+  static final Guid.IID IID_IOPCSyncIO = new Guid.IID("39C13A52-011E-11D0-9675-0020AFD8ADB3");
+
+  // IUnknown
+  static final Guid.IID IID_IUNKNOWN = new Guid.IID("00000000-0000-0000-C000-000000000046");
 
   public static class IOPCServer extends Unknown {
     public IOPCServer(final Pointer p) {
@@ -108,15 +119,15 @@ public class OPCDAHeader {
     }
   }
 
-  // /* [in] */ DWORD dwCount,
-  // /* [size_is][in] */ OPCHANDLE *phServer,
-  // /* [size_is][in] */ VARIANT *pItemValues,
-  // /* [size_is][size_is][out] */ HRESULT **ppErrors) = 0;
   public static class IOPCSyncIO extends Unknown {
     public IOPCSyncIO(final Pointer p) {
       super(p);
     }
 
+    // /* [in] */ DWORD dwCount,
+    // /* [size_is][in] */ OPCHANDLE *phServer,
+    // /* [size_is][in] */ VARIANT *pItemValues,
+    // /* [size_is][size_is][out] */ HRESULT **ppErrors) = 0;
     public int Write(
         final int dwCount, // Data count
         final Pointer phServer, // Server handles of items
