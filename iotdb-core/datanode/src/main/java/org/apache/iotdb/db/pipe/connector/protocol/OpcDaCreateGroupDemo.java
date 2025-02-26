@@ -97,7 +97,7 @@ public class OpcDaCreateGroupDemo {
       IOPCItemMgt itemMgt = new IOPCItemMgt(ppvItemMgt.getValue());
 
       // 4. 添加 Item（例如写入的 Tag 名称）
-      String itemId = "StringValue"; // 替换为实际 Item ID
+      String itemId = "Int64Value"; // 替换为实际 Item ID
       OPCITEMDEF[] itemDefs = new OPCITEMDEF[1];
       itemDefs[0] = new OPCITEMDEF();
       itemDefs[0].szAccessPath = new WString("");
@@ -106,7 +106,7 @@ public class OpcDaCreateGroupDemo {
       itemDefs[0].hClient = 0;
       itemDefs[0].dwBlobSize = 0;
       itemDefs[0].pBlob = Pointer.NULL;
-      itemDefs[0].vtRequestedDataType = JIVariant.VT_BSTR;
+      itemDefs[0].vtRequestedDataType = JIVariant.VT_I8;
       itemDefs[0].wReserved = 0;
       itemDefs[0].write();
 
@@ -157,9 +157,13 @@ public class OpcDaCreateGroupDemo {
       }
       IOPCSyncIO syncIO = new IOPCSyncIO(ppvSyncIO.getValue());
 
-      WTypes.BSTR bstr = OleAuto.INSTANCE.SysAllocString("FuckYourMotherTwice");
       Variant.VARIANT value = new Variant.VARIANT();
-      value.setValue(Variant.VT_BSTR, bstr);
+
+      // WTypes.BSTR bstr = OleAuto.INSTANCE.SysAllocString("FuckYourMotherTwice");
+      // value.setValue(Variant.VT_BSTR, bstr);
+
+      value.setValue(Variant.VT_I8, 2000);
+
       value.write();
 
       // 7. 同步写入
@@ -190,7 +194,7 @@ public class OpcDaCreateGroupDemo {
       }
 
       // 8. 释放资源
-      OleAuto.INSTANCE.SysFreeString(bstr);
+      // OleAuto.INSTANCE.SysFreeString(bstr);
       syncIO.Release();
       itemMgt.Release();
       opcServer.Release();
