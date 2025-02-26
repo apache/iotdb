@@ -184,10 +184,11 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
         socket.setKeepAlive(true);
         sockets.set(i, socket);
         LOGGER.info("Successfully connected to target server ip: {}, port: {}.", ip, port);
+        failLogTimes.remove(nodeUrls.get(i));
       } catch (final Exception e) {
         final TEndPoint endPoint = nodeUrls.get(i);
         final long currentTimeMillis = System.currentTimeMillis();
-        final Long lastFailLogTime = failLogTimes.get(nodeUrls.get(i));
+        final Long lastFailLogTime = failLogTimes.get(endPoint);
         if (lastFailLogTime == null || currentTimeMillis - lastFailLogTime > 60000) {
           failLogTimes.put(endPoint, currentTimeMillis);
           LOGGER.warn(
