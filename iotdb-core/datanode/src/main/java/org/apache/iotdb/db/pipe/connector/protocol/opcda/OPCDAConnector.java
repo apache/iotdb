@@ -31,6 +31,8 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import com.sun.jna.Memory;
+import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import com.sun.jna.WString;
 import com.sun.jna.platform.win32.COM.IUnknown;
@@ -205,7 +207,8 @@ public class OPCDAConnector implements PipeConnector {
         if (Objects.isNull(tablet.getBitMaps())
             || Objects.isNull(tablet.getBitMaps()[i])
             || !tablet.getBitMaps()[i].isMarked(j)) {
-
+          writeData(
+              itemId, getTabletObjectValue4Opc(tablet.getValues()[i], j, schemas.get(i).getType()));
           break;
         }
       }
@@ -240,11 +243,19 @@ public class OPCDAConnector implements PipeConnector {
         if (itemError == WinError.S_OK.intValue()) {
           LOGGER.debug("Successfully added item {}.", itemId);
         } else {
-          throw new PipeException("Failed to add item, error code: " + Integer.toHexString(hr));
+          throw new PipeException(
+              "Failed to add item "
+                  + itemId
+                  + ", opc error code: 0x"
+                  + Integer.toHexString(itemError));
         }
       } finally {
         Ole32.INSTANCE.CoTaskMemFree(pErrors);
       }
+    }
+
+    if (hr != WinError.S_OK.intValue()) {
+      throw new PipeException("Failed to add item, win error code: 0x" + Integer.toHexString(hr));
     }
 
     final Pointer pItemResults = ppItemResults.getValue();
@@ -257,7 +268,43 @@ public class OPCDAConnector implements PipeConnector {
     serverHandleMap.put(itemId, itemResults[0].hServer);
   }
 
-  private void writeData() {}
+  private void writeData(final String itemId, final Variant.VARIANT value) {
+    final Pointer phServer = new Memory(Native.getNativeSize(int.class));
+    phServer.write(0, new int[] {serverHandleMap.get(itemId)}, 0, 1);
+
+    final PointerByReference ppErrors = new PointerByReference();
+    final int hr = syncIO.write(1, phServer, value.getPointer(), ppErrors);
+    // Free after write
+    if (Objects.nonNull(bstr)) {
+      OleAuto.INSTANCE.SysFreeString(bstr);
+    }
+
+    final Pointer pErrors = ppErrors.getValue();
+    if (Objects.nonNull(pErrors)) {
+      // Read error code array, each for a result
+      final int[] errors =
+          pErrors.getIntArray(0, 1); // Read 1 element because only 1 point is written
+      final int itemError = errors[0];
+
+      try {
+        if (itemError != WinError.S_OK.intValue()) {
+          throw new PipeException(
+              "Failed to write "
+                  + itemId
+                  + ", value: "
+                  + value
+                  + ", opc error code: 0x"
+                  + Integer.toHexString(itemError));
+        }
+      } finally {
+        Ole32.INSTANCE.CoTaskMemFree(pErrors);
+      }
+    }
+
+    if (hr != WinError.S_OK.intValue()) {
+      throw new PipeException("Failed to write, win error code: 0x" + Integer.toHexString(hr));
+    }
+  }
 
   private short convertTsDataType2VariantType(final TSDataType dataType) {
     switch (dataType) {
@@ -286,18 +333,6 @@ public class OPCDAConnector implements PipeConnector {
 
   private Variant.VARIANT getTabletObjectValue4Opc(
       final Object column, final int rowIndex, final TSDataType type) {
-    // WTypes.BSTR bstr = OleAuto.INSTANCE.SysAllocString("FuckYourMotherTwice");
-    // value.setValue(Variant.VT_BSTR, bstr);
-
-    // value.setValue(Variant.VT_I4, new WinDef.LONG(0));
-    // value.setValue(Variant.VT_I8, new WinDef.LONGLONG(0));
-
-    // value.setValue(Variant.VT_R8, 0.134);
-    // value.setValue(Variant.VT_R4, 0.134f);
-
-    // value.setValue(Variant.VT_BOOL, Variant.VARIANT_TRUE);
-
-    // value.setValue(Variant.VT_DATE, new OaIdl.DATE(1.35));
     final Variant.VARIANT value = new Variant.VARIANT();
     switch (type) {
       case BOOLEAN:

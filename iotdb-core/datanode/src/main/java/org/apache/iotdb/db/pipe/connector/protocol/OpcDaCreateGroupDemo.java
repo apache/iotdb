@@ -194,20 +194,6 @@ public class OpcDaCreateGroupDemo {
 
       if (hr2 == WinError.S_OK.intValue()) {
         System.out.println("写入成功！");
-        Pointer pErrors = ppErrors.getValue();
-        if (pErrors != null) {
-          // 读取错误码数组，每个错误码对应一个 Item
-          int[] errors = pErrors.getIntArray(0, 1); // 这里写入了1个数据，所以读取1个元素
-          int itemError = errors[0];
-
-          if (itemError == WinError.S_OK.intValue()) {
-            System.out.println("写入成功！");
-          } else {
-            System.err.println("写入错误码: 0x" + Integer.toHexString(itemError));
-            return;
-          }
-          Ole32.INSTANCE.CoTaskMemFree(pErrors);
-        }
       } else {
         Pointer pErrors = ppErrors.getValue();
         if (pErrors != null) {
