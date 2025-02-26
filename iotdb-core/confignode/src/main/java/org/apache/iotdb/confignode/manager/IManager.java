@@ -146,6 +146,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * A subset of services provided by {@link ConfigManager}. For use internally only, passed to
@@ -536,6 +537,9 @@ public interface IManager {
 
   /** Flush on all DataNodes. */
   TSStatus flush(TFlushReq req);
+
+  /** Flush on specific Datanode. */
+  TSStatus flushOnSpecificDN(TFlushReq req, Map<Integer, TDataNodeLocation> dataNodeLocationMap);
 
   /** Clear cache on all DataNodes. */
   TSStatus clearCache();
