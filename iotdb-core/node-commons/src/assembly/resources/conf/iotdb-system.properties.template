@@ -1718,7 +1718,7 @@ continuous_query_min_every_interval_in_ms=1000
 pipe_lib_dir=ext/pipe
 
 # The maximum number of threads that can be used to execute the pipe subtasks in PipeSubtaskExecutor.
-# When <= 0, use max(5, CPU core number).
+# When <= 0, use max(5, CPU core number / 2).
 # effectiveMode: restart
 # Datatype: int
 pipe_subtask_executor_max_thread_num=0
@@ -1730,13 +1730,13 @@ pipe_sink_timeout_ms=900000
 
 # The maximum number of selectors that can be used in the sink.
 # Recommend to set this value to less than or equal to pipe_sink_max_client_number.
-# When <= 0, use max(4, CPU core number).
+# When <= 0, use max(4, CPU core number / 2).
 # effectiveMode: restart
 # Datatype: int
 pipe_sink_selector_number=0
 
 # The maximum number of clients that can be used in the sink.
-# When <= 0, use max(16, CPU core number).
+# When <= 0, use max(16, CPU core number / 2).
 # effectiveMode: restart
 # Datatype: int
 pipe_sink_max_client_number=0

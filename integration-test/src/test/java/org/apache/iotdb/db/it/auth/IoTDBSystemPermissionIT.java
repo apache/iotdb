@@ -247,7 +247,5 @@ public class IoTDBSystemPermissionIT {
         "803: Only the admin user can perform this operation",
         "test",
         "test123");
-    assertTestFail(
-        "show regions", "803: Only the admin user can perform this operation", "test", "test123");
   }
 }

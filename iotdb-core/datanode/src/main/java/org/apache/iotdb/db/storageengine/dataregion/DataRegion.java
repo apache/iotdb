@@ -3061,6 +3061,7 @@ public class DataRegion implements IDataRegionForQuery {
         logger.warn("Cannot delete localModFile {}", targetModFile, e);
       }
       try {
+        final long modFileSize = modFileToLoad.length();
         if (deleteOriginFile) {
           RetryUtils.retryOnException(
               () -> {
@@ -3074,6 +3075,9 @@ public class DataRegion implements IDataRegionForQuery {
                 return null;
               });
         }
+
+        FileMetrics.getInstance().increaseModFileNum(1);
+        FileMetrics.getInstance().increaseModFileSize(modFileSize);
       } catch (final IOException e) {
         logger.warn(
             "File renaming failed when loading .mod file. Origin: {}, Target: {}",

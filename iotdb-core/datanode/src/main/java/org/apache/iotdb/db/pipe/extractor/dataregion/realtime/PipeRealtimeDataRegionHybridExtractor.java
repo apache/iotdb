@@ -32,6 +32,7 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionExtractorMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -251,14 +252,16 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   private boolean mayMemTablePinnedCountReachDangerousThreshold(final PipeRealtimeEvent event) {
     final boolean mayMemTablePinnedCountReachDangerousThreshold =
         PipeDataNodeResourceManager.wal().getPinnedWalCount()
-            >= PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount();
+            >= PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount()
+                * StorageEngine.getInstance().getDataRegionNumber();
     if (mayMemTablePinnedCountReachDangerousThreshold && event.mayExtractorUseTablets(this)) {
       LOGGER.info(
           "Pipe task {}@{} canNotUseTabletAnyMore3: The number of pinned memtables {} has reached the dangerous threshold {}",
           pipeName,
           dataRegionId,
           PipeDataNodeResourceManager.wal().getPinnedWalCount(),
-          PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount());
+          PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount()
+              * StorageEngine.getInstance().getDataRegionNumber());
     }
     return mayMemTablePinnedCountReachDangerousThreshold;
   }

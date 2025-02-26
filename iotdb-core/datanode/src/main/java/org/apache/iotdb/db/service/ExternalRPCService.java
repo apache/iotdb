@@ -35,11 +35,11 @@ import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 import java.lang.reflect.InvocationTargetException;
 
 /** A service to handle RPC request from client. */
-public class RPCService extends ThriftService implements RPCServiceMBean {
+public class ExternalRPCService extends ThriftService implements ExternalRPCServiceMBean {
 
   private IClientRPCServiceWithHandler impl;
 
-  public static RPCService getInstance() {
+  public static ExternalRPCService getInstance() {
     return RPCServiceHolder.INSTANCE;
   }
 
@@ -122,7 +122,7 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
 
   private static class RPCServiceHolder {
 
-    private static final RPCService INSTANCE = new RPCService();
+    private static final ExternalRPCService INSTANCE = new ExternalRPCService();
 
     private RPCServiceHolder() {}
   }

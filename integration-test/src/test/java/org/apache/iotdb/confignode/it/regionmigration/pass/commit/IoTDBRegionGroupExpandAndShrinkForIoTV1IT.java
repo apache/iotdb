@@ -27,6 +27,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 
+import org.awaitility.Awaitility;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -39,6 +40,7 @@ import java.sql.Statement;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
 import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
@@ -119,7 +121,14 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
       int selectedRegion,
       int targetDataNode)
       throws Exception {
-    statement.execute(String.format(EXPAND_FORMAT, selectedRegion, targetDataNode));
+    Awaitility.await()
+        .atMost(10, TimeUnit.SECONDS)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              statement.execute(String.format(EXPAND_FORMAT, selectedRegion, targetDataNode));
+              return true;
+            });
 
     Predicate<TShowRegionResp> expandRegionPredicate =
         tShowRegionResp -> {
@@ -140,7 +149,14 @@ public class IoTDBRegionGroupExpandAndShrinkForIoTV1IT
       int selectedRegion,
       int targetDataNode)
       throws Exception {
-    statement.execute(String.format(SHRINK_FORMAT, selectedRegion, targetDataNode));
+    Awaitility.await()
+        .atMost(10, TimeUnit.SECONDS)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              statement.execute(String.format(SHRINK_FORMAT, selectedRegion, targetDataNode));
+              return true;
+            });
 
     Predicate<TShowRegionResp> shrinkRegionPredicate =
         tShowRegionResp -> {

@@ -120,7 +120,11 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
                 PipeConfig.getInstance().getPipeConnectorReadFileBufferSize(),
                 transferMod ? Math.max(tsFile.length(), modFile.length()) : tsFile.length());
     memoryBlock =
-        PipeDataNodeResourceManager.memory().forceAllocateForTsFileWithRetry(readFileBufferSize);
+        PipeDataNodeResourceManager.memory()
+            .forceAllocateForTsFileWithRetry(
+                PipeConfig.getInstance().isPipeConnectorReadFileBufferMemoryControlEnabled()
+                    ? readFileBufferSize
+                    : 0);
     readBuffer = new byte[readFileBufferSize];
     position = 0;
 
