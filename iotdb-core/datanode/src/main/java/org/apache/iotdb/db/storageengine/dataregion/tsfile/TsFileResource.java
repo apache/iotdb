@@ -70,6 +70,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -84,6 +85,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -182,7 +184,8 @@ public class TsFileResource implements PersistentResource {
   private Map<IFullPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap = new HashMap<>();
 
   /** used for unsealed file to get TimeseriesMetadata */
-  private Map<IFullPath, ITimeSeriesMetadata> pathToTimeSeriesMetadataMap = new HashMap<>();
+  private Map<IFullPath, ITimeSeriesMetadata> pathToTimeSeriesMetadataMap =
+      new ConcurrentHashMap<>();
 
   /**
    * If it is not null, it indicates that the current tsfile resource is a snapshot of the
@@ -243,7 +246,6 @@ public class TsFileResource implements PersistentResource {
     this.timeIndex = originTsFileResource.timeIndex;
     this.pathToReadOnlyMemChunkMap = pathToReadOnlyMemChunkMap;
     this.pathToChunkMetadataListMap = pathToChunkMetadataListMap;
-    generatePathToTimeSeriesMetadataMap();
     this.originTsFileResource = originTsFileResource;
     this.tsFileID = originTsFileResource.tsFileID;
     this.isSeq = originTsFileResource.isSeq;
@@ -397,13 +399,13 @@ public class TsFileResource implements PersistentResource {
     sourceModFile.writeLock();
     try {
       if (sourceModFile.exists()) {
+        // inherit modifications from the source file
         Files.createLink(
             targetModsFile.toPath(), ModificationFile.getExclusiveMods(getTsFile()).toPath());
-        targetModsFileObject = new ModificationFile(targetModsFile, true);
-      } else {
-        targetModsFileObject = new ModificationFile(targetModsFile, true);
-        sourceModFile.setCascadeFile(Collections.singleton(targetModsFileObject));
       }
+      // ensure that new modifications will be written into the target file
+      targetModsFileObject = new ModificationFile(targetModsFile, true);
+      sourceModFile.setCascadeFile(Collections.singleton(targetModsFileObject));
     } finally {
       sourceModFile.writeUnlock();
     }
@@ -1029,8 +1031,27 @@ public class TsFileResource implements PersistentResource {
    *
    * @return TimeseriesMetadata or the first ValueTimeseriesMetadata in VectorTimeseriesMetadata
    */
-  public ITimeSeriesMetadata getTimeSeriesMetadata(IFullPath seriesPath) {
-    return pathToTimeSeriesMetadataMap.get(seriesPath);
+  public ITimeSeriesMetadata getTimeSeriesMetadata(IFullPath seriesPath) throws IOException {
+    try {
+      return pathToTimeSeriesMetadataMap.computeIfAbsent(
+          seriesPath,
+          k -> {
+            if (pathToChunkMetadataListMap.containsKey(k)) {
+              try {
+                return ResourceByPathUtils.getResourceInstance(seriesPath)
+                    .generateTimeSeriesMetadata(
+                        pathToReadOnlyMemChunkMap.get(seriesPath),
+                        pathToChunkMetadataListMap.get(seriesPath));
+              } catch (IOException e) {
+                throw new UncheckedIOException(e);
+              }
+            } else {
+              return null;
+            }
+          });
+    } catch (UncheckedIOException e) {
+      throw e.getCause();
+    }
   }
 
   public DataRegion.SettleTsFileCallBack getSettleTsFileCallBack() {
@@ -1303,16 +1324,6 @@ public class TsFileResource implements PersistentResource {
     timeIndex = new FileTimeIndex(startTime, endTime);
     // deviceTimeIndexRamSize has already been calculated before
     return deviceTimeIndexRamSize - timeIndex.calculateRamSize();
-  }
-
-  private void generatePathToTimeSeriesMetadataMap() throws IOException {
-    for (IFullPath path : pathToChunkMetadataListMap.keySet()) {
-      pathToTimeSeriesMetadataMap.put(
-          path,
-          ResourceByPathUtils.getResourceInstance(path)
-              .generateTimeSeriesMetadata(
-                  pathToReadOnlyMemChunkMap.get(path), pathToChunkMetadataListMap.get(path)));
-    }
   }
 
   public void deleteRemovedDeviceAndUpdateEndTime(Map<IDeviceID, Long> lastTimeForEachDevice) {

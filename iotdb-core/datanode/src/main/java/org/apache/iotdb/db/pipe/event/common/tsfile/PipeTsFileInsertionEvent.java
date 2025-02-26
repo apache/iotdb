@@ -74,7 +74,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   // This is true iff the modFile exists and should be transferred
   private boolean isWithMod;
   private File modFile;
-  private File sharedModFile;
+  private final File sharedModFile;
 
   private final boolean isLoaded;
   private final boolean isGeneratedByPipe;
@@ -165,7 +165,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               synchronized (isClosed) {
                 isClosed.set(true);
                 isClosed.notifyAll();
-
                 // Update flushPointCount after TsFile is closed
                 flushPointCount = processor.getMemTableFlushPointCount();
               }
@@ -349,6 +348,22 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       Thread.currentThread().interrupt();
       return MinimumProgressIndex.INSTANCE;
     }
+  }
+
+  /**
+   * Get ProgressIndex without waiting for tsfile close. Can be used in getting progressIndex when
+   * memTable becomes immutable.
+   */
+  public ProgressIndex forceGetProgressIndex() {
+    if (resource.isEmpty()) {
+      LOGGER.warn(
+          "Skipping temporary TsFile {}'s progressIndex, will report MinimumProgressIndex", tsFile);
+      return MinimumProgressIndex.INSTANCE;
+    }
+    if (Objects.nonNull(overridingProgressIndex)) {
+      return overridingProgressIndex;
+    }
+    return resource.getMaxProgressIndex();
   }
 
   @Override
@@ -713,8 +728,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               return null;
             });
       } catch (final Exception e) {
-        LOGGER.warn(
-            String.format("Decrease reference count for TsFile %s error.", tsFile.getPath()), e);
+        LOGGER.warn("Decrease reference count for TsFile {} error.", tsFile.getPath(), e);
       }
     }
   }

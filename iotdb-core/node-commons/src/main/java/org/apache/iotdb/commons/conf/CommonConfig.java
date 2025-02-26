@@ -207,7 +207,7 @@ public class CommonConfig {
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor. */
   private int pipeSubtaskExecutorMaxThreadNum =
-      Math.max(5, Runtime.getRuntime().availableProcessors());
+      Math.max(5, Runtime.getRuntime().availableProcessors() / 2);
 
   private int pipeNonForwardingEventsProgressReportInterval = 100;
 
@@ -229,13 +229,14 @@ public class CommonConfig {
   private int pipeConnectorHandshakeTimeoutMs = 10 * 1000; // 10 seconds
   private int pipeConnectorTransferTimeoutMs = 15 * 60 * 1000; // 15 minutes
   private int pipeConnectorReadFileBufferSize = 8388608;
+  private boolean isPipeConnectorReadFileBufferMemoryControlEnabled = false;
   private long pipeConnectorRetryIntervalMs = 1000L;
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
 
   private int pipeAsyncConnectorSelectorNumber =
-      Math.max(4, Runtime.getRuntime().availableProcessors());
+      Math.max(4, Runtime.getRuntime().availableProcessors() / 2);
   private int pipeAsyncConnectorMaxClientNumber =
-      Math.max(16, Runtime.getRuntime().availableProcessors());
+      Math.max(16, Runtime.getRuntime().availableProcessors() / 2);
 
   private double pipeAllSinksRateLimitBytesPerSecond = -1;
   private int rateLimiterHotReloadCheckIntervalMs = 1000;
@@ -257,7 +258,7 @@ public class CommonConfig {
 
   private int pipeMaxAllowedHistoricalTsFilePerDataRegion = 100;
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 10;
-  private int pipeMaxAllowedPinnedMemTableCount = 1000;
+  private int pipeMaxAllowedPinnedMemTableCount = 10; // per data region
   private long pipeMaxAllowedLinkedTsFileCount = 300;
   private float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage = 0.1F;
   private long pipeStuckRestartIntervalSeconds = 120;
@@ -272,7 +273,7 @@ public class CommonConfig {
   private int pipeWalPinMaxLogIntervalRounds = 90;
 
   private boolean pipeMemoryManagementEnabled = true;
-  private long pipeMemoryAllocateRetryIntervalMs = 1000;
+  private long pipeMemoryAllocateRetryIntervalMs = 50;
   private int pipeMemoryAllocateMaxRetries = 10;
   private long pipeMemoryAllocateMinSizeInBytes = 32;
   private long pipeMemoryAllocateForTsFileSequenceReaderInBytes = (long) 2 * 1024 * 1024; // 2MB
@@ -831,6 +832,16 @@ public class CommonConfig {
 
   public void setPipeConnectorReadFileBufferSize(int pipeConnectorReadFileBufferSize) {
     this.pipeConnectorReadFileBufferSize = pipeConnectorReadFileBufferSize;
+  }
+
+  public boolean isPipeConnectorReadFileBufferMemoryControlEnabled() {
+    return isPipeConnectorReadFileBufferMemoryControlEnabled;
+  }
+
+  public void setIsPipeConnectorReadFileBufferMemoryControlEnabled(
+      boolean isPipeConnectorReadFileBufferMemoryControlEnabled) {
+    this.isPipeConnectorReadFileBufferMemoryControlEnabled =
+        isPipeConnectorReadFileBufferMemoryControlEnabled;
   }
 
   public void setPipeConnectorRPCThriftCompressionEnabled(
