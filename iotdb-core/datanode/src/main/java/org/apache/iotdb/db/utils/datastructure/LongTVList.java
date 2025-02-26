@@ -297,4 +297,17 @@ public abstract class LongTVList extends TVList {
     tvList.putLongs(times, values, bitMap, 0, rowCount);
     return tvList;
   }
+
+  public static LongTVList deserializeWithoutBitMap(DataInputStream stream) throws IOException {
+    LongTVList tvList = LongTVList.newList();
+    int rowCount = stream.readInt();
+    long[] times = new long[rowCount];
+    long[] values = new long[rowCount];
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      times[rowIdx] = stream.readLong();
+      values[rowIdx] = stream.readLong();
+    }
+    tvList.putLongs(times, values, null, 0, rowCount);
+    return tvList;
+  }
 }
