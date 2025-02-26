@@ -1110,6 +1110,7 @@ public class NodeManager {
 
   /**
    * Get the mapping from TEndPoint -> DataNodeId
+   *
    * @return Map[TEndPoint, NodeId]
    */
   public Map<TEndPoint, Integer> getDataNodeTEndPoint2NodeIdMap() {

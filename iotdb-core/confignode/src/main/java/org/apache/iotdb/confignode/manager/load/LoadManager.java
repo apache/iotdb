@@ -280,7 +280,8 @@ public class LoadManager {
   }
 
   public void updateConnectivityGraph(int nodeId, final Map<TEndPoint, String> localStatus) {
-    final Map<TEndPoint, Integer> ep2idMap = configManager.getNodeManager().getDataNodeTEndPoint2NodeIdMap();
+    final Map<TEndPoint, Integer> ep2idMap =
+        configManager.getNodeManager().getDataNodeTEndPoint2NodeIdMap();
     final Set<Integer> unreachableNodes =
         localStatus.entrySet().stream()
             .filter(entry -> entry.getValue().equals(NodeStatus.Unknown.getStatus()))
