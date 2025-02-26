@@ -63,7 +63,7 @@ public class OPCDAHeader {
     // /* [out] */ DWORD *pRevisedUpdateRate,
     // /* [in] */ REFIID riid,
     // /* [iid_is][out] */ LPUNKNOWN *ppUnk) = 0;
-    public int AddGroup(
+    public int addGroup(
         final String szName, // Group name ("" means auto)
         final boolean bActive, // Whether to activate the group
         final int dwRequestedUpdateRate, // The update rate of request (ms)
@@ -108,7 +108,7 @@ public class OPCDAHeader {
       super(p);
     }
 
-    public int AddItems(
+    public int addItems(
         final int dwCount, // Data count
         final OpcDaCreateGroupDemo.OPCITEMDEF[] pItemArray, // Items array to create
         final PointerByReference pResults, // Results' handles
@@ -128,7 +128,7 @@ public class OPCDAHeader {
     // /* [size_is][in] */ OPCHANDLE *phServer,
     // /* [size_is][in] */ VARIANT *pItemValues,
     // /* [size_is][size_is][out] */ HRESULT **ppErrors) = 0;
-    public int Write(
+    public int write(
         final int dwCount, // Data count
         final Pointer phServer, // Server handles of items
         final Pointer pItemValues, // Values of items

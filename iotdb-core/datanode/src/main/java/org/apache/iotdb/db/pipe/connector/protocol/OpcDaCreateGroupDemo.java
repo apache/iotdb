@@ -9,6 +9,7 @@ import com.sun.jna.platform.win32.COM.IUnknown;
 import com.sun.jna.platform.win32.COM.Unknown;
 import com.sun.jna.platform.win32.Guid;
 import com.sun.jna.platform.win32.Guid.IID;
+import com.sun.jna.platform.win32.OaIdl;
 import com.sun.jna.platform.win32.Ole32;
 import com.sun.jna.platform.win32.Variant;
 import com.sun.jna.platform.win32.WinBase;
@@ -108,7 +109,7 @@ public class OpcDaCreateGroupDemo {
       IOPCItemMgt itemMgt = new IOPCItemMgt(ppvItemMgt.getValue());
 
       // 4. 添加 Item（例如写入的 Tag 名称）
-      String itemId = "SingleValue"; // 替换为实际 Item ID
+      String itemId = "DateTimeValue"; // 替换为实际 Item ID
       OPCITEMDEF[] itemDefs = new OPCITEMDEF[1];
       itemDefs[0] = new OPCITEMDEF();
       itemDefs[0].szAccessPath = new WString("");
@@ -117,7 +118,7 @@ public class OpcDaCreateGroupDemo {
       itemDefs[0].hClient = 0;
       itemDefs[0].dwBlobSize = 0;
       itemDefs[0].pBlob = Pointer.NULL;
-      itemDefs[0].vtRequestedDataType = Variant.VT_R4;
+      itemDefs[0].vtRequestedDataType = Variant.VT_DATE;
       itemDefs[0].wReserved = 0;
       itemDefs[0].write();
 
@@ -180,6 +181,8 @@ public class OpcDaCreateGroupDemo {
       // value.setValue(Variant.VT_R4, 0.134f);
 
       // value.setValue(Variant.VT_BOOL, Variant.VARIANT_TRUE);
+
+      value.setValue(Variant.VT_DATE, new OaIdl.DATE(1.35));
       value.write();
 
       // 7. 同步写入
