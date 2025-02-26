@@ -10,25 +10,22 @@ import com.sun.jna.platform.win32.COM.Unknown;
 import com.sun.jna.platform.win32.Guid;
 import com.sun.jna.platform.win32.Guid.IID;
 import com.sun.jna.platform.win32.Ole32;
-import com.sun.jna.platform.win32.OleAuto;
 import com.sun.jna.platform.win32.Variant;
-import com.sun.jna.platform.win32.WTypes;
-import com.sun.jna.platform.win32.WinDef;
 import com.sun.jna.platform.win32.WinError;
 import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.ptr.IntByReference;
-import com.sun.jna.ptr.LongByReference;
 import com.sun.jna.ptr.PointerByReference;
-import com.sun.jna.ptr.ShortByReference;
 import org.jinterop.dcom.core.JIVariant;
 
 import java.util.Arrays;
 import java.util.List;
 
+import static com.sun.jna.platform.win32.WTypes.CLSCTX_LOCAL_SERVER;
+
 public class OpcDaCreateGroupDemo {
 
-  // OPC DA Server 的 CLSID（替换为实际值，例如 Matrikon 模拟服务器的 CLSID）
   private static final Guid.CLSID CLSID_OPC_SERVER =
+      // OPC DA Server 的 CLSID（替换为实际值，例如 Matrikon 模拟服务器的 CLSID）
       new Guid.CLSID("CAE8D0E1-117B-11D5-924B-11C0F023E91C");
 
   // IOPCServer 接口的 IID（固定值，来自 OPC DA 规范）
@@ -53,7 +50,7 @@ public class OpcDaCreateGroupDemo {
           Ole32.INSTANCE.CoCreateInstance(
               CLSID_OPC_SERVER,
               null,
-              0x17,
+              CLSCTX_LOCAL_SERVER,
               IID_IOPCServer, // 直接请求 IOPCServer 接口
               ppvServer);
 
@@ -109,7 +106,7 @@ public class OpcDaCreateGroupDemo {
       IOPCItemMgt itemMgt = new IOPCItemMgt(ppvItemMgt.getValue());
 
       // 4. 添加 Item（例如写入的 Tag 名称）
-      String itemId = "StringValue"; // 替换为实际 Item ID
+      String itemId = "SingleValue"; // 替换为实际 Item ID
       OPCITEMDEF[] itemDefs = new OPCITEMDEF[1];
       itemDefs[0] = new OPCITEMDEF();
       itemDefs[0].szAccessPath = new WString("");
@@ -118,7 +115,7 @@ public class OpcDaCreateGroupDemo {
       itemDefs[0].hClient = 0;
       itemDefs[0].dwBlobSize = 0;
       itemDefs[0].pBlob = Pointer.NULL;
-      itemDefs[0].vtRequestedDataType = Variant.VT_BSTR;
+      itemDefs[0].vtRequestedDataType = Variant.VT_R4;
       itemDefs[0].wReserved = 0;
       itemDefs[0].write();
 
@@ -171,11 +168,16 @@ public class OpcDaCreateGroupDemo {
 
       Variant.VARIANT value = new Variant.VARIANT();
 
-      WTypes.BSTR bstr = OleAuto.INSTANCE.SysAllocString("FuckYourMotherTwice");
-      value.setValue(Variant.VT_BSTR, bstr);
+      // WTypes.BSTR bstr = OleAuto.INSTANCE.SysAllocString("FuckYourMotherTwice");
+      // value.setValue(Variant.VT_BSTR, bstr);
 
       // value.setValue(Variant.VT_I4, new WinDef.LONG(0));
+      // value.setValue(Variant.VT_I8, new WinDef.LONGLONG(0));
 
+      // value.setValue(Variant.VT_R8, 0.134);
+      // value.setValue(Variant.VT_R4, 0.134f);
+
+      // value.setValue(Variant.VT_BOOL, Variant.VARIANT_TRUE);
       value.write();
 
       // 7. 同步写入
@@ -187,6 +189,20 @@ public class OpcDaCreateGroupDemo {
 
       if (hr2 == WinError.S_OK.intValue()) {
         System.out.println("写入成功！");
+        Pointer pErrors = ppErrors.getValue();
+        if (pErrors != null) {
+          // 读取错误码数组，每个错误码对应一个 Item
+          int[] errors = pErrors.getIntArray(0, 1); // 这里写入了1个数据，所以读取1个元素
+          int itemError = errors[0];
+
+          if (itemError == WinError.S_OK.intValue()) {
+            System.out.println("写入成功！");
+          } else {
+            System.err.println("写入错误码: 0x" + Integer.toHexString(itemError));
+            return;
+          }
+          Ole32.INSTANCE.CoTaskMemFree(pErrors);
+        }
       } else {
         Pointer pErrors = ppErrors.getValue();
         if (pErrors != null) {
@@ -206,7 +222,7 @@ public class OpcDaCreateGroupDemo {
       }
 
       // 8. 释放资源
-      OleAuto.INSTANCE.SysFreeString(bstr);
+      // OleAuto.INSTANCE.SysFreeString(bstr);
       syncIO.Release();
       itemMgt.Release();
       opcServer.Release();
