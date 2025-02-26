@@ -1,15 +1,27 @@
 package org.apache.iotdb.db.pipe.connector.protocol;
 
-import com.sun.jna.*;
-import com.sun.jna.platform.win32.*;
-import com.sun.jna.platform.win32.COM.*;
+import com.sun.jna.Memory;
+import com.sun.jna.Native;
+import com.sun.jna.Pointer;
+import com.sun.jna.Structure;
+import com.sun.jna.WString;
+import com.sun.jna.platform.win32.COM.IUnknown;
+import com.sun.jna.platform.win32.COM.Unknown;
+import com.sun.jna.platform.win32.Guid;
 import com.sun.jna.platform.win32.Guid.IID;
 import com.sun.jna.platform.win32.Ole32;
+import com.sun.jna.platform.win32.OleAuto;
+import com.sun.jna.platform.win32.Variant;
+import com.sun.jna.platform.win32.WTypes;
+import com.sun.jna.platform.win32.WinDef;
+import com.sun.jna.platform.win32.WinError;
+import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.ptr.IntByReference;
+import com.sun.jna.ptr.LongByReference;
 import com.sun.jna.ptr.PointerByReference;
+import com.sun.jna.ptr.ShortByReference;
 import org.jinterop.dcom.core.JIVariant;
 
-import java.awt.*;
 import java.util.Arrays;
 import java.util.List;
 
@@ -97,7 +109,7 @@ public class OpcDaCreateGroupDemo {
       IOPCItemMgt itemMgt = new IOPCItemMgt(ppvItemMgt.getValue());
 
       // 4. 添加 Item（例如写入的 Tag 名称）
-      String itemId = "Int64Value"; // 替换为实际 Item ID
+      String itemId = "StringValue"; // 替换为实际 Item ID
       OPCITEMDEF[] itemDefs = new OPCITEMDEF[1];
       itemDefs[0] = new OPCITEMDEF();
       itemDefs[0].szAccessPath = new WString("");
@@ -106,7 +118,7 @@ public class OpcDaCreateGroupDemo {
       itemDefs[0].hClient = 0;
       itemDefs[0].dwBlobSize = 0;
       itemDefs[0].pBlob = Pointer.NULL;
-      itemDefs[0].vtRequestedDataType = JIVariant.VT_I8;
+      itemDefs[0].vtRequestedDataType = Variant.VT_BSTR;
       itemDefs[0].wReserved = 0;
       itemDefs[0].write();
 
@@ -159,10 +171,10 @@ public class OpcDaCreateGroupDemo {
 
       Variant.VARIANT value = new Variant.VARIANT();
 
-      // WTypes.BSTR bstr = OleAuto.INSTANCE.SysAllocString("FuckYourMotherTwice");
-      // value.setValue(Variant.VT_BSTR, bstr);
+      WTypes.BSTR bstr = OleAuto.INSTANCE.SysAllocString("FuckYourMotherTwice");
+      value.setValue(Variant.VT_BSTR, bstr);
 
-      value.setValue(Variant.VT_I8, 2000);
+      // value.setValue(Variant.VT_I4, new WinDef.LONG(0));
 
       value.write();
 
@@ -194,7 +206,7 @@ public class OpcDaCreateGroupDemo {
       }
 
       // 8. 释放资源
-      // OleAuto.INSTANCE.SysFreeString(bstr);
+      OleAuto.INSTANCE.SysFreeString(bstr);
       syncIO.Release();
       itemMgt.Release();
       opcServer.Release();

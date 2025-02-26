@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.opcda;
 
-import org.apache.iotdb.db.pipe.connector.protocol.OpcDaCreateGroupDemo;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -59,8 +58,8 @@ public class OPCDAConnector implements PipeConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(OPCDAConnector.class);
   private final PointerByReference ppvServer = new PointerByReference();
   private OPCDAHeader.IOPCServer opcServer;
-  private OpcDaCreateGroupDemo.IOPCItemMgt itemMgt;
-  private OpcDaCreateGroupDemo.IOPCSyncIO syncIO;
+  private OPCDAHeader.IOPCItemMgt itemMgt;
+  private OPCDAHeader.IOPCSyncIO syncIO;
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -133,7 +132,7 @@ public class OPCDAConnector implements PipeConnector {
           "Failed to acquire IOPCItemMgt, error code: 0x" + Integer.toHexString(hr.intValue()));
     }
 
-    itemMgt = new OpcDaCreateGroupDemo.IOPCItemMgt(ppvItemMgt.getValue());
+    itemMgt = new OPCDAHeader.IOPCItemMgt(ppvItemMgt.getValue());
 
     // 5. Acquire IOPCSyncIO Interface
     PointerByReference ppvSyncIO = new PointerByReference();
@@ -146,7 +145,7 @@ public class OPCDAConnector implements PipeConnector {
       throw new PipeException(
           "Failed to acquire IOPCSyncIO, error code: 0x" + Integer.toHexString(hr.intValue()));
     }
-    syncIO = new OpcDaCreateGroupDemo.IOPCSyncIO(ppvSyncIO.getValue());
+    syncIO = new OPCDAHeader.IOPCSyncIO(ppvSyncIO.getValue());
   }
 
   @Override
