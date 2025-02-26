@@ -143,6 +143,11 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
+  public IWritableMemChunk getWritableMemChunk(String measurement) {
+    return memChunk;
+  }
+
+  @Override
   public long getMaxTime() {
     return memChunk.getMaxTime();
   }
@@ -161,10 +166,18 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     memChunk.serializeToWAL(buffer);
   }
 
-  public static AlignedWritableMemChunkGroup deserialize(
+  protected static AlignedWritableMemChunkGroup deserialize(
       DataInputStream stream, boolean isTableModel) throws IOException {
     AlignedWritableMemChunkGroup memChunkGroup = new AlignedWritableMemChunkGroup();
     memChunkGroup.memChunk = AlignedWritableMemChunk.deserialize(stream, isTableModel);
+    return memChunkGroup;
+  }
+
+  protected static AlignedWritableMemChunkGroup deserializeSingleTVListMemChunks(
+      DataInputStream stream, boolean isTableModel) throws IOException {
+    AlignedWritableMemChunkGroup memChunkGroup = new AlignedWritableMemChunkGroup();
+    memChunkGroup.memChunk =
+        AlignedWritableMemChunk.deserializeSingleTVListMemChunks(stream, isTableModel);
     return memChunkGroup;
   }
 }

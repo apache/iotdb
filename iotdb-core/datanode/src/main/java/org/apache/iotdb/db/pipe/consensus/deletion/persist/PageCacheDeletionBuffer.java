@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.consensus.ProgressIndexDataNodeManager;
+import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.utils.MmapUtil;
@@ -222,7 +222,8 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
     try {
       // PipeConsensus ensures that deleteDataNodes use recoverProgressIndex.
       ProgressIndex curProgressIndex =
-          ProgressIndexDataNodeManager.extractLocalSimpleProgressIndex(maxProgressIndexInLastFile);
+          ReplicateProgressDataNodeManager.extractLocalSimpleProgressIndex(
+              maxProgressIndexInLastFile);
       if (!(curProgressIndex instanceof SimpleProgressIndex)) {
         throw new IOException("Invalid deletion progress index: " + curProgressIndex);
       }
