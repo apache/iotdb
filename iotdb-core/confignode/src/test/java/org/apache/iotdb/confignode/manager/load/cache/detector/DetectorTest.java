@@ -34,7 +34,7 @@ public class DetectorTest {
 
   final long sec = 1_000_000_000L;
   final PhiAccrualDetector phiAccrualDetector =
-      new PhiAccrualDetector(35, 10 * sec, sec, (long) (0.2 * sec));
+      new PhiAccrualDetector(30, 10 * sec, sec, (long) (0.2 * sec));
   final FixedDetector fixedDetector = new FixedDetector(20 * sec);
 
   private double getPhi(long elapsed, double[] intervals, long minStd, long pause) {
