@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.pipe.connector.protocol.opcda;
 
 import org.apache.iotdb.db.pipe.connector.protocol.OpcDaCreateGroupDemo;
+import org.apache.iotdb.db.pipe.connector.protocol.opcua.OpcUaConnector;
+import org.apache.iotdb.db.pipe.connector.util.sorter.PipeTreeModelTabletEventSorter;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -42,6 +44,7 @@ import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.PointerByReference;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,7 +71,7 @@ public class OPCDAConnector implements PipeConnector {
   private OPCDAHeader.IOPCServer opcServer;
   private OPCDAHeader.IOPCItemMgt itemMgt;
   private OPCDAHeader.IOPCSyncIO syncIO;
-  private Map<String, Integer> serverHandleMap = new HashMap<>();
+  private final Map<String, Integer> serverHandleMap = new HashMap<>();
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -169,7 +172,14 @@ public class OPCDAConnector implements PipeConnector {
 
   @Override
   public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
-    
+    OpcUaConnector.transferByTablet(
+        tabletInsertionEvent, LOGGER, (tablet, isTableModel) -> transfer(tablet));
+  }
+
+  private void transfer(final Tablet tablet) {
+    new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+
+
   }
 
   private void addItem(final String itemId, final TSDataType type) {
