@@ -391,6 +391,14 @@ public class CommonDescriptor {
                     properties.getProperty(
                         "pipe_connector_read_file_buffer_size",
                         String.valueOf(config.getPipeConnectorReadFileBufferSize())))));
+    config.setIsPipeConnectorReadFileBufferMemoryControlEnabled(
+        Boolean.parseBoolean(
+            Optional.ofNullable(properties.getProperty("pipe_sink_read_file_buffer_memory_control"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_connector_read_file_buffer_memory_control",
+                        String.valueOf(
+                            config.isPipeConnectorReadFileBufferMemoryControlEnabled())))));
     config.setPipeConnectorRetryIntervalMs(
         Long.parseLong(
             Optional.ofNullable(properties.getProperty("pipe_sink_retry_interval_ms"))
@@ -591,11 +599,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_memory_expander_interval_seconds",
                 String.valueOf(config.getPipeMemoryExpanderIntervalSeconds()))));
-    config.setPipeTsFileParserCheckMemoryEnoughIntervalMs(
+    config.setPipeCheckMemoryEnoughIntervalMs(
         Long.parseLong(
             properties.getProperty(
-                "pipe_tsfile_parser_check_memory_enough_interval_ms",
-                String.valueOf(config.getPipeTsFileParserCheckMemoryEnoughIntervalMs()))));
+                "pipe_check_memory_enough_interval_ms",
+                String.valueOf(config.getPipeCheckMemoryEnoughIntervalMs()))));
     config.setPipeLeaderCacheMemoryUsagePercentage(
         Float.parseFloat(
             properties.getProperty(

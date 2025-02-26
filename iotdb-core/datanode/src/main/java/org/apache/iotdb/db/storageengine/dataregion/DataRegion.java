@@ -660,6 +660,12 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     if (StorageEngine.getInstance().isReadyForReadAndWrite()) {
+      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+          || config
+              .getDataRegionConsensusProtocolClass()
+              .equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
+        WALManager.getInstance().applyForWALNode(databaseName + FILE_NAME_SEPARATOR + dataRegionId);
+      }
       logger.info("The data region {}[{}] is created successfully", databaseName, dataRegionId);
     } else {
       logger.info("The data region {}[{}] is recovered successfully", databaseName, dataRegionId);
@@ -2222,7 +2228,9 @@ public class DataRegion implements IDataRegionForQuery {
         if (tsFileResource.isClosed()) {
           tsfileResourcesForQuery.add(tsFileResource);
         } else {
-          tsFileResource.getProcessor().query(pathList, context, tsfileResourcesForQuery);
+          tsFileResource
+              .getProcessor()
+              .query(pathList, context, tsfileResourcesForQuery, globalTimeFilter);
         }
       } catch (IOException e) {
         throw new MetadataException(e);
@@ -3203,7 +3211,12 @@ public class DataRegion implements IDataRegionForQuery {
       moveModFile(newModFileToLoad, newTargetModFile, deleteOriginFile);
     }
     // force update mod file metrics
-    tsFileResource.getExclusiveModFile();
+    final ModificationFile mods = tsFileResource.getExclusiveModFile();
+
+    if (mods != null && mods.exists()) {
+      FileMetrics.getInstance().increaseModFileNum(1);
+      FileMetrics.getInstance().increaseModFileSize(mods.getFileLength());
+    }
   }
 
   @SuppressWarnings("java:S2139")

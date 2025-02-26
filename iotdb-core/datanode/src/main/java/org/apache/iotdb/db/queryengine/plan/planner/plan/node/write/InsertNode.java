@@ -405,6 +405,8 @@ public abstract class InsertNode extends SearchNode {
           idColumnIndices.add(i);
         }
       }
+    } else {
+      idColumnIndices = Collections.emptyList();
     }
   }
 

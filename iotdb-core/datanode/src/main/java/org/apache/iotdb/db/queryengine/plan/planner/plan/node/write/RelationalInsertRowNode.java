@@ -257,4 +257,9 @@ public class RelationalInsertRowNode extends InsertRowNode {
       writableMemChunkGroup.checkDataType(this);
     }
   }
+
+  @Override
+  public boolean allMeasurementFailed() {
+    return false;
+  }
 }

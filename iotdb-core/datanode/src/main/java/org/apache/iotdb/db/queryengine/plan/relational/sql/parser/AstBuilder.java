@@ -591,8 +591,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       columnNames.remove(timeColumnIndex);
     }
 
-    String[] columnNameArray = columnNames.toArray(new String[0]);
-
     List<Expression> rows = queryBody.getRows();
     if (timeColumnIndex == -1 && rows.size() > 1) {
       throw new SemanticException("need timestamps when insert multi rows");
@@ -610,6 +608,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
                   } else {
                     throw new SemanticException("unexpected expression: " + r);
                   }
+                  String[] columnNameArray = columnNames.toArray(new String[0]);
                   return toInsertRowStatement(
                       expressions, finalTimeColumnIndex, columnNameArray, tableName, databaseName);
                 })

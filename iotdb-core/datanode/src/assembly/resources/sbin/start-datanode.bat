@@ -29,7 +29,7 @@ echo ````````````````````````
 
 @REM -----------------------------------------------------------------------------
 @REM SET JAVA
-PATH %PATH%;%JAVA_HOME%\bin\
+set PATH="%JAVA_HOME%\bin\";%PATH%
 set "FULL_VERSION="
 set "MAJOR_VERSION="
 set "MINOR_VERSION="
