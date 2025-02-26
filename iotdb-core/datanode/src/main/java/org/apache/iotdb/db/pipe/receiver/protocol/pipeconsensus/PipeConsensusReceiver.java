@@ -1300,17 +1300,15 @@ public class PipeConsensusReceiver {
     private final PipeConsensusTsFileWriterPool tsFileWriterPool;
     private final AtomicInteger WALEventCount = new AtomicInteger(0);
     private final AtomicInteger tsFileEventCount = new AtomicInteger(0);
-    private long onSyncedCommitIndex = 0;
+    private long onSyncedReplicateIndex = 0;
     private int connectorRebootTimes = 0;
-    private int pipeTaskRestartTimes = 0;
 
     public RequestExecutor(
         PipeConsensusReceiverMetrics metric, PipeConsensusTsFileWriterPool tsFileWriterPool) {
       this.reqExecutionOrderBuffer =
           new TreeSet<>(
               Comparator.comparingInt(RequestMeta::getDataNodeRebootTimes)
-                  .thenComparingInt(RequestMeta::getPipeTaskRestartTimes)
-                  .thenComparingLong(RequestMeta::getCommitIndex));
+                  .thenComparingLong(RequestMeta::getReplicateIndex));
       this.lock = new ReentrantLock();
       this.condition = lock.newCondition();
       this.metric = metric;
@@ -1323,7 +1321,7 @@ public class PipeConsensusReceiver {
           consensusPipeName,
           commitId);
       RequestMeta curMeta = reqExecutionOrderBuffer.pollFirst();
-      onSyncedCommitIndex = commitId.getCommitIndex();
+      onSyncedReplicateIndex = commitId.getReplicateIndex();
       // update metric, notice that curMeta is never null.
       if (isTransferTsFileSeal) {
         tsFileEventCount.decrementAndGet();
@@ -1370,27 +1368,10 @@ public class PipeConsensusReceiver {
               consensusPipeName);
           return new TPipeConsensusTransferResp(status);
         }
-        // Similarly, check pipeTask restartTimes
-        if (tCommitId.getDataNodeRebootTimes() == connectorRebootTimes
-            && tCommitId.getPipeTaskRestartTimes() < pipeTaskRestartTimes) {
-          final TSStatus status =
-              new TSStatus(
-                  RpcUtils.getStatus(
-                      TSStatusCode.PIPE_CONSENSUS_DEPRECATED_REQUEST,
-                      "PipeConsensus receiver received a deprecated request, which may be sent before the pipe task restart. Consider to discard it"));
-          LOGGER.info(
-              "PipeConsensus-PipeName-{}: received a deprecated request, which may be sent before the pipe task restart. Consider to discard it",
-              consensusPipeName);
-          return new TPipeConsensusTransferResp(status);
-        }
         // Judge whether connector has rebooted or not, if the rebootTimes increases compared to
         // connectorRebootTimes, need to reset receiver because connector has been restarted.
         if (tCommitId.getDataNodeRebootTimes() > connectorRebootTimes) {
           resetWithNewestRebootTime(tCommitId.getDataNodeRebootTimes(), condition);
-        }
-        // Similarly, check pipeTask restartTimes
-        if (tCommitId.getPipeTaskRestartTimes() > pipeTaskRestartTimes) {
-          resetWithNewestRestartTime(tCommitId.getPipeTaskRestartTimes(), condition);
         }
         // update metric
         if (isTransferTsFilePiece && !reqExecutionOrderBuffer.contains(requestMeta)) {
@@ -1423,7 +1404,7 @@ public class PipeConsensusReceiver {
         // Polling to process
         while (true) {
           if (reqExecutionOrderBuffer.first().equals(requestMeta)
-              && tCommitId.getCommitIndex() == onSyncedCommitIndex + 1) {
+              && tCommitId.getReplicateIndex() == onSyncedReplicateIndex + 1) {
             long startApplyNanos = System.nanoTime();
             metric.recordDispatchWaitingTimer(startApplyNanos - startDispatchNanos);
             requestMeta.setStartApplyNanos(startApplyNanos);
@@ -1508,7 +1489,7 @@ public class PipeConsensusReceiver {
               LOGGER.warn(
                   "PipeConsensus-PipeName-{}: current waiting is interrupted. onSyncedCommitIndex: {}. Exception: ",
                   consensusPipeName,
-                  tCommitId.getCommitIndex(),
+                  tCommitId.getReplicateIndex(),
                   e);
               // Avoid infinite loop when RPC thread is killed by OS
               return new TPipeConsensusTransferResp(
@@ -1538,26 +1519,12 @@ public class PipeConsensusReceiver {
       condition.signalAll();
       // sync the follower's connectorRebootTimes with connector's actual rebootTimes.
       this.connectorRebootTimes = connectorRebootTimes;
-      // Note: dataNode rebooting will reset pipeTaskRestartTimes.
-      this.pipeTaskRestartTimes = 0;
-    }
-
-    private void resetWithNewestRestartTime(int pipeTaskRestartTimes, Condition condition) {
-      LOGGER.info(
-          "PipeConsensus-PipeName-{}: receiver detected an newer pipeTaskRestartTimes, which indicates the pipe task has restarted. receiver will reset all its data.",
-          consensusPipeName);
-      // since pipe task will resend all data that hasn't synchronized after restarts, it's safe to
-      // clear all events in buffer.
-      clear();
-      // signal all deprecated requests that may wait on condition to expire them
-      condition.signalAll();
-      this.pipeTaskRestartTimes = pipeTaskRestartTimes;
     }
 
     private void clear() {
       this.reqExecutionOrderBuffer.clear();
       this.tsFileWriterPool.handleExit(consensusPipeName);
-      this.onSyncedCommitIndex = 0;
+      this.onSyncedReplicateIndex = 0;
     }
   }
 
@@ -1573,12 +1540,8 @@ public class PipeConsensusReceiver {
       return commitId.getDataNodeRebootTimes();
     }
 
-    public int getPipeTaskRestartTimes() {
-      return commitId.getPipeTaskRestartTimes();
-    }
-
-    public long getCommitIndex() {
-      return commitId.getCommitIndex();
+    public long getReplicateIndex() {
+      return commitId.getReplicateIndex();
     }
 
     public void setStartApplyNanos(long startApplyNanos) {
