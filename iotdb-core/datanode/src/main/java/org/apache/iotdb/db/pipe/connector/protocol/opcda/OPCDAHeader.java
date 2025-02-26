@@ -187,10 +187,6 @@ public class OPCDAHeader {
     public int dwBlobSize; // BLOB size
     public Pointer pBlob; // BLOB pointer
 
-    public OPCITEMRESULT() {
-      super(ALIGN_MSVC); // 4 bytes alignment
-    }
-
     public OPCITEMRESULT(final Pointer pointer) {
       super(pointer);
     }
