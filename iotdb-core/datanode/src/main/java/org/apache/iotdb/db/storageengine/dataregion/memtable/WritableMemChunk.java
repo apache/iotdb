@@ -760,6 +760,14 @@ public class WritableMemChunk implements IWritableMemChunk {
     return memChunk;
   }
 
+  public static WritableMemChunk deserializeSingleTVListMemChunks(DataInputStream stream)
+      throws IOException {
+    WritableMemChunk memChunk = new WritableMemChunk();
+    memChunk.schema = MeasurementSchema.deserializeFrom(stream);
+    memChunk.list = TVList.deserialize(stream);
+    return memChunk;
+  }
+
   @Override
   public List<TVList> getSortedList() {
     return sortedList;

@@ -308,4 +308,17 @@ public abstract class BinaryTVList extends TVList {
     tvList.putBinaries(times, values, bitMap, 0, rowCount);
     return tvList;
   }
+
+  public static BinaryTVList deserializeWithoutBitMap(DataInputStream stream) throws IOException {
+    BinaryTVList tvList = BinaryTVList.newList();
+    int rowCount = stream.readInt();
+    long[] times = new long[rowCount];
+    Binary[] values = new Binary[rowCount];
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      times[rowIdx] = stream.readLong();
+      values[rowIdx] = ReadWriteIOUtils.readBinary(stream);
+    }
+    tvList.putBinaries(times, values, null, 0, rowCount);
+    return tvList;
+  }
 }

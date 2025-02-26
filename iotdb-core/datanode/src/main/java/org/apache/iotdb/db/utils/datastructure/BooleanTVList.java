@@ -299,4 +299,17 @@ public abstract class BooleanTVList extends TVList {
     tvList.putBooleans(times, values, bitMap, 0, rowCount);
     return tvList;
   }
+
+  public static BooleanTVList deserializeWithoutBitMap(DataInputStream stream) throws IOException {
+    BooleanTVList tvList = BooleanTVList.newList();
+    int rowCount = stream.readInt();
+    long[] times = new long[rowCount];
+    boolean[] values = new boolean[rowCount];
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      times[rowIdx] = stream.readLong();
+      values[rowIdx] = ReadWriteIOUtils.readBool(stream);
+    }
+    tvList.putBooleans(times, values, null, 0, rowCount);
+    return tvList;
+  }
 }

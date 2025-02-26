@@ -305,4 +305,17 @@ public abstract class DoubleTVList extends TVList {
     tvList.putDoubles(times, values, bitMap, 0, rowCount);
     return tvList;
   }
+
+  public static DoubleTVList deserializeWithoutBitMap(DataInputStream stream) throws IOException {
+    DoubleTVList tvList = DoubleTVList.newList();
+    int rowCount = stream.readInt();
+    long[] times = new long[rowCount];
+    double[] values = new double[rowCount];
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      times[rowIdx] = stream.readLong();
+      values[rowIdx] = stream.readDouble();
+    }
+    tvList.putDoubles(times, values, null, 0, rowCount);
+    return tvList;
+  }
 }

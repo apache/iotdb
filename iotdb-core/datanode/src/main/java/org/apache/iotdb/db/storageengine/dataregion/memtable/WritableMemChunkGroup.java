@@ -193,4 +193,16 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
     }
     return memChunkGroup;
   }
+
+  public static WritableMemChunkGroup deserializeSingleTVListMemChunks(DataInputStream stream)
+      throws IOException {
+    WritableMemChunkGroup memChunkGroup = new WritableMemChunkGroup();
+    int memChunkMapSize = stream.readInt();
+    for (int i = 0; i < memChunkMapSize; ++i) {
+      String measurement = ReadWriteIOUtils.readString(stream);
+      IWritableMemChunk memChunk = WritableMemChunk.deserializeSingleTVListMemChunks(stream);
+      memChunkGroup.memChunkMap.put(measurement, memChunk);
+    }
+    return memChunkGroup;
+  }
 }

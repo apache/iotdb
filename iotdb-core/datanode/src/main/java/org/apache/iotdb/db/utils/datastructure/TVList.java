@@ -560,8 +560,31 @@ public abstract class TVList implements WALEntryValue {
         return DoubleTVList.deserialize(stream);
       case BOOLEAN:
         return BooleanTVList.deserialize(stream);
-      case VECTOR:
-        return AlignedTVList.deserialize(stream);
+      default:
+        break;
+    }
+    return null;
+  }
+
+  public static TVList deserializeWithoutBitMap(DataInputStream stream) throws IOException {
+    TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
+    switch (dataType) {
+      case TEXT:
+      case BLOB:
+      case STRING:
+        return BinaryTVList.deserializeWithoutBitMap(stream);
+      case FLOAT:
+        return FloatTVList.deserializeWithoutBitMap(stream);
+      case INT32:
+      case DATE:
+        return IntTVList.deserializeWithoutBitMap(stream);
+      case INT64:
+      case TIMESTAMP:
+        return LongTVList.deserializeWithoutBitMap(stream);
+      case DOUBLE:
+        return DoubleTVList.deserializeWithoutBitMap(stream);
+      case BOOLEAN:
+        return BooleanTVList.deserializeWithoutBitMap(stream);
       default:
         break;
     }
