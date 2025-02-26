@@ -57,7 +57,7 @@ public class AINodeHeartbeatCache extends BaseNodeCache {
     if (lastSample != null && NodeStatus.Removing.equals(lastSample.getStatus())) {
       status = NodeStatus.Removing;
     } else if (!failureDetector.isAvailable(heartbeatHistory)) {
-      /* Failure detector decides that this DataNode is UNKNOWN */
+      /* Failure detector decides that this AINode is UNKNOWN */
       status = NodeStatus.Unknown;
     } else if (lastSample != null) {
       status = lastSample.getStatus();

@@ -16,21 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager.load.cache.detector;
 
 import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.IFailureDetector;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.tsfile.utils.Preconditions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class PhiAccrualDetector implements IFailureDetector {
-
+  private static final Logger LOGGER = LoggerFactory.getLogger(PhiAccrualDetector.class);
   private final long threshold;
   private final long acceptableHeartbeatPauseNs;
   private final long firstHeartbeatEstimateNs;
@@ -54,8 +56,21 @@ public class PhiAccrualDetector implements IFailureDetector {
       return true;
     }
     final PhiAccrual phiAccrual = create(history);
-    // TODO(szywilliam) we should log the status change and dump the heartbeat history
-    return phiAccrual.phi() < (double) this.threshold;
+    final boolean isAvailable = phiAccrual.phi() < (double) this.threshold;
+    if (!isAvailable) {
+      // log the status change and dump the heartbeat history for analysis use
+      final StringBuilder builder = new StringBuilder();
+      builder.append("[");
+      for (double interval : phiAccrual.heartbeatIntervals) {
+        final long msInterval = (long) interval / 1000_000;
+        builder.append(msInterval).append(", ");
+      }
+      builder.append(phiAccrual.timeElapsedSinceLastHeartbeat / 1000_000);
+      builder.append("]");
+      LOGGER.info(String.format("Node Down, heartbeat history (ms): %s", builder));
+    }
+
+    return isAvailable;
   }
 
   PhiAccrual create(List<AbstractHeartbeatSample> history) {
@@ -75,19 +90,24 @@ public class PhiAccrualDetector implements IFailureDetector {
       heartbeatIntervals.add(mean - std);
     }
 
-    for (int i = 1; i < size; i++) {
+    long lastTs = -1;
+    for (final AbstractHeartbeatSample sample : history) {
       // ensure getSampleLogicalTimestamp() will return system nano timestamp
-      Preconditions.checkArgument(history.get(i) instanceof NodeHeartbeatSample);
-      double interval =
-          (double) history.get(i).getSampleLogicalTimestamp()
-              - history.get(i - 1).getSampleLogicalTimestamp();
-      heartbeatIntervals.add(interval);
+      Preconditions.checkArgument(sample instanceof NodeHeartbeatSample);
+      if (lastTs == -1) {
+        lastTs = sample.getSampleLogicalTimestamp();
+        continue;
+      }
+      heartbeatIntervals.add((double) sample.getSampleLogicalTimestamp() - lastTs);
+      lastTs = sample.getSampleLogicalTimestamp();
     }
     final long lastHeartbeatTimestamp = history.get(history.size() - 1).getSampleLogicalTimestamp();
     final long timeElapsedSinceLastHeartbeat = System.nanoTime() - lastHeartbeatTimestamp;
 
+    final double[] intervalArray =
+        heartbeatIntervals.stream().mapToDouble(Double::doubleValue).toArray();
     return new PhiAccrual(
-        (double[]) ArrayUtils.toPrimitive(heartbeatIntervals.toArray()),
+        intervalArray,
         timeElapsedSinceLastHeartbeat,
         minHeartbeatStdNs,
         acceptableHeartbeatPauseNs);

@@ -44,8 +44,7 @@ public class RegionCache extends AbstractLoadCache {
     long currentNanoTime = System.nanoTime();
     if (lastSample == null) {
       status = RegionStatus.Unknown;
-    } else if (currentNanoTime - lastSample.getSampleLogicalTimestamp()
-        > HEARTBEAT_TIMEOUT_TIME_IN_NS) {
+    } else if (currentNanoTime - lastSample.getSampleLogicalTimestamp() > heartbeatTimeoutNs) {
       // TODO: Optimize Unknown judge logic
       status = RegionStatus.Unknown;
     } else {

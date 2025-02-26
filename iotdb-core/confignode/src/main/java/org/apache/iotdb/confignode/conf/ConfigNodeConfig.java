@@ -182,7 +182,7 @@ public class ConfigNodeConfig {
   private long heartbeatIntervalInMs = 1000;
 
   /** Failure detector implementation */
-  private String failureDetector = IFailureDetector.FIXED_DETECTOR;
+  private String failureDetector = IFailureDetector.PHI_ACCRUAL_DETECTOR;
 
   /** Max heartbeat elapsed time threshold for Fixed failure detector */
   private long failureDetectorFixedThresholdInMs = 20000;

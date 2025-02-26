@@ -687,7 +687,7 @@ heartbeat_interval_in_ms=1000
 # Default failure detector, enum from {fixed, phi_accrual}
 # effectiveMode: restart
 # Datatype: string
-failure_detector=fixed
+failure_detector=phi_accrual
 
 # Fixed failure detector threshold of time elapsed without receiving heartbeat replies
 # effectiveMode: restart
