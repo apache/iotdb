@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
+import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
@@ -78,6 +79,7 @@ public class DataRegionConsensusImpl {
   private static class DataRegionConsensusImplHolder {
 
     private static final IoTDBConfig CONF = IoTDBDescriptor.getInstance().getConfig();
+    private static final MemoryConfig MEMORY_CONFIG = MemoryConfig.getInstance();
 
     private static IConsensus INSTANCE;
 
@@ -113,7 +115,9 @@ public class DataRegionConsensusImpl {
 
     private static ConsensusConfig buildConsensusConfig() {
       IMemoryBlock memoryBlock =
-          CONF.getConsensusMemoryManager().forceAllocate("Consensus", MemoryBlockType.FUNCTION);
+          MEMORY_CONFIG
+              .getConsensusMemoryManager()
+              .forceAllocate("Consensus", MemoryBlockType.FUNCTION);
       return ConsensusConfig.newBuilder()
           .setThisNodeId(CONF.getDataNodeId())
           .setThisNode(new TEndPoint(CONF.getInternalAddress(), CONF.getDataRegionConsensusPort()))

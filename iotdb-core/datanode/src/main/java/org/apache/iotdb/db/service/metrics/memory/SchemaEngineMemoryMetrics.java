@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.service.metrics.memory;
 
+import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -33,6 +34,7 @@ import java.util.Arrays;
 
 public class SchemaEngineMemoryMetrics implements IMetricSet {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final MemoryConfig memoryConfig = MemoryConfig.getInstance();
   private static final String SCHEMA_ENGINE = "SchemaEngine";
   private static final String SCHEMA_ENGINE_SCHEMA_REGION = "SchemaEngine-SchemaRegion";
   private static final String SCHEMA_ENGINE_SCHEMA_CACHE = "SchemaEngine-SchemaCache";
@@ -43,7 +45,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        config.getSchemaEngineMemoryManager(),
+        memoryConfig.getSchemaEngineMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         SCHEMA_ENGINE,

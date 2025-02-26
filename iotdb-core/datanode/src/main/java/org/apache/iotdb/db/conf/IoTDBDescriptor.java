@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -97,7 +98,7 @@ public class IoTDBDescriptor {
   private static final CommonDescriptor commonDescriptor = CommonDescriptor.getInstance();
 
   private static final IoTDBConfig conf = new IoTDBConfig();
-  private static final MemoryManager globalMemoryManager = MemoryManager.global();
+  private static final MemoryConfig memoryConfig = MemoryConfig.getInstance();
 
   private static final long MAX_THROTTLE_THRESHOLD = 600 * 1024 * 1024 * 1024L;
 
@@ -159,10 +160,6 @@ public class IoTDBDescriptor {
 
   public IoTDBConfig getConfig() {
     return conf;
-  }
-
-  public MemoryManager getGlobalMemoryManager() {
-    return globalMemoryManager;
   }
 
   /**
@@ -2225,54 +2222,54 @@ public class IoTDBDescriptor {
         } else {
           pipeMemorySize =
               (maxMemoryAvailable
-                      - (conf.getStorageEngineMemoryManager().getTotalMemorySizeInBytes()
-                          + conf.getQueryEngineMemoryManager().getTotalMemorySizeInBytes()
-                          + conf.getSchemaEngineMemoryManager().getTotalMemorySizeInBytes()
-                          + conf.getConsensusMemoryManager().getTotalMemorySizeInBytes()))
+                      - (memoryConfig.getStorageEngineMemoryManager().getTotalMemorySizeInBytes()
+                          + memoryConfig.getQueryEngineMemoryManager().getTotalMemorySizeInBytes()
+                          + memoryConfig.getSchemaEngineMemoryManager().getTotalMemorySizeInBytes()
+                          + memoryConfig.getConsensusMemoryManager().getTotalMemorySizeInBytes()))
                   / 2;
         }
       }
     }
     // on heap memory manager
     MemoryManager onheapMemoryManager =
-        globalMemoryManager.getOrCreateMemoryManager("OnHeap", Runtime.getRuntime().maxMemory());
-    conf.setOnHeapMemoryManager(onheapMemoryManager);
+        MemoryConfig.global().getOrCreateMemoryManager("OnHeap", Runtime.getRuntime().maxMemory());
+    memoryConfig.setOnHeapMemoryManager(onheapMemoryManager);
     // storage engine memory manager
     MemoryManager storageEngineMemoryManager =
         onheapMemoryManager.getOrCreateMemoryManager("StorageEngine", storageEngineMemorySize);
-    conf.setStorageEngineMemoryManager(storageEngineMemoryManager);
+    memoryConfig.setStorageEngineMemoryManager(storageEngineMemoryManager);
     // query engine memory manager
     MemoryManager queryEngineMemoryManager =
         onheapMemoryManager.getOrCreateMemoryManager("QueryEngine", queryEngineMemorySize);
-    conf.setQueryEngineMemoryManager(queryEngineMemoryManager);
+    memoryConfig.setQueryEngineMemoryManager(queryEngineMemoryManager);
     // schema engine memory manager
     MemoryManager schemaEngineMemoryManager =
         onheapMemoryManager.getOrCreateMemoryManager("SchemaEngine", schemaEngineMemorySize);
-    conf.setSchemaEngineMemoryManager(schemaEngineMemoryManager);
+    memoryConfig.setSchemaEngineMemoryManager(schemaEngineMemoryManager);
     // consensus layer memory manager
     MemoryManager consensusMemoryManager =
         onheapMemoryManager.getOrCreateMemoryManager("Consensus", consensusMemorySize);
-    conf.setConsensusMemoryManager(consensusMemoryManager);
+    memoryConfig.setConsensusMemoryManager(consensusMemoryManager);
     // pipe memory manager
     MemoryManager pipeMemoryManager =
         onheapMemoryManager.getOrCreateMemoryManager("Pipe", pipeMemorySize);
-    conf.setPipeMemoryManager(pipeMemoryManager);
+    memoryConfig.setPipeMemoryManager(pipeMemoryManager);
 
     LOGGER.info(
-        "initial allocateMemoryForRead = {}",
-        conf.getQueryEngineMemoryManager().getTotalMemorySizeInBytes());
-    LOGGER.info(
         "initial allocateMemoryForWrite = {}",
-        conf.getStorageEngineMemoryManager().getTotalMemorySizeInBytes());
+        memoryConfig.getStorageEngineMemoryManager().getTotalMemorySizeInBytes());
+    LOGGER.info(
+        "initial allocateMemoryForRead = {}",
+        memoryConfig.getQueryEngineMemoryManager().getTotalMemorySizeInBytes());
     LOGGER.info(
         "initial allocateMemoryForSchema = {}",
-        conf.getSchemaEngineMemoryManager().getTotalMemorySizeInBytes());
+        memoryConfig.getSchemaEngineMemoryManager().getTotalMemorySizeInBytes());
     LOGGER.info(
         "initial allocateMemoryForConsensus = {}",
-        conf.getConsensusMemoryManager().getTotalMemorySizeInBytes());
+        memoryConfig.getConsensusMemoryManager().getTotalMemorySizeInBytes());
     LOGGER.info(
         "initial allocateMemoryForPipe = {}",
-        conf.getPipeMemoryManager().getTotalMemorySizeInBytes());
+        memoryConfig.getPipeMemoryManager().getTotalMemorySizeInBytes());
 
     initSchemaMemoryAllocate(schemaEngineMemoryManager, properties);
     initStorageEngineAllocate(storageEngineMemoryManager, properties);
@@ -2280,8 +2277,8 @@ public class IoTDBDescriptor {
 
     String offHeapMemoryStr = System.getProperty("OFF_HEAP_MEMORY");
     MemoryManager offHeapMemoryManager =
-        globalMemoryManager.getOrCreateMemoryManager(
-            "OffHeap", MemUtils.strToBytesCnt(offHeapMemoryStr), false);
+        MemoryConfig.global()
+            .getOrCreateMemoryManager("OffHeap", MemUtils.strToBytesCnt(offHeapMemoryStr), false);
     conf.setOffHeapMemoryManager(offHeapMemoryManager);
 
     // when we can't get the OffHeapMemory variable from environment, it will be 0
@@ -2355,13 +2352,13 @@ public class IoTDBDescriptor {
     }
     MemoryManager writeMemoryManager =
         storageEngineMemoryManager.getOrCreateMemoryManager("Write", writeMemorySize);
-    conf.setWriteMemoryManager(writeMemoryManager);
+    memoryConfig.setWriteMemoryManager(writeMemoryManager);
     MemoryManager compactionMemoryManager =
         storageEngineMemoryManager.getOrCreateMemoryManager("Compaction", compactionMemorySize);
-    conf.setCompactionMemoryManager(compactionMemoryManager);
+    memoryConfig.setCompactionMemoryManager(compactionMemoryManager);
     MemoryManager memtableMemoryManager =
         writeMemoryManager.getOrCreateMemoryManager("Memtable", memtableMemorySize);
-    conf.setMemtableMemoryManager(memtableMemoryManager);
+    memoryConfig.setMemtableMemoryManager(memtableMemoryManager);
     MemoryManager timePartitionMemoryManager =
         writeMemoryManager.getOrCreateMemoryManager(
             "TimePartitionInfo", timePartitionInfoMemorySize);
@@ -2371,18 +2368,18 @@ public class IoTDBDescriptor {
     MemoryManager devicePathCacheMemoryManager =
         memtableMemoryManager.getOrCreateMemoryManager(
             "DevicePathCache", devicePathCacheMemorySize);
-    conf.setDevicePathCacheMemoryManager(devicePathCacheMemoryManager);
+    memoryConfig.setDevicePathCacheMemoryManager(devicePathCacheMemoryManager);
     // TODO @spricoder check why this memory calculate by storage engine memory
     long bufferedArraysMemorySize =
         (long) (storageMemoryTotal * conf.getBufferedArraysMemoryProportion());
     MemoryManager bufferedArraysMemoryManager =
         memtableMemoryManager.getOrCreateMemoryManager("BufferedArray", bufferedArraysMemorySize);
-    conf.setBufferedArraysMemoryManager(bufferedArraysMemoryManager);
+    memoryConfig.setBufferedArraysMemoryManager(bufferedArraysMemoryManager);
     long walBufferQueueMemorySize =
         (long) (memtableMemorySize * conf.getWalBufferQueueProportion());
     MemoryManager walBufferQueueMemoryManager =
         memtableMemoryManager.getOrCreateMemoryManager("WalBufferQueue", walBufferQueueMemorySize);
-    conf.setWalBufferQueueManager(walBufferQueueMemoryManager);
+    memoryConfig.setWalBufferQueueManager(walBufferQueueMemoryManager);
   }
 
   @SuppressWarnings("squid:S3518")
@@ -2480,7 +2477,7 @@ public class IoTDBDescriptor {
               maxMemoryAvailable * Integer.parseInt(proportions[5].trim()) / proportionSum;
           timeIndexMemorySize =
               maxMemoryAvailable * Integer.parseInt(proportions[6].trim()) / proportionSum;
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
           throw new RuntimeException(
               "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
                   + " should be an integer, which is "
@@ -2694,7 +2691,7 @@ public class IoTDBDescriptor {
           (float)
               Math.min(
                   Float.parseFloat(memoryBudgetInMb.trim()),
-                  0.2 * conf.getQueryEngineMemoryManager().getTotalMemorySizeInBytes()));
+                  0.2 * memoryConfig.getQueryEngineMemoryManager().getTotalMemorySizeInBytes()));
     }
 
     String readerTransformerCollectorMemoryProportion =
@@ -3000,8 +2997,8 @@ public class IoTDBDescriptor {
 
   public void reclaimConsensusMemory() {
     // first we need to release the memory allocated for consensus
-    MemoryManager storageEngineMemoryManager = conf.getStorageEngineMemoryManager();
-    MemoryManager consensusMemoryManager = conf.getConsensusMemoryManager();
+    MemoryManager storageEngineMemoryManager = memoryConfig.getStorageEngineMemoryManager();
+    MemoryManager consensusMemoryManager = memoryConfig.getConsensusMemoryManager();
     long newSize =
         storageEngineMemoryManager.getTotalMemorySizeInBytes()
             + consensusMemoryManager.getTotalMemorySizeInBytes();

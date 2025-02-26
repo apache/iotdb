@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
+import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -59,6 +60,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.T
 public class TableDeviceSchemaCacheTest {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final MemoryConfig memoryConfig = MemoryConfig.getInstance();
 
   private static long originMemConfig;
 
@@ -157,7 +159,7 @@ public class TableDeviceSchemaCacheTest {
   }
 
   private static void changeSchemaCacheMemorySize(long size) {
-    MemoryManager memoryManager = config.getSchemaEngineMemoryManager();
+    MemoryManager memoryManager = memoryConfig.getSchemaEngineMemoryManager();
     MemoryManager schemaCacheMemoryManager = config.getSchemaCacheMemoryManager();
     schemaCacheMemoryManager.clearAll();
     memoryManager.releaseChildMemoryManager("schemaCache");

@@ -69,8 +69,7 @@ public class MemoryManager {
     this.enable = false;
   }
 
-  private MemoryManager(
-      String name, MemoryManager parentMemoryManager, long totalMemorySizeInBytes) {
+  MemoryManager(String name, MemoryManager parentMemoryManager, long totalMemorySizeInBytes) {
     this.name = name;
     this.parentMemoryManager = parentMemoryManager;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
@@ -234,8 +233,9 @@ public class MemoryManager {
    * @return the memory block
    */
   private IMemoryBlock registerMemoryBlock(String name, long sizeInBytes, MemoryBlockType type) {
-    if (sizeInBytes <= 0) {
-      LOGGER.warn("forceAllocate {}: sizeInBytes should be positive", name);
+    if (sizeInBytes < 0) {
+      throw new MemoryException(
+          String.format("register memory block %s failed: sizeInBytes should be positive", name));
     }
     return allocatedMemoryBlocks.compute(
         name,
@@ -377,7 +377,9 @@ public class MemoryManager {
    * @return the memory manager if find it, otherwise null
    */
   private MemoryManager getMemoryManager(int index, String... names) {
-    if (index >= names.length) return this;
+    if (index >= names.length) {
+      return this;
+    }
     MemoryManager memoryManager = children.get(names[index]);
     if (memoryManager != null) {
       return memoryManager.getMemoryManager(index + 1, names);
@@ -401,10 +403,12 @@ public class MemoryManager {
 
   /** Clear all memory blocks and child memory managers */
   public synchronized void clearAll() {
+    // release the child memory managers
     for (MemoryManager child : children.values()) {
       child.clearAll();
     }
     children.clear();
+    // release the memory blocks
     for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
       if (block == null || block.isReleased()) {
         continue;
@@ -420,9 +424,6 @@ public class MemoryManager {
       }
     }
     allocatedMemoryBlocks.clear();
-    if (parentMemoryManager != null) {
-      parentMemoryManager.releaseChildMemoryManager(name);
-    }
   }
 
   // endregion
@@ -468,22 +469,6 @@ public class MemoryManager {
       memorySize += child.getUsedMemorySizeInBytes();
     }
     return memorySize;
-  }
-
-  // endregion
-
-  // region The Methods of GlobalMemoryManager
-
-  public static MemoryManager global() {
-    return MemoryManagerHolder.GLOBAL;
-  }
-
-  private static class MemoryManagerHolder {
-
-    private static final MemoryManager GLOBAL =
-        new MemoryManager("GlobalMemoryManager", null, Runtime.getRuntime().totalMemory());
-
-    private MemoryManagerHolder() {}
   }
 
   // endregion

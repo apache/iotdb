@@ -151,31 +151,10 @@ public class IoTDBConfig {
   /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 65535;
 
-  /** The memory manager of on heap */
-  private MemoryManager onHeapMemoryManager;
-
-  /** Memory manager for the write process */
-  private MemoryManager storageEngineMemoryManager;
-
-  /** Memory manager for the read process */
-  private MemoryManager queryEngineMemoryManager;
-
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
-
-  /** Memory manager for the mtree */
-  private MemoryManager schemaEngineMemoryManager;
-
-  /** Memory manager for the consensus layer */
-  private MemoryManager ConsensusMemoryManager;
-
-  /** Memory allocated for the pipe */
-  private MemoryManager PipeMemoryManager;
 
   /** Ratio of memory allocated for buffered arrays */
   private double bufferedArraysMemoryProportion = 0.6;
-
-  /** The memory manager for buffered arrays */
-  private MemoryManager bufferedArraysMemoryManager;
 
   /** Flush proportion for system */
   private double flushProportion = 0.4;
@@ -183,31 +162,16 @@ public class IoTDBConfig {
   /** Reject proportion for system */
   private double rejectProportion = 0.8;
 
-  /** The memory manager for memtable */
-  private MemoryManager memtableMemoryManager;
-
-  /** The memory Manager for write */
-  private MemoryManager writeMemoryManager;
-
-  /** The Memory Manager for compaction */
-  private MemoryManager compactionMemoryManager;
-
   /** The proportion of memtable memory for WAL queue */
   private double walBufferQueueProportion = 0.1;
-
-  /** The memory manager of memtable memory for WAL queue */
-  private MemoryManager walBufferQueueManager;
 
   /** The proportion of memtable memory for device path cache */
   private double devicePathCacheProportion = 0.05;
 
-  /** The memory manager of memtable memory for device path cache */
-  private MemoryManager devicePathCacheMemoryManager;
-
   /**
    * If memory cost of data region increased more than proportion of {@linkplain
-   * IoTDBConfig#getStorageEngineMemoryManager()} *{@linkplain
-   * IoTDBConfig#getMemtableMemoryManager()}, report to system.
+   * org.apache.iotdb.commons.memory.MemoryConfig#getStorageEngineMemoryManager()} *{@linkplain
+   * org.apache.iotdb.commons.memory.MemoryConfig#getMemtableMemoryManager()}, report to system.
    */
   private double writeMemoryVariationReportProportion = 0.001;
 
@@ -2103,14 +2067,6 @@ public class IoTDBConfig {
     this.bufferedArraysMemoryProportion = bufferedArraysMemoryProportion;
   }
 
-  public MemoryManager getBufferedArraysMemoryManager() {
-    return bufferedArraysMemoryManager;
-  }
-
-  public void setBufferedArraysMemoryManager(MemoryManager bufferedArraysMemoryManager) {
-    this.bufferedArraysMemoryManager = bufferedArraysMemoryManager;
-  }
-
   public double getFlushProportion() {
     return flushProportion;
   }
@@ -2133,54 +2089,6 @@ public class IoTDBConfig {
 
   public void setWriteMemoryVariationReportProportion(double writeMemoryVariationReportProportion) {
     this.writeMemoryVariationReportProportion = writeMemoryVariationReportProportion;
-  }
-
-  public MemoryManager getOnHeapMemoryManager() {
-    return onHeapMemoryManager;
-  }
-
-  public void setOnHeapMemoryManager(MemoryManager onHeapMemoryManager) {
-    this.onHeapMemoryManager = onHeapMemoryManager;
-  }
-
-  public void setStorageEngineMemoryManager(MemoryManager storageEngineMemoryManager) {
-    this.storageEngineMemoryManager = storageEngineMemoryManager;
-  }
-
-  public MemoryManager getStorageEngineMemoryManager() {
-    return storageEngineMemoryManager;
-  }
-
-  public MemoryManager getQueryEngineMemoryManager() {
-    return queryEngineMemoryManager;
-  }
-
-  public void setQueryEngineMemoryManager(MemoryManager queryEngineMemoryManager) {
-    this.queryEngineMemoryManager = queryEngineMemoryManager;
-  }
-
-  public MemoryManager getSchemaEngineMemoryManager() {
-    return schemaEngineMemoryManager;
-  }
-
-  public void setSchemaEngineMemoryManager(MemoryManager schemaEngineMemoryManager) {
-    this.schemaEngineMemoryManager = schemaEngineMemoryManager;
-  }
-
-  public MemoryManager getConsensusMemoryManager() {
-    return ConsensusMemoryManager;
-  }
-
-  public void setConsensusMemoryManager(MemoryManager consensusMemoryManager) {
-    ConsensusMemoryManager = consensusMemoryManager;
-  }
-
-  public MemoryManager getPipeMemoryManager() {
-    return PipeMemoryManager;
-  }
-
-  public void setPipeMemoryManager(MemoryManager pipeMemoryManager) {
-    PipeMemoryManager = pipeMemoryManager;
   }
 
   public boolean isEnablePartialInsert() {
@@ -3597,30 +3505,6 @@ public class IoTDBConfig {
     this.driverTaskExecutionTimeSliceInMs = driverTaskExecutionTimeSliceInMs;
   }
 
-  public MemoryManager getMemtableMemoryManager() {
-    return memtableMemoryManager;
-  }
-
-  public void setMemtableMemoryManager(MemoryManager memtableMemoryManager) {
-    this.memtableMemoryManager = memtableMemoryManager;
-  }
-
-  public MemoryManager getWriteMemoryManager() {
-    return writeMemoryManager;
-  }
-
-  public void setWriteMemoryManager(MemoryManager writeMemoryManager) {
-    this.writeMemoryManager = writeMemoryManager;
-  }
-
-  public MemoryManager getCompactionMemoryManager() {
-    return compactionMemoryManager;
-  }
-
-  public void setCompactionMemoryManager(MemoryManager compactionMemoryManager) {
-    this.compactionMemoryManager = compactionMemoryManager;
-  }
-
   public double getWalBufferQueueProportion() {
     return walBufferQueueProportion;
   }
@@ -3629,28 +3513,12 @@ public class IoTDBConfig {
     this.walBufferQueueProportion = walBufferQueueProportion;
   }
 
-  public MemoryManager getWalBufferQueueManager() {
-    return walBufferQueueManager;
-  }
-
-  public void setWalBufferQueueManager(MemoryManager walBufferQueueManager) {
-    this.walBufferQueueManager = walBufferQueueManager;
-  }
-
   public double getDevicePathCacheProportion() {
     return devicePathCacheProportion;
   }
 
   public void setDevicePathCacheProportion(double devicePathCacheProportion) {
     this.devicePathCacheProportion = devicePathCacheProportion;
-  }
-
-  public MemoryManager getDevicePathCacheMemoryManager() {
-    return devicePathCacheMemoryManager;
-  }
-
-  public void setDevicePathCacheMemoryManager(MemoryManager devicePathCacheMemoryManager) {
-    this.devicePathCacheMemoryManager = devicePathCacheMemoryManager;
   }
 
   public static String getEnvironmentVariables() {

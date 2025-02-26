@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
+import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -46,9 +47,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class SystemInfo {
+  private static final Logger logger = LoggerFactory.getLogger(SystemInfo.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final Logger logger = LoggerFactory.getLogger(SystemInfo.class);
+  private static final MemoryConfig memoryConfig = MemoryConfig.getInstance();
 
   private long totalStorageGroupMemCost = 0L;
   private volatile boolean rejected = false;
@@ -78,9 +80,13 @@ public class SystemInfo {
 
   private SystemInfo() {
     compactionMemoryBlock =
-        config.getCompactionMemoryManager().forceAllocate("Compaction", MemoryBlockType.FUNCTION);
+        memoryConfig
+            .getCompactionMemoryManager()
+            .forceAllocate("Compaction", MemoryBlockType.FUNCTION);
     walBufferQueueMemoryBlock =
-        config.getWalBufferQueueManager().forceAllocate("WalBufferQueue", MemoryBlockType.FUNCTION);
+        memoryConfig
+            .getWalBufferQueueManager()
+            .forceAllocate("WalBufferQueue", MemoryBlockType.FUNCTION);
     directBufferMemoryBlock =
         config
             .getDirectBufferMemoryManager()
@@ -343,7 +349,7 @@ public class SystemInfo {
   }
 
   public void loadWriteMemory() {
-    memorySizeForMemtable = config.getMemtableMemoryManager().getTotalMemorySizeInBytes();
+    memorySizeForMemtable = memoryConfig.getMemtableMemoryManager().getTotalMemorySizeInBytes();
     FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
     REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
     WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
