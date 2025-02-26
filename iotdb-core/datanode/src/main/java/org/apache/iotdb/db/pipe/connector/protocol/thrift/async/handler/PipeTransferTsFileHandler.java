@@ -400,6 +400,12 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
           client.setShouldReturnSelf(true);
           client.returnSelf();
         }
+        if (clients != null) {
+          for (final AsyncPipeDataTransferServiceClient client : clients) {
+            client.setShouldReturnSelf(true);
+            client.returnSelf();
+          }
+        }
       }
 
       return true;
@@ -428,8 +434,12 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
               .handle(status, response.getStatus().getMessage(), tsFile.getName());
         }
       }
-
-      transfer(clientManager, client);
+      if (client != null) {
+        transfer(clientManager, client);
+      }
+      if (clients != null) {
+        transfer(clientManager, clients);
+      }
     } catch (final Exception e) {
       onError(e);
       return false;
@@ -484,6 +494,10 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     } finally {
       try {
         if (client != null) {
+          client.setShouldReturnSelf(true);
+          client.returnSelf();
+        }
+        for (final AsyncPipeDataTransferServiceClient client : clients) {
           client.setShouldReturnSelf(true);
           client.returnSelf();
         }
