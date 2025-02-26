@@ -101,9 +101,9 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   }
 
   @Override
-  public synchronized void cleanUp() {
+  public synchronized void cleanUp(final boolean force) {
     // do nothing if it has next or still referenced by unacked response
-    if (hasNext() || referenceCount.get() != 0) {
+    if (!force && (hasNext() || referenceCount.get() != 0)) {
       return;
     }
 
@@ -226,7 +226,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     currentTsFileInsertionEvent = null;
 
     if (Objects.nonNull(iterationSnapshot)) {
-      iterationSnapshot.clear();
+      iterationSnapshot.clear(false);
     }
     iterationSnapshot = new SubscriptionPipeTabletIterationSnapshot();
     referenceCount.set(0);
