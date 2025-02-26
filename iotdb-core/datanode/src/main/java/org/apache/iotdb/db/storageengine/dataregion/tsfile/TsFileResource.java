@@ -399,15 +399,11 @@ public class TsFileResource implements PersistentResource {
     sourceModFile.writeLock();
     try {
       if (sourceModFile.exists()) {
-        LOGGER.error(
-            "Linking existing modification file {} to file {}", sourceModFile, targetModsFile);
         Files.createLink(
             targetModsFile.toPath(), ModificationFile.getExclusiveMods(getTsFile()).toPath());
         targetModsFileObject = new ModificationFile(targetModsFile, true);
         sourceModFile.setCascadeFile(Collections.singleton(targetModsFileObject));
       } else {
-        LOGGER.error(
-            "Linking non-existing modification file {} to file {}", sourceModFile, targetModsFile);
         targetModsFileObject = new ModificationFile(targetModsFile, true);
         sourceModFile.setCascadeFile(Collections.singleton(targetModsFileObject));
       }
