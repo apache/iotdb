@@ -120,8 +120,6 @@ public class RouteBalancer implements IClusterStatusSubscriber {
   private final Map<TConsensusGroupId, Long> lastFailedTimeForLeaderBalance;
 
   private final Map<Integer, List<String>> lastBalancedOldLeaderId2RegionMap;
-  private Map<TConsensusGroupId, Integer> lastSchemaRegion2OldLeaderMap;
-  private Set<TConsensusGroupId> lastBalancedSchemaRegionSet;
   private Map<TConsensusGroupId, Integer> lastDataRegion2OldLeaderMap;
   private Set<TConsensusGroupId> lastBalancedDataRegionSet;
 
@@ -277,15 +275,9 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     getLoadManager().forceUpdateConsensusGroupCache(successTransferMap);
 
     // Prepare data for invalidSchemaCacheOfOldLeaders
-    switch (regionGroupType) {
-      case SchemaRegion:
-        lastBalancedSchemaRegionSet = successTransferMap.keySet();
-        lastSchemaRegion2OldLeaderMap = currentLeaderMap;
-        break;
-      case DataRegion:
-        lastBalancedDataRegionSet = successTransferMap.keySet();
-        lastDataRegion2OldLeaderMap = currentLeaderMap;
-        break;
+    if (regionGroupType.equals(TConsensusGroupType.DataRegion)) {
+      lastBalancedDataRegionSet = successTransferMap.keySet();
+      lastDataRegion2OldLeaderMap = currentLeaderMap;
     }
   }
 
@@ -324,9 +316,6 @@ public class RouteBalancer implements IClusterStatusSubscriber {
               .sendAsyncRequest(invalidateSchemaCacheRequestHandler);
         };
 
-    if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION) {
-      consumer.accept(lastSchemaRegion2OldLeaderMap, lastBalancedSchemaRegionSet);
-    }
     if (IS_ENABLE_AUTO_LEADER_BALANCE_FOR_DATA_REGION) {
       consumer.accept(lastDataRegion2OldLeaderMap, lastBalancedDataRegionSet);
     }
