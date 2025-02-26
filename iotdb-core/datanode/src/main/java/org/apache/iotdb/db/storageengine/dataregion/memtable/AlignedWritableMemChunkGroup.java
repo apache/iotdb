@@ -163,10 +163,17 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     memChunk.serializeToWAL(buffer);
   }
 
-  public static AlignedWritableMemChunkGroup deserialize(DataInputStream stream)
+  protected static AlignedWritableMemChunkGroup deserialize(DataInputStream stream)
       throws IOException {
     AlignedWritableMemChunkGroup memChunkGroup = new AlignedWritableMemChunkGroup();
     memChunkGroup.memChunk = AlignedWritableMemChunk.deserialize(stream);
+    return memChunkGroup;
+  }
+
+  protected static AlignedWritableMemChunkGroup deserializeSingleTVListMemChunks(
+      DataInputStream stream) throws IOException {
+    AlignedWritableMemChunkGroup memChunkGroup = new AlignedWritableMemChunkGroup();
+    memChunkGroup.memChunk = AlignedWritableMemChunk.deserializeSingleTVListMemChunks(stream);
     return memChunkGroup;
   }
 }

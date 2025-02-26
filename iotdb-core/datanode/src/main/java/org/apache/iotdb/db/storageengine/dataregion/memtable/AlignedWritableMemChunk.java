@@ -956,6 +956,19 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     return chunk;
   }
 
+  public static AlignedWritableMemChunk deserializeSingleTVListMemChunks(DataInputStream stream)
+      throws IOException {
+    int schemaListSize = stream.readInt();
+    List<IMeasurementSchema> schemaList = new ArrayList<>(schemaListSize);
+    for (int i = 0; i < schemaListSize; i++) {
+      IMeasurementSchema schema = MeasurementSchema.deserializeFrom(stream);
+      schemaList.add(schema);
+    }
+
+    AlignedTVList list = AlignedTVList.deserialize(stream);
+    return new AlignedWritableMemChunk(schemaList, list);
+  }
+
   public List<IMeasurementSchema> getSchemaList() {
     return schemaList;
   }
