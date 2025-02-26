@@ -391,7 +391,7 @@ public class OPCDAConnector implements PipeConnector {
     if (Objects.nonNull(opcServer)) {
       opcServer.Release();
     }
-    // 卸载 COM 库
+    // Unload COM
     Ole32.INSTANCE.CoUninitialize();
   }
 }
