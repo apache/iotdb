@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.load;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -49,8 +50,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * The {@link LoadManager} at ConfigNodeGroup-Leader is active. It proactively implements the
@@ -274,6 +277,17 @@ public class LoadManager {
     }
     loadCache.updateNodeStatistics(true);
     eventService.checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
+  }
+
+  public void updateConnectivityGraph(int nodeId, final Map<TEndPoint, String> localStatus) {
+    final Map<TEndPoint, Integer> ep2idMap = configManager.getNodeManager().getDataNodeTEndPoint2NodeIdMap();
+    final Set<Integer> unreachableNodes =
+        localStatus.entrySet().stream()
+            .filter(entry -> entry.getValue().equals(NodeStatus.Unknown.getStatus()))
+            .map(Map.Entry::getKey)
+            .map(ep2idMap::get)
+            .collect(Collectors.toSet());
+    loadCache.updateConnectivityMap(nodeId, unreachableNodes);
   }
 
   /**

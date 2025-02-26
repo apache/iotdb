@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -1105,6 +1106,19 @@ public class NodeManager {
     return dataNodeId < 0
         ? Optional.empty()
         : Optional.of(getRegisteredDataNode(dataNodeId).getLocation());
+  }
+
+  /**
+   * Get the mapping from TEndPoint -> DataNodeId
+   * @return Map[TEndPoint, NodeId]
+   */
+  public Map<TEndPoint, Integer> getDataNodeTEndPoint2NodeIdMap() {
+    final Map<TEndPoint, Integer> map = new HashMap<>();
+    for (Map.Entry<Integer, TDataNodeLocation> entry :
+        getRegisteredDataNodeLocations().entrySet()) {
+      map.put(entry.getValue().getInternalEndPoint(), entry.getKey());
+    }
+    return Collections.unmodifiableMap(map);
   }
 
   /**

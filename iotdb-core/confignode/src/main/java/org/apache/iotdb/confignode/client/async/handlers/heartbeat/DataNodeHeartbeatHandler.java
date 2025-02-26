@@ -160,7 +160,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<TDataNodeHe
     }
 
     if (heartbeatResp.isSetNodeStatusMap()) {
-      // TODO add logic here
+      loadManager.updateConnectivityGraph(nodeId, heartbeatResp.getNodeStatusMap());
     }
   }
 

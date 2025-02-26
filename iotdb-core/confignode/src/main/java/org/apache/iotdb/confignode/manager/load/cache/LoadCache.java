@@ -54,7 +54,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -86,6 +88,8 @@ public class LoadCache {
   private final Map<Integer, AtomicBoolean> heartbeatProcessingMap;
   // Map<NodeId, BaseNodeCache>
   private final Map<Integer, BaseNodeCache> nodeCacheMap;
+  // Map<NodeId, List of reachable NodeIds>
+  private final Map<Integer, Set<Integer>> connectivityGraph;
   // Map<RegionGroupId, RegionGroupCache>
   private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
   // Map<NodeId, Map<RegionGroupId, RegionSize>>
@@ -97,6 +101,7 @@ public class LoadCache {
 
   public LoadCache() {
     this.nodeCacheMap = new ConcurrentHashMap<>();
+    this.connectivityGraph = new ConcurrentHashMap<>();
     this.heartbeatProcessingMap = new ConcurrentHashMap<>();
     this.regionGroupCacheMap = new ConcurrentHashMap<>();
     this.regionSizeMap = new ConcurrentHashMap<>();
@@ -125,6 +130,7 @@ public class LoadCache {
 
     final int CURRENT_NODE_ID = ConfigNodeHeartbeatCache.CURRENT_NODE_ID;
     nodeCacheMap.clear();
+    connectivityGraph.clear();
     heartbeatProcessingMap.clear();
 
     // Init ConfigNodeHeartbeatCache
@@ -146,6 +152,17 @@ public class LoadCache {
         dataNodeConfiguration -> {
           int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
           createNodeHeartbeatCache(NodeType.DataNode, dataNodeId);
+        });
+
+    // Init DataNode connectivity graph
+    final List<Integer> allNodes =
+        registeredDataNodes.stream()
+            .map(d -> d.getLocation().getDataNodeId())
+            .collect(Collectors.toList());
+    registeredDataNodes.forEach(
+        dataNodeConfiguration -> {
+          int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
+          connectivityGraph.put(dataNodeId, Collections.synchronizedSet(new HashSet<>(allNodes)));
         });
 
     // Init AiNodeHeartbeatCache
@@ -186,6 +203,7 @@ public class LoadCache {
   public void clearHeartbeatCache() {
     heartbeatProcessingMap.clear();
     nodeCacheMap.clear();
+    connectivityGraph.clear();
     regionGroupCacheMap.clear();
     consensusGroupCacheMap.clear();
   }
@@ -215,6 +233,15 @@ public class LoadCache {
         break;
       case DataNode:
         nodeCacheMap.put(nodeId, new DataNodeHeartbeatCache(nodeId));
+
+        // newly added DataNode is reachable to all existing DataNodes by default
+        for (Set<Integer> connectivityList : connectivityGraph.values()) {
+          connectivityList.add(nodeId);
+        }
+        final Set<Integer> allDataNodeIds = new HashSet<>(connectivityGraph.keySet());
+        allDataNodeIds.add(nodeId);
+        connectivityGraph.put(nodeId, Collections.synchronizedSet(allDataNodeIds));
+
         break;
       case AINode:
         nodeCacheMap.put(nodeId, new AINodeHeartbeatCache(nodeId));
@@ -249,6 +276,12 @@ public class LoadCache {
     Optional.ofNullable(heartbeatProcessingMap.get(nodeId)).ifPresent(node -> node.set(false));
   }
 
+  public void updateConnectivityMap(int nodeId, Set<Integer> unreachable) {
+    final Set<Integer> allNodes = new HashSet<>(connectivityGraph.keySet());
+    allNodes.removeAll(unreachable);
+    connectivityGraph.put(nodeId, Collections.synchronizedSet(allNodes));
+  }
+
   /**
    * Cache the latest heartbeat sample of a AINode.
    *
@@ -274,6 +307,7 @@ public class LoadCache {
   public void removeNodeCache(int nodeId) {
     nodeCacheMap.remove(nodeId);
     heartbeatProcessingMap.remove(nodeId);
+    connectivityGraph.remove(nodeId);
   }
 
   /**

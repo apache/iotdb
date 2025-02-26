@@ -69,7 +69,6 @@ public class ConnectivityManager {
     private synchronized boolean isAlive() {
       // 10 seconds passed since the last success connection
       // at least 1 failure report
-      // TODO can we use the failure detector similarly?
       return !(failures > 0 && System.nanoTime() - lastTimestamp > 10_000_000_000L);
     }
   }
