@@ -66,9 +66,9 @@ public class OPCDAServerHandle implements Closeable {
   private static final Logger LOGGER = LoggerFactory.getLogger(OPCDAServerHandle.class);
 
   private final PointerByReference ppvServer = new PointerByReference();
-  private OPCDAHeader.IOPCServer opcServer;
-  private OPCDAHeader.IOPCItemMgt itemMgt;
-  private OPCDAHeader.IOPCSyncIO syncIO;
+  private final OPCDAHeader.IOPCServer opcServer;
+  private final OPCDAHeader.IOPCItemMgt itemMgt;
+  private final OPCDAHeader.IOPCSyncIO syncIO;
   private final Map<String, Integer> serverHandleMap = new ConcurrentHashMap<>();
   private final Map<String, Long> serverTimestampMap = new ConcurrentHashMap<>();
 
@@ -336,7 +336,7 @@ public class OPCDAServerHandle implements Closeable {
 
   @Override
   public void close() {
-    // Release static memory
+    // Help gc
     serverTimestampMap.clear();
     serverHandleMap.clear();
 

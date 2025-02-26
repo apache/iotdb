@@ -49,7 +49,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 public class OPCDAConnector implements PipeConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(OPCDAConnector.class);
   private static final Map<String, Pair<AtomicInteger, OPCDAServerHandle>>
-          CLS_ID_TO_REFERENCE_COUNT_AND_HANDLE_MAP = new ConcurrentHashMap<>();
+      CLS_ID_TO_REFERENCE_COUNT_AND_HANDLE_MAP = new ConcurrentHashMap<>();
   private String clsID;
   private OPCDAServerHandle handle;
 
