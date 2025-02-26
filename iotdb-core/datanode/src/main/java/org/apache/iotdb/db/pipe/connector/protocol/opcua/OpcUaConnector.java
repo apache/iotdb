@@ -80,8 +80,11 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 
 /**
  * Send data in IoTDB based on Opc Ua protocol, using Eclipse Milo. All data are converted into
- * tablets, then eventNodes to send to the subscriber clients. Notice that there is no namespace
- * since the eventNodes do not need to be saved.
+ * tablets, and then:
+ *
+ * <p>1. In pub-sub mode, converted to eventNodes to send to the subscriber clients.
+ *
+ * <p>2. In client-server mode, push the newest value to the local server.
  */
 @TreeModel
 @TableModel
