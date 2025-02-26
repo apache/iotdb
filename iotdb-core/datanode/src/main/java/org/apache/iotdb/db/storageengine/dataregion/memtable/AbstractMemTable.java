@@ -909,7 +909,8 @@ public abstract class AbstractMemTable implements IMemTable {
     }
   }
 
-  protected void deserialize(DataInputStream stream) throws IOException {
+  protected void deserialize(DataInputStream stream, boolean multiTvListMemChunk)
+      throws IOException {
     seriesNumber = stream.readInt();
     memSize = stream.readLong();
     tvListRamCost = stream.readLong();
@@ -924,34 +925,18 @@ public abstract class AbstractMemTable implements IMemTable {
       IDeviceID deviceID = deviceIDFactory.getDeviceID(ReadWriteIOUtils.readString(stream));
       boolean isAligned = ReadWriteIOUtils.readBool(stream);
       IWritableMemChunkGroup memChunkGroup;
-      if (isAligned) {
-        memChunkGroup = AlignedWritableMemChunkGroup.deserialize(stream);
+      if (multiTvListMemChunk) {
+        if (isAligned) {
+          memChunkGroup = AlignedWritableMemChunkGroup.deserialize(stream);
+        } else {
+          memChunkGroup = WritableMemChunkGroup.deserialize(stream);
+        }
       } else {
-        memChunkGroup = WritableMemChunkGroup.deserialize(stream);
-      }
-      memTableMap.put(deviceID, memChunkGroup);
-    }
-  }
-
-  protected void deserializeSingleTVListMemChunks(DataInputStream stream) throws IOException {
-    seriesNumber = stream.readInt();
-    memSize = stream.readLong();
-    tvListRamCost = stream.readLong();
-    totalPointsNum = stream.readLong();
-    totalPointsNumThreshold = stream.readLong();
-    maxPlanIndex = stream.readLong();
-    minPlanIndex = stream.readLong();
-
-    int memTableMapSize = stream.readInt();
-    for (int i = 0; i < memTableMapSize; ++i) {
-
-      IDeviceID deviceID = deviceIDFactory.getDeviceID(ReadWriteIOUtils.readString(stream));
-      boolean isAligned = ReadWriteIOUtils.readBool(stream);
-      IWritableMemChunkGroup memChunkGroup;
-      if (isAligned) {
-        memChunkGroup = AlignedWritableMemChunkGroup.deserializeSingleTVListMemChunks(stream);
-      } else {
-        memChunkGroup = WritableMemChunkGroup.deserializeSingleTVListMemChunks(stream);
+        if (isAligned) {
+          memChunkGroup = AlignedWritableMemChunkGroup.deserializeSingleTVListMemChunks(stream);
+        } else {
+          memChunkGroup = WritableMemChunkGroup.deserializeSingleTVListMemChunks(stream);
+        }
       }
       memTableMap.put(deviceID, memChunkGroup);
     }
@@ -985,11 +970,7 @@ public abstract class AbstractMemTable implements IMemTable {
       } else {
         // database will be updated when deserialize
         PrimitiveMemTable primitiveMemTable = new PrimitiveMemTable();
-        if (marker == -1) {
-          primitiveMemTable.deserialize(stream);
-        } else {
-          primitiveMemTable.deserializeSingleTVListMemChunks(stream);
-        }
+        primitiveMemTable.deserialize(stream, marker == -1);
         memTable = primitiveMemTable;
       }
       return memTable;
