@@ -90,6 +90,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
   private IoTDBDataNodeAsyncClientManager clientManager;
   private AsyncPipeDataTransferServiceClient client;
+  private List<AsyncPipeDataTransferServiceClient> clients;
 
   public PipeTransferTsFileHandler(
       final IoTDBDataRegionAsyncConnector connector,
@@ -220,6 +221,115 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       return;
     }
 
+    position += readLength;
+  }
+
+  public void transfer(
+      final IoTDBDataNodeAsyncClientManager clientManager,
+      final List<AsyncPipeDataTransferServiceClient> clients)
+      throws TException, IOException {
+    this.clientManager = clientManager;
+    this.clients = clients;
+
+    clients.forEach(
+        client -> {
+          client.setShouldReturnSelf(false);
+          client.setTimeoutDynamically(clientManager.getConnectionTimeout());
+        });
+
+    final int readLength = reader.read(readBuffer);
+
+    if (readLength == -1) {
+      if (currentFile == modFile) {
+        currentFile = tsFile;
+        position = 0;
+        try {
+          reader.close();
+        } catch (final IOException e) {
+          LOGGER.warn("Failed to close file reader when successfully transferred mod file.", e);
+        }
+        reader = new RandomAccessFile(tsFile, "r");
+        transfer(clientManager, clients);
+      } else if (currentFile == tsFile) {
+        isSealSignalSent.set(true);
+
+        final TPipeTransferReq uncompressedReq =
+            transferMod
+                ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                    modFile.getName(),
+                    modFile.length(),
+                    tsFile.getName(),
+                    tsFile.length(),
+                    dataBaseName)
+                : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                    tsFile.getName(), tsFile.length(), dataBaseName);
+        final TPipeTransferReq req =
+            connector.isRpcCompressionEnabled()
+                ? PipeTransferCompressedReq.toTPipeTransferReq(
+                    uncompressedReq, connector.getCompressors())
+                : uncompressedReq;
+        for (AsyncPipeDataTransferServiceClient client : clients) {
+          pipeName2WeightMap.forEach(
+              (pipePair, weight) ->
+                  connector.rateLimitIfNeeded(
+                      pipePair.getLeft(),
+                      pipePair.getRight(),
+                      client.getEndPoint(),
+                      (long) (req.getBody().length * weight)));
+          try {
+            if (!tryTransfer(client, req)) {
+              return;
+            }
+          } catch (TException e) {
+            LOGGER.warn(
+                "Exception occurred while sending to receiver {}:{}",
+                client.getIp(),
+                client.getPort(),
+                e);
+            this.onError(e);
+          }
+        }
+      }
+      return;
+    }
+
+    final byte[] payload =
+        readLength == readFileBufferSize
+            ? readBuffer
+            : Arrays.copyOfRange(readBuffer, 0, readLength);
+    final TPipeTransferReq uncompressedReq =
+        transferMod
+            ? PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(
+                currentFile.getName(), position, payload)
+            : PipeTransferTsFilePieceReq.toTPipeTransferReq(
+                currentFile.getName(), position, payload);
+    final TPipeTransferReq req =
+        connector.isRpcCompressionEnabled()
+            ? PipeTransferCompressedReq.toTPipeTransferReq(
+                uncompressedReq, connector.getCompressors())
+            : uncompressedReq;
+
+    for (AsyncPipeDataTransferServiceClient client : clients) {
+      pipeName2WeightMap.forEach(
+          (pipePair, weight) ->
+              connector.rateLimitIfNeeded(
+                  pipePair.getLeft(),
+                  pipePair.getRight(),
+                  client.getEndPoint(),
+                  (long) (req.getBody().length * weight)));
+      try {
+        if (!tryTransfer(client, req)) {
+          return;
+        }
+      } catch (TException e) {
+        LOGGER.warn(
+            "Exception occurred while sending to receiver {}:{}",
+            client.getIp(),
+            client.getPort(),
+            e);
+        this.onError(e);
+      }
+    }
     position += readLength;
   }
 

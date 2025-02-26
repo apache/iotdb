@@ -108,6 +108,9 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
             ? allAliveSocketsIndex()
             : Collections.singletonList(nextSocketIndex());
 
+    final byte[] bytes =
+        PipeTransferPlanNodeReq.toTPipeTransferBytes(pipeSchemaRegionWritePlanEvent.getPlanNode());
+
     for (final int socketIndex : socketIndexes) {
       final AirGapSocket socket = sockets.get(socketIndex);
       try {
@@ -115,8 +118,7 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
             pipeSchemaRegionWritePlanEvent.getPipeName(),
             pipeSchemaRegionWritePlanEvent.getCreationTime(),
             socket,
-            PipeTransferPlanNodeReq.toTPipeTransferBytes(
-                pipeSchemaRegionWritePlanEvent.getPlanNode()))) {
+            bytes)) {
           final String errorMessage =
               String.format(
                   "Transfer data node write plan %s error. Socket: %s.",
@@ -161,41 +163,37 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
         shouldSendToAllClients
             ? allAliveSocketsIndex()
             : Collections.singletonList(nextSocketIndex());
+    final byte[] bytes =
+        PipeTransferSchemaSnapshotSealReq.toTPipeTransferBytes(
+            // The pattern is surely Non-null
+            pipeSchemaRegionSnapshotEvent.getTreePatternString(),
+            pipeSchemaRegionSnapshotEvent.getTablePattern().getDatabasePattern(),
+            pipeSchemaRegionSnapshotEvent.getTablePattern().getTablePattern(),
+            pipeSchemaRegionSnapshotEvent.getTreePattern().isTreeModelDataAllowedToBeCaptured(),
+            pipeSchemaRegionSnapshotEvent.getTablePattern().isTableModelDataAllowedToBeCaptured(),
+            mtreeSnapshotFile.getName(),
+            mtreeSnapshotFile.length(),
+            Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,
+            Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
+            Objects.nonNull(attributeSnapshotFile) ? attributeSnapshotFile.getName() : null,
+            Objects.nonNull(attributeSnapshotFile) ? attributeSnapshotFile.length() : 0,
+            pipeSchemaRegionSnapshotEvent.getDatabaseName(),
+            pipeSchemaRegionSnapshotEvent.toSealTypeString());
+    // 1. Transfer mTreeSnapshotFile, and tLog file if exists
+    transferFilePieces(pipeName, creationTime, mtreeSnapshotFile, socketIndexes, true);
+    if (Objects.nonNull(tagLogSnapshotFile)) {
+      transferFilePieces(pipeName, creationTime, tagLogSnapshotFile, socketIndexes, true);
+    }
+    if (Objects.nonNull(attributeSnapshotFile)) {
+      transferFilePieces(pipeName, creationTime, attributeSnapshotFile, socketIndexes, true);
+    }
 
     for (final int socketIndex : socketIndexes) {
       final AirGapSocket socket = sockets.get(socketIndex);
 
       try {
-        // 1. Transfer mTreeSnapshotFile, and tLog file if exists
-        transferFilePieces(pipeName, creationTime, mtreeSnapshotFile, socket, true);
-        if (Objects.nonNull(tagLogSnapshotFile)) {
-          transferFilePieces(pipeName, creationTime, tagLogSnapshotFile, socket, true);
-        }
-        if (Objects.nonNull(attributeSnapshotFile)) {
-          transferFilePieces(pipeName, creationTime, attributeSnapshotFile, socket, true);
-        }
         // 2. Transfer file seal signal, which means the snapshots is transferred completely
-        if (!send(
-            pipeName,
-            creationTime,
-            socket,
-            PipeTransferSchemaSnapshotSealReq.toTPipeTransferBytes(
-                // The pattern is surely Non-null
-                pipeSchemaRegionSnapshotEvent.getTreePatternString(),
-                pipeSchemaRegionSnapshotEvent.getTablePattern().getDatabasePattern(),
-                pipeSchemaRegionSnapshotEvent.getTablePattern().getTablePattern(),
-                pipeSchemaRegionSnapshotEvent.getTreePattern().isTreeModelDataAllowedToBeCaptured(),
-                pipeSchemaRegionSnapshotEvent
-                    .getTablePattern()
-                    .isTableModelDataAllowedToBeCaptured(),
-                mtreeSnapshotFile.getName(),
-                mtreeSnapshotFile.length(),
-                Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,
-                Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
-                Objects.nonNull(attributeSnapshotFile) ? attributeSnapshotFile.getName() : null,
-                Objects.nonNull(attributeSnapshotFile) ? attributeSnapshotFile.length() : 0,
-                pipeSchemaRegionSnapshotEvent.getDatabaseName(),
-                pipeSchemaRegionSnapshotEvent.toSealTypeString()))) {
+        if (!send(pipeName, creationTime, socket, bytes)) {
           final String errorMessage =
               String.format(
                   "Seal schema region snapshot file %s and %s error. Socket %s.",

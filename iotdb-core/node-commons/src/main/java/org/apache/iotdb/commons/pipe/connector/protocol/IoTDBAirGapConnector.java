@@ -261,7 +261,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       final String pipeName,
       final long creationTime,
       final File file,
-      final AirGapSocket socket,
+      final List<Integer> socketIndexes,
       final boolean isMultiFile)
       throws PipeException, IOException {
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
@@ -278,27 +278,36 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
             readLength == readFileBufferSize
                 ? readBuffer
                 : Arrays.copyOfRange(readBuffer, 0, readLength);
-        if (!send(
-            pipeName,
-            creationTime,
-            socket,
+        final byte[] bytes =
             isMultiFile
                 ? getTransferMultiFilePieceBytes(file.getName(), position, payload)
-                : getTransferSingleFilePieceBytes(file.getName(), position, payload))) {
-          final String errorMessage =
-              String.format("Transfer file %s error. Socket %s.", file, socket);
-          if (mayNeedHandshakeWhenFail()) {
-            // Send handshake because we don't know whether the receiver side configNode
-            // has set up a new one
-            sendHandshakeReq(socket);
+                : getTransferSingleFilePieceBytes(file.getName(), position, payload);
+        for (final int socketIndex : socketIndexes) {
+          final AirGapSocket socket = sockets.get(socketIndex);
+          try {
+            if (!send(pipeName, creationTime, socket, bytes)) {
+              final String errorMessage =
+                  String.format("Transfer file %s error. Socket %s.", file, socket);
+              if (mayNeedHandshakeWhenFail()) {
+                // Send handshake because we don't know whether the receiver side configNode
+                // has set up a new one
+                sendHandshakeReq(socket);
+              }
+              receiverStatusHandler.handle(
+                  new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+                      .setMessage(errorMessage),
+                  errorMessage,
+                  file.toString());
+            } else {
+              position += readLength;
+            }
+          } catch (final Exception e) {
+            isSocketAlive.set(socketIndex, false);
+            throw new PipeConnectionException(
+                String.format(
+                    "Network error when transfer file %s, because %s.", file, e.getMessage()),
+                e);
           }
-          receiverStatusHandler.handle(
-              new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
-                  .setMessage(errorMessage),
-              errorMessage,
-              file.toString());
-        } else {
-          position += readLength;
         }
       }
     }

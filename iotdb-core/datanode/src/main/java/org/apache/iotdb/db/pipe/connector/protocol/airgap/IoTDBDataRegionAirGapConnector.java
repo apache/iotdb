@@ -158,7 +158,8 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
         shouldSendToAllClients
             ? allAliveSocketsIndex()
             : Collections.singletonList(nextSocketIndex());
-
+    final byte[] bytes =
+        PipeTransferPlanNodeReq.toTPipeTransferBytes(pipeDeleteDataNodeEvent.getDeleteDataNode());
     for (final int socketIndex : socketIndexes) {
       final AirGapSocket socket = sockets.get(socketIndex);
       try {
@@ -166,8 +167,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
             pipeDeleteDataNodeEvent.getPipeName(),
             pipeDeleteDataNodeEvent.getCreationTime(),
             socket,
-            PipeTransferPlanNodeReq.toTPipeTransferBytes(
-                pipeDeleteDataNodeEvent.getDeleteDataNode()))) {
+            bytes)) {
           final String errorMessage =
               String.format(
                   "Transfer deletion %s error. Socket: %s.",
@@ -208,25 +208,23 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
         shouldSendToAllClients
             ? allAliveSocketsIndex()
             : Collections.singletonList(nextSocketIndex());
-
+    final InsertNode insertNode =
+        pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+    final byte[] bytes =
+        Objects.isNull(insertNode)
+            ? PipeTransferTabletBinaryReqV2.toTPipeTransferBytes(
+                pipeInsertNodeTabletInsertionEvent.getByteBuffer(),
+                pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
+                    ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
+                    : null)
+            : PipeTransferTabletInsertNodeReqV2.toTPipeTransferBytes(
+                insertNode,
+                pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
+                    ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
+                    : null);
     for (final int socketIndex : socketIndexes) {
       final AirGapSocket socket = sockets.get(socketIndex);
       try {
-        final InsertNode insertNode =
-            pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
-        final byte[] bytes =
-            Objects.isNull(insertNode)
-                ? PipeTransferTabletBinaryReqV2.toTPipeTransferBytes(
-                    pipeInsertNodeTabletInsertionEvent.getByteBuffer(),
-                    pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
-                        ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
-                        : null)
-                : PipeTransferTabletInsertNodeReqV2.toTPipeTransferBytes(
-                    insertNode,
-                    pipeInsertNodeTabletInsertionEvent.isTableModelEvent()
-                        ? pipeInsertNodeTabletInsertionEvent.getTableModelDatabaseName()
-                        : null);
-
         if (!send(
             pipeInsertNodeTabletInsertionEvent.getPipeName(),
             pipeInsertNodeTabletInsertionEvent.getCreationTime(),
@@ -270,7 +268,13 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
         shouldSendToAllClients
             ? allAliveSocketsIndex()
             : Collections.singletonList(nextSocketIndex());
-
+    final byte[] bytes =
+        PipeTransferTabletRawReqV2.toTPipeTransferBytes(
+            pipeRawTabletInsertionEvent.convertToTablet(),
+            pipeRawTabletInsertionEvent.isAligned(),
+            pipeRawTabletInsertionEvent.isTableModelEvent()
+                ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
+                : null);
     for (final int socketIndex : socketIndexes) {
       final AirGapSocket socket = sockets.get(socketIndex);
       try {
@@ -278,12 +282,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
             pipeRawTabletInsertionEvent.getPipeName(),
             pipeRawTabletInsertionEvent.getCreationTime(),
             socket,
-            PipeTransferTabletRawReqV2.toTPipeTransferBytes(
-                pipeRawTabletInsertionEvent.convertToTablet(),
-                pipeRawTabletInsertionEvent.isAligned(),
-                pipeRawTabletInsertionEvent.isTableModelEvent()
-                    ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
-                    : null))) {
+            bytes)) {
           final String errorMessage =
               String.format(
                   "Transfer PipeRawTabletInsertionEvent %s error. Socket: %s.",
@@ -327,64 +326,50 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
             ? allAliveSocketsIndex()
             : Collections.singletonList(nextSocketIndex());
 
+    // 1. Transfer file piece by piece, and mod if needed
+    final byte[] bytes;
+    if (pipeTsFileInsertionEvent.isWithMod() && supportModsIfIsDataNodeReceiver) {
+      final File modFile = pipeTsFileInsertionEvent.getModFile();
+      transferFilePieces(pipeName, creationTime, modFile, socketIndexes, true);
+      transferFilePieces(pipeName, creationTime, tsFile, socketIndexes, true);
+      bytes =
+          PipeTransferTsFileSealWithModReq.toTPipeTransferBytes(
+              modFile.getName(),
+              modFile.length(),
+              tsFile.getName(),
+              tsFile.length(),
+              pipeTsFileInsertionEvent.isTableModelEvent()
+                  ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
+                  : null);
+    } else {
+      transferFilePieces(pipeName, creationTime, tsFile, socketIndexes, false);
+      bytes =
+          PipeTransferTsFileSealWithModReq.toTPipeTransferBytes(
+              tsFile.getName(),
+              tsFile.length(),
+              pipeTsFileInsertionEvent.isTableModelEvent()
+                  ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
+                  : null);
+    }
+    // 2. Transfer file seal signal , which means the file is transferred completely
     for (final int socketIndex : socketIndexes) {
       final AirGapSocket socket = sockets.get(socketIndex);
       final String errorMessage = String.format("Seal file %s error. Socket %s.", tsFile, socket);
       try {
-        // 1. Transfer file piece by piece, and mod if needed
-        if (pipeTsFileInsertionEvent.isWithMod() && supportModsIfIsDataNodeReceiver) {
-          final File modFile = pipeTsFileInsertionEvent.getModFile();
-          transferFilePieces(pipeName, creationTime, modFile, socket, true);
-          transferFilePieces(pipeName, creationTime, tsFile, socket, true);
-          // 2. Transfer file seal signal with mod, which means the file is transferred completely
-          if (!send(
-              pipeName,
-              creationTime,
-              socket,
-              PipeTransferTsFileSealWithModReq.toTPipeTransferBytes(
-                  modFile.getName(),
-                  modFile.length(),
-                  tsFile.getName(),
-                  tsFile.length(),
-                  pipeTsFileInsertionEvent.isTableModelEvent()
-                      ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
-                      : null))) {
-            receiverStatusHandler.handle(
-                new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
-                    .setMessage(errorMessage),
-                errorMessage,
-                pipeTsFileInsertionEvent.toString());
-          } else {
-            LOGGER.info("Successfully transferred file {}.", tsFile);
-          }
-        } else {
-          transferFilePieces(pipeName, creationTime, tsFile, socket, false);
-          // 2. Transfer file seal signal without mod, which means the file is transferred
-          // completely
-          if (!send(
-              pipeName,
-              creationTime,
-              socket,
-              PipeTransferTsFileSealWithModReq.toTPipeTransferBytes(
-                  tsFile.getName(),
-                  tsFile.length(),
-                  pipeTsFileInsertionEvent.isTableModelEvent()
-                      ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
-                      : null))) {
-            receiverStatusHandler.handle(
-                new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
-                    .setMessage(errorMessage),
-                errorMessage,
-                pipeTsFileInsertionEvent.toString());
-          } else {
-            LOGGER.info("Successfully transferred file {}.", tsFile);
-          }
+        if (!send(pipeName, creationTime, socket, bytes)) {
+          receiverStatusHandler.handle(
+              new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+                  .setMessage(errorMessage),
+              errorMessage,
+              pipeTsFileInsertionEvent.toString());
         }
       } catch (final IOException e) {
         isSocketAlive.set(socketIndex, false);
         throw e;
       }
     }
+
+    LOGGER.info("Successfully transferred file {}.", tsFile);
   }
 
   @Override

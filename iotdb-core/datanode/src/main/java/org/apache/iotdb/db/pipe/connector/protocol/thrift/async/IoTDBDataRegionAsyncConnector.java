@@ -472,26 +472,19 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     final AtomicInteger eventsReferenceCount =
         new AtomicInteger(dbTsFilePairs.size() * clients.size());
     final AtomicBoolean eventsHadBeenAddedToRetryQueue = new AtomicBoolean(false);
-    for (final AsyncPipeDataTransferServiceClient client : clients) {
-      for (final Pair<String, File> sealedFile : dbTsFilePairs) {
-        final PipeTransferTsFileHandler pipeTransferTsFileHandler =
-            new PipeTransferTsFileHandler(
-                this,
-                pipe2WeightMap,
-                events,
-                eventsReferenceCount,
-                eventsHadBeenAddedToRetryQueue,
-                sealedFile.right,
-                null,
-                false,
-                sealedFile.left);
-        try {
-          pipeTransferTsFileHandler.transfer(clientManager, client);
-        } catch (final Exception ex) {
-          logOnClientException(client, ex);
-          pipeTransferTsFileHandler.onError(ex);
-        }
-      }
+    for (final Pair<String, File> sealedFile : dbTsFilePairs) {
+      final PipeTransferTsFileHandler pipeTransferTsFileHandler =
+          new PipeTransferTsFileHandler(
+              this,
+              pipe2WeightMap,
+              events,
+              eventsReferenceCount,
+              eventsHadBeenAddedToRetryQueue,
+              sealedFile.right,
+              null,
+              false,
+              sealedFile.left);
+      pipeTransferTsFileHandler.transfer(clientManager, clients);
     }
   }
 
@@ -499,32 +492,25 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       throws Exception {
     final List<AsyncPipeDataTransferServiceClient> clients = clientManager.borrowAllClients();
     final AtomicInteger eventsReferenceCount = new AtomicInteger(clients.size());
-    for (final AsyncPipeDataTransferServiceClient client : clients) {
-      final PipeTransferTsFileHandler pipeTransferTsFileHandler =
-          new PipeTransferTsFileHandler(
-              this,
-              Collections.singletonMap(
-                  new Pair<>(
-                      pipeTsFileInsertionEvent.getPipeName(),
-                      pipeTsFileInsertionEvent.getCreationTime()),
-                  1.0),
-              Collections.singletonList(pipeTsFileInsertionEvent),
-              eventsReferenceCount,
-              new AtomicBoolean(false),
-              pipeTsFileInsertionEvent.getTsFile(),
-              pipeTsFileInsertionEvent.getModFile(),
-              pipeTsFileInsertionEvent.isWithMod()
-                  && clientManager.supportModsIfIsDataNodeReceiver(),
-              pipeTsFileInsertionEvent.isTableModelEvent()
-                  ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
-                  : null);
-      try {
-        pipeTransferTsFileHandler.transfer(clientManager, client);
-      } catch (final Exception ex) {
-        logOnClientException(client, ex);
-        pipeTransferTsFileHandler.onError(ex);
-      }
-    }
+    final PipeTransferTsFileHandler pipeTransferTsFileHandler =
+        new PipeTransferTsFileHandler(
+            this,
+            Collections.singletonMap(
+                new Pair<>(
+                    pipeTsFileInsertionEvent.getPipeName(),
+                    pipeTsFileInsertionEvent.getCreationTime()),
+                1.0),
+            Collections.singletonList(pipeTsFileInsertionEvent),
+            eventsReferenceCount,
+            new AtomicBoolean(false),
+            pipeTsFileInsertionEvent.getTsFile(),
+            pipeTsFileInsertionEvent.getModFile(),
+            pipeTsFileInsertionEvent.isWithMod() && clientManager.supportModsIfIsDataNodeReceiver(),
+            pipeTsFileInsertionEvent.isTableModelEvent()
+                ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
+                : null);
+
+    pipeTransferTsFileHandler.transfer(clientManager, clients);
   }
 
   @Override

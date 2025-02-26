@@ -164,6 +164,9 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
         shouldSendToAllClients
             ? allAliveSocketsIndex()
             : Collections.singletonList(nextSocketIndex());
+    final byte[] bytes =
+        PipeTransferConfigPlanReq.toTPipeTransferBytes(
+            pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan());
     for (final int socketIndex : socketIndexes) {
       final AirGapSocket socket = sockets.get(socketIndex);
       try {
@@ -171,8 +174,7 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
             pipeConfigRegionWritePlanEvent.getPipeName(),
             pipeConfigRegionWritePlanEvent.getCreationTime(),
             socket,
-            PipeTransferConfigPlanReq.toTPipeTransferBytes(
-                pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan()))) {
+            bytes)) {
           final String errorMessage =
               String.format(
                   "Transfer config region write plan %s error. Socket: %s.",
@@ -219,34 +221,32 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
         shouldSendToAllClients
             ? allAliveSocketsIndex()
             : Collections.singletonList(nextSocketIndex());
+
+    final byte[] bytes =
+        PipeTransferConfigSnapshotSealReq.toTPipeTransferBytes(
+            // The pattern is surely Non-null
+            pipeConfigRegionSnapshotEvent.getTreePatternString(),
+            pipeConfigRegionSnapshotEvent.getTablePattern().getDatabasePattern(),
+            pipeConfigRegionSnapshotEvent.getTablePattern().getTablePattern(),
+            pipeConfigRegionSnapshotEvent.getTreePattern().isTreeModelDataAllowedToBeCaptured(),
+            pipeConfigRegionSnapshotEvent.getTablePattern().isTableModelDataAllowedToBeCaptured(),
+            snapshot.getName(),
+            snapshot.length(),
+            Objects.nonNull(templateFile) ? templateFile.getName() : null,
+            Objects.nonNull(templateFile) ? templateFile.length() : 0,
+            pipeConfigRegionSnapshotEvent.getFileType(),
+            pipeConfigRegionSnapshotEvent.toSealTypeString());
+
+    // 1. Transfer snapshotFile, and template file if exists
+    transferFilePieces(pipeName, creationTime, snapshot, socketIndexes, true);
+    if (Objects.nonNull(templateFile)) {
+      transferFilePieces(pipeName, creationTime, templateFile, socketIndexes, true);
+    }
     for (final int socketIndex : socketIndexes) {
       final AirGapSocket socket = sockets.get(socketIndex);
       try {
-        // 1. Transfer snapshotFile, and template file if exists
-        transferFilePieces(pipeName, creationTime, snapshot, socket, true);
-        if (Objects.nonNull(templateFile)) {
-          transferFilePieces(pipeName, creationTime, templateFile, socket, true);
-        }
         // 2. Transfer file seal signal, which means the snapshots are transferred completely
-        if (!send(
-            pipeName,
-            creationTime,
-            socket,
-            PipeTransferConfigSnapshotSealReq.toTPipeTransferBytes(
-                // The pattern is surely Non-null
-                pipeConfigRegionSnapshotEvent.getTreePatternString(),
-                pipeConfigRegionSnapshotEvent.getTablePattern().getDatabasePattern(),
-                pipeConfigRegionSnapshotEvent.getTablePattern().getTablePattern(),
-                pipeConfigRegionSnapshotEvent.getTreePattern().isTreeModelDataAllowedToBeCaptured(),
-                pipeConfigRegionSnapshotEvent
-                    .getTablePattern()
-                    .isTableModelDataAllowedToBeCaptured(),
-                snapshot.getName(),
-                snapshot.length(),
-                Objects.nonNull(templateFile) ? templateFile.getName() : null,
-                Objects.nonNull(templateFile) ? templateFile.length() : 0,
-                pipeConfigRegionSnapshotEvent.getFileType(),
-                pipeConfigRegionSnapshotEvent.toSealTypeString()))) {
+        if (!send(pipeName, creationTime, socket, bytes)) {
           final String errorMessage =
               String.format("Seal config region snapshot %s error. Socket %s.", snapshot, socket);
           // Send handshake because we don't know whether the receiver side configNode
