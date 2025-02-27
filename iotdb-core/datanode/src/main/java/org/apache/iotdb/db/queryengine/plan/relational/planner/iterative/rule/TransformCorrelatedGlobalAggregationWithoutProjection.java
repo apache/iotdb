@@ -136,7 +136,6 @@ public class TransformCorrelatedGlobalAggregationWithoutProjection
           .with(
               filter().equalTo(TRUE_LITERAL)) // non-trivial join filter can be supported by adding
           // filter/project on top of aggregation in the future
-          //
           .with(
               subquery()
                   .matching(
