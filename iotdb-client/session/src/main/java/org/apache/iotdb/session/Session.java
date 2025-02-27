@@ -2964,17 +2964,12 @@ public class Session implements ISession {
 
     TSInsertTabletReq request = new TSInsertTabletReq();
 
-    if (tablet.getSchemas().isEmpty()) {
-      request.measurements = Collections.emptyList();
-      request.types = Collections.emptyList();
-    } else {
-      for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-        if (measurementSchema.getMeasurementName() == null) {
-          throw new IllegalArgumentException("measurement should be non null value");
-        }
-        request.addToMeasurements(measurementSchema.getMeasurementName());
-        request.addToTypes(measurementSchema.getType().ordinal());
+    for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+      if (measurementSchema.getMeasurementName() == null) {
+        throw new IllegalArgumentException("measurement should be non null value");
       }
+      request.addToMeasurements(measurementSchema.getMeasurementName());
+      request.addToTypes(measurementSchema.getType().ordinal());
     }
 
     request.setPrefixPath(tablet.getDeviceId());
