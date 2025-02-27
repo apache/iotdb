@@ -194,13 +194,13 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     // in the batch do not need to be cleared. Success indicates whether the onError function needs
     // to be called manually to clear the exception.
     PipeTransferTrackableHandler handler = null;
-    boolean isTransferSuccessful = false;
+    boolean needsOnErrorCall = true;
     Throwable exception = null;
     try {
       if (batch instanceof PipeTabletEventPlainBatch) {
         handler = new PipeTransferTabletBatchEventHandler((PipeTabletEventPlainBatch) batch, this);
+        needsOnErrorCall = false;
         transfer(endPointAndBatch.getLeft(), (PipeTransferTabletBatchEventHandler) handler);
-        isTransferSuccessful = true;
       } else if (batch instanceof PipeTabletEventTsFileBatch) {
         final PipeTabletEventTsFileBatch tsFileBatch = (PipeTabletEventTsFileBatch) batch;
         final List<Pair<String, File>> dbTsFilePairs = tsFileBatch.sealTsFiles();
@@ -221,11 +221,11 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
                   null,
                   false,
                   sealedFile.left);
-          isTransferSuccessful = true;
+          needsOnErrorCall = false;
           transfer((PipeTransferTsFileHandler) handler);
-          isTransferSuccessful = false;
+          needsOnErrorCall = true;
         }
-        isTransferSuccessful = true;
+        needsOnErrorCall = false;
       } else {
         LOGGER.warn(
             "Unsupported batch type {} when transferring tablet insertion event.",
@@ -237,7 +237,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     } finally {
       if (handler != null) {
         endPointAndBatch.getRight().onSuccess();
-        if (!isTransferSuccessful) {
+        if (needsOnErrorCall) {
           handler.onError(
               exception instanceof Exception
                   ? (Exception) exception
