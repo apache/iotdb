@@ -93,7 +93,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
-import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.db.tools.schema.SRStatementGenerator;
@@ -596,11 +595,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     statement.setConvertOnTypeMismatch(true);
     statement.setVerifySchema(validateTsFile.get());
     statement.setAutoCreateDatabase(false);
-
-    statement.setModel(
-        dataBaseName != null
-            ? LoadTsFileConfigurator.MODEL_TABLE_VALUE
-            : LoadTsFileConfigurator.MODEL_TREE_VALUE);
     statement.setDatabase(dataBaseName);
 
     return executeStatementAndClassifyExceptions(statement);
@@ -848,9 +842,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final boolean isTableModelStatement;
     final String databaseName;
     if (statement instanceof LoadTsFileStatement
-        && ((LoadTsFileStatement) statement)
-            .getModel()
-            .equals(LoadTsFileConfigurator.MODEL_TABLE_VALUE)) {
+        && ((LoadTsFileStatement) statement).getDatabase() != null) {
       isTableModelStatement = true;
       databaseName = ((LoadTsFileStatement) statement).getDatabase();
     } else if (statement instanceof InsertBaseStatement

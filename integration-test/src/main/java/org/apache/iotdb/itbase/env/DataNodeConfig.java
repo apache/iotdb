@@ -33,4 +33,8 @@ public interface DataNodeConfig {
       long loadTsFileAnalyzeSchemaMemorySizeInBytes);
 
   DataNodeConfig setCompactionScheduleInterval(long compactionScheduleInterval);
+
+  DataNodeConfig setEnableMQTTService(boolean enableMQTTService);
+
+  DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter);
 }

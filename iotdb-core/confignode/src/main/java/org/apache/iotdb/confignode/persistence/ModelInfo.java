@@ -233,7 +233,7 @@ public class ModelInfo implements SnapshotProcessor {
     return false;
   }
 
-  private ModelType checkModelType(String modelName) {
+  public ModelType checkModelType(String modelName) {
     if (containsBuiltInModelName(builtInForecastModel, modelName)) {
       return ModelType.BUILT_IN_FORECAST;
     } else if (containsBuiltInModelName(builtInAnomalyDetectionModel, modelName)) {

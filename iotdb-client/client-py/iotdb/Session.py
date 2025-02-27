@@ -19,12 +19,11 @@
 import logging
 import random
 import sys
-import ssl
 import struct
 import time
 import warnings
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
-from thrift.transport import TSocket, TTransport, TSSLSocket
+from thrift.transport import TSocket, TTransport
 
 from iotdb.utils.SessionDataSet import SessionDataSet
 from .template.Template import Template
@@ -89,6 +88,7 @@ class Session(object):
         enable_redirection=True,
         use_ssl=False,
         ca_certs=None,
+        connection_timeout_in_ms=None,
     ):
         self.__host = host
         self.__port = port
@@ -113,6 +113,7 @@ class Session(object):
         self.database = None
         self.__use_ssl = use_ssl
         self.__ca_certs = ca_certs
+        self.__connection_timeout_in_ms = connection_timeout_in_ms
 
     @classmethod
     def init_from_node_urls(
@@ -125,6 +126,7 @@ class Session(object):
         enable_redirection=True,
         use_ssl=False,
         ca_certs=None,
+        connection_timeout_in_ms=None,
     ):
         if node_urls is None:
             raise RuntimeError("node urls is empty")
@@ -138,6 +140,7 @@ class Session(object):
             enable_redirection,
             use_ssl=use_ssl,
             ca_certs=ca_certs,
+            connection_timeout_in_ms=connection_timeout_in_ms,
         )
         session.__hosts = []
         session.__ports = []
@@ -185,32 +188,7 @@ class Session(object):
             }
 
     def init_connection(self, endpoint):
-        try:
-            if self.__use_ssl:
-                if sys.version_info >= (3, 10):
-                    context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-                else:
-                    context = ssl.SSLContext(ssl.PROTOCOL_TLS)
-                    context.verify_mode = ssl.CERT_REQUIRED
-                    context.check_hostname = True
-                context.load_verify_locations(cafile=self.__ca_certs)
-                socket = TSSLSocket.TSSLSocket(
-                    host=endpoint.ip, port=endpoint.port, ssl_context=context
-                )
-            else:
-                socket = TSocket.TSocket(endpoint.ip, endpoint.port)
-            transport = TTransport.TFramedTransport(socket)
-
-            if not transport.isOpen():
-                try:
-                    transport.open()
-                except TTransport.TTransportException as e:
-                    raise IoTDBConnectionException(e) from None
-
-        except ssl.SSLError as e:
-            print(f"SSL error occurred: {e}")
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+        transport = self.__get_transport(endpoint)
         if self.__enable_rpc_compression:
             client = Client(TCompactProtocol.TCompactProtocolAccelerated(transport))
         else:
@@ -259,6 +237,33 @@ class Session(object):
         else:
             self.__zone_id = self.get_time_zone()
         return SessionConnection(client, transport, session_id, statement_id)
+
+    def __get_transport(self, endpoint):
+        if self.__use_ssl:
+            import ssl
+            from thrift.transport import TSSLSocket
+
+            if sys.version_info >= (3, 10):
+                context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+            else:
+                context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+                context.verify_mode = ssl.CERT_REQUIRED
+                context.check_hostname = True
+            context.load_verify_locations(cafile=self.__ca_certs)
+            socket = TSSLSocket.TSSLSocket(
+                host=endpoint.ip, port=endpoint.port, ssl_context=context
+            )
+        else:
+            socket = TSocket.TSocket(endpoint.ip, endpoint.port)
+        socket.setTimeout(self.__connection_timeout_in_ms)
+        transport = TTransport.TFramedTransport(socket)
+
+        if not transport.isOpen():
+            try:
+                transport.open()
+            except TTransport.TTransportException as e:
+                raise IoTDBConnectionException(e) from None
+        return transport
 
     def is_open(self):
         return not self.__is_close

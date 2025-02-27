@@ -46,7 +46,6 @@ import java.util.Map;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_LEVEL_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_NAME_KEY;
-import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.MODEL_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_DELETE_VALUE;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_NONE_VALUE;
@@ -61,11 +60,11 @@ public class LoadTsFileStatement extends Statement {
   private boolean convertOnTypeMismatch = true;
   private boolean autoCreateDatabase = true;
   private boolean isGeneratedByPipe = false;
-  private String model = LoadTsFileConfigurator.MODEL_TREE_VALUE;
 
   private Map<String, String> loadAttributes;
 
   private final List<File> tsFiles;
+  private List<Boolean> isTableModel;
   private final List<TsFileResource> resources;
   private final List<Long> writePointCountList;
 
@@ -81,6 +80,7 @@ public class LoadTsFileStatement extends Statement {
     this.statementType = StatementType.MULTI_BATCH_INSERT;
 
     this.tsFiles = processTsFile(file);
+    this.isTableModel = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
   }
 
   public static List<File> processTsFile(final File file) throws FileNotFoundException {
@@ -191,12 +191,12 @@ public class LoadTsFileStatement extends Statement {
     return autoCreateDatabase;
   }
 
-  public void setModel(String model) {
-    this.model = model;
+  public List<Boolean> getIsTableModel() {
+    return isTableModel;
   }
 
-  public String getModel() {
-    return model;
+  public void setIsTableModel(List<Boolean> isTableModel) {
+    this.isTableModel = isTableModel;
   }
 
   public void markIsGeneratedByPipe() {
@@ -238,9 +238,6 @@ public class LoadTsFileStatement extends Statement {
     this.deleteAfterLoad = LoadTsFileConfigurator.parseOrGetDefaultOnSuccess(loadAttributes);
     this.convertOnTypeMismatch =
         LoadTsFileConfigurator.parseOrGetDefaultConvertOnTypeMismatch(loadAttributes);
-    this.model =
-        LoadTsFileConfigurator.parseOrGetDefaultModel(
-            loadAttributes, LoadTsFileConfigurator.MODEL_TREE_VALUE);
   }
 
   @Override
@@ -267,9 +264,6 @@ public class LoadTsFileStatement extends Statement {
     loadAttributes.put(
         ON_SUCCESS_KEY, deleteAfterLoad ? ON_SUCCESS_DELETE_VALUE : ON_SUCCESS_NONE_VALUE);
     loadAttributes.put(CONVERT_ON_TYPE_MISMATCH_KEY, String.valueOf(convertOnTypeMismatch));
-    if (model != null) {
-      loadAttributes.put(MODEL_KEY, model);
-    }
 
     return new LoadTsFile(null, file.getAbsolutePath(), loadAttributes);
   }

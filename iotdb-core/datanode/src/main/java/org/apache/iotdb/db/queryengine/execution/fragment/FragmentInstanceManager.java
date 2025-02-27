@@ -296,6 +296,8 @@ public class FragmentInstanceManager {
                       new IoTDBException(
                           TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG,
                           TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode()));
+                } else if (t instanceof IoTDBRuntimeException) {
+                  stateMachine.failed(t);
                 } else {
                   logger.warn("Execute error caused by ", t);
                   stateMachine.failed(t);

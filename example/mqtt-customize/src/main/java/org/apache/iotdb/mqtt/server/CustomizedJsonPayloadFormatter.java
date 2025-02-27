@@ -43,7 +43,7 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
     // this is just an example, so we just generate some Messages directly
     for (int i = 0; i < 2; i++) {
       long ts = i;
-      Message message = new Message();
+      MyMessage message = new MyMessage();
       message.setDevice("d" + i);
       message.setTimestamp(ts);
       message.setMeasurements(Arrays.asList("s1", "s2"));
