@@ -88,6 +88,8 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
   private final AtomicBoolean isSealSignalSent;
 
+  private AtomicInteger pendingTransferCount;
+
   private IoTDBDataNodeAsyncClientManager clientManager;
   private AsyncPipeDataTransferServiceClient client;
   private List<AsyncPipeDataTransferServiceClient> clients;
@@ -146,6 +148,10 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       throws TException, IOException {
     this.clientManager = clientManager;
     this.client = client;
+
+    if (pendingTransferCount == null) {
+      pendingTransferCount = new AtomicInteger(1);
+    }
 
     client.setShouldReturnSelf(false);
     client.setTimeoutDynamically(clientManager.getConnectionTimeout());
@@ -234,7 +240,9 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       throws TException, IOException {
     this.clientManager = clientManager;
     this.clients = clients;
-
+    if (pendingTransferCount == null) {
+      pendingTransferCount = new AtomicInteger(clients.size());
+    }
     clients.forEach(
         client -> {
           client.setShouldReturnSelf(false);
@@ -358,56 +366,58 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         return false;
       }
 
-      try {
-        if (reader != null) {
-          reader.close();
-        }
+      if (pendingTransferCount.decrementAndGet() <= 0) {
+        try {
+          if (reader != null) {
+            reader.close();
+          }
 
-        // Delete current file when using tsFile as batch
-        if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
-          RetryUtils.retryOnException(
-              () -> {
-                FileUtils.delete(currentFile);
-                return null;
-              });
-        }
-      } catch (final IOException e) {
-        LOGGER.warn(
-            "Failed to close file reader or delete tsFile when successfully transferred file.", e);
-      } finally {
-        final int referenceCount = eventsReferenceCount.decrementAndGet();
-        if (referenceCount <= 0) {
-          events.forEach(
-              event ->
-                  event.decreaseReferenceCount(PipeTransferTsFileHandler.class.getName(), true));
-        }
+          // Delete current file when using tsFile as batch
+          if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
+            RetryUtils.retryOnException(
+                () -> {
+                  FileUtils.delete(currentFile);
+                  return null;
+                });
+          }
+        } catch (final IOException e) {
+          LOGGER.warn(
+              "Failed to close file reader or delete tsFile when successfully transferred file.",
+              e);
+        } finally {
+          final int referenceCount = eventsReferenceCount.decrementAndGet();
+          if (referenceCount <= 0) {
+            events.forEach(
+                event ->
+                    event.decreaseReferenceCount(PipeTransferTsFileHandler.class.getName(), true));
+          }
 
-        if (events.size() <= 1 || LOGGER.isDebugEnabled()) {
-          LOGGER.info(
-              "Successfully transferred file {} (committer key={}, commit id={}, reference count={}).",
-              tsFile,
-              events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
-              events.stream().map(EnrichedEvent::getCommitId).collect(Collectors.toList()),
-              referenceCount);
-        } else {
-          LOGGER.info(
-              "Successfully transferred file {} (batched TableInsertionEvents, reference count={}).",
-              tsFile,
-              referenceCount);
-        }
+          if (events.size() <= 1 || LOGGER.isDebugEnabled()) {
+            LOGGER.info(
+                "Successfully transferred file {} (committer key={}, commit id={}, reference count={}).",
+                tsFile,
+                events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
+                events.stream().map(EnrichedEvent::getCommitId).collect(Collectors.toList()),
+                referenceCount);
+          } else {
+            LOGGER.info(
+                "Successfully transferred file {} (batched TableInsertionEvents, reference count={}).",
+                tsFile,
+                referenceCount);
+          }
 
-        if (client != null) {
-          client.setShouldReturnSelf(true);
-          client.returnSelf();
-        }
-        if (clients != null) {
-          for (final AsyncPipeDataTransferServiceClient client : clients) {
+          if (client != null) {
             client.setShouldReturnSelf(true);
             client.returnSelf();
           }
+          if (clients != null) {
+            for (final AsyncPipeDataTransferServiceClient client : clients) {
+              client.setShouldReturnSelf(true);
+              client.returnSelf();
+            }
+          }
         }
       }
-
       return true;
     }
 
@@ -421,9 +431,11 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final long code = resp.getStatus().getCode();
 
       if (code == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
-        position = resp.getEndWritingOffset();
-        reader.seek(position);
-        LOGGER.info("Redirect file position to {}.", position);
+        if (pendingTransferCount.decrementAndGet() <= 0) {
+          position = resp.getEndWritingOffset();
+          reader.seek(position);
+          LOGGER.info("Redirect file position to {}.", position);
+        }
       } else {
         final TSStatus status = response.getStatus();
         // Only handle the failed statuses to avoid string format performance overhead
@@ -434,11 +446,14 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
               .handle(status, response.getStatus().getMessage(), tsFile.getName());
         }
       }
-      if (client != null) {
-        transfer(clientManager, client);
-      }
-      if (clients != null) {
-        transfer(clientManager, clients);
+      if (pendingTransferCount.decrementAndGet() <= 0) {
+        pendingTransferCount = null;
+        if (client != null) {
+          transfer(clientManager, client);
+        }
+        if (clients != null) {
+          transfer(clientManager, clients);
+        }
       }
     } catch (final Exception e) {
       onError(e);

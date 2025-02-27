@@ -196,6 +196,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
                 isMultiFile
                     ? getTransferMultiFilePieceReq(file.getName(), position, payLoad)
                     : getTransferSingleFilePieceReq(file.getName(), position, payLoad));
+        position += readLength;
         for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : clientsAndStatuses) {
 
           final PipeTransferFilePieceResp resp;
@@ -217,8 +218,6 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
                     "Network error when transfer file %s, because %s.", file, e.getMessage()),
                 e);
           }
-
-          position += readLength;
 
           final TSStatus status = resp.getStatus();
           // This case only happens when the connection is broken, and the connector is reconnected

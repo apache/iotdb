@@ -469,8 +469,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     final List<Pair<String, File>> dbTsFilePairs = tsFileBatch.sealTsFiles();
     final Map<Pair<String, Long>, Double> pipe2WeightMap = tsFileBatch.deepCopyPipe2WeightMap();
     final List<EnrichedEvent> events = tsFileBatch.deepCopyEvents();
-    final AtomicInteger eventsReferenceCount =
-        new AtomicInteger(dbTsFilePairs.size() * clients.size());
+    final AtomicInteger eventsReferenceCount = new AtomicInteger(dbTsFilePairs.size());
     final AtomicBoolean eventsHadBeenAddedToRetryQueue = new AtomicBoolean(false);
     for (final Pair<String, File> sealedFile : dbTsFilePairs) {
       final PipeTransferTsFileHandler pipeTransferTsFileHandler =
@@ -491,7 +490,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private void transferAllClients(final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws Exception {
     final List<AsyncPipeDataTransferServiceClient> clients = clientManager.borrowAllClients();
-    final AtomicInteger eventsReferenceCount = new AtomicInteger(clients.size());
     final PipeTransferTsFileHandler pipeTransferTsFileHandler =
         new PipeTransferTsFileHandler(
             this,
@@ -501,7 +499,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
                     pipeTsFileInsertionEvent.getCreationTime()),
                 1.0),
             Collections.singletonList(pipeTsFileInsertionEvent),
-            eventsReferenceCount,
+            new AtomicInteger(1),
             new AtomicBoolean(false),
             pipeTsFileInsertionEvent.getTsFile(),
             pipeTsFileInsertionEvent.getModFile(),
