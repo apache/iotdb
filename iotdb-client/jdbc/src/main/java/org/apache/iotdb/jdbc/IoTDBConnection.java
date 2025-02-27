@@ -342,6 +342,19 @@ public class IoTDBConnection implements Connection {
       }
       return;
     }
+    // changeDefaultDatabase(arg0);
+    if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
+      Statement stmt = this.createStatement();
+      String sql = "USE " + arg0;
+      boolean rs;
+      try {
+        rs = stmt.execute(sql);
+      } catch (SQLException e) {
+        stmt.close();
+        logger.error("Use database error: {}", e.getMessage());
+        throw e;
+      }
+    }
     throw new SQLException("Does not support setSchema");
   }
 
@@ -643,6 +656,10 @@ public class IoTDBConnection implements Connection {
 
   protected void changeDefaultDatabase(String database) {
     params.setDb(database);
+  }
+
+  protected void changeDefaultSqlDialect(String sqlDialect) {
+    params.setSqlDialect(sqlDialect);
   }
 
   public int getTimeFactor() {

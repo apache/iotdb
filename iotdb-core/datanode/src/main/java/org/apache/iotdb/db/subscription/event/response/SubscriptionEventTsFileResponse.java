@@ -81,10 +81,15 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
   @Override
   public void fetchNextResponse(final long offset) throws Exception {
     generateNextTsFileResponse(offset).ifPresent(super::offer);
-    if (Objects.isNull(poll())) {
+
+    // poll and clean previous response
+    final CachedSubscriptionPollResponse previousResponse;
+    if (Objects.isNull(previousResponse = poll())) {
       LOGGER.warn(
           "SubscriptionEventTsFileResponse {} is empty when fetching next response (broken invariant)",
           this);
+    } else {
+      previousResponse.closeMemoryBlock();
     }
   }
 

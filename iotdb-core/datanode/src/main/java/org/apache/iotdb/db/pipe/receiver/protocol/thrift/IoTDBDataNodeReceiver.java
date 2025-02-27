@@ -93,7 +93,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
-import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.db.tools.schema.SRStatementGenerator;
@@ -596,11 +595,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     statement.setConvertOnTypeMismatch(true);
     statement.setVerifySchema(validateTsFile.get());
     statement.setAutoCreateDatabase(false);
-
-    statement.setModel(
-        dataBaseName != null
-            ? LoadTsFileConfigurator.MODEL_TABLE_VALUE
-            : LoadTsFileConfigurator.MODEL_TREE_VALUE);
     statement.setDatabase(dataBaseName);
 
     return executeStatementAndClassifyExceptions(statement);
@@ -610,7 +604,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final Map<String, String> parameters, final List<String> fileAbsolutePaths)
       throws IllegalPathException, IOException {
     final PartialPath databasePath =
-        PartialPath.getDatabasePath(parameters.get(ColumnHeaderConstant.DATABASE));
+        PartialPath.getQualifiedDatabasePartialPath(parameters.get(ColumnHeaderConstant.DATABASE));
     final SRStatementGenerator generator =
         SchemaRegionSnapshotParser.translate2Statements(
             Paths.get(fileAbsolutePaths.get(0)),
@@ -848,9 +842,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final boolean isTableModelStatement;
     final String databaseName;
     if (statement instanceof LoadTsFileStatement
-        && ((LoadTsFileStatement) statement)
-            .getModel()
-            .equals(LoadTsFileConfigurator.MODEL_TABLE_VALUE)) {
+        && ((LoadTsFileStatement) statement).getDatabase() != null) {
       isTableModelStatement = true;
       databaseName = ((LoadTsFileStatement) statement).getDatabase();
     } else if (statement instanceof InsertBaseStatement
@@ -915,7 +907,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
       return Coordinator.getInstance()
           .executeForTableModel(
-              new PipeEnrichedStatement(statement),
+              shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
               relationalSqlParser,
               SESSION_MANAGER.getCurrSession(),
               SESSION_MANAGER.requestQueryId(),
@@ -939,7 +931,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         // Retry after creating the database
         return Coordinator.getInstance()
             .executeForTableModel(
-                new PipeEnrichedStatement(statement),
+                shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
                 relationalSqlParser,
                 SESSION_MANAGER.getCurrSession(),
                 SESSION_MANAGER.requestQueryId(),
@@ -990,7 +982,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TSStatus executeStatementForTreeModel(final Statement statement) {
     return Coordinator.getInstance()
         .executeForTreeModel(
-            new PipeEnrichedStatement(statement),
+            shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
             SESSION_MANAGER.requestQueryId(),
             SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
             "",
@@ -1021,7 +1013,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final TSStatus result =
           Coordinator.getInstance()
               .executeForTableModel(
-                  new PipeEnriched(statement),
+                  shouldMarkAsPipeRequest.get() ? new PipeEnriched(statement) : statement,
                   relationalSqlParser,
                   SESSION_MANAGER.getCurrSession(),
                   SESSION_MANAGER.requestQueryId(),

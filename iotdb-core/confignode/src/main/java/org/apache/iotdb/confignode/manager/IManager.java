@@ -572,6 +572,9 @@ public interface IManager {
   /** Flush on all DataNodes. */
   TSStatus flush(TFlushReq req);
 
+  /** Flush on specific Datanode. */
+  TSStatus flushOnSpecificDN(TFlushReq req, Map<Integer, TDataNodeLocation> dataNodeLocationMap);
+
   /** Clear cache on all DataNodes. */
   TSStatus clearCache(final Set<Integer> clearCacheOptions);
 
