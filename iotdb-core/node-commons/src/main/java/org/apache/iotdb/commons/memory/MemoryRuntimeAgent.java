@@ -58,7 +58,7 @@ public class MemoryRuntimeAgent implements IService {
       MemoryRuntimeAgent.getInstance()
           .registerPeriodicalJob(
               "GlobalMemoryManager#updateAllocate()",
-              MemoryManager.global()::updateAllocate,
+              MemoryConfig.global()::updateAllocate,
               MEMORY_CHECK_INTERVAL_IN_S);
     }
     if (ENABLE_MEMORY_ADAPT) {
@@ -76,7 +76,7 @@ public class MemoryRuntimeAgent implements IService {
 
   private void adaptTotalMemory() {
     long totalMemory = Runtime.getRuntime().totalMemory();
-    MemoryManager memoryManager = MemoryManager.global().getMemoryManager("OnHeap");
+    MemoryManager memoryManager = MemoryConfig.global().getMemoryManager("OnHeap");
     if (memoryManager != null) {
       long originMemorySize = memoryManager.getTotalAllocatedMemorySizeInBytes();
       if (totalMemory >= (1 + ratio) * originMemorySize
