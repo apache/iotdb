@@ -182,8 +182,10 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     }
     if (memUsageDelta > 0) {
       requestMemory(memUsageDelta);
+      addTableAttributeMemory(tableName, memUsageDelta);
     } else if (memUsageDelta < 0) {
       releaseMemory(-memUsageDelta);
+      decreaseTableAttributeMemory(tableName, -memUsageDelta);
     }
     return updateMap;
   }
@@ -192,6 +194,11 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   public void removeAttribute(final int pointer, final String tableName) {
     releaseMemory(
         MAP_SIZE + UpdateDetailContainer.sizeOfMapEntries(deviceAttributeList.get(pointer)));
+    decreaseTableAttributeMemory(
+        tableName,
+        deviceAttributeList.get(pointer).values().stream()
+            .map(UpdateDetailContainer::sizeOf)
+            .reduce(0L, Long::sum));
     deviceAttributeList.set(pointer, null);
   }
 
@@ -251,7 +258,13 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   private void deserialize(final InputStream inputStream) throws IOException {
     int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; i++) {
-      deviceAttributeList.add(readMap(inputStream, false));
+      final Map<String, Binary> attributeMap = readMap(inputStream, false);
+      deviceAttributeList.add(attributeMap);
+      requestMemory(
+          RamUsageEstimator.NUM_BYTES_OBJECT_REF
+              + (Objects.nonNull(attributeMap)
+                  ? MAP_SIZE + UpdateDetailContainer.sizeOfMapEntries(attributeMap)
+                  : 0));
     }
   }
 
@@ -274,7 +287,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     if (length == NO_BYTE_TO_READ) {
       return Binary.EMPTY_VALUE;
     }
-    byte[] bytes = ReadWriteIOUtils.readBytes(inputStream, length);
+    final byte[] bytes = ReadWriteIOUtils.readBytes(inputStream, length);
     return new Binary(bytes);
   }
 
