@@ -2222,17 +2222,18 @@ public class IoTDBDescriptor {
         } else {
           pipeMemorySize =
               (memoryAvailable
-                  - (memoryConfig.getStorageEngineMemoryManager().getTotalMemorySizeInBytes()
-                  + memoryConfig.getQueryEngineMemoryManager().getTotalMemorySizeInBytes()
-                  + memoryConfig.getSchemaEngineMemoryManager().getTotalMemorySizeInBytes()
-                  + memoryConfig.getConsensusMemoryManager().getTotalMemorySizeInBytes()))
+                      - (memoryConfig.getStorageEngineMemoryManager().getTotalMemorySizeInBytes()
+                          + memoryConfig.getQueryEngineMemoryManager().getTotalMemorySizeInBytes()
+                          + memoryConfig.getSchemaEngineMemoryManager().getTotalMemorySizeInBytes()
+                          + memoryConfig.getConsensusMemoryManager().getTotalMemorySizeInBytes()))
                   / 2;
         }
       }
     }
     // on heap memory manager
     MemoryManager onheapMemoryManager =
-        MemoryConfig.global().getOrCreateMemoryManager("OnHeap", Runtime.getRuntime().totalMemory());
+        MemoryConfig.global()
+            .getOrCreateMemoryManager("OnHeap", Runtime.getRuntime().totalMemory());
     memoryConfig.setOnHeapMemoryManager(onheapMemoryManager);
     // storage engine memory manager
     MemoryManager storageEngineMemoryManager =
