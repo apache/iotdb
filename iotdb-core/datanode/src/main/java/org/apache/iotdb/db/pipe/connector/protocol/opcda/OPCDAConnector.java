@@ -38,9 +38,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_DA_CLSID_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_DA_PROGID_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_OPC_DA_CLSID_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_OPC_DA_PROGID_KEY;
 
 /**
  * Send data in IoTDB based on Opc Da protocol, using JNA. All data are converted into tablets, and
@@ -58,12 +58,18 @@ public class OPCDAConnector implements PipeConnector {
   public void validate(final PipeParameterValidator validator) throws Exception {
     // TODO: upgrade this logic after "1 in 2" logic is supported
     validator.validate(
-        args -> ((boolean) args[1] || (boolean) args[2]),
+        args ->
+            (((boolean) args[1] || (boolean) args[2] || (boolean) args[3] || (boolean) args[4])),
         String.format(
-            "One of '%s' and '%s' must be specified",
-            SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY, SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY),
+            "One of '%s', '%s', '%s' and '%s' must be specified",
+            SINK_OPC_DA_CLSID_KEY,
+            CONNECTOR_OPC_DA_CLSID_KEY,
+            SINK_OPC_DA_PROGID_KEY,
+            CONNECTOR_OPC_DA_PROGID_KEY),
         validator.getParameters().hasAttribute(SINK_OPC_DA_CLSID_KEY),
-        validator.getParameters().hasAttribute(CONNECTOR_OPC_DA_CLSID_KEY));
+        validator.getParameters().hasAttribute(CONNECTOR_OPC_DA_CLSID_KEY),
+        validator.getParameters().hasAttribute(SINK_OPC_DA_PROGID_KEY),
+        validator.getParameters().hasAttribute(CONNECTOR_OPC_DA_PROGID_KEY));
   }
 
   @Override
@@ -72,6 +78,11 @@ public class OPCDAConnector implements PipeConnector {
       throws Exception {
     synchronized (CLS_ID_TO_REFERENCE_COUNT_AND_HANDLE_MAP) {
       clsID = parameters.getStringByKeys(CONNECTOR_OPC_DA_CLSID_KEY, SINK_OPC_DA_CLSID_KEY);
+      if (Objects.isNull(clsID)) {
+        clsID =
+            OPCDAServerHandle.getClsIDFromProgID(
+                parameters.getStringByKeys(CONNECTOR_OPC_DA_PROGID_KEY, SINK_OPC_DA_PROGID_KEY));
+      }
       handle =
           CLS_ID_TO_REFERENCE_COUNT_AND_HANDLE_MAP
               .computeIfAbsent(

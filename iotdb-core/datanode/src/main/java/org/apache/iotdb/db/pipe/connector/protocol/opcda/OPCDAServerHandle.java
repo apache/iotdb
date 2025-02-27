@@ -75,8 +75,8 @@ public class OPCDAServerHandle implements Closeable {
   // Save it here to avoid memory leakage
   private WTypes.BSTR bstr;
 
-  OPCDAServerHandle(final String clsID) {
-    final Guid.CLSID CLSID_OPC_SERVER = new Guid.CLSID(clsID);
+  OPCDAServerHandle(String clsOrProgID) {
+    final Guid.CLSID CLSID_OPC_SERVER = new Guid.CLSID(clsOrProgID);
 
     Ole32.INSTANCE.CoInitializeEx(null, Ole32.COINIT_MULTITHREADED);
     final PointerByReference ppvServer = new PointerByReference();
@@ -147,6 +147,38 @@ public class OPCDAServerHandle implements Closeable {
           "Failed to acquire IOPCSyncIO, error code: 0x" + Integer.toHexString(hr.intValue()));
     }
     syncIO = new OPCDAHeader.IOPCSyncIO(ppvSyncIO.getValue());
+  }
+
+  static String getClsIDFromProgID(final String progID) {
+    // To receive CLSID struct
+    final Guid.CLSID.ByReference pclsid = new Guid.CLSID.ByReference();
+
+    final WinNT.HRESULT hr = Ole32.INSTANCE.CLSIDFromProgID(progID, pclsid);
+
+    if (hr.intValue() == WinError.S_OK.intValue()) { // S_OK = 0
+      // Format CLSID (like "{CAE8D0E1-117B-11D5-924B-11C0F023E91C}")
+      final String clsidStr =
+          String.format(
+              "%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X",
+              pclsid.Data1,
+              pclsid.Data2,
+              pclsid.Data3,
+              pclsid.Data4[0],
+              pclsid.Data4[1],
+              pclsid.Data4[2],
+              pclsid.Data4[3],
+              pclsid.Data4[4],
+              pclsid.Data4[5],
+              pclsid.Data4[6],
+              pclsid.Data4[7]);
+      LOGGER.info("Successfully converted progID {} to CLSID: {{}}", progID, clsidStr);
+      return clsidStr;
+    } else {
+      throw new PipeException(
+          "Error: ProgID is invalid or unregistered, (HRESULT=0x"
+              + Integer.toHexString(hr.intValue())
+              + ")");
+    }
   }
 
   void transfer(final Tablet tablet) {
