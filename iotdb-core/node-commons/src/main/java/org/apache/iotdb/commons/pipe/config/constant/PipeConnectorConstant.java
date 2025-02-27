@@ -144,7 +144,7 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE = "client-server";
   public static final String CONNECTOR_OPC_UA_MODEL_PUB_SUB_VALUE = "pub-sub";
   public static final String CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE =
-      CONNECTOR_OPC_UA_MODEL_PUB_SUB_VALUE;
+      CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE;
 
   public static final String CONNECTOR_OPC_UA_TCP_BIND_PORT_KEY = "connector.opcua.tcp.port";
   public static final String SINK_OPC_UA_TCP_BIND_PORT_KEY = "sink.opcua.tcp.port";
