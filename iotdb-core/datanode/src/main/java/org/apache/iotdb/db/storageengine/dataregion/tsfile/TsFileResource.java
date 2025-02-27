@@ -61,6 +61,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -69,6 +70,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -153,7 +155,8 @@ public class TsFileResource {
   private Map<PartialPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap = new HashMap<>();
 
   /** used for unsealed file to get TimeseriesMetadata */
-  private Map<PartialPath, ITimeSeriesMetadata> pathToTimeSeriesMetadataMap = new HashMap<>();
+  private Map<PartialPath, ITimeSeriesMetadata> pathToTimeSeriesMetadataMap =
+      new ConcurrentHashMap<>();
 
   /**
    * If it is not null, it indicates that the current tsfile resource is a snapshot of the
@@ -214,7 +217,6 @@ public class TsFileResource {
     this.timeIndex = originTsFileResource.timeIndex;
     this.pathToReadOnlyMemChunkMap = pathToReadOnlyMemChunkMap;
     this.pathToChunkMetadataListMap = pathToChunkMetadataListMap;
-    generatePathToTimeSeriesMetadataMap();
     this.originTsFileResource = originTsFileResource;
     this.tsFileID = originTsFileResource.tsFileID;
     this.isSeq = originTsFileResource.isSeq;
@@ -833,11 +835,27 @@ public class TsFileResource {
    *
    * @return TimeseriesMetadata or the first ValueTimeseriesMetadata in VectorTimeseriesMetadata
    */
-  public ITimeSeriesMetadata getTimeSeriesMetadata(PartialPath seriesPath) {
-    if (pathToTimeSeriesMetadataMap.containsKey(seriesPath)) {
-      return pathToTimeSeriesMetadataMap.get(seriesPath);
+  public ITimeSeriesMetadata getTimeSeriesMetadata(PartialPath seriesPath) throws IOException {
+    try {
+      return pathToTimeSeriesMetadataMap.computeIfAbsent(
+          seriesPath,
+          k -> {
+            if (pathToChunkMetadataListMap.containsKey(k)) {
+              try {
+                return ResourceByPathUtils.getResourceInstance(seriesPath)
+                    .generateTimeSeriesMetadata(
+                        pathToReadOnlyMemChunkMap.get(seriesPath),
+                        pathToChunkMetadataListMap.get(seriesPath));
+              } catch (IOException e) {
+                throw new UncheckedIOException(e);
+              }
+            } else {
+              return null;
+            }
+          });
+    } catch (UncheckedIOException e) {
+      throw e.getCause();
     }
-    return null;
   }
 
   public DataRegion.SettleTsFileCallBack getSettleTsFileCallBack() {
@@ -1107,16 +1125,6 @@ public class TsFileResource {
     timeIndex = new FileTimeIndex(startTime, endTime);
     // deviceTimeIndexRamSize has already been calculated before
     return deviceTimeIndexRamSize - timeIndex.calculateRamSize();
-  }
-
-  private void generatePathToTimeSeriesMetadataMap() throws IOException {
-    for (PartialPath path : pathToChunkMetadataListMap.keySet()) {
-      pathToTimeSeriesMetadataMap.put(
-          path,
-          ResourceByPathUtils.getResourceInstance(path)
-              .generateTimeSeriesMetadata(
-                  pathToReadOnlyMemChunkMap.get(path), pathToChunkMetadataListMap.get(path)));
-    }
   }
 
   public void deleteRemovedDeviceAndUpdateEndTime(Map<IDeviceID, Long> lastTimeForEachDevice) {

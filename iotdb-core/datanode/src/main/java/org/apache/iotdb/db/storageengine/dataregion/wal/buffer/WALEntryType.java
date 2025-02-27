@@ -28,7 +28,7 @@ public enum WALEntryType {
   INSERT_TABLET_PLAN((byte) 1),
   @Deprecated
   DELETE_PLAN((byte) 2),
-  /** {@link org.apache.iotdb.db.engine.memtable.AbstractMemTable} */
+  /** {@link org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable} */
   MEMORY_TABLE_SNAPSHOT((byte) 3),
   /** {@link org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode} */
   INSERT_ROW_NODE((byte) 4),

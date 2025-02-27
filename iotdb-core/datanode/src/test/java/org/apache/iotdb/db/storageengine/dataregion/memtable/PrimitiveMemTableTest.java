@@ -32,6 +32,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.db.utils.MathUtils;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -55,7 +56,9 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
@@ -72,16 +75,23 @@ public class PrimitiveMemTableTest {
   }
 
   @Test
-  public void memSeriesSortIteratorTest() throws IOException {
+  public void memSeriesSortIteratorTest() throws IOException, QueryProcessException {
     TSDataType dataType = TSDataType.INT32;
     WritableMemChunk series =
         new WritableMemChunk(new MeasurementSchema("s1", dataType, TSEncoding.PLAIN));
     int count = 1000;
     for (int i = 0; i < count; i++) {
-      series.writeWithFlushCheck(i, i);
+      series.writeNonAlignedPoint(i, i);
     }
-    IPointReader it =
-        series.getSortedTvListForQuery().buildTsBlock().getTsBlockSingleColumnIterator();
+    Map<TVList, Integer> tvListQueryMap = new HashMap<>();
+    for (TVList tvList : series.getSortedList()) {
+      tvListQueryMap.put(tvList, tvList.rowCount());
+    }
+    tvListQueryMap.put(series.getWorkingTVList(), series.getWorkingTVList().rowCount());
+    ReadOnlyMemChunk readableChunk =
+        new ReadOnlyMemChunk(
+            new QueryContext(), "s1", dataType, TSEncoding.PLAIN, tvListQueryMap, null, null);
+    IPointReader it = readableChunk.getPointReader();
     int i = 0;
     while (it.hasNextTimeValuePair()) {
       Assert.assertEquals(i, it.nextTimeValuePair().getTimestamp());
@@ -97,13 +107,13 @@ public class PrimitiveMemTableTest {
         new WritableMemChunk(new MeasurementSchema("s1", dataType, TSEncoding.PLAIN));
     int count = 100;
     for (int i = 0; i < count; i++) {
-      series.writeWithFlushCheck(i, i);
+      series.writeNonAlignedPoint(i, i);
     }
-    series.writeWithFlushCheck(0, 21);
-    series.writeWithFlushCheck(99, 20);
-    series.writeWithFlushCheck(20, 21);
+    series.writeNonAlignedPoint(0, 21);
+    series.writeNonAlignedPoint(99, 20);
+    series.writeNonAlignedPoint(20, 21);
     String str = series.toString();
-    Assert.assertFalse(series.getTVList().isSorted());
+    Assert.assertFalse(series.getWorkingTVList().isSorted());
     Assert.assertEquals(
         "MemChunk Size: 103"
             + System.lineSeparator()
@@ -153,7 +163,8 @@ public class PrimitiveMemTableTest {
                 TSEncoding.RLE,
                 CompressionType.UNCOMPRESSED,
                 Collections.emptyMap()));
-    ReadOnlyMemChunk memChunk = memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null);
+    ReadOnlyMemChunk memChunk =
+        memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null, null);
     IPointReader iterator = memChunk.getPointReader();
     for (int i = 0; i < dataSize; i++) {
       iterator.hasNextTimeValuePair();
@@ -255,7 +266,7 @@ public class PrimitiveMemTableTest {
         new Deletion(new PartialPath(deviceId, measurementId[0]), Long.MAX_VALUE, 10, dataSize);
     modsToMemtable.add(new Pair<>(deletion, memTable));
     ReadOnlyMemChunk memChunk =
-        memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, modsToMemtable);
+        memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, modsToMemtable, null);
     IPointReader iterator = memChunk.getPointReader();
     int cnt = 0;
     while (iterator.hasNextTimeValuePair()) {
@@ -311,7 +322,7 @@ public class PrimitiveMemTableTest {
         new Deletion(new PartialPath(deviceId, measurementId[0]), Long.MAX_VALUE, 10, dataSize);
     modsToMemtable.add(new Pair<>(deletion, memTable));
     ReadOnlyMemChunk memChunk =
-        memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, modsToMemtable);
+        memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, modsToMemtable, null);
     IPointReader iterator = memChunk.getPointReader();
     int cnt = 0;
     while (iterator.hasNextTimeValuePair()) {
@@ -351,7 +362,7 @@ public class PrimitiveMemTableTest {
                 CompressionType.UNCOMPRESSED,
                 Collections.emptyMap()));
     IPointReader tvPair =
-        memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null).getPointReader();
+        memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null, null).getPointReader();
     Arrays.sort(ret);
     TimeValuePair last = null;
     for (int i = 0; i < ret.length; i++) {
@@ -397,7 +408,7 @@ public class PrimitiveMemTableTest {
                     CompressionType.UNCOMPRESSED,
                     Collections.emptyMap())));
     IPointReader tvPair =
-        memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null).getPointReader();
+        memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null, null).getPointReader();
     for (int i = 0; i < 100; i++) {
       tvPair.hasNextTimeValuePair();
       TimeValuePair next = tvPair.nextTimeValuePair();
@@ -423,7 +434,8 @@ public class PrimitiveMemTableTest {
                     CompressionType.UNCOMPRESSED,
                     Collections.emptyMap())));
 
-    tvPair = memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null).getPointReader();
+    tvPair =
+        memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null, null).getPointReader();
     for (int i = 0; i < 100; i++) {
       tvPair.hasNextTimeValuePair();
       TimeValuePair next = tvPair.nextTimeValuePair();
