@@ -24,9 +24,9 @@ import com.sun.jna.Structure;
 import com.sun.jna.WString;
 import com.sun.jna.platform.win32.COM.Unknown;
 import com.sun.jna.platform.win32.Guid;
+import com.sun.jna.platform.win32.Variant;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.PointerByReference;
-import org.jinterop.dcom.core.JIVariant;
 
 import java.util.Arrays;
 import java.util.List;
@@ -155,7 +155,7 @@ public class OPCDAHeader {
     public int hClient; // Client handle, Used in async callback and remove item
     public int dwBlobSize; // BLOB size
     public Pointer pBlob; // BLOB's pointer
-    public short vtRequestedDataType = JIVariant.VT_UNKNOWN; // Requested datatype
+    public short vtRequestedDataType = Variant.VT_UNKNOWN; // Requested datatype
     public short wReserved; // Reserved
 
     // As C structure
