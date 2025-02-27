@@ -32,7 +32,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /** We define the OPC DA Classes and interfaces here like C's .h file. */
-public class OPCDAHeader {
+public class OpcDaHeader {
   // IOPCServer
   static final Guid.IID IID_IOPCServer = new Guid.IID("39C13A4D-011E-11D0-9675-0020AFD8ADB3");
 

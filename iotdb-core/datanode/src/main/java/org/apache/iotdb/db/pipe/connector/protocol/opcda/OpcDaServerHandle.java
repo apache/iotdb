@@ -56,26 +56,26 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static org.apache.iotdb.db.pipe.connector.protocol.opcda.OPCDAHeader.IID_IOPCItemMgt;
-import static org.apache.iotdb.db.pipe.connector.protocol.opcda.OPCDAHeader.IID_IOPCServer;
-import static org.apache.iotdb.db.pipe.connector.protocol.opcda.OPCDAHeader.IID_IOPCSyncIO;
-import static org.apache.iotdb.db.pipe.connector.protocol.opcda.OPCDAHeader.IID_IUNKNOWN;
+import static org.apache.iotdb.db.pipe.connector.protocol.opcda.OpcDaHeader.IID_IOPCItemMgt;
+import static org.apache.iotdb.db.pipe.connector.protocol.opcda.OpcDaHeader.IID_IOPCServer;
+import static org.apache.iotdb.db.pipe.connector.protocol.opcda.OpcDaHeader.IID_IOPCSyncIO;
+import static org.apache.iotdb.db.pipe.connector.protocol.opcda.OpcDaHeader.IID_IUNKNOWN;
 
-public class OPCDAServerHandle implements Closeable {
+public class OpcDaServerHandle implements Closeable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(OPCDAServerHandle.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(OpcDaServerHandle.class);
 
   private final PointerByReference ppvServer = new PointerByReference();
-  private final OPCDAHeader.IOPCServer opcServer;
-  private final OPCDAHeader.IOPCItemMgt itemMgt;
-  private final OPCDAHeader.IOPCSyncIO syncIO;
+  private final OpcDaHeader.IOPCServer opcServer;
+  private final OpcDaHeader.IOPCItemMgt itemMgt;
+  private final OpcDaHeader.IOPCSyncIO syncIO;
   private final Map<String, Integer> serverHandleMap = new ConcurrentHashMap<>();
   private final Map<String, Long> serverTimestampMap = new ConcurrentHashMap<>();
 
   // Save it here to avoid memory leakage
   private WTypes.BSTR bstr;
 
-  OPCDAServerHandle(String clsOrProgID) {
+  OpcDaServerHandle(String clsOrProgID) {
     final Guid.CLSID CLSID_OPC_SERVER = new Guid.CLSID(clsOrProgID);
 
     Ole32.INSTANCE.CoInitializeEx(null, Ole32.COINIT_MULTITHREADED);
@@ -89,7 +89,7 @@ public class OPCDAServerHandle implements Closeable {
           "Failed to connect to server, error code: 0x" + Integer.toHexString(hr.intValue()));
     }
 
-    opcServer = new OPCDAHeader.IOPCServer(ppvServer.getValue());
+    opcServer = new OpcDaHeader.IOPCServer(ppvServer.getValue());
 
     // 3. Create group
     final PointerByReference phServerGroup = new PointerByReference();
@@ -133,7 +133,7 @@ public class OPCDAServerHandle implements Closeable {
           "Failed to acquire IOPCItemMgt, error code: 0x" + Integer.toHexString(hr.intValue()));
     }
 
-    itemMgt = new OPCDAHeader.IOPCItemMgt(ppvItemMgt.getValue());
+    itemMgt = new OpcDaHeader.IOPCItemMgt(ppvItemMgt.getValue());
 
     // 5. Acquire IOPCSyncIO Interface
     PointerByReference ppvSyncIO = new PointerByReference();
@@ -146,7 +146,7 @@ public class OPCDAServerHandle implements Closeable {
       throw new PipeException(
           "Failed to acquire IOPCSyncIO, error code: 0x" + Integer.toHexString(hr.intValue()));
     }
-    syncIO = new OPCDAHeader.IOPCSyncIO(ppvSyncIO.getValue());
+    syncIO = new OpcDaHeader.IOPCSyncIO(ppvSyncIO.getValue());
   }
 
   static String getClsIDFromProgID(final String progID) {
@@ -210,8 +210,8 @@ public class OPCDAServerHandle implements Closeable {
   }
 
   private void addItem(final String itemId, final TSDataType type) {
-    final OPCDAHeader.OPCITEMDEF[] itemDefs = new OPCDAHeader.OPCITEMDEF[1];
-    itemDefs[0] = new OPCDAHeader.OPCITEMDEF();
+    final OpcDaHeader.OPCITEMDEF[] itemDefs = new OpcDaHeader.OPCITEMDEF[1];
+    itemDefs[0] = new OpcDaHeader.OPCITEMDEF();
     itemDefs[0].szAccessPath = new WString("");
     itemDefs[0].szItemID = new WString(itemId + "\0");
     itemDefs[0].bActive = 1;
@@ -254,8 +254,8 @@ public class OPCDAServerHandle implements Closeable {
 
     final Pointer pItemResults = ppItemResults.getValue();
 
-    final OPCDAHeader.OPCITEMRESULT[] itemResults = new OPCDAHeader.OPCITEMRESULT[1];
-    itemResults[0] = new OPCDAHeader.OPCITEMRESULT(pItemResults);
+    final OpcDaHeader.OPCITEMRESULT[] itemResults = new OpcDaHeader.OPCITEMRESULT[1];
+    itemResults[0] = new OpcDaHeader.OPCITEMRESULT(pItemResults);
     itemResults[0].read();
 
     serverHandleMap.put(itemId, itemResults[0].hServer);

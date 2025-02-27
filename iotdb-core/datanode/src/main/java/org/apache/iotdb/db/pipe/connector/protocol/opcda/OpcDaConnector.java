@@ -49,10 +49,10 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 @TreeModel
 public class OpcDaConnector implements PipeConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(OpcDaConnector.class);
-  private static final Map<String, Pair<AtomicInteger, OPCDAServerHandle>>
+  private static final Map<String, Pair<AtomicInteger, OpcDaServerHandle>>
       CLS_ID_TO_REFERENCE_COUNT_AND_HANDLE_MAP = new ConcurrentHashMap<>();
   private String clsID;
-  private OPCDAServerHandle handle;
+  private OpcDaServerHandle handle;
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -80,13 +80,13 @@ public class OpcDaConnector implements PipeConnector {
       clsID = parameters.getStringByKeys(CONNECTOR_OPC_DA_CLSID_KEY, SINK_OPC_DA_CLSID_KEY);
       if (Objects.isNull(clsID)) {
         clsID =
-            OPCDAServerHandle.getClsIDFromProgID(
+            OpcDaServerHandle.getClsIDFromProgID(
                 parameters.getStringByKeys(CONNECTOR_OPC_DA_PROGID_KEY, SINK_OPC_DA_PROGID_KEY));
       }
       handle =
           CLS_ID_TO_REFERENCE_COUNT_AND_HANDLE_MAP
               .computeIfAbsent(
-                  clsID, key -> new Pair<>(new AtomicInteger(0), new OPCDAServerHandle(clsID)))
+                  clsID, key -> new Pair<>(new AtomicInteger(0), new OpcDaServerHandle(clsID)))
               .getRight();
       CLS_ID_TO_REFERENCE_COUNT_AND_HANDLE_MAP.get(clsID).getLeft().incrementAndGet();
     }
@@ -120,7 +120,7 @@ public class OpcDaConnector implements PipeConnector {
     }
 
     synchronized (CLS_ID_TO_REFERENCE_COUNT_AND_HANDLE_MAP) {
-      final Pair<AtomicInteger, OPCDAServerHandle> pair =
+      final Pair<AtomicInteger, OpcDaServerHandle> pair =
           CLS_ID_TO_REFERENCE_COUNT_AND_HANDLE_MAP.get(clsID);
       if (pair == null) {
         return;
