@@ -1949,6 +1949,7 @@ mqtt_handler_pool_size=1
 # the mqtt message payload formatter.
 # effectiveMode: restart
 # Options: [json, line]
+# The built-in json only supports tree models, and the line only supports table models.
 # Datatype: String
 mqtt_payload_formatter=json
 
