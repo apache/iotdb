@@ -875,13 +875,13 @@ public class NodeManager {
     return clientHandler.getResponseList();
   }
 
-    public List<TSStatus> flushOnSpecificDN(
-            TFlushReq req, Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
-        DataNodeAsyncRequestContext<TFlushReq, TSStatus> clientHandler =
-                new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.FLUSH, req, dataNodeLocationMap);
-        CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
-        return clientHandler.getResponseList();
-    }
+  public List<TSStatus> flushOnSpecificDN(
+      TFlushReq req, Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
+    DataNodeAsyncRequestContext<TFlushReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(CnToDnAsyncRequestType.FLUSH, req, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
+    return clientHandler.getResponseList();
+  }
 
   public List<TSStatus> clearCache() {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
