@@ -165,7 +165,7 @@ public class TTLInfo implements SnapshotProcessor {
    * @return the maximum ttl of the subtree of the corresponding database. return NULL_TTL if the
    *     TTL is not set or the database does not exist.
    */
-  public long getDatabaseMaxTTL(String database) {
+  public long getDatabaseMaxTTL(final String database) {
     lock.readLock().lock();
     try {
       return ttlCache.getDatabaseMaxTTL(database);

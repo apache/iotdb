@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AutoCleanPartitionTablePlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -57,7 +58,10 @@ public class PartitionTableAutoCleaner<Env> extends InternalProcedure<Env> {
     Map<String, Long> databaseTTLMap =
         configManager.getClusterSchemaManager().getTTLInfoForUpgrading();
     for (String database : databases) {
-      long subTreeMaxTTL = configManager.getTTLManager().getDatabaseMaxTTL(database);
+      long subTreeMaxTTL =
+          PathUtils.isTableModelDatabase(database)
+              ? configManager.getClusterSchemaManager().getDatabaseMaxTTL(database)
+              : configManager.getTTLManager().getDatabaseMaxTTL(database);
       databaseTTLMap.put(
           database, Math.max(subTreeMaxTTL, databaseTTLMap.getOrDefault(database, -1L)));
       long databaseTTL = databaseTTLMap.get(database);

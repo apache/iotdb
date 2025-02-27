@@ -105,6 +105,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -142,9 +143,9 @@ public class ClusterSchemaManager {
       "Failed in the write API executing the consensus layer due to: ";
 
   public ClusterSchemaManager(
-      IManager configManager,
-      ClusterSchemaInfo clusterSchemaInfo,
-      ClusterSchemaQuotaStatistics schemaQuotaStatistics) {
+      final IManager configManager,
+      final ClusterSchemaInfo clusterSchemaInfo,
+      final ClusterSchemaQuotaStatistics schemaQuotaStatistics) {
     this.configManager = configManager;
     this.clusterSchemaInfo = clusterSchemaInfo;
     this.schemaQuotaStatistics = schemaQuotaStatistics;
@@ -1382,6 +1383,11 @@ public class ClusterSchemaManager {
         });
 
     return new Pair<>(RpcUtils.SUCCESS_STATUS, updatedTable);
+  }
+
+  @TableModel
+  public long getDatabaseMaxTTL(final String database) {
+    return clusterSchemaInfo.getDatabaseMaxTTL(database);
   }
 
   public void clearSchemaQuotaCache() {
