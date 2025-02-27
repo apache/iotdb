@@ -22,9 +22,10 @@ package org.apache.iotdb.db.storageengine.rescon.memory;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.memory.MemoryConfig;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.junit.After;
 import org.junit.Assert;
@@ -40,6 +41,7 @@ import static org.junit.Assert.assertTrue;
 public class TimePartitionManagerTest {
 
   private final TimePartitionManager timePartitionManager = TimePartitionManager.getInstance();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final MemoryConfig MEMORY_CONFIG = MemoryConfig.getInstance();
   private long prevTimePartitionInfoMemoryThreshold;
 
