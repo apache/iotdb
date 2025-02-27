@@ -32,13 +32,14 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_OPC_DA_CLSID_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_OPC_DA_CLSID_KEY;
 
 /**
@@ -55,10 +56,14 @@ public class OPCDAConnector implements PipeConnector {
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
-    validator.validateSynonymAttributes(
-        Collections.singletonList(CONNECTOR_OPC_DA_CLSID_KEY),
-        Collections.singletonList(SINK_OPC_DA_CLSID_KEY),
-        true);
+    // TODO: upgrade this logic after "1 in 2" logic is supported
+    validator.validate(
+        args -> ((boolean) args[1] || (boolean) args[2]),
+        String.format(
+            "One of '%s' and '%s' must be specified",
+            SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY, SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY),
+        validator.getParameters().hasAttribute(SINK_OPC_DA_CLSID_KEY),
+        validator.getParameters().hasAttribute(CONNECTOR_OPC_DA_CLSID_KEY));
   }
 
   @Override
