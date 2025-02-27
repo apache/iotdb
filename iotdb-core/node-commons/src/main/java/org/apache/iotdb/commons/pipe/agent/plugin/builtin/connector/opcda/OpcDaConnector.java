@@ -20,7 +20,6 @@
 package org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.opcda;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.PlaceholderConnector;
-import org.apache.iotdb.pipe.api.annotation.TreeModel;
 
 /**
  * This class is a placeholder and should not be initialized. It represents the OPC DA connector.
@@ -28,5 +27,4 @@ import org.apache.iotdb.pipe.api.annotation.TreeModel;
  * in the server module will replace this class with the real implementation when initializing the
  * OPC UA connector.
  */
-@TreeModel
 public class OpcDaConnector extends PlaceholderConnector {}
