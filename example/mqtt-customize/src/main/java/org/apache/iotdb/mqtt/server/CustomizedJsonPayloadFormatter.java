@@ -58,4 +58,9 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
     // set the value of mqtt_payload_formatter in iotdb-common.properties as the following string:
     return "CustomizedJson";
   }
+
+  @Override
+  public String getType() {
+    return PayloadFormatter.TREE_TYPE;
+  }
 }
