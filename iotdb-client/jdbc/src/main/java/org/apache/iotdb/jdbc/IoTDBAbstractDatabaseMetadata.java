@@ -577,7 +577,22 @@ public abstract class IoTDBAbstractDatabaseMetadata implements DatabaseMetaData 
 
   @Override
   public String getDatabaseProductVersion() throws SQLException {
-    return getDriverVersion();
+    String serverVersion = "";
+    Statement stmt = this.connection.createStatement();
+    ResultSet rs;
+    try {
+      String sql = "SHOW VERSION";
+      rs = stmt.executeQuery(sql);
+    } catch (SQLException e) {
+      stmt.close();
+      LOGGER.error("Get database product version error: {}", e.getMessage());
+      throw e;
+    }
+    while (rs.next()) {
+      serverVersion = rs.getString("Version");
+    }
+
+    return serverVersion;
   }
 
   @Override
