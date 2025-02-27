@@ -59,8 +59,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortBasedGroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
@@ -99,7 +101,6 @@ import java.util.stream.IntStream;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
-import static org.apache.iotdb.db.queryengine.plan.planner.TableOperatorGenerator.createTreeDeviceIdColumnValueExtractor;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.GROUP_KEY_SUFFIX;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.SEPARATOR;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
@@ -188,14 +189,20 @@ public class TableDistributedPlanGenerator
     if (!(node instanceof ValueFillNode)) {
       context.clearExpectedOrderingScheme();
     }
+    boolean parallel =
+        (node.getChild() instanceof SortBasedGroupNode)
+            && ((SortBasedGroupNode) node.getChild()).isEnableParalleled();
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
     if (childOrdering != null) {
       nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
     }
-
-    node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
-    return Collections.singletonList(node);
+    if (!parallel) {
+      node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
+      return Collections.singletonList(node);
+    } else {
+      return splitForEachChild(node, childrenNodes);
+    }
   }
 
   @Override
@@ -271,9 +278,7 @@ public class TableDistributedPlanGenerator
       ProjectNode subProjectNode =
           new ProjectNode(queryId.genPlanNodeId(), child, node.getAssignments());
       resultNodeList.add(subProjectNode);
-      if (i == 0) {
-        nodeOrderingMap.put(subProjectNode.getPlanNodeId(), childOrdering);
-      }
+      nodeOrderingMap.put(subProjectNode.getPlanNodeId(), childOrdering);
     }
     return resultNodeList;
   }
@@ -307,6 +312,36 @@ public class TableDistributedPlanGenerator
     nodeOrderingMap.put(newTopKNode.getPlanNodeId(), newTopKNode.getOrderingScheme());
 
     return Collections.singletonList(newTopKNode);
+  }
+
+  @Override
+  public List<PlanNode> visitSortBasedGroup(SortBasedGroupNode node, PlanContext context) {
+    boolean pushDown = context.isPushDownGrouping();
+    try {
+      context.setPushDownGrouping(node.isEnableParalleled());
+      if (node.isEnableParalleled()) {
+        List<PlanNode> result = new ArrayList<>();
+        context.setExpectedOrderingScheme(node.getOrderingScheme());
+        List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+        for (PlanNode child : childrenNodes) {
+          if (canSortEliminated(
+              node.getOrderingScheme(), nodeOrderingMap.get(child.getPlanNodeId()))) {
+            result.add(child);
+          } else {
+            SortNode subSortNode =
+                new SortNode(
+                    queryId.genPlanNodeId(), child, node.getOrderingScheme(), false, false);
+            result.add(subSortNode);
+            nodeOrderingMap.put(subSortNode.getPlanNodeId(), subSortNode.getOrderingScheme());
+          }
+        }
+        return result;
+      } else {
+        return visitSort(node, context);
+      }
+    } finally {
+      context.setPushDownGrouping(pushDown);
+    }
   }
 
   @Override
@@ -432,9 +467,7 @@ public class TableDistributedPlanGenerator
       FilterNode subFilterNode =
           new FilterNode(queryId.genPlanNodeId(), child, node.getPredicate());
       resultNodeList.add(subFilterNode);
-      if (i == 0) {
-        nodeOrderingMap.put(subFilterNode.getPlanNodeId(), childOrdering);
-      }
+      nodeOrderingMap.put(subFilterNode.getPlanNodeId(), childOrdering);
     }
     return resultNodeList;
   }
@@ -482,8 +515,82 @@ public class TableDistributedPlanGenerator
 
   public List<PlanNode> visitDeviceTableScan(
       final DeviceTableScanNode node, final PlanContext context) {
-    final Map<TRegionReplicaSet, DeviceTableScanNode> tableScanNodeMap = new HashMap<>();
+    if (context.isPushDownGrouping()) {
+      return constructDeviceTableScanByTags(node, context);
+    } else {
+      return constructDeviceTableScanByRegionReplicaSet(node, context);
+    }
+  }
 
+  private List<PlanNode> constructDeviceTableScanByTags(
+      final DeviceTableScanNode node, final PlanContext context) {
+    List<PlanNode> result = new ArrayList<>();
+    List<DeviceEntry> crossRegionDevices = new ArrayList<>();
+
+    final Map<TRegionReplicaSet, DeviceTableScanNode> tableScanNodeMap = new HashMap<>();
+    final Map<TRegionReplicaSet, Integer> regionDeviceCount = new HashMap<>();
+    for (final DeviceEntry deviceEntry : node.getDeviceEntries()) {
+      final List<TRegionReplicaSet> regionReplicaSets =
+          analysis.getDataRegionReplicaSetWithTimeFilter(
+              node.getQualifiedObjectName().getDatabaseName(),
+              deviceEntry.getDeviceID(),
+              node.getTimeFilter());
+      regionReplicaSets.forEach(
+          regionReplicaSet ->
+              regionDeviceCount.put(
+                  regionReplicaSet, regionDeviceCount.getOrDefault(regionReplicaSet, 0) + 1));
+      if (regionReplicaSets.size() != 1) {
+        crossRegionDevices.add(deviceEntry);
+        continue;
+      }
+      final DeviceTableScanNode deviceTableScanNode =
+          tableScanNodeMap.computeIfAbsent(
+              regionReplicaSets.get(0),
+              k -> {
+                final DeviceTableScanNode scanNode =
+                    new DeviceTableScanNode(
+                        queryId.genPlanNodeId(),
+                        node.getQualifiedObjectName(),
+                        node.getOutputSymbols(),
+                        node.getAssignments(),
+                        new ArrayList<>(),
+                        node.getIdAndAttributeIndexMap(),
+                        node.getScanOrder(),
+                        node.getTimePredicate().orElse(null),
+                        node.getPushDownPredicate(),
+                        node.getPushDownLimit(),
+                        node.getPushDownOffset(),
+                        node.isPushLimitToEachDevice(),
+                        node.containsNonAlignedDevice());
+                scanNode.setRegionReplicaSet(regionReplicaSets.get(0));
+                return scanNode;
+              });
+      deviceTableScanNode.appendDeviceEntry(deviceEntry);
+    }
+    result.addAll(tableScanNodeMap.values());
+    if (context.hasSortProperty) {
+      processSortProperty(node, result, context);
+    }
+    context.mostUsedRegion =
+        regionDeviceCount.entrySet().stream()
+            .max(Comparator.comparingInt(Map.Entry::getValue))
+            .map(Map.Entry::getKey)
+            .orElse(null);
+    if (!crossRegionDevices.isEmpty()) {
+      node.setDeviceEntries(crossRegionDevices);
+      result.add(
+          new CollectNode(
+              queryId.genPlanNodeId(),
+              constructDeviceTableScanByRegionReplicaSet(node, context),
+              node.getOutputSymbols()));
+    }
+    return result;
+  }
+
+  private List<PlanNode> constructDeviceTableScanByRegionReplicaSet(
+      final DeviceTableScanNode node, final PlanContext context) {
+
+    final Map<TRegionReplicaSet, DeviceTableScanNode> tableScanNodeMap = new HashMap<>();
     for (final DeviceEntry deviceEntry : node.getDeviceEntries()) {
       final List<TRegionReplicaSet> regionReplicaSets =
           analysis.getDataRegionReplicaSetWithTimeFilter(
@@ -496,7 +603,7 @@ public class TableDistributedPlanGenerator
             tableScanNodeMap.computeIfAbsent(
                 regionReplicaSet,
                 k -> {
-                  DeviceTableScanNode scanNode =
+                  final DeviceTableScanNode scanNode =
                       new DeviceTableScanNode(
                           queryId.genPlanNodeId(),
                           node.getQualifiedObjectName(),
@@ -517,7 +624,6 @@ public class TableDistributedPlanGenerator
         deviceTableScanNode.appendDeviceEntry(deviceEntry);
       }
     }
-
     if (tableScanNodeMap.isEmpty()) {
       node.setRegionReplicaSet(NOT_ASSIGNED);
       return Collections.singletonList(node);
@@ -847,6 +953,49 @@ public class TableDistributedPlanGenerator
 
     node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
     return Collections.singletonList(node);
+  }
+
+  private List<PlanNode> splitForEachChild(PlanNode node, List<PlanNode> childrenNodes) {
+    ImmutableList.Builder<PlanNode> result = ImmutableList.builder();
+    for (PlanNode child : childrenNodes) {
+      PlanNode subNode = node.clone();
+      subNode.addChild(child);
+      subNode.setPlanNodeId(queryId.genPlanNodeId());
+      result.add(subNode);
+    }
+    return result.build();
+  }
+
+  @Override
+  public List<PlanNode> visitTableFunctionProcessor(
+      TableFunctionProcessorNode node, PlanContext context) {
+    context.clearExpectedOrderingScheme();
+    if (node.getChildren().isEmpty()) {
+      return Collections.singletonList(node);
+    }
+    boolean pushDown = context.isPushDownGrouping();
+    try {
+      context.setPushDownGrouping(node.isRowSemantic());
+      boolean canSplitPushDown =
+          node.isRowSemantic()
+              || (node.getChild() instanceof SortBasedGroupNode)
+                  && ((SortBasedGroupNode) node.getChild()).isEnableParalleled();
+      List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+      if (childrenNodes.size() == 1) {
+        node.setChild(childrenNodes.get(0));
+        return Collections.singletonList(node);
+      } else if (!canSplitPushDown) {
+        CollectNode collectNode =
+            new CollectNode(queryId.genPlanNodeId(), node.getChildren().get(0).getOutputSymbols());
+        childrenNodes.forEach(collectNode::addChild);
+        node.setChild(collectNode);
+        return Collections.singletonList(node);
+      } else {
+        return splitForEachChild(node, childrenNodes);
+      }
+    } finally {
+      context.setPushDownGrouping(pushDown);
+    }
   }
 
   private void buildRegionNodeMap(
@@ -1245,6 +1394,7 @@ public class TableDistributedPlanGenerator
     final Map<PlanNodeId, NodeDistribution> nodeDistributionMap;
     boolean hasExchangeNode = false;
     boolean hasSortProperty = false;
+    boolean pushDownGrouping = false;
     OrderingScheme expectedOrderingScheme;
     TRegionReplicaSet mostUsedRegion;
 
@@ -1264,6 +1414,14 @@ public class TableDistributedPlanGenerator
     public void setExpectedOrderingScheme(OrderingScheme expectedOrderingScheme) {
       this.expectedOrderingScheme = expectedOrderingScheme;
       hasSortProperty = true;
+    }
+
+    public void setPushDownGrouping(boolean pushDownGrouping) {
+      this.pushDownGrouping = pushDownGrouping;
+    }
+
+    public boolean isPushDownGrouping() {
+      return pushDownGrouping;
     }
   }
 }

@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortBasedGroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 
@@ -118,6 +119,11 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       }
 
       return node;
+    }
+
+    @Override
+    public PlanNode visitSortBasedGroup(SortBasedGroupNode node, Context context) {
+      return visitSingleChildProcess(node, context);
     }
 
     @Override

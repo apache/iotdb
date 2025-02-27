@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNo
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortBasedGroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
@@ -667,6 +668,26 @@ public class QueryPlanner {
     return new PlanAndMappings(subPlan, mappings);
   }
 
+  public static OrderingScheme translateOrderingScheme(
+      List<SortItem> items, Function<Expression, Symbol> coercions) {
+    List<Symbol> coerced =
+        items.stream().map(SortItem::getSortKey).map(coercions).collect(toImmutableList());
+
+    ImmutableList.Builder<Symbol> symbols = ImmutableList.builder();
+    Map<Symbol, SortOrder> orders = new HashMap<>();
+    for (int i = 0; i < coerced.size(); i++) {
+      Symbol symbol = coerced.get(i);
+      // for multiple sort items based on the same expression, retain the first one:
+      // ORDER BY x DESC, x ASC, y --> ORDER BY x DESC, y
+      if (!orders.containsKey(symbol)) {
+        symbols.add(symbol);
+        orders.put(symbol, OrderingTranslator.sortItemToSortOrder(items.get(i)));
+      }
+    }
+
+    return new OrderingScheme(symbols.build(), orders);
+  }
+
   private PlanBuilder gapFill(
       PlanBuilder subPlan,
       @Nonnull Symbol timeColumn,
@@ -800,8 +821,11 @@ public class QueryPlanner {
     OrderingScheme orderingScheme = new OrderingScheme(orderBySymbols.build(), orderings);
     analysis.setSortNode(true);
     return subPlan.withNewRoot(
-        new SortNode(
-            queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), orderingScheme, false, false));
+        new SortBasedGroupNode(
+            queryIdAllocator.genPlanNodeId(),
+            subPlan.getRoot(),
+            orderingScheme,
+            groupingKeys.size()));
   }
 
   private PlanBuilder distinct(
