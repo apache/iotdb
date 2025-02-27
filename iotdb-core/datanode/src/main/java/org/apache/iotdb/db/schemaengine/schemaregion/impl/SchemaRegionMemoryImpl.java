@@ -80,6 +80,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.DeviceAttributeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.IDeviceAttributeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeCacheUpdater;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.FakeCRC32Deserializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.FakeCRC32Serializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.SchemaLogReader;
@@ -88,6 +89,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor.SchemaRegio
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor.SchemaRegionPlanSerializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.MTreeBelowSGMemoryImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.TableDeviceInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowDevicesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowNodesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowTimeSeriesPlan;
@@ -613,7 +615,19 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                   regionStatistics.activateTemplate(deviceMNode.getSchemaTemplateId());
                 }
               },
-              (tableDeviceMode, tableName) -> regionStatistics.addTableDevice(tableName),
+              (tableDeviceMode, tableName) -> {
+                regionStatistics.addTableDevice(tableName);
+                regionStatistics.addTableAttributeMemory(
+                    tableName,
+                    deviceAttributeStore
+                        .getAttributes(
+                            ((TableDeviceInfo<?>) tableDeviceMode.getDeviceInfo())
+                                .getAttributePointer())
+                        .values()
+                        .stream()
+                        .map(UpdateDetailContainer::sizeOf)
+                        .reduce(0L, Long::sum));
+              },
               tagManager::readTags,
               tagManager::readAttributes);
       logger.info(

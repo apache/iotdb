@@ -62,6 +62,8 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     this.regionStatistics = regionStatistics;
   }
 
+  // It's OK not to calculate the region statistics here. The caller shall ensure that the
+  // statistics is cleared at the outside.
   @Override
   public void clear() {
     deviceAttributeList.clear();
