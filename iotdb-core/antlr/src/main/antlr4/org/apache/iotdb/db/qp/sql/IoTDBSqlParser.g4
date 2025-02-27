@@ -63,7 +63,7 @@ ddlStatement
     // Cluster
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
     | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList
-    | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode | removeConfigNode
+    | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode
     | verifyConnection
     // AINode
     | showAINodes | createModel | dropModel | showModels | callInference
@@ -88,7 +88,7 @@ utilityStatement
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueries | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
     | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
-    | removeFile | unloadFile | setSqlDialect | showCurrentSqlDialect | showCurrentUser
+    | removeFile | unloadFile
     ;
 
 /**
@@ -552,12 +552,7 @@ verifyConnection
 
 // ---- Remove DataNode
 removeDataNode
-    : REMOVE DATANODE dataNodeId=INTEGER_LITERAL
-    ;
-
-// ---- Remove ConfigNode
-removeConfigNode
-    : REMOVE CONFIGNODE configNodeId=INTEGER_LITERAL
+    : REMOVE DATANODE dataNodeId=INTEGER_LITERAL (COMMA dataNodeId=INTEGER_LITERAL)*
     ;
 
 // Pipe Task =========================================================================================
@@ -1186,18 +1181,6 @@ removeFile
 // Unload TsFile
 unloadFile
     : UNLOAD srcFileName=STRING_LITERAL dstFileDir=STRING_LITERAL
-    ;
-
-setSqlDialect
-    : SET SQL_DIALECT OPERATOR_SEQ (TABLE | TREE)
-    ;
-
-showCurrentSqlDialect
-    : SHOW CURRENT_SQL_DIALECT
-    ;
-
-showCurrentUser
-    : SHOW CURRENT_USER
     ;
 
 // attribute clauses

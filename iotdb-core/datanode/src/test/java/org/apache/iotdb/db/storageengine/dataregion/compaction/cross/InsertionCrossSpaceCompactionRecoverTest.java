@@ -62,7 +62,6 @@ import java.util.concurrent.Phaser;
 
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.writeNonAlignedChunk;
 
-@SuppressWarnings("OptionalGetWithoutIsPresent")
 public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompactionTest {
   @Before
   public void setUp()
@@ -451,8 +450,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
             new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
         ChunkWriterImpl iChunkWriter = new ChunkWriterImpl(schema);
         List<TimeRange> pages = new ArrayList<>();
-        pages.add(
-            new TimeRange(resource.getStartTime(device).get(), resource.getEndTime(device).get()));
+        pages.add(new TimeRange(resource.getStartTime(device), resource.getEndTime(device)));
         writeNonAlignedChunk(iChunkWriter, tsFileIOWriter, pages, resource.isSeq());
         tsFileIOWriter.endChunkGroup();
       }

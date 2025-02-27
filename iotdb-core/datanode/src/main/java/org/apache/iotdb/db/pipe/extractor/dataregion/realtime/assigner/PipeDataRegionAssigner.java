@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner;
 
-import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.pipe.metric.PipeEventCounter;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
@@ -39,8 +37,6 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.CachedSche
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.matcher.PipeDataRegionMatcher;
 import org.apache.iotdb.db.pipe.metric.PipeAssignerMetrics;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
-import org.apache.iotdb.db.storageengine.StorageEngine;
-import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import org.slf4j.Logger;
@@ -70,8 +66,6 @@ public class PipeDataRegionAssigner implements Closeable {
 
   private int counter = 0;
 
-  private Boolean isTableModel;
-
   private final AtomicReference<ProgressIndex> maxProgressIndexForTsFileInsertionEvent =
       new AtomicReference<>(MinimumProgressIndex.INSTANCE);
 
@@ -86,15 +80,6 @@ public class PipeDataRegionAssigner implements Closeable {
     this.disruptor = new DisruptorQueue(this::assignToExtractor, this::onAssignedHook);
     this.dataRegionId = dataRegionId;
     PipeAssignerMetrics.getInstance().register(this);
-
-    final DataRegion dataRegion =
-        StorageEngine.getInstance().getDataRegion(new DataRegionId(Integer.parseInt(dataRegionId)));
-    if (Objects.nonNull(dataRegion)) {
-      final String databaseName = dataRegion.getDatabaseName();
-      if (Objects.nonNull(databaseName)) {
-        isTableModel = PathUtils.isTableModelDatabase(databaseName);
-      }
-    }
   }
 
   public void publishToAssign(final PipeRealtimeEvent event) {
@@ -187,8 +172,6 @@ public class PipeDataRegionAssigner implements Closeable {
                       extractor.getRealtimeDataExtractionStartTime(),
                       extractor.getRealtimeDataExtractionEndTime());
               final EnrichedEvent innerEvent = copiedEvent.getEvent();
-              // Bind replicateIndex for IoTV2
-              innerEvent.setReplicateIndexForIoTV2(event.getEvent().getReplicateIndexForIoTV2());
 
               if (innerEvent instanceof PipeTsFileInsertionEvent) {
                 final PipeTsFileInsertionEvent tsFileInsertionEvent =
@@ -283,9 +266,5 @@ public class PipeDataRegionAssigner implements Closeable {
 
   public int getPipeHeartbeatEventCount() {
     return eventCounter.getPipeHeartbeatEventCount();
-  }
-
-  public Boolean isTableModel() {
-    return isTableModel;
   }
 }

@@ -90,7 +90,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.ParsingException;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
@@ -114,7 +113,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSc
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSqlDialectStatement;
 import org.apache.iotdb.db.schemaengine.template.TemplateQueryType;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -314,16 +312,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     StatementType statementType = null;
     Throwable t = null;
     boolean useDatabase = false;
-    boolean setSqlDialect = false;
     try {
       // create and cache dataset
       ExecutionResult result;
       if (clientSession.getSqlDialect() == IClientSession.SqlDialect.TREE) {
         Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
-
-        if (s instanceof SetSqlDialectStatement) {
-          setSqlDialect = true;
-        }
 
         if (s == null) {
           return RpcUtils.getTSExecuteStatementResp(
@@ -362,10 +355,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
         if (s instanceof Use) {
           useDatabase = true;
-        }
-
-        if (s instanceof SetSqlDialect) {
-          setSqlDialect = true;
         }
 
         if (s == null) {
@@ -414,12 +403,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           // set for use XX
           if (useDatabase) {
             resp.setDatabase(clientSession.getDatabaseName());
-          }
-
-          if (setSqlDialect) {
-            resp.setTableModel(
-                SESSION_MANAGER.getCurrSessionAndUpdateIdleTime().getSqlDialect()
-                    == IClientSession.SqlDialect.TABLE);
           }
         }
         return resp;

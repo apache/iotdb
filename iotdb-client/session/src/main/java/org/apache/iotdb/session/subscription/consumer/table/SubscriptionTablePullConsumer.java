@@ -39,12 +39,12 @@ public class SubscriptionTablePullConsumer extends AbstractSubscriptionPullConsu
 
   @Override
   protected AbstractSubscriptionProvider constructSubscriptionProvider(
-      final TEndPoint endPoint,
-      final String username,
-      final String password,
-      final String consumerId,
-      final String consumerGroupId,
-      final int thriftMaxFrameSize) {
+      TEndPoint endPoint,
+      String username,
+      String password,
+      String consumerId,
+      String consumerGroupId,
+      int thriftMaxFrameSize) {
     return new SubscriptionTableProvider(
         endPoint, username, password, consumerId, consumerGroupId, thriftMaxFrameSize);
   }
@@ -89,32 +89,32 @@ public class SubscriptionTablePullConsumer extends AbstractSubscriptionPullConsu
   }
 
   @Override
-  public void subscribe(final String topicName) throws SubscriptionException {
+  public void subscribe(String topicName) throws SubscriptionException {
     super.subscribe(topicName);
   }
 
   @Override
-  public void subscribe(final String... topicNames) throws SubscriptionException {
+  public void subscribe(String... topicNames) throws SubscriptionException {
     super.subscribe(topicNames);
   }
 
   @Override
-  public void subscribe(final Set<String> topicNames) throws SubscriptionException {
+  public void subscribe(Set<String> topicNames) throws SubscriptionException {
     super.subscribe(topicNames);
   }
 
   @Override
-  public void unsubscribe(final String topicName) throws SubscriptionException {
+  public void unsubscribe(String topicName) throws SubscriptionException {
     super.unsubscribe(topicName);
   }
 
   @Override
-  public void unsubscribe(final String... topicNames) throws SubscriptionException {
+  public void unsubscribe(String... topicNames) throws SubscriptionException {
     super.unsubscribe(topicNames);
   }
 
   @Override
-  public void unsubscribe(final Set<String> topicNames) throws SubscriptionException {
+  public void unsubscribe(Set<String> topicNames) throws SubscriptionException {
     super.unsubscribe(topicNames);
   }
 
@@ -148,15 +148,5 @@ public class SubscriptionTablePullConsumer extends AbstractSubscriptionPullConsu
   public void commitAsync(
       final Iterable<SubscriptionMessage> messages, final AsyncCommitCallback callback) {
     super.commitAsync(messages, callback);
-  }
-
-  @Override
-  public String getConsumerId() {
-    return super.getConsumerId();
-  }
-
-  @Override
-  public String getConsumerGroupId() {
-    return super.getConsumerGroupId();
   }
 }

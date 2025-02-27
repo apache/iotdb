@@ -18,19 +18,39 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
-public class QuickBinaryTVList extends BinaryTVList {
-  private final QuickSort policy;
+import org.apache.tsfile.utils.Binary;
 
-  QuickBinaryTVList() {
-    policy = new QuickSort(this);
+public class QuickBinaryTVList extends BinaryTVList implements QuickSort {
+
+  @Override
+  public int compare(int idx1, int idx2) {
+    long t1 = getTime(idx1);
+    long t2 = getTime(idx2);
+    return Long.compare(t1, t2);
   }
 
   @Override
-  public synchronized void sort() {
+  public void swap(int p, int q) {
+    Binary valueP = getBinary(p);
+    long timeP = getTime(p);
+    Binary valueQ = getBinary(q);
+    long timeQ = getTime(q);
+    set(p, timeQ, valueQ);
+    set(q, timeP, valueP);
+  }
+
+  @Override
+  public void sort() {
     if (!sorted) {
-      policy.qsort(0, rowCount - 1);
+      qsort(0, rowCount - 1);
     }
     sorted = true;
-    seqRowCount = rowCount;
+  }
+
+  @Override
+  protected void set(int src, int dest) {
+    long srcT = getTime(src);
+    Binary srcV = getBinary(src);
+    set(dest, srcT, srcV);
   }
 }

@@ -88,10 +88,10 @@ public class TreeSchemaAutoCreatorAndVerifier {
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
 
-  private final LoadTsFileAnalyzer loadTsFileAnalyzer;
+  private final LoadTsFileToTreeModelAnalyzer loadTsFileAnalyzer;
   private final LoadTsFileTreeSchemaCache schemaCache;
 
-  TreeSchemaAutoCreatorAndVerifier(LoadTsFileAnalyzer loadTsFileAnalyzer)
+  TreeSchemaAutoCreatorAndVerifier(LoadTsFileToTreeModelAnalyzer loadTsFileAnalyzer)
       throws LoadRuntimeOutOfMemoryException {
     this.loadTsFileAnalyzer = loadTsFileAnalyzer;
     this.schemaCache = new LoadTsFileTreeSchemaCache();

@@ -36,6 +36,7 @@ import java.util.Map;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.ANALYZER;
+import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TABLE_TYPE;
 
 public class Analyzer {
 
@@ -105,7 +106,7 @@ public class Analyzer {
     analyzer.analyze(rewrittenStatement);
     if (analysis.isQuery()) {
       long analyzeCost = System.nanoTime() - startTime;
-      QueryPlanCostMetricSet.getInstance().recordTreePlanCost(ANALYZER, analyzeCost);
+      QueryPlanCostMetricSet.getInstance().recordPlanCost(TABLE_TYPE, ANALYZER, analyzeCost);
       context.setAnalyzeCost(analyzeCost);
     }
 

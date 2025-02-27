@@ -730,8 +730,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TSStatus removeConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
-    return executeRemoteCallWithRetry(
-        () -> client.removeConfigNode(configNodeLocation), resp -> !updateConfigNodeLeader(resp));
+    throw new TException("DataNode to ConfigNode client doesn't support removeConfigNode.");
   }
 
   @Override

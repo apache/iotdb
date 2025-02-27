@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.subscription.event.pipe;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
-import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletIterationSnapshot;
 
 import java.util.List;
 import java.util.Objects;
@@ -32,21 +32,28 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents {
 
   private final SubscriptionPipeTabletEventBatch batch;
-  private volatile SubscriptionPipeTabletIterationSnapshot iterationSnapshot;
+  private volatile List<EnrichedEvent> iteratedEnrichedEvents;
 
   public SubscriptionPipeTabletBatchEvents(final SubscriptionPipeTabletEventBatch batch) {
     this.batch = batch;
   }
 
-  public void receiveIterationSnapshot(
-      final SubscriptionPipeTabletIterationSnapshot iterationSnapshot) {
-    this.iterationSnapshot = iterationSnapshot;
+  public void receiveIterationSnapshot(final List<EnrichedEvent> iteratedEnrichedEvents) {
+    this.iteratedEnrichedEvents = iteratedEnrichedEvents;
   }
 
   @Override
   public void ack() {
     batch.ack();
-    iterationSnapshot.clear();
+
+    // only decrease the reference count of iterated events
+    for (final EnrichedEvent enrichedEvent : iteratedEnrichedEvents) {
+      if (enrichedEvent instanceof PipeTsFileInsertionEvent) {
+        // close data container in tsfile event
+        ((PipeTsFileInsertionEvent) enrichedEvent).close();
+      }
+      enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
+    }
   }
 
   @Override
@@ -60,11 +67,7 @@ public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents
   public String toString() {
     return toStringHelper(this)
         .add("batch", batch)
-        .add(
-            "events",
-            Objects.nonNull(iterationSnapshot)
-                ? formatEnrichedEvents(iterationSnapshot.getIteratedEnrichedEvents(), 4)
-                : "<unknown>")
+        .add("events", formatEnrichedEvents(iteratedEnrichedEvents, 4))
         .toString();
   }
 
@@ -89,8 +92,6 @@ public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents
 
   @Override
   public int getPipeEventCount() {
-    return Objects.nonNull(iterationSnapshot)
-        ? iterationSnapshot.getIteratedEnrichedEvents().size()
-        : 0;
+    return iteratedEnrichedEvents.size();
   }
 }

@@ -48,14 +48,4 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   public DataNodeConfig setCompactionScheduleInterval(long compactionScheduleInterval) {
     return this;
   }
-
-  @Override
-  public DataNodeConfig setEnableMQTTService(boolean enableMQTTService) {
-    return this;
-  }
-
-  @Override
-  public DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
-    return this;
-  }
 }

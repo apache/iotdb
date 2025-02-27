@@ -195,9 +195,4 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
     }
     return database;
   }
-
-  @Override
-  protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
-    insertRowStatementList.forEach(InsertRowStatement::removeAttributeColumns);
-  }
 }

@@ -87,9 +87,7 @@ class ClusterSchemaFetchExecutor {
     return coordinator.executeForTreeModel(
         statement,
         queryId,
-        context == null
-            ? null
-            : SessionManager.getInstance().copySessionInfoForTreeModel(context.getSession()),
+        context == null ? null : context.getSession(),
         sql,
         ClusterPartitionFetcher.getInstance(),
         schemaFetcher,

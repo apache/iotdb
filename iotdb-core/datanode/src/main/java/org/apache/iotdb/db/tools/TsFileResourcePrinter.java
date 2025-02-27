@@ -77,15 +77,13 @@ public class TsFileResourcePrinter {
         resource.getMinPlanIndex(), resource.getMaxPlanIndex());
 
     for (IDeviceID device : resource.getDevices()) {
-      // iterating the index, must present
-      //noinspection OptionalGetWithoutIsPresent
       System.out.printf(
           "device %s, start time %d (%s), end time %d (%s)%n",
           device,
-          resource.getStartTime(device).get(),
-          DateTimeUtils.convertLongToDate(resource.getStartTime(device).get()),
-          resource.getEndTime(device).get(),
-          DateTimeUtils.convertLongToDate(resource.getEndTime(device).get()));
+          resource.getStartTime(device),
+          DateTimeUtils.convertLongToDate(resource.getStartTime(device)),
+          resource.getEndTime(device),
+          DateTimeUtils.convertLongToDate(resource.getEndTime(device)));
     }
     System.out.println();
   }

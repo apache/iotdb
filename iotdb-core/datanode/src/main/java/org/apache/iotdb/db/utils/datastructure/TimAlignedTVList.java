@@ -18,34 +18,121 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
+
 import org.apache.tsfile.enums.TSDataType;
 
 import java.util.List;
 
-public class TimAlignedTVList extends AlignedTVList {
-  private final TimSort policy;
+import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
+
+public class TimAlignedTVList extends AlignedTVList implements TimSort {
+
+  private long[][] sortedTimestamps;
+  private long pivotTime;
+
+  private int[][] sortedIndices;
+  private int pivotIndex;
 
   TimAlignedTVList(List<TSDataType> types) {
     super(types);
-    policy = new TimSort(this);
   }
 
   @Override
-  public synchronized void sort() {
-    policy.checkSortedTimestampsAndIndices();
-    if (!sorted) {
-      policy.sort(0, rowCount);
+  public void sort() {
+    if (sortedTimestamps == null
+        || sortedTimestamps.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
+      sortedTimestamps =
+          (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, rowCount);
     }
-    policy.clearSortedValue();
-    policy.clearSortedTime();
+    if (sortedIndices == null
+        || sortedIndices.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
+      sortedIndices =
+          (int[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT32, rowCount);
+    }
+    if (!sorted) {
+      sort(0, rowCount);
+    }
+    clearSortedValue();
+    clearSortedTime();
     sorted = true;
-    seqRowCount = rowCount;
+  }
+
+  @Override
+  public void tim_set(int src, int dest) {
+    set(src, dest);
+  }
+
+  @Override
+  protected void set(int src, int dest) {
+    long srcT = getTime(src);
+    int srcV = getValueIndex(src);
+    set(dest, srcT, srcV);
+  }
+
+  @Override
+  public void setFromSorted(int src, int dest) {
+    set(
+        dest,
+        sortedTimestamps[src / ARRAY_SIZE][src % ARRAY_SIZE],
+        sortedIndices[src / ARRAY_SIZE][src % ARRAY_SIZE]);
+  }
+
+  @Override
+  public void setToSorted(int src, int dest) {
+    sortedTimestamps[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getTime(src);
+    sortedIndices[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getValueIndex(src);
+  }
+
+  @Override
+  public void setPivotTo(int pos) {
+    set(pos, pivotTime, pivotIndex);
+  }
+
+  @Override
+  public void saveAsPivot(int pos) {
+    pivotTime = getTime(pos);
+    pivotIndex = getValueIndex(pos);
+  }
+
+  @Override
+  public void clearSortedTime() {
+    if (sortedTimestamps != null) {
+      sortedTimestamps = null;
+    }
+  }
+
+  @Override
+  public void clearSortedValue() {
+    if (sortedIndices != null) {
+      sortedIndices = null;
+    }
+  }
+
+  @Override
+  public int compare(int idx1, int idx2) {
+    long t1 = getTime(idx1);
+    long t2 = getTime(idx2);
+    return Long.compare(t1, t2);
+  }
+
+  @Override
+  public void reverseRange(int lo, int hi) {
+    hi--;
+    while (lo < hi) {
+      long loT = getTime(lo);
+      int loV = getValueIndex(lo);
+      long hiT = getTime(hi);
+      int hiV = getValueIndex(hi);
+      set(lo++, hiT, hiV);
+      set(hi--, loT, loV);
+    }
   }
 
   @Override
   public void clear() {
     super.clear();
-    policy.clearSortedTime();
-    policy.clearSortedValue();
+    clearSortedTime();
+    clearSortedValue();
   }
 }

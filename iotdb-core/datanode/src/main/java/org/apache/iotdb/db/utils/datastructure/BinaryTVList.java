@@ -36,10 +36,10 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.IntStream;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.TVLIST_SORT_ALGORITHM;
+import static org.apache.iotdb.db.utils.MemUtils.getBinarySize;
 import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 
 public abstract class BinaryTVList extends TVList {
@@ -47,9 +47,13 @@ public abstract class BinaryTVList extends TVList {
   // index relation: arrayIndex -> elementIndex
   protected List<Binary[]> values;
 
+  // record total memory size of binary tvlist
+  long memoryBinaryChunkSize;
+
   BinaryTVList() {
     super();
     values = new ArrayList<>();
+    memoryBinaryChunkSize = 0;
   }
 
   public static BinaryTVList newList() {
@@ -64,10 +68,10 @@ public abstract class BinaryTVList extends TVList {
   }
 
   @Override
-  public BinaryTVList clone() {
-    BinaryTVList cloneList = BinaryTVList.newList();
+  public TimBinaryTVList clone() {
+    TimBinaryTVList cloneList = new TimBinaryTVList();
     cloneAs(cloneList);
-    cloneBitMap(cloneList);
+    cloneList.memoryBinaryChunkSize = memoryBinaryChunkSize;
     for (Binary[] valueArray : values) {
       cloneList.values.add(cloneValue(valueArray));
     }
@@ -81,25 +85,51 @@ public abstract class BinaryTVList extends TVList {
   }
 
   @Override
-  public synchronized void putBinary(long timestamp, Binary value) {
+  public void putBinary(long timestamp, Binary value) {
     checkExpansion();
     int arrayIndex = rowCount / ARRAY_SIZE;
     int elementIndex = rowCount % ARRAY_SIZE;
     maxTime = Math.max(maxTime, timestamp);
-    minTime = Math.min(minTime, timestamp);
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     values.get(arrayIndex)[elementIndex] = value;
-    if (indices != null) {
-      indices.get(arrayIndex)[elementIndex] = rowCount;
-    }
     rowCount++;
-    if (sorted) {
-      if (rowCount > 1 && timestamp < getTime(rowCount - 2)) {
-        sorted = false;
+    if (sorted && rowCount > 1 && timestamp < getTime(rowCount - 2)) {
+      sorted = false;
+    }
+    memoryBinaryChunkSize += getBinarySize(value);
+  }
+
+  @Override
+  public boolean reachChunkSizeOrPointNumThreshold() {
+    return memoryBinaryChunkSize >= TARGET_CHUNK_SIZE || rowCount >= MAX_SERIES_POINT_NUMBER;
+  }
+
+  @Override
+  public int delete(long lowerBound, long upperBound) {
+    int newSize = 0;
+    maxTime = Long.MIN_VALUE;
+    for (int i = 0; i < rowCount; i++) {
+      long time = getTime(i);
+      if (time < lowerBound || time > upperBound) {
+        set(i, newSize++);
+        maxTime = Math.max(maxTime, time);
       } else {
-        seqRowCount++;
+        memoryBinaryChunkSize -= getBinarySize(getBinary(i));
       }
     }
+    int deletedNumber = rowCount - newSize;
+    rowCount = newSize;
+    // release primitive arrays that are empty
+    int newArrayNum = newSize / ARRAY_SIZE;
+    if (newSize % ARRAY_SIZE != 0) {
+      newArrayNum++;
+    }
+    int oldArrayNum = timestamps.size();
+    for (int releaseIdx = newArrayNum; releaseIdx < oldArrayNum; releaseIdx++) {
+      releaseLastTimeArray();
+      releaseLastValueArray();
+    }
+    return deletedNumber;
   }
 
   @Override
@@ -107,31 +137,35 @@ public abstract class BinaryTVList extends TVList {
     if (index >= rowCount) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
-    int valueIndex = getValueIndex(index);
-    int arrayIndex = valueIndex / ARRAY_SIZE;
-    int elementIndex = valueIndex % ARRAY_SIZE;
+    int arrayIndex = index / ARRAY_SIZE;
+    int elementIndex = index % ARRAY_SIZE;
     return values.get(arrayIndex)[elementIndex];
   }
 
+  protected void set(int index, long timestamp, Binary value) {
+    if (index >= rowCount) {
+      throw new ArrayIndexOutOfBoundsException(index);
+    }
+    int arrayIndex = index / ARRAY_SIZE;
+    int elementIndex = index % ARRAY_SIZE;
+    timestamps.get(arrayIndex)[elementIndex] = timestamp;
+    values.get(arrayIndex)[elementIndex] = value;
+  }
+
   @Override
-  protected void clearValue() {
+  void clearValue() {
     if (values != null) {
       for (Binary[] dataArray : values) {
         PrimitiveArrayManager.release(dataArray);
       }
       values.clear();
     }
+    memoryBinaryChunkSize = 0;
   }
 
   @Override
   protected void expandValues() {
-    if (indices != null) {
-      indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
-    }
     values.add((Binary[]) getPrimitiveArraysByType(TSDataType.TEXT));
-    if (bitMap != null) {
-      bitMap.add(null);
-    }
   }
 
   @Override
@@ -154,8 +188,7 @@ public abstract class BinaryTVList extends TVList {
       List<TimeRange> deletionList) {
     int[] deleteCursor = {0};
     for (int i = 0; i < rowCount; i++) {
-      if (!isNullValue(getValueIndex(i))
-          && !isPointDeleted(getTime(i), deletionList, deleteCursor)
+      if (!isPointDeleted(getTime(i), deletionList, deleteCursor)
           && (i == rowCount - 1 || getTime(i) != getTime(i + 1))) {
         builder.getTimeColumnBuilder().writeLong(getTime(i));
         builder.getColumnBuilder(0).writeBinary(getBinary(i));
@@ -165,8 +198,12 @@ public abstract class BinaryTVList extends TVList {
   }
 
   @Override
-  public synchronized void putBinaries(
-      long[] time, Binary[] value, BitMap bitMap, int start, int end) {
+  protected void releaseLastValueArray() {
+    PrimitiveArrayManager.release(values.remove(values.size() - 1));
+  }
+
+  @Override
+  public void putBinaries(long[] time, Binary[] value, BitMap bitMap, int start, int end) {
     checkExpansion();
 
     int idx = start;
@@ -184,10 +221,15 @@ public abstract class BinaryTVList extends TVList {
       value = clonedValue;
       // drop null at the end of value array
       int nullCnt =
-          dropNullValThenUpdateMinMaxTimeAndSorted(time, value, bitMap, start, end, timeIdxOffset);
+          dropNullValThenUpdateMaxTimeAndSorted(time, value, bitMap, start, end, timeIdxOffset);
       end -= nullCnt;
     } else {
-      updateMinMaxTimeAndSorted(time, start, end);
+      updateMaxTimeAndSorted(time, start, end);
+    }
+
+    // update raw size
+    for (int i = idx; i < end; i++) {
+      memoryBinaryChunkSize += getBinarySize(value[i]);
     }
 
     while (idx < end) {
@@ -200,10 +242,6 @@ public abstract class BinaryTVList extends TVList {
         System.arraycopy(
             time, idx - timeIdxOffset, timestamps.get(arrayIdx), elementIdx, inputRemaining);
         System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, inputRemaining);
-        if (indices != null) {
-          int[] indexes = IntStream.range(rowCount, rowCount + inputRemaining).toArray();
-          System.arraycopy(indexes, 0, indices.get(arrayIdx), elementIdx, inputRemaining);
-        }
         rowCount += inputRemaining;
         break;
       } else {
@@ -212,10 +250,6 @@ public abstract class BinaryTVList extends TVList {
         System.arraycopy(
             time, idx - timeIdxOffset, timestamps.get(arrayIdx), elementIdx, internalRemaining);
         System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, internalRemaining);
-        if (indices != null) {
-          int[] indexes = IntStream.range(rowCount, rowCount + internalRemaining).toArray();
-          System.arraycopy(indexes, 0, indices.get(arrayIdx), elementIdx, internalRemaining);
-        }
         idx += internalRemaining;
         rowCount += internalRemaining;
         checkExpansion();
@@ -224,13 +258,12 @@ public abstract class BinaryTVList extends TVList {
   }
 
   // move null values to the end of time array and value array, then return number of null values
-  int dropNullValThenUpdateMinMaxTimeAndSorted(
+  int dropNullValThenUpdateMaxTimeAndSorted(
       long[] time, Binary[] values, BitMap bitMap, int start, int end, int tIdxOffset) {
     long inPutMinTime = Long.MAX_VALUE;
     boolean inputSorted = true;
 
     int nullCnt = 0;
-    int inputSeqRowCount = 0;
     for (int vIdx = start; vIdx < end; vIdx++) {
       if (bitMap.isMarked(vIdx)) {
         nullCnt++;
@@ -246,21 +279,11 @@ public abstract class BinaryTVList extends TVList {
       tIdx = tIdx - nullCnt;
       inPutMinTime = Math.min(inPutMinTime, time[tIdx]);
       maxTime = Math.max(maxTime, time[tIdx]);
-      minTime = Math.min(minTime, time[tIdx]);
-      if (inputSorted) {
-        if (tIdx > 0 && time[tIdx - 1] > time[tIdx]) {
-          inputSorted = false;
-        } else {
-          inputSeqRowCount++;
-        }
+      if (inputSorted && tIdx > 0 && time[tIdx - 1] > time[tIdx]) {
+        inputSorted = false;
       }
     }
 
-    if (sorted
-        && (rowCount == 0
-            || (end - start > nullCnt) && time[start - tIdxOffset] >= getTime(rowCount - 1))) {
-      seqRowCount += inputSeqRowCount;
-    }
     sorted = sorted && inputSorted && (rowCount == 0 || inPutMinTime >= getTime(rowCount - 1));
     return nullCnt;
   }
@@ -272,7 +295,7 @@ public abstract class BinaryTVList extends TVList {
 
   @Override
   public int serializedSize() {
-    int size = Byte.BYTES + Integer.BYTES + rowCount * (Long.BYTES + Byte.BYTES);
+    int size = Byte.BYTES + Integer.BYTES + rowCount * Long.BYTES;
     for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
       size += ReadWriteIOUtils.sizeToWrite(getBinary(rowIdx));
     }
@@ -285,34 +308,11 @@ public abstract class BinaryTVList extends TVList {
     buffer.putInt(rowCount);
     for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
       buffer.putLong(getTime(rowIdx));
-      Binary valueT = getBinary(rowIdx);
-      if (valueT != null) {
-        WALWriteUtils.write(getBinary(rowIdx), buffer);
-      } else {
-        WALWriteUtils.write(new Binary(new byte[0]), buffer);
-      }
-      WALWriteUtils.write(isNullValue(getValueIndex(rowIdx)), buffer);
+      WALWriteUtils.write(getBinary(rowIdx), buffer);
     }
   }
 
   public static BinaryTVList deserialize(DataInputStream stream) throws IOException {
-    BinaryTVList tvList = BinaryTVList.newList();
-    int rowCount = stream.readInt();
-    long[] times = new long[rowCount];
-    Binary[] values = new Binary[rowCount];
-    BitMap bitMap = new BitMap(rowCount);
-    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
-      times[rowIdx] = stream.readLong();
-      values[rowIdx] = ReadWriteIOUtils.readBinary(stream);
-      if (ReadWriteIOUtils.readBool(stream)) {
-        bitMap.mark(rowIdx);
-      }
-    }
-    tvList.putBinaries(times, values, bitMap, 0, rowCount);
-    return tvList;
-  }
-
-  public static BinaryTVList deserializeWithoutBitMap(DataInputStream stream) throws IOException {
     BinaryTVList tvList = BinaryTVList.newList();
     int rowCount = stream.readInt();
     long[] times = new long[rowCount];

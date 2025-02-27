@@ -116,6 +116,11 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
 
   @Override
   public synchronized void nack() {
+    if (nextOffset.get() == 1) {
+      // do nothing if with complete tablets
+      return;
+    }
+
     cleanUp();
 
     // should not reset the iterator of batch when init

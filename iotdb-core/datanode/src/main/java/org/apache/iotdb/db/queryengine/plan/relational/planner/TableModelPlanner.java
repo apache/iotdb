@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
-import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.IPlanner;
@@ -60,8 +59,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
-
-import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DISTRIBUTION_PLANNER;
 
 public class TableModelPlanner implements IPlanner {
 
@@ -148,26 +145,15 @@ public class TableModelPlanner implements IPlanner {
 
   @Override
   public DistributedQueryPlan doDistributionPlan(
-      final IAnalysis analysis, final LogicalQueryPlan logicalPlan, MPPQueryContext context) {
-    long startTime = System.nanoTime();
-    try {
-      TableDistributedPlanner planner =
-          new TableDistributedPlanner(
-              (Analysis) analysis,
-              symbolAllocator,
-              logicalPlan,
-              metadata,
-              distributionPlanOptimizers,
-              dataNodeLocationSupplier);
-      return planner.plan();
-    } finally {
-      if (analysis.isQuery()) {
-        long distributionPlanCost = System.nanoTime() - startTime;
-        context.setDistributionPlanCost(distributionPlanCost);
-        QueryPlanCostMetricSet.getInstance()
-            .recordTablePlanCost(DISTRIBUTION_PLANNER, distributionPlanCost);
-      }
-    }
+      final IAnalysis analysis, final LogicalQueryPlan logicalPlan) {
+    return new TableDistributedPlanner(
+            (Analysis) analysis,
+            symbolAllocator,
+            logicalPlan,
+            metadata,
+            distributionPlanOptimizers,
+            dataNodeLocationSupplier)
+        .plan();
   }
 
   @Override

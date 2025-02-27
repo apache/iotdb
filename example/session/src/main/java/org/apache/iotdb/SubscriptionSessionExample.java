@@ -137,7 +137,7 @@ public class SubscriptionSessionExample {
     final Properties config = new Properties();
     config.put(ConsumerConstant.CONSUMER_ID_KEY, "c1");
     config.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, "cg1");
-    try (final SubscriptionTreePullConsumer consumer1 = new SubscriptionTreePullConsumer(config)) {
+    try (SubscriptionTreePullConsumer consumer1 = new SubscriptionTreePullConsumer(config)) {
       consumer1.open();
       consumer1.subscribe(TOPIC_1);
       while (true) {

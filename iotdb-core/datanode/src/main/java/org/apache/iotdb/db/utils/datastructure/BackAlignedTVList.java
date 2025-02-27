@@ -19,25 +19,77 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
+
 import org.apache.tsfile.enums.TSDataType;
 
+import java.util.ArrayList;
 import java.util.List;
 
-public class BackAlignedTVList extends QuickAlignedTVList {
-  private final BackwardSort policy;
+import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
+
+public class BackAlignedTVList extends QuickAlignedTVList implements BackwardSort {
+  private final List<long[]> tmpTimestamps = new ArrayList<>();
+  private final List<int[]> tmpIndices = new ArrayList<>();
+  private int tmpLength = 0;
 
   BackAlignedTVList(List<TSDataType> types) {
     super(types);
-    policy = new BackwardSort(this);
   }
 
   @Override
-  public synchronized void sort() {
+  public void sort() {
     if (!sorted) {
-      policy.backwardSort(timestamps, rowCount);
-      policy.clearTmp();
+      backwardSort(timestamps, rowCount);
+      clearTmp();
     }
     sorted = true;
-    seqRowCount = rowCount;
+  }
+
+  @Override
+  public void setFromTmp(int src, int dest) {
+    set(
+        dest,
+        tmpTimestamps.get(src / ARRAY_SIZE)[src % ARRAY_SIZE],
+        tmpIndices.get(src / ARRAY_SIZE)[src % ARRAY_SIZE]);
+  }
+
+  @Override
+  public void setToTmp(int src, int dest) {
+    tmpTimestamps.get(dest / ARRAY_SIZE)[dest % ARRAY_SIZE] = getTime(src);
+    tmpIndices.get(dest / ARRAY_SIZE)[dest % ARRAY_SIZE] = getValueIndex(src);
+  }
+
+  @Override
+  public void backward_set(int src, int dest) {
+    set(src, dest);
+  }
+
+  @Override
+  public int compareTmp(int idx, int tmpIdx) {
+    long t1 = getTime(idx);
+    long t2 = tmpTimestamps.get(tmpIdx / ARRAY_SIZE)[tmpIdx % ARRAY_SIZE];
+    return Long.compare(t1, t2);
+  }
+
+  @Override
+  public void checkTmpLength(int len) {
+    while (len > tmpLength) {
+      tmpTimestamps.add((long[]) getPrimitiveArraysByType(TSDataType.INT64));
+      tmpIndices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
+      tmpLength += ARRAY_SIZE;
+    }
+  }
+
+  @Override
+  public void clearTmp() {
+    for (long[] dataArray : tmpTimestamps) {
+      PrimitiveArrayManager.release(dataArray);
+    }
+    tmpTimestamps.clear();
+    for (int[] dataArray : tmpIndices) {
+      PrimitiveArrayManager.release(dataArray);
+    }
+    tmpIndices.clear();
   }
 }

@@ -37,7 +37,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
-import org.apache.iotdb.confignode.persistence.schema.ConfigNodeSnapshotParser;
+import org.apache.iotdb.confignode.persistence.schema.ConfignodeSnapshotParser;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.confignode.writelog.io.SingleFileLogReader;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -196,7 +196,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       try {
         PipeConfigNodeAgent.runtime()
             .listener()
-            .tryListenToSnapshots(ConfigNodeSnapshotParser.getSnapshots());
+            .tryListenToSnapshots(ConfignodeSnapshotParser.getSnapshots());
         return true;
       } catch (IOException e) {
         if (PipeConfigNodeAgent.runtime().listener().isOpened()) {
@@ -217,7 +217,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
       // to recover the newest snapshot in cache
       PipeConfigNodeAgent.runtime()
           .listener()
-          .tryListenToSnapshots(ConfigNodeSnapshotParser.getSnapshots());
+          .tryListenToSnapshots(ConfignodeSnapshotParser.getSnapshots());
     } catch (final IOException e) {
       if (PipeConfigNodeAgent.runtime().listener().isOpened()) {
         LOGGER.warn(

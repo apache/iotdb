@@ -20,10 +20,10 @@
 package org.apache.iotdb.consensus.pipe.metric;
 
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeConnector;
-import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -36,59 +36,27 @@ import java.util.concurrent.locks.ReentrantLock;
 public class PipeConsensusSyncLagManager {
   long syncLag = Long.MIN_VALUE;
   ReentrantLock lock = new ReentrantLock();
-  Map<ConsensusPipeName, ConsensusPipeConnector> consensusPipe2ConnectorMap =
-      new ConcurrentHashMap<>();
+  List<ConsensusPipeConnector> consensusPipeConnectorList = new ArrayList<>();
 
-  /**
-   * pinnedCommitIndex - currentReplicateProgress. If res <= 0, indicating that replication is
-   * finished.
-   */
-  public long getSyncLagForRegionMigration(
-      ConsensusPipeName consensusPipeName, long pinnedCommitIndex) {
-    return Optional.ofNullable(consensusPipe2ConnectorMap.get(consensusPipeName))
-        .map(
-            consensusPipeConnector ->
-                Math.max(
-                    pinnedCommitIndex - consensusPipeConnector.getConsensusPipeReplicateProgress(),
-                    0L))
-        .orElse(0L);
+  private long getSyncLagForSpecificConsensusPipe(ConsensusPipeConnector consensusPipeConnector) {
+    long userWriteProgress = consensusPipeConnector.getConsensusPipeCommitProgress();
+    long replicateProgress = consensusPipeConnector.getConsensusPipeReplicateProgress();
+    return Math.max(userWriteProgress - replicateProgress, 0);
   }
 
-  /**
-   * userWriteProgress - currentReplicateProgress. If res <= 0, indicating that replication is
-   * finished.
-   */
-  public long getSyncLagForSpecificConsensusPipe(ConsensusPipeName consensusPipeName) {
-    return Optional.ofNullable(consensusPipe2ConnectorMap.get(consensusPipeName))
-        .map(
-            consensusPipeConnector -> {
-              long userWriteProgress = consensusPipeConnector.getConsensusPipeCommitProgress();
-              long replicateProgress = consensusPipeConnector.getConsensusPipeReplicateProgress();
-              return Math.max(userWriteProgress - replicateProgress, 0L);
-            })
-        .orElse(0L);
-  }
-
-  public long getCurrentCommitIndex(ConsensusPipeName consensusPipeName) {
-    return Optional.ofNullable(consensusPipe2ConnectorMap.get(consensusPipeName))
-        .map(ConsensusPipeConnector::getConsensusPipeCommitProgress)
-        .orElse(0L);
-  }
-
-  public void addConsensusPipeConnector(
-      ConsensusPipeName consensusPipeName, ConsensusPipeConnector consensusPipeConnector) {
+  public void addConsensusPipeConnector(ConsensusPipeConnector consensusPipeConnector) {
     try {
       lock.lock();
-      consensusPipe2ConnectorMap.put(consensusPipeName, consensusPipeConnector);
+      consensusPipeConnectorList.add(consensusPipeConnector);
     } finally {
       lock.unlock();
     }
   }
 
-  public void removeConsensusPipeConnector(ConsensusPipeName consensusPipeName) {
+  public void removeConsensusPipeConnector(ConsensusPipeConnector connector) {
     try {
       lock.lock();
-      consensusPipe2ConnectorMap.remove(consensusPipeName);
+      consensusPipeConnectorList.remove(connector);
     } finally {
       lock.unlock();
     }
@@ -103,25 +71,19 @@ public class PipeConsensusSyncLagManager {
     try {
       lock.lock();
       // if there isn't a consensus pipe task, the syncLag is 0
-      if (consensusPipe2ConnectorMap.isEmpty()) {
+      if (consensusPipeConnectorList.isEmpty()) {
         return 0;
       }
       // else we find the biggest gap between leader and replicas in all consensus pipe task.
       syncLag = Long.MIN_VALUE;
-      consensusPipe2ConnectorMap
-          .keySet()
-          .forEach(
-              consensusPipeName ->
-                  syncLag =
-                      Math.max(syncLag, getSyncLagForSpecificConsensusPipe(consensusPipeName)));
+      consensusPipeConnectorList.forEach(
+          consensusPipeConnector ->
+              syncLag =
+                  Math.max(syncLag, getSyncLagForSpecificConsensusPipe(consensusPipeConnector)));
       return syncLag;
     } finally {
       lock.unlock();
     }
-  }
-
-  public void clear() {
-    this.consensusPipe2ConnectorMap.clear();
   }
 
   private PipeConsensusSyncLagManager() {
@@ -148,7 +110,6 @@ public class PipeConsensusSyncLagManager {
   }
 
   public static void release(String groupId) {
-    PipeConsensusSyncLagManager.getInstance(groupId).clear();
     PipeConsensusSyncLagManagerHolder.CONSENSU_GROUP_ID_2_INSTANCE_MAP.remove(groupId);
   }
 

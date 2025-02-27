@@ -47,8 +47,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -352,41 +350,21 @@ public abstract class PipeTaskAgent {
     }
 
     final List<TPushPipeMetaRespExceptionMessage> exceptionMessages = new ArrayList<>();
-    final List<PipeMeta> copyPipeMetaListFromCoordinator =
-        new LinkedList<>(pipeMetaListFromCoordinator);
 
-    while (!copyPipeMetaListFromCoordinator.isEmpty()) {
-      // Iterate through pipe meta list from coordinator, check if pipe meta exists on local agent
-      // or has changed
-      exceptionMessages.clear();
-      Iterator<PipeMeta> pipeMetas = copyPipeMetaListFromCoordinator.iterator();
-      int successfulPipeCount = 0;
-      while (pipeMetas.hasNext()) {
-        PipeMeta metaFromCoordinator = pipeMetas.next();
-        try {
-          executeSinglePipeMetaChanges(metaFromCoordinator);
-          pipeMetas.remove();
-          successfulPipeCount++;
-        } catch (final Exception | Error e) {
-          // To ensure that all Pipes cannot be started due to an Error in a certain pipeline, you
-          // need to capture the Error. The reason for the Error may be a class loading failure. For
-          // example, plugin A depends on plugin B, but because plugin B is not loaded, plugin A
-          // cannot be loaded, so we need to ignore the Error of the loading process.
-          final String pipeName = metaFromCoordinator.getStaticMeta().getPipeName();
-          final String errorMessage =
-              String.format(
-                  "Failed to handle pipe meta changes for %s, because %s",
-                  pipeName, e.getMessage());
-          LOGGER.warn("Failed to handle pipe meta changes for {}", pipeName, e);
-          exceptionMessages.add(
-              new TPushPipeMetaRespExceptionMessage(
-                  pipeName, errorMessage, System.currentTimeMillis()));
-        }
-      }
-      // If the number of successful changes to pipe meta is 0, it means that the failure has
-      // nothing to do with the loading order, so we can exit.
-      if (successfulPipeCount == 0) {
-        break;
+    // Iterate through pipe meta list from coordinator, check if pipe meta exists on local agent
+    // or has changed
+    for (final PipeMeta metaFromCoordinator : pipeMetaListFromCoordinator) {
+      try {
+        executeSinglePipeMetaChanges(metaFromCoordinator);
+      } catch (final Exception e) {
+        final String pipeName = metaFromCoordinator.getStaticMeta().getPipeName();
+        final String errorMessage =
+            String.format(
+                "Failed to handle pipe meta changes for %s, because %s", pipeName, e.getMessage());
+        LOGGER.warn("Failed to handle pipe meta changes for {}", pipeName, e);
+        exceptionMessages.add(
+            new TPushPipeMetaRespExceptionMessage(
+                pipeName, errorMessage, System.currentTimeMillis()));
       }
     }
 

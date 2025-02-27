@@ -49,8 +49,6 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
-
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -67,7 +65,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Objects;
 import java.util.Set;
 import java.util.Stack;
 
@@ -119,14 +116,10 @@ public class CNPhysicalPlanGenerator
   public CNPhysicalPlanGenerator(final Path schemaInfoFile, final Path templateFile)
       throws IOException {
     inputStream = Files.newInputStream(schemaInfoFile);
-    // Template file is null for table mTree
-    if (Objects.nonNull(templateFile)) {
-      templateInputStream = Files.newInputStream(templateFile);
-    }
+    templateInputStream = Files.newInputStream(templateFile);
     snapshotFileType = CNSnapshotFileType.SCHEMA;
   }
 
-  @Nonnull
   @Override
   @SuppressWarnings("java:S4348")
   public Iterator<ConfigPhysicalPlan> iterator() {
@@ -148,9 +141,7 @@ public class CNPhysicalPlanGenerator
     } else if (snapshotFileType == CNSnapshotFileType.TTL) {
       generateSetTTLPlan();
     } else if (snapshotFileType == CNSnapshotFileType.SCHEMA) {
-      if (Objects.nonNull(templateInputStream)) {
-        generateTemplatePlan();
-      }
+      generateTemplatePlan();
       if (latestException != null) {
         return false;
       }
@@ -423,7 +414,7 @@ public class CNPhysicalPlanGenerator
         name = databaseMNode.getName();
         stack.push(new Pair<>(databaseMNode, true));
       } else if (type == TABLE_MNODE_TYPE) {
-        tableNode = ConfigMTree.deserializeTableMNode(bufferedInputStream);
+        tableNode = ConfigMTree.deserializeTableMNode(inputStream);
         name = tableNode.getName();
         stack.push(new Pair<>(tableNode, false));
         tableSet.add(tableNode.getTable());

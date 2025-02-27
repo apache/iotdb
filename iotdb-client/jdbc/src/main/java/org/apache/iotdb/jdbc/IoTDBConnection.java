@@ -323,6 +323,25 @@ public class IoTDBConnection implements Connection {
   public void setSchema(String arg0) throws SQLException {
     // changeDefaultDatabase(arg0);
     if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
+
+      for (String str : IoTDBRelationalDatabaseMetadata.allIotdbTableSQLKeywords) {
+        if (arg0.equalsIgnoreCase(str)) {
+          arg0 = "\"" + arg0 + "\"";
+        }
+      }
+
+      Statement stmt = this.createStatement();
+      String sql = "USE " + arg0;
+      boolean rs;
+      try {
+        rs = stmt.execute(sql);
+      } catch (SQLException e) {
+        stmt.close();
+        logger.error("Use database error: {}", e.getMessage());
+        throw e;
+      }
+      return;
+    }
       Statement stmt = this.createStatement();
       String sql = "USE " + arg0;
       boolean rs;

@@ -92,8 +92,8 @@ public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeCo
 
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.info(
-            "InsertNodeTransfer: no.{} event successfully processed!",
-            ((EnrichedEvent) event).getReplicateIndexForIoTV2());
+            "Debug only: no.{} event successfully processed!",
+            ((EnrichedEvent) event).getCommitId());
         connector.removeEventFromBuffer((EnrichedEvent) event);
       }
 
@@ -107,12 +107,12 @@ public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeCo
   @Override
   public void onError(Exception exception) {
     LOGGER.warn(
-        "Failed to transfer TabletInsertionEvent {} (committer key={}, replicate index={}).",
+        "Failed to transfer TabletInsertionEvent {} (committer key={}, commit id={}).",
         event instanceof EnrichedEvent
             ? ((EnrichedEvent) event).coreReportMessage()
             : event.toString(),
         event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitterKey() : null,
-        event instanceof EnrichedEvent ? ((EnrichedEvent) event).getReplicateIndexForIoTV2() : null,
+        event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitId() : null,
         exception);
 
     connector.addFailureEventToRetryQueue(event);

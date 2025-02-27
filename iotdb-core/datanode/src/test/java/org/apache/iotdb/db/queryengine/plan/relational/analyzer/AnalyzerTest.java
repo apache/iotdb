@@ -1182,9 +1182,6 @@ public class AnalyzerTest {
               new String[] {StatementTestUtils.tableName(), ((Binary[]) columns[0])[i].toString()}),
           insertTabletNode.getDeviceID(i));
     }
-
-    // attr column should be removed
-    columns = new Object[] {columns[0], columns[2]};
     assertArrayEquals(columns, insertTabletNode.getColumns());
     assertArrayEquals(StatementTestUtils.genTimestamps(), insertTabletNode.getTimes());
 
@@ -1227,14 +1224,12 @@ public class AnalyzerTest {
         (RelationalInsertRowNode) logicalQueryPlan.getRootNode();
 
     assertEquals(insertNode.getTableName(), StatementTestUtils.tableName());
-    Object[] columns = StatementTestUtils.genValues(0);
+    final Object[] columns = StatementTestUtils.genValues(0);
     assertEquals(
         Factory.DEFAULT_FACTORY.create(
             new String[] {StatementTestUtils.tableName(), columns[0].toString()}),
         insertNode.getDeviceID());
 
-    // attr column should be removed
-    columns = new Object[] {columns[0], columns[2]};
     assertArrayEquals(columns, insertNode.getValues());
     assertEquals(StatementTestUtils.genTimestamps()[0], insertNode.getTime());
 

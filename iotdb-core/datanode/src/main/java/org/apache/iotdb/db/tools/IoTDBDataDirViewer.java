@@ -164,17 +164,15 @@ public class IoTDBDataDirViewer {
     // sort device strings
     SortedSet<IDeviceID> keys = new TreeSet<>(resource.getDevices());
     for (IDeviceID device : keys) {
-      // iterating the index, must present
-      //noinspection OptionalGetWithoutIsPresent
       printlnBoth(
           pw,
           String.format(
               "|  |  |  |  |  |--device %s, start time %d (%s), end time %d (%s)",
               device,
               resource.getStartTime(device),
-              DateTimeUtils.convertLongToDate(resource.getStartTime(device).get()),
+              DateTimeUtils.convertLongToDate(resource.getStartTime(device)),
               resource.getEndTime(device),
-              DateTimeUtils.convertLongToDate(resource.getEndTime(device).get())));
+              DateTimeUtils.convertLongToDate(resource.getEndTime(device))));
     }
   }
 

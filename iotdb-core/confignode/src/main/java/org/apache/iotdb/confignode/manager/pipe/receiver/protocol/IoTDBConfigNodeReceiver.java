@@ -36,7 +36,6 @@ import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -75,7 +74,7 @@ import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysi
 import org.apache.iotdb.confignode.manager.pipe.receiver.visitor.PipeConfigPhysicalPlanTSStatusVisitor;
 import org.apache.iotdb.confignode.persistence.schema.CNPhysicalPlanGenerator;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
-import org.apache.iotdb.confignode.persistence.schema.ConfigNodeSnapshotParser;
+import org.apache.iotdb.confignode.persistence.schema.ConfignodeSnapshotParser;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
@@ -329,30 +328,14 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     PrivilegeType.CREATE))
             .getStatus();
       case AddTableColumn:
-        return configManager
-            .checkUserPrivileges(
-                username,
-                new PrivilegeUnion(
-                    ((AddTableColumnPlan) plan).getDatabase(),
-                    ((AddTableColumnPlan) plan).getTableName(),
-                    PrivilegeType.ALTER))
-            .getStatus();
       case SetTableProperties:
-        return configManager
-            .checkUserPrivileges(
-                username,
-                new PrivilegeUnion(
-                    ((SetTablePropertiesPlan) plan).getDatabase(),
-                    ((SetTablePropertiesPlan) plan).getTableName(),
-                    PrivilegeType.ALTER))
-            .getStatus();
       case CommitDeleteColumn:
         return configManager
             .checkUserPrivileges(
                 username,
                 new PrivilegeUnion(
-                    ((CommitDeleteColumnPlan) plan).getDatabase(),
-                    ((CommitDeleteColumnPlan) plan).getTableName(),
+                    ((PipeCreateTablePlan) plan).getDatabase(),
+                    ((PipeCreateTablePlan) plan).getTable().getTableName(),
                     PrivilegeType.ALTER))
             .getStatus();
       case CommitDeleteTable:
@@ -360,8 +343,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             .checkUserPrivileges(
                 username,
                 new PrivilegeUnion(
-                    ((CommitDeleteTablePlan) plan).getDatabase(),
-                    ((CommitDeleteTablePlan) plan).getTableName(),
+                    ((PipeCreateTablePlan) plan).getDatabase(),
+                    ((PipeCreateTablePlan) plan).getTable().getTableName(),
                     PrivilegeType.DROP))
             .getStatus();
       case GrantRole:
@@ -539,9 +522,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         return configManager.deleteDatabases(
             new TDeleteDatabasesReq(
                     Collections.singletonList(((DeleteDatabasePlan) plan).getName()))
-                .setIsGeneratedByPipe(true)
-                .setIsTableModel(
-                    PathUtils.isTableModelDatabase(((DeleteDatabasePlan) plan).getName())));
+                .setIsGeneratedByPipe(true));
       case ExtendSchemaTemplate:
         return configManager
             .getClusterSchemaManager()
@@ -792,7 +773,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       throws IOException {
     final Map<String, String> parameters = req.getParameters();
     final CNPhysicalPlanGenerator generator =
-        ConfigNodeSnapshotParser.translate2PhysicalPlan(
+        ConfignodeSnapshotParser.translate2PhysicalPlan(
             Paths.get(fileAbsolutePaths.get(0)),
             fileAbsolutePaths.size() > 1 ? Paths.get(fileAbsolutePaths.get(1)) : null,
             CNSnapshotFileType.deserialize(

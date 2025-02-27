@@ -103,7 +103,7 @@ public class WALReader implements Closeable {
    * @throws NoSuchElementException when not calling hasNext before.
    */
   public WALEntry next() {
-    if (!hasNext()) {
+    if (nextEntry == null) {
       throw new NoSuchElementException();
     }
     WALEntry next = nextEntry;

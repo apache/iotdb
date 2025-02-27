@@ -31,9 +31,7 @@ import java.util.Map;
 
 public interface IWritableMemChunkGroup extends WALEntryValue {
 
-  void writeRow(long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
-
-  void writeTablet(
+  boolean writeValuesWithFlushCheck(
       long[] times,
       Object[] columns,
       BitMap[] bitMaps,
@@ -48,6 +46,9 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
 
   boolean contains(String measurement);
 
+  boolean writeWithFlushCheck(
+      long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
+
   Map<String, IWritableMemChunk> getMemChunkMap();
 
   boolean isEmpty();
@@ -56,9 +57,7 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
 
   long deleteTime(ModEntry modEntry);
 
-  long getMeasurementSize(String measurement);
-
-  IWritableMemChunk getWritableMemChunk(String measurement);
+  long getCurrentTVListSize(String measurement);
 
   long getMaxTime();
 }

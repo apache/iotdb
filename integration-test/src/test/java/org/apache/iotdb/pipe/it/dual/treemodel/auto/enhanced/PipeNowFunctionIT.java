@@ -33,7 +33,6 @@ import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAut
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -50,12 +49,6 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoEnhanced.class})
 public class PipeNowFunctionIT extends AbstractPipeDualTreeModelAutoIT {
-
-  @Override
-  @Before
-  public void setUp() {
-    super.setUp();
-  }
 
   @Test
   public void testPipeNowFunction() throws Exception {

@@ -169,49 +169,4 @@ public class IoTDBFloatPrecisionIT {
       fail(e.getMessage());
     }
   }
-
-  @Test
-  public void bigFloatNumberTest2() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      float[] floats = new float[] {6.5536403E8F, 3.123456768E20F, Float.NaN};
-      double[] doubles = new double[] {9.223372036854E18, 9.223372036854E100, Double.NaN};
-
-      statement.execute("create timeseries root.sg.d1.s1 with datatype=float, encoding=rle");
-      statement.execute("create timeseries root.sg.d1.s2 with datatype=double, encoding=rle");
-      statement.execute(
-          "insert into root.sg.d1(time, s1, s2) values (1, 6.5536403E8, 9.223372036854E18)");
-      statement.execute(
-          "insert into root.sg.d1(time, s1, s2) values (2, 3.123456768E20, 9.223372036854E100)");
-      statement.execute("insert into root.sg.d1(time, s1, s2) values (3, NaN, NaN)");
-
-      int cnt;
-      try (ResultSet resultSet = statement.executeQuery("select s1, s2 from root.sg.d1")) {
-        assertNotNull(resultSet);
-        cnt = 0;
-        while (resultSet.next()) {
-          assertEquals(floats[cnt], resultSet.getFloat("root.sg.d1.s1"), DELTA_FLOAT);
-          assertEquals(doubles[cnt], resultSet.getDouble("root.sg.d1.s2"), DELTA_DOUBLE);
-          cnt++;
-        }
-        assertEquals(3, cnt);
-      }
-
-      statement.execute("flush");
-
-      try (ResultSet resultSet = statement.executeQuery("select s1, s2 from root.sg.d1")) {
-        assertNotNull(resultSet);
-        cnt = 0;
-        while (resultSet.next()) {
-          assertEquals(floats[cnt], resultSet.getFloat("root.sg.d1.s1"), DELTA_FLOAT);
-          assertEquals(doubles[cnt], resultSet.getDouble("root.sg.d1.s2"), DELTA_DOUBLE);
-          cnt++;
-        }
-        assertEquals(3, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
 }

@@ -83,7 +83,10 @@ public class ConfigNodeRemoveCheck {
                   .findFirst()
                   .orElse(null);
         } catch (BadNodeUrlException e) {
-          LOGGER.info("Use SQL: remove confignode <confignode-id>; ", e);
+          LOGGER.info(
+              "Usage: remove-confignode.sh <confignode-id> "
+                  + "or remove-confignode.sh <internal_address>:<internal_port>",
+              e);
           return nodeLocation;
         }
       }

@@ -42,7 +42,6 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -65,13 +64,6 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualEnhanced.class})
 public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDualManualIT {
-
-  @Override
-  @Before
-  public void setUp() {
-    super.setUp();
-  }
-
   private static final int generateDataSize = 1000;
 
   @Test

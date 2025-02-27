@@ -28,7 +28,6 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoEnhanced;
 import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
 
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -43,12 +42,6 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoEnhanced.class})
 public class IoTDBPipeConditionalOperationsIT extends AbstractPipeDualTreeModelAutoIT {
-
-  @Override
-  @Before
-  public void setUp() {
-    super.setUp();
-  }
 
   @Test
   public void testBasicCreatePipeIfNotExists() throws Exception {

@@ -46,11 +46,11 @@ public class LoadTsFile extends Statement {
   private boolean autoCreateDatabase = true;
   private boolean verify;
   private boolean isGeneratedByPipe = false;
+  private String model = LoadTsFileConfigurator.MODEL_TABLE_VALUE;
 
   private final Map<String, String> loadAttributes;
 
   private final List<File> tsFiles;
-  private List<Boolean> isTableModel;
   private final List<TsFileResource> resources;
   private final List<Long> writePointCountList;
 
@@ -73,7 +73,6 @@ public class LoadTsFile extends Statement {
       this.tsFiles =
           org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement.processTsFile(
               file);
-      this.isTableModel = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), true));
     } catch (FileNotFoundException e) {
       throw new SemanticException(e);
     }
@@ -128,12 +127,8 @@ public class LoadTsFile extends Statement {
     return isGeneratedByPipe;
   }
 
-  public List<Boolean> getIsTableModel() {
-    return isTableModel;
-  }
-
-  public void setIsTableModel(List<Boolean> isTableModel) {
-    this.isTableModel = isTableModel;
+  public String getModel() {
+    return model;
   }
 
   public List<File> getTsFiles() {
@@ -163,6 +158,9 @@ public class LoadTsFile extends Statement {
     this.convertOnTypeMismatch =
         LoadTsFileConfigurator.parseOrGetDefaultConvertOnTypeMismatch(loadAttributes);
     this.verify = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
+    this.model =
+        LoadTsFileConfigurator.parseOrGetDefaultModel(
+            loadAttributes, LoadTsFileConfigurator.MODEL_TABLE_VALUE);
   }
 
   @Override

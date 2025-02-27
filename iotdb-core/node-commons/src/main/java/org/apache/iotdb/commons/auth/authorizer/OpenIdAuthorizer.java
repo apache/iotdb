@@ -148,7 +148,9 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
   public boolean login(String token, String password) throws AuthException {
     if (password != null && !password.isEmpty()) {
       logger.error(
-          "JWT Login failed as a non-empty Password was given username (token): {}", token);
+          "JWT Login failed as a non-empty Password was given username (token): {}, password: {}",
+          token,
+          password);
       return false;
     }
     if (token == null || token.isEmpty()) {
@@ -160,7 +162,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     try {
       claims = validateToken(token);
     } catch (JwtException e) {
-      logger.error("Unable to login the user with Username (token) {}", token, e);
+      logger.error("Unable to login the user wit jwt {}", password, e);
       return false;
     }
     logger.debug("JWT was validated successfully!");

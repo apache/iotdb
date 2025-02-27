@@ -39,10 +39,4 @@ public interface IDualKeyCacheStats {
 
   /** Return current memory usage of dual key cache. */
   long memoryUsage();
-
-  /** Return capacity of dual key cache. */
-  long capacity();
-
-  /** Return entries num of dual key cache */
-  long entriesCount();
 }

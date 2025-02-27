@@ -335,10 +335,9 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
         }
       } catch (final Exception e) {
         LOGGER.warn(
-            "Decrease reference count for mTree snapshot {} or tLog {} or attribute snapshot {} error.",
-            mTreeSnapshotPath,
-            tagLogSnapshotPath,
-            attributeSnapshotPath,
+            String.format(
+                "Decrease reference count for mTree snapshot %s or tLog %s or attribute snapshot %s error.",
+                mTreeSnapshotPath, tagLogSnapshotPath, attributeSnapshotPath),
             e);
       }
     }

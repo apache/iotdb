@@ -167,9 +167,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setTargetChunkPointNum(int targetChunkPointNum) {
-    cnConfig.setTargetChunkPointNum(targetChunkPointNum);
-    dnConfig.setTargetChunkPointNum(targetChunkPointNum);
+  public CommonConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
+    cnConfig.setAvgSeriesPointNumberThreshold(avgSeriesPointNumberThreshold);
+    dnConfig.setAvgSeriesPointNumberThreshold(avgSeriesPointNumberThreshold);
     return this;
   }
 
@@ -320,13 +320,6 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setEnableMQTTService(boolean enableMQTTService) {
     cnConfig.setEnableMQTTService(enableMQTTService);
     dnConfig.setEnableMQTTService(enableMQTTService);
-    return this;
-  }
-
-  @Override
-  public CommonConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
-    cnConfig.setMqttPayloadFormatter(mqttPayloadFormatter);
-    dnConfig.setMqttPayloadFormatter(mqttPayloadFormatter);
     return this;
   }
 

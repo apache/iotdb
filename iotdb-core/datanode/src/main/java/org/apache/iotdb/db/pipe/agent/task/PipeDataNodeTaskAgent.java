@@ -476,21 +476,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   ///////////////////////// Restart Logic /////////////////////////
 
   public void restartAllStuckPipes() {
-    final List<String> removedPipeName = removeOutdatedPipeInfoFromLastRestartTimeMap();
-    if (!removedPipeName.isEmpty()) {
-      final long currentTime = System.currentTimeMillis();
-      LOGGER.info(
-          "Pipes {} now can dynamically adjust their extraction strategies. "
-              + "Start to flush storage engine to trigger the adjustment.",
-          removedPipeName);
-      StorageEngine.getInstance().syncCloseAllProcessor();
-      WALManager.getInstance().syncDeleteOutdatedFilesInWALNodes();
-      LOGGER.info(
-          "Finished flushing storage engine, time cost: {} ms.",
-          System.currentTimeMillis() - currentTime);
-      LOGGER.info("Skipping restarting pipes this round because of the dynamic flushing.");
-      return;
-    }
+    removeOutdatedPipeInfoFromLastRestartTimeMap();
 
     if (!tryWriteLockWithTimeOut(5)) {
       return;
@@ -522,23 +508,16 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     stuckPipes.forEach(this::restartStuckPipe);
   }
 
-  private List<String> removeOutdatedPipeInfoFromLastRestartTimeMap() {
-    final List<String> removedPipeName = new ArrayList<>();
+  private void removeOutdatedPipeInfoFromLastRestartTimeMap() {
     PIPE_NAME_TO_LAST_RESTART_TIME_MAP
         .entrySet()
         .removeIf(
             entry -> {
               final AtomicLong lastRestartTime = entry.getValue();
-              final boolean shouldRemove =
-                  lastRestartTime == null
-                      || PipeConfig.getInstance().getPipeStuckRestartMinIntervalMs()
-                          <= System.currentTimeMillis() - lastRestartTime.get();
-              if (shouldRemove) {
-                removedPipeName.add(entry.getKey());
-              }
-              return shouldRemove;
+              return lastRestartTime == null
+                  || PipeConfig.getInstance().getPipeStuckRestartMinIntervalMs()
+                      <= System.currentTimeMillis() - lastRestartTime.get();
             });
-    return removedPipeName;
   }
 
   private Set<PipeMeta> findAllStuckPipes() {
@@ -558,20 +537,15 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return stuckPipes;
     }
 
-    final long totalLinkedButDeletedTsFileResourceRamSize =
-        PipeDataNodeResourceManager.tsfile().getTotalLinkedButDeletedTsfileResourceRamSize();
-    final long freeMemorySizeInBytes =
-        PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes();
-    if (3 * totalLinkedButDeletedTsFileResourceRamSize >= 2 * freeMemorySizeInBytes) {
+    if (3 * PipeDataNodeResourceManager.tsfile().getTotalLinkedButDeletedTsfileResourceRamSize()
+        >= 2 * PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes()) {
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         stuckPipes.add(pipeMeta);
       }
       if (!stuckPipes.isEmpty()) {
         LOGGER.warn(
-            "All {} pipe(s) will be restarted because linked tsfiles' resource size {} exceeds limit {}.",
-            stuckPipes.size(),
-            totalLinkedButDeletedTsFileResourceRamSize,
-            freeMemorySizeInBytes * 2.0 / 3);
+            "All {} pipe(s) will be restarted because linked tsfiles' resource size exceeds memory limit.",
+            stuckPipes.size());
       }
       return stuckPipes;
     }
@@ -610,23 +584,16 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                 || mayWalSizeReachThrottleThreshold())) {
           // Extractors of this pipe may be stuck and is pinning too many MemTables.
           LOGGER.warn(
-              "Pipe {} needs to restart because too many memtables are pinned. mayMemTablePinnedCountReachDangerousThreshold: {}, mayWalSizeReachThrottleThreshold: {}",
-              pipeMeta.getStaticMeta(),
-              mayMemTablePinnedCountReachDangerousThreshold(),
-              mayWalSizeReachThrottleThreshold());
+              "Pipe {} needs to restart because too many memTables are pinned.",
+              pipeMeta.getStaticMeta());
           stuckPipes.add(pipeMeta);
         } else if (getFloatingMemoryUsageInByte(pipeName)
             >= PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes()
                 / pipeMetaKeeper.getPipeMetaCount()) {
           // Extractors of this pipe may have too many insert nodes
           LOGGER.warn(
-              "Pipe {} needs to restart because too many insertNodes are extracted. "
-                  + "Floating memory usage for this pipe: {}, free memory size: {}, allowed free memory size for floating memory usage: {}",
-              pipeMeta.getStaticMeta(),
-              getFloatingMemoryUsageInByte(pipeName),
-              PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes(),
-              PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes()
-                  / pipeMetaKeeper.getPipeMetaCount());
+              "Pipe {} needs to restart because too many insertNodes are extracted.",
+              pipeMeta.getStaticMeta());
           stuckPipes.add(pipeMeta);
         }
       }
@@ -662,9 +629,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   private boolean mayMemTablePinnedCountReachDangerousThreshold() {
     return PipeDataNodeResourceManager.wal().getPinnedWalCount()
-        >= 5
-            * PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount()
-            * StorageEngine.getInstance().getDataRegionNumber();
+        >= 10 * PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount();
   }
 
   private boolean mayWalSizeReachThrottleThreshold() {

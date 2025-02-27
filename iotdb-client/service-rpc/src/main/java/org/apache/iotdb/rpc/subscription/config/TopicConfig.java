@@ -194,12 +194,7 @@ public class TopicConfig extends PipeParameters {
   /////////////////////////////// connector attributes mapping ///////////////////////////////
 
   public Map<String, String> getAttributesWithSinkFormat() {
-    // refer to
-    // org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector.parseAndCollectEvent(org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent)
-    return TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equalsIgnoreCase(
-            attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))
-        ? SINK_TS_FILE_FORMAT_CONFIG
-        : SINK_TABLET_FORMAT_CONFIG;
+    return SINK_HYBRID_FORMAT_CONFIG; // default to hybrid
   }
 
   public Map<String, String> getAttributesWithSinkPrefix() {

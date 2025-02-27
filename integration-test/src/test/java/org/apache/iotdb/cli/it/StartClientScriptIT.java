@@ -35,7 +35,7 @@ import java.io.IOException;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class StartClientScriptIT extends AbstractScriptIT {
+public class StartClientScriptIT extends AbstractScript {
 
   private static String ip;
 
@@ -77,7 +77,7 @@ public class StartClientScriptIT extends AbstractScriptIT {
   protected void testOnWindows() throws IOException {
 
     final String[] output = {
-      "Error: Connection Error, please check whether the network is available or the server has started."
+      "Error: Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."
     };
     ProcessBuilder builder =
         new ProcessBuilder(
@@ -121,7 +121,7 @@ public class StartClientScriptIT extends AbstractScriptIT {
   protected void testOnUnix() throws IOException {
 
     final String[] output = {
-      "Error: Connection Error, please check whether the network is available or the server has started."
+      "Error: Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."
     };
     ProcessBuilder builder =
         new ProcessBuilder(

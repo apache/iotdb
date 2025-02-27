@@ -70,7 +70,6 @@ public class TsFileResourceUtils {
     // util class
   }
 
-  @SuppressWarnings("OptionalGetWithoutIsPresent")
   public static boolean validateTsFileResourceCorrectness(TsFileResource resource) {
     if (resource.isDeleted()) {
       return true;
@@ -93,9 +92,26 @@ public class TsFileResourceUtils {
         return false;
       }
       for (IDeviceID device : devices) {
-        // iterating the index, must present
-        long startTime = timeIndex.getStartTime(device).get();
-        long endTime = timeIndex.getEndTime(device).get();
+        long startTime = timeIndex.getStartTime(device);
+        long endTime = timeIndex.getEndTime(device);
+        if (startTime == Long.MAX_VALUE) {
+          logger.error(
+              "{} {} the start time of {} is {}",
+              resource.getTsFilePath(),
+              VALIDATE_FAILED,
+              device,
+              Long.MAX_VALUE);
+          return false;
+        }
+        if (endTime == Long.MIN_VALUE) {
+          logger.error(
+              "{} {} the end time of {} is {}",
+              resource.getTsFilePath(),
+              VALIDATE_FAILED,
+              device,
+              Long.MIN_VALUE);
+          return false;
+        }
         if (startTime > endTime) {
           logger.error(
               "{} {} the start time of {} is greater than end time",
@@ -359,7 +375,6 @@ public class TsFileResourceUtils {
     return offset2ChunkMetadata;
   }
 
-  @SuppressWarnings("OptionalGetWithoutIsPresent")
   public static boolean validateTsFileResourcesHasNoOverlap(List<TsFileResource> resources) {
     // deviceID -> <TsFileResource, last end time>
     Map<IDeviceID, Pair<TsFileResource, Long>> lastEndTimeMap = new HashMap<>();
@@ -381,9 +396,8 @@ public class TsFileResourceUtils {
       }
       Set<IDeviceID> devices = timeIndex.getDevices();
       for (IDeviceID device : devices) {
-        // iterating the index, must present
-        long currentStartTime = timeIndex.getStartTime(device).get();
-        long currentEndTime = timeIndex.getEndTime(device).get();
+        long currentStartTime = timeIndex.getStartTime(device);
+        long currentEndTime = timeIndex.getEndTime(device);
         Pair<TsFileResource, Long> lastDeviceInfo =
             lastEndTimeMap.computeIfAbsent(device, x -> new Pair<>(null, Long.MIN_VALUE));
         long lastEndTime = lastDeviceInfo.right;

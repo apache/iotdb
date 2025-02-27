@@ -178,8 +178,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     ITimeIndex newTimeIndex =
         IoTDBDescriptor.getInstance().getConfig().getTimeIndexLevel().getTimeIndex();
     for (IDeviceID device : devices) {
-      //noinspection OptionalGetWithoutIsPresent
-      newTimeIndex.updateStartTime(device, timeIndex.getStartTime(device).get());
+      newTimeIndex.updateStartTime(device, timeIndex.getStartTime(device));
     }
     secondTsFileResource.setTimeIndex(newTimeIndex);
 
@@ -230,8 +229,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     ITimeIndex newTimeIndex =
         IoTDBDescriptor.getInstance().getConfig().getTimeIndexLevel().getTimeIndex();
     for (IDeviceID device : devices) {
-      //noinspection OptionalGetWithoutIsPresent
-      newTimeIndex.updateStartTime(device, timeIndex.getStartTime(device).get());
+      newTimeIndex.updateStartTime(device, timeIndex.getStartTime(device));
     }
     secondTsFileResource.setTimeIndex(newTimeIndex);
     List<TsFileResource> newUnseqResources = new ArrayList<>();

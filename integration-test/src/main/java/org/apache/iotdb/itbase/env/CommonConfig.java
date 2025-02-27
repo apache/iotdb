@@ -62,7 +62,7 @@ public interface CommonConfig {
 
   CommonConfig setPrimitiveArraySize(int primitiveArraySize);
 
-  CommonConfig setTargetChunkPointNum(int targetChunkPointNum);
+  CommonConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold);
 
   CommonConfig setMaxTsBlockLineNumber(int maxTsBlockLineNumber);
 
@@ -103,8 +103,6 @@ public interface CommonConfig {
   CommonConfig setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode);
 
   CommonConfig setEnableMQTTService(boolean enableMQTTService);
-
-  CommonConfig setMqttPayloadFormatter(String mqttPayloadFormatter);
 
   CommonConfig setSchemaEngineMode(String schemaEngineMode);
 

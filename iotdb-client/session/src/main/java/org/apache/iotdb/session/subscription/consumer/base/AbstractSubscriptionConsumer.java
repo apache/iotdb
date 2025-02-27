@@ -63,7 +63,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -84,6 +83,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.rpc.subscription.config.TopicConstant.MODE_SNAPSHOT_VALUE;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.ERROR;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.FILE_INIT;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.TABLETS;
@@ -124,16 +124,9 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
 
   public boolean allSnapshotTopicMessagesHaveBeenConsumed() {
-    return allTopicMessagesHaveBeenConsumed(subscribedTopics.keySet());
-  }
-
-  private boolean allTopicMessagesHaveBeenConsumed(final Collection<String> topicNames) {
-    // For the topic that needs to be detected, there are two scenarios to consider:
-    //   1. If configs as live, it cannot be determined whether the topic has been fully consumed.
-    //   2. If configs as snapshot, it means the topic has not been automatically unsubscribed.
-    // Therefore, the logic can be summarized as follows: if there is a matching topic in subscribed
-    // topics, then it has not been fully consumed.
-    return topicNames.stream().map(subscribedTopics::get).noneMatch(Objects::nonNull);
+    return subscribedTopics.values().stream()
+        .noneMatch(
+            (config) -> config.getAttributesWithSourceMode().containsValue(MODE_SNAPSHOT_VALUE));
   }
 
   /////////////////////////////// getter ///////////////////////////////
@@ -398,9 +391,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       } catch (final Exception ignored) {
       }
       throw new SubscriptionConnectionException(
-          String.format(
-              "Failed to handshake with subscription provider %s because of %s", provider, e),
-          e);
+          String.format("Failed to handshake with subscription provider %s", provider), e);
     }
 
     // update consumer id and consumer group id if not exist
@@ -502,7 +493,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                         final String topicNameToUnsubscribe = commitContext.getTopicName();
                         LOGGER.info(
                             "Termination occurred when SubscriptionConsumer {} polling topics, unsubscribe topic {} automatically",
-                            coreReportMessage(),
+                            this,
                             topicNameToUnsubscribe);
                         unsubscribe(Collections.singleton(topicNameToUnsubscribe), false);
                         return Optional.empty();
@@ -673,11 +664,6 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
         // TODO: maybe we can poll a few more times
         if (!messages.isEmpty()) {
-          break;
-        }
-
-        // check if all topic messages have been consumed
-        if (allTopicMessagesHaveBeenConsumed(topicNames)) {
           break;
         }
 
@@ -947,7 +933,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
     int nextOffset = ((TabletsPayload) initialResponse.getPayload()).getNextOffset();
     while (true) {
-      if (nextOffset <= 0) {
+      if (nextOffset < 0) {
         if (!Objects.equals(tablets.size(), -nextOffset)) {
           final String errorMessage =
               String.format(

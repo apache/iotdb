@@ -32,7 +32,6 @@ import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAut
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -51,12 +50,6 @@ import static org.awaitility.Awaitility.await;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoEnhanced.class})
 public class IoTDBPipeAutoDropIT extends AbstractPipeDualTreeModelAutoIT {
-
-  @Override
-  @Before
-  public void setUp() {
-    super.setUp();
-  }
 
   @Test
   public void testAutoDropInHistoricalTransfer() throws Exception {

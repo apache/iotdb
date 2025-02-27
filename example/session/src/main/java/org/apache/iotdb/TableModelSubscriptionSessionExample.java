@@ -72,7 +72,7 @@ public class TableModelSubscriptionSessionExample {
       final int start,
       final int end)
       throws IoTDBConnectionException, StatementExecutionException {
-    final List<String> list = new ArrayList<>(end - start + 1);
+    List<String> list = new ArrayList<>(end - start + 1);
     for (int i = start; i < end; ++i) {
       list.add(
           String.format(
@@ -81,17 +81,17 @@ public class TableModelSubscriptionSessionExample {
     }
     list.add("flush");
     session.executeNonQueryStatement("use " + dataBaseName);
-    for (final String s : list) {
+    for (String s : list) {
       session.executeNonQueryStatement(s);
     }
   }
 
-  private static String getDateStr(final int value) {
-    final Date date = new Date(value);
-    final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+  private static String getDateStr(int value) {
+    Date date = new Date(value);
+    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
     try {
       return dateFormat.format(date);
-    } catch (final Exception e) {
+    } catch (Exception e) {
       return "1970-01-01";
     }
   }
@@ -115,7 +115,7 @@ public class TableModelSubscriptionSessionExample {
     }
 
     int retryCount = 0;
-    try (final ISubscriptionTablePullConsumer consumer1 =
+    try (ISubscriptionTablePullConsumer consumer1 =
         new SubscriptionTablePullConsumerBuilder()
             .consumerId("c1")
             .consumerGroupId("cg1")
@@ -159,7 +159,7 @@ public class TableModelSubscriptionSessionExample {
   }
 
   public static void main(final String[] args) throws Exception {
-    try (final ITableSession session =
+    try (ITableSession session =
         new TableSessionBuilder()
             .nodeUrls(Collections.singletonList(HOST + ":" + PORT))
             .username("root")

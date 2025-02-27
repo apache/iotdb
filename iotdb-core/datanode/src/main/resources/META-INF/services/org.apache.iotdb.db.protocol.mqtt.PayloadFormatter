@@ -18,4 +18,3 @@
 #
 
 org.apache.iotdb.db.protocol.mqtt.JSONPayloadFormatter
-org.apache.iotdb.db.protocol.mqtt.LinePayloadFormatter

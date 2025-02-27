@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.processor.twostage.plugin;
 
-import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
@@ -40,7 +39,6 @@ import org.apache.iotdb.db.pipe.processor.twostage.exchange.payload.FetchCombine
 import org.apache.iotdb.db.pipe.processor.twostage.exchange.sender.TwoStageAggregateSender;
 import org.apache.iotdb.db.pipe.processor.twostage.operator.CountOperator;
 import org.apache.iotdb.db.pipe.processor.twostage.state.CountState;
-import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
@@ -85,8 +83,6 @@ public class TwoStageCountProcessor implements PipeProcessor {
   private long creationTime;
   private int regionId;
   private PipeTaskMeta pipeTaskMeta;
-  private String dataBaseName;
-  private Boolean isTableModel;
 
   private PartialPath outputSeries;
 
@@ -136,13 +132,6 @@ public class TwoStageCountProcessor implements PipeProcessor {
     creationTime = runtimeEnvironment.getCreationTime();
     regionId = runtimeEnvironment.getRegionId();
     pipeTaskMeta = runtimeEnvironment.getPipeTaskMeta();
-    dataBaseName =
-        StorageEngine.getInstance()
-            .getDataRegion(new DataRegionId(runtimeEnvironment.getRegionId()))
-            .getDatabaseName();
-    if (dataBaseName != null) {
-      isTableModel = PathUtils.isTableModelDatabase(dataBaseName);
-    }
 
     outputSeries = new PartialPath(parameters.getString(_PROCESSOR_OUTPUT_SERIES_KEY));
 
@@ -273,8 +262,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
 
       // TODO: table model database name is not supported
       eventCollector.collect(
-          new PipeRawTabletInsertionEvent(
-              isTableModel, dataBaseName, null, null, tablet, false, null, 0, null, null, false));
+          new PipeRawTabletInsertionEvent(null, null, tablet, false, null, 0, null, null, false));
 
       PipeCombineHandlerManager.getInstance()
           .updateLastCombinedValue(pipeName, creationTime, timestampCountPair);

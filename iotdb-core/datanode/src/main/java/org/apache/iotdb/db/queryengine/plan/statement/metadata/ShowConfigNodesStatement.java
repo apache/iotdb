@@ -34,7 +34,9 @@ public class ShowConfigNodesStatement extends ShowStatement implements IConfigSt
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    return AuthorityChecker.checkSuperUserOrMaintain(userName);
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.SUPER_USER.equals(userName),
+        "Only the admin user can perform this operation");
   }
 
   @Override

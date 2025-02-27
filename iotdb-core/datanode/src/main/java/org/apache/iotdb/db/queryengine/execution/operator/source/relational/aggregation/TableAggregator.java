@@ -34,10 +34,7 @@ import java.util.OptionalInt;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator.QUERY_EXECUTION_METRICS;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
-import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.AGGREGATION_FROM_RAW_DATA;
-import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.AGGREGATION_FROM_STATISTICS;
 
 public class TableAggregator {
   private final TableAccumulator accumulator;
@@ -67,33 +64,25 @@ public class TableAggregator {
   }
 
   public void processBlock(TsBlock block) {
-    long startTime = System.nanoTime();
-    try {
-      Column[] arguments = block.getColumns(inputChannels);
+    Column[] arguments = block.getColumns(inputChannels);
 
-      // process count(*)
-      if (arguments.length == 0) {
-        arguments =
-            new Column[] {
-              new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, block.getPositionCount())
-            };
+    // process count(*)
+    if (arguments.length == 0) {
+      arguments =
+          new Column[] {new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, block.getPositionCount())};
+    }
+
+    if (step.isInputRaw()) {
+      // Use select-all AggregationMask here because filter of Agg-Function is not supported now
+      AggregationMask mask = AggregationMask.createSelectAll(block.getPositionCount());
+
+      if (maskChannel.isPresent()) {
+        mask.applyMaskBlock(block.getColumn(maskChannel.getAsInt()));
       }
 
-      if (step.isInputRaw()) {
-        // Use select-all AggregationMask here because filter of Agg-Function is not supported now
-        AggregationMask mask = AggregationMask.createSelectAll(block.getPositionCount());
-
-        if (maskChannel.isPresent()) {
-          mask.applyMaskBlock(block.getColumn(maskChannel.getAsInt()));
-        }
-
-        accumulator.addInput(arguments, mask);
-      } else {
-        accumulator.addIntermediate(arguments[0]);
-      }
-    } finally {
-      QUERY_EXECUTION_METRICS.recordExecutionCost(
-          AGGREGATION_FROM_RAW_DATA, System.nanoTime() - startTime);
+      accumulator.addInput(arguments, mask);
+    } else {
+      accumulator.addIntermediate(arguments[0]);
     }
   }
 
@@ -106,13 +95,7 @@ public class TableAggregator {
   }
 
   public void processStatistics(Statistics[] statistics) {
-    long startTime = System.nanoTime();
-    try {
-      accumulator.addStatistics(statistics);
-    } finally {
-      QUERY_EXECUTION_METRICS.recordExecutionCost(
-          AGGREGATION_FROM_STATISTICS, System.nanoTime() - startTime);
-    }
+    accumulator.addStatistics(statistics);
   }
 
   public boolean hasFinalResult() {

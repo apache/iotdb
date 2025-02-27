@@ -31,7 +31,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -172,15 +171,5 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
       database = childDatabaseName;
     }
     return database;
-  }
-
-  @Override
-  public void removeAttributeColumns() {
-    subRemoveAttributeColumns(Collections.emptyList());
-  }
-
-  @Override
-  protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
-    insertTabletStatementList.forEach(InsertBaseStatement::removeAttributeColumns);
   }
 }

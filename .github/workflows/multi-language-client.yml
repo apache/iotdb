@@ -4,6 +4,7 @@ on:
     branches:
       - master
       - "rc/*"
+      - 'force_ci/**'
     paths:
       - 'pom.xml'
       - 'iotdb-client/pom.xml'

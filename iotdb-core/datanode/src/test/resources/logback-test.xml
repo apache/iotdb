@@ -53,7 +53,7 @@
     <logger name="org.apache.iotdb.db.queryengine.common.schematree" level="INFO"/>
     <logger name="org.apache.iotdb.commons.service.RegisterManager" level="INFO"/>
     <logger name="org.apache.iotdb.db.service.DataNode" level="WARN"/>
-    <logger name="org.apache.iotdb.db.service.ExternalRPCService" level="INFO"/>
+    <logger name="org.apache.iotdb.db.service.RPCService" level="INFO"/>
     <logger name="org.apache.iotdb.db.service.MQTTService" level="INFO"/>
     <logger name="org.apache.iotdb.db.storageengine.compaction.cross.rewrite.task" level="ERROR"/>
     <logger name="io.moquette.broker.metrics.MQTTMessageLogger" level="ERROR"/>

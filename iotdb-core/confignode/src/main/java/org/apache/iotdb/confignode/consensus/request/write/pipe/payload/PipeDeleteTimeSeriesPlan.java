@@ -24,8 +24,6 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-import javax.annotation.Nonnull;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -40,13 +38,12 @@ public class PipeDeleteTimeSeriesPlan extends ConfigPhysicalPlan {
     super(ConfigPhysicalPlanType.PipeDeleteTimeSeries);
   }
 
-  public PipeDeleteTimeSeriesPlan(final @Nonnull ByteBuffer patternTreeBytes) {
+  public PipeDeleteTimeSeriesPlan(final ByteBuffer patternTreeBytes) {
     super(ConfigPhysicalPlanType.PipeDeleteTimeSeries);
     this.patternTreeBytes = patternTreeBytes;
   }
 
   public ByteBuffer getPatternTreeBytes() {
-    patternTreeBytes.rewind();
     return patternTreeBytes;
   }
 

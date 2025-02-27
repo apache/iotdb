@@ -57,7 +57,7 @@ public class DataNodeShutdownHook extends Thread {
   public void run() {
     logger.info("DataNode exiting...");
     // Stop external rpc service firstly.
-    ExternalRPCService.getInstance().stop();
+    RPCService.getInstance().stop();
 
     // Reject write operations to make sure all tsfiles will be sealed
     CommonDescriptor.getInstance().getConfig().setStopping(true);
@@ -89,24 +89,26 @@ public class DataNodeShutdownHook extends Thread {
       triggerSnapshotForAllDataRegion();
     }
 
-    // Actually stop all services started by the DataNode.
-    // If we don't call this, services like the RestService are not stopped and I can't re-start
-    // it.
-    DataNode.getInstance().stop();
-
     // Set and report shutdown to cluster ConfigNode-leader
     if (!reportShutdownToConfigNodeLeader()) {
       logger.warn(
           "Failed to report DataNode's shutdown to ConfigNode. The cluster will still take the current DataNode as Running for a few seconds.");
     }
 
+    // Actually stop all services started by the DataNode.
+    // If we don't call this, services like the RestService are not stopped and I can't re-start
+    // it.
+    DataNode.getInstance().stop();
+
     // Clear lock file. All services should be shutdown before this line.
     DirectoryChecker.getInstance().deregisterAll();
 
-    logger.info(
-        "DataNode exits. Jvm memory usage: {}",
-        MemUtils.bytesCntToStr(
-            Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
+    if (logger.isInfoEnabled()) {
+      logger.info(
+          "DataNode exits. Jvm memory usage: {}",
+          MemUtils.bytesCntToStr(
+              Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
+    }
   }
 
   private void triggerSnapshotForAllDataRegion() {

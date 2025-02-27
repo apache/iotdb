@@ -137,7 +137,6 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
     lastTime[subTaskId] = timestamp;
-    lastTimeSet[subTaskId] = true;
   }
 
   /** Write data in batch, only used for aligned device. */
@@ -208,11 +207,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     while (fileIndex < seqTsFileResources.size()) {
       if (seqTsFileResources.get(fileIndex).getTimeIndexType() == 1) {
         // the timeIndexType of resource is deviceTimeIndex
-        int finalFileIndex = fileIndex;
-        seqTsFileResources
-            .get(fileIndex)
-            .getEndTime(deviceId)
-            .ifPresent(endTime -> currentDeviceEndTime[finalFileIndex] = endTime);
+        currentDeviceEndTime[fileIndex] = seqTsFileResources.get(fileIndex).getEndTime(deviceId);
       } else {
         long endTime = Long.MIN_VALUE;
         // Fast compaction get reader from cache map, while read point compaction get reader from

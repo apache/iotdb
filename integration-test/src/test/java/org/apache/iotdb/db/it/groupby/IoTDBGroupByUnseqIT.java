@@ -110,7 +110,7 @@ public class IoTDBGroupByUnseqIT {
         .getConfig()
         .getCommonConfig()
         .setMaxNumberOfPointsInPage(4)
-        .setTargetChunkPointNum(2);
+        .setAvgSeriesPointNumberThreshold(2);
     EnvFactory.getEnv().initClusterEnvironment();
     String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.sg2.d1.s1")};
     String[] retArray = new String[] {"5,1,", "10,1,", "15,2,", "20,0,", "25,1,"};

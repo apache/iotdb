@@ -80,8 +80,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   protected final CompactionTaskSummary summary;
   protected final boolean ignoreAllNullRows;
 
-  private long lastWriteTimestamp;
-  private boolean lastWriteTimestampSet = false;
+  private long lastWriteTimestamp = Long.MIN_VALUE;
 
   public ReadChunkAlignedSeriesCompactionExecutor(
       IDeviceID device,
@@ -420,12 +419,11 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   }
 
   protected void checkAndUpdatePreviousTimestamp(long currentWritingTimestamp) {
-    if (lastWriteTimestampSet && currentWritingTimestamp <= lastWriteTimestamp) {
+    if (currentWritingTimestamp <= lastWriteTimestamp) {
       throw new CompactionLastTimeCheckFailedException(
           device.toString(), currentWritingTimestamp, lastWriteTimestamp);
     } else {
       lastWriteTimestamp = currentWritingTimestamp;
-      lastWriteTimestampSet = true;
     }
   }
 

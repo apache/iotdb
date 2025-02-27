@@ -29,51 +29,51 @@ import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.List;
-import java.util.concurrent.BlockingQueue;
 
 public interface IWritableMemChunk extends WALEntryValue {
-  void putLong(long t, long v);
 
-  void putInt(long t, int v);
+  boolean putLongWithFlushCheck(long t, long v);
 
-  void putFloat(long t, float v);
+  boolean putIntWithFlushCheck(long t, int v);
 
-  void putDouble(long t, double v);
+  boolean putFloatWithFlushCheck(long t, float v);
 
-  void putBinary(long t, Binary v);
+  boolean putDoubleWithFlushCheck(long t, double v);
 
-  void putBoolean(long t, boolean v);
+  boolean putBinaryWithFlushCheck(long t, Binary v);
 
-  void putAlignedRow(long t, Object[] v);
+  boolean putBooleanWithFlushCheck(long t, boolean v);
 
-  void putLongs(long[] t, long[] v, BitMap bitMap, int start, int end);
+  boolean putAlignedValueWithFlushCheck(long t, Object[] v);
 
-  void putInts(long[] t, int[] v, BitMap bitMap, int start, int end);
+  boolean putLongsWithFlushCheck(long[] t, long[] v, BitMap bitMap, int start, int end);
 
-  void putFloats(long[] t, float[] v, BitMap bitMap, int start, int end);
+  boolean putIntsWithFlushCheck(long[] t, int[] v, BitMap bitMap, int start, int end);
 
-  void putDoubles(long[] t, double[] v, BitMap bitMap, int start, int end);
+  boolean putFloatsWithFlushCheck(long[] t, float[] v, BitMap bitMap, int start, int end);
 
-  void putBinaries(long[] t, Binary[] v, BitMap bitMap, int start, int end);
+  boolean putDoublesWithFlushCheck(long[] t, double[] v, BitMap bitMap, int start, int end);
 
-  void putBooleans(long[] t, boolean[] v, BitMap bitMap, int start, int end);
+  boolean putBinariesWithFlushCheck(long[] t, Binary[] v, BitMap bitMap, int start, int end);
 
-  void putAlignedTablet(
+  boolean putBooleansWithFlushCheck(long[] t, boolean[] v, BitMap bitMap, int start, int end);
+
+  boolean putAlignedValuesWithFlushCheck(
       long[] t, Object[] v, BitMap[] bitMaps, int start, int end, TSStatus[] results);
 
-  void writeNonAlignedPoint(long insertTime, Object objectValue);
+  boolean writeWithFlushCheck(long insertTime, Object objectValue);
 
-  void writeAlignedPoints(
+  boolean writeAlignedValueWithFlushCheck(
       long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
 
   /**
    * write data in the range [start, end). Null value in the valueList will be replaced by the
    * subsequent non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}
    */
-  void writeNonAlignedTablet(
+  boolean writeWithFlushCheck(
       long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end);
 
-  void writeAlignedTablet(
+  boolean writeAlignedValuesWithFlushCheck(
       long[] times,
       Object[] valueList,
       BitMap[] bitMaps,
@@ -83,8 +83,6 @@ public interface IWritableMemChunk extends WALEntryValue {
       TSStatus[] results);
 
   long count();
-
-  long rowCount();
 
   IMeasurementSchema getSchema();
 
@@ -127,12 +125,12 @@ public interface IWritableMemChunk extends WALEntryValue {
    */
   void sortTvListForFlush();
 
-  default long getMaxTime() {
-    return Long.MAX_VALUE;
+  default TVList getTVList() {
+    return null;
   }
 
-  default long getMinTime() {
-    return Long.MIN_VALUE;
+  default long getMaxTime() {
+    return Long.MAX_VALUE;
   }
 
   /**
@@ -142,7 +140,7 @@ public interface IWritableMemChunk extends WALEntryValue {
 
   IChunkWriter createIChunkWriter();
 
-  void encode(BlockingQueue<Object> ioTaskQueue);
+  void encode(IChunkWriter chunkWriter);
 
   void release();
 
@@ -151,10 +149,4 @@ public interface IWritableMemChunk extends WALEntryValue {
   long getLastPoint();
 
   boolean isEmpty();
-
-  List<? extends TVList> getSortedList();
-
-  TVList getWorkingTVList();
-
-  void setWorkingTVList(TVList list);
 }

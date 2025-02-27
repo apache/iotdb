@@ -47,7 +47,6 @@ import java.util.Set;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoEnhanced.class})
 public class IoTDBPipeAutoConflictIT extends AbstractPipeDualTreeModelAutoIT {
-
   @Before
   public void setUp() {
     MultiEnvFactory.createEnv(2);

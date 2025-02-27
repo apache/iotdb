@@ -19,69 +19,27 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
-
-import org.apache.tsfile.enums.TSDataType;
-
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 
-public class BackwardSort extends QuickSort {
-  public static double INVERSION_RATIOS_THRESHOLD = 0.004;
+public interface BackwardSort extends QuickSort {
 
-  private final List<long[]> tmpTimestamps = new ArrayList<>();
-  private final List<int[]> tmpIndices = new ArrayList<>();
-  private int tmpLength = 0;
+  double INVERSION_RATIOS_THRESHOLD = 0.004;
 
-  public BackwardSort(TVList tvList) {
-    super(tvList);
-  }
+  void setFromTmp(int src, int dest);
 
-  public void setFromTmp(int src, int dest) {
-    tvList.set(
-        dest,
-        tmpTimestamps.get(src / ARRAY_SIZE)[src % ARRAY_SIZE],
-        tmpIndices.get(src / ARRAY_SIZE)[src % ARRAY_SIZE]);
-  }
+  void setToTmp(int src, int dest);
 
-  public void setToTmp(int src, int dest) {
-    tmpTimestamps.get(dest / ARRAY_SIZE)[dest % ARRAY_SIZE] = tvList.getTime(src);
-    tmpIndices.get(dest / ARRAY_SIZE)[dest % ARRAY_SIZE] = tvList.getValueIndex(src);
-  }
+  void backward_set(int src, int dest);
 
-  public void backward_set(int src, int dest) {
-    tvList.set(src, dest);
-  }
+  int compareTmp(int idx, int tmpIdx);
 
-  public int compareTmp(int idx, int tmpIdx) {
-    long t1 = tvList.getTime(idx);
-    long t2 = tmpTimestamps.get(tmpIdx / ARRAY_SIZE)[tmpIdx % ARRAY_SIZE];
-    return Long.compare(t1, t2);
-  }
+  void checkTmpLength(int len);
 
-  public void checkTmpLength(int len) {
-    while (len > tmpLength) {
-      tmpTimestamps.add((long[]) tvList.getPrimitiveArraysByType(TSDataType.INT64));
-      tmpIndices.add((int[]) tvList.getPrimitiveArraysByType(TSDataType.INT32));
-      tmpLength += ARRAY_SIZE;
-    }
-  }
+  void clearTmp();
 
-  public void clearTmp() {
-    for (long[] dataArray : tmpTimestamps) {
-      PrimitiveArrayManager.release(dataArray);
-    }
-    tmpTimestamps.clear();
-    for (int[] dataArray : tmpIndices) {
-      PrimitiveArrayManager.release(dataArray);
-    }
-    tmpIndices.clear();
-    tmpLength = 0;
-  }
-
-  public void backwardSort(List<long[]> timestamps, int rowCount) {
+  default void backwardSort(List<long[]> timestamps, int rowCount) {
     int block_size = setBlockLength(timestamps, 1);
     // System.out.printf("rowCount=%d, block_size=%d\n",rowCount, block_size);
     int B = rowCount / block_size + 1;
@@ -102,7 +60,7 @@ public class BackwardSort extends QuickSort {
    * @param step
    * @return
    */
-  public int setBlockLength(List<long[]> timestamps, int step) {
+  default int setBlockLength(List<long[]> timestamps, int step) {
     double overlap = 0;
     long last_time = timestamps.get(0)[0];
     int i = step, blocks = 0;
@@ -132,7 +90,7 @@ public class BackwardSort extends QuickSort {
    * @param hi
    * @param rowCount
    */
-  public void backwardMergeBlocks(int lo, int hi, int rowCount) {
+  default void backwardMergeBlocks(int lo, int hi, int rowCount) {
     int overlapIdx = hi + 1;
     while (overlapIdx < rowCount && compare(hi, overlapIdx) == 1) {
       overlapIdx++;
@@ -173,7 +131,7 @@ public class BackwardSort extends QuickSort {
    * @param lo
    * @param hi
    */
-  public void sortBlock(int lo, int hi) {
+  default void sortBlock(int lo, int hi) {
     qsort(lo, hi);
   }
 }

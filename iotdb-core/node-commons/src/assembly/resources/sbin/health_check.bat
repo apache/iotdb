@@ -87,7 +87,7 @@ set "preip="
 set "iplist="
 set "allpreip="
 
-set PATH="%JAVA_HOME%\bin\";%PATH%
+PATH %PATH%;%JAVA_HOME%\bin\
 set "FULL_VERSION="
 set "MAJOR_VERSION="
 set "MINOR_VERSION="

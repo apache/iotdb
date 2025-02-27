@@ -71,8 +71,6 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   private PipeRawTabletInsertionEvent(
       final Boolean isTableModelEvent,
       final String databaseName,
-      final String tableModelDataBaseName,
-      final String treeModelDataBaseName,
       final Tablet tablet,
       final boolean isAligned,
       final EnrichedEvent sourceEvent,
@@ -93,9 +91,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         startTime,
         endTime,
         isTableModelEvent,
-        databaseName,
-        tableModelDataBaseName,
-        treeModelDataBaseName);
+        databaseName);
     this.tablet = Objects.requireNonNull(tablet);
     this.isAligned = isAligned;
     this.sourceEvent = sourceEvent;
@@ -105,8 +101,6 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   public PipeRawTabletInsertionEvent(
       final Boolean isTableModelEvent,
       final String databaseName,
-      final String tableModelDataBaseName,
-      final String treeModelDataBaseName,
       final Tablet tablet,
       final boolean isAligned,
       final String pipeName,
@@ -117,8 +111,6 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     this(
         isTableModelEvent,
         databaseName,
-        tableModelDataBaseName,
-        treeModelDataBaseName,
         tablet,
         isAligned,
         sourceEvent,
@@ -135,8 +127,6 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   @TestOnly
   public PipeRawTabletInsertionEvent(final Tablet tablet, final boolean isAligned) {
     this(
-        null,
-        null,
         null,
         null,
         tablet,
@@ -158,8 +148,6 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     this(
         null,
         null,
-        null,
-        null,
         tablet,
         isAligned,
         null,
@@ -176,9 +164,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   @TestOnly
   public PipeRawTabletInsertionEvent(
       final Tablet tablet, final long startTime, final long endTime) {
-    this(
-        null, null, null, null, tablet, false, null, false, null, 0, null, null, null, startTime,
-        endTime);
+    this(null, null, tablet, false, null, false, null, 0, null, null, null, startTime, endTime);
   }
 
   @Override
@@ -254,9 +240,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       final long endTime) {
     return new PipeRawTabletInsertionEvent(
         getRawIsTableModelEvent(),
-        getSourceDatabaseNameFromDataRegion(),
-        getRawTableModelDataBase(),
-        getRawTreeModelDataBase(),
+        getTreeModelDatabaseName(),
         tablet,
         isAligned,
         sourceEvent,
@@ -354,9 +338,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   public PipeRawTabletInsertionEvent parseEventWithPatternOrTime() {
     return new PipeRawTabletInsertionEvent(
         getRawIsTableModelEvent(),
-        getSourceDatabaseNameFromDataRegion(),
-        getRawTableModelDataBase(),
-        getRawTreeModelDataBase(),
+        getTreeModelDatabaseName(),
         convertToTablet(),
         isAligned,
         pipeName,

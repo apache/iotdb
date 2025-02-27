@@ -167,8 +167,8 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setTargetChunkPointNum(int targetChunkPointNum) {
-    setProperty("target_chunk_point_num", String.valueOf(targetChunkPointNum));
+  public CommonConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
+    setProperty("avg_series_point_number_threshold", String.valueOf(avgSeriesPointNumberThreshold));
     return this;
   }
 
@@ -318,12 +318,6 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setEnableMQTTService(boolean enableMQTTService) {
     setProperty("enable_mqtt_service", String.valueOf(enableMQTTService));
-    return this;
-  }
-
-  @Override
-  public CommonConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
-    setProperty("mqtt_payload_formatter", String.valueOf(mqttPayloadFormatter));
     return this;
   }
 

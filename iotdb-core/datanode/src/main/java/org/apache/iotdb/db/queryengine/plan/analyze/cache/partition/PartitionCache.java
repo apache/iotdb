@@ -549,11 +549,6 @@ public class PartitionCache {
             TRegionRouteMapResp resp = client.getLatestRegionRouteMap();
             if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
               updateGroupIdToReplicaSetMap(resp.getTimestamp(), resp.getRegionRouteMap());
-            } else {
-              logger.warn(
-                  "Unexpected error when getRegionReplicaSet: status {}， regionMap: {}",
-                  resp.getStatus(),
-                  resp.getRegionRouteMap());
             }
             // if configNode don't have then will throw RuntimeException
             if (!groupIdToReplicaSetMap.containsKey(consensusGroupId)) {

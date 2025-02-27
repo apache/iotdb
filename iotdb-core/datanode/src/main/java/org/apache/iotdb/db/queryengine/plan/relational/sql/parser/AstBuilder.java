@@ -131,7 +131,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecificatio
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReconstructRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveConfigNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
@@ -142,7 +141,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSystemStatus;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
@@ -570,6 +568,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       columnNames.remove(timeColumnIndex);
     }
 
+    String[] columnNameArray = columnNames.toArray(new String[0]);
+
     List<Expression> rows = queryBody.getRows();
     if (timeColumnIndex == -1 && rows.size() > 1) {
       throw new SemanticException("need timestamps when insert multi rows");
@@ -587,7 +587,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
                   } else {
                     throw new SemanticException("unexpected expression: " + r);
                   }
-                  String[] columnNameArray = columnNames.toArray(new String[0]);
                   return toInsertRowStatement(
                       expressions, finalTimeColumnIndex, columnNameArray, tableName, databaseName);
                 })
@@ -1184,15 +1183,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitRemoveDataNodeStatement(RelationalSqlParser.RemoveDataNodeStatementContext ctx) {
     List<Integer> nodeIds =
-        Collections.singletonList(Integer.parseInt(ctx.INTEGER_VALUE().getText()));
+        ctx.INTEGER_VALUE().stream()
+            .map(TerminalNode::getText)
+            .map(Integer::valueOf)
+            .collect(Collectors.toList());
     return new RemoveDataNode(nodeIds);
-  }
-
-  @Override
-  public Node visitRemoveConfigNodeStatement(
-      RelationalSqlParser.RemoveConfigNodeStatementContext ctx) {
-    Integer nodeId = Integer.parseInt(ctx.INTEGER_VALUE().getText());
-    return new RemoveConfigNode(nodeId);
   }
 
   @Override
@@ -1262,13 +1257,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   public Node visitShowCurrentSqlDialectStatement(
       RelationalSqlParser.ShowCurrentSqlDialectStatementContext ctx) {
     return new ShowCurrentSqlDialect(getLocation(ctx));
-  }
-
-  @Override
-  public Node visitSetSqlDialectStatement(RelationalSqlParser.SetSqlDialectStatementContext ctx) {
-    return new SetSqlDialect(
-        ctx.TABLE() == null ? IClientSession.SqlDialect.TREE : IClientSession.SqlDialect.TABLE,
-        getLocation(ctx));
   }
 
   @Override

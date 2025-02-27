@@ -312,59 +312,29 @@ public class TsFileInsertionEventQueryParser extends TsFileInsertionEventParser 
             final TabletInsertionEvent next;
             if (!hasNext()) {
               next =
-                  sourceEvent == null
-                      ? new PipeRawTabletInsertionEvent(
-                          null,
-                          null,
-                          null,
-                          null,
-                          tablet,
-                          isAligned,
-                          null,
-                          0,
-                          pipeTaskMeta,
-                          sourceEvent,
-                          true)
-                      : new PipeRawTabletInsertionEvent(
-                          sourceEvent.getRawIsTableModelEvent(),
-                          sourceEvent.getSourceDatabaseNameFromDataRegion(),
-                          sourceEvent.getRawTableModelDataBase(),
-                          sourceEvent.getRawTreeModelDataBase(),
-                          tablet,
-                          isAligned,
-                          sourceEvent.getPipeName(),
-                          sourceEvent.getCreationTime(),
-                          pipeTaskMeta,
-                          sourceEvent,
-                          true);
+                  new PipeRawTabletInsertionEvent(
+                      sourceEvent != null ? sourceEvent.isTableModelEvent() : null,
+                      sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
+                      tablet,
+                      isAligned,
+                      sourceEvent != null ? sourceEvent.getPipeName() : null,
+                      sourceEvent != null ? sourceEvent.getCreationTime() : 0,
+                      pipeTaskMeta,
+                      sourceEvent,
+                      true);
               close();
             } else {
               next =
-                  sourceEvent == null
-                      ? new PipeRawTabletInsertionEvent(
-                          null,
-                          null,
-                          null,
-                          null,
-                          tablet,
-                          isAligned,
-                          null,
-                          0,
-                          pipeTaskMeta,
-                          sourceEvent,
-                          false)
-                      : new PipeRawTabletInsertionEvent(
-                          sourceEvent.getRawIsTableModelEvent(),
-                          sourceEvent.getSourceDatabaseNameFromDataRegion(),
-                          sourceEvent.getRawTableModelDataBase(),
-                          sourceEvent.getRawTreeModelDataBase(),
-                          tablet,
-                          isAligned,
-                          sourceEvent.getPipeName(),
-                          sourceEvent.getCreationTime(),
-                          pipeTaskMeta,
-                          sourceEvent,
-                          false);
+                  new PipeRawTabletInsertionEvent(
+                      sourceEvent != null ? sourceEvent.isTableModelEvent() : null,
+                      sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
+                      tablet,
+                      isAligned,
+                      sourceEvent != null ? sourceEvent.getPipeName() : null,
+                      sourceEvent != null ? sourceEvent.getCreationTime() : 0,
+                      pipeTaskMeta,
+                      sourceEvent,
+                      false);
             }
             return next;
           }

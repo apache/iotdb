@@ -225,10 +225,6 @@
             <artifactId>jcip-annotations</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.fusesource.mqtt-client</groupId>
-            <artifactId>mqtt-client</artifactId>
-        </dependency>
     </dependencies>
     <build>
         <plugins>

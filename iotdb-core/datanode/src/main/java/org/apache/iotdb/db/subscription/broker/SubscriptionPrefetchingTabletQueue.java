@@ -110,16 +110,6 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
           }
 
           final SubscriptionPollResponse response = ev.getCurrentResponse();
-          if (Objects.isNull(response)) {
-            final String errorMessage =
-                String.format(
-                    "current response is null when fetching next response, consumer id: %s commit context: %s, offset: %s, prefetching queue: %s",
-                    consumerId, commitContext, offset, this);
-            LOGGER.warn(errorMessage);
-            eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
-            return ev;
-          }
-
           final SubscriptionPollPayload payload = response.getPayload();
 
           // 2. Check previous response type and offset
@@ -169,7 +159,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
                 String.format(
                     "exception occurred when fetching next response: %s, consumer id: %s, commit context: %s, offset: %s, prefetching queue: %s",
                     e, consumerId, commitContext, offset, this);
-            LOGGER.warn(errorMessage, e);
+            LOGGER.warn(errorMessage);
             eventRef.set(generateSubscriptionPollErrorResponse(errorMessage));
           }
 

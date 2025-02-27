@@ -35,8 +35,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -247,20 +245,10 @@ public class SeriesPartitionTable {
    * @param TTL The Time To Live
    * @param currentTimeSlot The current TimeSlot
    */
-  public List<TTimePartitionSlot> autoCleanPartitionTable(
-      long TTL, TTimePartitionSlot currentTimeSlot) {
-    List<TTimePartitionSlot> removedTimePartitions = new ArrayList<>();
-    Iterator<Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>>> iterator =
-        seriesPartitionMap.entrySet().iterator();
-    while (iterator.hasNext()) {
-      Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> entry = iterator.next();
-      TTimePartitionSlot timePartitionSlot = entry.getKey();
-      if (timePartitionSlot.getStartTime() + TTL < currentTimeSlot.getStartTime()) {
-        removedTimePartitions.add(timePartitionSlot);
-        iterator.remove();
-      }
-    }
-    return removedTimePartitions;
+  public void autoCleanPartitionTable(long TTL, TTimePartitionSlot currentTimeSlot) {
+    seriesPartitionMap
+        .entrySet()
+        .removeIf(entry -> entry.getKey().getStartTime() + TTL < currentTimeSlot.getStartTime());
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)

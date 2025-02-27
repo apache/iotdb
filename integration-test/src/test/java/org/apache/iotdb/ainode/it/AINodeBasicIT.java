@@ -247,7 +247,5 @@ public class AINodeBasicIT {
         "301: The number of rows 5 in the input data does not match the model input 7. Try to use LIMIT in SQL or WINDOW in CALL INFERENCE");
     sql = "CREATE MODEL 中文 USING URI \"" + MODEL_PATH + "\"";
     errorTest(sql, "701: ModelName can only contain letters, numbers, and underscores");
-    sql = "DROP MODEL _GaussianHMM";
-    errorTest(sql, "1502: Built-in model _GaussianHMM can't be removed");
   }
 }

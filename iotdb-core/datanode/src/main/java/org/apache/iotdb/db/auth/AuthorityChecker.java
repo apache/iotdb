@@ -321,15 +321,6 @@ public class AuthorityChecker {
     return authorityFetcher.get().checkRole(username, roleName);
   }
 
-  public static TSStatus checkSuperUserOrMaintain(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MAINTAIN),
-        PrivilegeType.MAINTAIN);
-  }
-
   public static void buildTSBlock(
       TAuthorizerResp authResp, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> types = new ArrayList<>();

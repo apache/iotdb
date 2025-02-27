@@ -44,7 +44,6 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
-import java.time.format.ResolverStyle;
 import java.time.format.SignStyle;
 import java.time.temporal.ChronoField;
 import java.util.Calendar;
@@ -508,8 +507,7 @@ public class DateTimeUtils {
 
           /** such as '2011.12.03 10:15:30+01:00' or '2011.12.03 10:15:30.123456789+01:00'. */
           .appendOptional(ISO_OFFSET_DATE_TIME_WITH_DOT_WITH_SPACE_NS)
-          .toFormatter()
-          .withResolverStyle(ResolverStyle.STRICT);
+          .toFormatter();
 
   public static long convertTimestampOrDatetimeStrToLongWithDefaultZone(String timeStr) {
     try {

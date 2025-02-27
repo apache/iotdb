@@ -83,22 +83,4 @@ public interface ISubscriptionTablePushConsumer extends AutoCloseable {
    * @throws SubscriptionException if the unsubscription fails
    */
   void unsubscribe(final Set<String> topicNames) throws SubscriptionException;
-
-  /**
-   * Retrieves the unique identifier of this consumer. If no consumer ID was provided at the time of
-   * consumer construction, a random globally unique ID is automatically assigned after the consumer
-   * is opened.
-   *
-   * @return the unique consumer identifier
-   */
-  String getConsumerId();
-
-  /**
-   * Retrieves the identifier of the consumer group to which this consumer belongs. If no consumer
-   * group ID was specified at the time of consumer construction, a random globally unique ID is
-   * automatically assigned after the consumer is opened.
-   *
-   * @return the consumer group's identifier
-   */
-  String getConsumerGroupId();
 }

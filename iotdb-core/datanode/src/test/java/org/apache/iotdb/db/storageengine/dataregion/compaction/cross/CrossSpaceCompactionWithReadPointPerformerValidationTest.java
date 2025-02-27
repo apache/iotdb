@@ -74,7 +74,6 @@ import java.util.Map;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.tsfile.utils.TsFileGeneratorUtils.alignDeviceOffset;
 
-@SuppressWarnings("OptionalGetWithoutIsPresent")
 public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     extends AbstractCompactionTest {
   //  TsFileManager tsFileManager =
@@ -1849,7 +1848,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     unclosedSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastSeqResource = seqResources.get(4);
     for (IDeviceID deviceID : lastSeqResource.getDevices()) {
-      unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID).get());
+      unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
     }
     seqResources.remove(4);
     seqResources.add(4, unclosedSeqResource);
@@ -1902,7 +1901,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     unclosedSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastSeqResource = seqResources.get(4);
     for (IDeviceID deviceID : lastSeqResource.getDevices()) {
-      unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID).get());
+      unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
     }
     seqResources.remove(4);
     seqResources.add(4, unclosedSeqResource);
@@ -1948,7 +1947,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     unclosedSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastSeqResource = seqResources.get(4);
     for (IDeviceID deviceID : lastSeqResource.getDevices()) {
-      unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID).get());
+      unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
     }
     seqResources.remove(4);
     seqResources.add(4, unclosedSeqResource);
@@ -2000,7 +1999,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     unclosedSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastSeqResource = seqResources.get(4);
     for (IDeviceID deviceID : lastSeqResource.getDevices()) {
-      unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID).get());
+      unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
     }
     seqResources.remove(4);
     seqResources.add(4, unclosedSeqResource);
@@ -2053,9 +2052,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     unclosedUnSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastUnSeqResource = unseqResources.get(1);
     for (IDeviceID deviceID : lastUnSeqResource.getDevices()) {
-      unclosedUnSeqResource.updateStartTime(
-          deviceID, lastUnSeqResource.getStartTime(deviceID).get());
-      unclosedUnSeqResource.updateEndTime(deviceID, lastUnSeqResource.getEndTime(deviceID).get());
+      unclosedUnSeqResource.updateStartTime(deviceID, lastUnSeqResource.getStartTime(deviceID));
+      unclosedUnSeqResource.updateEndTime(deviceID, lastUnSeqResource.getEndTime(deviceID));
     }
     unseqResources.remove(1);
     unseqResources.add(1, unclosedUnSeqResource);

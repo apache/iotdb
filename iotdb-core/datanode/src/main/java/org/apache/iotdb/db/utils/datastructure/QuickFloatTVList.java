@@ -18,19 +18,36 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
-public class QuickFloatTVList extends FloatTVList {
-  private final QuickSort policy;
-
-  QuickFloatTVList() {
-    policy = new QuickSort(this);
+public class QuickFloatTVList extends FloatTVList implements QuickSort {
+  @Override
+  public int compare(int idx1, int idx2) {
+    long t1 = getTime(idx1);
+    long t2 = getTime(idx2);
+    return Long.compare(t1, t2);
   }
 
   @Override
-  public synchronized void sort() {
+  public void swap(int p, int q) {
+    float valueP = getFloat(p);
+    long timeP = getTime(p);
+    float valueQ = getFloat(q);
+    long timeQ = getTime(q);
+    set(p, timeQ, valueQ);
+    set(q, timeP, valueP);
+  }
+
+  @Override
+  public void sort() {
     if (!sorted) {
-      policy.qsort(0, rowCount - 1);
+      qsort(0, rowCount - 1);
     }
     sorted = true;
-    seqRowCount = rowCount;
+  }
+
+  @Override
+  protected void set(int src, int dest) {
+    long srcT = getTime(src);
+    float srcV = getFloat(src);
+    set(dest, srcT, srcV);
   }
 }

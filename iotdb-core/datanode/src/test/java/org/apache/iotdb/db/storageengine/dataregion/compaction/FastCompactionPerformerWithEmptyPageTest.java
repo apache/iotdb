@@ -46,7 +46,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-@SuppressWarnings("OptionalGetWithoutIsPresent")
 public class FastCompactionPerformerWithEmptyPageTest extends AbstractCompactionTest {
 
   int oldAlignedSeriesCompactionBatchSize;
@@ -124,8 +123,8 @@ public class FastCompactionPerformerWithEmptyPageTest extends AbstractCompaction
     }
     TsFileResource result = tsFileManager.getTsFileList(true).get(0);
     result.buildDeviceTimeIndex();
-    Assert.assertEquals(20, ((long) result.getStartTime(device).get()));
-    Assert.assertEquals(50, ((long) result.getEndTime(device).get()));
+    Assert.assertEquals(20, result.getStartTime(device));
+    Assert.assertEquals(50, result.getEndTime(device));
 
     validateSeqFiles(true);
 

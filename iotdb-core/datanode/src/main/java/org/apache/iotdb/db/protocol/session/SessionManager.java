@@ -385,18 +385,6 @@ public class SessionManager implements SessionManagerMBean {
         session.getSqlDialect());
   }
 
-  // Sometimes we need to switch from table model to tree model,
-  // e.g., when loading a tree model TsFile under table model dialect.
-  public SessionInfo copySessionInfoForTreeModel(final SessionInfo sessionInfo) {
-    return new SessionInfo(
-        sessionInfo.getSessionId(),
-        sessionInfo.getUserName(),
-        ZoneId.systemDefault(),
-        sessionInfo.getVersion(),
-        sessionInfo.getDatabaseName().orElse(null),
-        IClientSession.SqlDialect.TREE);
-  }
-
   public SessionInfo getSessionInfoOfTableModel(IClientSession session) {
     return new SessionInfo(
         session.getId(),

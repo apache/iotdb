@@ -35,7 +35,6 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,8 +85,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       final String password,
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
-      final boolean validateTsFile,
-      final boolean shouldMarkAsPipeRequest) {
+      final boolean validateTsFile) {
     super(
         endPoints,
         useLeaderCache,
@@ -95,8 +93,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
         password,
         shouldReceiverConvertOnTypeMismatch,
         loadTsFileStrategy,
-        validateTsFile,
-        shouldMarkAsPipeRequest);
+        validateTsFile);
 
     endPointSet = new HashSet<>(endPoints);
 
@@ -256,9 +253,6 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_VALIDATE_TSFILE,
           Boolean.toString(validateTsFile));
-      params.put(
-          PipeTransferHandshakeConstant.HANDSHAKE_KEY_MARK_AS_PIPE_REQUEST,
-          Boolean.toString(shouldMarkAsPipeRequest));
 
       client.setTimeoutDynamically(PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs());
       client.pipeTransfer(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params), callback);
@@ -288,9 +282,6 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       if (exception.get() != null) {
         throw new PipeConnectionException("Failed to handshake.", exception.get());
       }
-    } catch (TException e) {
-      client.resetMethodStateIfStopped();
-      throw e;
     } finally {
       client.setShouldReturnSelf(true);
       client.returnSelf();

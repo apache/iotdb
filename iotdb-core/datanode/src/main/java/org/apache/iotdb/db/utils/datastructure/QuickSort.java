@@ -16,33 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.utils.datastructure;
 
-public class QuickSort {
-  protected final TVList tvList;
-
-  public QuickSort(TVList tvList) {
-    this.tvList = tvList;
-  }
-
+public interface QuickSort {
   /** compare the timestamps in idx1 and idx2 */
-  public int compare(int idx1, int idx2) {
-    long t1 = tvList.getTime(idx1);
-    long t2 = tvList.getTime(idx2);
-    return Long.compare(t1, t2);
-  }
+  int compare(int idx1, int idx2);
 
-  public void swap(int p, int q) {
-    int valueIndexP = tvList.getValueIndex(p);
-    long timeP = tvList.getTime(p);
-    int valueIndexQ = tvList.getValueIndex(q);
-    long timeQ = tvList.getTime(q);
-    tvList.set(p, timeQ, valueIndexQ);
-    tvList.set(q, timeP, valueIndexP);
-  }
+  void swap(int p, int q);
 
-  public int partition(int lo, int hi) {
+  default int partition(int lo, int hi) {
     // Choose the middle of the array as pivot.
     // In time series, usually the middle element is of middle range
     int pIndex = (lo + hi) / 2;
@@ -76,7 +58,7 @@ public class QuickSort {
   //        }
   //    }
 
-  public void qsort(int lo, int hi) {
+  default void qsort(int lo, int hi) {
     if (lo < hi) {
       // TODO: use insertion sort in smaller array
       // if(hi - lo <= 32) {

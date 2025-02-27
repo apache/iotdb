@@ -55,6 +55,8 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
@@ -126,6 +128,7 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -276,9 +279,64 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   @Override
   protected void remove(Set<Integer> nodeIds) throws IoTDBException {
-    throw new IoTDBException(
-        "The remove-datanode script has been deprecated. Please connect to the CLI and use SQL: remove datanode [datanode_id].",
-        -1);
+    // If the nodeIds was null, this is a shorthand for removing the current dataNode.
+    // In this case we need to find our nodeId.
+    if (nodeIds == null) {
+      nodeIds = Collections.singleton(config.getDataNodeId());
+    }
+
+    // Load ConfigNodeList from system.properties file
+    ConfigNodeInfo.getInstance().loadConfigNodeList();
+
+    try (ConfigNodeClient configNodeClient =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Find a datanode location with the given node id.
+
+      Set<Integer> validNodeIds =
+          configNodeClient.getDataNodeConfiguration(-1).getDataNodeConfigurationMap().keySet();
+
+      Set<Integer> invalidNodeIds = new HashSet<>(nodeIds);
+      invalidNodeIds.removeAll(validNodeIds);
+
+      if (!invalidNodeIds.isEmpty()) {
+        logger.info("Cannot remove invalid nodeIds:{}", invalidNodeIds);
+        nodeIds.removeAll(invalidNodeIds);
+      }
+
+      logger.info("Starting to remove DataNode with nodeIds: {}", nodeIds);
+
+      final Set<Integer> finalNodeIds = nodeIds;
+      List<TDataNodeLocation> removeDataNodeLocations =
+          configNodeClient
+              .getDataNodeConfiguration(-1)
+              .getDataNodeConfigurationMap()
+              .values()
+              .stream()
+              .map(TDataNodeConfiguration::getLocation)
+              .filter(location -> finalNodeIds.contains(location.getDataNodeId()))
+              .collect(Collectors.toList());
+
+      if (removeDataNodeLocations.isEmpty()) {
+        throw new IoTDBException("Invalid node-id", -1);
+      }
+
+      logger.info(
+          "Start to remove datanode, removed DataNodes endpoint: {}", removeDataNodeLocations);
+      TDataNodeRemoveReq removeReq = new TDataNodeRemoveReq(removeDataNodeLocations);
+      TDataNodeRemoveResp removeResp = configNodeClient.removeDataNode(removeReq);
+      logger.info("Submit Remove DataNodes result {} ", removeResp);
+      if (removeResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new IoTDBException(
+            removeResp.getStatus().toString(), removeResp.getStatus().getCode());
+      }
+      logger.info(
+          "Submit remove-datanode request successfully, but the process may fail. "
+              + "more details are shown in the logs of confignode-leader and removed-datanode, "
+              + "and after the process of removing datanode ends successfully, "
+              + "you are supposed to delete directory and data of the removed-datanode manually");
+    } catch (TException | ClientManagerException e) {
+      throw new IoTDBException("Failed removing datanode", e, -1);
+    }
   }
 
   /** Prepare cluster IoTDB-DataNode */
@@ -785,7 +843,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         .getConfig()
         .setRpcImplClassName(ClientRPCServiceImpl.class.getName());
     if (config.isEnableRpcService()) {
-      registerManager.register(ExternalRPCService.getInstance());
+      registerManager.register(RPCService.getInstance());
     }
     // init service protocols
     initProtocols();

@@ -92,8 +92,6 @@ public class MQTTService implements IService {
     properties.setProperty(
         BrokerConstants.BROKER_INTERCEPTOR_THREAD_POOL_SIZE,
         String.valueOf(iotDBConfig.getMqttHandlerPoolSize()));
-    properties.setProperty(
-        BrokerConstants.DATA_PATH_PROPERTY_NAME, String.valueOf(iotDBConfig.getMqttDataPath()));
     properties.setProperty(BrokerConstants.IMMEDIATE_BUFFER_FLUSH_PROPERTY_NAME, "true");
     properties.setProperty(BrokerConstants.ALLOW_ANONYMOUS_PROPERTY_NAME, "false");
     properties.setProperty(BrokerConstants.ALLOW_ZERO_BYTE_CLIENT_ID_PROPERTY_NAME, "true");
