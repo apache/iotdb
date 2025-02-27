@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.load.cache.detector;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.IFailureDetector;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.tsfile.utils.Preconditions;
@@ -35,25 +36,28 @@ public class PhiAccrualDetector implements IFailureDetector {
   private static final Logger LOGGER = LoggerFactory.getLogger(PhiAccrualDetector.class);
   private final long threshold;
   private final long acceptableHeartbeatPauseNs;
-  private final long firstHeartbeatEstimateNs;
   private final long minHeartbeatStdNs;
+  private final int codeStartSampleCount;
+  private final IFailureDetector fallbackDuringColdStart;
 
   public PhiAccrualDetector(
       long threshold,
       long acceptableHeartbeatPauseNs,
-      long firstHeartbeatEstimateNs,
-      long minHeartbeatStdNs) {
+      long minHeartbeatStdNs,
+      int minimalSampleCount,
+      IFailureDetector fallbackDuringColdStart) {
     this.threshold = threshold;
     this.acceptableHeartbeatPauseNs = acceptableHeartbeatPauseNs;
-    this.firstHeartbeatEstimateNs = firstHeartbeatEstimateNs;
     this.minHeartbeatStdNs = minHeartbeatStdNs;
+    this.codeStartSampleCount = minimalSampleCount;
+    this.fallbackDuringColdStart = fallbackDuringColdStart;
   }
 
   @Override
   public boolean isAvailable(List<AbstractHeartbeatSample> history) {
-    if (history.isEmpty()) {
-      /* We haven't received the first heartbeat reply. We cannot decide the node availability. */
-      return true;
+    if (history.size() < codeStartSampleCount) {
+      /* We haven't received enough heartbeat replies.*/
+      return fallbackDuringColdStart.isAvailable(history);
     }
     final PhiAccrual phiAccrual = create(history);
     final boolean isAvailable = phiAccrual.phi() < (double) this.threshold;
@@ -74,26 +78,13 @@ public class PhiAccrualDetector implements IFailureDetector {
   }
 
   PhiAccrual create(List<AbstractHeartbeatSample> history) {
-    final int size = history.size();
-
     final List<Double> heartbeatIntervals = new ArrayList<>();
-    /*
-     * During cold start, the heartbeat history may contain not enough samples for wise decisions.
-     * Therefore, we manually add data samples for better estimation.
-     * 1. mean = heartbeat interval (1000ms)
-     * 2. std = mean / 4
-     */
-    if (size <= 2) {
-      double mean = firstHeartbeatEstimateNs;
-      double std = mean / 4.0;
-      heartbeatIntervals.add(mean + std);
-      heartbeatIntervals.add(mean - std);
-    }
 
     long lastTs = -1;
     for (final AbstractHeartbeatSample sample : history) {
       // ensure getSampleLogicalTimestamp() will return system nano timestamp
-      Preconditions.checkArgument(sample instanceof NodeHeartbeatSample);
+      Preconditions.checkArgument(
+          sample instanceof NodeHeartbeatSample || sample instanceof RegionHeartbeatSample);
       if (lastTs == -1) {
         lastTs = sample.getSampleLogicalTimestamp();
         continue;

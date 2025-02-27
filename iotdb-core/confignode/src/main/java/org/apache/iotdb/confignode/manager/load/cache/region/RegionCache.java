@@ -20,7 +20,11 @@
 package org.apache.iotdb.confignode.manager.load.cache.region;
 
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractLoadCache;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * RegionCache caches the RegionHeartbeatSamples of a Region. Update and cache the current
@@ -36,16 +40,19 @@ public class RegionCache extends AbstractLoadCache {
   @Override
   public synchronized void updateCurrentStatistics(boolean forceUpdate) {
     RegionHeartbeatSample lastSample;
+    List<AbstractHeartbeatSample> history;
     synchronized (slidingWindow) {
       lastSample = (RegionHeartbeatSample) getLastSample();
+      history = Collections.unmodifiableList(slidingWindow);
     }
 
     RegionStatus status;
     long currentNanoTime = System.nanoTime();
     if (lastSample == null) {
+      /* First heartbeat not received from this region, status is UNKNOWN */
       status = RegionStatus.Unknown;
-    } else if (currentNanoTime - lastSample.getSampleLogicalTimestamp() > heartbeatTimeoutNs) {
-      // TODO: Optimize Unknown judge logic
+    } else if (!failureDetector.isAvailable(history)) {
+      /* Failure detector decides that this region is UNKNOWN */
       status = RegionStatus.Unknown;
     } else {
       status = lastSample.getStatus();

@@ -33,9 +33,9 @@ import java.util.List;
 public class DetectorTest {
 
   final long sec = 1_000_000_000L;
-  final PhiAccrualDetector phiAccrualDetector =
-      new PhiAccrualDetector(30, 10 * sec, sec, (long) (0.2 * sec));
   final FixedDetector fixedDetector = new FixedDetector(20 * sec);
+  final PhiAccrualDetector phiAccrualDetector =
+      new PhiAccrualDetector(30, 10 * sec, (long) (0.2 * sec), 0, fixedDetector);
 
   private double getPhi(long elapsed, double[] intervals, long minStd, long pause) {
     final PhiAccrualDetector.PhiAccrual p =
@@ -52,7 +52,7 @@ public class DetectorTest {
   public void testFixedDetector() {
     final long lastHeartbeatTs = System.nanoTime() - 21 * sec;
     final List<AbstractHeartbeatSample> history =
-        Collections.singletonList(new NodeHeartbeatSample(lastHeartbeatTs, NodeStatus.Unknown));
+        Collections.singletonList(new NodeHeartbeatSample(lastHeartbeatTs, NodeStatus.Running));
     Assert.assertFalse(fixedDetector.isAvailable(history));
   }
 
@@ -71,7 +71,6 @@ public class DetectorTest {
   @Test
   public void testPhiCalculation2() {
     /* (min, std, acceptable_pause) = (1000, 300, 0) */
-    /* (min, std, acceptable_pause) = (1000, 300, 5000) */
     final double[] heartbeatIntervals = {1000, 1000, 1000, 1000, 1000};
     final long minStd = 300;
     final long pause = 0;
@@ -121,7 +120,7 @@ public class DetectorTest {
   public void testPhiAdaptionToFrequentGCPause() {
     // When the system load is high, we may observe exceptionally long GC pause
     // If the GC pause is very often, Phi can be adaptive to the new environment
-    // in this case, there are 3 long GC pause in history
+    // in this case, there are 2 long GC pause in history
     // when a new GC with 21s pause occurs, Phi takes it normal while Fixed will fail.
     long[] interval =
         new long[] {
@@ -141,6 +140,18 @@ public class DetectorTest {
     List<AbstractHeartbeatSample> history = fromInterval(interval, 21 * sec);
     Assert.assertFalse(fixedDetector.isAvailable(history));
     Assert.assertTrue(phiAccrualDetector.isAvailable(history));
+  }
+
+  @Test
+  public void testColdStart() {
+    // If the Phi detector haven't received enough samples
+    // its behavior will fall back to Fix detector
+    final PhiAccrualDetector coldStartPhi =
+        new PhiAccrualDetector(30, 10 * sec, (long) (0.2 * sec), 60, fixedDetector);
+    long[] interval = new long[] {sec, sec, sec};
+    List<AbstractHeartbeatSample> history = fromInterval(interval, 21 * sec);
+    Assert.assertFalse(fixedDetector.isAvailable(history));
+    Assert.assertFalse(coldStartPhi.isAvailable(history));
   }
 
   private List<AbstractHeartbeatSample> fromInterval(long[] interval, long timeElapsed) {

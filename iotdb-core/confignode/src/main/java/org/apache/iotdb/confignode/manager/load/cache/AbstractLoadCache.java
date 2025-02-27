@@ -37,8 +37,6 @@ public abstract class AbstractLoadCache {
 
   // Max heartbeat cache samples store size
   private static final int MAXIMUM_WINDOW_SIZE = 100;
-  // The Status will be set to Unknown when the response time of heartbeat is more than 20s
-  protected final long heartbeatTimeoutNs;
 
   // Caching the recent MAXIMUM_WINDOW_SIZE heartbeat sample
   protected final List<AbstractHeartbeatSample> slidingWindow;
@@ -52,15 +50,15 @@ public abstract class AbstractLoadCache {
   protected AbstractLoadCache() {
     this.currentStatistics = new AtomicReference<>();
     this.slidingWindow = Collections.synchronizedList(new LinkedList<>());
-    this.heartbeatTimeoutNs = CONF.getFailureDetectorFixedThresholdInMs() * 1000_000L;
     switch (CONF.getFailureDetector()) {
       case IFailureDetector.PHI_ACCRUAL_DETECTOR:
         this.failureDetector =
             new PhiAccrualDetector(
                 CONF.getFailureDetectorPhiThreshold(),
                 CONF.getFailureDetectorPhiAcceptablePauseInMs() * 1000_000L,
-                CONF.getHeartbeatIntervalInMs() * 1000_000L,
-                CONF.getFailureDetectorPhiAcceptablePauseInMs() * 1000_000L);
+                CONF.getHeartbeatIntervalInMs() * 200_000L,
+                60,
+                new FixedDetector(CONF.getFailureDetectorFixedThresholdInMs() * 1000_000L));
         break;
       case IFailureDetector.FIXED_DETECTOR:
       default:
