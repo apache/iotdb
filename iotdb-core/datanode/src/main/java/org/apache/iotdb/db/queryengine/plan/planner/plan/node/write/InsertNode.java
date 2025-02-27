@@ -336,6 +336,7 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
     return result;
   }
 
+  @Override
   public long getMemorySize() {
     if (memorySize == 0) {
       memorySize = InsertNodeMemoryEstimator.sizeOf(this);
