@@ -233,6 +233,9 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       }
     } catch (Exception | Error e) {
       exception = e;
+      if (e instanceof Error) {
+        needsOnErrorCall = true;
+      }
       throw e;
     } finally {
       if (handler != null) {
