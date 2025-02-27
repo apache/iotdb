@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.ISchemaSource;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 
@@ -195,12 +196,16 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
 
   @Override
   public long calculateMaxPeekMemory() {
-    return schemaSource.getMaxMemory();
+    return schemaSource.getMaxMemory(getSchemaRegion());
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    return schemaSource.getMaxMemory();
+    return schemaSource.getMaxMemory(getSchemaRegion());
+  }
+
+  private ISchemaRegion getSchemaRegion() {
+    return ((SchemaDriverContext) operatorContext.getDriverContext()).getSchemaRegion();
   }
 
   @Override

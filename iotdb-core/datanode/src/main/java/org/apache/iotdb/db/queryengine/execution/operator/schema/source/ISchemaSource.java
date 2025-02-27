@@ -57,7 +57,7 @@ public interface ISchemaSource<T extends ISchemaInfo> {
 
   long getSchemaStatistic(final ISchemaRegion schemaRegion);
 
-  default long getMaxMemory() {
+  default long getMaxMemory(final ISchemaRegion schemaRegion) {
     return TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
   }
 }
