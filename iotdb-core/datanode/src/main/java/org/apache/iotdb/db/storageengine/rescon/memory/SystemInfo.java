@@ -48,7 +48,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class SystemInfo {
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(SystemInfo.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
