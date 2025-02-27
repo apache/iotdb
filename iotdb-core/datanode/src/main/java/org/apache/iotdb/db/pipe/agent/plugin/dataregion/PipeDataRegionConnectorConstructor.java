@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeConnectorConst
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.db.pipe.connector.protocol.airgap.IoTDBDataRegionAirGapConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.legacy.IoTDBLegacyPipeConnector;
-import org.apache.iotdb.db.pipe.connector.protocol.opcda.OPCDAConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.opcda.OpcDaConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.opcua.OpcUaConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.PipeConsensusAsyncConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
@@ -67,7 +67,7 @@ class PipeDataRegionConnectorConstructor extends PipeConnectorConstructor {
     pluginConstructors.put(
         BuiltinPipePlugin.OPC_UA_CONNECTOR.getPipePluginName(), OpcUaConnector::new);
     pluginConstructors.put(
-        BuiltinPipePlugin.OPC_DA_CONNECTOR.getPipePluginName(), OPCDAConnector::new);
+        BuiltinPipePlugin.OPC_DA_CONNECTOR.getPipePluginName(), OpcDaConnector::new);
     pluginConstructors.put(
         BuiltinPipePlugin.DO_NOTHING_CONNECTOR.getPipePluginName(), DoNothingConnector::new);
     pluginConstructors.put(
@@ -94,7 +94,7 @@ class PipeDataRegionConnectorConstructor extends PipeConnectorConstructor {
     pluginConstructors.put(
         BuiltinPipePlugin.WEBSOCKET_SINK.getPipePluginName(), WebSocketConnector::new);
     pluginConstructors.put(BuiltinPipePlugin.OPC_UA_SINK.getPipePluginName(), OpcUaConnector::new);
-    pluginConstructors.put(BuiltinPipePlugin.OPC_DA_SINK.getPipePluginName(), OPCDAConnector::new);
+    pluginConstructors.put(BuiltinPipePlugin.OPC_DA_SINK.getPipePluginName(), OpcDaConnector::new);
     pluginConstructors.put(
         BuiltinPipePlugin.DO_NOTHING_SINK.getPipePluginName(), DoNothingConnector::new);
     pluginConstructors.put(
