@@ -54,6 +54,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import com.google.common.collect.ImmutableSet;
@@ -188,37 +189,62 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       throws IOException, WriteProcessException, InterruptedException {
     final PipeTabletEventBatch batch = endPointAndBatch.getRight();
 
-    if (batch instanceof PipeTabletEventPlainBatch) {
-      transfer(
-          endPointAndBatch.getLeft(),
-          new PipeTransferTabletBatchEventHandler((PipeTabletEventPlainBatch) batch, this));
-    } else if (batch instanceof PipeTabletEventTsFileBatch) {
-      final PipeTabletEventTsFileBatch tsFileBatch = (PipeTabletEventTsFileBatch) batch;
-      final List<Pair<String, File>> dbTsFilePairs = tsFileBatch.sealTsFiles();
-      final Map<Pair<String, Long>, Double> pipe2WeightMap = tsFileBatch.deepCopyPipe2WeightMap();
-      final List<EnrichedEvent> events = tsFileBatch.deepCopyEvents();
-      final AtomicInteger eventsReferenceCount = new AtomicInteger(dbTsFilePairs.size());
-      final AtomicBoolean eventsHadBeenAddedToRetryQueue = new AtomicBoolean(false);
+    // The handler is used to determine whether the Event in the Batch needs to be cleared. If the
+    // handler is null, it means that the handler has not been created successfully, and the events
+    // in the batch do not need to be cleared. Success indicates whether the onError function needs
+    // to be called manually to clear the exception.
+    PipeTransferTrackableHandler handler = null;
+    boolean isTransferSuccessful = false;
+    Throwable exception = null;
+    try {
+      if (batch instanceof PipeTabletEventPlainBatch) {
+        handler = new PipeTransferTabletBatchEventHandler((PipeTabletEventPlainBatch) batch, this);
+        transfer(endPointAndBatch.getLeft(), (PipeTransferTabletBatchEventHandler) handler);
+        isTransferSuccessful = true;
+      } else if (batch instanceof PipeTabletEventTsFileBatch) {
+        final PipeTabletEventTsFileBatch tsFileBatch = (PipeTabletEventTsFileBatch) batch;
+        final List<Pair<String, File>> dbTsFilePairs = tsFileBatch.sealTsFiles();
+        final Map<Pair<String, Long>, Double> pipe2WeightMap = tsFileBatch.deepCopyPipe2WeightMap();
+        final List<EnrichedEvent> events = tsFileBatch.deepCopyEvents();
+        final AtomicInteger eventsReferenceCount = new AtomicInteger(dbTsFilePairs.size());
+        final AtomicBoolean eventsHadBeenAddedToRetryQueue = new AtomicBoolean(false);
 
-      for (final Pair<String, File> sealedFile : dbTsFilePairs) {
-        transfer(
-            new PipeTransferTsFileHandler(
-                this,
-                pipe2WeightMap,
-                events,
-                eventsReferenceCount,
-                eventsHadBeenAddedToRetryQueue,
-                sealedFile.right,
-                null,
-                false,
-                sealedFile.left));
+        for (Pair<String, File> sealedFile : dbTsFilePairs) {
+          handler =
+              new PipeTransferTsFileHandler(
+                  this,
+                  pipe2WeightMap,
+                  events,
+                  eventsReferenceCount,
+                  eventsHadBeenAddedToRetryQueue,
+                  sealedFile.right,
+                  null,
+                  false,
+                  sealedFile.left);
+          isTransferSuccessful = true;
+          transfer((PipeTransferTsFileHandler) handler);
+          isTransferSuccessful = false;
+        }
+        isTransferSuccessful = true;
+      } else {
+        LOGGER.warn(
+            "Unsupported batch type {} when transferring tablet insertion event.",
+            batch.getClass());
       }
-    } else {
-      LOGGER.warn(
-          "Unsupported batch type {} when transferring tablet insertion event.", batch.getClass());
+    } catch (Exception | Error e) {
+      exception = e;
+      throw e;
+    } finally {
+      if (handler != null) {
+        endPointAndBatch.getRight().onSuccess();
+        if (!isTransferSuccessful) {
+          handler.onError(
+              exception instanceof Exception
+                  ? (Exception) exception
+                  : new PipeException(exception.getMessage()));
+        }
+      }
     }
-
-    endPointAndBatch.getRight().onSuccess();
   }
 
   private void transferInEventWithoutCheck(final TabletInsertionEvent tabletInsertionEvent)
