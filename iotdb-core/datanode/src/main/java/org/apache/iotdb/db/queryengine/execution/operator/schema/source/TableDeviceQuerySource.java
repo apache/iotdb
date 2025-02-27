@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
+import org.apache.iotdb.db.schemaengine.rescon.ISchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
@@ -267,16 +268,24 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
   @Override
   public long getMaxMemory(final ISchemaRegion schemaRegion) {
+    final ISchemaRegionStatistics statistics = schemaRegion.getSchemaRegionStatistics();
+    final long devicesNumber = statistics.getTableDevicesNumber(tableName);
     return devicePatternList.stream().allMatch(path -> ((ExtendedPartialPath) path).isNormalPath())
         ? Math.min(
             TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
             devicePatternList.stream()
-                .map(
-                    devicePattern ->
-                        Arrays.stream(devicePattern.getNodes(), 3, devicePattern.getNodeLength())
-                            .map(RamUsageEstimator::sizeOf)
-                            .reduce(0L, Long::sum))
-                .reduce(0L, Long::sum))
+                    .map(
+                        devicePattern ->
+                            Arrays.stream(
+                                    devicePattern.getNodes(), 3, devicePattern.getNodeLength())
+                                .map(RamUsageEstimator::sizeOf)
+                                .reduce(0L, Long::sum))
+                    .reduce(0L, Long::sum)
+                + (devicesNumber > 0
+                    ? devicePatternList.size()
+                        * statistics.getTableAttributeMemory(tableName)
+                        / devicesNumber
+                    : 0))
         : TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
   }
 }

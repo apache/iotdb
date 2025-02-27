@@ -123,14 +123,17 @@ public class TableDeviceFetchSource implements ISchemaSource<IDeviceSchemaInfo> 
   @Override
   public long getMaxMemory(final ISchemaRegion schemaRegion) {
     final ISchemaRegionStatistics statistics = schemaRegion.getSchemaRegionStatistics();
+    final long devicesNumber = statistics.getTableDevicesNumber(tableName);
     return Math.min(
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
         deviceIdList.stream()
                 .flatMap(Arrays::stream)
                 .map(segment -> RamUsageEstimator.sizeOf(String.valueOf(segment)))
                 .reduce(0L, Long::sum)
-            + deviceIdList.size()
-                * statistics.getTableAttributeMemory(tableName)
-                / statistics.getTableDevicesNumber(tableName));
+            + (devicesNumber > 0
+                ? deviceIdList.size()
+                    * statistics.getTableAttributeMemory(tableName)
+                    / devicesNumber
+                : 0));
   }
 }
