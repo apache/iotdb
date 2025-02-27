@@ -158,6 +158,8 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
           insertTree((TreeMessage) message, session);
         }
       }
+    } catch (Throwable t) {
+      LOG.warn("onPublish execution exception, msg is [{}], error is ", msg, t);
     } finally {
       // release the payload of the message
       super.onPublish(msg);
