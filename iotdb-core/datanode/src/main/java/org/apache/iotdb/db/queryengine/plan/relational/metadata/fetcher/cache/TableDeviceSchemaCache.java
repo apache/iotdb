@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
+import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
@@ -86,6 +87,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
 public class TableDeviceSchemaCache {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final MemoryConfig memoryConfig = MemoryConfig.getInstance();
   private static final Logger logger = LoggerFactory.getLogger(TableDeviceSchemaCache.class);
 
   /**
@@ -106,7 +108,7 @@ public class TableDeviceSchemaCache {
 
   private TableDeviceSchemaCache() {
     memoryBlock =
-        config
+        memoryConfig
             .getSchemaCacheMemoryManager()
             .forceAllocate("TableDeviceSchemaCache", MemoryBlockType.STATIC);
     dualKeyCache =

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
@@ -42,10 +43,7 @@ public class DataRegionInfo {
   private final long storageGroupSizeReportThreshold =
       (long)
           (IoTDBDescriptor.getInstance().getConfig().getWriteMemoryVariationReportProportion()
-              * IoTDBDescriptor.getInstance()
-                  .getConfig()
-                  .getMemtableMemoryManager()
-                  .getTotalMemorySizeInBytes());
+              * MemoryConfig.getInstance().getMemtableMemoryManager().getTotalMemorySizeInBytes());
 
   private final AtomicLong lastReportedSize = new AtomicLong();
 

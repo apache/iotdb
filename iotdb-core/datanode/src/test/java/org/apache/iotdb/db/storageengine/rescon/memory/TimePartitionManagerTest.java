@@ -21,8 +21,7 @@ package org.apache.iotdb.db.storageengine.rescon.memory;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 
@@ -41,7 +40,7 @@ import static org.junit.Assert.assertTrue;
 public class TimePartitionManagerTest {
 
   private final TimePartitionManager timePartitionManager = TimePartitionManager.getInstance();
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final MemoryConfig MEMORY_CONFIG = MemoryConfig.getInstance();
   private long prevTimePartitionInfoMemoryThreshold;
 
   public TimePartitionManagerTest() throws QueryProcessException {}
@@ -49,7 +48,7 @@ public class TimePartitionManagerTest {
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     prevTimePartitionInfoMemoryThreshold =
-        CONFIG.getTimePartitionInfoMemoryManager().getTotalMemorySizeInBytes();
+        MEMORY_CONFIG.getTimePartitionInfoMemoryManager().getTotalMemorySizeInBytes();
     timePartitionManager.setTimePartitionInfoMemoryThreshold(100L);
   }
 

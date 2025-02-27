@@ -154,6 +154,14 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
+  public IWritableMemChunk getWritableMemChunk(String measurement) {
+    if (!memChunkMap.containsKey(measurement)) {
+      return null;
+    }
+    return memChunkMap.get(measurement);
+  }
+
+  @Override
   public long getMaxTime() {
     long maxTime = Long.MIN_VALUE;
     for (IWritableMemChunk memChunk : memChunkMap.values()) {
@@ -189,6 +197,18 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
     for (int i = 0; i < memChunkMapSize; ++i) {
       String measurement = ReadWriteIOUtils.readString(stream);
       IWritableMemChunk memChunk = WritableMemChunk.deserialize(stream);
+      memChunkGroup.memChunkMap.put(measurement, memChunk);
+    }
+    return memChunkGroup;
+  }
+
+  public static WritableMemChunkGroup deserializeSingleTVListMemChunks(DataInputStream stream)
+      throws IOException {
+    WritableMemChunkGroup memChunkGroup = new WritableMemChunkGroup();
+    int memChunkMapSize = stream.readInt();
+    for (int i = 0; i < memChunkMapSize; ++i) {
+      String measurement = ReadWriteIOUtils.readString(stream);
+      IWritableMemChunk memChunk = WritableMemChunk.deserializeSingleTVListMemChunks(stream);
       memChunkGroup.memChunkMap.put(measurement, memChunk);
     }
     return memChunkGroup;

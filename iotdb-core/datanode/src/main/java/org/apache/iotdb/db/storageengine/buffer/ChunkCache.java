@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.buffer;
 import org.apache.iotdb.commons.exception.IoTDBIORuntimeException;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
+import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -62,6 +63,7 @@ public class ChunkCache {
   private static final Logger LOGGER = LoggerFactory.getLogger(ChunkCache.class);
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final MemoryConfig MEMORY_CONFIG = MemoryConfig.getInstance();
   private static final IMemoryBlock CACHE_MEMORY_BLOCK;
   private static final boolean CACHE_ENABLE = CONFIG.isMetaDataCacheEnable();
 
@@ -73,7 +75,9 @@ public class ChunkCache {
 
   static {
     CACHE_MEMORY_BLOCK =
-        CONFIG.getChunkCacheMemoryManager().forceAllocate("ChunkCache", MemoryBlockType.STATIC);
+        MEMORY_CONFIG
+            .getChunkCacheMemoryManager()
+            .forceAllocate("ChunkCache", MemoryBlockType.STATIC);
     // TODO @spricoder: find a way to get the size of the ChunkCache
     CACHE_MEMORY_BLOCK.allocate(CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
   }
