@@ -44,7 +44,7 @@ public class SubscriptionPipeTabletIterationSnapshot {
     parsedEnrichedEvents.add(enrichedEvent);
   }
 
-  public void clear(final boolean shouldReport) {
+  public void ack() {
     for (final EnrichedEvent enrichedEvent : iteratedEnrichedEvents) {
       if (enrichedEvent instanceof PipeTsFileInsertionEvent) {
         // close data container in tsfile event
@@ -55,7 +55,23 @@ public class SubscriptionPipeTabletIterationSnapshot {
     for (final EnrichedEvent enrichedEvent : parsedEnrichedEvents) {
       if (enrichedEvent instanceof PipeRawTabletInsertionEvent) {
         // decrease reference count in raw tablet event
-        enrichedEvent.decreaseReferenceCount(this.getClass().getName(), shouldReport);
+        enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
+      }
+    }
+  }
+
+  public void cleanUp() {
+    for (final EnrichedEvent enrichedEvent : iteratedEnrichedEvents) {
+      if (enrichedEvent instanceof PipeTsFileInsertionEvent) {
+        // close data container in tsfile event
+        ((PipeTsFileInsertionEvent) enrichedEvent).close();
+      }
+    }
+
+    for (final EnrichedEvent enrichedEvent : parsedEnrichedEvents) {
+      if (enrichedEvent instanceof PipeRawTabletInsertionEvent) {
+        // clear reference count in raw tablet event
+        enrichedEvent.clearReferenceCount(this.getClass().getName());
       }
     }
   }

@@ -226,7 +226,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     currentTsFileInsertionEvent = null;
 
     if (Objects.nonNull(iterationSnapshot)) {
-      iterationSnapshot.clear(false);
+      iterationSnapshot.cleanUp();
     }
     iterationSnapshot = new SubscriptionPipeTabletIterationSnapshot();
     referenceCount.set(0);
