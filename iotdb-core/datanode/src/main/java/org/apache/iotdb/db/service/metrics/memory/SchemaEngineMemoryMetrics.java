@@ -56,7 +56,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        config.getSchemaRegionMemoryManager(),
+        memoryConfig.getSchemaRegionMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         SCHEMA_ENGINE_SCHEMA_REGION,
@@ -67,7 +67,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        config.getSchemaRegionMemoryManager(),
+        memoryConfig.getSchemaRegionMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         SCHEMA_ENGINE_SCHEMA_REGION,
@@ -78,7 +78,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        config.getSchemaCacheMemoryManager(),
+        memoryConfig.getSchemaCacheMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         SCHEMA_ENGINE_SCHEMA_CACHE,
@@ -89,7 +89,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        config.getSchemaCacheMemoryManager(),
+        memoryConfig.getSchemaCacheMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         SCHEMA_ENGINE_SCHEMA_CACHE,
@@ -100,7 +100,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        config.getPartitionCacheMemoryManager(),
+        memoryConfig.getPartitionCacheMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         SCHEMA_ENGINE_PARTITION_CACHE,
@@ -111,7 +111,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        config.getPartitionCacheMemoryManager(),
+        memoryConfig.getPartitionCacheMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         SCHEMA_ENGINE_PARTITION_CACHE,

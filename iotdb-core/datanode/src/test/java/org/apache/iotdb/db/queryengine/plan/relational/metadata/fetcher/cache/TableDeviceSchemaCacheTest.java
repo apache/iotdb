@@ -147,7 +147,7 @@ public class TableDeviceSchemaCacheTest {
     DataNodeTableCache.getInstance().preUpdateTable(database1, testTable2);
     DataNodeTableCache.getInstance().commitUpdateTable(database1, table2);
 
-    originMemConfig = config.getSchemaCacheMemoryManager().getTotalMemorySizeInBytes();
+    originMemConfig = memoryConfig.getSchemaCacheMemoryManager().getTotalMemorySizeInBytes();
     changeSchemaCacheMemorySize(1300L);
   }
 
@@ -160,11 +160,11 @@ public class TableDeviceSchemaCacheTest {
 
   private static void changeSchemaCacheMemorySize(long size) {
     MemoryManager memoryManager = memoryConfig.getSchemaEngineMemoryManager();
-    MemoryManager schemaCacheMemoryManager = config.getSchemaCacheMemoryManager();
+    MemoryManager schemaCacheMemoryManager = memoryConfig.getSchemaCacheMemoryManager();
     schemaCacheMemoryManager.clearAll();
     memoryManager.releaseChildMemoryManager("schemaCache");
     schemaCacheMemoryManager = memoryManager.getOrCreateMemoryManager("schemaCache", size);
-    config.setSchemaCacheMemoryManager(schemaCacheMemoryManager);
+    memoryConfig.setSchemaCacheMemoryManager(schemaCacheMemoryManager);
   }
 
   @After

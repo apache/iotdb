@@ -165,7 +165,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        config.getTimePartitionInfoMemoryManager(),
+        memoryConfig.getTimePartitionInfoMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO,
@@ -176,7 +176,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        config.getTimePartitionInfoMemoryManager(),
+        memoryConfig.getTimePartitionInfoMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO,

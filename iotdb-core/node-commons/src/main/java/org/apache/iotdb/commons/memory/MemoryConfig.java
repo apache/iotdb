@@ -44,20 +44,59 @@ public class MemoryConfig {
   /** The memory manager for buffered arrays */
   private MemoryManager bufferedArraysMemoryManager;
 
+  /** Memory manager for time partition info */
+  private MemoryManager timePartitionInfoMemoryManager;
+
   /** The Memory Manager for compaction */
   private MemoryManager compactionMemoryManager;
 
   /** Memory manager for the read process */
   private MemoryManager queryEngineMemoryManager;
 
+  /** Memory manager for bloomFilter cache in read process */
+  private MemoryManager bloomFilterCacheMemoryManager;
+
+  /** Memory manager for timeSeriesMetaData cache in read process */
+  private MemoryManager timeSeriesMetaDataCacheMemoryManager;
+
+  /** Memory manager for chunk cache in read process */
+  private MemoryManager chunkCacheMemoryManager;
+
+  /** Memory manager for coordinator */
+  private MemoryManager coordinatorMemoryManager;
+
+  /** Memory manager for operators */
+  private MemoryManager operatorsMemoryManager;
+
+  /** Memory manager for operators */
+  private MemoryManager dataExchangeMemoryManager;
+
+  /** Memory manager proportion for timeIndex */
+  private MemoryManager timeIndexMemoryManager;
+
   /** Memory manager for the mtree */
   private MemoryManager schemaEngineMemoryManager;
+
+  /** Memory manager for schemaRegion */
+  private MemoryManager schemaRegionMemoryManager;
+
+  /** Memory manager for SchemaCache */
+  private MemoryManager schemaCacheMemoryManager;
+
+  /** Memory allocated for PartitionCache */
+  private MemoryManager partitionCacheMemoryManager;
 
   /** Memory manager for the consensus layer */
   private MemoryManager ConsensusMemoryManager;
 
   /** Memory allocated for the pipe */
   private MemoryManager PipeMemoryManager;
+
+  /** The memory manager of off heap */
+  private MemoryManager offHeapMemoryManager;
+
+  /** The memory manager of direct Buffer */
+  private MemoryManager directBufferMemoryManager;
 
   public MemoryManager getOnHeapMemoryManager() {
     return onHeapMemoryManager;
@@ -115,6 +154,14 @@ public class MemoryConfig {
     this.bufferedArraysMemoryManager = bufferedArraysMemoryManager;
   }
 
+  public MemoryManager getTimePartitionInfoMemoryManager() {
+    return timePartitionInfoMemoryManager;
+  }
+
+  public void setTimePartitionInfoMemoryManager(MemoryManager timePartitionInfoMemoryManager) {
+    this.timePartitionInfoMemoryManager = timePartitionInfoMemoryManager;
+  }
+
   public MemoryManager getCompactionMemoryManager() {
     return compactionMemoryManager;
   }
@@ -131,12 +178,93 @@ public class MemoryConfig {
     this.queryEngineMemoryManager = queryEngineMemoryManager;
   }
 
+  public MemoryManager getBloomFilterCacheMemoryManager() {
+    return bloomFilterCacheMemoryManager;
+  }
+
+  public void setBloomFilterCacheMemoryManager(MemoryManager bloomFilterCacheMemoryManager) {
+    this.bloomFilterCacheMemoryManager = bloomFilterCacheMemoryManager;
+  }
+
+  public MemoryManager getTimeSeriesMetaDataCacheMemoryManager() {
+    return timeSeriesMetaDataCacheMemoryManager;
+  }
+
+  public void setTimeSeriesMetaDataCacheMemoryManager(
+      MemoryManager timeSeriesMetaDataCacheMemoryManager) {
+    this.timeSeriesMetaDataCacheMemoryManager = timeSeriesMetaDataCacheMemoryManager;
+  }
+
+  public MemoryManager getChunkCacheMemoryManager() {
+    return chunkCacheMemoryManager;
+  }
+
+  public void setChunkCacheMemoryManager(MemoryManager chunkCacheMemoryManager) {
+    this.chunkCacheMemoryManager = chunkCacheMemoryManager;
+  }
+
+  public MemoryManager getCoordinatorMemoryManager() {
+    return coordinatorMemoryManager;
+  }
+
+  public void setCoordinatorMemoryManager(MemoryManager coordinatorMemoryManager) {
+    this.coordinatorMemoryManager = coordinatorMemoryManager;
+  }
+
+  public MemoryManager getOperatorsMemoryManager() {
+    return operatorsMemoryManager;
+  }
+
+  public void setOperatorsMemoryManager(MemoryManager operatorsMemoryManager) {
+    this.operatorsMemoryManager = operatorsMemoryManager;
+  }
+
+  public MemoryManager getDataExchangeMemoryManager() {
+    return dataExchangeMemoryManager;
+  }
+
+  public void setDataExchangeMemoryManager(MemoryManager dataExchangeMemoryManager) {
+    this.dataExchangeMemoryManager = dataExchangeMemoryManager;
+  }
+
+  public MemoryManager getTimeIndexMemoryManager() {
+    return timeIndexMemoryManager;
+  }
+
+  public void setTimeIndexMemoryManager(MemoryManager timeIndexMemoryManager) {
+    this.timeIndexMemoryManager = timeIndexMemoryManager;
+  }
+
   public MemoryManager getSchemaEngineMemoryManager() {
     return schemaEngineMemoryManager;
   }
 
   public void setSchemaEngineMemoryManager(MemoryManager schemaEngineMemoryManager) {
     this.schemaEngineMemoryManager = schemaEngineMemoryManager;
+  }
+
+  public MemoryManager getSchemaRegionMemoryManager() {
+    return schemaRegionMemoryManager;
+  }
+
+  public void setSchemaRegionMemoryManager(MemoryManager schemaRegionMemoryManager) {
+    this.schemaRegionMemoryManager = schemaRegionMemoryManager;
+  }
+
+  public MemoryManager getSchemaCacheMemoryManager() {
+    return schemaCacheMemoryManager;
+  }
+
+  public void setSchemaCacheMemoryManager(MemoryManager schemaCacheMemoryManager) {
+    this.schemaCacheMemoryManager = schemaCacheMemoryManager;
+  }
+
+  public MemoryManager getPartitionCacheMemoryManager() {
+    return partitionCacheMemoryManager;
+  }
+
+  public void setPartitionCacheMemoryManager(MemoryManager partitionCacheMemoryManager) {
+    this.partitionCacheMemoryManager = partitionCacheMemoryManager;
   }
 
   public MemoryManager getConsensusMemoryManager() {
@@ -153,6 +281,22 @@ public class MemoryConfig {
 
   public void setPipeMemoryManager(MemoryManager pipeMemoryManager) {
     PipeMemoryManager = pipeMemoryManager;
+  }
+
+  public MemoryManager getOffHeapMemoryManager() {
+    return offHeapMemoryManager;
+  }
+
+  public void setOffHeapMemoryManager(MemoryManager offHeapMemoryManager) {
+    this.offHeapMemoryManager = offHeapMemoryManager;
+  }
+
+  public MemoryManager getDirectBufferMemoryManager() {
+    return directBufferMemoryManager;
+  }
+
+  public void setDirectBufferMemoryManager(MemoryManager directBufferMemoryManager) {
+    this.directBufferMemoryManager = directBufferMemoryManager;
   }
 
   public static MemoryManager global() {

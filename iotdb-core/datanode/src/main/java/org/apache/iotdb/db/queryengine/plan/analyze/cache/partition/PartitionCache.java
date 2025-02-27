@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
+import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
@@ -81,6 +82,7 @@ public class PartitionCache {
 
   private static final Logger logger = LoggerFactory.getLogger(PartitionCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final MemoryConfig memoryConfig = MemoryConfig.getInstance();
   private static final List<String> ROOT_PATH = Arrays.asList("root", "**");
 
   /** calculate slotId by device */
@@ -119,7 +121,7 @@ public class PartitionCache {
 
   public PartitionCache() {
     this.memoryBlock =
-        config
+        memoryConfig
             .getPartitionCacheMemoryManager()
             .forceAllocate("PartitionCache", MemoryBlockType.FUNCTION);
     this.memoryBlock.allocate(this.memoryBlock.getTotalMemorySizeInBytes());

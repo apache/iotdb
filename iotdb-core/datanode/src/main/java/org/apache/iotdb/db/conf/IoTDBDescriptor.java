@@ -2279,7 +2279,7 @@ public class IoTDBDescriptor {
     MemoryManager offHeapMemoryManager =
         MemoryConfig.global()
             .getOrCreateMemoryManager("OffHeap", MemUtils.strToBytesCnt(offHeapMemoryStr), false);
-    conf.setOffHeapMemoryManager(offHeapMemoryManager);
+    memoryConfig.setOffHeapMemoryManager(offHeapMemoryManager);
 
     // when we can't get the OffHeapMemory variable from environment, it will be 0
     // and the limit should not be effective
@@ -2292,7 +2292,7 @@ public class IoTDBDescriptor {
     MemoryManager directBufferMemoryManager =
         offHeapMemoryManager.getOrCreateMemoryManager(
             "DirectBuffer", totalDirectBufferMemorySizeLimit);
-    conf.setDirectBufferMemoryManager(directBufferMemoryManager);
+    memoryConfig.setDirectBufferMemoryManager(directBufferMemoryManager);
   }
 
   @SuppressWarnings("java:S3518")
@@ -2362,7 +2362,7 @@ public class IoTDBDescriptor {
     MemoryManager timePartitionMemoryManager =
         writeMemoryManager.getOrCreateMemoryManager(
             "TimePartitionInfo", timePartitionInfoMemorySize);
-    conf.setTimePartitionInfoMemoryManager(timePartitionMemoryManager);
+    memoryConfig.setTimePartitionInfoMemoryManager(timePartitionMemoryManager);
     long devicePathCacheMemorySize =
         (long) (memtableMemorySize * conf.getDevicePathCacheProportion());
     MemoryManager devicePathCacheMemoryManager =
@@ -2413,26 +2413,26 @@ public class IoTDBDescriptor {
     MemoryManager schemaRegionMemoryManager =
         schemaEngineMemoryManager.getOrCreateMemoryManager(
             "SchemaRegion", schemaMemoryTotal * schemaMemoryProportion[0] / proportionSum);
-    conf.setSchemaRegionMemoryManager(schemaRegionMemoryManager);
+    memoryConfig.setSchemaRegionMemoryManager(schemaRegionMemoryManager);
     LOGGER.info(
         "allocateMemoryForSchemaRegion = {}",
-        conf.getSchemaRegionMemoryManager().getTotalMemorySizeInBytes());
+        memoryConfig.getSchemaRegionMemoryManager().getTotalMemorySizeInBytes());
 
     MemoryManager schemaCacheMemoryManager =
         schemaEngineMemoryManager.getOrCreateMemoryManager(
             "SchemaCache", schemaMemoryTotal * schemaMemoryProportion[1] / proportionSum);
-    conf.setSchemaCacheMemoryManager(schemaCacheMemoryManager);
+    memoryConfig.setSchemaCacheMemoryManager(schemaCacheMemoryManager);
     LOGGER.info(
         "allocateMemoryForSchemaCache = {}",
-        conf.getSchemaCacheMemoryManager().getTotalMemorySizeInBytes());
+        memoryConfig.getSchemaCacheMemoryManager().getTotalMemorySizeInBytes());
 
     MemoryManager partitionCacheMemoryManager =
         schemaEngineMemoryManager.getOrCreateMemoryManager(
             "PartitionCache", schemaMemoryTotal * schemaMemoryProportion[2] / proportionSum);
-    conf.setPartitionCacheMemoryManager(partitionCacheMemoryManager);
+    memoryConfig.setPartitionCacheMemoryManager(partitionCacheMemoryManager);
     LOGGER.info(
         "allocateMemoryForPartitionCache = {}",
-        conf.getPartitionCacheMemoryManager().getTotalMemorySizeInBytes());
+        memoryConfig.getPartitionCacheMemoryManager().getTotalMemorySizeInBytes());
   }
 
   @SuppressWarnings("squid:S3518")
@@ -2490,9 +2490,9 @@ public class IoTDBDescriptor {
     // metadata cache is disabled, we need to move all their allocated memory to other parts
     if (!conf.isMetaDataCacheEnable()) {
       long sum =
-          conf.getBloomFilterCacheMemoryManager().getTotalMemorySizeInBytes()
-              + conf.getChunkCacheMemoryManager().getTotalMemorySizeInBytes()
-              + conf.getTimeSeriesMetaDataCacheMemoryManager().getTotalMemorySizeInBytes();
+          memoryConfig.getBloomFilterCacheMemoryManager().getTotalMemorySizeInBytes()
+              + memoryConfig.getChunkCacheMemoryManager().getTotalMemorySizeInBytes()
+              + memoryConfig.getTimeSeriesMetaDataCacheMemoryManager().getTotalMemorySizeInBytes();
       bloomFilterCacheMemorySize = 0;
       chunkCacheMemorySize = 0;
       timeSeriesMetaDataCacheMemorySize = 0;
@@ -2507,32 +2507,32 @@ public class IoTDBDescriptor {
     MemoryManager bloomFilterCacheMemoryManager =
         queryEngineMemoryManager.getOrCreateMemoryManager(
             "BloomFilterCache", bloomFilterCacheMemorySize);
-    conf.setBloomFilterCacheMemoryManager(bloomFilterCacheMemoryManager);
+    memoryConfig.setBloomFilterCacheMemoryManager(bloomFilterCacheMemoryManager);
 
     MemoryManager chunkCacheMemoryManager =
         queryEngineMemoryManager.getOrCreateMemoryManager("ChunkCache", chunkCacheMemorySize);
-    conf.setChunkCacheMemoryManager(chunkCacheMemoryManager);
+    memoryConfig.setChunkCacheMemoryManager(chunkCacheMemoryManager);
 
     MemoryManager timeSeriesMetaDataCacheMemoryManager =
         queryEngineMemoryManager.getOrCreateMemoryManager(
             "TimeSeriesMetaDataCache", timeSeriesMetaDataCacheMemorySize);
-    conf.setTimeSeriesMetaDataCacheMemoryManager(timeSeriesMetaDataCacheMemoryManager);
+    memoryConfig.setTimeSeriesMetaDataCacheMemoryManager(timeSeriesMetaDataCacheMemoryManager);
 
     MemoryManager coordinatorMemoryManager =
         queryEngineMemoryManager.getOrCreateMemoryManager("Coordinator", coordinatorMemorySize);
-    conf.setCoordinatorMemoryManager(coordinatorMemoryManager);
+    memoryConfig.setCoordinatorMemoryManager(coordinatorMemoryManager);
 
     MemoryManager operatorsMemoryManager =
         queryEngineMemoryManager.getOrCreateMemoryManager("Operators", operatorsMemorySize);
-    conf.setOperatorsMemoryManager(operatorsMemoryManager);
+    memoryConfig.setOperatorsMemoryManager(operatorsMemoryManager);
 
     MemoryManager dataExchangeMemoryManager =
         queryEngineMemoryManager.getOrCreateMemoryManager("DataExchange", dataExchangeMemorySize);
-    conf.setDataExchangeMemoryManager(dataExchangeMemoryManager);
+    memoryConfig.setDataExchangeMemoryManager(dataExchangeMemoryManager);
 
     MemoryManager timeIndexMemoryManager =
         queryEngineMemoryManager.getOrCreateMemoryManager("TimeIndex", timeIndexMemorySize);
-    conf.setTimeIndexMemoryManager(timeIndexMemoryManager);
+    memoryConfig.setTimeIndexMemoryManager(timeIndexMemoryManager);
   }
 
   private void loadLoadTsFileProps(TrimProperties properties) {

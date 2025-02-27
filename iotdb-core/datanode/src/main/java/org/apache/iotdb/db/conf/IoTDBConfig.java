@@ -24,7 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.memory.MemoryManager;
+import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.audit.AuditLogOperation;
@@ -180,12 +180,6 @@ public class IoTDBConfig {
 
   /** When inserting rejected exceeds this, throw an exception. Unit: millisecond */
   private int maxWaitingTimeWhenInsertBlockedInMs = 10000;
-
-  /** The memory manager of off heap */
-  private MemoryManager offHeapMemoryManager;
-
-  /** The memory manager of direct Buffer */
-  private MemoryManager directBufferMemoryManager;
 
   // region Write Ahead Log Configuration
   /** Write mode of wal */
@@ -580,33 +574,9 @@ public class IoTDBConfig {
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
 
-  /** Memory manager for bloomFilter cache in read process */
-  private MemoryManager bloomFilterCacheMemoryManager;
-
-  /** Memory manager for timeSeriesMetaData cache in read process */
-  private MemoryManager timeSeriesMetaDataCacheMemoryManager;
-
-  /** Memory manager for chunk cache in read process */
-  private MemoryManager chunkCacheMemoryManager;
-
-  /** Memory manager for coordinator */
-  private MemoryManager coordinatorMemoryManager;
-
-  /** Memory manager for operators */
-  private MemoryManager operatorsMemoryManager;
-
-  /** Memory manager for operators */
-  private MemoryManager dataExchangeMemoryManager;
-
   /** Max bytes of each FragmentInstance for DataExchange */
   private long maxBytesPerFragmentInstance =
       Runtime.getRuntime().maxMemory() * 3 / 10 * 200 / 1001 / queryThreadCount;
-
-  /** Memory manager proportion for timeIndex */
-  private MemoryManager timeIndexMemoryManager;
-
-  /** Memory manager for time partition info */
-  private MemoryManager timePartitionInfoMemoryManager;
 
   /**
    * If true, we will estimate each query's possible memory footprint before executing it and deny
@@ -1021,15 +991,6 @@ public class IoTDBConfig {
 
   /** ThreadPool size for write operation in coordinator */
   private int coordinatorWriteExecutorSize = 50;
-
-  /** Memory manager for schemaRegion */
-  private MemoryManager schemaRegionMemoryManager;
-
-  /** Memory manager for SchemaCache */
-  private MemoryManager SchemaCacheMemoryManager;
-
-  /** Memory allocated for PartitionCache */
-  private MemoryManager PartitionCacheMemoryManager;
 
   /** Policy of DataNodeSchemaCache eviction */
   private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
@@ -1774,8 +1735,10 @@ public class IoTDBConfig {
       queryThreadCount = Runtime.getRuntime().availableProcessors();
     }
     this.queryThreadCount = queryThreadCount;
+    // TODO @spricoder: influence dynamic change of memory size
     this.maxBytesPerFragmentInstance =
-        dataExchangeMemoryManager.getTotalMemorySizeInBytes() / queryThreadCount;
+        MemoryConfig.getInstance().getDataExchangeMemoryManager().getTotalMemorySizeInBytes()
+            / queryThreadCount;
   }
 
   public void setDegreeOfParallelism(int degreeOfParallelism) {
@@ -2268,71 +2231,6 @@ public class IoTDBConfig {
     this.metaDataCacheEnable = metaDataCacheEnable;
   }
 
-  public MemoryManager getBloomFilterCacheMemoryManager() {
-    return bloomFilterCacheMemoryManager;
-  }
-
-  public void setBloomFilterCacheMemoryManager(MemoryManager bloomFilterCacheMemoryManager) {
-    this.bloomFilterCacheMemoryManager = bloomFilterCacheMemoryManager;
-  }
-
-  public MemoryManager getTimeSeriesMetaDataCacheMemoryManager() {
-    return timeSeriesMetaDataCacheMemoryManager;
-  }
-
-  public void setTimeSeriesMetaDataCacheMemoryManager(
-      MemoryManager timeSeriesMetaDataCacheMemoryManager) {
-    this.timeSeriesMetaDataCacheMemoryManager = timeSeriesMetaDataCacheMemoryManager;
-  }
-
-  public MemoryManager getChunkCacheMemoryManager() {
-    return chunkCacheMemoryManager;
-  }
-
-  public void setChunkCacheMemoryManager(MemoryManager chunkCacheMemoryManager) {
-    this.chunkCacheMemoryManager = chunkCacheMemoryManager;
-  }
-
-  public MemoryManager getCoordinatorMemoryManager() {
-    return coordinatorMemoryManager;
-  }
-
-  public void setCoordinatorMemoryManager(MemoryManager coordinatorMemoryManager) {
-    this.coordinatorMemoryManager = coordinatorMemoryManager;
-  }
-
-  public MemoryManager getOperatorsMemoryManager() {
-    return operatorsMemoryManager;
-  }
-
-  public void setOperatorsMemoryManager(MemoryManager operatorsMemoryManager) {
-    this.operatorsMemoryManager = operatorsMemoryManager;
-  }
-
-  public MemoryManager getDataExchangeMemoryManager() {
-    return dataExchangeMemoryManager;
-  }
-
-  public void setDataExchangeMemoryManager(MemoryManager dataExchangeMemoryManager) {
-    this.dataExchangeMemoryManager = dataExchangeMemoryManager;
-  }
-
-  public MemoryManager getTimeIndexMemoryManager() {
-    return timeIndexMemoryManager;
-  }
-
-  public void setTimeIndexMemoryManager(MemoryManager timeIndexMemoryManager) {
-    this.timeIndexMemoryManager = timeIndexMemoryManager;
-  }
-
-  public MemoryManager getTimePartitionInfoMemoryManager() {
-    return timePartitionInfoMemoryManager;
-  }
-
-  public void setTimePartitionInfoMemoryManager(MemoryManager timePartitionInfoMemoryManager) {
-    this.timePartitionInfoMemoryManager = timePartitionInfoMemoryManager;
-  }
-
   public boolean isEnableQueryMemoryEstimation() {
     return enableQueryMemoryEstimation;
   }
@@ -2723,22 +2621,6 @@ public class IoTDBConfig {
 
   public void setMaxWaitingTimeWhenInsertBlocked(int maxWaitingTimeWhenInsertBlocked) {
     this.maxWaitingTimeWhenInsertBlockedInMs = maxWaitingTimeWhenInsertBlocked;
-  }
-
-  public MemoryManager getOffHeapMemoryManager() {
-    return offHeapMemoryManager;
-  }
-
-  public void setOffHeapMemoryManager(MemoryManager offHeapMemoryManager) {
-    this.offHeapMemoryManager = offHeapMemoryManager;
-  }
-
-  public MemoryManager getDirectBufferMemoryManager() {
-    return directBufferMemoryManager;
-  }
-
-  public void setDirectBufferMemoryManager(MemoryManager directBufferMemoryManager) {
-    this.directBufferMemoryManager = directBufferMemoryManager;
   }
 
   public long getSlowQueryThreshold() {
@@ -3398,30 +3280,6 @@ public class IoTDBConfig {
 
   public TEndPoint getAddressAndPort() {
     return new TEndPoint(rpcAddress, rpcPort);
-  }
-
-  public MemoryManager getSchemaRegionMemoryManager() {
-    return schemaRegionMemoryManager;
-  }
-
-  public void setSchemaRegionMemoryManager(MemoryManager schemaRegionMemoryManager) {
-    this.schemaRegionMemoryManager = schemaRegionMemoryManager;
-  }
-
-  public MemoryManager getSchemaCacheMemoryManager() {
-    return SchemaCacheMemoryManager;
-  }
-
-  public void setSchemaCacheMemoryManager(MemoryManager schemaCacheMemoryManager) {
-    SchemaCacheMemoryManager = schemaCacheMemoryManager;
-  }
-
-  public MemoryManager getPartitionCacheMemoryManager() {
-    return PartitionCacheMemoryManager;
-  }
-
-  public void setPartitionCacheMemoryManager(MemoryManager partitionCacheMemoryManager) {
-    PartitionCacheMemoryManager = partitionCacheMemoryManager;
   }
 
   public String getDataNodeSchemaCacheEvictionPolicy() {

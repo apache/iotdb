@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
+import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -67,9 +68,12 @@ public class LocalExecutionPlanner {
 
   static {
     IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+    MemoryConfig MEMORY_CONFIG = MemoryConfig.getInstance();
 
     OPERATORS_MEMORY_BLOCK =
-        CONFIG.getOperatorsMemoryManager().forceAllocate("Operators", MemoryBlockType.FUNCTION);
+        MEMORY_CONFIG
+            .getOperatorsMemoryManager()
+            .forceAllocate("Operators", MemoryBlockType.FUNCTION);
     MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD =
         (long)
             ((OPERATORS_MEMORY_BLOCK.getTotalMemorySizeInBytes())

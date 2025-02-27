@@ -57,7 +57,7 @@ public class GlobalMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        config.getOffHeapMemoryManager(),
+        memoryConfig.getOffHeapMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         TOTAL,

@@ -88,7 +88,7 @@ public class SystemInfo {
             .getWalBufferQueueManager()
             .forceAllocate("WalBufferQueue", MemoryBlockType.FUNCTION);
     directBufferMemoryBlock =
-        config
+        memoryConfig
             .getDirectBufferMemoryManager()
             .forceAllocate("DirectBuffer", MemoryBlockType.FUNCTION);
     loadWriteMemory();
@@ -219,7 +219,7 @@ public class SystemInfo {
   }
 
   public long getTotalDirectBufferMemorySizeLimit() {
-    return config.getDirectBufferMemoryManager().getTotalMemorySizeInBytes();
+    return memoryConfig.getDirectBufferMemoryManager().getTotalMemorySizeInBytes();
   }
 
   public long getDirectBufferMemoryCost() {
