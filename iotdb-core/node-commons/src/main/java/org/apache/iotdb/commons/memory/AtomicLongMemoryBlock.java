@@ -25,13 +25,9 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class AtomicLongMemoryBlock extends IMemoryBlock {
   private static final Logger LOGGER = LoggerFactory.getLogger(AtomicLongMemoryBlock.class);
-
-  /** The reentrant lock of memory block */
-  protected final ReentrantLock lock = new ReentrantLock();
 
   /** The memory usage in byte of this memory block */
   protected final AtomicLong usedMemoryInBytes = new AtomicLong(0);
@@ -89,7 +85,7 @@ public class AtomicLongMemoryBlock extends IMemoryBlock {
   }
 
   @Override
-  public boolean allocateUntilAvailable(long sizeInByte, long timeInMillis)
+  public boolean allocateUntilAvailable(long sizeInByte, long retryIntervalInMillis)
       throws InterruptedException {
     long originSize = usedMemoryInBytes.get();
     while (true) {
@@ -97,7 +93,7 @@ public class AtomicLongMemoryBlock extends IMemoryBlock {
       if (canUpdate && usedMemoryInBytes.compareAndSet(originSize, originSize + sizeInByte)) {
         break;
       }
-      Thread.sleep(TimeUnit.MILLISECONDS.toMillis(timeInMillis));
+      Thread.sleep(TimeUnit.MILLISECONDS.toMillis(retryIntervalInMillis));
       originSize = usedMemoryInBytes.get();
     }
     return true;
@@ -149,32 +145,6 @@ public class AtomicLongMemoryBlock extends IMemoryBlock {
 
   @Override
   public void close() throws Exception {
-    boolean isInterrupted = false;
-
-    while (true) {
-      try {
-        if (lock.tryLock(100, TimeUnit.MICROSECONDS)) {
-          try {
-            memoryManager.release(this);
-            if (isInterrupted) {
-              LOGGER.warn("{} is released after thread interruption.", this);
-            }
-            break;
-          } finally {
-            lock.unlock();
-          }
-        }
-      } catch (final InterruptedException e) {
-        // Each time the close task is run, it means that the interrupt status left by the previous
-        // tryLock does not need to be retained. Otherwise, it will lead to an infinite loop.
-        isInterrupted = true;
-        LOGGER.warn("Interrupted while waiting for the lock.", e);
-      }
-    }
-
-    // Restore the interrupt status of the current thread
-    if (isInterrupted) {
-      Thread.currentThread().interrupt();
-    }
+    memoryManager.release(this);
   }
 }

@@ -23,7 +23,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class MemoryManagerTest {
-  private final MemoryManager GLOBAL_MEMORY_MANAGER = MemoryManager.global();
+  private final MemoryManager GLOBAL_MEMORY_MANAGER = MemoryConfig.global();
 
   @Before
   public void reset() {

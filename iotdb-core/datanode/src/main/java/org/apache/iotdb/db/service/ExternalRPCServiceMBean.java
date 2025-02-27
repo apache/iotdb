@@ -20,7 +20,7 @@ package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.commons.exception.StartupException;
 
-public interface RPCServiceMBean {
+public interface ExternalRPCServiceMBean {
 
   String getRPCServiceStatus();
 

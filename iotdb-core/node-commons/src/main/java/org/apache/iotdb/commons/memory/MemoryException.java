@@ -76,11 +76,6 @@ public class MemoryException extends RuntimeException {
 
   @Override
   public String toString() {
-    return "IoTDBMemoryException{"
-        + "message='"
-        + getMessage()
-        + "', timestamp="
-        + getTimestamp()
-        + "}";
+    return "MemoryException{" + "message='" + getMessage() + "', timestamp=" + getTimestamp() + "}";
   }
 }

@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.schemaengine.metric;
 
+import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.ReleaseFlushStrategySizeBasedImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memory.ReleaseFlushMonitor;
@@ -52,10 +52,7 @@ public class SchemaEngineCachedMetric implements ISchemaEngineMetric {
     schemaEngineMemMetric.bindTo(metricService);
     metricService.gauge(
         (long)
-            (IoTDBDescriptor.getInstance()
-                    .getConfig()
-                    .getSchemaRegionMemoryManager()
-                    .getTotalMemorySizeInBytes()
+            (MemoryConfig.getInstance().getSchemaRegionMemoryManager().getTotalMemorySizeInBytes()
                 * ReleaseFlushStrategySizeBasedImpl.RELEASE_THRESHOLD_RATIO),
         Metric.SCHEMA_ENGINE.toString(),
         MetricLevel.IMPORTANT,

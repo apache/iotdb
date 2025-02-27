@@ -43,24 +43,24 @@ public abstract class IMemoryBlock implements AutoCloseable {
   protected long totalMemorySizeInBytes;
 
   /**
-   * Force allocate memory without the limit of totalMemorySizeInBytes
+   * Forcibly allocate memory without the limit of totalMemorySizeInBytes
    *
-   * @param sizeInByte the size of memory to be allocated, should positive
-   * @return
+   * @param sizeInByte the size of memory to be allocated, should be positive
+   * @return the number of bytes actually allocated
    */
   public abstract long forceAllocate(final long sizeInByte);
 
   /**
    * Allocate memory managed by this memory block
    *
-   * @param sizeInByte the size of memory to be allocated, should positive
+   * @param sizeInByte the size of memory to be allocated, should be positive
    */
   public abstract boolean allocate(final long sizeInByte);
 
   /**
    * Allocate memory managed by this memory block
    *
-   * @param sizeInByte the size of memory to be allocated, should positive
+   * @param sizeInByte the size of memory to be allocated, should be positive
    * @param maxRatio the maximum ratio of memory can be allocated
    */
   public abstract boolean allocateIfSufficient(final long sizeInByte, final double maxRatio);
@@ -68,16 +68,16 @@ public abstract class IMemoryBlock implements AutoCloseable {
   /**
    * Allocate memory managed by this memory block until the required memory is available
    *
-   * @param sizeInByte the size of memory to be allocated, should positive
-   * @param timeInMillis the time interval to wait for memory to be available
+   * @param sizeInByte the size of memory to be allocated, should be positive
+   * @param retryIntervalInMillis the time interval to wait for memory to be available
    */
-  public abstract boolean allocateUntilAvailable(final long sizeInByte, long timeInMillis)
+  public abstract boolean allocateUntilAvailable(final long sizeInByte, long retryIntervalInMillis)
       throws InterruptedException;
 
   /**
    * Try to release memory managed by this memory block
    *
-   * @param sizeInByte the size of memory to be released, should positive
+   * @param sizeInByte the size of memory to be released, should be positive
    * @return
    */
   public abstract long release(final long sizeInByte);
