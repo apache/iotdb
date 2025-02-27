@@ -29,11 +29,10 @@ public class MathUtils {
     throw new IllegalStateException("Utility class");
   }
 
-  /**
-   * @param data data should be less than Long.MAX_VALUE. otherwise Math.round() will return wrong
-   *     value.
-   */
   public static float roundWithGivenPrecision(float data, int size) {
+    if (Float.isNaN(data) || data > Integer.MAX_VALUE || data < Integer.MIN_VALUE) {
+      return data;
+    }
     if (size == 0) {
       return Math.round(data);
     }
@@ -42,6 +41,9 @@ public class MathUtils {
   }
 
   public static float roundWithGivenPrecision(float data) {
+    if (Float.isNaN(data) || data > Integer.MAX_VALUE || data < Integer.MIN_VALUE) {
+      return data;
+    }
     if (TSFileDescriptor.getInstance().getConfig().getFloatPrecision() == 0) {
       return Math.round(data);
     }
@@ -54,11 +56,10 @@ public class MathUtils {
             / (float) Math.pow(10, TSFileDescriptor.getInstance().getConfig().getFloatPrecision());
   }
 
-  /**
-   * @param data data should be less than Long.MAX_VALUE. otherwise Math.round() will return wrong
-   *     value.
-   */
   public static double roundWithGivenPrecision(double data, int size) {
+    if (Double.isNaN(data) || data > Long.MAX_VALUE || data < Long.MIN_VALUE) {
+      return data;
+    }
     if (size == 0) {
       return Math.round(data);
     }
@@ -66,11 +67,10 @@ public class MathUtils {
         + Math.round(((data - Math.round(data)) * Math.pow(10, size))) / Math.pow(10, size);
   }
 
-  /**
-   * @param data data should be less than Long.MAX_VALUE. otherwise Math.round() will return wrong
-   *     value.
-   */
   public static double roundWithGivenPrecision(double data) {
+    if (Double.isNaN(data) || data > Long.MAX_VALUE || data < Long.MIN_VALUE) {
+      return data;
+    }
     if (TSFileDescriptor.getInstance().getConfig().getFloatPrecision() == 0) {
       return Math.round(data);
     }

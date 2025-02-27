@@ -87,7 +87,9 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
       final String username,
       final String password,
       final boolean shouldReceiverConvertOnTypeMismatch,
-      final String loadTsFileStrategy) {
+      final String loadTsFileStrategy,
+      final boolean validateTsFile,
+      final boolean shouldMarkAsPipeRequest) {
     clientManager =
         new IoTDBDataNodeSyncClientManager(
             nodeUrls,
@@ -99,7 +101,9 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
             username,
             password,
             shouldReceiverConvertOnTypeMismatch,
-            loadTsFileStrategy);
+            loadTsFileStrategy,
+            validateTsFile,
+            shouldMarkAsPipeRequest);
     return clientManager;
   }
 }

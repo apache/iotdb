@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferSliceReqHandler;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
@@ -92,7 +93,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
-import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.db.tools.schema.SRStatementGenerator;
@@ -175,6 +175,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private static final Set<String> ALREADY_CREATED_DATABASES = ConcurrentHashMap.newKeySet();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
+  private static final long LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS =
+      PipeConfig.getInstance().getPipeReceiverLoginPeriodicVerificationIntervalMs();
+  private long lastSuccessfulLoginTime = Long.MIN_VALUE;
 
   static {
     try {
@@ -492,14 +495,23 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   @Override
   protected TSStatus tryLogin() {
     final IClientSession clientSession = SESSION_MANAGER.getCurrSession();
-    if (clientSession == null || !clientSession.isLogin()) {
-      return SESSION_MANAGER.login(
-          SESSION_MANAGER.getCurrSession(),
-          username,
-          password,
-          ZoneId.systemDefault().toString(),
-          SessionManager.CURRENT_RPC_VERSION,
-          IoTDBConstant.ClientVersion.V_1_0);
+    if (clientSession == null
+        || !clientSession.isLogin()
+        || (LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS >= 0
+            && lastSuccessfulLoginTime
+                < System.currentTimeMillis() - LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS)) {
+      final TSStatus status =
+          SESSION_MANAGER.login(
+              SESSION_MANAGER.getCurrSession(),
+              username,
+              password,
+              ZoneId.systemDefault().toString(),
+              SessionManager.CURRENT_RPC_VERSION,
+              IoTDBConstant.ClientVersion.V_1_0);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        lastSuccessfulLoginTime = System.currentTimeMillis();
+      }
+      return status;
     }
     return StatusUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
@@ -581,13 +593,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final LoadTsFileStatement statement = new LoadTsFileStatement(fileAbsolutePath);
     statement.setDeleteAfterLoad(true);
     statement.setConvertOnTypeMismatch(true);
-    statement.setVerifySchema(true);
+    statement.setVerifySchema(validateTsFile.get());
     statement.setAutoCreateDatabase(false);
-
-    statement.setModel(
-        dataBaseName != null
-            ? LoadTsFileConfigurator.MODEL_TABLE_VALUE
-            : LoadTsFileConfigurator.MODEL_TREE_VALUE);
     statement.setDatabase(dataBaseName);
 
     return executeStatementAndClassifyExceptions(statement);
@@ -597,7 +604,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final Map<String, String> parameters, final List<String> fileAbsolutePaths)
       throws IllegalPathException, IOException {
     final PartialPath databasePath =
-        PartialPath.getDatabasePath(parameters.get(ColumnHeaderConstant.DATABASE));
+        PartialPath.getQualifiedDatabasePartialPath(parameters.get(ColumnHeaderConstant.DATABASE));
     final SRStatementGenerator generator =
         SchemaRegionSnapshotParser.translate2Statements(
             Paths.get(fileAbsolutePaths.get(0)),
@@ -808,7 +815,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     // Permission check
     TSStatus permissionCheckStatus;
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
-    if (clientSession == null || !clientSession.isLogin()) {
+    if (clientSession == null
+        || !clientSession.isLogin()
+        || (LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS >= 0
+            && lastSuccessfulLoginTime
+                < System.currentTimeMillis() - LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS)) {
       permissionCheckStatus = login();
       if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return permissionCheckStatus;
@@ -831,9 +842,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final boolean isTableModelStatement;
     final String databaseName;
     if (statement instanceof LoadTsFileStatement
-        && ((LoadTsFileStatement) statement)
-            .getModel()
-            .equals(LoadTsFileConfigurator.MODEL_TABLE_VALUE)) {
+        && ((LoadTsFileStatement) statement).getDatabase() != null) {
       isTableModelStatement = true;
       databaseName = ((LoadTsFileStatement) statement).getDatabase();
     } else if (statement instanceof InsertBaseStatement
@@ -887,6 +896,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           openSessionResp);
       return RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
     }
+    lastSuccessfulLoginTime = System.currentTimeMillis();
     return RpcUtils.SUCCESS_STATUS;
   }
 
@@ -897,7 +907,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
       return Coordinator.getInstance()
           .executeForTableModel(
-              new PipeEnrichedStatement(statement),
+              shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
               relationalSqlParser,
               SESSION_MANAGER.getCurrSession(),
               SESSION_MANAGER.requestQueryId(),
@@ -921,7 +931,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         // Retry after creating the database
         return Coordinator.getInstance()
             .executeForTableModel(
-                new PipeEnrichedStatement(statement),
+                shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
                 relationalSqlParser,
                 SESSION_MANAGER.getCurrSession(),
                 SESSION_MANAGER.requestQueryId(),
@@ -972,7 +982,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TSStatus executeStatementForTreeModel(final Statement statement) {
     return Coordinator.getInstance()
         .executeForTreeModel(
-            new PipeEnrichedStatement(statement),
+            shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
             SESSION_MANAGER.requestQueryId(),
             SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
             "",
@@ -989,7 +999,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     try {
       // Permission check
       final IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
-      if (clientSession == null || !clientSession.isLogin()) {
+      if (clientSession == null
+          || !clientSession.isLogin()
+          || (LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS >= 0
+              && lastSuccessfulLoginTime
+                  < System.currentTimeMillis() - LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS)) {
         final TSStatus result = login();
         if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return result;
@@ -999,7 +1013,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final TSStatus result =
           Coordinator.getInstance()
               .executeForTableModel(
-                  new PipeEnriched(statement),
+                  shouldMarkAsPipeRequest.get() ? new PipeEnriched(statement) : statement,
                   relationalSqlParser,
                   SESSION_MANAGER.getCurrSession(),
                   SESSION_MANAGER.requestQueryId(),

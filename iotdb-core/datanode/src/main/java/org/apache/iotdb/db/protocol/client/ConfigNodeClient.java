@@ -53,6 +53,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerRelationalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
@@ -671,9 +672,21 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSStatus operateRPermission(TAuthorizerRelationalReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.operateRPermission(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
   public TAuthorizerResp queryPermission(TAuthorizerReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.queryPermission(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TAuthorizerResp queryRPermission(TAuthorizerRelationalReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.queryRPermission(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -693,13 +706,6 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       throws TException {
     return executeRemoteCallWithRetry(
         () -> client.fetchAuthizedPatternTree(req), resp -> !updateConfigNodeLeader(resp.status));
-  }
-
-  @Override
-  public TPermissionInfoResp checkUserPrivilegeGrantOpt(TCheckUserPrivilegesReq req)
-      throws TException {
-    return executeRemoteCallWithRetry(
-        () -> client.checkUserPrivilegeGrantOpt(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   public TPermissionInfoResp checkRoleOfUser(TAuthorizerReq req) throws TException {
@@ -724,7 +730,8 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TSStatus removeConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
-    throw new TException("DataNode to ConfigNode client doesn't support removeConfigNode.");
+    return executeRemoteCallWithRetry(
+        () -> client.removeConfigNode(configNodeLocation), resp -> !updateConfigNodeLeader(resp));
   }
 
   @Override

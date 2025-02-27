@@ -51,6 +51,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -180,7 +181,7 @@ public abstract class InsertBaseStatement extends Statement {
     List<PartialPath> checkedPaths = getPaths().stream().distinct().collect(Collectors.toList());
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkFullPathListPermission(
-            userName, checkedPaths, PrivilegeType.WRITE_DATA.ordinal()),
+            userName, checkedPaths, PrivilegeType.WRITE_DATA),
         checkedPaths,
         PrivilegeType.WRITE_DATA);
   }
@@ -367,6 +368,55 @@ public abstract class InsertBaseStatement extends Statement {
                 })
             .collect(Collectors.toList());
   }
+
+  @TableModel
+  public void removeAttributeColumns() {
+    if (columnCategories == null) {
+      return;
+    }
+
+    List<Integer> columnsToKeep = new ArrayList<>();
+    for (int i = 0; i < columnCategories.length; i++) {
+      if (!columnCategories[i].equals(TsTableColumnCategory.ATTRIBUTE)) {
+        columnsToKeep.add(i);
+      }
+    }
+
+    if (columnsToKeep.size() == columnCategories.length) {
+      return;
+    }
+
+    if (failedMeasurementIndex2Info != null) {
+      failedMeasurementIndex2Info =
+          failedMeasurementIndex2Info.entrySet().stream()
+              .collect(Collectors.toMap(e -> columnsToKeep.indexOf(e.getKey()), Entry::getValue));
+    }
+
+    if (measurementSchemas != null) {
+      measurementSchemas =
+          columnsToKeep.stream().map(i -> measurementSchemas[i]).toArray(MeasurementSchema[]::new);
+    }
+    if (measurements != null) {
+      measurements = columnsToKeep.stream().map(i -> measurements[i]).toArray(String[]::new);
+    }
+    if (dataTypes != null) {
+      dataTypes = columnsToKeep.stream().map(i -> dataTypes[i]).toArray(TSDataType[]::new);
+    }
+    if (columnCategories != null) {
+      columnCategories =
+          columnsToKeep.stream()
+              .map(i -> columnCategories[i])
+              .toArray(TsTableColumnCategory[]::new);
+    }
+
+    subRemoveAttributeColumns(columnsToKeep);
+
+    // to reconstruct indices
+    idColumnIndices = null;
+    attrColumnIndices = null;
+  }
+
+  protected abstract void subRemoveAttributeColumns(List<Integer> columnsToKeep);
 
   public static class FailedMeasurementInfo {
     protected String measurement;

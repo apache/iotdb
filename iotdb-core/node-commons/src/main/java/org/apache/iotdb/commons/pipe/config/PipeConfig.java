@@ -136,6 +136,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeConnectorReadFileBufferSize();
   }
 
+  public boolean isPipeConnectorReadFileBufferMemoryControlEnabled() {
+    return COMMON_CONFIG.isPipeConnectorReadFileBufferMemoryControlEnabled();
+  }
+
   public long getPipeConnectorRetryIntervalMs() {
     return COMMON_CONFIG.getPipeConnectorRetryIntervalMs();
   }
@@ -224,6 +228,12 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAirGapReceiverPort();
   }
 
+  /////////////////////////////// Receiver ///////////////////////////////
+
+  public long getPipeReceiverLoginPeriodicVerificationIntervalMs() {
+    return COMMON_CONFIG.getPipeReceiverLoginPeriodicVerificationIntervalMs();
+  }
+
   /////////////////////////////// Hybrid Mode ///////////////////////////////
 
   public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
@@ -252,6 +262,10 @@ public class PipeConfig {
 
   public long getPipeStuckRestartMinIntervalMs() {
     return COMMON_CONFIG.getPipeStuckRestartMinIntervalMs();
+  }
+
+  public long getPipeStorageEngineFlushTimeIntervalMs() {
+    return COMMON_CONFIG.getPipeStorageEngineFlushTimeIntervalMs();
   }
 
   /////////////////////////////// Logger ///////////////////////////////
@@ -306,8 +320,8 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMemoryExpanderIntervalSeconds();
   }
 
-  public long getPipeTsFileParserCheckMemoryEnoughIntervalMs() {
-    return COMMON_CONFIG.getPipeTsFileParserCheckMemoryEnoughIntervalMs();
+  public long getPipeCheckMemoryEnoughIntervalMs() {
+    return COMMON_CONFIG.getPipeCheckMemoryEnoughIntervalMs();
   }
 
   /////////////////////////////// TwoStage ///////////////////////////////
@@ -389,6 +403,9 @@ public class PipeConfig {
     LOGGER.info("PipeConnectorHandshakeTimeoutMs: {}", getPipeConnectorHandshakeTimeoutMs());
     LOGGER.info("PipeConnectorTransferTimeoutMs: {}", getPipeConnectorTransferTimeoutMs());
     LOGGER.info("PipeConnectorReadFileBufferSize: {}", getPipeConnectorReadFileBufferSize());
+    LOGGER.info(
+        "PipeConnectorReadFileBufferMemoryControlEnabled: {}",
+        isPipeConnectorReadFileBufferMemoryControlEnabled());
     LOGGER.info("PipeConnectorRetryIntervalMs: {}", getPipeConnectorRetryIntervalMs());
     LOGGER.info(
         "PipeConnectorRPCThriftCompressionEnabled: {}",
@@ -435,6 +452,10 @@ public class PipeConfig {
     LOGGER.info("PipeAirGapReceiverPort: {}", getPipeAirGapReceiverPort());
 
     LOGGER.info(
+        "PipeReceiverLoginPeriodicVerificationIntervalMs: {}",
+        getPipeReceiverLoginPeriodicVerificationIntervalMs());
+
+    LOGGER.info(
         "PipeMaxAllowedHistoricalTsFilePerDataRegion: {}",
         getPipeMaxAllowedHistoricalTsFilePerDataRegion());
     LOGGER.info(
@@ -447,6 +468,8 @@ public class PipeConfig {
         getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage());
     LOGGER.info("PipeStuckRestartIntervalSeconds: {}", getPipeStuckRestartIntervalSeconds());
     LOGGER.info("PipeStuckRestartMinIntervalMs: {}", getPipeStuckRestartMinIntervalMs());
+    LOGGER.info(
+        "PipeStorageEngineFlushTimeIntervalMs: {}", getPipeStorageEngineFlushTimeIntervalMs());
 
     LOGGER.info("PipeMetaReportMaxLogNumPerRound: {}", getPipeMetaReportMaxLogNumPerRound());
     LOGGER.info("PipeMetaReportMaxLogIntervalRounds: {}", getPipeMetaReportMaxLogIntervalRounds());
@@ -464,9 +487,7 @@ public class PipeConfig {
         "PipeMemoryAllocateForTsFileSequenceReaderInBytes: {}",
         getPipeMemoryAllocateForTsFileSequenceReaderInBytes());
     LOGGER.info("PipeMemoryExpanderIntervalSeconds: {}", getPipeMemoryExpanderIntervalSeconds());
-    LOGGER.info(
-        "PipeTsFileParserCheckMemoryEnoughIntervalMs: {}",
-        getPipeTsFileParserCheckMemoryEnoughIntervalMs());
+    LOGGER.info("PipeCheckMemoryEnoughIntervalMs: {}", getPipeCheckMemoryEnoughIntervalMs());
 
     LOGGER.info(
         "TwoStageAggregateMaxCombinerLiveTimeInMs: {}",

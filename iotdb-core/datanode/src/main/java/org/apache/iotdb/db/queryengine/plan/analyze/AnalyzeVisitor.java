@@ -65,8 +65,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.Inferenc
 import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.TailInferenceWindow;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileAnalyzer;
-import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileToTableModelAnalyzer;
-import org.apache.iotdb.db.queryengine.plan.analyze.load.LoadTsFileToTreeModelAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
@@ -79,7 +77,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExistUnknownTypeInExpression;
-import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.FillDescriptor;
@@ -154,7 +151,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
-import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -197,7 +193,6 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.DEVICE
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
-import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TREE_TYPE;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.removeLogicalView;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.validateSchema;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.bindSchemaForExpression;
@@ -220,7 +215,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizati
 import static org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePathsVisitor.getSourcePaths;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME_HEADER;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT_DOT;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.TREE_MODEL_DATABASE_PREFIX;
 
 /** This visitor is used to analyze each type of Statement and returns the {@link Analysis}. */
 public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> {
@@ -534,8 +529,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       logger.debug("[EndFetchSchema]");
       long schemaFetchCost = System.nanoTime() - startTime;
       context.setFetchSchemaCost(schemaFetchCost);
-      QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TREE_TYPE, SCHEMA_FETCHER, schemaFetchCost);
+      QueryPlanCostMetricSet.getInstance().recordTreePlanCost(SCHEMA_FETCHER, schemaFetchCost);
     }
 
     analysis.setSchemaTree(schemaTree);
@@ -2224,7 +2218,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     } finally {
       long partitionFetchCost = System.nanoTime() - startTime;
       QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(TREE_TYPE, PARTITION_FETCHER, partitionFetchCost);
+          .recordTreePlanCost(PARTITION_FETCHER, partitionFetchCost);
       context.setFetchPartitionCost(partitionFetchCost);
     }
   }
@@ -2293,7 +2287,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         result.add(timePartitionSlot);
         // next init
         timePartitionSlot = new TTimePartitionSlot(endTime);
-        endTime = endTime + TimePartitionUtils.getTimePartitionInterval();
+        // beware of overflow
+        endTime =
+            endTime + TimePartitionUtils.getTimePartitionInterval() > endTime
+                ? endTime + TimePartitionUtils.getTimePartitionInterval()
+                : Long.MAX_VALUE;
       } else {
         index++;
         if (index < size) {
@@ -2387,7 +2385,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     long startTime = System.nanoTime();
     ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree, true, context);
     QueryPlanCostMetricSet.getInstance()
-        .recordPlanCost(TREE_TYPE, SCHEMA_FETCHER, System.nanoTime() - startTime);
+        .recordTreePlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
     deviceViewIntoPathDescriptor.bindType(targetSchemaTree);
 
     analysis.setDeviceViewIntoPathDescriptor(deviceViewIntoPathDescriptor);
@@ -2430,7 +2428,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         if (viewPath != null) {
           try {
             // if it's really view path, it should start with root.
-            if (viewPath.startsWith(ROOT_DOT)) {
+            if (viewPath.startsWith(TREE_MODEL_DATABASE_PREFIX)) {
               sourcePath = new MeasurementPath(viewPath);
             } else {
               // otherwise it should just be an alias
@@ -2465,7 +2463,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree, true, context);
     updateSchemaTreeByViews(analysis, targetSchemaTree, context);
     QueryPlanCostMetricSet.getInstance()
-        .recordPlanCost(TREE_TYPE, SCHEMA_FETCHER, System.nanoTime() - startTime);
+        .recordTreePlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
     intoPathDescriptor.bindType(targetSchemaTree);
 
     analysis.setIntoPathDescriptor(intoPathDescriptor);
@@ -3003,7 +3001,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
 
     final long startTime = System.nanoTime();
-    try (final LoadTsFileAnalyzer loadTsFileAnalyzer = getAnalyzer(loadTsFileStatement, context)) {
+    try (final LoadTsFileAnalyzer loadTsFileAnalyzer =
+        new LoadTsFileAnalyzer(
+            loadTsFileStatement, loadTsFileStatement.isGeneratedByPipe(), context)) {
       return (Analysis) loadTsFileAnalyzer.analyzeFileByFile(new Analysis());
     } catch (final Exception e) {
       final String exceptionMessage =
@@ -3019,27 +3019,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     } finally {
       LoadTsFileCostMetricsSet.getInstance()
           .recordPhaseTimeCost(ANALYSIS, System.nanoTime() - startTime);
-    }
-  }
-
-  private LoadTsFileAnalyzer getAnalyzer(
-      LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
-    if (Objects.equals(loadTsFileStatement.getModel(), LoadTsFileConfigurator.MODEL_TREE_VALUE)) {
-      // Load to tree-model
-      return new LoadTsFileToTreeModelAnalyzer(
-          loadTsFileStatement, loadTsFileStatement.isGeneratedByPipe(), context);
-    } else {
-      // Load to table-model
-      if (Objects.nonNull(loadTsFileStatement.getDatabase())) {
-        return new LoadTsFileToTableModelAnalyzer(
-            loadTsFileStatement,
-            loadTsFileStatement.isGeneratedByPipe(),
-            LocalExecutionPlanner.getInstance().metadata,
-            context);
-      } else {
-        throw new SemanticException(
-            "Database name must be specified when loading data into the table model.");
-      }
     }
   }
 

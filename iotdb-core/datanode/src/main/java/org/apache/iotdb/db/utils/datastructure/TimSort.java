@@ -16,46 +16,113 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.utils.datastructure;
 
-/**
- * The interface refers to TimSort.java, and is used for sort the TVList Functions for tim_sort like
- * merge, sort, binary_sort is implemented here as default, reuse code whenever possible.
- */
-public interface TimSort {
+import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
+
+import org.apache.tsfile.enums.TSDataType;
+
+import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
+
+public class TimSort {
   /** when array size <= 32, it's better to use binarysort. */
-  int SMALL_ARRAY_LENGTH = 32;
+  public static int SMALL_ARRAY_LENGTH = 32;
+
+  protected final TVList tvList;
+
+  private long[][] sortedTimestamps;
+  private long pivotTime;
+
+  private int[][] sortedIndices;
+  private int pivotIndex;
+
+  public TimSort(TVList tvList) {
+    this.tvList = tvList;
+  }
 
   /** the same as the 'set' function in TVList, the reason is to avoid two equal functions. */
-  void tim_set(int src, int dest);
+  public void tim_set(int src, int dest) {
+    tvList.set(src, dest);
+  }
 
-  void setFromSorted(int src, int dest);
+  public void setToSorted(int src, int dest) {
+    sortedTimestamps[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = tvList.getTime(src);
+    sortedIndices[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = tvList.getValueIndex(src);
+  }
 
-  void setToSorted(int src, int dest);
+  public void saveAsPivot(int pos) {
+    pivotTime = tvList.getTime(pos);
+    pivotIndex = tvList.getValueIndex(pos);
+  }
 
-  void setPivotTo(int pos);
+  public void setFromSorted(int src, int dest) {
+    tvList.set(
+        dest,
+        sortedTimestamps[src / ARRAY_SIZE][src % ARRAY_SIZE],
+        sortedIndices[src / ARRAY_SIZE][src % ARRAY_SIZE]);
+  }
 
-  void saveAsPivot(int pos);
+  public void setPivotTo(int pos) {
+    tvList.set(pos, pivotTime, pivotIndex);
+  }
 
   /**
    * The arrays for sorting are not including in write memory now, the memory usage is considered as
    * temporary memory.
    */
-  void clearSortedTime();
+  public void clearSortedTime() {
+    if (sortedTimestamps != null) {
+      sortedTimestamps = null;
+    }
+  }
 
-  void clearSortedValue();
+  public void clearSortedValue() {
+    if (sortedIndices != null) {
+      sortedIndices = null;
+    }
+  }
 
   /** compare the timestamps in idx1 and idx2 */
-  int compare(int idx1, int idx2);
+  public int compare(int idx1, int idx2) {
+    long t1 = tvList.getTime(idx1);
+    long t2 = tvList.getTime(idx2);
+    return Long.compare(t1, t2);
+  }
 
   /** From TimSort.java */
-  void reverseRange(int lo, int hi);
+  public void reverseRange(int lo, int hi) {
+    hi--;
+    while (lo < hi) {
+      long loT = tvList.getTime(lo);
+      int loV = tvList.getValueIndex(lo);
+      long hiT = tvList.getTime(hi);
+      int hiV = tvList.getValueIndex(hi);
+      tvList.set(lo++, hiT, hiV);
+      tvList.set(hi--, loT, loV);
+    }
+  }
+
+  public void checkSortedTimestampsAndIndices() {
+    if (sortedTimestamps == null
+        || sortedTimestamps.length < PrimitiveArrayManager.getArrayRowCount(tvList.rowCount())) {
+      sortedTimestamps =
+          (long[][])
+              PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, tvList.rowCount());
+    }
+    if (sortedIndices == null
+        || sortedIndices.length < PrimitiveArrayManager.getArrayRowCount(tvList.rowCount())) {
+      sortedIndices =
+          (int[][])
+              PrimitiveArrayManager.createDataListsByType(TSDataType.INT32, tvList.rowCount());
+    }
+  }
 
   /**
    * the entrance of tim_sort; 1. array_size <= 32, use binary sort. 2. recursively invoke merge
    * sort.
    */
-  default void sort(int lo, int hi) {
+  public void sort(int lo, int hi) {
     if (lo == hi) {
       return;
     }
@@ -70,7 +137,7 @@ public interface TimSort {
     merge(lo, mid, hi);
   }
 
-  default int countRunAndMakeAscending(int lo, int hi) {
+  public int countRunAndMakeAscending(int lo, int hi) {
     assert lo < hi;
     int runHi = lo + 1;
     if (runHi == hi) {
@@ -91,7 +158,7 @@ public interface TimSort {
     return runHi - lo;
   }
 
-  default void binarySort(int lo, int hi, int start) {
+  public void binarySort(int lo, int hi, int start) {
     assert lo <= start && start <= hi;
     if (start == lo) {
       start++;
@@ -137,7 +204,7 @@ public interface TimSort {
   }
 
   /** merge arrays [lo, mid) [mid, hi] */
-  default void merge(int lo, int mid, int hi) {
+  public void merge(int lo, int mid, int hi) {
     // end of sorting buffer
     int tmpIdx = 0;
 

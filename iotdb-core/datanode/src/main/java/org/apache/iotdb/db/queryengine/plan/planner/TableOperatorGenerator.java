@@ -639,14 +639,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return new InformationSchemaTableScanOperator(
         operatorContext,
         node.getPlanNodeId(),
-        getSupplier(
-            node.getQualifiedObjectName().getObjectName(),
-            dataTypes,
-            context
-                .getDriverContext()
-                .getFragmentInstanceContext()
-                .getSessionInfo()
-                .getUserName()));
+        getSupplier(node.getQualifiedObjectName().getObjectName(), dataTypes));
   }
 
   @Override

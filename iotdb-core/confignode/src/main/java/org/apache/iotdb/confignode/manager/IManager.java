@@ -27,11 +27,11 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
+import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorReadPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
@@ -488,13 +488,13 @@ public interface IManager {
    *
    * @return PermissionInfoDataSet
    */
-  DataSet queryPermission(final AuthorReadPlan authorPlan);
+  DataSet queryPermission(final AuthorPlan authorPlan);
 
   /** login. */
   TPermissionInfoResp login(String username, String password);
 
   /** Check User Privileges. */
-  TPermissionInfoResp checkUserPrivileges(String username, List<PartialPath> paths, int permission);
+  TPermissionInfoResp checkUserPrivileges(String username, PrivilegeUnion union);
 
   /**
    * Register ConfigNode when it is first startup.
@@ -571,6 +571,9 @@ public interface IManager {
 
   /** Flush on all DataNodes. */
   TSStatus flush(TFlushReq req);
+
+  /** Flush on specific Datanode. */
+  TSStatus flushOnSpecificDN(TFlushReq req, Map<Integer, TDataNodeLocation> dataNodeLocationMap);
 
   /** Clear cache on all DataNodes. */
   TSStatus clearCache(final Set<Integer> clearCacheOptions);

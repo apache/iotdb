@@ -45,7 +45,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public boolean writeValuesWithFlushCheck(
+  public void writeTablet(
       long[] times,
       Object[] columns,
       BitMap[] bitMaps,
@@ -53,22 +53,19 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       int start,
       int end,
       TSStatus[] results) {
-    boolean flushFlag = false;
     for (int i = 0; i < columns.length; i++) {
       if (columns[i] == null) {
         continue;
       }
       IWritableMemChunk memChunk = createMemChunkIfNotExistAndGet(schemaList.get(i));
-      flushFlag |=
-          memChunk.writeWithFlushCheck(
-              times,
-              columns[i],
-              bitMaps == null ? null : bitMaps[i],
-              schemaList.get(i).getType(),
-              start,
-              end);
+      memChunk.writeNonAlignedTablet(
+          times,
+          columns[i],
+          bitMaps == null ? null : bitMaps[i],
+          schemaList.get(i).getType(),
+          start,
+          end);
     }
-    return flushFlag;
   }
 
   private IWritableMemChunk createMemChunkIfNotExistAndGet(IMeasurementSchema schema) {
@@ -98,17 +95,14 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public boolean writeWithFlushCheck(
-      long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
-    boolean flushFlag = false;
+  public void writeRow(long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
     for (int i = 0; i < objectValue.length; i++) {
       if (objectValue[i] == null) {
         continue;
       }
       IWritableMemChunk memChunk = createMemChunkIfNotExistAndGet(schemaList.get(i));
-      flushFlag |= memChunk.writeWithFlushCheck(insertTime, objectValue[i]);
+      memChunk.writeNonAlignedPoint(insertTime, objectValue[i]);
     }
-    return flushFlag;
   }
 
   @Override
@@ -118,7 +112,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
   @Override
   public boolean isEmpty() {
-    return memChunkMap.isEmpty();
+    return memChunkMap.isEmpty() || count() == 0;
   }
 
   @Override
@@ -152,11 +146,19 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public long getCurrentTVListSize(String measurement) {
+  public long getMeasurementSize(String measurement) {
     if (!memChunkMap.containsKey(measurement)) {
       return 0;
     }
-    return memChunkMap.get(measurement).getTVList().rowCount();
+    return memChunkMap.get(measurement).rowCount();
+  }
+
+  @Override
+  public IWritableMemChunk getWritableMemChunk(String measurement) {
+    if (!memChunkMap.containsKey(measurement)) {
+      return null;
+    }
+    return memChunkMap.get(measurement);
   }
 
   @Override
@@ -195,6 +197,18 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
     for (int i = 0; i < memChunkMapSize; ++i) {
       String measurement = ReadWriteIOUtils.readString(stream);
       IWritableMemChunk memChunk = WritableMemChunk.deserialize(stream);
+      memChunkGroup.memChunkMap.put(measurement, memChunk);
+    }
+    return memChunkGroup;
+  }
+
+  public static WritableMemChunkGroup deserializeSingleTVListMemChunks(DataInputStream stream)
+      throws IOException {
+    WritableMemChunkGroup memChunkGroup = new WritableMemChunkGroup();
+    int memChunkMapSize = stream.readInt();
+    for (int i = 0; i < memChunkMapSize; ++i) {
+      String measurement = ReadWriteIOUtils.readString(stream);
+      IWritableMemChunk memChunk = WritableMemChunk.deserializeSingleTVListMemChunks(stream);
       memChunkGroup.memChunkMap.put(measurement, memChunk);
     }
     return memChunkGroup;

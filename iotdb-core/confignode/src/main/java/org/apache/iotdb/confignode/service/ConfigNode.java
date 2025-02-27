@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.concurrent.ThreadPoolMetrics;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -47,7 +46,6 @@ import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.conf.ConfigNodeRemoveCheck;
 import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -146,45 +144,9 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
   @Override
   protected void remove(Set<Integer> nodeIds) throws IoTDBException {
-    // If the nodeId was null, this is a shorthand for removing the current dataNode.
-    // In this case we need to find our nodeId.
-
-    int removeConfigNodeId = -1;
-    if (nodeIds == null) {
-      removeConfigNodeId = CONF.getConfigNodeId();
-    } else {
-      if (nodeIds.size() != 1) {
-        throw new IoTDBException(
-            "It is not allowed to remove multiple ConfigNodes at the same time.", -1);
-      }
-      removeConfigNodeId = nodeIds.iterator().next();
-    }
-
-    try {
-      LOGGER.info("Starting to remove ConfigNode with node-id {}", removeConfigNodeId);
-
-      try {
-        TConfigNodeLocation removeConfigNodeLocation =
-            ConfigNodeRemoveCheck.getInstance().removeCheck(Long.toString(removeConfigNodeId));
-        if (removeConfigNodeLocation == null) {
-          LOGGER.error(
-              "The ConfigNode to be removed is not in the cluster, or the input format is incorrect.");
-          return;
-        }
-
-        ConfigNodeRemoveCheck.getInstance().removeConfigNode(removeConfigNodeLocation);
-      } catch (BadNodeUrlException e) {
-        LOGGER.warn("No ConfigNodes need to be removed.", e);
-        return;
-      }
-
-      LOGGER.info(
-          "ConfigNode: {} is removed. If the confignode data directory is no longer needed, you can delete it manually.",
-          removeConfigNodeId);
-    } catch (IOException e) {
-      LOGGER.error("Meet error when doing remove ConfigNode", e);
-      throw new IoTDBException("Error removing", -1);
-    }
+    throw new IoTDBException(
+        "The remove-confignode script has been deprecated. Please connect to the CLI and use SQL: remove confignode [confignode_id].",
+        -1);
   }
 
   public void active() {

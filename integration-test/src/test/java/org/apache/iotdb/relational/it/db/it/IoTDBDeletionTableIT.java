@@ -24,8 +24,6 @@ import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.category.ManualIT;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
@@ -121,6 +119,80 @@ public class IoTDBDeletionTableIT {
   @AfterClass
   public static void tearDownClass() {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Test
+  public void testDeleteTimeWithSort1() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "create table t1(device_id string tag, s0 int32 field, s1 int32 field, s3 int32 field)");
+      statement.execute(
+          "insert into t1(time, device_id, s0, s1, s3) values (10, 'device_1', 100, 100, 200)");
+      statement.execute(
+          "insert into t1(time, device_id, s0, s1, s3) values (150, 'device_1', 100, 100, 200)");
+      statement.execute(
+          "insert into t1(time, device_id, s0, s1, s3) values (202, 'device_1', 100, 100, 200)");
+      statement.execute("delete from t1 where time <= 200 and device_id='device_1'");
+      statement.execute(
+          "insert into t1(time, device_id, s0, s1, s3) values (10, 'device_1', 100, 100, 200)");
+      statement.execute(
+          "insert into t1(time, device_id, s0, s1, s3) values (10, 'device_1', 100, 100, 200)");
+      statement.execute("delete from t1 where time <= 200 and device_id='device_1'");
+
+      ResultSet resultSet = statement.executeQuery("select * from t1");
+      int count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      Assert.assertEquals(1, count);
+      count = 0;
+
+      statement.execute(
+          "insert into t1(time, device_id, s0, s1, s3) values (10, 'device_1', 100, 100, 200)");
+      statement.execute("delete from t1 where time <= 200 and device_id='device_1'");
+      resultSet = statement.executeQuery("select * from t1");
+      while (resultSet.next()) {
+        count++;
+      }
+      Assert.assertEquals(1, count);
+    }
+  }
+
+  @Test
+  public void testDeleteTimeWithSort2() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.execute(
+          "create table t2(device_id string tag, s0 int32 field, s1 int32 field, s3 int32 field)");
+      statement.execute(
+          "insert into t2(time, device_id, s0, s1, s3) values (10, 'device_1', 100, 100, 200)");
+      statement.execute(
+          "insert into t2(time, device_id, s0, s1, s3) values (150, 'device_1', 100, 100, 200)");
+      statement.execute(
+          "insert into t2(time, device_id, s0, s1, s3) values (202, 'device_1', 100, 100, 200)");
+      statement.execute("delete from t2 where time <= 200 and device_id='device_1'");
+
+      ResultSet resultSet = statement.executeQuery("select * from t2");
+      int count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      Assert.assertEquals(1, count);
+      count = 0;
+
+      statement.execute(
+          "insert into t2(time, device_id, s0, s1, s3) values (10, 'device_1', 100, 100, 200)");
+      statement.execute("delete from t2 where time <= 200 and device_id='device_1'");
+
+      resultSet = statement.executeQuery("select * from t2");
+      while (resultSet.next()) {
+        count++;
+      }
+      Assert.assertEquals(1, count);
+    }
   }
 
   /** Should delete this case after the deletion value filter feature be implemented */
@@ -351,6 +423,28 @@ public class IoTDBDeletionTableIT {
           cnt++;
         }
         assertEquals(49, cnt);
+      }
+    }
+    cleanData(4);
+  }
+
+  @Test
+  public void testSuccessfullyInvalidateCache() throws SQLException {
+    prepareData(4, 1);
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use test");
+      statement.executeQuery(
+          "SELECT last(time), last_by(s0,time), last_by(s1,time), last_by(s2,time), last_by(s3,time), last_by(s4,time) FROM vehicle4 where deviceId = 'd0'");
+
+      // [1, 400] -> [1, 299]
+      statement.execute("DELETE FROM vehicle4 WHERE time >= 300");
+      try (ResultSet set = statement.executeQuery("SELECT s0 FROM vehicle4")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(299, cnt);
       }
     }
     cleanData(4);
@@ -1625,7 +1719,6 @@ public class IoTDBDeletionTableIT {
   }
 
   @Test
-  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void deleteTableOfTheSameNameTest()
       throws IoTDBConnectionException, StatementExecutionException {
     int testNum = 24;
@@ -1751,6 +1844,47 @@ public class IoTDBDeletionTableIT {
         Statement statement = connection.createStatement()) {
       statement.execute("drop database if exists test");
       statement.execute("SET CONFIGURATION inner_seq_performer='read_chunk'");
+    }
+  }
+
+  @Test
+  public void testCaseSensitivity() throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS db1");
+      session.executeNonQueryStatement("USE db1");
+      session.executeNonQueryStatement("CREATE TABLE case_sensitivity (tag1 TAG, s1 INT32)");
+
+      session.executeNonQueryStatement(
+          "INSERT INTO case_sensitivity (time, tag1, s1) VALUES (1, 'd1', 1)");
+      session.executeNonQueryStatement(
+          "INSERT INTO case_sensitivity (time, tag1, s1) VALUES (2, 'd2', 2)");
+      session.executeNonQueryStatement(
+          "INSERT INTO case_sensitivity (time, tag1, s1) VALUES (3, 'd3', 3)");
+
+      session.executeNonQueryStatement("DELETE FROM DB1.case_sensitivity where time = 1");
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from db1.case_sensitivity order by time");
+      RowRecord rec = dataSet.next();
+      assertEquals(2, rec.getFields().get(0).getLongV());
+      assertEquals("d2", rec.getFields().get(1).toString());
+      assertEquals(2, rec.getFields().get(2).getIntV());
+      rec = dataSet.next();
+      assertEquals(3, rec.getFields().get(0).getLongV());
+      assertEquals("d3", rec.getFields().get(1).toString());
+      assertEquals(3, rec.getFields().get(2).getIntV());
+      assertFalse(dataSet.hasNext());
+
+      session.executeNonQueryStatement("DELETE FROM db1.CASE_sensitivity where time = 2");
+      dataSet = session.executeQueryStatement("select * from db1.case_sensitivity order by time");
+      rec = dataSet.next();
+      assertEquals(3, rec.getFields().get(0).getLongV());
+      assertEquals("d3", rec.getFields().get(1).toString());
+      assertEquals(3, rec.getFields().get(2).getIntV());
+      assertFalse(dataSet.hasNext());
+
+      session.executeNonQueryStatement("DELETE FROM db1.CASE_sensitivity where TAG1 = 'd3'");
+      dataSet = session.executeQueryStatement("select * from db1.case_sensitivity order by time");
+      assertFalse(dataSet.hasNext());
     }
   }
 
