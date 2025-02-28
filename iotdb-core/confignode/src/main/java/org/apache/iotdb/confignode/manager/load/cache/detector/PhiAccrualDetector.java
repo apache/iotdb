@@ -32,6 +32,16 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * The Phi Failure Detector, proposed by Hayashibara, Naohiro, et al. "The/spl phi/accrual failure
+ * detector.". It is an accrual approach based on heartbeat history analysis with dynamic
+ * sensitivity and tunable threshold. It is adaptive with early failure detection, increased
+ * accuracy and improved system stability.
+ *
+ * <p>Initially, Phi has a cold start period where it will only collect heartbeat samples and
+ * fallback decision-making to {@link FixedDetector}. After collecting enough samples, it will start
+ * failure detection using the Phi algo.
+ */
 public class PhiAccrualDetector implements IFailureDetector {
   private static final Logger LOGGER = LoggerFactory.getLogger(PhiAccrualDetector.class);
   private final long threshold;

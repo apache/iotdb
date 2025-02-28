@@ -54,6 +54,12 @@ public class DetectorTest {
     final List<AbstractHeartbeatSample> history =
         Collections.singletonList(new NodeHeartbeatSample(lastHeartbeatTs, NodeStatus.Running));
     Assert.assertFalse(fixedDetector.isAvailable(history));
+
+    final long lastAvailableHeartbeat = System.nanoTime() - 18 * sec;
+    final List<AbstractHeartbeatSample> history2 =
+        Collections.singletonList(
+            new NodeHeartbeatSample(lastAvailableHeartbeat, NodeStatus.Running));
+    Assert.assertTrue(fixedDetector.isAvailable(history2));
   }
 
   @Test
@@ -92,23 +98,26 @@ public class DetectorTest {
     assertInRange(getPhi(3000 + pause, heartbeatIntervals, minStd, pause), 35, 50);
   }
 
+  /**
+   * When a node hasn't responded with interval longer than accepted GC pause Phi Accrual can detect
+   * the problem quicker than Fix In this case, the accepted pause is 10s, but we haven't received
+   * heartbeats for 13s
+   */
   @Test
   public void testComparisonQuickFailureDetection() {
-    // When a node hasn't responded with interval longer than accepted GC pause
-    // Phi Accrual can detect the problem quicker than Fix
-    // In this case, the accepted pause is 10s, but we haven't received heartbeats for 13s
     long[] interval = new long[] {sec, sec, sec};
     List<AbstractHeartbeatSample> history = fromInterval(interval, 13 * sec);
     Assert.assertTrue(fixedDetector.isAvailable(history));
     Assert.assertFalse(phiAccrualDetector.isAvailable(history));
   }
 
+  /**
+   * When the system load is high, we may observe exceptionally long GC pause The first
+   * exceptionally long GC pause will be a false positive to Phi the GC pause is 15 (longer than the
+   * expected 10s) Phi will report false positive
+   */
   @Test
   public void testFalsePositiveOnExceptionallyLongGCPause() {
-    // When the system load is high, we may observe exceptionally long GC pause
-    // The first exceptionally long GC pause will be a false positive to Phi
-    // the GC pause is 15 (longer than the expected 10s)
-    // Phi will report false positive
     long[] interval = new long[] {sec, sec, sec};
     long gcPause = 15 * sec;
     List<AbstractHeartbeatSample> history = fromInterval(interval, gcPause + 2 * sec);
@@ -116,12 +125,13 @@ public class DetectorTest {
     Assert.assertFalse(phiAccrualDetector.isAvailable(history));
   }
 
+  /**
+   * When the system load is high, we may observe exceptionally long GC pause If the GC pause is
+   * very often, Phi can be adaptive to the new environment in this case, there are 2 long GC pause
+   * in history when a new GC with 21s pause occurs, Phi takes it normal while Fixed will fail.
+   */
   @Test
   public void testPhiAdaptionToFrequentGCPause() {
-    // When the system load is high, we may observe exceptionally long GC pause
-    // If the GC pause is very often, Phi can be adaptive to the new environment
-    // in this case, there are 2 long GC pause in history
-    // when a new GC with 21s pause occurs, Phi takes it normal while Fixed will fail.
     long[] interval =
         new long[] {
           sec,
@@ -142,10 +152,11 @@ public class DetectorTest {
     Assert.assertTrue(phiAccrualDetector.isAvailable(history));
   }
 
+  /**
+   * If the Phi detector haven't received enough samples its behavior will fall back to Fix detector
+   */
   @Test
   public void testColdStart() {
-    // If the Phi detector haven't received enough samples
-    // its behavior will fall back to Fix detector
     final PhiAccrualDetector coldStartPhi =
         new PhiAccrualDetector(30, 10 * sec, (long) (0.2 * sec), 60, fixedDetector);
     long[] interval = new long[] {sec, sec, sec};
