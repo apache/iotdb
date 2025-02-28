@@ -193,14 +193,15 @@ public class TableFunctionOperator implements ProcessOperator {
     if (needPassThrough) {
       // handle pass through column only if needed
       Column passThroughIndex = passThroughIndexBuilder.build();
-      for (int i = 0; i < passThroughIndex.getPositionCount(); i++) {
-        long index = passThroughIndex.getLong(i);
-        Record row = sliceCache.getOriginalRecord((int) index);
-        for (int j = 0; j < row.size(); j++) {
-          if (row.isNull(j)) {
-            passThroughColumnBuilders.get(j).appendNull();
-          } else {
-            passThroughColumnBuilders.get(j).writeObject(row.getObject(j));
+      for (Column[] passThroughColumns : sliceCache.getPassThroughResult(passThroughIndex)) {
+        for (int i = 0; i < passThroughColumns.length; i++) {
+          ColumnBuilder passThroughColumnBuilder = passThroughColumnBuilders.get(i);
+          for (int j = 0; j < passThroughColumns[i].getPositionCount(); j++) {
+            if (passThroughColumns[i].isNull(j)) {
+              passThroughColumnBuilder.appendNull();
+            } else {
+              passThroughColumnBuilder.write(passThroughColumns[i], j);
+            }
           }
         }
       }
