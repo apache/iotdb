@@ -167,8 +167,8 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
-    setProperty("avg_series_point_number_threshold", String.valueOf(avgSeriesPointNumberThreshold));
+  public CommonConfig setTargetChunkPointNum(int targetChunkPointNum) {
+    setProperty("target_chunk_point_num", String.valueOf(targetChunkPointNum));
     return this;
   }
 
@@ -255,6 +255,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setTTLCheckInterval(long ttlCheckInterval) {
+    setProperty("ttl_check_interval", String.valueOf(ttlCheckInterval));
+    return this;
+  }
+
+  @Override
   public CommonConfig setTimePartitionOrigin(long timePartitionOrigin) {
     setProperty("time_partition_origin", String.valueOf(timePartitionOrigin));
     return this;
@@ -312,6 +318,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setEnableMQTTService(boolean enableMQTTService) {
     setProperty("enable_mqtt_service", String.valueOf(enableMQTTService));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
+    setProperty("mqtt_payload_formatter", String.valueOf(mqttPayloadFormatter));
     return this;
   }
 
@@ -378,6 +390,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setSeriesSlotNum(int seriesSlotNum) {
     setProperty("series_slot_num", String.valueOf(seriesSlotNum));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
+    setProperty("series_partition_executor_class", seriesPartitionExecutorClass);
     return this;
   }
 

@@ -20,17 +20,17 @@ package org.apache.iotdb.commons.auth.authorizer;
 
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
-import org.apache.iotdb.commons.auth.role.IRoleManager;
-import org.apache.iotdb.commons.auth.user.IUserManager;
+import org.apache.iotdb.commons.auth.role.BasicRoleManager;
+import org.apache.iotdb.commons.auth.user.BasicUserManager;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.AuthUtils;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -50,26 +50,10 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   private static final String NO_SUCH_ROLE_EXCEPTION = "No such role : %s";
   private static final String NO_SUCH_USER_EXCEPTION = "No such user : %s";
 
-  IUserManager userManager;
-  IRoleManager roleManager;
+  BasicUserManager userManager;
+  BasicRoleManager roleManager;
 
-  /**
-   * This filed only for pre version. When we do a major version upgrade, it can be removed
-   * directly.
-   */
-  // FOR PRE VERSION BEGIN -----
-
-  @Override
-  public void checkUserPathPrivilege() {
-    userManager.checkAndRefreshPathPri();
-    roleManager.checkAndRefreshPathPri();
-    userManager.setPreVersion(false);
-    roleManager.setPreVersion(false);
-  }
-
-  // FOR PRE VERSION END -----
-
-  public BasicAuthorizer(IUserManager userManager, IRoleManager roleManager) throws AuthException {
+  public BasicAuthorizer(BasicUserManager userManager, BasicRoleManager roleManager) {
     this.userManager = userManager;
     this.roleManager = roleManager;
   }
@@ -115,9 +99,15 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   /** Checks if a user has admin privileges */
   protected abstract boolean isAdmin(String username);
 
+  private void checkAdmin(String username, String errmsg) throws AuthException {
+    if (isAdmin(username)) {
+      throw new AuthException(TSStatusCode.NO_PERMISSION, errmsg);
+    }
+  }
+
   @Override
   public boolean login(String username, String password) throws AuthException {
-    User user = userManager.getUser(username);
+    User user = userManager.getEntity(username);
     return user != null
         && password != null
         && AuthUtils.validatePassword(password, user.getPassword());
@@ -149,45 +139,39 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void deleteUser(String username) throws AuthException {
-    if (isAdmin(username)) {
-      throw new AuthException(
-          TSStatusCode.NO_PERMISSION, "Default administrator cannot be deleted");
-    }
-    if (!userManager.deleteUser(username)) {
+    checkAdmin(username, "Default administrator cannot be deleted");
+    if (!userManager.deleteEntity(username)) {
       throw new AuthException(
           TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", username));
     }
   }
 
   @Override
-  public void grantPrivilegeToUser(
-      String username, PartialPath path, int privilegeId, boolean grantOpt) throws AuthException {
-    if (isAdmin(username)) {
-      throw new AuthException(
-          TSStatusCode.NO_PERMISSION,
-          "Invalid operation, administrator already has all privileges");
-    }
-    userManager.grantPrivilegeToUser(username, path, privilegeId, grantOpt);
+  public void grantPrivilegeToUser(String username, PrivilegeUnion union) throws AuthException {
+    checkAdmin(username, "Invalid operation, administrator already has all privileges");
+    userManager.grantPrivilegeToEntity(username, union);
   }
 
   @Override
-  public void revokePrivilegeFromUser(String username, PartialPath path, int privilegeId)
-      throws AuthException {
-    if (isAdmin(username)) {
+  public void revokePrivilegeFromUser(String username, PrivilegeUnion union) throws AuthException {
+    checkAdmin(username, "Invalid operation, administrator must have all privileges");
+    userManager.revokePrivilegeFromEntity(username, union);
+  }
+
+  @Override
+  public void revokeAllPrivilegeFromUser(String userName) throws AuthException {
+    checkAdmin(userName, "Invalid operation, administrator cannot revoke privileges");
+    User user = userManager.getEntity(userName);
+    if (user == null) {
       throw new AuthException(
-          TSStatusCode.NO_PERMISSION, "Invalid operation, administrator must have all privileges");
+          TSStatusCode.USER_NOT_EXIST, String.format("User %s does not exist", userName));
     }
-    if (!userManager.revokePrivilegeFromUser(username, path, privilegeId)) {
-      throw new AuthException(
-          TSStatusCode.NOT_HAS_PRIVILEGE,
-          String.format(
-              "User %s does not have %s on %s",
-              username, PrivilegeType.values()[privilegeId], path != null ? path : "system"));
-    }
+    user.revokeAllRelationalPrivileges();
   }
 
   @Override
   public void createRole(String roleName) throws AuthException {
+    AuthUtils.validateRolename(roleName);
     if (!roleManager.createRole(roleName)) {
       LOGGER.error("Role {} already exists", roleName);
       throw new AuthException(
@@ -197,13 +181,13 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void deleteRole(String roleName) throws AuthException {
-    boolean success = roleManager.deleteRole(roleName);
+    boolean success = roleManager.deleteEntity(roleName);
     if (!success) {
       throw new AuthException(
           TSStatusCode.ROLE_NOT_EXIST, String.format("Role %s does not exist", roleName));
     } else {
       // proceed to revoke the role in all users
-      List<String> users = userManager.listAllUsers();
+      List<String> users = userManager.listAllEntities();
       for (String user : users) {
         try {
           userManager.revokeRoleFromUser(roleName, user);
@@ -219,39 +203,37 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
-  public void grantPrivilegeToRole(
-      String roleName, PartialPath path, int privilegeId, boolean grantOpt) throws AuthException {
-    roleManager.grantPrivilegeToRole(roleName, path, privilegeId, grantOpt);
+  public void grantPrivilegeToRole(String rolename, PrivilegeUnion union) throws AuthException {
+    roleManager.grantPrivilegeToEntity(rolename, union);
   }
 
   @Override
-  public void revokePrivilegeFromRole(String roleName, PartialPath path, int privilegeId)
-      throws AuthException {
-    if (!roleManager.revokePrivilegeFromRole(roleName, path, privilegeId)) {
-      throw new AuthException(
-          TSStatusCode.NOT_HAS_PRIVILEGE,
-          String.format(
-              "Role %s does not have %s on %s",
-              roleName, PrivilegeType.values()[privilegeId], path));
-    }
+  public void revokePrivilegeFromRole(String roleName, PrivilegeUnion union) throws AuthException {
+    roleManager.revokePrivilegeFromEntity(roleName, union);
   }
 
   @Override
-  public void grantRoleToUser(String roleName, String username) throws AuthException {
-    if (isAdmin(username)) {
+  public void revokeAllPrivilegeFromRole(String roleName) throws AuthException {
+    Role role = roleManager.getEntity(roleName);
+    if (role == null) {
       throw new AuthException(
-          TSStatusCode.NO_PERMISSION, "Invalid operation, cannot grant role to administrator ");
+          TSStatusCode.ROLE_NOT_EXIST, String.format("Role %s does not exist", roleName));
     }
+    role.revokeAllRelationalPrivileges();
+  }
 
-    Role role = roleManager.getRole(roleName);
+  @Override
+  public void grantRoleToUser(String roleName, String userName) throws AuthException {
+    checkAdmin(userName, "Invalid operation, cannot grant role to administrator");
+    Role role = roleManager.getEntity(roleName);
     if (role == null) {
       throw new AuthException(
           TSStatusCode.ROLE_NOT_EXIST, String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
     }
     // the role may be deleted before it ts granted to the user, so a double check is necessary.
-    boolean success = userManager.grantRoleToUser(roleName, username);
+    boolean success = userManager.grantRoleToUser(roleName, userName);
     if (success) {
-      role = roleManager.getRole(roleName);
+      role = roleManager.getEntity(roleName);
       if (role == null) {
         throw new AuthException(
             TSStatusCode.ROLE_NOT_EXIST, String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
@@ -259,41 +241,41 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     } else {
       throw new AuthException(
           TSStatusCode.USER_ALREADY_HAS_ROLE,
-          String.format("User %s already has role %s", username, roleName));
+          String.format("User %s already has role %s", userName, roleName));
     }
   }
 
   @Override
-  public void revokeRoleFromUser(String roleName, String username) throws AuthException {
-    if (isAdmin(username)) {
+  public void revokeRoleFromUser(String roleName, String userName) throws AuthException {
+    if (isAdmin(userName)) {
       throw new AuthException(
           TSStatusCode.NO_PERMISSION, "Invalid operation, cannot revoke role from administrator ");
     }
 
-    Role role = roleManager.getRole(roleName);
+    Role role = roleManager.getEntity(roleName);
     if (role == null) {
       throw new AuthException(
           TSStatusCode.ROLE_NOT_EXIST, String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
     }
-    if (!userManager.revokeRoleFromUser(roleName, username)) {
+    if (!userManager.revokeRoleFromUser(roleName, userName)) {
       throw new AuthException(
           TSStatusCode.USER_NOT_HAS_ROLE,
-          String.format("User %s does not have role %s", username, roleName));
+          String.format("User %s does not have role %s", userName, roleName));
     }
   }
 
   @Override
-  public Set<Integer> getPrivileges(String username, PartialPath path) throws AuthException {
-    User user = userManager.getUser(username);
+  public Set<PrivilegeType> getPrivileges(String userName, PartialPath path) throws AuthException {
+    User user = userManager.getEntity(userName);
     if (user == null) {
       throw new AuthException(
-          TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_EXCEPTION, username));
+          TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_EXCEPTION, userName));
     }
     // get privileges of the user
-    Set<Integer> privileges = user.getPathPrivileges(path);
+    Set<PrivilegeType> privileges = user.getPathPrivileges(path);
     // merge the privileges of the roles of the user
-    for (String roleName : user.getRoleList()) {
-      Role role = roleManager.getRole(roleName);
+    for (String roleName : user.getRoleSet()) {
+      Role role = roleManager.getEntity(roleName);
       if (role != null) {
         privileges.addAll(role.getPathPrivileges(path));
       }
@@ -302,63 +284,77 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
-  public void updateUserPassword(String username, String newPassword) throws AuthException {
-    if (!userManager.updateUserPassword(username, newPassword)) {
+  public void updateUserPassword(String userName, String newPassword) throws AuthException {
+    if (!userManager.updateUserPassword(userName, newPassword)) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PARAMETER, "password " + newPassword + " is illegal");
     }
   }
 
   @Override
-  public boolean checkUserPrivileges(String username, PartialPath path, int privilegeId)
-      throws AuthException {
-    if (isAdmin(username)) {
+  public boolean checkUserPrivileges(String userName, PrivilegeUnion union) throws AuthException {
+    if (isAdmin(userName)) {
       return true;
     }
-    User user = userManager.getUser(username);
+    User user = userManager.getEntity(userName);
     if (user == null) {
       throw new AuthException(
-          TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_EXCEPTION, username));
+          TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_EXCEPTION, userName));
     }
-    if (path != null) {
-      // get privileges of the user
-      if (user.checkPathPrivilege(path, privilegeId)) {
-        return true;
-      }
-      // merge the privileges of the roles of the user
-      for (String roleName : user.getRoleList()) {
-        Role role = roleManager.getRole(roleName);
-        if (role.checkPathPrivilege(path, privilegeId)) {
-          return true;
-        }
-      }
-    } else {
-      if (user.checkSysPrivilege(privilegeId)) {
-        return true;
-      }
-      for (String roleName : user.getRoleList()) {
-        Role role = roleManager.getRole(roleName);
-        if (role.checkSysPrivilege(privilegeId)) {
-          return true;
-        }
-      }
+    if (checkEntityPrivileges(user, union)) {
+      return true;
     }
 
+    for (String roleName : user.getRoleSet()) {
+      Role role = roleManager.getEntity(roleName);
+      if (checkEntityPrivileges(role, union)) {
+        return true;
+      }
+    }
     return false;
   }
 
-  @Override
-  public Map<String, Boolean> getAllUserWaterMarkStatus() {
-    Map<String, Boolean> userWaterMarkStatus = new HashMap<>();
-    List<String> allUsers = listAllUsers();
-    for (String user : allUsers) {
-      try {
-        userWaterMarkStatus.put(user, isUserUseWaterMark(user));
-      } catch (AuthException e) {
-        LOGGER.error("No such user: {}", user);
-      }
+  private boolean checkEntityPrivileges(Role role, PrivilegeUnion union) {
+    switch (union.getModelType()) {
+      case TREE:
+        if (union.isGrantOption()) {
+          return role.checkPathPrivilegeGrantOpt(union.getPath(), union.getPrivilegeType());
+        }
+        return role.checkPathPrivilege(union.getPath(), union.getPrivilegeType());
+      case RELATIONAL:
+        // check any scope privilege
+        if (union.isForAny()) {
+          if (union.isGrantOption()) {
+            return role.checkAnyScopePrivilegeGrantOption(union.getPrivilegeType());
+          }
+          return role.checkAnyScopePrivilege(union.getPrivilegeType());
+        } else if (union.getTbName() == null) {
+          if (union.getPrivilegeType() == null) {
+            return role.checkDBVisible(union.getDBName());
+          }
+          if (union.isGrantOption()) {
+            return role.checkDatabasePrivilegeGrantOption(
+                union.getDBName(), union.getPrivilegeType());
+          }
+          return role.checkDatabasePrivilege(union.getDBName(), union.getPrivilegeType());
+        } else {
+          if (union.getPrivilegeType() == null) {
+            return role.checkTBVisible(union.getDBName(), union.getTbName());
+          }
+          if (union.isGrantOption()) {
+            return role.checkTablePrivilegeGrantOption(
+                union.getDBName(), union.getTbName(), union.getPrivilegeType());
+          }
+          return role.checkTablePrivilege(
+              union.getDBName(), union.getTbName(), union.getPrivilegeType());
+        }
+      case SYSTEM:
+        if (union.isGrantOption()) {
+          return role.checkSysPriGrantOpt(union.getPrivilegeType());
+        }
+        return role.checkSysPrivilege(union.getPrivilegeType());
     }
-    return userWaterMarkStatus;
+    return false;
   }
 
   @Override
@@ -415,42 +411,22 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public List<String> listAllUsers() {
-    return userManager.listAllUsers();
+    return userManager.listAllEntities();
   }
 
   @Override
   public List<String> listAllRoles() {
-    return roleManager.listAllRoles();
+    return roleManager.listAllEntities();
   }
 
   @Override
   public Role getRole(String roleName) throws AuthException {
-    return roleManager.getRole(roleName);
+    return roleManager.getEntity(roleName);
   }
 
   @Override
   public User getUser(String username) throws AuthException {
-    return userManager.getUser(username);
-  }
-
-  @Override
-  public boolean isUserUseWaterMark(String userName) throws AuthException {
-    return userManager.isUserUseWaterMark(userName);
-  }
-
-  @Override
-  public void setUserUseWaterMark(String userName, boolean useWaterMark) throws AuthException {
-    userManager.setUserUseWaterMark(userName, useWaterMark);
-  }
-
-  @Override
-  public void replaceAllUsers(Map<String, User> users) throws AuthException {
-    userManager.replaceAllUsers(users);
-  }
-
-  @Override
-  public void replaceAllRoles(Map<String, Role> roles) throws AuthException {
-    roleManager.replaceAllRoles(roles);
+    return userManager.getEntity(username);
   }
 
   @Override
@@ -463,27 +439,5 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
     userManager.processLoadSnapshot(snapshotDir);
     roleManager.processLoadSnapshot(snapshotDir);
-  }
-
-  @Override
-  public void setUserForPreVersion(boolean preVersion) {
-    userManager.setPreVersion(preVersion);
-  }
-
-  @Override
-  public void setRoleForPreVersion(boolean preVersion) {
-    roleManager.setPreVersion(preVersion);
-  }
-
-  @Override
-  @TestOnly
-  public boolean forUserPreVersion() {
-    return this.userManager.preVersion();
-  }
-
-  @Override
-  @TestOnly
-  public boolean forRolePreVersion() {
-    return this.roleManager.preVersion();
   }
 }

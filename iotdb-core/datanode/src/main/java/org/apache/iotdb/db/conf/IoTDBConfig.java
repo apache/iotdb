@@ -113,7 +113,10 @@ public class IoTDBConfig {
   private int mqttHandlerPoolSize = 1;
 
   /** The mqtt message payload formatter. */
-  private String mqttPayloadFormatter = "json";
+  private String mqttPayloadFormatter = "tree-json";
+
+  /** The mqtt save data path */
+  private String mqttDataPath = "data/";
 
   /** Max mqtt message size. Unit: byte */
   private int mqttMaxMessageSize = 1048576;
@@ -433,8 +436,11 @@ public class IoTDBConfig {
   /** The sort algorithm used in TVList */
   private TVListSortAlgorithm tvListSortAlgorithm = TVListSortAlgorithm.TIM;
 
-  /** When average series point number reaches this, flush the memtable to disk */
-  private int avgSeriesPointNumberThreshold = 100000;
+  /**
+   * the threshold when working TVList is sorted and added into immutable TVList list in the
+   * writable memtable
+   */
+  private int tvListSortThreshold = 0;
 
   /** Enable inner space compaction for sequence files */
   private volatile boolean enableSeqSpaceCompaction = true;
@@ -494,10 +500,10 @@ public class IoTDBConfig {
   /** The target tsfile size in compaction, 2 GB by default */
   private long targetCompactionFileSize = 2147483648L;
 
-  /** The target chunk size in compaction. */
-  private long targetChunkSize = 1048576L;
+  /** The target chunk size in compaction and flushing. */
+  private long targetChunkSize = 1600000L;
 
-  /** The target chunk point num in compaction. */
+  /** The target chunk point num in compaction and flushing. */
   private long targetChunkPointNum = 100000L;
 
   /**
@@ -541,9 +547,6 @@ public class IoTDBConfig {
 
   /** The interval of compaction task schedulation in each virtual database. The unit is ms. */
   private long compactionScheduleIntervalInMs = 60_000L;
-
-  /** The interval of ttl check task in each database. The unit is ms. Default is 2 hours. */
-  private long ttlCheckInterval = 7_200_000L;
 
   /** The number of threads to be set up to check ttl. */
   private int ttlCheckerNum = 1;
@@ -1162,6 +1165,7 @@ public class IoTDBConfig {
   /** Load related */
   private double maxAllocateMemoryRatioForLoad = 0.8;
 
+  private int loadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount = 4096;
   private int loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber = 4096;
   private int loadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber = 4096; // For table model
   private long loadTsFileAnalyzeSchemaMemorySizeInBytes =
@@ -1204,10 +1208,11 @@ public class IoTDBConfig {
           + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
           + File.separator
           + IoTDBConstant.LOAD_TSFILE_ACTIVE_LISTENING_FAILED_FOLDER_NAME;
-
   private long loadActiveListeningCheckIntervalSeconds = 5L;
 
   private int loadActiveListeningMaxThreadNum = Runtime.getRuntime().availableProcessors();
+
+  private boolean loadActiveListeningVerifyEnable = true;
 
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
@@ -2309,12 +2314,12 @@ public class IoTDBConfig {
     this.tvListSortAlgorithm = tvListSortAlgorithm;
   }
 
-  public int getAvgSeriesPointNumberThreshold() {
-    return avgSeriesPointNumberThreshold;
+  public int getTvListSortThreshold() {
+    return tvListSortThreshold;
   }
 
-  public void setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
-    this.avgSeriesPointNumberThreshold = avgSeriesPointNumberThreshold;
+  public void setTVListSortThreshold(int tvListSortThreshold) {
+    this.tvListSortThreshold = tvListSortThreshold;
   }
 
   public boolean isRpcThriftCompressionEnable() {
@@ -2725,6 +2730,14 @@ public class IoTDBConfig {
     this.mqttPayloadFormatter = mqttPayloadFormatter;
   }
 
+  public String getMqttDataPath() {
+    return mqttDataPath;
+  }
+
+  public void setMqttDataPath(String mqttDataPath) {
+    this.mqttDataPath = mqttDataPath;
+  }
+
   public int getMqttMaxMessageSize() {
     return mqttMaxMessageSize;
   }
@@ -3061,16 +3074,8 @@ public class IoTDBConfig {
     this.compactionScheduleIntervalInMs = compactionScheduleIntervalInMs;
   }
 
-  public long getTTlCheckInterval() {
-    return ttlCheckInterval;
-  }
-
   public int getTTlCheckerNum() {
     return ttlCheckerNum;
-  }
-
-  public void setTtlCheckInterval(long ttlCheckInterval) {
-    this.ttlCheckInterval = ttlCheckInterval;
   }
 
   public long getMaxExpiredTime() {
@@ -4061,6 +4066,16 @@ public class IoTDBConfig {
     this.maxAllocateMemoryRatioForLoad = maxAllocateMemoryRatioForLoad;
   }
 
+  public int getLoadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount() {
+    return loadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount;
+  }
+
+  public void setLoadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount(
+      int loadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount) {
+    this.loadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount =
+        loadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount;
+  }
+
   public int getLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber() {
     return loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber;
   }
@@ -4155,6 +4170,14 @@ public class IoTDBConfig {
 
   public void setLoadActiveListeningMaxThreadNum(int loadActiveListeningMaxThreadNum) {
     this.loadActiveListeningMaxThreadNum = loadActiveListeningMaxThreadNum;
+  }
+
+  public boolean isLoadActiveListeningVerifyEnable() {
+    return loadActiveListeningVerifyEnable;
+  }
+
+  public void setLoadActiveListeningVerifyEnable(boolean loadActiveListeningVerifyEnable) {
+    this.loadActiveListeningVerifyEnable = loadActiveListeningVerifyEnable;
   }
 
   public long getLoadActiveListeningCheckIntervalSeconds() {

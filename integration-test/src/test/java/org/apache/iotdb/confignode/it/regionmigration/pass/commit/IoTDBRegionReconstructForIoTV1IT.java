@@ -122,13 +122,21 @@ public class IoTDBRegionReconstructForIoTV1IT extends IoTDBRegionOperationReliab
       EnvFactory.getAbstractEnv().checkNodeInStatus(dataNodeToBeClosed, NodeStatus.Running);
       session.executeNonQueryStatement(
           String.format(RECONSTRUCT_FORMAT, selectedRegion, dataNodeToBeReconstructed));
-      Awaitility.await()
-          .pollInterval(1, TimeUnit.SECONDS)
-          .atMost(1, TimeUnit.MINUTES)
-          .until(
-              () ->
-                  getRegionStatusWithoutRunning(session).isEmpty()
-                      && dataDirToBeReconstructed.exists());
+      try {
+        Awaitility.await()
+            .pollInterval(1, TimeUnit.SECONDS)
+            .atMost(1, TimeUnit.MINUTES)
+            .until(
+                () ->
+                    getRegionStatusWithoutRunning(session).isEmpty()
+                        && dataDirToBeReconstructed.getAbsoluteFile().exists());
+      } catch (Exception e) {
+        LOGGER.error(
+            "Two factor: {} && {}",
+            getRegionStatusWithoutRunning(session).isEmpty(),
+            dataDirToBeReconstructed.getAbsoluteFile().exists());
+        Assert.fail();
+      }
       EnvFactory.getEnv().dataNodeIdToWrapper(dataNodeToBeClosed).get().stopForcibly();
 
       // now, the query should work fine

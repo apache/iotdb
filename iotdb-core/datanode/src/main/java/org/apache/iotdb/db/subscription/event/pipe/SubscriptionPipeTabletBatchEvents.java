@@ -19,19 +19,34 @@
 
 package org.apache.iotdb.db.subscription.event.pipe;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
+import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletIterationSnapshot;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
+import static com.google.common.base.MoreObjects.toStringHelper;
 
 public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents {
 
   private final SubscriptionPipeTabletEventBatch batch;
+  private volatile SubscriptionPipeTabletIterationSnapshot iterationSnapshot;
 
   public SubscriptionPipeTabletBatchEvents(final SubscriptionPipeTabletEventBatch batch) {
     this.batch = batch;
   }
 
+  public void receiveIterationSnapshot(
+      final SubscriptionPipeTabletIterationSnapshot iterationSnapshot) {
+    this.iterationSnapshot = iterationSnapshot;
+  }
+
   @Override
   public void ack() {
     batch.ack();
+    iterationSnapshot.clear();
   }
 
   @Override
@@ -43,13 +58,39 @@ public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents
 
   @Override
   public String toString() {
-    return "SubscriptionPipeTabletBatchEvents{batch=" + batch + "}";
+    return toStringHelper(this)
+        .add("batch", batch)
+        .add(
+            "events",
+            Objects.nonNull(iterationSnapshot)
+                ? formatEnrichedEvents(iterationSnapshot.getIteratedEnrichedEvents(), 4)
+                : "<unknown>")
+        .toString();
+  }
+
+  private static String formatEnrichedEvents(
+      final List<EnrichedEvent> enrichedEvents, final int threshold) {
+    if (Objects.isNull(enrichedEvents)) {
+      return "[]";
+    }
+    final List<String> eventMessageList =
+        enrichedEvents.stream()
+            .limit(threshold)
+            .map(EnrichedEvent::coreReportMessage)
+            .collect(Collectors.toList());
+    if (enrichedEvents.size() > threshold) {
+      eventMessageList.add(
+          String.format("omit the remaining %s event(s)...", enrichedEvents.size() - threshold));
+    }
+    return eventMessageList.toString();
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   @Override
   public int getPipeEventCount() {
-    return batch.getPipeEventCount();
+    return Objects.nonNull(iterationSnapshot)
+        ? iterationSnapshot.getIteratedEnrichedEvents().size()
+        : 0;
   }
 }

@@ -62,6 +62,10 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
       new PipeConfigPhysicalPlanTreePatternParseVisitor();
   public static final PipeConfigPhysicalPlanTablePatternParseVisitor TABLE_PATTERN_PARSE_VISITOR =
       new PipeConfigPhysicalPlanTablePatternParseVisitor();
+  public static final PipeConfigPhysicalPlanTreeScopeParseVisitor TREE_SCOPE_PARSE_VISITOR =
+      new PipeConfigPhysicalPlanTreeScopeParseVisitor();
+  public static final PipeConfigPhysicalPlanTableScopeParseVisitor TABLE_SCOPE_PARSE_VISITOR =
+      new PipeConfigPhysicalPlanTableScopeParseVisitor();
 
   private Set<ConfigPhysicalPlanType> listenedTypeSet = new HashSet<>();
 
@@ -141,7 +145,7 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
       final ConfigPhysicalPlan plan,
       final IoTDBTreePattern treePattern,
       final TablePattern tablePattern) {
-    Optional<ConfigPhysicalPlan> result = Optional.empty();
+    Optional<ConfigPhysicalPlan> result = Optional.of(plan);
     final Boolean isTableDatabasePlan = isTableDatabasePlan(plan);
     if (!Boolean.TRUE.equals(isTableDatabasePlan)) {
       result = TREE_PATTERN_PARSE_VISITOR.process(plan, treePattern);
@@ -150,7 +154,22 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
       }
     }
     if (!Boolean.FALSE.equals(isTableDatabasePlan)) {
-      result = TABLE_PATTERN_PARSE_VISITOR.process(plan, tablePattern);
+      result = TABLE_PATTERN_PARSE_VISITOR.process(result.get(), tablePattern);
+      if (!result.isPresent()) {
+        return result;
+      }
+    }
+    if (!treePattern.isTreeModelDataAllowedToBeCaptured()) {
+      result = TREE_SCOPE_PARSE_VISITOR.process(result.get(), null);
+      if (!result.isPresent()) {
+        return result;
+      }
+    }
+    if (!tablePattern.isTableModelDataAllowedToBeCaptured()) {
+      result = TABLE_SCOPE_PARSE_VISITOR.process(result.get(), null);
+      if (!result.isPresent()) {
+        return result;
+      }
     }
     return result;
   }

@@ -21,6 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.FunctionType;
 import org.apache.iotdb.common.rpc.thrift.Model;
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
@@ -80,6 +83,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
@@ -146,13 +151,13 @@ import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
@@ -183,6 +188,10 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTTLTas
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowModelsTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ExtendRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.RemoveRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DeleteDeviceTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
@@ -221,6 +230,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
@@ -236,10 +247,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipePlug
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ExtendRegionStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.MigrateRegionStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.ReconstructRegionStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.region.RemoveRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.CreateTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.DropTopicStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.subscription.ShowSubscriptionsStatement;
@@ -316,6 +323,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -1338,19 +1346,29 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> killQuery(final KillQueryStatement killQueryStatement) {
     int dataNodeId = -1;
     String queryId = killQueryStatement.getQueryId();
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     if (!killQueryStatement.isKillAll()) {
       String[] splits = queryId.split("_");
       try {
         // We just judge the input queryId has three '_' and the DataNodeId from it is non-negative
         // here
         if (splits.length != 4 || ((dataNodeId = Integer.parseInt(splits[3])) < 0)) {
-          throw new SemanticException("Please ensure your input <queryId> is correct");
+          future.setException(
+              new IoTDBException(
+                  "Please ensure your input <queryId> is correct",
+                  TSStatusCode.SEMANTIC_ERROR.getStatusCode(),
+                  true));
+          return future;
         }
       } catch (NumberFormatException e) {
-        throw new SemanticException("Please ensure your input <queryId> is correct");
+        future.setException(
+            new IoTDBException(
+                "Please ensure your input <queryId> is correct",
+                TSStatusCode.SEMANTIC_ERROR.getStatusCode(),
+                true));
+        return future;
       }
     }
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TSStatus executionStatus = client.killQuery(queryId, dataNodeId);
@@ -1427,6 +1445,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> showCurrentSqlDialect(final String sqlDialect) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     ShowCurrentSqlDialectTask.buildTsBlock(sqlDialect, future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> setSqlDialect(IClientSession.SqlDialect sqlDialect) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try {
+      SessionManager.getInstance().getCurrSession().setSqlDialect(sqlDialect);
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } catch (Exception e) {
+      future.setException(e);
+    }
     return future;
   }
 
@@ -2774,16 +2804,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> migrateRegion(
-      final MigrateRegionStatement migrateRegionStatement) {
+  public SettableFuture<ConfigTaskResult> migrateRegion(final MigrateRegionTask migrateRegionTask) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TMigrateRegionReq tMigrateRegionReq =
           new TMigrateRegionReq(
-              migrateRegionStatement.getRegionId(),
-              migrateRegionStatement.getFromId(),
-              migrateRegionStatement.getToId());
+              migrateRegionTask.getStatement().getRegionId(),
+              migrateRegionTask.getStatement().getFromId(),
+              migrateRegionTask.getStatement().getToId(),
+              migrateRegionTask.getModel());
       final TSStatus status = configNodeClient.migrateRegion(tMigrateRegionReq);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         future.setException(new IoTDBException(status.message, status.code));
@@ -2798,15 +2828,123 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> removeDataNode(
+      final RemoveDataNodeStatement removeDataNodeStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      Set<Integer> nodeIds = removeDataNodeStatement.getNodeIds();
+
+      Set<Integer> validNodeIds =
+          configNodeClient.getDataNodeConfiguration(-1).getDataNodeConfigurationMap().keySet();
+
+      Set<Integer> invalidNodeIds = new HashSet<>(nodeIds);
+      invalidNodeIds.removeAll(validNodeIds);
+
+      if (!invalidNodeIds.isEmpty()) {
+        LOGGER.info("Cannot remove invalid nodeIds:{}", invalidNodeIds);
+        nodeIds.removeAll(invalidNodeIds);
+      }
+
+      LOGGER.info("Starting to remove DataNode with nodeIds: {}", nodeIds);
+
+      final Set<Integer> finalNodeIds = nodeIds;
+      List<TDataNodeLocation> removeDataNodeLocations =
+          configNodeClient
+              .getDataNodeConfiguration(-1)
+              .getDataNodeConfigurationMap()
+              .values()
+              .stream()
+              .map(TDataNodeConfiguration::getLocation)
+              .filter(location -> finalNodeIds.contains(location.getDataNodeId()))
+              .collect(Collectors.toList());
+
+      List<String> simplifiedLocations = new ArrayList<>();
+      for (TDataNodeLocation dataNodeLocation : removeDataNodeLocations) {
+        simplifiedLocations.add(
+            dataNodeLocation.getDataNodeId()
+                + "@"
+                + dataNodeLocation.getInternalEndPoint().getIp());
+      }
+
+      LOGGER.info("Start to remove datanode, removed DataNodes endpoint: {}", simplifiedLocations);
+      TDataNodeRemoveReq removeReq = new TDataNodeRemoveReq(removeDataNodeLocations);
+      TDataNodeRemoveResp removeResp = configNodeClient.removeDataNode(removeReq);
+      LOGGER.info("Submit Remove DataNodes result {} ", removeResp);
+      if (removeResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(
+            new IoTDBException(
+                removeResp.getStatus().toString(), removeResp.getStatus().getCode()));
+        return future;
+      } else {
+        LOGGER.info(
+            "Submit remove-datanode request successfully, but the process may fail. "
+                + "more details are shown in the logs of confignode-leader and removed-datanode, "
+                + "and after the process of removing datanode ends successfully, "
+                + "you are supposed to delete directory and data of the removed-datanode manually");
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (Exception e) {
+      future.setException(e);
+    }
+
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> removeConfigNode(
+      final RemoveConfigNodeStatement removeConfigNodeStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    int removeConfigNodeId = removeConfigNodeStatement.getNodeId();
+
+    LOGGER.info("Starting to remove ConfigNode with node-id {}", removeConfigNodeId);
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      TShowClusterResp showClusterResp = configNodeClient.showCluster();
+      List<TConfigNodeLocation> removeConfigNodeLocations =
+          showClusterResp.getConfigNodeList().stream()
+              .filter(node -> node.configNodeId == removeConfigNodeId)
+              .collect(Collectors.toList());
+      if (removeConfigNodeLocations.size() != 1) {
+        LOGGER.error(
+            "The ConfigNode to be removed is not in the cluster, or the input format is incorrect.");
+        future.set(new ConfigTaskResult(TSStatusCode.REMOVE_CONFIGNODE_ERROR));
+      }
+
+      TConfigNodeLocation configNodeLocation = removeConfigNodeLocations.get(0);
+      TSStatus status = configNodeClient.removeConfigNode(configNodeLocation);
+
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(new IOException("Remove ConfigNode failed: " + status.getMessage()));
+        return future;
+      } else {
+        LOGGER.info(
+            "ConfigNode: {} is removed. If the confignode data directory is no longer needed, you can delete it manually.",
+            removeConfigNodeId);
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+
+    } catch (Exception e) {
+      future.setException(e);
+      return future;
+    }
+
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> reconstructRegion(
-      ReconstructRegionStatement reconstructRegionStatement) {
+      ReconstructRegionTask reconstructRegionTask) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TReconstructRegionReq req =
           new TReconstructRegionReq(
-              reconstructRegionStatement.getRegionIds(),
-              reconstructRegionStatement.getDataNodeId());
+              reconstructRegionTask.getStatement().getRegionIds(),
+              reconstructRegionTask.getStatement().getDataNodeId(),
+              reconstructRegionTask.getModel());
       final TSStatus status = configNodeClient.reconstructRegion(req);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         future.setException(new IoTDBException(status.message, status.code));
@@ -2821,14 +2959,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> extendRegion(
-      ExtendRegionStatement extendRegionStatement) {
+  public SettableFuture<ConfigTaskResult> extendRegion(ExtendRegionTask extendRegionTask) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TExtendRegionReq req =
           new TExtendRegionReq(
-              extendRegionStatement.getRegionId(), extendRegionStatement.getDataNodeId());
+              extendRegionTask.getStatement().getRegionId(),
+              extendRegionTask.getStatement().getDataNodeId(),
+              extendRegionTask.getModel());
       final TSStatus status = configNodeClient.extendRegion(req);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         future.setException(new IoTDBException(status.message, status.code));
@@ -2843,14 +2982,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> removeRegion(
-      RemoveRegionStatement removeRegionStatement) {
+  public SettableFuture<ConfigTaskResult> removeRegion(RemoveRegionTask removeRegionTask) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TRemoveRegionReq req =
           new TRemoveRegionReq(
-              removeRegionStatement.getRegionId(), removeRegionStatement.getDataNodeId());
+              removeRegionTask.getStatement().getRegionId(),
+              removeRegionTask.getStatement().getDataNodeId(),
+              removeRegionTask.getModel());
       final TSStatus status = configNodeClient.removeRegion(req);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         future.setException(new IoTDBException(status.message, status.code));

@@ -19,17 +19,19 @@
 
 package org.apache.iotdb.subscription.it.local;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
-import org.apache.iotdb.session.subscription.SubscriptionSession;
+import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.AsyncCommitCallback;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
+import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
@@ -48,6 +50,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
@@ -57,6 +60,12 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTableNonQueryTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTableTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
+import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQueryWithRetry;
+import static org.apache.iotdb.db.it.utils.TestUtils.executeQueriesWithRetry;
+import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSystemPrivileges;
 import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
 import static org.junit.Assert.fail;
 
@@ -90,7 +99,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     final String topicName = "topic1";
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       session.createTopic(topicName);
     } catch (final Exception e) {
@@ -107,8 +116,8 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     final Thread thread =
         new Thread(
             () -> {
-              try (final SubscriptionPullConsumer consumer =
-                  new SubscriptionPullConsumer.Builder()
+              try (final SubscriptionTreePullConsumer consumer =
+                  new SubscriptionTreePullConsumer.Builder()
                       .host(host)
                       .port(port)
                       .consumerId("c1")
@@ -241,7 +250,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     final String topicName = "topic2";
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       session.createTopic(topicName);
     } catch (final Exception e) {
@@ -250,8 +259,8 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     }
 
     // Subscription
-    try (final SubscriptionPushConsumer consumer =
-        new SubscriptionPushConsumer.Builder()
+    try (final SubscriptionTreePushConsumer consumer =
+        new SubscriptionTreePushConsumer.Builder()
             .host(host)
             .port(port)
             .consumerId("c1")
@@ -341,7 +350,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     final String topicName4 = "topic4";
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       {
         final Properties properties = new Properties();
@@ -365,8 +374,8 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     final Thread thread =
         new Thread(
             () -> {
-              try (final SubscriptionPullConsumer consumer =
-                  new SubscriptionPullConsumer.Builder()
+              try (final SubscriptionTreePullConsumer consumer =
+                  new SubscriptionTreePullConsumer.Builder()
                       .host(host)
                       .port(port)
                       .consumerId("c1")
@@ -436,7 +445,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     final String topicName = "topic5";
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       final Properties config = new Properties();
       config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
@@ -449,8 +458,8 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     // Subscription
     final AtomicInteger onReceiveCount = new AtomicInteger();
     final AtomicInteger rowCount = new AtomicInteger();
-    try (final SubscriptionPushConsumer consumer =
-        new SubscriptionPushConsumer.Builder()
+    try (final SubscriptionTreePushConsumer consumer =
+        new SubscriptionTreePushConsumer.Builder()
             .host(host)
             .port(port)
             .consumerId("c1")
@@ -511,7 +520,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     final String topicName = "topic6";
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       final Properties config = new Properties();
       config.put(TopicConstant.PATTERN_KEY, "root.db.d1.s1");
@@ -523,8 +532,8 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
 
     // Subscription
     final AtomicInteger rowCount = new AtomicInteger();
-    try (final SubscriptionPushConsumer consumer =
-        new SubscriptionPushConsumer.Builder()
+    try (final SubscriptionTreePushConsumer consumer =
+        new SubscriptionTreePushConsumer.Builder()
             .host(host)
             .port(port)
             .consumerId("c1")
@@ -577,7 +586,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     final String topicName = "topic7";
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
-    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+    try (final SubscriptionTreeSession session = new SubscriptionTreeSession(host, port)) {
       session.open();
       final Properties config = new Properties();
       config.put(TopicConstant.PATTERN_KEY, "root.db.d1.s1");
@@ -589,8 +598,8 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
 
     // Subscription
     final AtomicInteger rowCount = new AtomicInteger();
-    try (final SubscriptionPushConsumer consumer =
-        new SubscriptionPushConsumer.Builder()
+    try (final SubscriptionTreePushConsumer consumer =
+        new SubscriptionTreePushConsumer.Builder()
             .host(host)
             .port(port)
             .ackStrategy(AckStrategy.AFTER_CONSUME)
@@ -620,5 +629,63 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void testTablePermission() {
+    createUser(EnvFactory.getEnv(), "test", "test123");
+
+    assertTableNonQueryTestFail(
+        EnvFactory.getEnv(),
+        "create topic topic1",
+        "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+        "test",
+        "test123",
+        null);
+    assertTableTestFail(
+        EnvFactory.getEnv(),
+        "show topics",
+        "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+        "test",
+        "test123",
+        null);
+    assertTableTestFail(
+        EnvFactory.getEnv(),
+        "show subscriptions",
+        "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+        "test",
+        "test123",
+        null);
+    assertTableNonQueryTestFail(
+        EnvFactory.getEnv(),
+        "drop topic topic1",
+        "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+        "test",
+        "test123",
+        null);
+
+    grantUserSystemPrivileges(EnvFactory.getEnv(), "test", PrivilegeType.MAINTAIN);
+
+    executeNonQueryWithRetry(
+        EnvFactory.getEnv(),
+        "create topic topic1",
+        "test",
+        "test123",
+        null,
+        BaseEnv.TABLE_SQL_DIALECT);
+    executeQueriesWithRetry(
+        EnvFactory.getEnv(),
+        Arrays.asList("show topics", "show subscriptions"),
+        "test",
+        "test123",
+        null,
+        BaseEnv.TABLE_SQL_DIALECT);
+    executeNonQueryWithRetry(
+        EnvFactory.getEnv(),
+        "drop topic topic1",
+        "test",
+        "test123",
+        null,
+        BaseEnv.TABLE_SQL_DIALECT);
   }
 }

@@ -360,9 +360,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final List<PartialPath> matchedPaths =
           mTree.getMatchedDatabases(patternPath, plan.getScope(), false);
       for (final PartialPath path : matchedPaths) {
-        schemaMap.put(
-            path.getFullPath(),
-            mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema());
+        final TDatabaseSchema schema =
+            mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema();
+        schemaMap.put(schema.getName(), schema);
       }
       result.setSchemaMap(schemaMap);
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
@@ -1412,11 +1412,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   public TSStatus renameTableColumn(final RenameTableColumnPlan plan) {
-    final String databaseName = PathUtils.qualifyDatabaseName(plan.getDatabase());
     databaseReadWriteLock.writeLock().lock();
     try {
       tableModelMTree.renameTableColumn(
-          new PartialPath(databaseName), plan.getTableName(), plan.getOldName(), plan.getNewName());
+          PartialPath.getQualifiedDatabasePartialPath(plan.getDatabase()),
+          plan.getTableName(),
+          plan.getOldName(),
+          plan.getNewName());
       return RpcUtils.SUCCESS_STATUS;
     } catch (final MetadataException e) {
       LOGGER.warn(e.getMessage(), e);

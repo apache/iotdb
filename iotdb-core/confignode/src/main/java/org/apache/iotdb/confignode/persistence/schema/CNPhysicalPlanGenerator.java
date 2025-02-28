@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.persistence.schema;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -30,7 +31,8 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
@@ -46,6 +48,8 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nonnull;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
@@ -63,6 +67,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.Stack;
 
@@ -70,7 +75,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
-import static org.apache.iotdb.commons.utils.IOUtils.readAuthString;
 import static org.apache.iotdb.commons.utils.IOUtils.readString;
 
 public class CNPhysicalPlanGenerator
@@ -115,10 +119,14 @@ public class CNPhysicalPlanGenerator
   public CNPhysicalPlanGenerator(final Path schemaInfoFile, final Path templateFile)
       throws IOException {
     inputStream = Files.newInputStream(schemaInfoFile);
-    templateInputStream = Files.newInputStream(templateFile);
+    // Template file is null for table mTree
+    if (Objects.nonNull(templateFile)) {
+      templateInputStream = Files.newInputStream(templateFile);
+    }
     snapshotFileType = CNSnapshotFileType.SCHEMA;
   }
 
+  @Nonnull
   @Override
   @SuppressWarnings("java:S4348")
   public Iterator<ConfigPhysicalPlan> iterator() {
@@ -140,7 +148,9 @@ public class CNPhysicalPlanGenerator
     } else if (snapshotFileType == CNSnapshotFileType.TTL) {
       generateSetTTLPlan();
     } else if (snapshotFileType == CNSnapshotFileType.SCHEMA) {
-      generateTemplatePlan();
+      if (Objects.nonNull(templateInputStream)) {
+        generateTemplatePlan();
+      }
       if (latestException != null) {
         return false;
       }
@@ -187,23 +197,26 @@ public class CNPhysicalPlanGenerator
   private void generateUserRolePhysicalPlan(final boolean isUser) {
     try (final DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
-      final Pair<String, Boolean> versionAndName =
-          readAuthString(dataInputStream, STRING_ENCODING, strBufferLocal);
-      if (versionAndName == null) {
-        return;
+      int tag = dataInputStream.readInt();
+      boolean fromOldVersion = tag < 0;
+      String user;
+      if (fromOldVersion) {
+        user = readString(dataInputStream, STRING_ENCODING, strBufferLocal, -1 * tag);
+      } else {
+        user = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
       }
-      final String user = versionAndName.left;
+
       if (isUser) {
         final String rawPassword = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
-        final AuthorPlan createUser =
-            new AuthorPlan(ConfigPhysicalPlanType.CreateUserWithRawPassword);
+        final AuthorTreePlan createUser =
+            new AuthorTreePlan(ConfigPhysicalPlanType.CreateUserWithRawPassword);
         createUser.setUserName(user);
         createUser.setPassword(rawPassword);
         createUser.setPermissions(new HashSet<>());
         createUser.setNodeNameList(new ArrayList<>());
         planDeque.add(createUser);
       } else {
-        final AuthorPlan createRole = new AuthorPlan(ConfigPhysicalPlanType.CreateRole);
+        final AuthorTreePlan createRole = new AuthorTreePlan(ConfigPhysicalPlanType.CreateRole);
         createRole.setRoleName(user);
         createRole.setPermissions(new HashSet<>());
         createRole.setNodeNameList(new ArrayList<>());
@@ -212,17 +225,50 @@ public class CNPhysicalPlanGenerator
 
       final int privilegeMask = dataInputStream.readInt();
       generateGrantSysPlan(user, isUser, privilegeMask);
-      while (dataInputStream.available() != 0) {
-        final String path = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
-        final PartialPath priPath;
-        try {
-          priPath = new PartialPath(path);
-        } catch (IllegalPathException exception) {
-          latestException = exception;
-          return;
+
+      if (fromOldVersion) {
+        while (dataInputStream.available() != 0) {
+          final String path = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+          final PartialPath priPath;
+          try {
+            priPath = new PartialPath(path);
+          } catch (IllegalPathException exception) {
+            latestException = exception;
+            return;
+          }
+          int privileges = dataInputStream.readInt();
+          generateGrantAuthorTreePlan(user, isUser, priPath, privileges);
         }
-        int privileges = dataInputStream.readInt();
-        generateGrantPathPlan(user, isUser, priPath, privileges);
+      } else {
+        int num = dataInputStream.readInt();
+        for (int i = 0; i < num; i++) {
+          final String path = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+          final PartialPath priPath;
+          try {
+            priPath = new PartialPath(path);
+          } catch (IllegalPathException exception) {
+            latestException = exception;
+            return;
+          }
+          int privileges = dataInputStream.readInt();
+          generateGrantAuthorTreePlan(user, isUser, priPath, privileges);
+        }
+        int anyScopePriv = dataInputStream.readInt();
+        generateGrantAuthorRelationalPlan(user, isUser, null, null, anyScopePriv);
+
+        num = dataInputStream.readInt();
+        for (int i = 0; i < num; i++) {
+          final String databaseName = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+          int databasePrivilege = dataInputStream.readInt();
+          generateGrantAuthorRelationalPlan(user, isUser, databaseName, null, databasePrivilege);
+          int tableNum = dataInputStream.readInt();
+          for (int tableid = 0; tableid < tableNum; tableid++) {
+            final String tableName = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+            int tablePrivilege = dataInputStream.readInt();
+            generateGrantAuthorRelationalPlan(
+                user, isUser, databaseName, tableName, tablePrivilege);
+          }
+        }
       }
     } catch (IOException ioException) {
       logger.error(
@@ -236,9 +282,9 @@ public class CNPhysicalPlanGenerator
   private void generateGrantRolePhysicalPlan() {
     try (final DataInputStream roleInputStream =
         new DataInputStream(new BufferedInputStream((inputStream)))) {
-      while (roleInputStream.available() != 0) {
+      for (int i = 0; roleInputStream.available() != 0; i++) {
         final String roleName = readString(roleInputStream, STRING_ENCODING, strBufferLocal);
-        final AuthorPlan plan = new AuthorPlan(ConfigPhysicalPlanType.GrantRoleToUser);
+        final AuthorTreePlan plan = new AuthorTreePlan(ConfigPhysicalPlanType.GrantRoleToUser);
         plan.setUserName(userName);
         plan.setRoleName(roleName);
         plan.setNodeNameList(new ArrayList<>());
@@ -253,12 +299,11 @@ public class CNPhysicalPlanGenerator
     }
   }
 
-  private void generateGrantSysPlan(
-      final String userName, final boolean isUser, final int sysMask) {
-    for (int i = 0; i < PrivilegeType.getSysPriCount(); i++) {
+  private void generateGrantSysPlan(String userName, boolean isUser, int sysMask) {
+    for (int i = 0; i < PrivilegeType.getPrivilegeCount(PrivilegeModelType.SYSTEM); i++) {
       if ((sysMask & (1 << i)) != 0) {
-        final AuthorPlan plan =
-            new AuthorPlan(
+        final AuthorTreePlan plan =
+            new AuthorTreePlan(
                 isUser ? ConfigPhysicalPlanType.GrantUser : ConfigPhysicalPlanType.GrantRole);
         if (isUser) {
           plan.setUserName(userName);
@@ -267,7 +312,7 @@ public class CNPhysicalPlanGenerator
           plan.setRoleName(userName);
           plan.setUserName("");
         }
-        plan.setPermissions(Collections.singleton(AuthUtils.posToSysPri(i)));
+        plan.setPermissions(Collections.singleton(AuthUtils.posToSysPri(i).ordinal()));
         if ((sysMask & (1 << (i + 16))) != 0) {
           plan.setGrantOpt(true);
         }
@@ -293,18 +338,18 @@ public class CNPhysicalPlanGenerator
     }
   }
 
-  private void generateGrantPathPlan(
-      final String userName, final boolean isUser, final PartialPath path, final int priMask) {
-    for (int pos = 0; pos < PrivilegeType.getPathPriCount(); pos++) {
+  private void generateGrantAuthorTreePlan(
+      String name, boolean isUser, PartialPath path, int priMask) {
+    for (int pos = 0; pos < PrivilegeType.getPrivilegeCount(PrivilegeModelType.TREE); pos++) {
       if (((1 << pos) & priMask) != 0) {
-        final AuthorPlan plan =
-            new AuthorPlan(
+        final AuthorTreePlan plan =
+            new AuthorTreePlan(
                 isUser ? ConfigPhysicalPlanType.GrantUser : ConfigPhysicalPlanType.GrantRole);
         if (isUser) {
-          plan.setUserName(userName);
+          plan.setUserName(name);
           plan.setRoleName("");
         } else {
-          plan.setRoleName(userName);
+          plan.setRoleName(name);
           plan.setUserName("");
         }
         plan.setPermissions(Collections.singleton(AuthUtils.pathPosToPri(pos)));
@@ -312,6 +357,48 @@ public class CNPhysicalPlanGenerator
         if ((1 << (pos + 16) & priMask) != 0) {
           plan.setGrantOpt(true);
         }
+        planDeque.add(plan);
+      }
+    }
+  }
+
+  private void generateGrantAuthorRelationalPlan(
+      String name, boolean isUser, String database, String table, int priMask) {
+    for (int pos = 0; pos < PrivilegeType.getPrivilegeCount(PrivilegeModelType.RELATIONAL); pos++) {
+      if (((1 << pos) & priMask) != 0) {
+        final AuthorRelationalPlan plan;
+        if (database == null && table == null) {
+          plan =
+              new AuthorRelationalPlan(
+                  isUser
+                      ? ConfigPhysicalPlanType.RGrantUserAny
+                      : ConfigPhysicalPlanType.RGrantRoleAny);
+        } else if (database != null && table == null) {
+          plan =
+              new AuthorRelationalPlan(
+                  isUser
+                      ? ConfigPhysicalPlanType.RGrantUserDBPriv
+                      : ConfigPhysicalPlanType.RGrantRoleDBPriv);
+        } else {
+          plan =
+              new AuthorRelationalPlan(
+                  isUser
+                      ? ConfigPhysicalPlanType.RGrantUserTBPriv
+                      : ConfigPhysicalPlanType.RGrantRoleTBPriv);
+        }
+        if (isUser) {
+          plan.setUserName(name);
+          plan.setRoleName("");
+        } else {
+          plan.setRoleName(name);
+          plan.setUserName("");
+        }
+        plan.setPermissions(Collections.singleton(AuthUtils.posToObjPri(pos).ordinal()));
+        if ((1 << (pos + 16) & priMask) != 0) {
+          plan.setGrantOpt(true);
+        }
+        plan.setDatabaseName(database == null ? "" : database);
+        plan.setTableName(table == null ? "" : table);
         planDeque.add(plan);
       }
     }
@@ -336,7 +423,7 @@ public class CNPhysicalPlanGenerator
         name = databaseMNode.getName();
         stack.push(new Pair<>(databaseMNode, true));
       } else if (type == TABLE_MNODE_TYPE) {
-        tableNode = ConfigMTree.deserializeTableMNode(inputStream);
+        tableNode = ConfigMTree.deserializeTableMNode(bufferedInputStream);
         name = tableNode.getName();
         stack.push(new Pair<>(tableNode, false));
         tableSet.add(tableNode.getTable());

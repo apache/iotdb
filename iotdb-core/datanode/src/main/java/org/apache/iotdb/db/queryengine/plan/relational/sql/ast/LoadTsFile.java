@@ -44,12 +44,13 @@ public class LoadTsFile extends Statement {
   private boolean deleteAfterLoad = false;
   private boolean convertOnTypeMismatch = true;
   private boolean autoCreateDatabase = true;
+  private boolean verify;
   private boolean isGeneratedByPipe = false;
-  private String model = LoadTsFileConfigurator.MODEL_TABLE_VALUE;
 
   private final Map<String, String> loadAttributes;
 
   private final List<File> tsFiles;
+  private List<Boolean> isTableModel;
   private final List<TsFileResource> resources;
   private final List<Long> writePointCountList;
 
@@ -61,6 +62,7 @@ public class LoadTsFile extends Statement {
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
     this.deleteAfterLoad = false;
     this.convertOnTypeMismatch = true;
+    this.verify = true;
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.resources = new ArrayList<>();
     this.writePointCountList = new ArrayList<>();
@@ -71,6 +73,7 @@ public class LoadTsFile extends Statement {
       this.tsFiles =
           org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement.processTsFile(
               file);
+      this.isTableModel = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), true));
     } catch (FileNotFoundException e) {
       throw new SemanticException(e);
     }
@@ -100,6 +103,10 @@ public class LoadTsFile extends Statement {
     return convertOnTypeMismatch;
   }
 
+  public boolean isVerifySchema() {
+    return verify;
+  }
+
   public int getDatabaseLevel() {
     return databaseLevel;
   }
@@ -121,8 +128,12 @@ public class LoadTsFile extends Statement {
     return isGeneratedByPipe;
   }
 
-  public String getModel() {
-    return model;
+  public List<Boolean> getIsTableModel() {
+    return isTableModel;
+  }
+
+  public void setIsTableModel(List<Boolean> isTableModel) {
+    this.isTableModel = isTableModel;
   }
 
   public List<File> getTsFiles() {
@@ -151,9 +162,7 @@ public class LoadTsFile extends Statement {
     this.deleteAfterLoad = LoadTsFileConfigurator.parseOrGetDefaultOnSuccess(loadAttributes);
     this.convertOnTypeMismatch =
         LoadTsFileConfigurator.parseOrGetDefaultConvertOnTypeMismatch(loadAttributes);
-    this.model =
-        LoadTsFileConfigurator.parseOrGetDefaultModel(
-            loadAttributes, LoadTsFileConfigurator.MODEL_TABLE_VALUE);
+    this.verify = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
   }
 
   @Override

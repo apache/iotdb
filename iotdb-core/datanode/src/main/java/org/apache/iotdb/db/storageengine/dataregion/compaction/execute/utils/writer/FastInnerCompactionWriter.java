@@ -26,7 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
-import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.read.common.Chunk;
@@ -75,6 +75,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     flushNonAlignedChunkToFileWriter(fileWriter, chunk, chunkMetadata, subTaskId);
 
     lastTime[subTaskId] = chunkMetadata.getEndTime();
+    lastTimeSet[subTaskId] = true;
     return true;
   }
 
@@ -89,8 +90,8 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
   @Override
   public boolean flushAlignedChunk(ChunkMetadataElement chunkMetadataElement, int subTaskId)
       throws IOException {
-    AlignedChunkMetadata alignedChunkMetadata =
-        (AlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
+    AbstractAlignedChunkMetadata alignedChunkMetadata =
+        (AbstractAlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
     IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
     List<IChunkMetadata> valueChunkMetadatas = alignedChunkMetadata.getValueChunkMetadataList();
     Chunk timeChunk = chunkMetadataElement.chunk;
@@ -112,6 +113,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
         fileWriter, timeChunk, timeChunkMetadata, valueChunks, valueChunkMetadatas, subTaskId);
 
     lastTime[subTaskId] = timeChunkMetadata.getEndTime();
+    lastTimeSet[subTaskId] = true;
     return true;
   }
 
@@ -121,8 +123,8 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
       int subTaskId,
       AbstractCompactionFlushController flushController)
       throws IOException {
-    AlignedChunkMetadata alignedChunkMetadata =
-        (AlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
+    AbstractAlignedChunkMetadata alignedChunkMetadata =
+        (AbstractAlignedChunkMetadata) chunkMetadataElement.chunkMetadata;
     IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
     List<IChunkMetadata> valueChunkMetadatas = alignedChunkMetadata.getValueChunkMetadataList();
     List<Chunk> valueChunks = chunkMetadataElement.valueChunks;
@@ -142,6 +144,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
         fileWriter, null, timeChunkMetadata, valueChunks, valueChunkMetadatas, subTaskId);
 
     lastTime[subTaskId] = timeChunkMetadata.getEndTime();
+    lastTimeSet[subTaskId] = true;
     return true;
   }
 
@@ -180,6 +183,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
         subTaskId);
 
     lastTime[subTaskId] = timePageHeader.getEndTime();
+    lastTimeSet[subTaskId] = true;
     return true;
   }
 
@@ -215,6 +219,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
         subTaskId);
 
     lastTime[subTaskId] = timePageHeader.getEndTime();
+    lastTimeSet[subTaskId] = true;
     return true;
   }
 
@@ -240,6 +245,7 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
         (ChunkWriterImpl) chunkWriters[subTaskId], compressedPageData, pageHeader, subTaskId);
 
     lastTime[subTaskId] = pageHeader.getEndTime();
+    lastTimeSet[subTaskId] = true;
     return true;
   }
 

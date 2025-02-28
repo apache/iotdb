@@ -42,7 +42,7 @@ import org.apache.iotdb.consensus.config.PipeConsensusConfig.ReplicateMode;
 import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeManager;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
-import org.apache.iotdb.consensus.pipe.consensuspipe.ProgressIndexManager;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ReplicateProgressManager;
 import org.apache.iotdb.consensus.pipe.metric.PipeConsensusServerMetrics;
 import org.apache.iotdb.consensus.pipe.thrift.TCheckConsensusPipeCompletedReq;
 import org.apache.iotdb.consensus.pipe.thrift.TCheckConsensusPipeCompletedResp;
@@ -89,7 +89,7 @@ public class PipeConsensusServerImpl {
   private final AtomicBoolean isStarted;
   private final String consensusGroupId;
   private final ConsensusPipeManager consensusPipeManager;
-  private final ProgressIndexManager progressIndexManager;
+  private final ReplicateProgressManager replicateProgressManager;
   private final IClientManager<TEndPoint, SyncPipeConsensusServiceClient> syncClientManager;
   private final PipeConsensusServerMetrics pipeConsensusServerMetrics;
   private final ReplicateMode replicateMode;
@@ -99,7 +99,6 @@ public class PipeConsensusServerImpl {
   public PipeConsensusServerImpl(
       Peer thisNode,
       IStateMachine stateMachine,
-      String storageDir,
       List<Peer> peers,
       PipeConsensusConfig config,
       ConsensusPipeManager consensusPipeManager,
@@ -107,19 +106,18 @@ public class PipeConsensusServerImpl {
       throws IOException {
     this.thisNode = thisNode;
     this.stateMachine = stateMachine;
-    this.peerManager = new PipeConsensusPeerManager(storageDir, peers);
+    this.peerManager = new PipeConsensusPeerManager(peers);
     this.active = new AtomicBoolean(true);
     this.isStarted = new AtomicBoolean(false);
     this.consensusGroupId = thisNode.getGroupId().toString();
     this.consensusPipeManager = consensusPipeManager;
-    this.progressIndexManager = config.getPipe().getProgressIndexManager();
+    this.replicateProgressManager = config.getPipe().getProgressIndexManager();
     this.syncClientManager = syncClientManager;
     this.pipeConsensusServerMetrics = new PipeConsensusServerMetrics(this);
     this.replicateMode = config.getReplicateMode();
 
-    if (peers.isEmpty()) {
-      peerManager.recover();
-    } else {
+    // if peers is empty, the `resetPeerList` will automatically fetch correct peers' info from CN.
+    if (!peers.isEmpty()) {
       // create consensus pipes
       Set<Peer> deepCopyPeersWithoutSelf =
           peers.stream().filter(peer -> !peer.equals(thisNode)).collect(Collectors.toSet());
@@ -128,17 +126,6 @@ public class PipeConsensusServerImpl {
         // roll back
         updateConsensusPipesStatus(successfulPipes, PipeStatus.DROPPED);
         throw new IOException(String.format("%s cannot create all consensus pipes", thisNode));
-      }
-
-      // persist peers' info
-      try {
-        peerManager.persistAll();
-      } catch (Exception e) {
-        // roll back
-        LOGGER.warn("{} cannot persist all peers", thisNode, e);
-        peerManager.deleteAllFiles();
-        updateConsensusPipesStatus(successfulPipes, PipeStatus.DROPPED);
-        throw e;
       }
     }
   }
@@ -193,7 +180,7 @@ public class PipeConsensusServerImpl {
     isStarted.set(false);
   }
 
-  public synchronized void clear() throws IOException {
+  public synchronized void clear() {
     final List<Peer> otherPeers = peerManager.getOtherPeers(thisNode);
     final List<Peer> failedPipes =
         updateConsensusPipesStatus(new ArrayList<>(otherPeers), PipeStatus.DROPPED);
@@ -332,7 +319,7 @@ public class PipeConsensusServerImpl {
       long writeToStateMachineStartTime = System.nanoTime();
       if (request instanceof ComparableConsensusRequest) {
         ((ComparableConsensusRequest) request)
-            .setProgressIndex(progressIndexManager.assignProgressIndex(thisNode.getGroupId()));
+            .setProgressIndex(replicateProgressManager.assignProgressIndex(thisNode.getGroupId()));
       }
       TSStatus result = stateMachine.write(request);
       long writeToStateMachineEndTime = System.nanoTime();
@@ -448,11 +435,7 @@ public class PipeConsensusServerImpl {
     try {
       KillPoint.setKillPoint(DataNodeKillPoints.ORIGINAL_ADD_PEER_DONE);
       consensusPipeManager.createConsensusPipe(thisNode, targetPeer, needManuallyStart);
-      peerManager.addAndPersist(targetPeer);
-    } catch (IOException e) {
-      LOGGER.warn("{} cannot persist peer {}", thisNode, targetPeer, e);
-      throw new ConsensusGroupModifyPeerException(
-          String.format("%s cannot persist peer %s", thisNode, targetPeer), e);
+      peerManager.addPeer(targetPeer);
     } catch (Exception e) {
       LOGGER.warn("{} cannot create consensus pipe to {}", thisNode, targetPeer, e);
       throw new ConsensusGroupModifyPeerException(
@@ -504,11 +487,7 @@ public class PipeConsensusServerImpl {
       throws ConsensusGroupModifyPeerException {
     try {
       consensusPipeManager.dropConsensusPipe(thisNode, targetPeer);
-      peerManager.removeAndPersist(targetPeer);
-    } catch (IOException e) {
-      LOGGER.warn("{} cannot persist peer {}", thisNode, targetPeer, e);
-      throw new ConsensusGroupModifyPeerException(
-          String.format("%s cannot persist peer %s", thisNode, targetPeer), e);
+      peerManager.removePeer(targetPeer);
     } catch (Exception e) {
       LOGGER.warn("{} cannot drop consensus pipe to {}", thisNode, targetPeer, e);
       throw new ConsensusGroupModifyPeerException(
@@ -629,12 +608,21 @@ public class PipeConsensusServerImpl {
     }
   }
 
+  public boolean isConsensusPipesTransmissionCompleted(List<String> consensusPipeNames) {
+    return consensusPipeNames.stream()
+        .noneMatch(
+            pipeName ->
+                replicateProgressManager.getSyncLagForSpecificConsensusPipe(
+                        thisNode.getGroupId(), new ConsensusPipeName(pipeName))
+                    > 0);
+  }
+
   public synchronized boolean isConsensusPipesTransmissionCompleted(
       List<String> consensusPipeNames, boolean refreshCachedProgressIndex) {
     if (refreshCachedProgressIndex) {
       cachedProgressIndex =
           cachedProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
-              progressIndexManager.getMaxAssignedProgressIndex(thisNode.getGroupId()));
+              replicateProgressManager.getMaxAssignedProgressIndex(thisNode.getGroupId()));
     }
 
     try {
@@ -642,7 +630,7 @@ public class PipeConsensusServerImpl {
           .noneMatch(
               name ->
                   cachedProgressIndex.isAfter(
-                      progressIndexManager.getProgressIndex(new ConsensusPipeName(name))));
+                      replicateProgressManager.getProgressIndex(new ConsensusPipeName(name))));
     } catch (PipeException e) {
       LOGGER.info(e.getMessage());
       return false;

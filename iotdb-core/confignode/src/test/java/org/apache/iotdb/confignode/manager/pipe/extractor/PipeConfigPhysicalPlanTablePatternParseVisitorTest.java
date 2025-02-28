@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.confignode.manager.pipe.extractor;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
@@ -128,6 +130,29 @@ public class PipeConfigPhysicalPlanTablePatternParseVisitorTest {
         new SetTableColumnCommentPlan("db1", "ab", "a", "a"),
         new SetTableColumnCommentPlan("db1", "ac", "a", "a"),
         new SetTableColumnCommentPlan("da", "ac", "a", "a"));
+  }
+
+  @Test
+  public void testAuth() {
+    testInput(
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RGrantRoleAll, "", "role", "", "", -1, false),
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RGrantUserDBPriv,
+            "user",
+            "",
+            "da",
+            "",
+            PrivilegeType.SELECT.ordinal(),
+            false),
+        new AuthorRelationalPlan(
+            ConfigPhysicalPlanType.RGrantUserTBPriv,
+            "user",
+            "",
+            "db1",
+            "ac",
+            PrivilegeType.DROP.ordinal(),
+            false));
   }
 
   private void testInput(

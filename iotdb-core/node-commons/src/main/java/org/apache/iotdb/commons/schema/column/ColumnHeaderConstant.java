@@ -72,6 +72,7 @@ public class ColumnHeaderConstant {
   public static final String PATHS = "Paths";
   public static final String PATH = "Path";
   public static final String VARIABLE = "Variable";
+  public static final String SCOPE = "Scope";
 
   // column names for count statement
   public static final String COLUMN = "Column";
@@ -211,6 +212,36 @@ public class ColumnHeaderConstant {
   public static final String TIME_PARTITION_INTERVAL_TABLE_MODEL = "time_partition_interval";
   public static final String SCHEMA_REGION_GROUP_NUM_TABLE_MODEL = "schema_region_group_num";
   public static final String DATA_REGION_GROUP_NUM_TABLE_MODEL = "data_region_group_num";
+
+  public static final String REGION_ID_TABLE_MODEL = "region_id";
+  public static final String DATANODE_ID_TABLE_MODEL = "datanode_id";
+  public static final String SERIES_SLOT_NUM_TABLE_MODEL = "series_slot_num";
+  public static final String TIME_SLOT_NUM_TABLE_MODEL = "time_slot_num";
+  public static final String RPC_ADDRESS_TABLE_MODEL = "rpc_address";
+  public static final String RPC_PORT_TABLE_MODEL = "rpc_port";
+  public static final String INTERNAL_ADDRESS_TABLE_MODEL = "internal_address";
+  public static final String CREATE_TIME_TABLE_MODEL = "create_time";
+  public static final String TS_FILE_SIZE_BYTES_TABLE_MODEL = "tsfile_size_bytes";
+
+  public static final String CREATION_TIME_TABLE_MODEL = "creation_time";
+  public static final String PIPE_SOURCE_TABLE_MODEL = "pipe_source";
+  public static final String PIPE_PROCESSOR_TABLE_MODEL = "pipe_processor";
+  public static final String PIPE_SINK_TABLE_MODEL = "pipe_sink";
+  public static final String EXCEPTION_MESSAGE_TABLE_MODEL = "exception_message";
+  public static final String REMAINING_EVENT_COUNT_TABLE_MODEL = "remaining_event_count";
+  public static final String ESTIMATED_REMAINING_SECONDS_TABLE_MODEL =
+      "estimated_remaining_seconds";
+
+  public static final String PLUGIN_NAME_TABLE_MODEL = "plugin_name";
+  public static final String PLUGIN_TYPE_TABLE_MODEL = "plugin_type";
+  public static final String CLASS_NAME_TABLE_MODEL = "class_name";
+  public static final String PLUGIN_JAR_TABLE_MODEL = "plugin_jar";
+
+  public static final String TOPIC_NAME_TABLE_MODEL = "topic_name";
+  public static final String TOPIC_CONFIGS_TABLE_MODEL = "topic_configs";
+
+  public static final String CONSUMER_GROUP_NAME_TABLE_MODEL = "consumer_group_name";
+  public static final String SUBSCRIBED_CONSUMERS_TABLE_MODEL = "subscribed_consumers";
 
   // column names for show space quota
   public static final String QUOTA_TYPE = "QuotaType";
@@ -604,10 +635,10 @@ public class ColumnHeaderConstant {
           new ColumnHeader(STATUS, TSDataType.TEXT),
           new ColumnHeader(COMMENT, TSDataType.TEXT));
 
-  public static final List<ColumnHeader> LIST_USER_PRIVILEGES_Column_HEADERS =
+  public static final List<ColumnHeader> LIST_USER_OR_ROLE_PRIVILEGES_COLUMN_HEADERS =
       ImmutableList.of(
           new ColumnHeader(ROLE, TSDataType.TEXT),
-          new ColumnHeader(PATH, TSDataType.TEXT),
+          new ColumnHeader(SCOPE, TSDataType.TEXT),
           new ColumnHeader(PRIVILEGES, TSDataType.TEXT),
           new ColumnHeader(GRANT_OPTION, TSDataType.BOOLEAN));
 

@@ -28,6 +28,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 public abstract class TsTableColumnSchema {
 
   protected String columnName;
@@ -83,5 +85,14 @@ public abstract class TsTableColumnSchema {
 
   public void setDataType(final TSDataType dataType) {
     this.dataType = dataType;
+  }
+
+  @Override
+  public String toString() {
+    return toStringHelper(this)
+        .add("columnName", columnName)
+        .add("dataType", dataType)
+        .add("props", props)
+        .toString();
   }
 }

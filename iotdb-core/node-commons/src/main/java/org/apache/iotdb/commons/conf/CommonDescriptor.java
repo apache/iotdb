@@ -104,6 +104,11 @@ public class CommonDescriptor {
     }
     config.setTierTTLInMs(tierTTL);
 
+    config.setTTLCheckInterval(
+        Long.parseLong(
+            properties.getProperty(
+                "ttl_check_interval", Long.toString(config.getTTLCheckInterval()))));
+
     config.setSyncDir(properties.getProperty("dn_sync_dir", config.getSyncDir()).trim());
 
     config.setWalDirs(
@@ -301,13 +306,13 @@ public class CommonDescriptor {
                 "pipe_realtime_queue_poll_history_threshold",
                 Integer.toString(config.getPipeRealTimeQueuePollHistoryThreshold()))));
 
-    config.setPipeSubtaskExecutorMaxThreadNum(
+    int pipeSubtaskExecutorMaxThreadNum =
         Integer.parseInt(
             properties.getProperty(
                 "pipe_subtask_executor_max_thread_num",
-                Integer.toString(config.getPipeSubtaskExecutorMaxThreadNum()))));
-    if (config.getPipeSubtaskExecutorMaxThreadNum() <= 0) {
-      config.setPipeSubtaskExecutorMaxThreadNum(5);
+                Integer.toString(config.getPipeSubtaskExecutorMaxThreadNum())));
+    if (pipeSubtaskExecutorMaxThreadNum > 0) {
+      config.setPipeSubtaskExecutorMaxThreadNum(pipeSubtaskExecutorMaxThreadNum);
     }
     config.setPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount(
         Integer.parseInt(
@@ -386,6 +391,14 @@ public class CommonDescriptor {
                     properties.getProperty(
                         "pipe_connector_read_file_buffer_size",
                         String.valueOf(config.getPipeConnectorReadFileBufferSize())))));
+    config.setIsPipeConnectorReadFileBufferMemoryControlEnabled(
+        Boolean.parseBoolean(
+            Optional.ofNullable(properties.getProperty("pipe_sink_read_file_buffer_memory_control"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_connector_read_file_buffer_memory_control",
+                        String.valueOf(
+                            config.isPipeConnectorReadFileBufferMemoryControlEnabled())))));
     config.setPipeConnectorRetryIntervalMs(
         Long.parseLong(
             Optional.ofNullable(properties.getProperty("pipe_sink_retry_interval_ms"))
@@ -400,22 +413,26 @@ public class CommonDescriptor {
                     properties.getProperty(
                         "pipe_connector_rpc_thrift_compression_enabled",
                         String.valueOf(config.isPipeConnectorRPCThriftCompressionEnabled())))));
-
-    config.setPipeAsyncConnectorSelectorNumber(
+    int pipeAsyncConnectorSelectorNumber =
         Integer.parseInt(
             Optional.ofNullable(properties.getProperty("pipe_sink_selector_number"))
                 .orElse(
                     properties.getProperty(
                         "pipe_async_connector_selector_number",
-                        String.valueOf(config.getPipeAsyncConnectorSelectorNumber())))));
-    config.setPipeAsyncConnectorMaxClientNumber(
+                        String.valueOf(config.getPipeAsyncConnectorSelectorNumber()))));
+    if (pipeAsyncConnectorSelectorNumber > 0) {
+      config.setPipeAsyncConnectorSelectorNumber(pipeAsyncConnectorSelectorNumber);
+    }
+    int pipeAsyncConnectorMaxClientNumber =
         Integer.parseInt(
             Optional.ofNullable(properties.getProperty("pipe_sink_max_client_number"))
                 .orElse(
                     properties.getProperty(
                         "pipe_async_connector_max_client_number",
-                        String.valueOf(config.getPipeAsyncConnectorMaxClientNumber())))));
-
+                        String.valueOf(config.getPipeAsyncConnectorMaxClientNumber()))));
+    if (pipeAsyncConnectorMaxClientNumber > 0) {
+      config.setPipeAsyncConnectorMaxClientNumber(pipeAsyncConnectorMaxClientNumber);
+    }
     config.setPipeAllSinksRateLimitBytesPerSecond(
         Double.parseDouble(
             properties.getProperty(
@@ -474,6 +491,12 @@ public class CommonDescriptor {
                 "pipe_air_gap_receiver_port",
                 Integer.toString(config.getPipeAirGapReceiverPort()))));
 
+    config.setPipeReceiverLoginPeriodicVerificationIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_receiver_login_periodic_verification_interval_ms",
+                Long.toString(config.getPipeReceiverLoginPeriodicVerificationIntervalMs()))));
+
     config.setPipeMaxAllowedHistoricalTsFilePerDataRegion(
         Integer.parseInt(
             properties.getProperty(
@@ -509,6 +532,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_stuck_restart_min_interval_ms",
                 String.valueOf(config.getPipeStuckRestartMinIntervalMs()))));
+    config.setPipeStorageEngineFlushTimeIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_storage_engine_flush_time_interval_ms",
+                String.valueOf(config.getPipeStorageEngineFlushTimeIntervalMs()))));
 
     config.setPipeMetaReportMaxLogNumPerRound(
         Integer.parseInt(
@@ -571,11 +599,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_memory_expander_interval_seconds",
                 String.valueOf(config.getPipeMemoryExpanderIntervalSeconds()))));
-    config.setPipeTsFileParserCheckMemoryEnoughIntervalMs(
+    config.setPipeCheckMemoryEnoughIntervalMs(
         Long.parseLong(
             properties.getProperty(
-                "pipe_tsfile_parser_check_memory_enough_interval_ms",
-                String.valueOf(config.getPipeTsFileParserCheckMemoryEnoughIntervalMs()))));
+                "pipe_check_memory_enough_interval_ms",
+                String.valueOf(config.getPipeCheckMemoryEnoughIntervalMs()))));
     config.setPipeLeaderCacheMemoryUsagePercentage(
         Float.parseFloat(
             properties.getProperty(
@@ -644,15 +672,12 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_cache_memory_usage_percentage",
                 String.valueOf(config.getSubscriptionCacheMemoryUsagePercentage()))));
-
     config.setSubscriptionSubtaskExecutorMaxThreadNum(
         Integer.parseInt(
             properties.getProperty(
                 "subscription_subtask_executor_max_thread_num",
                 Integer.toString(config.getSubscriptionSubtaskExecutorMaxThreadNum()))));
-    if (config.getSubscriptionSubtaskExecutorMaxThreadNum() <= 0) {
-      config.setSubscriptionSubtaskExecutorMaxThreadNum(5);
-    }
+
     config.setSubscriptionPrefetchTabletBatchMaxDelayInMs(
         Integer.parseInt(
             properties.getProperty(
@@ -708,11 +733,37 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_ts_file_deduplication_window_seconds",
                 String.valueOf(config.getSubscriptionTsFileDeduplicationWindowSeconds()))));
-    config.setSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs(
+    config.setSubscriptionCheckMemoryEnoughIntervalMs(
         Long.parseLong(
             properties.getProperty(
-                "subscription_ts_file_slicer_check_memory_enough_interval_ms",
-                String.valueOf(config.getSubscriptionTsFileSlicerCheckMemoryEnoughIntervalMs()))));
+                "subscription_check_memory_enough_interval_ms",
+                String.valueOf(config.getSubscriptionCheckMemoryEnoughIntervalMs()))));
+
+    config.setSubscriptionPrefetchEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "subscription_prefetch_enabled",
+                String.valueOf(config.getSubscriptionPrefetchEnabled()))));
+    config.setSubscriptionPrefetchMemoryThreshold(
+        Float.parseFloat(
+            properties.getProperty(
+                "subscription_prefetch_memory_threshold",
+                String.valueOf(config.getSubscriptionPrefetchMemoryThreshold()))));
+    config.setSubscriptionPrefetchMissingRateThreshold(
+        Float.parseFloat(
+            properties.getProperty(
+                "subscription_prefetch_missing_rate_threshold",
+                String.valueOf(config.getSubscriptionPrefetchMemoryThreshold()))));
+    config.setSubscriptionPrefetchEventLocalCountThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_prefetch_event_local_count_threshold",
+                String.valueOf(config.getSubscriptionPrefetchEventLocalCountThreshold()))));
+    config.setSubscriptionPrefetchEventGlobalCountThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_prefetch_event_global_count_threshold",
+                String.valueOf(config.getSubscriptionPrefetchEventGlobalCountThreshold()))));
 
     config.setSubscriptionMetaSyncerInitialSyncDelayMinutes(
         Long.parseLong(

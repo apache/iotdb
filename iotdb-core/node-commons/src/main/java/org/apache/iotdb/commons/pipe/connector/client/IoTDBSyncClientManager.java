@@ -73,14 +73,18 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       String username,
       String password,
       boolean shouldReceiverConvertOnTypeMismatch,
-      String loadTsFileStrategy) {
+      String loadTsFileStrategy,
+      boolean validateTsFile,
+      boolean shouldMarkAsPipeRequest) {
     super(
         endPoints,
         useLeaderCache,
         username,
         password,
         shouldReceiverConvertOnTypeMismatch,
-        loadTsFileStrategy);
+        loadTsFileStrategy,
+        validateTsFile,
+        shouldMarkAsPipeRequest);
 
     this.useSSL = useSSL;
     this.trustStorePath = trustStorePath;
@@ -213,6 +217,12 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, loadTsFileStrategy);
       params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME, username);
       params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD, password);
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_VALIDATE_TSFILE,
+          Boolean.toString(validateTsFile));
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_MARK_AS_PIPE_REQUEST,
+          Boolean.toString(shouldMarkAsPipeRequest));
 
       // Try to handshake by PipeTransferHandshakeV2Req.
       TPipeTransferResp resp = client.pipeTransfer(buildHandshakeV2Req(params));

@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
-import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
@@ -165,51 +165,51 @@ public class PipeConfigPhysicalPlanTreePatternParseVisitor
 
   @Override
   public Optional<ConfigPhysicalPlan> visitGrantUser(
-      final AuthorPlan grantUserPlan, final IoTDBTreePattern pattern) {
-    return visitPathRelatedAuthorPlan(grantUserPlan, pattern);
+      final AuthorTreePlan grantUserPlan, final IoTDBTreePattern pattern) {
+    return visitTreeAuthorPlan(grantUserPlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRevokeUser(
-      final AuthorPlan revokeUserPlan, final IoTDBTreePattern pattern) {
-    return visitPathRelatedAuthorPlan(revokeUserPlan, pattern);
+      final AuthorTreePlan revokeUserPlan, final IoTDBTreePattern pattern) {
+    return visitTreeAuthorPlan(revokeUserPlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitGrantRole(
-      final AuthorPlan revokeUserPlan, final IoTDBTreePattern pattern) {
-    return visitPathRelatedAuthorPlan(revokeUserPlan, pattern);
+      final AuthorTreePlan revokeUserPlan, final IoTDBTreePattern pattern) {
+    return visitTreeAuthorPlan(revokeUserPlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRevokeRole(
-      final AuthorPlan revokeUserPlan, final IoTDBTreePattern pattern) {
-    return visitPathRelatedAuthorPlan(revokeUserPlan, pattern);
+      final AuthorTreePlan revokeUserPlan, final IoTDBTreePattern pattern) {
+    return visitTreeAuthorPlan(revokeUserPlan, pattern);
   }
 
-  private Optional<ConfigPhysicalPlan> visitPathRelatedAuthorPlan(
-      final AuthorPlan pathRelatedAuthorPlan, final IoTDBTreePattern pattern) {
+  private Optional<ConfigPhysicalPlan> visitTreeAuthorPlan(
+      final AuthorTreePlan pathRelatedAuthorTreePlan, final IoTDBTreePattern pattern) {
     final List<PartialPath> intersectedPaths =
-        pathRelatedAuthorPlan.getNodeNameList().stream()
+        pathRelatedAuthorTreePlan.getNodeNameList().stream()
             .map(pattern::getIntersection)
             .flatMap(Collection::stream)
             .collect(Collectors.toList());
     final Set<Integer> permissions =
         !intersectedPaths.isEmpty()
-            ? pathRelatedAuthorPlan.getPermissions()
-            : pathRelatedAuthorPlan.getPermissions().stream()
-                .filter(permission -> !PrivilegeType.values()[permission].isPathRelevant())
+            ? pathRelatedAuthorTreePlan.getPermissions()
+            : pathRelatedAuthorTreePlan.getPermissions().stream()
+                .filter(permission -> !PrivilegeType.values()[permission].isPathPrivilege())
                 .collect(Collectors.toSet());
     return !permissions.isEmpty()
         ? Optional.of(
-            new AuthorPlan(
-                pathRelatedAuthorPlan.getAuthorType(),
-                pathRelatedAuthorPlan.getUserName(),
-                pathRelatedAuthorPlan.getRoleName(),
-                pathRelatedAuthorPlan.getPassword(),
-                pathRelatedAuthorPlan.getNewPassword(),
+            new AuthorTreePlan(
+                pathRelatedAuthorTreePlan.getAuthorType(),
+                pathRelatedAuthorTreePlan.getUserName(),
+                pathRelatedAuthorTreePlan.getRoleName(),
+                pathRelatedAuthorTreePlan.getPassword(),
+                pathRelatedAuthorTreePlan.getNewPassword(),
                 permissions,
-                pathRelatedAuthorPlan.getGrantOpt(),
+                pathRelatedAuthorTreePlan.getGrantOpt(),
                 intersectedPaths))
         : Optional.empty();
   }
