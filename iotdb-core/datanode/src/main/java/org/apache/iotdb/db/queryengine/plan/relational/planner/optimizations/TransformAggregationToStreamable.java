@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.DataOrganizationSpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
@@ -35,6 +36,7 @@ import com.google.common.collect.ImmutableSet;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -125,20 +127,18 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
     @Override
     public List<Symbol> visitTableFunctionProcessor(
         TableFunctionProcessorNode node, GroupContext context) {
-
-      return ImmutableList.of();
-      //      if (node.getChildren().isEmpty()) {
-      //        return ImmutableList.of();
-      //      } else if (node.isRowSemantic()) {
-      //        return visitPlan(node, context);
-      //      }
-      //      Optional<DataOrganizationSpecification> dataOrganizationSpecification =
-      //          node.getDataOrganizationSpecification();
-      //      return dataOrganizationSpecification
-      //          .<List<Symbol>>map(
-      //              organizationSpecification ->
-      //                  ImmutableList.copyOf(organizationSpecification.getPartitionBy()))
-      //          .orElseGet(ImmutableList::of);
+      if (node.getChildren().isEmpty()) {
+        return ImmutableList.of();
+      } else if (node.isRowSemantic()) {
+        return visitPlan(node, context);
+      }
+      Optional<DataOrganizationSpecification> dataOrganizationSpecification =
+          node.getDataOrganizationSpecification();
+      return dataOrganizationSpecification
+          .<List<Symbol>>map(
+              organizationSpecification ->
+                  ImmutableList.copyOf(organizationSpecification.getPartitionBy()))
+          .orElseGet(ImmutableList::of);
     }
 
     @Override

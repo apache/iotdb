@@ -516,10 +516,63 @@ public class TableDistributedPlanGenerator
   public List<PlanNode> visitDeviceTableScan(
       final DeviceTableScanNode node, final PlanContext context) {
     if (context.isPushDownGrouping()) {
-      return constructDeviceTableScanByTags(node, context);
+      //      return constructDeviceTableScanByTags(node, context);
+      return constructDeviceTableScanTmp(node, context);
     } else {
       return constructDeviceTableScanByRegionReplicaSet(node, context);
     }
+  }
+
+  private List<PlanNode> constructDeviceTableScanTmp(
+      final DeviceTableScanNode node, final PlanContext context) {
+    List<PlanNode> result = new ArrayList<>();
+    final Map<TRegionReplicaSet, Integer> regionDeviceCount = new HashMap<>();
+    for (final DeviceEntry deviceEntry : node.getDeviceEntries()) {
+      final List<TRegionReplicaSet> regionReplicaSets =
+          analysis.getDataRegionReplicaSetWithTimeFilter(
+              node.getQualifiedObjectName().getDatabaseName(),
+              deviceEntry.getDeviceID(),
+              node.getTimeFilter());
+      List<PlanNode> tmp = new ArrayList<>();
+      for (final TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
+        regionDeviceCount.put(
+            regionReplicaSet, regionDeviceCount.getOrDefault(regionReplicaSet, 0) + 1);
+        DeviceTableScanNode scanNode =
+            new DeviceTableScanNode(
+                queryId.genPlanNodeId(),
+                node.getQualifiedObjectName(),
+                node.getOutputSymbols(),
+                node.getAssignments(),
+                new ArrayList<>(),
+                node.getIdAndAttributeIndexMap(),
+                node.getScanOrder(),
+                node.getTimePredicate().orElse(null),
+                node.getPushDownPredicate(),
+                node.getPushDownLimit(),
+                node.getPushDownOffset(),
+                node.isPushLimitToEachDevice(),
+                node.containsNonAlignedDevice());
+        scanNode.setRegionReplicaSet(regionReplicaSet);
+        scanNode.appendDeviceEntry(deviceEntry);
+        tmp.add(scanNode);
+      }
+      if (context.hasSortProperty) {
+        processSortProperty(node, tmp, context);
+      }
+      if (tmp.size() == 1) {
+        result.add(tmp.get(0));
+      } else {
+        CollectNode collectNode =
+            new CollectNode(queryId.genPlanNodeId(), tmp, node.getOutputSymbols());
+        result.add(collectNode);
+      }
+    }
+    context.mostUsedRegion =
+        regionDeviceCount.entrySet().stream()
+            .max(Comparator.comparingInt(Map.Entry::getValue))
+            .map(Map.Entry::getKey)
+            .orElse(null);
+    return result;
   }
 
   private List<PlanNode> constructDeviceTableScanByTags(
