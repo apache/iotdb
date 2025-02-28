@@ -85,6 +85,14 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionCheckMemoryEnoughIntervalMs();
   }
 
+  public long getSubscriptionEstimatedInsertNodeTabletInsertionEventSize() {
+    return COMMON_CONFIG.getSubscriptionEstimatedInsertNodeTabletInsertionEventSize();
+  }
+
+  public long getSubscriptionEstimatedRawTabletInsertionEventSize() {
+    return COMMON_CONFIG.getSubscriptionEstimatedInsertNodeTabletInsertionEventSize();
+  }
+
   public boolean getSubscriptionPrefetchEnabled() {
     return COMMON_CONFIG.getSubscriptionPrefetchEnabled();
   }
@@ -150,6 +158,12 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionCheckMemoryEnoughIntervalMs: {}",
         getSubscriptionCheckMemoryEnoughIntervalMs());
+    LOGGER.info(
+        "SubscriptionEstimatedInsertNodeTabletInsertionEventSize: {}",
+        getSubscriptionEstimatedInsertNodeTabletInsertionEventSize());
+    LOGGER.info(
+        "SubscriptionEstimatedRawTabletInsertionEventSize: {}",
+        getSubscriptionEstimatedRawTabletInsertionEventSize());
 
     LOGGER.info("SubscriptionPrefetchEnabled: {}", getSubscriptionPrefetchEnabled());
     LOGGER.info(

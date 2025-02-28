@@ -47,10 +47,11 @@ import org.apache.tsfile.write.record.Tablet;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
 public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
-    implements TabletInsertionEvent, ReferenceTrackableEvent {
+    implements TabletInsertionEvent, ReferenceTrackableEvent, AutoCloseable {
 
   // For better calculation
   private static final long INSTANCE_SIZE =
@@ -62,7 +63,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   private final EnrichedEvent sourceEvent;
   private boolean needToReport;
 
-  private PipeTabletMemoryBlock allocatedMemoryBlock;
+  private final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock;
 
   private TabletInsertionEventParser eventParser;
 
@@ -100,6 +101,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     this.isAligned = isAligned;
     this.sourceEvent = sourceEvent;
     this.needToReport = needToReport;
+    this.allocatedMemoryBlock = new AtomicReference<>();
   }
 
   public PipeRawTabletInsertionEvent(
@@ -183,10 +185,15 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
-    allocatedMemoryBlock =
-        PipeDataNodeResourceManager.memory()
-            .forceAllocateForTabletWithRetry(
-                PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + INSTANCE_SIZE);
+    allocatedMemoryBlock.getAndUpdate(
+        memoryBlock -> {
+          if (Objects.nonNull(memoryBlock)) {
+            memoryBlock.close();
+          }
+          return PipeDataNodeResourceManager.memory()
+              .forceAllocateForTabletWithRetry(
+                  PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + INSTANCE_SIZE);
+        });
     if (Objects.nonNull(pipeName)) {
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
           .increaseTabletEventCount(pipeName, creationTime);
@@ -200,7 +207,13 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
           .decreaseTabletEventCount(pipeName, creationTime);
     }
-    allocatedMemoryBlock.close();
+    allocatedMemoryBlock.getAndUpdate(
+        memoryBlock -> {
+          if (Objects.nonNull(memoryBlock)) {
+            memoryBlock.close();
+          }
+          return null;
+        });
 
     // Record the deviceId before the memory is released,
     // for later possibly updating the leader cache.
@@ -416,19 +429,37 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   private static class PipeRawTabletInsertionEventResource extends PipeEventResource {
 
-    private final PipeTabletMemoryBlock allocatedMemoryBlock;
+    private final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock;
 
     private PipeRawTabletInsertionEventResource(
         final AtomicBoolean isReleased,
         final AtomicInteger referenceCount,
-        final PipeTabletMemoryBlock allocatedMemoryBlock) {
+        final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock) {
       super(isReleased, referenceCount);
       this.allocatedMemoryBlock = allocatedMemoryBlock;
     }
 
     @Override
     protected void finalizeResource() {
-      allocatedMemoryBlock.close();
+      allocatedMemoryBlock.getAndUpdate(
+          memoryBlock -> {
+            if (Objects.nonNull(memoryBlock)) {
+              memoryBlock.close();
+            }
+            return null;
+          });
     }
+  }
+
+  /////////////////////////// AutoCloseable ///////////////////////////
+
+  @Override
+  public void close() {
+    // The semantic of close is to release the memory occupied by parsing, this method does nothing
+    // to unify the external close semantic:
+    //   1. PipeRawTabletInsertionEvent: the tablet occupying memory upon construction, even when
+    // parsing is involved.
+    //   2. PipeInsertNodeTabletInsertionEvent: the tablet is only constructed when it's actually
+    // involved in parsing.
   }
 }

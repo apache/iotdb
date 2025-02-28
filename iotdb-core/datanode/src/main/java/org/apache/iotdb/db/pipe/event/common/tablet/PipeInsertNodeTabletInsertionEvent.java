@@ -65,11 +65,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
-    implements TabletInsertionEvent, ReferenceTrackableEvent, Accountable {
+    implements TabletInsertionEvent, ReferenceTrackableEvent, Accountable, AutoCloseable {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeInsertNodeTabletInsertionEvent.class);
@@ -84,7 +85,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   private final boolean isAligned;
   private final boolean isGeneratedByPipe;
 
-  private final PipeTabletMemoryBlock allocatedMemoryBlock;
+  private final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock;
 
   private List<TabletInsertionEventParser> eventParsers;
 
@@ -151,7 +152,8 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
 
     // Allocate empty memory block, will be resized later.
     this.allocatedMemoryBlock =
-        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+        new AtomicReference<>(
+            PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0));
   }
 
   public InsertNode getInsertNode() throws WALPipeException {
@@ -205,7 +207,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         eventParsers.clear();
         eventParsers = null;
       }
-      allocatedMemoryBlock.close();
+      close();
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
@@ -382,13 +384,30 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         initEventParsers().stream()
             .map(TabletInsertionEventParser::convertToTablet)
             .collect(Collectors.toList());
-    PipeDataNodeResourceManager.memory()
-        .forceResize(
-            allocatedMemoryBlock,
-            tablets.stream()
-                .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
-                .reduce(Long::sum)
-                .orElse(0L));
+    allocatedMemoryBlock.getAndUpdate(
+        memoryBlock -> {
+          if (Objects.nonNull(memoryBlock)) {
+            PipeDataNodeResourceManager.memory()
+                .forceResize(
+                    memoryBlock,
+                    tablets.stream()
+                        .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
+                        .reduce(Long::sum)
+                        .orElse(0L));
+            return memoryBlock;
+          } else {
+            final PipeTabletMemoryBlock newMemoryBlock =
+                PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+            PipeDataNodeResourceManager.memory()
+                .forceResize(
+                    newMemoryBlock,
+                    tablets.stream()
+                        .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
+                        .reduce(Long::sum)
+                        .orElse(0L));
+            return newMemoryBlock;
+          }
+        });
     return tablets;
   }
 
@@ -529,13 +548,13 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   private static class PipeInsertNodeTabletInsertionEventResource extends PipeEventResource {
 
     private final WALEntryHandler walEntryHandler;
-    private final PipeTabletMemoryBlock allocatedMemoryBlock;
+    private final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock;
 
     private PipeInsertNodeTabletInsertionEventResource(
         final AtomicBoolean isReleased,
         final AtomicInteger referenceCount,
         final WALEntryHandler walEntryHandler,
-        final PipeTabletMemoryBlock allocatedMemoryBlock) {
+        final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock) {
       super(isReleased, referenceCount);
       this.walEntryHandler = walEntryHandler;
       this.allocatedMemoryBlock = allocatedMemoryBlock;
@@ -545,11 +564,30 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     protected void finalizeResource() {
       try {
         PipeDataNodeResourceManager.wal().unpin(walEntryHandler);
-        allocatedMemoryBlock.close();
+        allocatedMemoryBlock.getAndUpdate(
+            memoryBlock -> {
+              if (Objects.nonNull(memoryBlock)) {
+                memoryBlock.close();
+              }
+              return null;
+            });
       } catch (final Exception e) {
         LOGGER.warn(
             "Decrease reference count for memTable {} error.", walEntryHandler.getMemTableId(), e);
       }
     }
+  }
+
+  /////////////////////////// AutoCloseable ///////////////////////////
+
+  @Override
+  public void close() {
+    allocatedMemoryBlock.getAndUpdate(
+        memoryBlock -> {
+          if (Objects.nonNull(memoryBlock)) {
+            memoryBlock.close();
+          }
+          return null;
+        });
   }
 }

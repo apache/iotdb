@@ -39,6 +39,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.KB;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 
 public class CommonConfig {
@@ -309,6 +310,8 @@ public class CommonConfig {
   private long subscriptionReadTabletBufferSize = 8 * MB;
   private long subscriptionTsFileDeduplicationWindowSeconds = 120; // 120s
   private volatile long subscriptionCheckMemoryEnoughIntervalMs = 10L;
+  private long subscriptionEstimatedInsertNodeTabletInsertionEventSize = 16 * KB;
+  private long subscriptionEstimatedRawTabletInsertionEventSize = 4 * KB;
 
   private boolean subscriptionPrefetchEnabled = false;
   private float subscriptionPrefetchMemoryThreshold = 0.5F;
@@ -1440,6 +1443,26 @@ public class CommonConfig {
   public void setSubscriptionCheckMemoryEnoughIntervalMs(
       long subscriptionCheckMemoryEnoughIntervalMs) {
     this.subscriptionCheckMemoryEnoughIntervalMs = subscriptionCheckMemoryEnoughIntervalMs;
+  }
+
+  public long getSubscriptionEstimatedInsertNodeTabletInsertionEventSize() {
+    return subscriptionEstimatedInsertNodeTabletInsertionEventSize;
+  }
+
+  public void setSubscriptionEstimatedInsertNodeTabletInsertionEventSize(
+      final long subscriptionEstimatedInsertNodeTabletInsertionEventSize) {
+    this.subscriptionEstimatedInsertNodeTabletInsertionEventSize =
+        subscriptionEstimatedInsertNodeTabletInsertionEventSize;
+  }
+
+  public long getSubscriptionEstimatedRawTabletInsertionEventSize() {
+    return subscriptionEstimatedRawTabletInsertionEventSize;
+  }
+
+  public void setSubscriptionEstimatedRawTabletInsertionEventSize(
+      final long subscriptionEstimatedRawTabletInsertionEventSize) {
+    this.subscriptionEstimatedRawTabletInsertionEventSize =
+        subscriptionEstimatedRawTabletInsertionEventSize;
   }
 
   public boolean getSubscriptionPrefetchEnabled() {

@@ -738,6 +738,17 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_check_memory_enough_interval_ms",
                 String.valueOf(config.getSubscriptionCheckMemoryEnoughIntervalMs()))));
+    config.setSubscriptionEstimatedInsertNodeTabletInsertionEventSize(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_estimated_insert_node_tablet_insertion_event_size",
+                String.valueOf(
+                    config.getSubscriptionEstimatedInsertNodeTabletInsertionEventSize()))));
+    config.setSubscriptionEstimatedRawTabletInsertionEventSize(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_estimated_raw_tablet_insertion_event_size",
+                String.valueOf(config.getSubscriptionEstimatedRawTabletInsertionEventSize()))));
 
     config.setSubscriptionPrefetchEnabled(
         Boolean.parseBoolean(
