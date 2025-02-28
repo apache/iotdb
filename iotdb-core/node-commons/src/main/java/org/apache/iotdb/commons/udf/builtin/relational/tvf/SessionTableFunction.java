@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
@@ -35,6 +36,7 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -42,37 +44,27 @@ import java.util.Map;
 
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
 
-public class HOPTableFunction implements TableFunction {
-
+public class SessionTableFunction implements TableFunction {
   private static final String DATA_PARAMETER_NAME = "DATA";
   private static final String TIMECOL_PARAMETER_NAME = "TIMECOL";
-  private static final String SLIDE_PARAMETER_NAME = "SLIDE";
-  private static final String SIZE_PARAMETER_NAME = "SIZE";
-  private static final String START_PARAMETER_NAME = "START";
+  private static final String GAP_PARAMETER_NAME = "GAP";
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
     return Arrays.asList(
         TableParameterSpecification.builder()
             .name(DATA_PARAMETER_NAME)
-            .rowSemantics()
             .passThroughColumns()
             .build(),
         ScalarParameterSpecification.builder()
             .name(TIMECOL_PARAMETER_NAME)
             .type(Type.STRING)
             .build(),
-        ScalarParameterSpecification.builder().name(SLIDE_PARAMETER_NAME).type(Type.INT64).build(),
-        ScalarParameterSpecification.builder().name(SIZE_PARAMETER_NAME).type(Type.INT64).build(),
-        ScalarParameterSpecification.builder()
-            .name(START_PARAMETER_NAME)
-            .type(Type.TIMESTAMP)
-            .defaultValue(0L)
-            .build());
+        ScalarParameterSpecification.builder().name(GAP_PARAMETER_NAME).type(Type.INT64).build());
   }
 
   @Override
-  public TableFunctionAnalysis analyze(Map<String, Argument> arguments) {
+  public TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException {
     TableArgument tableArgument = (TableArgument) arguments.get(DATA_PARAMETER_NAME);
     String expectedFieldName =
         (String) ((ScalarArgument) arguments.get(TIMECOL_PARAMETER_NAME)).getValue();
@@ -93,28 +85,25 @@ public class HOPTableFunction implements TableFunction {
 
   @Override
   public TableFunctionProcessorProvider getProcessorProvider(Map<String, Argument> arguments) {
+    long gap = (long) ((ScalarArgument) arguments.get(GAP_PARAMETER_NAME)).getValue();
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
-        return new HOPDataProcessor(
-            (Long) ((ScalarArgument) arguments.get(START_PARAMETER_NAME)).getValue(),
-            (Long) ((ScalarArgument) arguments.get(SLIDE_PARAMETER_NAME)).getValue(),
-            (Long) ((ScalarArgument) arguments.get(SIZE_PARAMETER_NAME)).getValue());
+        return new SessionDataProcessor(gap);
       }
     };
   }
 
-  private static class HOPDataProcessor implements TableFunctionDataProcessor {
+  private static class SessionDataProcessor implements TableFunctionDataProcessor {
 
-    private final long slide;
-    private final long size;
-    private final long start;
+    private final long gap;
+    private final List<Long> currentRowIndexes = new ArrayList<>();
     private long curIndex = 0;
+    private long windowStart = -1;
+    private long windowEnd = -1;
 
-    public HOPDataProcessor(long startTime, long slide, long size) {
-      this.slide = slide;
-      this.size = size;
-      this.start = startTime;
+    public SessionDataProcessor(long gap) {
+      this.gap = gap;
     }
 
     @Override
@@ -122,17 +111,31 @@ public class HOPTableFunction implements TableFunction {
         Record input,
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder) {
-      // find the first windows that satisfy the condition: start + n*slide <= time < start +
-      // n*slide + size
       long timeValue = input.getLong(0);
-      long window_start = (timeValue - start - size + slide) / slide * slide;
-      while (window_start <= timeValue && window_start + size > timeValue) {
-        properColumnBuilders.get(0).writeLong(window_start);
-        properColumnBuilders.get(1).writeLong(window_start + size - 1);
-        passThroughIndexBuilder.writeLong(curIndex);
-        window_start += slide;
+      if (!currentRowIndexes.isEmpty() && timeValue > windowEnd) {
+        outputWindow(properColumnBuilders, passThroughIndexBuilder);
       }
+      currentRowIndexes.add(curIndex);
+      windowStart = timeValue;
+      windowEnd = timeValue + gap;
       curIndex++;
+    }
+
+    @Override
+    public void finish(List<ColumnBuilder> columnBuilders, ColumnBuilder passThroughIndexBuilder) {
+      if (!currentRowIndexes.isEmpty()) {
+        outputWindow(columnBuilders, passThroughIndexBuilder);
+      }
+    }
+
+    private void outputWindow(
+        List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
+      for (Long currentRowIndex : currentRowIndexes) {
+        properColumnBuilders.get(0).writeLong(windowStart);
+        properColumnBuilders.get(1).writeLong(windowEnd - 1);
+        passThroughIndexBuilder.writeLong(currentRowIndex);
+      }
+      currentRowIndexes.clear();
     }
   }
 }

@@ -59,7 +59,6 @@ public class TableFunctionOperator implements ProcessOperator {
   private PartitionState partitionState;
   private ListenableFuture<?> isBlocked;
   private boolean finished = false;
-  private ColumnBuilder passThroughIndexBuilder;
 
   private SliceCache sliceCache;
 
@@ -149,6 +148,7 @@ public class TableFunctionOperator implements ProcessOperator {
           return tsBlock;
         } else {
           processor = processorProvider.getDataProcessor();
+          processor.beforeStart();
         }
       }
       sliceCache.addSlice(slice);
@@ -167,10 +167,7 @@ public class TableFunctionOperator implements ProcessOperator {
   }
 
   private ColumnBuilder getPassThroughIndexBuilder() {
-    if (needPassThrough) {
-      passThroughIndexBuilder = new LongColumnBuilder(null, 1);
-    }
-    return passThroughIndexBuilder;
+    return new LongColumnBuilder(null, 1);
   }
 
   private TsBlock buildTsBlock(

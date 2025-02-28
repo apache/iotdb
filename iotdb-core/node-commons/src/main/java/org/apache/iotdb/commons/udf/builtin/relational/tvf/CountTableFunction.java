@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
@@ -26,7 +27,6 @@ import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 import org.apache.iotdb.udf.api.relational.table.argument.DescribedSchema;
 import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
-import org.apache.iotdb.udf.api.relational.table.argument.TableArgument;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
 import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSpecification;
@@ -35,86 +35,62 @@ import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
-
-public class HOPTableFunction implements TableFunction {
-
+public class CountTableFunction implements TableFunction {
   private static final String DATA_PARAMETER_NAME = "DATA";
-  private static final String TIMECOL_PARAMETER_NAME = "TIMECOL";
-  private static final String SLIDE_PARAMETER_NAME = "SLIDE";
   private static final String SIZE_PARAMETER_NAME = "SIZE";
-  private static final String START_PARAMETER_NAME = "START";
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
     return Arrays.asList(
         TableParameterSpecification.builder()
             .name(DATA_PARAMETER_NAME)
-            .rowSemantics()
             .passThroughColumns()
             .build(),
-        ScalarParameterSpecification.builder()
-            .name(TIMECOL_PARAMETER_NAME)
-            .type(Type.STRING)
-            .build(),
-        ScalarParameterSpecification.builder().name(SLIDE_PARAMETER_NAME).type(Type.INT64).build(),
-        ScalarParameterSpecification.builder().name(SIZE_PARAMETER_NAME).type(Type.INT64).build(),
-        ScalarParameterSpecification.builder()
-            .name(START_PARAMETER_NAME)
-            .type(Type.TIMESTAMP)
-            .defaultValue(0L)
-            .build());
+        ScalarParameterSpecification.builder().name(SIZE_PARAMETER_NAME).type(Type.INT64).build());
   }
 
   @Override
-  public TableFunctionAnalysis analyze(Map<String, Argument> arguments) {
-    TableArgument tableArgument = (TableArgument) arguments.get(DATA_PARAMETER_NAME);
-    String expectedFieldName =
-        (String) ((ScalarArgument) arguments.get(TIMECOL_PARAMETER_NAME)).getValue();
-    int requiredIndex =
-        findColumnIndex(tableArgument, expectedFieldName, Collections.singleton(Type.TIMESTAMP));
-    DescribedSchema properColumnSchema =
-        new DescribedSchema.Builder()
-            .addField("window_start", Type.TIMESTAMP)
-            .addField("window_end", Type.TIMESTAMP)
-            .build();
-
-    // outputColumnSchema
+  public TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException {
+    long size = (long) ((ScalarArgument) arguments.get(SIZE_PARAMETER_NAME)).getValue();
+    if (size <= 0) {
+      throw new UDFException("Size must be greater than 0");
+    }
     return TableFunctionAnalysis.builder()
-        .properColumnSchema(properColumnSchema)
-        .requiredColumns(DATA_PARAMETER_NAME, Collections.singletonList(requiredIndex))
+        .properColumnSchema(
+            new DescribedSchema.Builder()
+                .addField("window_index", Type.INT64)
+                .addField("count", Type.INT64)
+                .build())
+        .requiredColumns(DATA_PARAMETER_NAME, Collections.singletonList(0))
         .build();
   }
 
   @Override
   public TableFunctionProcessorProvider getProcessorProvider(Map<String, Argument> arguments) {
+    long sz = (long) ((ScalarArgument) arguments.get(SIZE_PARAMETER_NAME)).getValue();
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
-        return new HOPDataProcessor(
-            (Long) ((ScalarArgument) arguments.get(START_PARAMETER_NAME)).getValue(),
-            (Long) ((ScalarArgument) arguments.get(SLIDE_PARAMETER_NAME)).getValue(),
-            (Long) ((ScalarArgument) arguments.get(SIZE_PARAMETER_NAME)).getValue());
+        return new CountDataProcessor(sz);
       }
     };
   }
 
-  private static class HOPDataProcessor implements TableFunctionDataProcessor {
+  private static class CountDataProcessor implements TableFunctionDataProcessor {
 
-    private final long slide;
     private final long size;
-    private final long start;
+    private final List<Long> currentRowIndexes = new ArrayList<>();
     private long curIndex = 0;
+    private long windowIndex = 0;
 
-    public HOPDataProcessor(long startTime, long slide, long size) {
-      this.slide = slide;
+    public CountDataProcessor(long size) {
       this.size = size;
-      this.start = startTime;
     }
 
     @Override
@@ -122,17 +98,30 @@ public class HOPTableFunction implements TableFunction {
         Record input,
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder) {
-      // find the first windows that satisfy the condition: start + n*slide <= time < start +
-      // n*slide + size
-      long timeValue = input.getLong(0);
-      long window_start = (timeValue - start - size + slide) / slide * slide;
-      while (window_start <= timeValue && window_start + size > timeValue) {
-        properColumnBuilders.get(0).writeLong(window_start);
-        properColumnBuilders.get(1).writeLong(window_start + size - 1);
-        passThroughIndexBuilder.writeLong(curIndex);
-        window_start += slide;
+      if (currentRowIndexes.size() >= size) {
+        outputWindow(properColumnBuilders, passThroughIndexBuilder);
       }
+      currentRowIndexes.add(curIndex);
       curIndex++;
+    }
+
+    @Override
+    public void finish(List<ColumnBuilder> columnBuilders, ColumnBuilder passThroughIndexBuilder) {
+      if (!currentRowIndexes.isEmpty()) {
+        outputWindow(columnBuilders, passThroughIndexBuilder);
+      }
+    }
+
+    private void outputWindow(
+        List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
+      int sz = currentRowIndexes.size();
+      for (Long currentRowIndex : currentRowIndexes) {
+        properColumnBuilders.get(0).writeLong(windowIndex);
+        properColumnBuilders.get(1).writeLong(sz);
+        passThroughIndexBuilder.writeLong(currentRowIndex);
+      }
+      windowIndex++;
+      currentRowIndexes.clear();
     }
   }
 }

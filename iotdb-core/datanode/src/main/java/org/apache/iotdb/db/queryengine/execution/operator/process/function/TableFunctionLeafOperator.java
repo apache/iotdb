@@ -49,6 +49,7 @@ public class TableFunctionLeafOperator implements ProcessOperator {
       List<TSDataType> outputDataTypes) {
     this.operatorContext = operatorContext;
     this.processor = processorProvider.getSplitProcessor();
+    this.processor.beforeStart();
     this.blockBuilder = new TsBlockBuilder(outputDataTypes);
   }
 

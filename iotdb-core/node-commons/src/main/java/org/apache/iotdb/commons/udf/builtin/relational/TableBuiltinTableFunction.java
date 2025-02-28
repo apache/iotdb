@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.commons.udf.builtin.relational;
 
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.CountTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.HOPTableFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.tvf.RepeatExample;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.SessionTableFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.tvf.VarianceTableFunction;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import java.util.Arrays;
@@ -30,6 +33,9 @@ import java.util.stream.Collectors;
 
 public enum TableBuiltinTableFunction {
   HOP("hop"),
+  SESSION("session"),
+  VARIANCE("variance"),
+  COUNT("count"),
   REPEAT("repeat"),
   ;
 
@@ -61,6 +67,12 @@ public enum TableBuiltinTableFunction {
     switch (functionName.toLowerCase()) {
       case "hop":
         return new HOPTableFunction();
+      case "session":
+        return new SessionTableFunction();
+      case "variance":
+        return new VarianceTableFunction();
+      case "count":
+        return new CountTableFunction();
       case "repeat":
         return new RepeatExample();
       default:
