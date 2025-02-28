@@ -33,7 +33,6 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
-import org.eclipse.milo.opcua.stack.core.UaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,8 +71,11 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 
 /**
  * Send data in IoTDB based on Opc Ua protocol, using Eclipse Milo. All data are converted into
- * tablets, then eventNodes to send to the subscriber clients. Notice that there is no namespace
- * since the eventNodes do not need to be saved.
+ * tablets, and then:
+ *
+ * <p>1. In pub-sub mode, converted to eventNodes to send to the subscriber clients.
+ *
+ * <p>2. In client-server mode, push the newest value to the local server.
  */
 public class OpcUaConnector implements PipeConnector {
 
@@ -207,11 +209,19 @@ public class OpcUaConnector implements PipeConnector {
 
   @Override
   public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
+    transferByTablet(tabletInsertionEvent, LOGGER, tablet -> nameSpace.transfer(tablet));
+  }
+
+  public static void transferByTablet(
+      final TabletInsertionEvent tabletInsertionEvent,
+      final Logger logger,
+      final ThrowingConsumer<Tablet, Exception> transferTablet)
+      throws Exception {
     // PipeProcessor can change the type of TabletInsertionEvent
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
-      LOGGER.warn(
-          "OpcUaConnector only support "
+      logger.warn(
+          "This Connector only support "
               + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
               + "Ignore {}.",
           tabletInsertionEvent);
@@ -219,15 +229,17 @@ public class OpcUaConnector implements PipeConnector {
     }
 
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      transferTabletWrapper((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
+      transferTabletWrapper(
+          (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent, transferTablet);
     } else {
-      transferTabletWrapper((PipeRawTabletInsertionEvent) tabletInsertionEvent);
+      transferTabletWrapper((PipeRawTabletInsertionEvent) tabletInsertionEvent, transferTablet);
     }
   }
 
-  private void transferTabletWrapper(
-      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
-      throws UaException {
+  private static void transferTabletWrapper(
+      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent,
+      final ThrowingConsumer<Tablet, Exception> transferTablet)
+      throws Exception {
     // We increase the reference count for this event to determine if the event may be released.
     if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
         OpcUaConnector.class.getName())) {
@@ -235,7 +247,7 @@ public class OpcUaConnector implements PipeConnector {
     }
     try {
       for (final Tablet tablet : pipeInsertNodeTabletInsertionEvent.convertToTablets()) {
-        nameSpace.transfer(tablet);
+        transferTablet.accept(tablet);
       }
     } finally {
       pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
@@ -243,17 +255,24 @@ public class OpcUaConnector implements PipeConnector {
     }
   }
 
-  private void transferTabletWrapper(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
-      throws UaException {
+  private static void transferTabletWrapper(
+      final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent,
+      final ThrowingConsumer<Tablet, Exception> transferTablet)
+      throws Exception {
     // We increase the reference count for this event to determine if the event may be released.
     if (!pipeRawTabletInsertionEvent.increaseReferenceCount(OpcUaConnector.class.getName())) {
       return;
     }
     try {
-      nameSpace.transfer(pipeRawTabletInsertionEvent.convertToTablet());
+      transferTablet.accept(pipeRawTabletInsertionEvent.convertToTablet());
     } finally {
       pipeRawTabletInsertionEvent.decreaseReferenceCount(OpcUaConnector.class.getName(), false);
     }
+  }
+
+  @FunctionalInterface
+  public interface ThrowingConsumer<T, E extends Exception> {
+    void accept(final T t) throws E;
   }
 
   @Override

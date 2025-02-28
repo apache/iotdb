@@ -247,6 +247,12 @@ public class PipeConnectorConstant {
   public static final String SINK_MARK_AS_PIPE_REQUEST_KEY = "sink.mark-as-pipe-request";
   public static final boolean CONNECTOR_MARK_AS_PIPE_REQUEST_DEFAULT_VALUE = true;
 
+  public static final String CONNECTOR_OPC_DA_CLSID_KEY = "connector.opcda.clsid";
+  public static final String SINK_OPC_DA_CLSID_KEY = "sink.opcda.clsid";
+
+  public static final String CONNECTOR_OPC_DA_PROGID_KEY = "connector.opcda.progid";
+  public static final String SINK_OPC_DA_PROGID_KEY = "sink.opcda.progid";
+
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");
   }
