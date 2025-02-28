@@ -497,7 +497,6 @@ public abstract class TVList implements WALEntryValue {
     for (int i = start; i < end; i++) {
       inPutMinTime = Math.min(inPutMinTime, time[i]);
       maxTime = Math.max(maxTime, time[i]);
-      minTime = Math.min(minTime, time[i]);
       if (inputSorted) {
         if (i < length - 1 && time[i] > time[i + 1]) {
           inputSorted = false;
@@ -506,6 +505,7 @@ public abstract class TVList implements WALEntryValue {
         }
       }
     }
+    minTime = Math.min(minTime, inPutMinTime);
     if (sorted && (rowCount == 0 || time[start] >= getTime(rowCount - 1))) {
       seqRowCount += inputSeqRowCount;
     }
