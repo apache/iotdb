@@ -167,10 +167,7 @@ public class TableFunctionOperator implements ProcessOperator {
   }
 
   private ColumnBuilder getPassThroughIndexBuilder() {
-    if (needPassThrough) {
-      passThroughIndexBuilder = new LongColumnBuilder(null, 1);
-    }
-    return passThroughIndexBuilder;
+    return new LongColumnBuilder(null, 1);
   }
 
   private TsBlock buildTsBlock(
