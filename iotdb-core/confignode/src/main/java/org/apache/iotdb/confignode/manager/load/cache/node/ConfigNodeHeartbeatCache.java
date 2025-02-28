@@ -21,6 +21,10 @@ package org.apache.iotdb.confignode.manager.load.cache.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
+
+import java.util.Collections;
+import java.util.List;
 
 /** Heartbeat cache for cluster ConfigNodes. */
 public class ConfigNodeHeartbeatCache extends BaseNodeCache {
@@ -51,18 +55,20 @@ public class ConfigNodeHeartbeatCache extends BaseNodeCache {
     }
 
     NodeHeartbeatSample lastSample;
+    final List<AbstractHeartbeatSample> heartbeatHistory;
     synchronized (slidingWindow) {
       lastSample = (NodeHeartbeatSample) getLastSample();
+      heartbeatHistory = Collections.unmodifiableList(slidingWindow);
     }
-    long lastSendTime = lastSample == null ? 0 : lastSample.getSampleLogicalTimestamp();
 
     // Update Node status
     NodeStatus status;
     long currentNanoTime = System.nanoTime();
     if (lastSample == null) {
+      /* First heartbeat not received from this ConfigNode, status is UNKNOWN */
       status = NodeStatus.Unknown;
-    } else if (currentNanoTime - lastSendTime > HEARTBEAT_TIMEOUT_TIME_IN_NS) {
-      // TODO: Optimize Unknown judge logic
+    } else if (!failureDetector.isAvailable(heartbeatHistory)) {
+      /* Failure detector decides that this ConfigNode is UNKNOWN */
       status = NodeStatus.Unknown;
     } else {
       status = lastSample.getStatus();
