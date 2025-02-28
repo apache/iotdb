@@ -47,20 +47,12 @@ public class SubscriptionPipeTabletIterationSnapshot {
 
   public void ack() {
     closeIteratedEnrichedEvents();
-
-    for (final PipeRawTabletInsertionEvent event : parsedEnrichedEvents) {
-      // decrease reference count in raw tablet event
-      event.decreaseReferenceCount(this.getClass().getName(), true);
-    }
+    decreaseReferenceCountOfParsedEnrichedEvents();
   }
 
   public void cleanUp() {
     closeIteratedEnrichedEvents();
-
-    for (final PipeRawTabletInsertionEvent event : parsedEnrichedEvents) {
-      // clear reference count in raw tablet event
-      event.clearReferenceCount(this.getClass().getName());
-    }
+    clearReferenceCountOfParsedEnrichedEvents();
   }
 
   private void closeIteratedEnrichedEvents() {
@@ -77,6 +69,20 @@ public class SubscriptionPipeTabletIterationSnapshot {
       if (enrichedEvent instanceof PipeRawTabletInsertionEvent) {
         ((PipeRawTabletInsertionEvent) enrichedEvent).close();
       }
+    }
+  }
+
+  private void decreaseReferenceCountOfParsedEnrichedEvents() {
+    for (final PipeRawTabletInsertionEvent event : parsedEnrichedEvents) {
+      // decrease reference count in raw tablet event
+      event.decreaseReferenceCount(this.getClass().getName(), true);
+    }
+  }
+
+  private void clearReferenceCountOfParsedEnrichedEvents() {
+    for (final PipeRawTabletInsertionEvent event : parsedEnrichedEvents) {
+      // clear reference count in raw tablet event
+      event.clearReferenceCount(this.getClass().getName());
     }
   }
 }

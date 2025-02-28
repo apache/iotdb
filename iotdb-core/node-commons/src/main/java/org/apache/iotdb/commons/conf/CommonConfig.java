@@ -310,8 +310,8 @@ public class CommonConfig {
   private long subscriptionReadTabletBufferSize = 8 * MB;
   private long subscriptionTsFileDeduplicationWindowSeconds = 120; // 120s
   private volatile long subscriptionCheckMemoryEnoughIntervalMs = 10L;
-  private long subscriptionEstimatedInsertNodeTabletInsertionEventSize = 16 * KB;
-  private long subscriptionEstimatedRawTabletInsertionEventSize = 4 * KB;
+  private long subscriptionEstimatedInsertNodeTabletInsertionEventSize = 64 * KB;
+  private long subscriptionEstimatedRawTabletInsertionEventSize = 16 * KB;
 
   private boolean subscriptionPrefetchEnabled = false;
   private float subscriptionPrefetchMemoryThreshold = 0.5F;

@@ -92,10 +92,6 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     // we decrease the reference count of events if and only if when the whole batch is consumed
     if (!hasNext() && referenceCount.get() == 0) {
       for (final EnrichedEvent enrichedEvent : enrichedEvents) {
-        if (enrichedEvent instanceof PipeTsFileInsertionEvent) {
-          // close data container in tsfile event
-          ((PipeTsFileInsertionEvent) enrichedEvent).close();
-        }
         enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
       }
     }
@@ -110,10 +106,6 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
     // clear the reference count of events
     for (final EnrichedEvent enrichedEvent : enrichedEvents) {
-      if (enrichedEvent instanceof PipeTsFileInsertionEvent) {
-        // close data container in tsfile event
-        ((PipeTsFileInsertionEvent) enrichedEvent).close();
-      }
       enrichedEvent.clearReferenceCount(this.getClass().getName());
     }
     enrichedEvents.clear();
@@ -163,7 +155,9 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   @Override
   protected boolean shouldEmit() {
     return totalBufferSize >= maxBatchSizeInBytes
-        || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
+        || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs
+        // TODO: config
+        || enrichedEvents.size() > 100;
   }
 
   private List<Tablet> convertToTablets(final TabletInsertionEvent tabletInsertionEvent) {
