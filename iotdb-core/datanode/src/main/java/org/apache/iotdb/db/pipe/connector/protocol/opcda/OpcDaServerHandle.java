@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.opcda;
 
-import org.apache.iotdb.db.pipe.connector.util.sorter.PipeTreeModelTabletEventSorter;
+import org.apache.iotdb.db.pipe.connector.util.PipeTabletEventSorter;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import com.sun.jna.Memory;
@@ -44,7 +44,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -182,26 +182,23 @@ public class OpcDaServerHandle implements Closeable {
   }
 
   void transfer(final Tablet tablet) {
-    new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
-    final List<IMeasurementSchema> schemas = tablet.getSchemas();
+    new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
+    final List<MeasurementSchema> schemas = tablet.getSchemas();
 
     for (int i = 0; i < schemas.size(); ++i) {
       final String itemId =
-          tablet.getDeviceId()
-              + TsFileConstant.PATH_SEPARATOR
-              + schemas.get(i).getMeasurementName();
+          tablet.deviceId + TsFileConstant.PATH_SEPARATOR + schemas.get(i).getMeasurementId();
       if (!serverHandleMap.containsKey(itemId)) {
         addItem(itemId, schemas.get(i).getType());
       }
-      for (int j = tablet.getRowSize() - 1; j >= 0; --j) {
-        if (Objects.isNull(tablet.getBitMaps())
-            || Objects.isNull(tablet.getBitMaps()[i])
-            || !tablet.getBitMaps()[i].isMarked(j)) {
-          if (serverTimestampMap.get(itemId) <= tablet.getTimestamp(j)) {
+      for (int j = tablet.getMaxRowNumber() - 1; j >= 0; --j) {
+        if (Objects.isNull(tablet.bitMaps)
+            || Objects.isNull(tablet.bitMaps[i])
+            || !tablet.bitMaps[i].isMarked(j)) {
+          if (serverTimestampMap.get(itemId) <= tablet.timestamps[j]) {
             writeData(
-                itemId,
-                getTabletObjectValue4Opc(tablet.getValues()[i], j, schemas.get(i).getType()));
-            serverTimestampMap.put(itemId, tablet.getTimestamp(j));
+                itemId, getTabletObjectValue4Opc(tablet.values[i], j, schemas.get(i).getType()));
+            serverTimestampMap.put(itemId, tablet.timestamps[j]);
           }
           break;
         }
