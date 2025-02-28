@@ -46,7 +46,6 @@ import java.util.Map;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.CONVERT_ON_TYPE_MISMATCH_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_LEVEL_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_NAME_KEY;
-import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.MODEL_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_DELETE_VALUE;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_NONE_VALUE;
@@ -63,11 +62,11 @@ public class LoadTsFileStatement extends Statement {
   private int tabletConversionThreshold = -1;
   private boolean autoCreateDatabase = true;
   private boolean isGeneratedByPipe = false;
-  private String model = LoadTsFileConfigurator.MODEL_TREE_VALUE;
 
   private Map<String, String> loadAttributes;
 
   private final List<File> tsFiles;
+  private List<Boolean> isTableModel;
   private final List<TsFileResource> resources;
   private final List<Long> writePointCountList;
 
@@ -84,6 +83,7 @@ public class LoadTsFileStatement extends Statement {
     this.statementType = StatementType.MULTI_BATCH_INSERT;
 
     this.tsFiles = processTsFile(file);
+    this.isTableModel = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
   }
 
   public static List<File> processTsFile(final File file) throws FileNotFoundException {
@@ -203,12 +203,12 @@ public class LoadTsFileStatement extends Statement {
     return autoCreateDatabase;
   }
 
-  public void setModel(String model) {
-    this.model = model;
+  public List<Boolean> getIsTableModel() {
+    return isTableModel;
   }
 
-  public String getModel() {
-    return model;
+  public void setIsTableModel(List<Boolean> isTableModel) {
+    this.isTableModel = isTableModel;
   }
 
   public void markIsGeneratedByPipe() {

@@ -386,11 +386,10 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "tvlist_sort_algorithm", conf.getTvListSortAlgorithm().toString())));
 
-    conf.setAvgSeriesPointNumberThreshold(
+    conf.setTVListSortThreshold(
         Integer.parseInt(
             properties.getProperty(
-                "avg_series_point_number_threshold",
-                Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
+                "tvlist_sort_threshold", Integer.toString(conf.getTvListSortThreshold()))));
 
     conf.setCheckPeriodWhenInsertBlocked(
         Integer.parseInt(
@@ -1855,6 +1854,10 @@ public class IoTDBDescriptor {
           properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME).trim());
     }
 
+    if (properties.getProperty(IoTDBConstant.MQTT_DATA_PATH) != null) {
+      conf.setMqttDataPath(properties.getProperty(IoTDBConstant.MQTT_DATA_PATH).trim());
+    }
+
     if (properties.getProperty(IoTDBConstant.ENABLE_MQTT) != null) {
       conf.setEnableMQTTService(
           Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT).trim()));
@@ -2084,6 +2087,13 @@ public class IoTDBDescriptor {
       loadQuerySampleThroughput(properties);
       // update trusted_uri_pattern
       loadTrustedUriPattern(properties);
+
+      // tvlist_sort_threshold
+      conf.setTVListSortThreshold(
+          Integer.parseInt(
+              properties.getProperty(
+                  "tvlist_sort_threshold",
+                  ConfigurationFileUtils.getConfigurationDefaultValue("tvlist_sort_threshold"))));
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
@@ -2400,6 +2410,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "max_allocate_memory_ratio_for_load",
                 String.valueOf(conf.getMaxAllocateMemoryRatioForLoad()))));
+    conf.setLoadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_analyze_schema_batch_read_time_series_metadata_count",
+                String.valueOf(
+                    conf.getLoadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount()))));
     conf.setLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber(
         Integer.parseInt(
             properties.getProperty(

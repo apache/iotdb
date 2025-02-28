@@ -46,6 +46,9 @@ public class PartitionTableAutoCleaner<Env> extends InternalProcedure<Env> {
   public PartitionTableAutoCleaner(ConfigManager configManager) {
     super(COMMON_CONFIG.getTTLCheckInterval());
     this.configManager = configManager;
+    LOGGER.info(
+        "[PartitionTableCleaner] The PartitionTableAutoCleaner is started with cycle={}ms",
+        COMMON_CONFIG.getTTLCheckInterval());
   }
 
   @Override

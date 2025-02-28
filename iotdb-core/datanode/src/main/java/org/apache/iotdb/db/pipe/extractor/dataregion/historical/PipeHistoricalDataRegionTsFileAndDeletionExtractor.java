@@ -32,12 +32,16 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.resource.PersistentResource;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.consensus.pipe.PipeConsensus;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
+import org.apache.iotdb.db.pipe.processor.pipeconsensus.PipeConsensusProcessor;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -794,6 +798,19 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             tablePattern,
             historicalDataExtractionStartTime,
             historicalDataExtractionEndTime);
+
+    // if using IoTV2, assign a replicateIndex for this event
+    if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus
+        && PipeConsensusProcessor.isShouldReplicate(event)) {
+      event.setReplicateIndexForIoTV2(
+          ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(
+              resource.getDataRegionId()));
+      LOGGER.debug(
+          "[Region{}]Set {} for event {}",
+          resource.getDataRegionId(),
+          event.getReplicateIndexForIoTV2(),
+          event);
+    }
 
     if (sloppyPattern || isDbNameCoveredByPattern) {
       event.skipParsingPattern();

@@ -44,9 +44,6 @@ public class LoadTsFileConfigurator {
       case ON_SUCCESS_KEY:
         validateOnSuccessParam(value);
         break;
-      case MODEL_KEY:
-        validateModelParam(value);
-        break;
       case DATABASE_NAME_KEY:
       case TABLET_CONVERSION_THRESHOLD_KEY:
         break;
@@ -163,27 +160,6 @@ public class LoadTsFileConfigurator {
   public static boolean parseOrGetDefaultVerify(final Map<String, String> loadAttributes) {
     return Boolean.parseBoolean(
         loadAttributes.getOrDefault(VERIFY_KEY, String.valueOf(VERIFY_DEFAULT_VALUE)));
-  }
-
-  public static final String MODEL_KEY = "model";
-  public static final String MODEL_TREE_VALUE = "tree";
-  public static final String MODEL_TABLE_VALUE = "table";
-  public static final Set<String> MODEL_VALUE_SET =
-      Collections.unmodifiableSet(
-          new HashSet<>(Arrays.asList(MODEL_TREE_VALUE, MODEL_TABLE_VALUE)));
-
-  public static void validateModelParam(final String model) {
-    if (!MODEL_VALUE_SET.contains(model)) {
-      throw new SemanticException(
-          String.format(
-              "Given %s value '%s' is not supported, please input a valid value.",
-              MODEL_KEY, model));
-    }
-  }
-
-  public static @Nullable String parseOrGetDefaultModel(
-      final Map<String, String> loadAttributes, final String defaultModel) {
-    return loadAttributes.getOrDefault(MODEL_KEY, defaultModel);
   }
 
   private LoadTsFileConfigurator() {
