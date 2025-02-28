@@ -257,7 +257,6 @@ public class LogicalOptimizeFactory {
                 new RemoveUnreferencedScalarApplyNodes(),
                 //                            new TransformCorrelatedInPredicateToJoin(metadata), //
                 // must be run after columnPruningOptimizer
-
                 new TransformCorrelatedScalarSubquery(
                     metadata), // must be run after TransformCorrelatedAggregation rules
                 new TransformCorrelatedJoinToJoin(plannerContext))),

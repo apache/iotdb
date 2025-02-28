@@ -1785,6 +1785,42 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void insertPartialSQLTest() throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.createAlignedTimeseries(
+          "root.partial_insert.d1",
+          Collections.singletonList("s1"),
+          Collections.singletonList(TSDataType.BOOLEAN),
+          Collections.singletonList(TSEncoding.PLAIN),
+          Collections.singletonList(CompressionType.UNCOMPRESSED),
+          null);
+      try {
+        session.executeNonQueryStatement(
+            "insert into root.partial_insert.d1(time, s1) values (10000,true),(20000,false),(35000,-1.5),(30000,-1),(40000,0),(50000,1),(60000,1.5),(70000,'string'),(80000,'1989-06-15'),(90000,638323200000)");
+        fail("Exception expected");
+      } catch (StatementExecutionException e) {
+        assertEquals(
+            "507: Fail to insert measurements [s1] caused by [The BOOLEAN should be true/TRUE, false/FALSE or 0/1]",
+            e.getMessage());
+      }
+
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from root.partial_insert.d1");
+      long[] timestamps = new long[] {10000, 20000, 40000, 50000};
+      Boolean[] values = new Boolean[] {true, false, false, true};
+      int cnt = 0;
+      while (dataSet.hasNext()) {
+        RowRecord rec = dataSet.next();
+        assertEquals(timestamps[cnt], rec.getTimestamp());
+        assertEquals(values[cnt], rec.getFields().get(0).getBoolV());
+        cnt++;
+      }
+      assertEquals(4, cnt);
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertBinaryAsTextTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       // prepare binary data

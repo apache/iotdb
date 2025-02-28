@@ -117,7 +117,7 @@ public class TransformExistsApplyToCorrelatedJoin implements Rule<ApplyNode> {
     aggregation, which is inefficient in the rare case of uncorrelated EXISTS subquery,
     but currently allows to successfully decorrelate a correlated EXISTS subquery.
 
-    TODO: remove this condition when exploratory optimizer is implemented or support for decorrelating joins is implemented in PlanNodeDecorrelator
+    Perhaps we can remove this condition when exploratory optimizer is implemented or support for decorrelating joins is implemented in PlanNodeDecorrelator
     */
     if (parent.getCorrelation().isEmpty()) {
       return Result.ofPlanNode(rewriteToDefaultAggregation(parent, context));

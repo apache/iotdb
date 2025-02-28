@@ -313,8 +313,6 @@ public class JoinUtils {
             .generateEqualitiesPartitionedBy(innerScope)
             .getScopeEqualities());
 
-    // TODO: we can further improve simplifying the equalities by considering other relationships
-    // from the outer side
     EqualityInference.EqualityPartition joinEqualityPartition =
         new EqualityInference(metadata, joinPredicate).generateEqualitiesPartitionedBy(innerScope);
     innerPushdownConjuncts.addAll(joinEqualityPartition.getScopeEqualities());

@@ -134,10 +134,8 @@ public class TransformCorrelatedGlobalAggregationWithoutProjection
       correlatedJoin()
           .with(nonEmpty(Patterns.CorrelatedJoin.correlation()))
           .with(
-              filter()
-                  .equalTo(
-                      TRUE_LITERAL)) // todo non-trivial join filter: adding filter/project on top
-          // of aggregation
+              filter().equalTo(TRUE_LITERAL)) // non-trivial join filter can be supported by adding
+          // filter/project on top of aggregation in the future
           .with(
               subquery()
                   .matching(
