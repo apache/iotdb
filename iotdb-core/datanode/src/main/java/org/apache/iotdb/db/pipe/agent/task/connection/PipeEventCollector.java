@@ -161,6 +161,7 @@ public class PipeEventCollector implements EventCollector {
     if (isUsedForConsensusPipe) {
       hasNoGeneratedEvent = false;
       collectEvent(deleteDataEvent);
+      return;
     }
 
     // Only used by events containing delete data node, no need to bind progress index here since
