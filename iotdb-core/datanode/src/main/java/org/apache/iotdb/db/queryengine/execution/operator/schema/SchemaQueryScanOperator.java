@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.ISchemaSource;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 
@@ -45,9 +46,8 @@ import java.util.stream.Collectors;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
 public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOperator {
-  private static final long DEFAULT_MAX_TS_BLOCK_SIZE_IN_BYTES =
+  private static final long MAX_SIZE =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
-  private static final long MAX_SIZE = DEFAULT_MAX_TS_BLOCK_SIZE_IN_BYTES;
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(SchemaQueryScanOperator.class);
@@ -196,12 +196,16 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
 
   @Override
   public long calculateMaxPeekMemory() {
-    return DEFAULT_MAX_TS_BLOCK_SIZE_IN_BYTES;
+    return schemaSource.getMaxMemory(getSchemaRegion());
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    return DEFAULT_MAX_TS_BLOCK_SIZE_IN_BYTES;
+    return schemaSource.getMaxMemory(getSchemaRegion());
+  }
+
+  private ISchemaRegion getSchemaRegion() {
+    return ((SchemaDriverContext) operatorContext.getDriverContext()).getSchemaRegion();
   }
 
   @Override
