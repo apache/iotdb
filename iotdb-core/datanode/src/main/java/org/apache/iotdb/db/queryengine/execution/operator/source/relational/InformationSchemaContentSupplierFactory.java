@@ -249,8 +249,9 @@ public class InformationSchemaContentSupplierFactory {
           new Binary(
               TableNodeStatus.values()[currentTable.getState()].toString(),
               TSFileConfig.STRING_CHARSET));
-      if (info.isSetComment()) {
-        columnBuilders[4].writeBinary(new Binary(info.getComment(), TSFileConfig.STRING_CHARSET));
+      if (currentTable.isSetComment()) {
+        columnBuilders[4].writeBinary(
+            new Binary(currentTable.getComment(), TSFileConfig.STRING_CHARSET));
       } else {
         columnBuilders[4].appendNull();
       }
