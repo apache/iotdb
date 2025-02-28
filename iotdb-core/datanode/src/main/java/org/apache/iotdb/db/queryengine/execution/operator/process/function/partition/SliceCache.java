@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.function.partition;
 
-import org.apache.iotdb.udf.api.relational.access.Record;
+import org.apache.tsfile.block.column.Column;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,21 +28,59 @@ import java.util.List;
 public class SliceCache {
 
   private final List<Slice> slices = new ArrayList<>();
+  private final List<Long> startOffsets = new ArrayList<>();
 
-  public Record getOriginalRecord(long index) {
-    long previousSize = 0;
-    for (Slice slice : slices) {
-      long currentSize = slice.getSize();
-      if (index < previousSize + currentSize) {
-        return slice.getPassThroughRecord((int) (index - previousSize));
+  public List<Column[]> getPassThroughResult(Column indexes) {
+    List<Column[]> result = new ArrayList<>();
+    int sliceIndex = findLastLessOrEqual(indexes.getLong(0));
+    int indexStart = 0;
+    for (int i = 1; i < indexes.getPositionCount(); i++) {
+      int tmp = findLastLessOrEqual(indexes.getLong(i));
+      if (tmp != sliceIndex) {
+        int[] indexArray = new int[i - indexStart];
+        for (int j = indexStart; j < i; j++) {
+          indexArray[j - indexStart] = (int) (indexes.getLong(i) - startOffsets.get(sliceIndex));
+        }
+
+        result.add(slices.get(sliceIndex).getPassThroughResult(indexArray));
+        indexStart = i;
+        sliceIndex = tmp;
       }
-      previousSize += currentSize;
     }
-    throw new IndexOutOfBoundsException("Index out of bound");
+    int[] indexArray = new int[indexes.getPositionCount() - indexStart];
+    for (int j = indexStart; j < indexes.getPositionCount(); j++) {
+      indexArray[j - indexStart] = (int) (indexes.getLong(j) - startOffsets.get(sliceIndex));
+    }
+    result.add(slices.get(sliceIndex).getPassThroughResult(indexArray));
+    return result;
   }
 
   public void addSlice(Slice slice) {
     slices.add(slice);
+    if (startOffsets.isEmpty()) {
+      startOffsets.add(0L);
+    } else {
+      startOffsets.add(
+          startOffsets.get(startOffsets.size() - 1)
+              + slices.get(startOffsets.size() - 1).getSize());
+    }
+  }
+
+  private int findLastLessOrEqual(long target) {
+    int left = 0;
+    int right = startOffsets.size() - 1;
+    int result = -1;
+    while (left <= right) {
+      int mid = left + (right - left) / 2;
+
+      if (startOffsets.get(mid) <= target) {
+        result = mid;
+        left = mid + 1;
+      } else {
+        right = mid - 1;
+      }
+    }
+    return result;
   }
 
   public void clear() {

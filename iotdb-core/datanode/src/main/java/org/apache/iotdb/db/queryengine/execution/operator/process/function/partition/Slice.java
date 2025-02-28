@@ -28,18 +28,19 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
 
 /** Parts of partition. */
 public class Slice {
 
-  private final int startIndex;
-  private final int endIndex;
   private final Column[] requiredColumns;
   private final Column[] passThroughColumns;
   private final List<Type> dataTypes;
+  private final long size;
 
   public Slice(
       int startIndex,
@@ -48,34 +49,35 @@ public class Slice {
       List<Integer> requiredChannels,
       List<Integer> passThroughChannels,
       List<Type> dataTypes) {
-    this.startIndex = startIndex;
-    this.endIndex = endIndex;
-    this.requiredColumns = new Column[requiredChannels.size()];
-    for (int i = 0; i < requiredChannels.size(); i++) {
-      requiredColumns[i] = columns[requiredChannels.get(i)];
-    }
-    this.passThroughColumns = new Column[passThroughChannels.size()];
-    for (int i = 0; i < passThroughChannels.size(); i++) {
-      passThroughColumns[i] = columns[passThroughChannels.get(i)];
-    }
+    this.size = endIndex - startIndex;
+    List<Column> partitionColumns =
+        Arrays.stream(columns)
+            .map(i -> i.getRegion(startIndex, (int) size))
+            .collect(Collectors.toList());
+    this.requiredColumns =
+        requiredChannels.stream().map(partitionColumns::get).toArray(Column[]::new);
+    this.passThroughColumns =
+        passThroughChannels.stream().map(partitionColumns::get).toArray(Column[]::new);
     this.dataTypes = dataTypes;
   }
 
-  public int getSize() {
-    return endIndex - startIndex;
+  public long getSize() {
+    return size;
   }
 
-  public Record getPassThroughRecord(int offset) {
-    return getRecord(startIndex + offset, passThroughColumns);
+  public Column[] getPassThroughResult(int[] indexes) {
+    return Arrays.stream(passThroughColumns)
+        .map(i -> i.getPositions(indexes, 0, indexes.length))
+        .toArray(Column[]::new);
   }
 
   public Iterator<Record> getRequiredRecordIterator() {
     return new Iterator<Record>() {
-      private int curIndex = startIndex;
+      private int curIndex = 0;
 
       @Override
       public boolean hasNext() {
-        return curIndex < endIndex;
+        return curIndex < size;
       }
 
       @Override
