@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.executor;
 
+import org.apache.iotdb.ainode.rpc.thrift.ITableSchema;
+import org.apache.iotdb.ainode.rpc.thrift.TTrainingReq;
 import org.apache.iotdb.common.rpc.thrift.FunctionType;
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -35,6 +37,9 @@ import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.ainode.AINodeClient;
+import org.apache.iotdb.commons.client.ainode.AINodeClientManager;
+import org.apache.iotdb.commons.client.ainode.AINodeInfo;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -144,6 +149,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -187,7 +193,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegion
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowModelsTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowModelsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ExtendRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
@@ -215,10 +221,12 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.Sh
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
@@ -3133,6 +3141,60 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       // convert model info list and buildTsBlock
       ShowModelsTask.buildTsBlock(showModelResp.getModelInfoList(), future);
     } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> createTraining(CreateModel createModel) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    TTrainingReq trainingReq = new TTrainingReq();
+    trainingReq.setModelId(createModel.getModelId());
+    trainingReq.setModelType((byte) createModel.getModelType().ordinal());
+
+    if (createModel.getExistingModelId() != null) {
+      trainingReq.setExistingModelId(createModel.getExistingModelId());
+    }
+
+    if (createModel.getParameters() != null) {
+      trainingReq.setParameters(createModel.getParameters());
+    }
+
+    List<ITableSchema> tableSchemaList = new ArrayList<>();
+    if (createModel.isUseAllData() || !createModel.getTargetDbs().isEmpty()) {
+      try (final ConfigNodeClient client =
+          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        List<String> databaseNameList = new ArrayList<>();
+        if (createModel.isUseAllData()) {
+          TShowDatabaseResp resp = client.showDatabase(new TGetDatabaseReq());
+          databaseNameList.addAll(resp.getDatabaseInfoMap().keySet());
+        } else {
+          databaseNameList.addAll(createModel.getTargetDbs());
+        }
+
+        for (String database : databaseNameList) {
+          TShowTableResp resp = client.showTables(database, false);
+          for (TTableInfo tableInfo : resp.getTableInfoList()) {
+            tableSchemaList.add(new ITableSchema(database, tableInfo.getTableName()));
+          }
+        }
+
+      } catch (final Exception e) {
+        future.setException(e);
+      }
+    }
+    for (Table table : createModel.getTargetTables()) {
+      tableSchemaList.add(
+          new ITableSchema(createModel.getCurDatabase(), table.getName().toString()));
+    }
+    trainingReq.setTargetTables(tableSchemaList);
+
+    try (AINodeClient client =
+        AINodeClientManager.getInstance().borrowClient(AINodeInfo.endPoint)) {
+      client.createTrainingTask(trainingReq);
+    } catch (final Exception e) {
       future.setException(e);
     }
     return future;

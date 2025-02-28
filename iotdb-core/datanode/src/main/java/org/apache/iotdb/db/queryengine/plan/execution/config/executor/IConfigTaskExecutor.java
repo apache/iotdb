@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.Mig
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.RemoveRegionTask;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
@@ -288,13 +289,6 @@ public interface IConfigTaskExecutor {
 
   TThrottleQuotaResp getThrottleQuota();
 
-  SettableFuture<ConfigTaskResult> createModel(
-      CreateModelStatement createModelStatement, MPPQueryContext context);
-
-  SettableFuture<ConfigTaskResult> dropModel(String modelName);
-
-  SettableFuture<ConfigTaskResult> showModels(String modelName);
-
   TPipeTransferResp handleTransferConfigPlan(String clientId, TPipeTransferReq req);
 
   void handlePipeConfigClientExit(String clientId);
@@ -383,4 +377,14 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showCurrentDatabase(@Nullable String currentDatabase);
 
   SettableFuture<ConfigTaskResult> showCurrentTimestamp();
+
+  // =============================== AI =========================================
+  SettableFuture<ConfigTaskResult> createModel(
+      CreateModelStatement createModelStatement, MPPQueryContext context);
+
+  SettableFuture<ConfigTaskResult> dropModel(String modelName);
+
+  SettableFuture<ConfigTaskResult> showModels(String modelName);
+
+  SettableFuture<ConfigTaskResult> createTraining(CreateModel createModel);
 }

@@ -17,29 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model;
+package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai;
 
-import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateModel;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class CreateModelTask implements IConfigTask {
+public class CreateTrainingTask implements IConfigTask {
 
-  private final CreateModelStatement createModelStatement;
-  private final MPPQueryContext context;
+  private final CreateModel createModel;
 
-  public CreateModelTask(CreateModelStatement createModelStatement, MPPQueryContext context) {
-    this.createModelStatement = createModelStatement;
-    this.context = context;
+  public CreateTrainingTask(CreateModel createModel) {
+    this.createModel = createModel;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.createModel(createModelStatement, context);
+    return configTaskExecutor.createTraining(createModel);
   }
 }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model;
+package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai;
 
 import org.apache.iotdb.commons.model.ModelType;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;

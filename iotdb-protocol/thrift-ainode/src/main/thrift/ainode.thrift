@@ -75,6 +75,19 @@ struct TInferenceResp {
   2: required list<binary> inferenceResult
 }
 
+struct ITableSchema {
+  1: required string database
+  2: required string tableName
+}
+
+struct TTrainingReq {
+  1: required string modelId
+  2: required byte modelType
+  3: optional list<ITableSchema> targetTables;
+  4: optional map<string, string> parameters;
+  5: optional string existingModelId
+}
+
 service IAINodeRPCService {
 
   // -------------- For Config Node --------------
@@ -84,6 +97,8 @@ service IAINodeRPCService {
   TRegisterModelResp registerModel(TRegisterModelReq req)
 
   TAIHeartbeatResp getAIHeartbeat(TAIHeartbeatReq req)
+
+  common.TSStatus createTrainingTask(TTrainingReq req)
 
   // -------------- For Data Node --------------
 
