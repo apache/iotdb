@@ -58,7 +58,7 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
   }
 
   @Override
-  public synchronized void cleanUp() {
+  public synchronized void cleanUp(final boolean force) {
     // close batch, it includes clearing the reference count of events
     batch.close();
     enrichedEvents.clear();
