@@ -95,7 +95,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final String databaseNameFromDataRegion,
       final TsFileResource resource,
       final boolean isLoaded,
-      final boolean isGeneratedByPipe,
       final boolean isGeneratedByHistoricalExtractor) {
     // The modFile must be copied before the event is assigned to the listening pipes
     this(
@@ -104,7 +103,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         resource,
         true,
         isLoaded,
-        isGeneratedByPipe,
         isGeneratedByHistoricalExtractor,
         null,
         0,
@@ -121,7 +119,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final TsFileResource resource,
       final boolean isWithMod,
       final boolean isLoaded,
-      final boolean isGeneratedByPipe,
       final boolean isGeneratedByHistoricalExtractor,
       final String pipeName,
       final long creationTime,
@@ -151,7 +148,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         resource.getSharedModFile() != null ? resource.getSharedModFile().getFile() : null;
 
     this.isLoaded = isLoaded;
-    this.isGeneratedByPipe = isGeneratedByPipe;
+    this.isGeneratedByPipe = resource.isGeneratedByPipe();
     this.isGeneratedByPipeConsensus = resource.isGeneratedByPipeConsensus();
     this.isGeneratedByHistoricalExtractor = isGeneratedByHistoricalExtractor;
 
@@ -382,7 +379,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         resource,
         isWithMod,
         isLoaded,
-        isGeneratedByPipe,
         isGeneratedByHistoricalExtractor,
         pipeName,
         creationTime,

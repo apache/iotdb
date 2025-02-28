@@ -38,11 +38,10 @@ public class PipeRealtimeEventFactory {
       final Boolean isTableModel,
       final String databaseNameFromDataRegion,
       final TsFileResource resource,
-      final boolean isLoaded,
-      final boolean isGeneratedByPipe) {
+      final boolean isLoaded) {
     return TS_FILE_EPOCH_MANAGER.bindPipeTsFileInsertionEvent(
         new PipeTsFileInsertionEvent(
-            isTableModel, databaseNameFromDataRegion, resource, isLoaded, isGeneratedByPipe, false),
+            isTableModel, databaseNameFromDataRegion, resource, isLoaded, false),
         resource);
   }
 

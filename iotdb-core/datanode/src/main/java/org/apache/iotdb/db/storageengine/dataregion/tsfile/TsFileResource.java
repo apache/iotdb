@@ -199,6 +199,9 @@ public class TsFileResource implements PersistentResource {
   /** used to prevent circular replication in PipeConsensus */
   private boolean isGeneratedByPipeConsensus = false;
 
+  /** used to prevent circular replication in Pipe */
+  private boolean isGeneratedByPipe = false;
+
   private InsertionCompactionCandidateStatus insertionCompactionCandidateStatus =
       InsertionCompactionCandidateStatus.NOT_CHECKED;
 
@@ -304,6 +307,7 @@ public class TsFileResource implements PersistentResource {
     }
 
     ReadWriteIOUtils.write(isGeneratedByPipeConsensus, outputStream);
+    ReadWriteIOUtils.write(isGeneratedByPipe, outputStream);
   }
 
   /** deserialize from disk */
@@ -338,6 +342,7 @@ public class TsFileResource implements PersistentResource {
 
       if (inputStream.available() > 0) {
         isGeneratedByPipeConsensus = ReadWriteIOUtils.readBoolean(inputStream);
+        isGeneratedByPipe = ReadWriteIOUtils.readBoolean(inputStream);
       }
     }
   }
@@ -745,6 +750,14 @@ public class TsFileResource implements PersistentResource {
 
   public void setGeneratedByPipeConsensus(boolean generatedByPipeConsensus) {
     isGeneratedByPipeConsensus = generatedByPipeConsensus;
+  }
+
+  public boolean isGeneratedByPipe() {
+    return isGeneratedByPipe;
+  }
+
+  public void setGeneratedByPipe(boolean generatedByPipe) {
+    isGeneratedByPipe = generatedByPipe;
   }
 
   public void writeLock() {
