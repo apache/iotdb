@@ -157,7 +157,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     return totalBufferSize >= maxBatchSizeInBytes
         || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs
         // TODO: config
-        || enrichedEvents.size() > 100;
+        || enrichedEvents.size() >= 100;
   }
 
   private List<Tablet> convertToTablets(final TabletInsertionEvent tabletInsertionEvent) {
