@@ -97,7 +97,7 @@
         <jakarta.validation-api.version>2.0.2</jakarta.validation-api.version>
         <!-- This is the last version to support the javax namespace -->
         <jakarta.ws.rs-api.version>2.1.6</jakarta.ws.rs-api.version>
-        <java-websocket.version>1.5.4</java-websocket.version>
+        <java-websocket.version>1.5.7</java-websocket.version>
         <jcip-annotations.version>1.0-1</jcip-annotations.version>
         <!-- This is the last version to support the javax namespace -->
         <jersey.version>2.40</jersey.version>
