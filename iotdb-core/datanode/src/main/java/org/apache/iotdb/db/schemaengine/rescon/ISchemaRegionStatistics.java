@@ -37,6 +37,8 @@ public interface ISchemaRegionStatistics {
 
   long getTableDevicesNumber(final String table);
 
+  long getTableAttributeMemory(final String table);
+
   int getTemplateActivatedNumber();
 
   long getTemplateSeriesNumber();

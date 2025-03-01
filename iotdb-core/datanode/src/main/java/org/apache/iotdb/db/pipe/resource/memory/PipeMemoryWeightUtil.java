@@ -24,8 +24,13 @@ import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.utils.MemUtils;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.ChunkMetadata;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.common.BatchData;
+import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
@@ -34,9 +39,14 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.List;
 import java.util.Map;
+
+import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+import static org.apache.tsfile.utils.RamUsageEstimator.alignObjectSize;
 
 public class PipeMemoryWeightUtil {
 
@@ -252,6 +262,34 @@ public class PipeMemoryWeightUtil {
     return totalSizeInBytes;
   }
 
+  public static long calculateTableSchemaBytesUsed(TableSchema tableSchema) {
+    long totalSizeInBytes = 0;
+
+    final String tableName = tableSchema.getTableName();
+    if (tableName != null) {
+      totalSizeInBytes += tableName.length();
+    }
+
+    final List<IMeasurementSchema> measurementSchemas = tableSchema.getColumnSchemas();
+    if (measurementSchemas != null) {
+      totalSizeInBytes +=
+          NUM_BYTES_ARRAY_HEADER + (long) NUM_BYTES_OBJECT_REF * measurementSchemas.size();
+      for (IMeasurementSchema measurementSchema : measurementSchemas) {
+        InsertNodeMemoryEstimator.sizeOfMeasurementSchema((MeasurementSchema) measurementSchema);
+      }
+    }
+
+    final List<Tablet.ColumnCategory> categories = tableSchema.getColumnTypes();
+    if (categories != null) {
+      totalSizeInBytes +=
+          alignObjectSize(
+              (long) NUM_BYTES_ARRAY_HEADER
+                  + (long) NUM_BYTES_OBJECT_REF * (long) categories.size());
+    }
+
+    return totalSizeInBytes;
+  }
+
   public static int calculateBatchDataRamBytesUsed(BatchData batchData) {
     int totalSizeInBytes = 0;
 
@@ -283,6 +321,33 @@ public class PipeMemoryWeightUtil {
     }
 
     return batchData.length() * totalSizeInBytes;
+  }
+
+  public static long calculateChunkRamBytesUsed(Chunk chunk) {
+    return chunk != null ? chunk.getRetainedSizeInBytes() : 0L;
+  }
+
+  public static long calculateAlignedChunkMetaBytesUsed(
+      AbstractAlignedChunkMetadata alignedChunkMetadata) {
+    if (alignedChunkMetadata == null) {
+      return 0L;
+    }
+
+    final ChunkMetadata timeChunkMetadata =
+        (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
+    final List<IChunkMetadata> valueChunkMetadataList =
+        alignedChunkMetadata.getValueChunkMetadataList();
+
+    long size = timeChunkMetadata != null ? timeChunkMetadata.getRetainedSizeInBytes() : 0;
+    if (valueChunkMetadataList != null && !valueChunkMetadataList.isEmpty()) {
+      for (IChunkMetadata valueChunkMetadata : valueChunkMetadataList) {
+        if (valueChunkMetadata != null) {
+          size += ((ChunkMetadata) valueChunkMetadata).getRetainedSizeInBytes();
+        }
+      }
+    }
+
+    return size;
   }
 
   /**

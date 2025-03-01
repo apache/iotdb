@@ -280,7 +280,7 @@ public class LogDispatcher {
 
     /** try to offer a request into queue with memory control. */
     public boolean offer(IndexedConsensusRequest indexedConsensusRequest) {
-      if (!iotConsensusMemoryManager.reserve(indexedConsensusRequest.getSerializedSize(), true)) {
+      if (!iotConsensusMemoryManager.reserve(indexedConsensusRequest.getMemorySize(), true)) {
         return false;
       }
       boolean success;
@@ -288,19 +288,19 @@ public class LogDispatcher {
         success = pendingEntries.offer(indexedConsensusRequest);
       } catch (Throwable t) {
         // If exception occurs during request offer, the reserved memory should be released
-        iotConsensusMemoryManager.free(indexedConsensusRequest.getSerializedSize(), true);
+        iotConsensusMemoryManager.free(indexedConsensusRequest.getMemorySize(), true);
         throw t;
       }
       if (!success) {
         // If offer failed, the reserved memory should be released
-        iotConsensusMemoryManager.free(indexedConsensusRequest.getSerializedSize(), true);
+        iotConsensusMemoryManager.free(indexedConsensusRequest.getMemorySize(), true);
       }
       return success;
     }
 
     /** try to remove a request from queue with memory control. */
     private void releaseReservedMemory(IndexedConsensusRequest indexedConsensusRequest) {
-      iotConsensusMemoryManager.free(indexedConsensusRequest.getSerializedSize(), true);
+      iotConsensusMemoryManager.free(indexedConsensusRequest.getMemorySize(), true);
     }
 
     public void stop() {
@@ -322,13 +322,13 @@ public class LogDispatcher {
       }
       long requestSize = 0;
       for (IndexedConsensusRequest indexedConsensusRequest : pendingEntries) {
-        requestSize += indexedConsensusRequest.getSerializedSize();
+        requestSize += indexedConsensusRequest.getMemorySize();
       }
       pendingEntries.clear();
       iotConsensusMemoryManager.free(requestSize, true);
       requestSize = 0;
       for (IndexedConsensusRequest indexedConsensusRequest : bufferedEntries) {
-        requestSize += indexedConsensusRequest.getSerializedSize();
+        requestSize += indexedConsensusRequest.getMemorySize();
       }
       iotConsensusMemoryManager.free(requestSize, true);
       syncStatus.free();
