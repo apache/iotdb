@@ -24,7 +24,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemChunkLoader;
 import org.apache.iotdb.db.utils.MathUtils;
-import org.apache.iotdb.db.utils.datastructure.MergeSortTvListIterator;
+import org.apache.iotdb.db.utils.datastructure.MergeSortTVListIterator;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -85,7 +85,7 @@ public class ReadOnlyMemChunk {
   // TVList and its rowCount during query
   private Map<TVList, Integer> tvListQueryMap;
 
-  private MergeSortTvListIterator timeValuePairIterator;
+  private MergeSortTVListIterator timeValuePairIterator;
 
   protected final int MAX_NUMBER_OF_POINTS_IN_PAGE =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
@@ -148,7 +148,7 @@ public class ReadOnlyMemChunk {
     int cnt = 0;
     int[] deleteCursor = {0};
     List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
-    timeValuePairIterator = new MergeSortTvListIterator(tvLists, floatPrecision, encoding);
+    timeValuePairIterator = new MergeSortTVListIterator(tvLists, floatPrecision, encoding);
     int[] tvListOffsets = timeValuePairIterator.getTVListOffsets();
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       if (cnt % MAX_NUMBER_OF_POINTS_IN_PAGE == 0) {
@@ -246,7 +246,7 @@ public class ReadOnlyMemChunk {
     int[] deleteCursor = {0};
     List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
     IPointReader timeValuePairIterator =
-        new MergeSortTvListIterator(tvLists, floatPrecision, encoding);
+        new MergeSortTVListIterator(tvLists, floatPrecision, encoding);
 
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       TimeValuePair tvPair = timeValuePairIterator.nextTimeValuePair();
@@ -334,7 +334,7 @@ public class ReadOnlyMemChunk {
     return null;
   }
 
-  public MergeSortTvListIterator getMergeSortTVListIterator() {
+  public MergeSortTVListIterator getMergeSortTVListIterator() {
     return timeValuePairIterator;
   }
 

@@ -30,7 +30,7 @@ import java.util.PriorityQueue;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class MergeSortTvListIterator implements IPointReader {
+public class MergeSortTVListIterator implements IPointReader {
   private final TVList.TVListIterator[] tvListIterators;
   private final int[] tvListOffsets;
 
@@ -42,7 +42,7 @@ public class MergeSortTvListIterator implements IPointReader {
       new PriorityQueue<>(
           (a, b) -> a.left.equals(b.left) ? b.right.compareTo(a.right) : a.left.compareTo(b.left));
 
-  public MergeSortTvListIterator(List<TVList> tvLists) {
+  public MergeSortTVListIterator(List<TVList> tvLists) {
     tvListIterators = new TVList.TVListIterator[tvLists.size()];
     for (int i = 0; i < tvLists.size(); i++) {
       tvListIterators[i] = tvLists.get(i).iterator(null, null);
@@ -52,7 +52,7 @@ public class MergeSortTvListIterator implements IPointReader {
         IntStream.range(0, tvListIterators.length).boxed().collect(Collectors.toList());
   }
 
-  public MergeSortTvListIterator(
+  public MergeSortTVListIterator(
       List<TVList> tvLists, Integer floatPrecision, TSEncoding encoding) {
     tvListIterators = new TVList.TVListIterator[tvLists.size()];
     for (int i = 0; i < tvLists.size(); i++) {
@@ -63,7 +63,7 @@ public class MergeSortTvListIterator implements IPointReader {
         IntStream.range(0, tvListIterators.length).boxed().collect(Collectors.toList());
   }
 
-  public MergeSortTvListIterator(TVList.TVListIterator[] tvListIterators) {
+  public MergeSortTVListIterator(TVList.TVListIterator[] tvListIterators) {
     this.tvListIterators = new TVList.TVListIterator[tvListIterators.length];
     for (int i = 0; i < tvListIterators.length; i++) {
       this.tvListIterators[i] = tvListIterators[i].clone();
@@ -156,7 +156,7 @@ public class MergeSortTvListIterator implements IPointReader {
   }
 
   @Override
-  public MergeSortTvListIterator clone() {
-    return new MergeSortTvListIterator(tvListIterators);
+  public MergeSortTVListIterator clone() {
+    return new MergeSortTVListIterator(tvListIterators);
   }
 }
