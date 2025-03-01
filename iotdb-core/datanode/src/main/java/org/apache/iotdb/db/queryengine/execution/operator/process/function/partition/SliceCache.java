@@ -30,16 +30,17 @@ public class SliceCache {
   private final List<Slice> slices = new ArrayList<>();
   private final List<Long> startOffsets = new ArrayList<>();
 
-  public List<Column[]> getPassThroughResult(Column indexes) {
+  public List<Column[]> getPassThroughResult(Column passThroughIndexes) {
     List<Column[]> result = new ArrayList<>();
-    int sliceIndex = findLastLessOrEqual(indexes.getLong(0));
+    int sliceIndex = findSliceIndex(passThroughIndexes.getLong(0));
     int indexStart = 0;
-    for (int i = 1; i < indexes.getPositionCount(); i++) {
-      int tmp = findLastLessOrEqual(indexes.getLong(i));
+    for (int i = 1; i < passThroughIndexes.getPositionCount(); i++) {
+      int tmp = findSliceIndex(passThroughIndexes.getLong(i));
       if (tmp != sliceIndex) {
         int[] indexArray = new int[i - indexStart];
         for (int j = indexStart; j < i; j++) {
-          indexArray[j - indexStart] = (int) (indexes.getLong(i) - startOffsets.get(sliceIndex));
+          indexArray[j - indexStart] =
+              (int) (passThroughIndexes.getLong(j) - getSliceOffset(sliceIndex));
         }
 
         result.add(slices.get(sliceIndex).getPassThroughResult(indexArray));
@@ -47,9 +48,10 @@ public class SliceCache {
         sliceIndex = tmp;
       }
     }
-    int[] indexArray = new int[indexes.getPositionCount() - indexStart];
-    for (int j = indexStart; j < indexes.getPositionCount(); j++) {
-      indexArray[j - indexStart] = (int) (indexes.getLong(j) - startOffsets.get(sliceIndex));
+    int[] indexArray = new int[passThroughIndexes.getPositionCount() - indexStart];
+    for (int j = indexStart; j < passThroughIndexes.getPositionCount(); j++) {
+      indexArray[j - indexStart] =
+          (int) (passThroughIndexes.getLong(j) - getSliceOffset(sliceIndex));
     }
     result.add(slices.get(sliceIndex).getPassThroughResult(indexArray));
     return result;
@@ -66,14 +68,19 @@ public class SliceCache {
     }
   }
 
-  private int findLastLessOrEqual(long target) {
+  private long getSliceOffset(int slideIndex) {
+    return startOffsets.get(slideIndex);
+  }
+
+  private int findSliceIndex(long passThroughIndex) {
     int left = 0;
     int right = startOffsets.size() - 1;
     int result = -1;
+
     while (left <= right) {
       int mid = left + (right - left) / 2;
 
-      if (startOffsets.get(mid) <= target) {
+      if (startOffsets.get(mid) <= passThroughIndex) {
         result = mid;
         left = mid + 1;
       } else {
