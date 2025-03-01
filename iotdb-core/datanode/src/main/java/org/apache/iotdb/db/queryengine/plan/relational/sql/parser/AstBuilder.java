@@ -56,7 +56,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateModel;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
@@ -2764,27 +2764,27 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   // ***************** AI *****************
   @Override
-  public Node visitCreateModel(RelationalSqlParser.CreateModelContext ctx) {
+  public Node visitCreateModelStatement(RelationalSqlParser.CreateModelStatementContext ctx) {
     String modelId = ctx.modelId.toString();
     if (ctx.modelType().TIMER_XL() == null) {
       throw new IllegalArgumentException("Currently we only support Timer_XL for model training");
     }
-    CreateModel createModel = new CreateModel(modelId, ModelType.TIMER_XL);
+    CreateTraining createTraining = new CreateTraining(modelId, ModelType.TIMER_XL);
     if (ctx.HYPERPARAMETERS() != null) {
       Map<String, String> parameters = new HashMap<>();
       for (RelationalSqlParser.HparamPairContext hparamPairContext : ctx.hparamPair()) {
         parameters.put(
             hparamPairContext.hparamKey.getText(), hparamPairContext.hyparamValue.getText());
       }
-      createModel.setParameters(parameters);
+      createTraining.setParameters(parameters);
     }
 
     if (ctx.existingModelId != null) {
-      createModel.setExistingModelId(ctx.existingModelId.getText());
+      createTraining.setExistingModelId(ctx.existingModelId.getText());
     }
 
     if (ctx.trainingData().ALL() != null) {
-      createModel.setUseAllData(true);
+      createTraining.setUseAllData(true);
     } else {
       List<Table> targetTables = new ArrayList<>();
       List<String> targetDbs = new ArrayList<>();
@@ -2803,10 +2803,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         throw new IllegalArgumentException(
             "No training data is supported for model, please indicate database or table");
       }
-      createModel.setTargetDbs(targetDbs);
-      createModel.setTargetTables(targetTables);
+      createTraining.setTargetDbs(targetDbs);
+      createTraining.setTargetTables(targetTables);
     }
-    return createModel;
+    return createTraining;
   }
 
   // ***************** arguments *****************

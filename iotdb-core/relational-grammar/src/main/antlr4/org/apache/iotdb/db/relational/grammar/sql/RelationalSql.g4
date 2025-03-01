@@ -147,7 +147,8 @@ statement
     | listUserStatement
     | listRoleStatement
 
-    | createModel
+    // AI
+    | createModelStatement
 
     // View, Trigger, pipe, CQ, Quota are not supported yet
     ;
@@ -698,8 +699,8 @@ revokeGrantOpt
 
 // ------------------------------------------- AI ---------------------------------------------------------
 
-createModel
-    : CREATE MODEL modelType modelId=string (WITH HYPERPARAMETERS '(' hparamPair (',' hparamPair)* ')')? (FROM MODEL existingModelId=string)? ON DATASET '(' trainingData ')'
+createModelStatement
+    : CREATE MODEL modelType modelId=identifier (WITH HYPERPARAMETERS '(' hparamPair (',' hparamPair)* ')')? (FROM MODEL existingModelId=string)? ON DATASET '(' trainingData ')'
     ;
 
 trainingData
@@ -718,11 +719,11 @@ dataElement
     ;
 
 databaseElement
-    : DATABASE database=identifier '(' timeRange ')'
+    : DATABASE database=identifier ('(' timeRange ')')?
     ;
 
 tableElement
-    : TABLE tableName=qualifiedName '(' timeRange ')'
+    : TABLE tableName=qualifiedName ('(' timeRange ')')?
     ;
 
 timeRange

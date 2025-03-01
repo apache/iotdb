@@ -109,7 +109,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateModel;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
@@ -1088,7 +1088,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitCreateModel(CreateModel node, MPPQueryContext context) {
+  protected IConfigTask visitCreateTraining(CreateTraining node, MPPQueryContext context) {
     String curDatabase = clientSession.getDatabaseName();
     node.setCurDatabase(curDatabase);
     return new CreateTrainingTask(node);

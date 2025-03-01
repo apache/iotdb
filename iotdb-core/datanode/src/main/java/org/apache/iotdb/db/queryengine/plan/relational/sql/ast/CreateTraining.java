@@ -24,7 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.ModelType;
 import java.util.List;
 import java.util.Map;
 
-public class CreateModel extends Statement {
+public class CreateTraining extends Statement {
 
   String modelId;
   String curDatabase;
@@ -37,7 +37,7 @@ public class CreateModel extends Statement {
   List<String> targetDbs;
   boolean useAllData = false;
 
-  public CreateModel(String modelId, ModelType modelType) {
+  public CreateTraining(String modelId, ModelType modelType) {
     super(null);
     this.modelId = modelId;
     this.modelType = modelType;
@@ -45,7 +45,7 @@ public class CreateModel extends Statement {
 
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitCreateModel(this, context);
+    return visitor.visitCreateTraining(this, context);
   }
 
   public void setCurDatabase(String curDatabase) {

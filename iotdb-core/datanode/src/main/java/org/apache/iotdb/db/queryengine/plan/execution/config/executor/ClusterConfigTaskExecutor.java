@@ -221,7 +221,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.Sh
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateModel;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
@@ -3147,31 +3147,31 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> createTraining(CreateModel createModel) {
+  public SettableFuture<ConfigTaskResult> createTraining(CreateTraining createTraining) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     TTrainingReq trainingReq = new TTrainingReq();
-    trainingReq.setModelId(createModel.getModelId());
-    trainingReq.setModelType((byte) createModel.getModelType().ordinal());
+    trainingReq.setModelId(createTraining.getModelId());
+    trainingReq.setModelType((byte) createTraining.getModelType().ordinal());
 
-    if (createModel.getExistingModelId() != null) {
-      trainingReq.setExistingModelId(createModel.getExistingModelId());
+    if (createTraining.getExistingModelId() != null) {
+      trainingReq.setExistingModelId(createTraining.getExistingModelId());
     }
 
-    if (createModel.getParameters() != null) {
-      trainingReq.setParameters(createModel.getParameters());
+    if (createTraining.getParameters() != null) {
+      trainingReq.setParameters(createTraining.getParameters());
     }
 
     List<ITableSchema> tableSchemaList = new ArrayList<>();
-    if (createModel.isUseAllData() || !createModel.getTargetDbs().isEmpty()) {
+    if (createTraining.isUseAllData() || !createTraining.getTargetDbs().isEmpty()) {
       try (final ConfigNodeClient client =
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         List<String> databaseNameList = new ArrayList<>();
-        if (createModel.isUseAllData()) {
+        if (createTraining.isUseAllData()) {
           TShowDatabaseResp resp = client.showDatabase(new TGetDatabaseReq());
           databaseNameList.addAll(resp.getDatabaseInfoMap().keySet());
         } else {
-          databaseNameList.addAll(createModel.getTargetDbs());
+          databaseNameList.addAll(createTraining.getTargetDbs());
         }
 
         for (String database : databaseNameList) {
@@ -3185,9 +3185,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(e);
       }
     }
-    for (Table table : createModel.getTargetTables()) {
+    for (Table table : createTraining.getTargetTables()) {
       tableSchemaList.add(
-          new ITableSchema(createModel.getCurDatabase(), table.getName().toString()));
+          new ITableSchema(createTraining.getCurDatabase(), table.getName().toString()));
     }
     trainingReq.setTargetTables(tableSchemaList);
 

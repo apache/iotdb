@@ -22,21 +22,21 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateModel;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
 public class CreateTrainingTask implements IConfigTask {
 
-  private final CreateModel createModel;
+  private final CreateTraining createTraining;
 
-  public CreateTrainingTask(CreateModel createModel) {
-    this.createModel = createModel;
+  public CreateTrainingTask(CreateTraining createTraining) {
+    this.createTraining = createTraining;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.createTraining(createModel);
+    return configTaskExecutor.createTraining(createTraining);
   }
 }
