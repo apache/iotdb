@@ -58,8 +58,10 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_ZSTD_LEVEL_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MAX_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MIN_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_DATA_DISTRIBUTION_STRATEGY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_DATA_DISTRIBUTION_STRATEGY_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_DATA_DISTRIBUTION_STRATEGY_ALL_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_DATA_DISTRIBUTION_STRATEGY_ANY_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_DATA_DISTRIBUTION_STRATEGY_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_DATA_DISTRIBUTION_STRATEGY_SET;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXCEPTION_CONFLICT_RECORD_IGNORED_DATA_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXCEPTION_CONFLICT_RECORD_IGNORED_DATA_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_DEFAULT_VALUE;
@@ -103,7 +105,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_RATE_LIMIT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_COMPRESSOR_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_COMPRESSOR_ZSTD_LEVEL_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_DATA_DISTRIBUTION_STRATEGY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_DATA_DISTRIBUTION_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_EXCEPTION_CONFLICT_RECORD_IGNORED_DATA_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_EXCEPTION_CONFLICT_RETRY_MAX_TIME_SECONDS_KEY;
@@ -341,17 +343,18 @@ public abstract class IoTDBConnector implements PipeConnector {
         parameters
             .getStringOrDefault(
                 Arrays.asList(
-                    CONNECTOR_DATA_DISTRIBUTION_STRATEGY, SINK_DATA_DISTRIBUTION_STRATEGY),
-                CONNECTOR_DATA_DISTRIBUTION_STRATEGY_DEFAULT_VALUE)
+                    CONNECTOR_DATA_DISTRIBUTION_STRATEGY_KEY, SINK_DATA_DISTRIBUTION_STRATEGY_KEY),
+                CONNECTOR_DATA_DISTRIBUTION_STRATEGY_ANY_VALUE)
             .trim()
             .toLowerCase();
     validator.validate(
-        arg -> arg.equals("any") || arg.equals("all"),
+        arg -> CONNECTOR_DATA_DISTRIBUTION_STRATEGY_SET.contains(dataDistributionStrategy),
         String.format(
-            "The value of key %s or %s must be either 'any' or 'all'.",
-            CONNECTOR_DATA_DISTRIBUTION_STRATEGY, SINK_DATA_DISTRIBUTION_STRATEGY),
+            "Data distribution strategy should be one of %s, but got %s.",
+            CONNECTOR_DATA_DISTRIBUTION_STRATEGY_SET, dataDistributionStrategy),
         dataDistributionStrategy);
-    shouldSendToAllClients = "all".equals(dataDistributionStrategy);
+    shouldSendToAllClients =
+        CONNECTOR_DATA_DISTRIBUTION_STRATEGY_ALL_VALUE.equals(dataDistributionStrategy);
   }
 
   @Override

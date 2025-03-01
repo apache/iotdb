@@ -257,10 +257,18 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_OPC_DA_PROGID_KEY = "connector.opcda.progid";
   public static final String SINK_OPC_DA_PROGID_KEY = "sink.opcda.progid";
 
-  public static final String CONNECTOR_DATA_DISTRIBUTION_STRATEGY =
+  public static final String CONNECTOR_DATA_DISTRIBUTION_STRATEGY_KEY =
       "connector.data-distribution-strategy";
-  public static final String SINK_DATA_DISTRIBUTION_STRATEGY = "sink.data-distribution-strategy";
-  public static final String CONNECTOR_DATA_DISTRIBUTION_STRATEGY_DEFAULT_VALUE = "any";
+  public static final String SINK_DATA_DISTRIBUTION_STRATEGY_KEY =
+      "sink.data-distribution-strategy";
+  public static final String CONNECTOR_DATA_DISTRIBUTION_STRATEGY_ANY_VALUE = "any";
+  public static final String CONNECTOR_DATA_DISTRIBUTION_STRATEGY_ALL_VALUE = "all";
+  public static final Set<String> CONNECTOR_DATA_DISTRIBUTION_STRATEGY_SET =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  CONNECTOR_DATA_DISTRIBUTION_STRATEGY_ANY_VALUE,
+                  CONNECTOR_DATA_DISTRIBUTION_STRATEGY_ALL_VALUE)));
 
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");
