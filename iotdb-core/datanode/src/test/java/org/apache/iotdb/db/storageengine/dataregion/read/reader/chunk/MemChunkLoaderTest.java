@@ -21,7 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
-import org.apache.iotdb.db.utils.datastructure.MergeSortTvListIterator;
+import org.apache.iotdb.db.utils.datastructure.MergeSortTVListIterator;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -68,8 +68,8 @@ public class MemChunkLoaderTest {
     Map<TVList, Integer> booleanTvListMap = buildBooleanTvListMap();
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(booleanTvListMap);
     List<TVList> booleanTvLists = new ArrayList<>(booleanTvListMap.keySet());
-    MergeSortTvListIterator timeValuePairIterator =
-        new MergeSortTvListIterator(booleanTvLists, null, null);
+    MergeSortTVListIterator timeValuePairIterator =
+        new MergeSortTVListIterator(booleanTvLists, null, null);
     Mockito.when(chunk.getMergeSortTVListIterator()).thenReturn(timeValuePairIterator);
 
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
@@ -148,8 +148,8 @@ public class MemChunkLoaderTest {
     Map<TVList, Integer> int32TvListMap = buildInt32TvListMap();
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(int32TvListMap);
     List<TVList> int32TvLists = new ArrayList<>(int32TvListMap.keySet());
-    MergeSortTvListIterator timeValuePairIterator =
-        new MergeSortTvListIterator(int32TvLists, null, null);
+    MergeSortTVListIterator timeValuePairIterator =
+        new MergeSortTVListIterator(int32TvLists, null, null);
     Mockito.when(chunk.getMergeSortTVListIterator()).thenReturn(timeValuePairIterator);
 
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
@@ -229,8 +229,8 @@ public class MemChunkLoaderTest {
     Map<TVList, Integer> int64TvListMap = buildInt64TvListMap();
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(int64TvListMap);
     List<TVList> int64TvLists = new ArrayList<>(int64TvListMap.keySet());
-    MergeSortTvListIterator timeValuePairIterator =
-        new MergeSortTvListIterator(int64TvLists, null, null);
+    MergeSortTVListIterator timeValuePairIterator =
+        new MergeSortTVListIterator(int64TvLists, null, null);
     Mockito.when(chunk.getMergeSortTVListIterator()).thenReturn(timeValuePairIterator);
 
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
@@ -310,8 +310,8 @@ public class MemChunkLoaderTest {
     Map<TVList, Integer> floatTvListMap = buildFloatTvListMap();
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(floatTvListMap);
     List<TVList> floatTvLists = new ArrayList<>(floatTvListMap.keySet());
-    MergeSortTvListIterator timeValuePairIterator =
-        new MergeSortTvListIterator(floatTvLists, null, null);
+    MergeSortTVListIterator timeValuePairIterator =
+        new MergeSortTVListIterator(floatTvLists, null, null);
     Mockito.when(chunk.getMergeSortTVListIterator()).thenReturn(timeValuePairIterator);
 
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
@@ -391,8 +391,8 @@ public class MemChunkLoaderTest {
     Map<TVList, Integer> doubleTvListMap = buildDoubleTvListMap();
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(doubleTvListMap);
     List<TVList> doubleTvLists = new ArrayList<>(doubleTvListMap.keySet());
-    MergeSortTvListIterator timeValuePairIterator =
-        new MergeSortTvListIterator(doubleTvLists, null, null);
+    MergeSortTVListIterator timeValuePairIterator =
+        new MergeSortTVListIterator(doubleTvLists, null, null);
     Mockito.when(chunk.getMergeSortTVListIterator()).thenReturn(timeValuePairIterator);
 
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
@@ -472,8 +472,8 @@ public class MemChunkLoaderTest {
     Map<TVList, Integer> textTvListMap = buildTextTvListMap();
     Mockito.when(chunk.getTvListQueryMap()).thenReturn(textTvListMap);
     List<TVList> textTvLists = new ArrayList<>(textTvListMap.keySet());
-    MergeSortTvListIterator timeValuePairIterator =
-        new MergeSortTvListIterator(textTvLists, null, null);
+    MergeSortTVListIterator timeValuePairIterator =
+        new MergeSortTVListIterator(textTvLists, null, null);
     Mockito.when(chunk.getMergeSortTVListIterator()).thenReturn(timeValuePairIterator);
 
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
