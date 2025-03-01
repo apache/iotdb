@@ -142,7 +142,7 @@
         <reactor-netty.version>1.1.20</reactor-netty.version>
         <reactor.version>3.5.18</reactor.version>
         <reflections.version>0.10.2</reflections.version>
-        <slf4j.version>2.0.9</slf4j.version>
+        <slf4j.version>2.0.17</slf4j.version>
         <snappy-java.version>1.1.10.5</snappy-java.version>
         <sonar.coverage.jacoco.xmlReportPaths>target/jacoco-merged-reports/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <!-- Exclude all generated code -->
