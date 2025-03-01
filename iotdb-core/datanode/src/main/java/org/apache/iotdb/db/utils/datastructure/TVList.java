@@ -415,7 +415,7 @@ public abstract class TVList implements WALEntryValue {
   }
 
   // common clone for both TVList and AlignedTVList
-  protected void cloneAs(TVList cloneList) {
+  protected synchronized void cloneAs(TVList cloneList) {
     // clone timestamps
     for (long[] timestampArray : timestamps) {
       cloneList.timestamps.add(cloneTime(timestampArray));
