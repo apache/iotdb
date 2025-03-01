@@ -3,9 +3,9 @@ import torch.nn as nn
 import numpy as np
 from math import sqrt
 from einops import repeat
-from iotdb.ainode.model.TimerXL.layers.Attn_Bias import BinaryAttentionBias
-from iotdb.ainode.model.TimerXL.layers.Attn_Projection import QueryKeyProjection, RotaryProjection
-from iotdb.ainode.util.masking import TriangularCausalMask, TimerMultivariateMask, TimerCovariateMask
+from ai.ainode.model.TimerXL.layers.Attn_Bias import BinaryAttentionBias
+from ai.ainode.model.TimerXL.layers.Attn_Projection import QueryKeyProjection, RotaryProjection
+from ai.ainode.util.masking import TriangularCausalMask, TimerMultivariateMask, TimerCovariateMask
 
 
 class FullAttention(nn.Module):

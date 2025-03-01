@@ -23,12 +23,12 @@ import yaml
 from requests import Session
 from requests.adapters import HTTPAdapter
 
-from iotdb.ainode.constant import DEFAULT_RECONNECT_TIMES, DEFAULT_RECONNECT_TIMEOUT, DEFAULT_CHUNK_SIZE, \
+from ai.ainode.constant import DEFAULT_RECONNECT_TIMES, DEFAULT_RECONNECT_TIMEOUT, DEFAULT_CHUNK_SIZE, \
     DEFAULT_CONFIG_FILE_NAME, DEFAULT_MODEL_FILE_NAME
-from iotdb.ainode.exception import InvalidUriError, BadConfigValueError
-from iotdb.ainode.log import Logger
-from iotdb.ainode.util.serde import get_data_type_byte_from_str
-from iotdb.thrift.ainode.ttypes import TConfigs
+from ai.ainode.exception import InvalidUriError, BadConfigValueError
+from ai.ainode.log import Logger
+from ai.ainode.util.serde import get_data_type_byte_from_str
+from ai.thrift.ainode.ttypes import TConfigs
 
 HTTP_PREFIX = "http://"
 HTTPS_PREFIX = "https://"

@@ -1,4 +1,4 @@
-from iotdb.ainode.model.TimerXL.models import timer_xl
+from ai.ainode.model.TimerXL.models import timer_xl
 
 
 class ExpBasic(object):

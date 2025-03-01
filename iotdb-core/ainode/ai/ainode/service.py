@@ -21,10 +21,10 @@ from thrift.protocol import TCompactProtocol, TBinaryProtocol
 from thrift.server import TServer
 from thrift.transport import TSocket, TTransport
 
-from iotdb.ainode.config import AINodeDescriptor
-from iotdb.ainode.handler import AINodeRPCServiceHandler
-from iotdb.ainode.log import Logger
-from iotdb.thrift.ainode import IAINodeRPCService
+from ai.ainode.config import AINodeDescriptor
+from ai.ainode.handler import AINodeRPCServiceHandler
+from ai.ainode.log import Logger
+from ai.thrift.ainode import IAINodeRPCService
 
 logger = Logger()
 

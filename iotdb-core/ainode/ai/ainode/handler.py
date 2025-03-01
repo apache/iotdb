@@ -16,19 +16,21 @@
 # under the License.
 #
 
-from iotdb.ainode.manager.cluster_manager import ClusterManager
-from iotdb.ainode.manager.inference_manager import InferenceManager
-from iotdb.ainode.manager.model_manager import ModelManager
-from iotdb.thrift.ainode import IAINodeRPCService
-from iotdb.thrift.ainode.ttypes import (TDeleteModelReq, TRegisterModelReq,
-                                        TAIHeartbeatReq, TInferenceReq, TRegisterModelResp, TInferenceResp,
-                                        TAIHeartbeatResp)
-from iotdb.thrift.common.ttypes import TSStatus
+from ai.ainode.manager.cluster_manager import ClusterManager
+from ai.ainode.manager.inference_manager import InferenceManager
+from ai.ainode.manager.model_manager import ModelManager
+from ai.thrift.ainode import IAINodeRPCService
+from ai.thrift.ainode.ttypes import (TDeleteModelReq, TRegisterModelReq,
+                                     TAIHeartbeatReq, TInferenceReq, TRegisterModelResp, TInferenceResp,
+                                     TAIHeartbeatResp, TTrainingReq)
+from ai.thrift.common.ttypes import TSStatus
+from manager.training_manager import TrainingManager
 
 
 class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
     def __init__(self):
         self._model_manager = ModelManager()
+        self._training_manager = TrainingManager()
 
     def registerModel(self, req: TRegisterModelReq) -> TRegisterModelResp:
         return self._model_manager.register_model(req)
@@ -41,3 +43,7 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
 
     def getAIHeartbeat(self, req: TAIHeartbeatReq) -> TAIHeartbeatResp:
         return ClusterManager.get_heart_beat(req)
+
+    def createTrainingTask(self, req: TTrainingReq) -> TSStatus:
+        return self._training_manager.create_training_task(req.modelId, req.modelType, req.targetTables, req.parameters)
+

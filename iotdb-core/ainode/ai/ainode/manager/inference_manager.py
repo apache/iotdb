@@ -18,13 +18,13 @@
 import pandas as pd
 from torch import tensor
 
-from iotdb.ainode.constant import TSStatusCode
-from iotdb.ainode.exception import InvalidWindowArgumentError, InferenceModelInternalError, runtime_error_extractor
-from iotdb.ainode.log import Logger
-from iotdb.ainode.manager.model_manager import ModelManager
-from iotdb.ainode.util.serde import convert_to_binary, convert_to_df
-from iotdb.ainode.util.status import get_status
-from iotdb.thrift.ainode.ttypes import TInferenceReq, TInferenceResp
+from ai.ainode.constant import TSStatusCode
+from ai.ainode.exception import InvalidWindowArgumentError, InferenceModelInternalError, runtime_error_extractor
+from ai.ainode.log import Logger
+from ai.ainode.manager.model_manager import ModelManager
+from ai.ainode.util.serde import convert_to_binary, convert_to_df
+from ai.ainode.util.status import get_status
+from ai.thrift.ainode.ttypes import TInferenceReq, TInferenceResp
 
 logger = Logger()
 

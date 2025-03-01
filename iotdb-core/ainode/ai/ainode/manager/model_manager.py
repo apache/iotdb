@@ -19,14 +19,14 @@ from typing import Callable
 
 from yaml import YAMLError
 
-from iotdb.ainode.constant import TSStatusCode, BuiltInModelType
-from iotdb.ainode.exception import InvalidUriError, BadConfigValueError, BuiltInModelNotSupportError
-from iotdb.ainode.log import Logger
-from iotdb.ainode.model.built_in_model_factory import fetch_built_in_model
-from iotdb.ainode.model.model_storage import ModelStorage
-from iotdb.ainode.util.status import get_status
-from iotdb.thrift.ainode.ttypes import TRegisterModelReq, TRegisterModelResp, TDeleteModelReq
-from iotdb.thrift.common.ttypes import TSStatus
+from ai.ainode.constant import TSStatusCode, BuiltInModelType
+from ai.ainode.exception import InvalidUriError, BadConfigValueError, BuiltInModelNotSupportError
+from ai.ainode.log import Logger
+from ai.ainode.model.built_in_model_factory import fetch_built_in_model
+from ai.ainode.model.model_storage import ModelStorage
+from ai.ainode.util.status import get_status
+from ai.thrift.ainode.ttypes import TRegisterModelReq, TRegisterModelResp, TDeleteModelReq
+from ai.thrift.common.ttypes import TSStatus
 
 logger = Logger()
 

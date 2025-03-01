@@ -21,7 +21,7 @@ from enum import Enum
 import numpy as np
 import pandas as pd
 
-from iotdb.ainode.exception import BadConfigValueError
+from ai.ainode.exception import BadConfigValueError
 
 
 class TSDataType(Enum):

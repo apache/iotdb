@@ -17,7 +17,7 @@
 #
 import re
 
-from iotdb.ainode.constant import DEFAULT_MODEL_FILE_NAME, DEFAULT_CONFIG_FILE_NAME
+from ai.ainode.constant import DEFAULT_MODEL_FILE_NAME, DEFAULT_CONFIG_FILE_NAME
 
 
 class _BaseError(Exception):

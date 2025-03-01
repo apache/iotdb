@@ -1,7 +1,7 @@
 import torch
 from torch import nn
-from iotdb.ainode.model.TimerXL.layers.Transformer_EncDec import TimerBlock, TimerLayer
-from iotdb.ainode.model.TimerXL.layers.SelfAttention_Family import AttentionLayer, TimeAttention
+from ai.ainode.model.TimerXL.layers.Transformer_EncDec import TimerBlock, TimerLayer
+from ai.ainode.model.TimerXL.layers.SelfAttention_Family import AttentionLayer, TimeAttention
 
 
 class Model(nn.Module):

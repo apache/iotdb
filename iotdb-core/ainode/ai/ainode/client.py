@@ -21,15 +21,15 @@ from thrift.Thrift import TException
 from thrift.protocol import TCompactProtocol, TBinaryProtocol
 from thrift.transport import TSocket, TTransport
 
-from iotdb.ainode.config import AINodeDescriptor
-from iotdb.ainode.constant import TSStatusCode
-from iotdb.ainode.log import Logger
-from iotdb.ainode.util.decorator import singleton
-from iotdb.ainode.util.status import verify_success
-from iotdb.thrift.common.ttypes import TEndPoint, TSStatus, TAINodeLocation, TAINodeConfiguration
-from iotdb.thrift.confignode import IConfigNodeRPCService
-from iotdb.thrift.confignode.ttypes import (TAINodeRemoveReq, TNodeVersionInfo,
-                                            TAINodeRegisterReq, TAINodeRestartReq)
+from ai.ainode.config import AINodeDescriptor
+from ai.ainode.constant import TSStatusCode
+from ai.ainode.log import Logger
+from ai.ainode.util.decorator import singleton
+from ai.ainode.util.status import verify_success
+from ai.thrift.common.ttypes import TEndPoint, TSStatus, TAINodeLocation, TAINodeConfiguration
+from ai.thrift.confignode import IConfigNodeRPCService
+from ai.thrift.confignode.ttypes import (TAINodeRemoveReq, TNodeVersionInfo,
+                                         TAINodeRegisterReq, TAINodeRestartReq)
 
 logger = Logger()
 

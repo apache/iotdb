@@ -27,11 +27,11 @@ from sktime.forecasting.exp_smoothing import ExponentialSmoothing
 from sktime.forecasting.naive import NaiveForecaster
 from sktime.forecasting.trend import STLForecaster
 
-from iotdb.ainode.constant import AttributeName, BuiltInModelType
-from iotdb.ainode.exception import InferenceModelInternalError, AttributeNotSupportError
-from iotdb.ainode.exception import WrongAttributeTypeError, NumericalRangeException, StringRangeException, \
+from ai.ainode.constant import AttributeName, BuiltInModelType
+from ai.ainode.exception import InferenceModelInternalError, AttributeNotSupportError
+from ai.ainode.exception import WrongAttributeTypeError, NumericalRangeException, StringRangeException, \
     ListRangeException, BuiltInModelNotSupportError
-from iotdb.ainode.log import Logger
+from ai.ainode.log import Logger
 
 logger = Logger()
 

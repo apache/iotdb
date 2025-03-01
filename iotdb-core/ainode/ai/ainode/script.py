@@ -22,14 +22,14 @@ from datetime import datetime
 
 import psutil
 
-from iotdb.ainode.client import ClientManager
-from iotdb.ainode.config import AINodeDescriptor
-from iotdb.ainode.constant import TSStatusCode, AINODE_SYSTEM_FILE_NAME
-from iotdb.ainode.exception import MissingConfigError
-from iotdb.ainode.log import Logger
-from iotdb.ainode.service import RPCService
-from iotdb.thrift.common.ttypes import TAINodeLocation, TEndPoint, TAINodeConfiguration, TNodeResource
-from iotdb.thrift.confignode.ttypes import TNodeVersionInfo
+from ai.ainode.client import ClientManager
+from ai.ainode.config import AINodeDescriptor
+from ai.ainode.constant import TSStatusCode, AINODE_SYSTEM_FILE_NAME
+from ai.ainode.exception import MissingConfigError
+from ai.ainode.log import Logger
+from ai.ainode.service import RPCService
+from ai.thrift.common.ttypes import TAINodeLocation, TEndPoint, TAINodeConfiguration, TNodeResource
+from ai.thrift.confignode.ttypes import TNodeVersionInfo
 
 logger = Logger()
 
