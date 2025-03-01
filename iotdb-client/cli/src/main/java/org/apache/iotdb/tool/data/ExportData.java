@@ -103,8 +103,8 @@ public class ExportData extends AbstractDataTool {
       if (Constants.SQL_DIALECT_VALUE_TABLE.equalsIgnoreCase(sqlDialectValue)) {
         sqlDialectTree = false;
         csvOptions = OptionsUtil.createTableExportCsvOptions();
-        tsFileOptions = OptionsUtil.createTableExportTsFileSqlOptions();
-        sqlOptions = OptionsUtil.createTableExportTsFileSqlOptions();
+        tsFileOptions = OptionsUtil.createTableExportTsFileOptions();
+        sqlOptions = OptionsUtil.createTableExportSqlOptions();
       } else {
         ioTPrinter.println(String.format("sql_dialect %s is not support", sqlDialectValue));
         printHelpOptions(

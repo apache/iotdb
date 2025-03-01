@@ -117,6 +117,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
@@ -294,8 +295,9 @@ public enum PlanNodeType {
   TREE_NONALIGNED_DEVICE_VIEW_SCAN_NODE((short) 1024),
   TABLE_SEMI_JOIN_NODE((short) 1025),
   MARK_DISTINCT_NODE((short) 1026),
-  TABLE_FUNCTION_NODE((short) 1027),
-  TABLE_FUNCTION_PROCESSOR_NODE((short) 1028),
+  TABLE_ASSIGN_UNIQUE_ID((short) 1027),
+  TABLE_FUNCTION_NODE((short) 1028),
+  TABLE_FUNCTION_PROCESSOR_NODE((short) 1029),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -666,8 +668,10 @@ public enum PlanNodeType {
       case 1026:
         return MarkDistinctNode.deserialize(buffer);
       case 1027:
-        return TableFunctionNode.deserialize(buffer);
+        return AssignUniqueId.deserialize(buffer);
       case 1028:
+        return TableFunctionNode.deserialize(buffer);
+      case 1029:
         return TableFunctionProcessorNode.deserialize(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);

@@ -67,6 +67,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewInt
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
@@ -983,6 +984,15 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("SourceJoinSymbol: %s", node.getSourceJoinSymbol()));
     boxValue.add(
         String.format("FilteringSourceJoinSymbol: %s", node.getFilteringSourceJoinSymbol()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitAssignUniqueId(AssignUniqueId node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("AssignUniqueId-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    boxValue.add(String.format("IdColumnSymbol: %s", node.getIdColumn()));
     return render(node, boxValue, context);
   }
 

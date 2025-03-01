@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.queryengine.execution.operator.ExplainAnalyzeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.execution.operator.process.AssignUniqueIdOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.CollectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.EnforceSingleRowOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
@@ -87,6 +88,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.Last
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MarkDistinctOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortFullOuterJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortInnerJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortLeftJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MergeSortSemiJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TreeAlignedDeviceViewAggregationScanOperator;
@@ -132,6 +134,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
@@ -246,6 +249,7 @@ import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.AVG;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT;
@@ -1404,6 +1408,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           dataTypes);
     }
 
+    semanticCheckForJoin(node);
+
     int size = node.getCriteria().size();
     int[] leftJoinKeyPositions = new int[size];
     for (int i = 0; i < size; i++) {
@@ -1468,9 +1474,42 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           JoinKeyComparatorFactory.getComparators(joinKeyTypes, true),
           dataTypes,
           joinKeyTypes.stream().map(this::buildUpdateLastRowFunction).collect(Collectors.toList()));
+    } else if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.LEFT) {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  MergeSortLeftJoinOperator.class.getSimpleName());
+      return new MergeSortLeftJoinOperator(
+          operatorContext,
+          leftChild,
+          leftJoinKeyPositions,
+          leftOutputSymbolIdx,
+          rightChild,
+          rightJoinKeyPositions,
+          rightOutputSymbolIdx,
+          JoinKeyComparatorFactory.getComparators(joinKeyTypes, true),
+          dataTypes);
     }
 
     throw new IllegalStateException("Unsupported join type: " + node.getJoinType());
+  }
+
+  private void semanticCheckForJoin(JoinNode node) {
+    try {
+      checkArgument(
+          !node.getFilter().isPresent() || node.getFilter().get().equals(TRUE_LITERAL),
+          String.format(
+              "Filter is not supported in %s. Filter is %s.",
+              node.getJoinType(), node.getFilter().map(Expression::toString).orElse("null")));
+      checkArgument(
+          !node.getCriteria().isEmpty(),
+          String.format("%s must have join keys.", node.getJoinType()));
+    } catch (IllegalArgumentException e) {
+      throw new SemanticException(e.getMessage());
+    }
   }
 
   private BiFunction<Column, Integer, Column> buildUpdateLastRowFunction(Type joinKeyType) {
@@ -1580,6 +1619,20 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 EnforceSingleRowOperator.class.getSimpleName());
 
     return new EnforceSingleRowOperator(operatorContext, child);
+  }
+
+  @Override
+  public Operator visitAssignUniqueId(AssignUniqueId node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                EnforceSingleRowOperator.class.getSimpleName());
+
+    return new AssignUniqueIdOperator(operatorContext, child);
   }
 
   @Override

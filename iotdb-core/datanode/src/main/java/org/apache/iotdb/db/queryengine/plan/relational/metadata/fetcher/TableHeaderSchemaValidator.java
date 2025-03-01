@@ -102,6 +102,10 @@ public class TableHeaderSchemaValidator {
         .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION);
 
     final List<ColumnSchema> inputColumnList = tableSchema.getColumns();
+    if (inputColumnList == null || inputColumnList.isEmpty()) {
+      throw new IllegalArgumentException(
+          "No column other than Time present, please check the request");
+    }
     // Get directly if there is a table because we do not want "addColumn" to affect
     // original writings
     TsTable table =

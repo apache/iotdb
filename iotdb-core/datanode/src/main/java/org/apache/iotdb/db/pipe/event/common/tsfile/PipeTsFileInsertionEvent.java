@@ -165,7 +165,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               synchronized (isClosed) {
                 isClosed.set(true);
                 isClosed.notifyAll();
-
                 // Update flushPointCount after TsFile is closed
                 flushPointCount = processor.getMemTableFlushPointCount();
               }
@@ -349,6 +348,22 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       Thread.currentThread().interrupt();
       return MinimumProgressIndex.INSTANCE;
     }
+  }
+
+  /**
+   * Get ProgressIndex without waiting for tsfile close. Can be used in getting progressIndex when
+   * memTable becomes immutable.
+   */
+  public ProgressIndex forceGetProgressIndex() {
+    if (resource.isEmpty()) {
+      LOGGER.warn(
+          "Skipping temporary TsFile {}'s progressIndex, will report MinimumProgressIndex", tsFile);
+      return MinimumProgressIndex.INSTANCE;
+    }
+    if (Objects.nonNull(overridingProgressIndex)) {
+      return overridingProgressIndex;
+    }
+    return resource.getMaxProgressIndex();
   }
 
   @Override

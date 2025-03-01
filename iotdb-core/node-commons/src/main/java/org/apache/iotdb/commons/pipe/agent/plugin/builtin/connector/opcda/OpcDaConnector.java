@@ -16,19 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.commons.exception.StartupException;
+package org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.opcda;
 
-public interface RPCServiceMBean {
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.PlaceholderConnector;
+import org.apache.iotdb.pipe.api.annotation.TreeModel;
 
-  String getRPCServiceStatus();
-
-  int getRPCPort();
-
-  void startService() throws StartupException;
-
-  void restartService() throws StartupException;
-
-  void stopService();
-}
+/**
+ * This class is a placeholder and should not be initialized. It represents the OPC DA connector.
+ * There is a real implementation in the server module but cannot be imported here. The pipe agent
+ * in the server module will replace this class with the real implementation when initializing the
+ * OPC DA connector.
+ */
+@TreeModel
+public class OpcDaConnector extends PlaceholderConnector {}

@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.model.ModelType;
 import org.apache.iotdb.confignode.consensus.request.read.model.GetModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
 import org.apache.iotdb.confignode.consensus.response.model.GetModelInfoResp;
@@ -63,6 +64,10 @@ public class ModelManager {
   }
 
   public TSStatus dropModel(TDropModelReq req) {
+    if (modelInfo.checkModelType(req.getModelId()) != ModelType.USER_DEFINED) {
+      return new TSStatus(TSStatusCode.MODEL_EXIST_ERROR.getStatusCode())
+          .setMessage(String.format("Built-in model %s can't be removed", req.modelId));
+    }
     if (!modelInfo.contain(req.modelId)) {
       return new TSStatus(TSStatusCode.MODEL_EXIST_ERROR.getStatusCode())
           .setMessage(String.format("Model name %s doesn't exists", req.modelId));
