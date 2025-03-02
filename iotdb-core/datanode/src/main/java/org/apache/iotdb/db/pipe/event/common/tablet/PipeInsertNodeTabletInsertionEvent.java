@@ -565,7 +565,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   /////////////////////////// AutoCloseable ///////////////////////////
 
   @Override
-  public void close() {
+  public synchronized void close() {
     allocatedMemoryBlock.getAndUpdate(
         memoryBlock -> {
           if (Objects.nonNull(memoryBlock)) {
@@ -573,5 +573,6 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
           }
           return null;
         });
+    tablets = null;
   }
 }
