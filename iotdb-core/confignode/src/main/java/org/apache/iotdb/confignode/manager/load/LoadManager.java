@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.manager.load.balancer.PartitionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
+import org.apache.iotdb.confignode.manager.load.cache.TopologyManager;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
@@ -69,6 +70,9 @@ public class LoadManager {
   /** Cluster load services. */
   protected final LoadCache loadCache;
 
+  /** Cluster topology services. */
+  private final TopologyManager topologyManager;
+
   protected HeartbeatService heartbeatService;
   private final StatisticsService statisticsService;
   private final EventService eventService;
@@ -81,6 +85,7 @@ public class LoadManager {
     this.routeBalancer = new RouteBalancer(configManager);
 
     this.loadCache = new LoadCache();
+    this.topologyManager = new TopologyManager();
     setHeartbeatService(configManager, loadCache);
     this.statisticsService = new StatisticsService(loadCache);
     this.eventService = new EventService(configManager, loadCache, routeBalancer);
@@ -142,6 +147,7 @@ public class LoadManager {
 
   public void startLoadServices() {
     loadCache.initHeartbeatCache(configManager);
+    topologyManager.init(configManager.getNodeManager().getRegisteredDataNodes());
     heartbeatService.startHeartbeatService();
     statisticsService.startLoadStatisticsService();
     eventService.startEventService();
@@ -153,6 +159,7 @@ public class LoadManager {
     statisticsService.stopLoadStatisticsService();
     eventService.stopEventService();
     loadCache.clearHeartbeatCache();
+    topologyManager.clear();
     partitionBalancer.clearPartitionBalancer();
     routeBalancer.clearRegionPriority();
   }
@@ -285,6 +292,7 @@ public class LoadManager {
   public void removeNodeCache(int nodeId) {
     loadCache.removeNodeCache(nodeId);
     loadCache.updateNodeStatistics(true);
+    topologyManager.removeDataNode(nodeId);
     eventService.checkAndBroadcastNodeStatisticsChangeEventIfNecessary();
   }
 
@@ -467,6 +475,10 @@ public class LoadManager {
 
   public LoadCache getLoadCache() {
     return loadCache;
+  }
+
+  public TopologyManager getTopologyManager() {
+    return topologyManager;
   }
 
   public RouteBalancer getRouteBalancer() {

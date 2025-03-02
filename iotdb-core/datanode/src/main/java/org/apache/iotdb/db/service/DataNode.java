@@ -769,6 +769,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
     // Start GRASS Service
     registerManager.register(GeneralRegionAttributeSecurityService.getInstance());
+
+    // Start connection service
+    registerManager.register(ConnectivityService.getInstance());
   }
 
   /** Set up RPC and protocols after DataNode is available */

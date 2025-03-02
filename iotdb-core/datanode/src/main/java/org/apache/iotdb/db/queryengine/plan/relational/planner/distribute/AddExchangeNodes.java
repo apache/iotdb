@@ -72,6 +72,9 @@ public class AddExchangeNodes
       return newNode;
     }
 
+    if (context.mostUsedRegion == null) {
+      return null;
+    }
     for (PlanNode child : node.getChildren()) {
       PlanNode rewriteNode = child.accept(this, context);
 

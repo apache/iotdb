@@ -100,6 +100,9 @@ public class TableDistributedPlanner {
     TableDistributedPlanGenerator.PlanContext planContext =
         new TableDistributedPlanGenerator.PlanContext();
     PlanNode outputNodeWithExchange = generateDistributedPlanWithOptimize(planContext);
+    if (outputNodeWithExchange == null) {
+      return null;
+    }
 
     if (analysis.isQuery()) {
       analysis

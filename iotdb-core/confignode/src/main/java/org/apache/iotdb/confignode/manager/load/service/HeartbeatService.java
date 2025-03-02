@@ -23,6 +23,7 @@ import org.apache.iotdb.ainode.rpc.thrift.TAIHeartbeatReq;
 import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -47,7 +48,10 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Future;
@@ -159,6 +163,27 @@ public class HeartbeatService {
       heartbeatReq.setSchemaRegionIds(configManager.getClusterQuotaManager().getSchemaRegionIds());
       heartbeatReq.setDataRegionIds(configManager.getClusterQuotaManager().getDataRegionIds());
       heartbeatReq.setSpaceQuotaUsage(configManager.getClusterQuotaManager().getSpaceQuotaUsage());
+    }
+
+    final Optional<Map<Integer, Set<Integer>>> topology =
+        configManager.getLoadManager().getTopologyManager().getReachableGraph();
+    // topology map is recently updated, broadcast this event to all DataNodes.
+    if (topology.isPresent()) {
+      final Map<Integer, Set<Integer>> topologyMap = topology.get();
+      final Map<Integer, TDataNodeLocation> locationMap =
+          getNodeManager().getRegisteredDataNodeLocations();
+      final Map<TDataNodeLocation, Set<TDataNodeLocation>> reachableGraph = new HashMap<>();
+
+      for (Map.Entry<Integer, Set<Integer>> eachNode : topologyMap.entrySet()) {
+        final TDataNodeLocation source = locationMap.get(eachNode.getKey());
+        final Set<TDataNodeLocation> sinks = new HashSet<>();
+        for (final Integer sinkNodeId : eachNode.getValue()) {
+          sinks.add(locationMap.get(sinkNodeId));
+        }
+        reachableGraph.put(source, sinks);
+      }
+
+      heartbeatReq.setReachableGraph(reachableGraph);
     }
 
     /* Update heartbeat counter */

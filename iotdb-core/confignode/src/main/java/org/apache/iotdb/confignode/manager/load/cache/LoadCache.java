@@ -267,7 +267,8 @@ public class LoadCache {
   }
 
   /**
-   * Remove the NodeHeartbeatCache of the specified Node.
+   * Remove the NodeHeartbeatCache of the specified Node. This method is called when a node is
+   * removed from the cluster.
    *
    * @param nodeId the index of the specified Node
    */

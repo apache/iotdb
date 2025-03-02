@@ -160,6 +160,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaRea
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
+import org.apache.iotdb.db.service.ConnectivityService;
 import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
@@ -348,6 +349,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private final DataNodeThrottleQuotaManager throttleQuotaManager =
       DataNodeThrottleQuotaManager.getInstance();
+
+  private final ConnectivityService connectivityService = ConnectivityService.getInstance();
 
   private final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
@@ -1913,6 +1916,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         resp.setConfirmedConfigNodeEndPoints(req.getConfigNodeEndPoints());
       }
     }
+
+    if (req.isSetReachableGraph()) {
+      connectivityService.updateClusterTopology(req.getReachableGraph());
+    }
+    connectivityService.getLocalConnectivity().ifPresent(resp::setLocalConnectivityMap);
 
     return resp;
   }

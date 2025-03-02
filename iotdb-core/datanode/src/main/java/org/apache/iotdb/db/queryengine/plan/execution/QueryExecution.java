@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.KilledByOthersException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -181,6 +182,9 @@ public class QueryExecution implements IQueryExecution {
     }
 
     doDistributedPlan();
+    if (this.distributedPlan == null) {
+      return;
+    }
 
     // update timeout after finishing plan stage, notice the time unit is ms
     context.setTimeOut(
@@ -287,6 +291,10 @@ public class QueryExecution implements IQueryExecution {
   // Generate the distributed plan and split it into fragments
   public void doDistributedPlan() {
     this.distributedPlan = planner.doDistributionPlan(analysis, logicalPlan, context);
+    if (this.distributedPlan == null) {
+      stateMachine.transitionToFailed(
+          new QueryProcessException("Cannot generate distributed plan due to network partition"));
+    }
 
     // if is this Statement is ShowQueryStatement, set its instances to the highest priority, so
     // that the sub-tasks of the ShowQueries instances could be executed first.

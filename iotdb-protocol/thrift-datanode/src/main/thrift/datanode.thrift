@@ -272,6 +272,7 @@ struct TDataNodeHeartbeatReq {
   9: optional i64 deviceQuotaRemain
   10: optional TDataNodeActivation activation
   11: optional set<common.TEndPoint> configNodeEndPoints
+  12: optional map<common.TDataNodeLocation, set<common.TDataNodeLocation>> reachableGraph
 }
 
 struct TDataNodeActivation {
@@ -298,6 +299,7 @@ struct TDataNodeHeartbeatResp {
   14: optional list<bool> pipeCompletedList
   15: optional list<i64> pipeRemainingEventCountList
   16: optional list<double> pipeRemainingTimeList
+  17: optional map<common.TDataNodeLocation, bool> localConnectivityMap
 }
 
 struct TPipeHeartbeatReq {

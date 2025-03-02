@@ -85,6 +85,7 @@ public enum ServiceType {
   SUBSCRIPTION_RUNTIME_AGENT("Subscription Runtime Agent", "SubscriptionRuntimeAgent"),
   GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE(
       "General Region Attribute Security Service", "GeneralRegionAttributeSecurityService"),
+  CONNECTIVITY_SERVICE("DataNode Connection Service", "ConnectivityService"),
 
   SESSION_MANAGER("Session Manager", "RpcSession"),
   CONFIG_NODE("Config Node", "ConfigNode"),

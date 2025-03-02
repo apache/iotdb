@@ -88,6 +88,7 @@ public enum ThreadName {
   CONFIG_NODE_LOAD_STATISTIC("Cluster-LoadStatistics-Service"),
   CONFIG_NODE_EVENT_SERVICE("Cluster-Event-Service"),
   CONFIG_NODE_LOAD_PUBLISHER("Cluster-LoadStatistics-Publisher"),
+  CONFIG_NODE_CONNECTIVITY_SERVICE("Cluster-Connectivity-Service"),
   // -------------------------- ConfigNode-RegionManagement --------------------------
   CONFIG_NODE_REGION_MAINTAINER("IoTDB-Region-Maintainer"),
   // -------------------------- ConfigNode-Recover --------------------------

@@ -286,6 +286,7 @@ public class NodeManager {
     // Create a new DataNodeHeartbeatCache and force update NodeStatus
     int dataNodeId = nodeInfo.generateNextNodeId();
     getLoadManager().getLoadCache().createNodeHeartbeatCache(NodeType.DataNode, dataNodeId);
+    getLoadManager().getTopologyManager().addDataNode(dataNodeId);
     // TODO: invoke a force heartbeat to update new DataNode's status immediately
 
     RegisterDataNodePlan registerDataNodePlan =

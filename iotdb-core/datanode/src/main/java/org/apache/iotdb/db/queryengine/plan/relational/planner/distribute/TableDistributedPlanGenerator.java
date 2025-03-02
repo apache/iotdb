@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -75,6 +76,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Table
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.service.ConnectivityService;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -101,7 +103,6 @@ import java.util.stream.IntStream;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
-import static org.apache.iotdb.db.queryengine.plan.planner.TableOperatorGenerator.createTreeDeviceIdColumnValueExtractor;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.GROUP_KEY_SUFFIX;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator.SEPARATOR;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
@@ -120,6 +121,8 @@ public class TableDistributedPlanGenerator
   private final SymbolAllocator symbolAllocator;
   private final Map<PlanNodeId, OrderingScheme> nodeOrderingMap = new HashMap<>();
   private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
+
+  private final ConnectivityService connectivityService = ConnectivityService.getInstance();
 
   public TableDistributedPlanGenerator(
       final MPPQueryContext queryContext,
@@ -499,15 +502,24 @@ public class TableDistributedPlanGenerator
 
     final List<PlanNode> resultTableScanNodeList = new ArrayList<>();
     TRegionReplicaSet mostUsedDataRegion = null;
+    final List<TRegionReplicaSet> mostUsedRegionCandidates =
+        selectMostUsedRegionCandidates(tableScanNodeMap.keySet());
+    final Map<TConsensusGroupId, TRegionReplicaSet> candidateMap = new HashMap<>();
+    mostUsedRegionCandidates.forEach(
+        candidate -> candidateMap.put(candidate.getRegionId(), candidate));
     int maxDeviceEntrySizeOfTableScan = 0;
     for (final Map.Entry<TRegionReplicaSet, DeviceTableScanNode> entry :
         tableScanNodeMap.entrySet()) {
+      final TRegionReplicaSet validCandidate = candidateMap.get(entry.getKey().getRegionId());
+      if (validCandidate == null) {
+        continue;
+      }
       final DeviceTableScanNode subDeviceTableScanNode = entry.getValue();
       resultTableScanNodeList.add(subDeviceTableScanNode);
 
       if (mostUsedDataRegion == null
           || subDeviceTableScanNode.getDeviceEntries().size() > maxDeviceEntrySizeOfTableScan) {
-        mostUsedDataRegion = entry.getKey();
+        mostUsedDataRegion = validCandidate;
         maxDeviceEntrySizeOfTableScan = subDeviceTableScanNode.getDeviceEntries().size();
       }
     }
@@ -601,11 +613,21 @@ public class TableDistributedPlanGenerator
     List<PlanNode> resultTableScanNodeList = new ArrayList<>();
     TRegionReplicaSet mostUsedDataRegion = null;
     int maxDeviceEntrySizeOfTableScan = 0;
+    final List<TRegionReplicaSet> mostUsedRegionCandidates =
+        selectMostUsedRegionCandidates(tableScanNodeMap.keySet());
+    final Map<TConsensusGroupId, TRegionReplicaSet> candidateMap = new HashMap<>();
+    mostUsedRegionCandidates.forEach(
+        candidate -> candidateMap.put(candidate.getRegionId(), candidate));
     for (Map.Entry<
             TRegionReplicaSet,
             Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode>>
         entry : tableScanNodeMap.entrySet()) {
       TRegionReplicaSet regionReplicaSet = entry.getKey();
+      final TRegionReplicaSet validatedRegionReplicaSet =
+          candidateMap.get(regionReplicaSet.getRegionId());
+      if (validatedRegionReplicaSet == null) {
+        continue;
+      }
       Pair<TreeAlignedDeviceViewScanNode, TreeNonAlignedDeviceViewScanNode> pair = entry.getValue();
       int currentDeviceEntrySize = 0;
 
@@ -620,7 +642,7 @@ public class TableDistributedPlanGenerator
       }
 
       if (mostUsedDataRegion == null || currentDeviceEntrySize > maxDeviceEntrySizeOfTableScan) {
-        mostUsedDataRegion = regionReplicaSet;
+        mostUsedDataRegion = validatedRegionReplicaSet;
         maxDeviceEntrySizeOfTableScan = currentDeviceEntrySize;
       }
     }
@@ -765,14 +787,23 @@ public class TableDistributedPlanGenerator
 
     List<PlanNode> resultTableScanNodeList = new ArrayList<>();
     TRegionReplicaSet mostUsedDataRegion = null;
+    final List<TRegionReplicaSet> mostUsedRegionCandidates =
+        selectMostUsedRegionCandidates(regionNodeMap.keySet());
+    final Map<TConsensusGroupId, TRegionReplicaSet> candidateMap = new HashMap<>();
+    mostUsedRegionCandidates.forEach(
+        candidate -> candidateMap.put(candidate.getRegionId(), candidate));
     int maxDeviceEntrySizeOfTableScan = 0;
     for (Map.Entry<TRegionReplicaSet, AggregationTableScanNode> entry : regionNodeMap.entrySet()) {
+      final TRegionReplicaSet validCandidate = candidateMap.get(entry.getKey().getRegionId());
+      if (validCandidate == null) {
+        continue;
+      }
       DeviceTableScanNode subDeviceTableScanNode = entry.getValue();
       resultTableScanNodeList.add(subDeviceTableScanNode);
 
       if (mostUsedDataRegion == null
           || subDeviceTableScanNode.getDeviceEntries().size() > maxDeviceEntrySizeOfTableScan) {
-        mostUsedDataRegion = entry.getKey();
+        mostUsedDataRegion = validCandidate;
         maxDeviceEntrySizeOfTableScan = subDeviceTableScanNode.getDeviceEntries().size();
       }
     }
@@ -1203,20 +1234,75 @@ public class TableDistributedPlanGenerator
       final List<PlanNode> res = new ArrayList<>();
       TRegionReplicaSet mostUsedSchemaRegion = null;
       int maxDeviceEntrySizeOfTableScan = 0;
+      final List<TRegionReplicaSet> mostUsedRegionCandidates =
+          selectMostUsedRegionCandidates(tableDeviceFetchMap.keySet());
+      final Map<TConsensusGroupId, TRegionReplicaSet> candidateMap = new HashMap<>();
+      mostUsedRegionCandidates.forEach(
+          candidate -> candidateMap.put(candidate.getRegionId(), candidate));
       for (final Map.Entry<TRegionReplicaSet, TableDeviceFetchNode> entry :
           tableDeviceFetchMap.entrySet()) {
         final TRegionReplicaSet regionReplicaSet = entry.getKey();
+        final TRegionReplicaSet validCandidate = candidateMap.get(regionReplicaSet.getRegionId());
+        if (validCandidate == null) {
+          continue;
+        }
         final TableDeviceFetchNode subTableDeviceFetchNode = entry.getValue();
         res.add(subTableDeviceFetchNode);
 
         if (subTableDeviceFetchNode.getDeviceIdList().size() > maxDeviceEntrySizeOfTableScan) {
-          mostUsedSchemaRegion = regionReplicaSet;
+          mostUsedSchemaRegion = validCandidate;
           maxDeviceEntrySizeOfTableScan = subTableDeviceFetchNode.getDeviceIdList().size();
         }
       }
       context.mostUsedRegion = mostUsedSchemaRegion;
       return res;
     }
+  }
+
+  /**
+   * Given all the TRegionReplicaSets involved in the distributed plan, use the current cluster
+   * topology, generate list of TRegionReplicaSet candidates that can be selected as rootFI node.
+   * Notice that the DataNodeLocations within TRegionReplicaSet may change and contain only
+   * DataNodes with connectivity capability.
+   */
+  private List<TRegionReplicaSet> selectMostUsedRegionCandidates(
+      Set<TRegionReplicaSet> allReplicaSets) {
+    final Map<TDataNodeLocation, Set<TDataNodeLocation>> topology =
+        connectivityService.getClusterTopology();
+
+    // brute-force search to select DataNode candidates that can communicate to all
+    // TRegionReplicaSets
+    final List<TDataNodeLocation> allReachableDataNodes = new ArrayList<>();
+    for (final TDataNodeLocation candidate : topology.keySet()) {
+      boolean allReachable = true;
+      for (final TRegionReplicaSet replicaSet : allReplicaSets) {
+        final Set<TDataNodeLocation> neighbors = topology.get(candidate);
+        if (!replicaSet.getDataNodeLocations().stream()
+            .anyMatch(loc -> loc.equals(candidate) || neighbors.contains(loc))) {
+          allReachable = false;
+          break;
+        }
+      }
+      if (allReachable) {
+        allReachableDataNodes.add(candidate);
+      }
+    }
+
+    // select TRegionReplicaSet candidates whose DataNode Locations contain at least one
+    // allReachableDataNodes
+    final List<TRegionReplicaSet> mostUsedRegionCandidates = new ArrayList<>();
+    for (final TRegionReplicaSet replicaSet : allReplicaSets) {
+      final List<TDataNodeLocation> commonLocations =
+          new ArrayList<>(replicaSet.getDataNodeLocations());
+      commonLocations.retainAll(allReachableDataNodes);
+      if (!commonLocations.isEmpty()) {
+        final TRegionReplicaSet validCandidate =
+            new TRegionReplicaSet(replicaSet.getRegionId(), commonLocations);
+        mostUsedRegionCandidates.add(validCandidate);
+      }
+    }
+
+    return mostUsedRegionCandidates;
   }
 
   public static class PlanContext {
