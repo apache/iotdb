@@ -312,6 +312,7 @@ public class CommonConfig {
   private volatile long subscriptionCheckMemoryEnoughIntervalMs = 10L;
   private long subscriptionEstimatedInsertNodeTabletInsertionEventSize = 64 * KB;
   private long subscriptionEstimatedRawTabletInsertionEventSize = 16 * KB;
+  private long subscriptionMaxAllowedEventCountInTabletBatch = 100;
 
   private boolean subscriptionPrefetchEnabled = false;
   private float subscriptionPrefetchMemoryThreshold = 0.5F;
@@ -1463,6 +1464,16 @@ public class CommonConfig {
       final long subscriptionEstimatedRawTabletInsertionEventSize) {
     this.subscriptionEstimatedRawTabletInsertionEventSize =
         subscriptionEstimatedRawTabletInsertionEventSize;
+  }
+
+  public long getSubscriptionMaxAllowedEventCountInTabletBatch() {
+    return subscriptionMaxAllowedEventCountInTabletBatch;
+  }
+
+  public void setSubscriptionMaxAllowedEventCountInTabletBatch(
+      final long subscriptionMaxAllowedEventCountInTabletBatch) {
+    this.subscriptionMaxAllowedEventCountInTabletBatch =
+        subscriptionMaxAllowedEventCountInTabletBatch;
   }
 
   public boolean getSubscriptionPrefetchEnabled() {

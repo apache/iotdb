@@ -749,6 +749,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_estimated_raw_tablet_insertion_event_size",
                 String.valueOf(config.getSubscriptionEstimatedRawTabletInsertionEventSize()))));
+    config.setSubscriptionMaxAllowedEventCountInTabletBatch(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_max_allowed_event_count_in_tablet_batch",
+                String.valueOf(config.getSubscriptionMaxAllowedEventCountInTabletBatch()))));
 
     config.setSubscriptionPrefetchEnabled(
         Boolean.parseBoolean(

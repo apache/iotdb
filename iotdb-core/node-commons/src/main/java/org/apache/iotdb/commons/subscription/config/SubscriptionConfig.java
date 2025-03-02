@@ -90,7 +90,11 @@ public class SubscriptionConfig {
   }
 
   public long getSubscriptionEstimatedRawTabletInsertionEventSize() {
-    return COMMON_CONFIG.getSubscriptionEstimatedInsertNodeTabletInsertionEventSize();
+    return COMMON_CONFIG.getSubscriptionEstimatedRawTabletInsertionEventSize();
+  }
+
+  public long getSubscriptionMaxAllowedEventCountInTabletBatch() {
+    return COMMON_CONFIG.getSubscriptionMaxAllowedEventCountInTabletBatch();
   }
 
   public boolean getSubscriptionPrefetchEnabled() {
@@ -164,6 +168,9 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionEstimatedRawTabletInsertionEventSize: {}",
         getSubscriptionEstimatedRawTabletInsertionEventSize());
+    LOGGER.info(
+        "SubscriptionMaxAllowedEventCountInTabletBatch: {}",
+        getSubscriptionMaxAllowedEventCountInTabletBatch());
 
     LOGGER.info("SubscriptionPrefetchEnabled: {}", getSubscriptionPrefetchEnabled());
     LOGGER.info(

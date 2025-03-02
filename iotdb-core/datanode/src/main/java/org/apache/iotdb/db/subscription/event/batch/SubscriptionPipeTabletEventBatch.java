@@ -156,8 +156,10 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   protected boolean shouldEmit() {
     return totalBufferSize >= maxBatchSizeInBytes
         || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs
-        // TODO: config
-        || enrichedEvents.size() >= 100;
+        // considering the inaccuracy of the estimation, configure a hard limit here to avoid an
+        // excessively large batch
+        || enrichedEvents.size()
+            >= SubscriptionConfig.getInstance().getSubscriptionMaxAllowedEventCountInTabletBatch();
   }
 
   private List<Tablet> convertToTablets(final TabletInsertionEvent tabletInsertionEvent) {
