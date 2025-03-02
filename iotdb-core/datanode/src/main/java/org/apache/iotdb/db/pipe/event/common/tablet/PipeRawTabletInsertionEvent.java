@@ -47,7 +47,6 @@ import org.apache.tsfile.write.record.Tablet;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
 public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
@@ -63,7 +62,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   private final EnrichedEvent sourceEvent;
   private boolean needToReport;
 
-  private final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock;
+  private final PipeTabletMemoryBlock allocatedMemoryBlock;
 
   private TabletInsertionEventParser eventParser;
 
@@ -101,7 +100,10 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     this.isAligned = isAligned;
     this.sourceEvent = sourceEvent;
     this.needToReport = needToReport;
-    this.allocatedMemoryBlock = new AtomicReference<>();
+
+    // Allocate empty memory block, will be resized later.
+    this.allocatedMemoryBlock =
+        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
   }
 
   public PipeRawTabletInsertionEvent(
@@ -185,15 +187,10 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
-    allocatedMemoryBlock.getAndUpdate(
-        memoryBlock -> {
-          if (Objects.nonNull(memoryBlock)) {
-            memoryBlock.close();
-          }
-          return PipeDataNodeResourceManager.memory()
-              .forceAllocateForTabletWithRetry(
-                  PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + INSTANCE_SIZE);
-        });
+    PipeDataNodeResourceManager.memory()
+        .forceResize(
+            allocatedMemoryBlock,
+            PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + INSTANCE_SIZE);
     if (Objects.nonNull(pipeName)) {
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
           .increaseTabletEventCount(pipeName, creationTime);
@@ -207,13 +204,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
           .decreaseTabletEventCount(pipeName, creationTime);
     }
-    allocatedMemoryBlock.getAndUpdate(
-        memoryBlock -> {
-          if (Objects.nonNull(memoryBlock)) {
-            memoryBlock.close();
-          }
-          return null;
-        });
+    allocatedMemoryBlock.close();
 
     // Record the deviceId before the memory is released,
     // for later possibly updating the leader cache.
@@ -429,25 +420,19 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   private static class PipeRawTabletInsertionEventResource extends PipeEventResource {
 
-    private final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock;
+    private final PipeTabletMemoryBlock allocatedMemoryBlock;
 
     private PipeRawTabletInsertionEventResource(
         final AtomicBoolean isReleased,
         final AtomicInteger referenceCount,
-        final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock) {
+        final PipeTabletMemoryBlock allocatedMemoryBlock) {
       super(isReleased, referenceCount);
       this.allocatedMemoryBlock = allocatedMemoryBlock;
     }
 
     @Override
     protected void finalizeResource() {
-      allocatedMemoryBlock.getAndUpdate(
-          memoryBlock -> {
-            if (Objects.nonNull(memoryBlock)) {
-              memoryBlock.close();
-            }
-            return null;
-          });
+      allocatedMemoryBlock.close();
     }
   }
 

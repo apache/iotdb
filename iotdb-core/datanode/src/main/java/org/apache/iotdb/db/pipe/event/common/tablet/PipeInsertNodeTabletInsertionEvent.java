@@ -150,10 +150,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     this.isAligned = isAligned;
     this.isGeneratedByPipe = isGeneratedByPipe;
 
-    // Allocate empty memory block, will be resized later.
-    this.allocatedMemoryBlock =
-        new AtomicReference<>(
-            PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0));
+    this.allocatedMemoryBlock = new AtomicReference<>();
   }
 
   public InsertNode getInsertNode() throws WALPipeException {
@@ -384,30 +381,14 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         initEventParsers().stream()
             .map(TabletInsertionEventParser::convertToTablet)
             .collect(Collectors.toList());
-    allocatedMemoryBlock.getAndUpdate(
-        memoryBlock -> {
-          if (Objects.nonNull(memoryBlock)) {
-            PipeDataNodeResourceManager.memory()
-                .forceResize(
-                    memoryBlock,
-                    tablets.stream()
-                        .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
-                        .reduce(Long::sum)
-                        .orElse(0L));
-            return memoryBlock;
-          } else {
-            final PipeTabletMemoryBlock newMemoryBlock =
-                PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
-            PipeDataNodeResourceManager.memory()
-                .forceResize(
-                    newMemoryBlock,
-                    tablets.stream()
-                        .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
-                        .reduce(Long::sum)
-                        .orElse(0L));
-            return newMemoryBlock;
-          }
-        });
+    allocatedMemoryBlock.compareAndSet(
+        null,
+        PipeDataNodeResourceManager.memory()
+            .forceAllocateForTabletWithRetry(
+                tablets.stream()
+                    .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
+                    .reduce(Long::sum)
+                    .orElse(0L)));
     return tablets;
   }
 
