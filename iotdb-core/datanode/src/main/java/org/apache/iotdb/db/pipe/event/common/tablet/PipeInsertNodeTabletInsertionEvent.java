@@ -86,6 +86,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   private final boolean isGeneratedByPipe;
 
   private final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock;
+  private volatile List<Tablet> tablets;
 
   private List<TabletInsertionEventParser> eventParsers;
 
@@ -376,19 +377,21 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   }
 
   // TODO: for table model insertion, we need to get the database name
-  public List<Tablet> convertToTablets() {
-    final List<Tablet> tablets =
-        initEventParsers().stream()
-            .map(TabletInsertionEventParser::convertToTablet)
-            .collect(Collectors.toList());
-    allocatedMemoryBlock.compareAndSet(
-        null,
-        PipeDataNodeResourceManager.memory()
-            .forceAllocateForTabletWithRetry(
-                tablets.stream()
-                    .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
-                    .reduce(Long::sum)
-                    .orElse(0L)));
+  public synchronized List<Tablet> convertToTablets() {
+    if (Objects.isNull(tablets)) {
+      tablets =
+          initEventParsers().stream()
+              .map(TabletInsertionEventParser::convertToTablet)
+              .collect(Collectors.toList());
+      allocatedMemoryBlock.compareAndSet(
+          null,
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForTabletWithRetry(
+                  tablets.stream()
+                      .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
+                      .reduce(Long::sum)
+                      .orElse(0L)));
+    }
     return tablets;
   }
 
