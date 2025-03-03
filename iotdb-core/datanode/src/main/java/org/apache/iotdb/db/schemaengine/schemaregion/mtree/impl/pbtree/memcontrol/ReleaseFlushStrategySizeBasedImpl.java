@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol;
 
-import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaEngineStatistics;
 
 /** Threshold strategy based on the number of nodes. */
@@ -32,7 +31,10 @@ public class ReleaseFlushStrategySizeBasedImpl implements IReleaseFlushStrategy 
   public ReleaseFlushStrategySizeBasedImpl(CachedSchemaEngineStatistics engineStatistics) {
     this.engineStatistics = engineStatistics;
     long capacity =
-        MemoryConfig.getInstance().getSchemaRegionMemoryManager().getTotalMemorySizeInBytes();
+        IoTDBDescriptor.getInstance()
+            .getMemoryConfig()
+            .getSchemaRegionMemoryManager()
+            .getTotalMemorySizeInBytes();
     this.releaseThreshold = (long) (capacity * RELEASE_THRESHOLD_RATIO);
   }
 

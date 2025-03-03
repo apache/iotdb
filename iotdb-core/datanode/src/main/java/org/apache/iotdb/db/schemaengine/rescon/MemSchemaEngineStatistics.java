@@ -21,7 +21,8 @@ package org.apache.iotdb.db.schemaengine.rescon;
 
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
-import org.apache.iotdb.commons.memory.MemoryConfig;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 
@@ -36,7 +37,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
   private static final Logger logger = LoggerFactory.getLogger(MemSchemaEngineStatistics.class);
-
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   // Total size of schema region
   private final IMemoryBlock memoryBlock;
   private final ClusterTemplateManager clusterTemplateManager =
@@ -56,7 +57,8 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
   public MemSchemaEngineStatistics() {
     memoryBlock =
-        MemoryConfig.getInstance()
+        IoTDBDescriptor.getInstance()
+            .getMemoryConfig()
             .getSchemaRegionMemoryManager()
             .forceAllocate("SchemaRegion", MemoryBlockType.DYNAMIC);
   }

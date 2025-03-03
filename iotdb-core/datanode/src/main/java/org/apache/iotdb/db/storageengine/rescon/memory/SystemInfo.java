@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
-import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
@@ -51,7 +51,8 @@ public class SystemInfo {
   private static final Logger logger = LoggerFactory.getLogger(SystemInfo.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final MemoryConfig memoryConfig = MemoryConfig.getInstance();
+  private static final DataNodeMemoryConfig memoryConfig =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
 
   private long totalStorageGroupMemCost = 0L;
   private volatile boolean rejected = false;
@@ -75,7 +76,7 @@ public class SystemInfo {
   private final ExecutorService flushTaskSubmitThreadPool =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.FLUSH_TASK_SUBMIT.getName());
   private double FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
-  private double REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
+  private double REJECT_THRESHOLD = memorySizeForMemtable * memoryConfig.getRejectProportion();
 
   private volatile boolean isEncodingFasterThanIo = true;
 
@@ -86,7 +87,7 @@ public class SystemInfo {
             .forceAllocate("Compaction", MemoryBlockType.DYNAMIC);
     walBufferQueueMemoryBlock =
         memoryConfig
-            .getWalBufferQueueManager()
+            .getWalBufferQueueMemoryManager()
             .forceAllocate("WalBufferQueue", MemoryBlockType.DYNAMIC);
     directBufferMemoryBlock =
         memoryConfig
@@ -352,7 +353,7 @@ public class SystemInfo {
   public void loadWriteMemory() {
     memorySizeForMemtable = memoryConfig.getMemtableMemoryManager().getTotalMemorySizeInBytes();
     FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
-    REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
+    REJECT_THRESHOLD = memorySizeForMemtable * memoryConfig.getRejectProportion();
     WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
     WritingMetrics.getInstance().recordRejectThreshold(REJECT_THRESHOLD);
     WritingMetrics.getInstance()
@@ -470,7 +471,7 @@ public class SystemInfo {
   public synchronized void applyTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
     memorySizeForMemtable -= estimatedTemporaryMemSize;
     FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
-    REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
+    REJECT_THRESHOLD = memorySizeForMemtable * memoryConfig.getRejectProportion();
     WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
     WritingMetrics.getInstance().recordRejectThreshold(REJECT_THRESHOLD);
     WritingMetrics.getInstance()
@@ -480,7 +481,7 @@ public class SystemInfo {
   public synchronized void releaseTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
     memorySizeForMemtable += estimatedTemporaryMemSize;
     FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
-    REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
+    REJECT_THRESHOLD = memorySizeForMemtable * memoryConfig.getRejectProportion();
     WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
     WritingMetrics.getInstance().recordRejectThreshold(REJECT_THRESHOLD);
     WritingMetrics.getInstance()

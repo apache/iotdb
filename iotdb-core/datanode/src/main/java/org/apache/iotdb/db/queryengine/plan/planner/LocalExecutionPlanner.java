@@ -21,8 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
-import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -68,7 +68,7 @@ public class LocalExecutionPlanner {
 
   static {
     IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-    MemoryConfig MEMORY_CONFIG = MemoryConfig.getInstance();
+    DataNodeMemoryConfig MEMORY_CONFIG = IoTDBDescriptor.getInstance().getMemoryConfig();
 
     OPERATORS_MEMORY_BLOCK =
         MEMORY_CONFIG
@@ -182,7 +182,7 @@ public class LocalExecutionPlanner {
       throws MemoryNotEnoughException {
 
     // if it is disabled, just return
-    if (!IoTDBDescriptor.getInstance().getConfig().isEnableQueryMemoryEstimation()
+    if (!IoTDBDescriptor.getInstance().getMemoryConfig().isEnableQueryMemoryEstimation()
         && !IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
       return 0;
     }
