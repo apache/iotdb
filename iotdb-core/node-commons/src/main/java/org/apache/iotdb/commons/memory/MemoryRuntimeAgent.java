@@ -58,7 +58,7 @@ public class MemoryRuntimeAgent implements IService {
       MemoryRuntimeAgent.getInstance()
           .registerPeriodicalJob(
               "GlobalMemoryManager#updateAllocate()",
-              MemoryConfig.global()::updateAllocate,
+              this::updateMemoryAllocate,
               MEMORY_CHECK_INTERVAL_IN_S);
     }
     if (ENABLE_MEMORY_ADAPT) {
@@ -72,6 +72,10 @@ public class MemoryRuntimeAgent implements IService {
     }
 
     isShutdown.set(false);
+  }
+
+  private void updateMemoryAllocate() {
+    MemoryConfig.global().updateAllocate();
   }
 
   private void adaptTotalMemory() {

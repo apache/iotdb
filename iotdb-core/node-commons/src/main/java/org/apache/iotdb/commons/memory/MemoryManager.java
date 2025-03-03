@@ -52,6 +52,9 @@ public class MemoryManager {
   /** The total memory size in byte of memory manager */
   private long totalMemorySizeInBytes;
 
+  /** The static allocated memory size */
+  private long staticAllocatedMemorySizeInBytes = 0L;
+
   /** The allocated memory size */
   private long allocatedMemorySizeInBytes = 0L;
 
@@ -250,6 +253,9 @@ public class MemoryManager {
             LOGGER.warn("register memory block already exists: {}", block);
             return block;
           } else {
+            if (block.getMemoryBlockType().equals(MemoryBlockType.STATIC)) {
+              staticAllocatedMemorySizeInBytes += sizeInBytes;
+            }
             allocatedMemorySizeInBytes += sizeInBytes;
             return new AtomicLongMemoryBlock(name, this, sizeInBytes, type);
           }
@@ -486,11 +492,6 @@ public class MemoryManager {
     return allocatedMemorySizeInBytes;
   }
 
-  /** Get used memory ratio */
-  public double getUsedMemoryRatio() {
-    return (double) getUsedMemorySizeInBytes() / totalMemorySizeInBytes;
-  }
-
   /** Get actual used memory size in bytes of memory manager */
   public long getUsedMemorySizeInBytes() {
     long memorySize =
@@ -499,6 +500,114 @@ public class MemoryManager {
       memorySize += child.getUsedMemorySizeInBytes();
     }
     return memorySize;
+  }
+
+  /** Get static allocated memory size in bytes of memory manager */
+  public long getStaticAllocatedMemorySizeInBytes() {
+    long memorySize = staticAllocatedMemorySizeInBytes;
+    for (MemoryManager child : children.values()) {
+      memorySize += child.getStaticAllocatedMemorySizeInBytes();
+    }
+    return memorySize;
+  }
+
+  // endregion
+
+  // region auto adapt memory
+  /**
+   * Whether this memory manager is available to shrink
+   *
+   * @return true if available to shrink, otherwise false
+   */
+  public boolean isAvailableToShrink() {
+    return totalAllocatedMemorySizeInBytes - totalMemorySizeInBytes
+            < totalAllocatedMemorySizeInBytes / 10
+        && totalMemorySizeInBytes != allocatedMemorySizeInBytes;
+  }
+
+  /**
+   * Try to shrink this memory manager
+   *
+   * @return actual shrink size
+   */
+  public synchronized long shrink() {
+    long shrinkSize =
+        Math.min(
+            getAvailableMemorySizeInBytes() / 10,
+            totalMemorySizeInBytes - totalAllocatedMemorySizeInBytes * 9 / 10);
+    totalMemorySizeInBytes -= shrinkSize;
+    return shrinkSize;
+  }
+
+  /**
+   * Whether this memory manager is available to expand. If there are one child memory manager or
+   * memory block available to expand, return true.
+   *
+   * @return true if available to expand, otherwise false
+   */
+  public boolean isAvailableToExpand() {
+    for (MemoryManager memoryManager : children.values()) {
+      if (memoryManager.isAvailableToExpand()) {
+        return true;
+      }
+    }
+    for (IMemoryBlock memoryBlock : allocatedMemoryBlocks.values()) {
+      if (memoryBlock.getMemoryBlockType() != MemoryBlockType.STATIC) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Try to update allocation */
+  public void updateAllocate() {
+    if (children.isEmpty()) {
+      long staticAllocatedMemorySizeInBytes = getStaticAllocatedMemorySizeInBytes();
+      double ratio =
+          (double) (totalMemorySizeInBytes - staticAllocatedMemorySizeInBytes)
+              / (totalAllocatedMemorySizeInBytes - staticAllocatedMemorySizeInBytes);
+      for (IMemoryBlock memoryBlock : allocatedMemoryBlocks.values()) {
+        if (!memoryBlock.getMemoryBlockType().equals(MemoryBlockType.STATIC)) {
+          memoryBlock.resizeByRatio(ratio);
+        }
+      }
+    } else {
+      // Try to find memory manager with highest and lowest memory usage
+      MemoryManager highestMemoryManager = null;
+      MemoryManager lowestMemoryManager = null;
+      for (MemoryManager child : children.values()) {
+        if (highestMemoryManager == null) {
+          highestMemoryManager = child;
+          lowestMemoryManager = child;
+        } else {
+          if (highestMemoryManager.isAvailableToExpand()
+              && child.getUsedMemorySizeInBytes()
+                  > highestMemoryManager.getUsedMemorySizeInBytes()) {
+            highestMemoryManager = child;
+          }
+          if (lowestMemoryManager.isAvailableToShrink()
+              && child.getUsedMemorySizeInBytes()
+                  < lowestMemoryManager.getUsedMemorySizeInBytes()) {
+            lowestMemoryManager = child;
+          }
+        }
+      }
+      if (highestMemoryManager != null && !highestMemoryManager.equals(lowestMemoryManager)) {
+        // transfer memory from the lowest memory manager to the highest memory manager
+        long transferSize = lowestMemoryManager.shrink();
+        if (transferSize != 0) {
+          highestMemoryManager.expandTotalMemorySizeInBytes(transferSize);
+          LOGGER.info(
+              "Transfer Memory Size {} from {} to {}",
+              transferSize,
+              lowestMemoryManager,
+              highestMemoryManager);
+        }
+      }
+      for (MemoryManager memoryManager : children.values()) {
+        memoryManager.updateAllocate();
+      }
+    }
   }
 
   // endregion
@@ -533,81 +642,6 @@ public class MemoryManager {
     }
     for (MemoryManager child : children.values()) {
       child.print(index + 1);
-    }
-  }
-
-  /** Whether is able to shrink */
-  public synchronized long shrink() {
-    long shrinkSize =
-        Math.min(
-            getAvailableMemorySizeInBytes() / 10,
-            totalMemorySizeInBytes - totalAllocatedMemorySizeInBytes * 9 / 10);
-    totalMemorySizeInBytes -= shrinkSize;
-    return shrinkSize;
-  }
-
-  public boolean isAvailableToExpand() {
-    for (MemoryManager memoryManager : children.values()) {
-      if (memoryManager.isAvailableToExpand()) {
-        return true;
-      }
-    }
-    for (IMemoryBlock memoryBlock : allocatedMemoryBlocks.values()) {
-      if (memoryBlock.getMemoryBlockType() != MemoryBlockType.STATIC) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /** Whether is available to shrink */
-  public boolean isAvailableToShrink() {
-    return totalAllocatedMemorySizeInBytes - totalMemorySizeInBytes
-            < totalAllocatedMemorySizeInBytes / 10
-        && totalMemorySizeInBytes != allocatedMemorySizeInBytes;
-  }
-
-  public void updateAllocate() {
-    if (children.isEmpty()) {
-      double ratio = (double) totalMemorySizeInBytes / totalAllocatedMemorySizeInBytes;
-      for (IMemoryBlock memoryBlock : allocatedMemoryBlocks.values()) {
-        memoryBlock.resizeByRatio(ratio);
-      }
-    } else {
-      MemoryManager higherMemoryManager = null;
-      MemoryManager lowerMemoryManager = null;
-      // search the highest and lowest memory manager
-      for (MemoryManager child : children.values()) {
-        if (higherMemoryManager == null) {
-          higherMemoryManager = child;
-          lowerMemoryManager = child;
-        } else {
-          if (higherMemoryManager.isAvailableToExpand()
-              && child.getUsedMemorySizeInBytes()
-                  > higherMemoryManager.getUsedMemorySizeInBytes()) {
-            higherMemoryManager = child;
-          }
-          if (lowerMemoryManager.isAvailableToShrink()
-              && child.getUsedMemorySizeInBytes() < lowerMemoryManager.getUsedMemorySizeInBytes()) {
-            lowerMemoryManager = child;
-          }
-        }
-      }
-      if (higherMemoryManager != null && !higherMemoryManager.equals(lowerMemoryManager)) {
-        // transfer
-        long transferSize = lowerMemoryManager.shrink();
-        if (transferSize != 0) {
-          higherMemoryManager.expandTotalMemorySizeInBytes(transferSize);
-          LOGGER.info(
-              "Transfer Memory Size {} from {} to {}",
-              transferSize,
-              lowerMemoryManager,
-              higherMemoryManager);
-        }
-      }
-      for (MemoryManager memoryManager : children.values()) {
-        memoryManager.updateAllocate();
-      }
     }
   }
 }
