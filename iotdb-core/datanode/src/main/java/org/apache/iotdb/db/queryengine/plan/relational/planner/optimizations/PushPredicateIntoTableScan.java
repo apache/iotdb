@@ -643,7 +643,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           context.inheritedPredicate != null ? context.inheritedPredicate : TRUE_LITERAL;
 
       // See if we can rewrite outer joins in terms of a plain inner join
-      node = tryNormalizeToOuterToInnerJoin(node, inheritedPredicate);
+      // node = tryNormalizeToOuterToInnerJoin(node, inheritedPredicate);
 
       Expression leftEffectivePredicate = TRUE_LITERAL;
       // effectivePredicateExtractor.extract(session, node.getLeftChild(), types, typeAnalyzer);
