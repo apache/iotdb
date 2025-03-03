@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.audit.AuditLogOperation;
@@ -170,8 +169,8 @@ public class IoTDBConfig {
 
   /**
    * If memory cost of data region increased more than proportion of {@linkplain
-   * org.apache.iotdb.commons.memory.MemoryConfig#getStorageEngineMemoryManager()} *{@linkplain
-   * org.apache.iotdb.commons.memory.MemoryConfig#getMemtableMemoryManager()}, report to system.
+   * DataNodeMemoryConfig#getStorageEngineMemoryManager()} *{@linkplain
+   * DataNodeMemoryConfig#getMemtableMemoryManager()}, report to system.
    */
   private double writeMemoryVariationReportProportion = 0.001;
 
@@ -1737,7 +1736,9 @@ public class IoTDBConfig {
     this.queryThreadCount = queryThreadCount;
     // TODO @spricoder: influence dynamic change of memory size
     this.maxBytesPerFragmentInstance =
-        MemoryConfig.getInstance().getDataExchangeMemoryManager().getTotalMemorySizeInBytes()
+        DataNodeMemoryConfig.getInstance()
+                .getDataExchangeMemoryManager()
+                .getTotalMemorySizeInBytes()
             / queryThreadCount;
   }
 

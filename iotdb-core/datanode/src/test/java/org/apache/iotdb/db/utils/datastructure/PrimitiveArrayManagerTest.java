@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.iotdb.commons.memory.MemoryConfig;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
@@ -33,7 +33,7 @@ import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayMana
 
 public class PrimitiveArrayManagerTest {
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private MemoryConfig memoryConfig = MemoryConfig.getInstance();
+  private DataNodeMemoryConfig dataNodeMemoryConfig = DataNodeMemoryConfig.getInstance();
 
   @Test
   public void testGetArrayRowCount() {
@@ -55,7 +55,7 @@ public class PrimitiveArrayManagerTest {
 
     /** threshold total size of arrays for all data types */
     double POOLED_ARRAYS_MEMORY_THRESHOLD =
-        memoryConfig.getBufferedArraysMemoryManager().getTotalMemorySizeInBytes()
+        dataNodeMemoryConfig.getBufferedArraysMemoryManager().getTotalMemorySizeInBytes()
             / AMPLIFICATION_FACTOR;
     // LIMITS should be updated if (TOTAL_ALLOCATION_REQUEST_COUNT.get() > limitUpdateThreshold)
     int totalDataTypeSize = 0;

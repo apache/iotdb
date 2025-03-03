@@ -22,8 +22,8 @@ package org.apache.iotdb.db.storageengine.buffer;
 import org.apache.iotdb.commons.exception.IoTDBIORuntimeException;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
-import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
@@ -51,7 +51,7 @@ public class BloomFilterCache {
   private static final Logger LOGGER = LoggerFactory.getLogger(BloomFilterCache.class);
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private static final MemoryConfig MEMORY_CONFIG = MemoryConfig.getInstance();
+  private static final DataNodeMemoryConfig MEMORY_CONFIG = DataNodeMemoryConfig.getInstance();
   private static final IMemoryBlock CACHE_MEMORY_BLOCK;
   private static final boolean CACHE_ENABLE = CONFIG.isMetaDataCacheEnable();
   private final AtomicLong entryAverageSize = new AtomicLong(0);

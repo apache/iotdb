@@ -22,8 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
-import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
@@ -38,14 +38,15 @@ public class DataNodeDevicePathCache {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeDevicePathCache.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final MemoryConfig memoryConfig = MemoryConfig.getInstance();
+  private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
+      DataNodeMemoryConfig.getInstance();
   private final IMemoryBlock devicePathCacheMemoryBlock;
 
   private final Cache<String, PartialPath> devicePathCache;
 
   private DataNodeDevicePathCache() {
     devicePathCacheMemoryBlock =
-        memoryConfig
+        DATA_NODE_MEMORY_CONFIG
             .getDevicePathCacheMemoryManager()
             .forceAllocate("DevicePathCache", MemoryBlockType.PERFORMANCE);
     // TODO @spricoder: later we can find a way to get the byte size of cache

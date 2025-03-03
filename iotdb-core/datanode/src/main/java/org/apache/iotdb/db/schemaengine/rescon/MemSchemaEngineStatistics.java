@@ -21,7 +21,7 @@ package org.apache.iotdb.db.schemaengine.rescon;
 
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
-import org.apache.iotdb.commons.memory.MemoryConfig;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 
@@ -56,7 +56,7 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
   public MemSchemaEngineStatistics() {
     memoryBlock =
-        MemoryConfig.getInstance()
+        DataNodeMemoryConfig.getInstance()
             .getSchemaRegionMemoryManager()
             .forceAllocate("SchemaRegion", MemoryBlockType.FUNCTION);
   }

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.memory;
 
-import org.apache.iotdb.commons.memory.MemoryConfig;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 /**
@@ -35,7 +35,7 @@ public class LocalMemoryManager {
     queryPool =
         new MemoryPool(
             "read",
-            MemoryConfig.getInstance().getDataExchangeMemoryManager(),
+            DataNodeMemoryConfig.getInstance().getDataExchangeMemoryManager(),
             IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance());
   }
 
