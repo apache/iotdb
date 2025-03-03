@@ -79,7 +79,8 @@ public class EnvironmentUtils {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
-  private static final DataNodeMemoryConfig memoryConfig = DataNodeMemoryConfig.getInstance();
+  private static final DataNodeMemoryConfig memoryConfig =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final TierManager tierManager = TierManager.getInstance();
 
   public static long TEST_QUERY_JOB_ID = 1;

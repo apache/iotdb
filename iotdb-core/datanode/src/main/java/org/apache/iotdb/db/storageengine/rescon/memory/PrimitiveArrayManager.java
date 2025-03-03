@@ -42,7 +42,8 @@ public class PrimitiveArrayManager {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  private static final DataNodeMemoryConfig MEMORY_CONFIG = DataNodeMemoryConfig.getInstance();
+  private static final DataNodeMemoryConfig MEMORY_CONFIG =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
 
   public static final int ARRAY_SIZE = CONFIG.getPrimitiveArraySize();
 

@@ -35,7 +35,7 @@ import java.util.Arrays;
 public class QueryEngineMemoryMetrics implements IMetricSet {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
-      DataNodeMemoryConfig.getInstance();
+      IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final String QUERY_ENGINE = "QueryEngine";
   private static final String QUERY_ENGINE_BLOOM_FILTER_CACHE = "QueryEngine-BloomFilterCache";
   private static final String QUERY_ENGINE_CHUNK_CACHE = "QueryEngine-ChunkCache";

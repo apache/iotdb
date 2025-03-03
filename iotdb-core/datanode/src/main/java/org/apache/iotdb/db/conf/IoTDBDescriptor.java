@@ -96,8 +96,7 @@ public class IoTDBDescriptor {
   private static final CommonDescriptor commonDescriptor = CommonDescriptor.getInstance();
 
   private static final IoTDBConfig conf = new IoTDBConfig();
-  private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
-      DataNodeMemoryConfig.getInstance();
+  private static final DataNodeMemoryConfig memoryConfig = new DataNodeMemoryConfig();
 
   private static final long MAX_THROTTLE_THRESHOLD = 600 * 1024 * 1024 * 1024L;
 
@@ -159,6 +158,10 @@ public class IoTDBDescriptor {
 
   public IoTDBConfig getConfig() {
     return conf;
+  }
+
+  public DataNodeMemoryConfig getMemoryConfig() {
+    return memoryConfig;
   }
 
   /**
@@ -295,7 +298,7 @@ public class IoTDBDescriptor {
                 "write_memory_variation_report_proportion",
                 Double.toString(conf.getWriteMemoryVariationReportProportion()))));
 
-    DATA_NODE_MEMORY_CONFIG.init(properties);
+    memoryConfig.init(properties);
 
     String systemDir = properties.getProperty("dn_system_dir");
     if (systemDir == null) {
@@ -1768,7 +1771,7 @@ public class IoTDBDescriptor {
             (int)
                 Math.min(
                     TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
-                    DATA_NODE_MEMORY_CONFIG.getMaxBytesPerFragmentInstance()));
+                    memoryConfig.getMaxBytesPerFragmentInstance()));
 
     TSFileDescriptor.getInstance()
         .getConfig()
@@ -1946,7 +1949,7 @@ public class IoTDBDescriptor {
                       "select_into_insert_tablet_plan_row_limit"))));
 
       // update enable query memory estimation for memory control
-      DATA_NODE_MEMORY_CONFIG.setEnableQueryMemoryEstimation(
+      memoryConfig.setEnableQueryMemoryEstimation(
           Boolean.parseBoolean(
               properties.getProperty(
                   "enable_query_memory_estimation",
@@ -2288,10 +2291,7 @@ public class IoTDBDescriptor {
           (float)
               Math.min(
                   Float.parseFloat(memoryBudgetInMb.trim()),
-                  0.2
-                      * DATA_NODE_MEMORY_CONFIG
-                          .getQueryEngineMemoryManager()
-                          .getTotalMemorySizeInBytes()));
+                  0.2 * memoryConfig.getQueryEngineMemoryManager().getTotalMemorySizeInBytes()));
     }
 
     String readerTransformerCollectorMemoryProportion =
@@ -2597,9 +2597,8 @@ public class IoTDBDescriptor {
 
   public void reclaimConsensusMemory() {
     // first we need to release the memory allocated for consensus
-    MemoryManager storageEngineMemoryManager =
-        DATA_NODE_MEMORY_CONFIG.getStorageEngineMemoryManager();
-    MemoryManager consensusMemoryManager = DATA_NODE_MEMORY_CONFIG.getConsensusMemoryManager();
+    MemoryManager storageEngineMemoryManager = memoryConfig.getStorageEngineMemoryManager();
+    MemoryManager consensusMemoryManager = memoryConfig.getConsensusMemoryManager();
     long newSize =
         storageEngineMemoryManager.getTotalMemorySizeInBytes()
             + consensusMemoryManager.getTotalMemorySizeInBytes();

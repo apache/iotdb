@@ -33,7 +33,8 @@ import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayMana
 
 public class PrimitiveArrayManagerTest {
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private DataNodeMemoryConfig dataNodeMemoryConfig = DataNodeMemoryConfig.getInstance();
+  private DataNodeMemoryConfig dataNodeMemoryConfig =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
 
   @Test
   public void testGetArrayRowCount() {

@@ -37,7 +37,8 @@ public class TsFileResourceManager {
   private static final Logger logger = LoggerFactory.getLogger(TsFileResourceManager.class);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private static final DataNodeMemoryConfig MEMORY_CONFIG = DataNodeMemoryConfig.getInstance();
+  private static final DataNodeMemoryConfig MEMORY_CONFIG =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
 
   /** The memory block of time index */
   private final IMemoryBlock memoryBlock;

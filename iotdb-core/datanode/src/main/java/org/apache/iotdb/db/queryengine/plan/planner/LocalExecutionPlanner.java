@@ -68,7 +68,7 @@ public class LocalExecutionPlanner {
 
   static {
     IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-    DataNodeMemoryConfig MEMORY_CONFIG = DataNodeMemoryConfig.getInstance();
+    DataNodeMemoryConfig MEMORY_CONFIG = IoTDBDescriptor.getInstance().getMemoryConfig();
 
     OPERATORS_MEMORY_BLOCK =
         MEMORY_CONFIG
@@ -182,7 +182,7 @@ public class LocalExecutionPlanner {
       throws MemoryNotEnoughException {
 
     // if it is disabled, just return
-    if (!DataNodeMemoryConfig.getInstance().isEnableQueryMemoryEstimation()
+    if (!IoTDBDescriptor.getInstance().getMemoryConfig().isEnableQueryMemoryEstimation()
         && !IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
       return 0;
     }

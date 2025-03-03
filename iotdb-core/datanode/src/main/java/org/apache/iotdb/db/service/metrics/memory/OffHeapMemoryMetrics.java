@@ -35,7 +35,7 @@ import java.util.Collections;
 public class OffHeapMemoryMetrics implements IMetricSet {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
-      DataNodeMemoryConfig.getInstance();
+      IoTDBDescriptor.getInstance().getMemoryConfig();
 
   private static final String DIRECT_BUFFER = "DirectBuffer";
 

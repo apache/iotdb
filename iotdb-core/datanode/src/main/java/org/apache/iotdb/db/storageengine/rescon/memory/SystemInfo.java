@@ -51,7 +51,7 @@ public class SystemInfo {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
-      DataNodeMemoryConfig.getInstance();
+      IoTDBDescriptor.getInstance().getMemoryConfig();
 
   private long totalStorageGroupMemCost = 0L;
   private volatile boolean rejected = false;

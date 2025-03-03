@@ -39,7 +39,7 @@ public class DataNodeDevicePathCache {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
-      DataNodeMemoryConfig.getInstance();
+      IoTDBDescriptor.getInstance().getMemoryConfig();
   private final IMemoryBlock devicePathCacheMemoryBlock;
 
   private final Cache<String, PartialPath> devicePathCache;

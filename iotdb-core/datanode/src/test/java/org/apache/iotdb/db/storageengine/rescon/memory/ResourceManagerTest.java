@@ -78,7 +78,8 @@ public class ResourceManagerTest {
   List<TsFileResource> unseqResources = new ArrayList<>();
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private static final DataNodeMemoryConfig MEMORY_CONFIG = DataNodeMemoryConfig.getInstance();
+  private static final DataNodeMemoryConfig MEMORY_CONFIG =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
   private final TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
   private long prevTimeIndexMemoryThreshold;
   private TimeIndexLevel timeIndexLevel;

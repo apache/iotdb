@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.exception.exchange.GetTsBlockFromClosedOrAbortedChannelException;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SinkListener;
@@ -117,7 +116,7 @@ public class SinkChannel implements ISinkChannel {
 
   /** max bytes this SinkChannel can reserve. */
   private long maxBytesCanReserve =
-      DataNodeMemoryConfig.getInstance().getMaxBytesPerFragmentInstance();
+      IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
 
   private static final DataExchangeCostMetricSet DATA_EXCHANGE_COST_METRIC_SET =
       DataExchangeCostMetricSet.getInstance();

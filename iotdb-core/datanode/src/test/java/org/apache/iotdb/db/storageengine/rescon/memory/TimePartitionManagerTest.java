@@ -43,7 +43,8 @@ public class TimePartitionManagerTest {
 
   private final TimePartitionManager timePartitionManager = TimePartitionManager.getInstance();
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final DataNodeMemoryConfig MEMORY_CONFIG = DataNodeMemoryConfig.getInstance();
+  private static final DataNodeMemoryConfig MEMORY_CONFIG =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
   private long prevTimePartitionInfoMemoryThreshold;
 
   public TimePartitionManagerTest() throws QueryProcessException {}

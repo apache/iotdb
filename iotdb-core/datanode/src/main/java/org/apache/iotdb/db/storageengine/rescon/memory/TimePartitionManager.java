@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeTimePartitionListener;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -48,7 +47,8 @@ public class TimePartitionManager {
   private TimePartitionManager() {
     timePartitionInfoMap = new HashMap<>();
     timePartitionInfoMemoryBlock =
-        DataNodeMemoryConfig.getInstance()
+        IoTDBDescriptor.getInstance()
+            .getMemoryConfig()
             .getTimePartitionInfoMemoryManager()
             .forceAllocate("TimePartitionInfoMemoryBlock", MemoryBlockType.FUNCTION);
   }

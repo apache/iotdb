@@ -61,7 +61,7 @@ public class TableDeviceSchemaCacheTest {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
-      DataNodeMemoryConfig.getInstance();
+      IoTDBDescriptor.getInstance().getMemoryConfig();
 
   private static long originMemConfig;
 

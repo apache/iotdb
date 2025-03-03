@@ -35,7 +35,7 @@ import java.util.Arrays;
 public class SchemaEngineMemoryMetrics implements IMetricSet {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
-      DataNodeMemoryConfig.getInstance();
+      IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final String SCHEMA_ENGINE = "SchemaEngine";
   private static final String SCHEMA_ENGINE_SCHEMA_REGION = "SchemaEngine-SchemaRegion";
   private static final String SCHEMA_ENGINE_SCHEMA_CACHE = "SchemaEngine-SchemaCache";

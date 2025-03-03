@@ -88,7 +88,7 @@ public class TableDeviceSchemaCache {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
-      DataNodeMemoryConfig.getInstance();
+      IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final Logger logger = LoggerFactory.getLogger(TableDeviceSchemaCache.class);
 
   /**

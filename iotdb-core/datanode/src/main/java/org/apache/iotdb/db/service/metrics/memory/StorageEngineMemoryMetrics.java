@@ -35,7 +35,7 @@ import java.util.Arrays;
 public class StorageEngineMemoryMetrics implements IMetricSet {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
-      DataNodeMemoryConfig.getInstance();
+      IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final String STORAGE_ENGINE = "StorageEngine";
   private static final String STORAGE_ENGINE_WRITE = "StorageEngine-Write";
   private static final String STORAGE_ENGINE_WRITE_MEMTABLE = "StorageEngine-Write-Memtable";

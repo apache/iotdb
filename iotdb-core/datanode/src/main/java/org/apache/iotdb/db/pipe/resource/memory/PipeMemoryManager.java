@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalExc
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 
 import org.slf4j.Logger;
@@ -53,7 +53,8 @@ public class PipeMemoryManager {
 
   // TODO @spricoder: consider combine memory block and used MemorySizeInBytes
   private IMemoryBlock memoryBlock =
-      DataNodeMemoryConfig.getInstance()
+      IoTDBDescriptor.getInstance()
+          .getMemoryConfig()
           .getPipeMemoryManager()
           .forceAllocate("Stream", MemoryBlockType.FUNCTION);
 

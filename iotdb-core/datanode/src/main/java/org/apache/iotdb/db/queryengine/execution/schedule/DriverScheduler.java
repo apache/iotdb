@@ -71,7 +71,8 @@ public class DriverScheduler implements IDriverScheduler, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(DriverScheduler.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final DataNodeMemoryConfig memoryConfig = DataNodeMemoryConfig.getInstance();
+  private static final DataNodeMemoryConfig memoryConfig =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final double LEVEL_TIME_MULTIPLIER = 2;
 
   public static DriverScheduler getInstance() {

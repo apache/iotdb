@@ -681,18 +681,4 @@ public class DataNodeMemoryConfig {
   public MemoryManager getDirectBufferMemoryManager() {
     return directBufferMemoryManager;
   }
-
-  private DataNodeMemoryConfig() {
-    // singleton
-  }
-
-  public static DataNodeMemoryConfig getInstance() {
-    return DataNodeMemoryConfig.DataNodeMemoryConfigHolder.INSTANCE;
-  }
-
-  private static class DataNodeMemoryConfigHolder {
-    private static final DataNodeMemoryConfig INSTANCE = new DataNodeMemoryConfig();
-
-    private DataNodeMemoryConfigHolder() {}
-  }
 }

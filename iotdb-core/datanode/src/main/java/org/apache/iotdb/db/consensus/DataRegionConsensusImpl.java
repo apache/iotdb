@@ -79,7 +79,8 @@ public class DataRegionConsensusImpl {
   private static class DataRegionConsensusImplHolder {
 
     private static final IoTDBConfig CONF = IoTDBDescriptor.getInstance().getConfig();
-    private static final DataNodeMemoryConfig MEMORY_CONFIG = DataNodeMemoryConfig.getInstance();
+    private static final DataNodeMemoryConfig MEMORY_CONFIG =
+        IoTDBDescriptor.getInstance().getMemoryConfig();
 
     private static IConsensus INSTANCE;
 

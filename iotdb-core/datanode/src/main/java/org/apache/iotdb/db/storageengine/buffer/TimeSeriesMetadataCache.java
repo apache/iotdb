@@ -71,7 +71,7 @@ public class TimeSeriesMetadataCache {
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
-      DataNodeMemoryConfig.getInstance();
+      IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final IMemoryBlock CACHE_MEMORY_BLOCK;
   private static final boolean CACHE_ENABLE = DATA_NODE_MEMORY_CONFIG.isMetaDataCacheEnable();
 
