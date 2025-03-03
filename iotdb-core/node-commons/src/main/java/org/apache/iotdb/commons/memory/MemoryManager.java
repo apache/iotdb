@@ -496,6 +496,11 @@ public class MemoryManager {
     return memorySize;
   }
 
+  /** Get used memory ratio */
+  public double getUsedMemoryRatio() {
+    return (double) getUsedMemorySizeInBytes() / totalMemorySizeInBytes;
+  }
+
   // endregion
 
   // region auto adapt memory
@@ -544,6 +549,10 @@ public class MemoryManager {
     return false;
   }
 
+  public double getScore() {
+    return getUsedMemoryRatio();
+  }
+
   /** Try to update allocation */
   public void updateAllocate() {
     if (children.isEmpty()) {
@@ -566,13 +575,11 @@ public class MemoryManager {
           lowestMemoryManager = child;
         } else {
           if (highestMemoryManager.isAvailableToExpand()
-              && child.getUsedMemorySizeInBytes()
-                  > highestMemoryManager.getUsedMemorySizeInBytes()) {
+              && child.getScore() > highestMemoryManager.getScore()) {
             highestMemoryManager = child;
           }
           if (lowestMemoryManager.isAvailableToShrink()
-              && child.getUsedMemorySizeInBytes()
-                  < lowestMemoryManager.getUsedMemorySizeInBytes()) {
+              && child.getScore() < lowestMemoryManager.getScore()) {
             lowestMemoryManager = child;
           }
         }
