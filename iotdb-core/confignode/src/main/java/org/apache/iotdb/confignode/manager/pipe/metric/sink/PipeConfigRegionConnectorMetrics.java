@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.metric;
+package org.apache.iotdb.confignode.manager.pipe.metric.sink;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtask;
+import org.apache.iotdb.confignode.manager.pipe.agent.task.PipeConfigNodeSubtask;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Rate;
@@ -29,7 +29,6 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 import com.google.common.collect.ImmutableSet;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,24 +36,23 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-public class PipeSchemaRegionConnectorMetrics implements IMetricSet {
+public class PipeConfigRegionConnectorMetrics implements IMetricSet {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeSchemaRegionConnectorMetrics.class);
+      LoggerFactory.getLogger(PipeConfigRegionConnectorMetrics.class);
 
   @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
-  private final ConcurrentMap<String, PipeConnectorSubtask> connectorMap =
-      new ConcurrentHashMap<>();
-  private final ConcurrentMap<String, Rate> schemaRateMap = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, PipeConfigNodeSubtask> subtaskMap = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, Rate> configRateMap = new ConcurrentHashMap<>();
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
   public void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
-    ImmutableSet.copyOf(connectorMap.keySet()).forEach(this::createMetrics);
+    ImmutableSet.copyOf(subtaskMap.keySet()).forEach(this::createMetrics);
   }
 
   private void createMetrics(final String taskID) {
@@ -62,25 +60,25 @@ public class PipeSchemaRegionConnectorMetrics implements IMetricSet {
   }
 
   private void createRate(final String taskID) {
-    final PipeConnectorSubtask connector = connectorMap.get(taskID);
+    final PipeConfigNodeSubtask subtask = subtaskMap.get(taskID);
     // Transfer event rate
-    schemaRateMap.put(
+    configRateMap.put(
         taskID,
         metricService.getOrCreateRate(
-            Metric.PIPE_CONNECTOR_SCHEMA_TRANSFER.toString(),
+            Metric.PIPE_CONNECTOR_CONFIG_TRANSFER.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            connector.getAttributeSortedString(),
+            subtask.getPipeName(),
             Tag.CREATION_TIME.toString(),
-            String.valueOf(connector.getCreationTime())));
+            String.valueOf(subtask.getCreationTime())));
   }
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(connectorMap.keySet()).forEach(this::deregister);
-    if (!connectorMap.isEmpty()) {
+    ImmutableSet.copyOf(subtaskMap.keySet()).forEach(this::deregister);
+    if (!subtaskMap.isEmpty()) {
       LOGGER.warn(
-          "Failed to unbind from pipe schema region connector metrics, connector map not empty");
+          "Failed to unbind from pipe config region connector metrics, connector map not empty");
     }
   }
 
@@ -89,49 +87,49 @@ public class PipeSchemaRegionConnectorMetrics implements IMetricSet {
   }
 
   private void removeRate(final String taskID) {
-    final PipeConnectorSubtask connector = connectorMap.get(taskID);
+    final PipeConfigNodeSubtask subtask = subtaskMap.get(taskID);
     // Transfer event rate
     metricService.remove(
         MetricType.RATE,
-        Metric.PIPE_CONNECTOR_SCHEMA_TRANSFER.toString(),
+        Metric.PIPE_CONNECTOR_CONFIG_TRANSFER.toString(),
         Tag.NAME.toString(),
-        connector.getAttributeSortedString(),
+        subtask.getPipeName(),
         Tag.CREATION_TIME.toString(),
-        String.valueOf(connector.getCreationTime()));
-    schemaRateMap.remove(taskID);
+        String.valueOf(subtask.getCreationTime()));
+    configRateMap.remove(taskID);
   }
 
-  //////////////////////////// Register & deregister (pipe integration) ////////////////////////////
+  //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(@NonNull final PipeConnectorSubtask pipeConnectorSubtask) {
-    final String taskID = pipeConnectorSubtask.getTaskID();
-    connectorMap.putIfAbsent(taskID, pipeConnectorSubtask);
+  public void register(final PipeConfigNodeSubtask pipeConfigNodeSubtask) {
+    final String taskID = pipeConfigNodeSubtask.getTaskID();
+    subtaskMap.putIfAbsent(taskID, pipeConfigNodeSubtask);
     if (Objects.nonNull(metricService)) {
       createMetrics(taskID);
     }
   }
 
   public void deregister(final String taskID) {
-    if (!connectorMap.containsKey(taskID)) {
+    if (!subtaskMap.containsKey(taskID)) {
       LOGGER.warn(
-          "Failed to deregister pipe schema region connector metrics, PipeConnectorSubtask({}) does not exist",
+          "Failed to deregister pipe config region connector metrics, PipeConfigNodeSubtask({}) does not exist",
           taskID);
       return;
     }
     if (Objects.nonNull(metricService)) {
       removeMetrics(taskID);
     }
-    connectorMap.remove(taskID);
+    subtaskMap.remove(taskID);
   }
 
-  public void markSchemaEvent(final String taskID) {
+  public void markConfigEvent(final String taskID) {
     if (Objects.isNull(metricService)) {
       return;
     }
-    final Rate rate = schemaRateMap.get(taskID);
+    final Rate rate = configRateMap.get(taskID);
     if (rate == null) {
       LOGGER.info(
-          "Failed to mark pipe schema region write plan event, PipeConnectorSubtask({}) does not exist",
+          "Failed to mark pipe config region write plan event, PipeConfigNodeSubtask({}) does not exist",
           taskID);
       return;
     }
@@ -140,21 +138,21 @@ public class PipeSchemaRegionConnectorMetrics implements IMetricSet {
 
   //////////////////////////// singleton ////////////////////////////
 
-  private static class PipeSchemaRegionConnectorMetricsHolder {
+  private static class PipeConfigNodeSubtaskMetricsHolder {
 
-    private static final PipeSchemaRegionConnectorMetrics INSTANCE =
-        new PipeSchemaRegionConnectorMetrics();
+    private static final PipeConfigRegionConnectorMetrics INSTANCE =
+        new PipeConfigRegionConnectorMetrics();
 
-    private PipeSchemaRegionConnectorMetricsHolder() {
+    private PipeConfigNodeSubtaskMetricsHolder() {
       // Empty constructor
     }
   }
 
-  public static PipeSchemaRegionConnectorMetrics getInstance() {
-    return PipeSchemaRegionConnectorMetricsHolder.INSTANCE;
+  public static PipeConfigRegionConnectorMetrics getInstance() {
+    return PipeConfigNodeSubtaskMetricsHolder.INSTANCE;
   }
 
-  private PipeSchemaRegionConnectorMetrics() {
+  private PipeConfigRegionConnectorMetrics() {
     // Empty constructor
   }
 }
