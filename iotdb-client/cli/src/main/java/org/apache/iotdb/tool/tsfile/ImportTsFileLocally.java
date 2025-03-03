@@ -22,6 +22,12 @@ package org.apache.iotdb.tool.tsfile;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.session.pool.SessionPool;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.DATABASE_NAME_KEY;
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.VERIFY_KEY;
+
 public class ImportTsFileLocally extends ImportTsFileBase implements Runnable {
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
@@ -34,11 +40,9 @@ public class ImportTsFileLocally extends ImportTsFileBase implements Runnable {
     String filePath;
     try {
       while ((filePath = ImportTsFileScanTool.pollFromQueue()) != null) {
-        final String sql =
-            "load '" + filePath + "' onSuccess=none " + (verify ? "" : "verify=false");
+        String sql = buildLoadSql(filePath);
         try {
           sessionPool.executeNonQueryStatement(sql);
-
           processSuccessFile(filePath);
         } catch (final Exception e) {
           processFailFile(filePath, e);
@@ -47,6 +51,18 @@ public class ImportTsFileLocally extends ImportTsFileBase implements Runnable {
     } catch (final Exception e) {
       ioTPrinter.println("Unexpected error occurred: " + e.getMessage());
     }
+  }
+
+  private String buildLoadSql(String filePath) {
+    List<String> parameters = new ArrayList<>();
+    if (!verify) {
+      parameters.add(String.format("\"%s\"=false", VERIFY_KEY));
+    }
+    if (databaseName != null) {
+      parameters.add(String.format("\"%s\"=\"%s\"", DATABASE_NAME_KEY, databaseName));
+    }
+    String paramStr = String.join(",", parameters);
+    return String.format("load '%s' WITH (%s)", filePath, paramStr);
   }
 
   public static void setSessionPool(SessionPool sessionPool) {
