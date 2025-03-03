@@ -113,7 +113,7 @@ public class IoTDBConfig {
   private int mqttHandlerPoolSize = 1;
 
   /** The mqtt message payload formatter. */
-  private String mqttPayloadFormatter = "tree-json";
+  private String mqttPayloadFormatter = "json";
 
   /** The mqtt save data path */
   private String mqttDataPath = "data/";

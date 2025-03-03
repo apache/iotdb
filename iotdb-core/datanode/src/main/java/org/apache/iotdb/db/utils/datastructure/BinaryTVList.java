@@ -89,7 +89,9 @@ public abstract class BinaryTVList extends TVList {
     minTime = Math.min(minTime, timestamp);
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     values.get(arrayIndex)[elementIndex] = value;
-    indices.get(arrayIndex)[elementIndex] = rowCount;
+    if (indices != null) {
+      indices.get(arrayIndex)[elementIndex] = rowCount;
+    }
     rowCount++;
     if (sorted) {
       if (rowCount > 1 && timestamp < getTime(rowCount - 2)) {
@@ -123,7 +125,9 @@ public abstract class BinaryTVList extends TVList {
 
   @Override
   protected void expandValues() {
-    indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
+    if (indices != null) {
+      indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
+    }
     values.add((Binary[]) getPrimitiveArraysByType(TSDataType.TEXT));
     if (bitMap != null) {
       bitMap.add(null);
@@ -158,11 +162,6 @@ public abstract class BinaryTVList extends TVList {
         builder.declarePosition();
       }
     }
-  }
-
-  @Override
-  protected void releaseLastValueArray() {
-    PrimitiveArrayManager.release(values.remove(values.size() - 1));
   }
 
   @Override
@@ -201,8 +200,10 @@ public abstract class BinaryTVList extends TVList {
         System.arraycopy(
             time, idx - timeIdxOffset, timestamps.get(arrayIdx), elementIdx, inputRemaining);
         System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, inputRemaining);
-        int[] indexes = IntStream.range(rowCount, rowCount + inputRemaining).toArray();
-        System.arraycopy(indexes, 0, indices.get(arrayIdx), elementIdx, inputRemaining);
+        if (indices != null) {
+          int[] indexes = IntStream.range(rowCount, rowCount + inputRemaining).toArray();
+          System.arraycopy(indexes, 0, indices.get(arrayIdx), elementIdx, inputRemaining);
+        }
         rowCount += inputRemaining;
         break;
       } else {
@@ -211,8 +212,10 @@ public abstract class BinaryTVList extends TVList {
         System.arraycopy(
             time, idx - timeIdxOffset, timestamps.get(arrayIdx), elementIdx, internalRemaining);
         System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, internalRemaining);
-        int[] indexes = IntStream.range(rowCount, rowCount + internalRemaining).toArray();
-        System.arraycopy(indexes, 0, indices.get(arrayIdx), elementIdx, internalRemaining);
+        if (indices != null) {
+          int[] indexes = IntStream.range(rowCount, rowCount + internalRemaining).toArray();
+          System.arraycopy(indexes, 0, indices.get(arrayIdx), elementIdx, internalRemaining);
+        }
         idx += internalRemaining;
         rowCount += internalRemaining;
         checkExpansion();
@@ -306,6 +309,19 @@ public abstract class BinaryTVList extends TVList {
       }
     }
     tvList.putBinaries(times, values, bitMap, 0, rowCount);
+    return tvList;
+  }
+
+  public static BinaryTVList deserializeWithoutBitMap(DataInputStream stream) throws IOException {
+    BinaryTVList tvList = BinaryTVList.newList();
+    int rowCount = stream.readInt();
+    long[] times = new long[rowCount];
+    Binary[] values = new Binary[rowCount];
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      times[rowIdx] = stream.readLong();
+      values[rowIdx] = ReadWriteIOUtils.readBinary(stream);
+    }
+    tvList.putBinaries(times, values, null, 0, rowCount);
     return tvList;
   }
 }
