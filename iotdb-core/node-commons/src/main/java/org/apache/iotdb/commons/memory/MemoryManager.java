@@ -253,7 +253,7 @@ public class MemoryManager {
             LOGGER.warn("register memory block already exists: {}", block);
             return block;
           } else {
-            if (block.getMemoryBlockType().equals(MemoryBlockType.STATIC)) {
+            if (type.equals(MemoryBlockType.STATIC)) {
               staticAllocatedMemorySizeInBytes += sizeInBytes;
             }
             allocatedMemorySizeInBytes += sizeInBytes;
