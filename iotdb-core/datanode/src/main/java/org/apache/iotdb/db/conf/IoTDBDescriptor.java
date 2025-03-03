@@ -2478,8 +2478,8 @@ public class IoTDBDescriptor {
               memoryAvailable * Integer.parseInt(proportions[5].trim()) / proportionSum;
           timeIndexMemorySize =
               memoryAvailable * Integer.parseInt(proportions[6].trim()) / proportionSum;
-        } catch (IllegalArgumentException e) {
-          throw new RuntimeException(
+        } catch (Exception e) {
+          throw new IllegalArgumentException(
               "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
                   + " should be an integer, which is "
                   + queryMemoryAllocateProportion,

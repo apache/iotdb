@@ -145,6 +145,8 @@ public class AtomicLongMemoryBlock extends IMemoryBlock {
 
   @Override
   public void close() throws Exception {
-    memoryManager.release(this);
+    if (memoryManager != null) {
+      memoryManager.release(this);
+    }
   }
 }
