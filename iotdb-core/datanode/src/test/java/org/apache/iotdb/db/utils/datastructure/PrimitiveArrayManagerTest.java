@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 
@@ -32,7 +31,6 @@ import org.junit.Test;
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 
 public class PrimitiveArrayManagerTest {
-  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private DataNodeMemoryConfig dataNodeMemoryConfig =
       IoTDBDescriptor.getInstance().getMemoryConfig();
 
