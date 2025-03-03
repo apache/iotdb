@@ -62,6 +62,8 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     this.regionStatistics = regionStatistics;
   }
 
+  // It's OK not to calculate the region statistics here. The caller shall ensure that the
+  // statistics is cleared at the outside.
   @Override
   public void clear() {
     deviceAttributeList.clear();
@@ -129,7 +131,8 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public synchronized int createAttribute(final List<String> nameList, final Object[] valueList) {
+  public synchronized int createAttribute(
+      final List<String> nameList, final Object[] valueList, final String tableName) {
     // todo implement storage for device of diverse data types
     long memUsage = MAP_SIZE + RamUsageEstimator.NUM_BYTES_OBJECT_REF;
     final Map<String, Binary> attributeMap = new HashMap<>();
@@ -138,6 +141,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
       if (valueList[i] != null) {
         attributeMap.put(nameList.get(i), value);
         memUsage += MemUsageUtil.computeKVMemUsageInMap(nameList.get(i), value);
+        addTableAttributeMemory(tableName, value.ramBytesUsed());
       }
     }
     deviceAttributeList.add(attributeMap);
@@ -147,7 +151,10 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
 
   @Override
   public Map<String, Binary> alterAttribute(
-      final int pointer, final List<String> nameList, final Object[] valueList) {
+      final int pointer,
+      final List<String> nameList,
+      final Object[] valueList,
+      final String tableName) {
     // todo implement storage for device of diverse data types
     long memUsageDelta = 0L;
     long originMemUsage;
@@ -177,28 +184,37 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     }
     if (memUsageDelta > 0) {
       requestMemory(memUsageDelta);
+      addTableAttributeMemory(tableName, memUsageDelta);
     } else if (memUsageDelta < 0) {
       releaseMemory(-memUsageDelta);
+      decreaseTableAttributeMemory(tableName, -memUsageDelta);
     }
     return updateMap;
   }
 
   @Override
-  public void removeAttribute(final int pointer) {
+  public void removeAttribute(final int pointer, final String tableName) {
     releaseMemory(
         MAP_SIZE + UpdateDetailContainer.sizeOfMapEntries(deviceAttributeList.get(pointer)));
+    decreaseTableAttributeMemory(
+        tableName,
+        deviceAttributeList.get(pointer).values().stream()
+            .map(UpdateDetailContainer::sizeOf)
+            .reduce(0L, Long::sum));
     deviceAttributeList.set(pointer, null);
   }
 
   @Override
-  public void removeAttribute(final int pointer, final String attributeName) {
+  public void removeAttribute(
+      final int pointer, final String attributeName, final String tableName) {
     final Map<String, Binary> attributeMap = deviceAttributeList.get(pointer);
     if (Objects.isNull(attributeMap)) {
       return;
     }
     final Binary value = attributeMap.remove(attributeName);
     if (Objects.nonNull(value)) {
-      releaseMemory(UpdateDetailContainer.sizeOfMapEntries(deviceAttributeList.get(pointer)));
+      releaseMemory(MemUsageUtil.computeKVMemUsageInMap(attributeName, value));
+      decreaseTableAttributeMemory(tableName, value.ramBytesUsed());
     }
   }
 
@@ -244,7 +260,13 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   private void deserialize(final InputStream inputStream) throws IOException {
     int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; i++) {
-      deviceAttributeList.add(readMap(inputStream, false));
+      final Map<String, Binary> attributeMap = readMap(inputStream, false);
+      deviceAttributeList.add(attributeMap);
+      requestMemory(
+          RamUsageEstimator.NUM_BYTES_OBJECT_REF
+              + (Objects.nonNull(attributeMap)
+                  ? MAP_SIZE + UpdateDetailContainer.sizeOfMapEntries(attributeMap)
+                  : 0));
     }
   }
 
@@ -267,7 +289,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     if (length == NO_BYTE_TO_READ) {
       return Binary.EMPTY_VALUE;
     }
-    byte[] bytes = ReadWriteIOUtils.readBytes(inputStream, length);
+    final byte[] bytes = ReadWriteIOUtils.readBytes(inputStream, length);
     return new Binary(bytes);
   }
 
@@ -277,9 +299,21 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     }
   }
 
+  private void addTableAttributeMemory(final String tableName, final long size) {
+    if (Objects.nonNull(regionStatistics)) {
+      regionStatistics.addTableAttributeMemory(tableName, size);
+    }
+  }
+
   private void releaseMemory(final long size) {
     if (regionStatistics != null) {
       regionStatistics.releaseMemory(size);
+    }
+  }
+
+  private void decreaseTableAttributeMemory(final String tableName, final long size) {
+    if (Objects.nonNull(regionStatistics)) {
+      regionStatistics.decreaseTableAttributeMemory(tableName, size);
     }
   }
 }

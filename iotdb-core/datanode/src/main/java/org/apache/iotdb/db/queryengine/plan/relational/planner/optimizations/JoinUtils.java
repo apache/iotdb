@@ -30,8 +30,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
 import java.util.Collection;
-import java.util.EnumSet;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -41,15 +39,11 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.Determi
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.combineConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.filterDeterministicConjuncts;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.FULL;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.LEFT;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.RIGHT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 
 public class JoinUtils {
-  public static final String FULL_JOIN_ONLY_SUPPORT_EQUI_JOIN =
-      "Full outer join only support equiJoinClauses";
+  public static final String ONLY_SUPPORT_EQUI_JOIN =
+      "For now, FullOuterJoin and LeftJoin only support EquiJoinClauses";
 
   private JoinUtils() {}
 
@@ -93,88 +87,6 @@ public class JoinUtils {
         }
         return (leftSymbols.containsAll(symbols1) && rightSymbols.containsAll(symbols2))
             || (rightSymbols.containsAll(symbols1) && leftSymbols.containsAll(symbols2));
-      }
-    }
-    return false;
-  }
-
-  static JoinNode tryNormalizeToOuterToInnerJoin(JoinNode node, Expression inheritedPredicate) {
-    checkArgument(
-        EnumSet.of(INNER, RIGHT, LEFT, FULL).contains(node.getJoinType()),
-        "Unsupported join type: %s",
-        node.getJoinType());
-
-    if (node.getJoinType() == JoinNode.JoinType.INNER) {
-      return node;
-    }
-
-    if (node.getJoinType() == JoinNode.JoinType.FULL) {
-      boolean canConvertToLeftJoin =
-          canConvertOuterToInner(node.getLeftChild().getOutputSymbols(), inheritedPredicate);
-      boolean canConvertToRightJoin =
-          canConvertOuterToInner(node.getRightChild().getOutputSymbols(), inheritedPredicate);
-      if (!canConvertToLeftJoin && !canConvertToRightJoin) {
-        return node;
-      }
-      if (canConvertToLeftJoin && canConvertToRightJoin) {
-        return new JoinNode(
-            node.getPlanNodeId(),
-            INNER,
-            node.getLeftChild(),
-            node.getRightChild(),
-            node.getCriteria(),
-            node.getLeftOutputSymbols(),
-            node.getRightOutputSymbols(),
-            node.getFilter(),
-            node.isSpillable());
-      }
-      return new JoinNode(
-          node.getPlanNodeId(),
-          canConvertToLeftJoin ? LEFT : RIGHT,
-          node.getLeftChild(),
-          node.getRightChild(),
-          node.getCriteria(),
-          node.getLeftOutputSymbols(),
-          node.getRightOutputSymbols(),
-          node.getFilter(),
-          node.isSpillable());
-    }
-
-    if (node.getJoinType() == JoinNode.JoinType.LEFT
-            && !canConvertOuterToInner(node.getRightChild().getOutputSymbols(), inheritedPredicate)
-        || node.getJoinType() == JoinNode.JoinType.RIGHT
-            && !canConvertOuterToInner(
-                node.getLeftChild().getOutputSymbols(), inheritedPredicate)) {
-      return node;
-    }
-    return new JoinNode(
-        node.getPlanNodeId(),
-        JoinNode.JoinType.INNER,
-        node.getLeftChild(),
-        node.getRightChild(),
-        node.getCriteria(),
-        node.getLeftOutputSymbols(),
-        node.getRightOutputSymbols(),
-        node.getFilter(),
-        node.isSpillable());
-  }
-
-  static boolean canConvertOuterToInner(
-      List<Symbol> innerSymbolsForOuterJoin, Expression inheritedPredicate) {
-    Set<Symbol> innerSymbols = ImmutableSet.copyOf(innerSymbolsForOuterJoin);
-    for (Expression conjunct : extractConjuncts(inheritedPredicate)) {
-      if (isDeterministic(conjunct)) {
-        return true;
-        // Ignore a conjunct for this test if we cannot deterministically get responses from it
-        // Object response = nullInputEvaluator(innerSymbols, conjunct);
-        // if (response == null || response instanceof NullLiteral ||
-        // Boolean.FALSE.equals(response)) {
-        // If there is a single conjunct that returns FALSE or NULL given all NULL inputs for the
-        // inner side symbols of an outer join
-        // then this conjunct removes all effects of the outer join, and effectively turns this
-        // into an equivalent of an inner join.
-        // So, let's just rewrite this join as an INNER join
-        // }
       }
     }
     return false;
@@ -325,6 +237,163 @@ public class JoinUtils {
 
     public Expression getRightPredicate() {
       return rightPredicate;
+    }
+
+    public Expression getJoinPredicate() {
+      return joinPredicate;
+    }
+
+    public Expression getPostJoinPredicate() {
+      return postJoinPredicate;
+    }
+  }
+
+  static OuterJoinPushDownResult processLimitedOuterJoin(
+      Metadata metadata,
+      Expression inheritedPredicate,
+      Expression outerEffectivePredicate,
+      Expression innerEffectivePredicate,
+      Expression joinPredicate,
+      Collection<Symbol> outerSymbols,
+      Collection<Symbol> innerSymbols) {
+    checkArgument(
+        outerSymbols.containsAll(extractUnique(outerEffectivePredicate)),
+        "outerEffectivePredicate must only contain symbols from outerSymbols");
+    checkArgument(
+        innerSymbols.containsAll(extractUnique(innerEffectivePredicate)),
+        "innerEffectivePredicate must only contain symbols from innerSymbols");
+
+    ImmutableList.Builder<Expression> outerPushdownConjuncts = ImmutableList.builder();
+    ImmutableList.Builder<Expression> innerPushdownConjuncts = ImmutableList.builder();
+    ImmutableList.Builder<Expression> postJoinConjuncts = ImmutableList.builder();
+    ImmutableList.Builder<Expression> joinConjuncts = ImmutableList.builder();
+
+    // Strip out non-deterministic conjuncts
+    extractConjuncts(inheritedPredicate).stream()
+        .filter(expression -> !isDeterministic(expression))
+        .forEach(postJoinConjuncts::add);
+    inheritedPredicate = filterDeterministicConjuncts(inheritedPredicate);
+
+    outerEffectivePredicate = filterDeterministicConjuncts(outerEffectivePredicate);
+    innerEffectivePredicate = filterDeterministicConjuncts(innerEffectivePredicate);
+    extractConjuncts(joinPredicate).stream()
+        .filter(expression -> !isDeterministic(expression))
+        .forEach(joinConjuncts::add);
+    joinPredicate = filterDeterministicConjuncts(joinPredicate);
+
+    // Generate equality inferences
+    EqualityInference inheritedInference = new EqualityInference(metadata, inheritedPredicate);
+    EqualityInference outerInference =
+        new EqualityInference(metadata, inheritedPredicate, outerEffectivePredicate);
+
+    Set<Symbol> innerScope = ImmutableSet.copyOf(innerSymbols);
+    Set<Symbol> outerScope = ImmutableSet.copyOf(outerSymbols);
+
+    EqualityInference.EqualityPartition equalityPartition =
+        inheritedInference.generateEqualitiesPartitionedBy(outerScope);
+    Expression outerOnlyInheritedEqualities =
+        combineConjuncts(equalityPartition.getScopeEqualities());
+    EqualityInference potentialNullSymbolInference =
+        new EqualityInference(
+            metadata,
+            outerOnlyInheritedEqualities,
+            outerEffectivePredicate,
+            innerEffectivePredicate,
+            joinPredicate);
+
+    // Push outer and join equalities into the inner side. For example:
+    // SELECT * FROM nation LEFT OUTER JOIN region ON nation.regionkey = region.regionkey and
+    // nation.name = region.name WHERE nation.name = 'blah'
+
+    EqualityInference potentialNullSymbolInferenceWithoutInnerInferred =
+        new EqualityInference(
+            metadata, outerOnlyInheritedEqualities, outerEffectivePredicate, joinPredicate);
+    innerPushdownConjuncts.addAll(
+        potentialNullSymbolInferenceWithoutInnerInferred
+            .generateEqualitiesPartitionedBy(innerScope)
+            .getScopeEqualities());
+
+    EqualityInference.EqualityPartition joinEqualityPartition =
+        new EqualityInference(metadata, joinPredicate).generateEqualitiesPartitionedBy(innerScope);
+    innerPushdownConjuncts.addAll(joinEqualityPartition.getScopeEqualities());
+    joinConjuncts
+        .addAll(joinEqualityPartition.getScopeComplementEqualities())
+        .addAll(joinEqualityPartition.getScopeStraddlingEqualities());
+
+    // Add the equalities from the inferences back in
+    outerPushdownConjuncts.addAll(equalityPartition.getScopeEqualities());
+    postJoinConjuncts.addAll(equalityPartition.getScopeComplementEqualities());
+    postJoinConjuncts.addAll(equalityPartition.getScopeStraddlingEqualities());
+
+    // See if we can push inherited predicates down
+    EqualityInference.nonInferrableConjuncts(metadata, inheritedPredicate)
+        .forEach(
+            conjunct -> {
+              Expression outerRewritten = outerInference.rewrite(conjunct, outerScope);
+              if (outerRewritten != null) {
+                outerPushdownConjuncts.add(outerRewritten);
+
+                // A conjunct can only be pushed down into an inner side if it can be rewritten in
+                // terms of the outer side
+                Expression innerRewritten =
+                    potentialNullSymbolInference.rewrite(outerRewritten, innerScope);
+                if (innerRewritten != null) {
+                  innerPushdownConjuncts.add(innerRewritten);
+                }
+              } else {
+                postJoinConjuncts.add(conjunct);
+              }
+            });
+
+    // See if we can push down any outer effective predicates to the inner side
+    EqualityInference.nonInferrableConjuncts(metadata, outerEffectivePredicate)
+        .map(conjunct -> potentialNullSymbolInference.rewrite(conjunct, innerScope))
+        .filter(Objects::nonNull)
+        .forEach(innerPushdownConjuncts::add);
+
+    // See if we can push down join predicates to the inner side
+    EqualityInference.nonInferrableConjuncts(metadata, joinPredicate)
+        .forEach(
+            conjunct -> {
+              Expression innerRewritten =
+                  potentialNullSymbolInference.rewrite(conjunct, innerScope);
+              if (innerRewritten != null) {
+                innerPushdownConjuncts.add(innerRewritten);
+              } else {
+                joinConjuncts.add(conjunct);
+              }
+            });
+
+    return new OuterJoinPushDownResult(
+        combineConjuncts(outerPushdownConjuncts.build()),
+        combineConjuncts(innerPushdownConjuncts.build()),
+        combineConjuncts(joinConjuncts.build()),
+        combineConjuncts(postJoinConjuncts.build()));
+  }
+
+  static class OuterJoinPushDownResult {
+    private final Expression outerJoinPredicate;
+    private final Expression innerJoinPredicate;
+    private final Expression joinPredicate;
+    private final Expression postJoinPredicate;
+
+    private OuterJoinPushDownResult(
+        Expression outerJoinPredicate,
+        Expression innerJoinPredicate,
+        Expression joinPredicate,
+        Expression postJoinPredicate) {
+      this.outerJoinPredicate = outerJoinPredicate;
+      this.innerJoinPredicate = innerJoinPredicate;
+      this.joinPredicate = joinPredicate;
+      this.postJoinPredicate = postJoinPredicate;
+    }
+
+    public Expression getOuterJoinPredicate() {
+      return outerJoinPredicate;
+    }
+
+    public Expression getInnerJoinPredicate() {
+      return innerJoinPredicate;
     }
 
     public Expression getJoinPredicate() {

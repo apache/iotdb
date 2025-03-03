@@ -240,7 +240,9 @@ public abstract class AbstractMemTable implements IMemTable {
       schemaList.add(schema);
       dataTypes.add(schema.getType());
     }
-
+    if (schemaList.isEmpty()) {
+      return 0;
+    }
     memSize +=
         MemUtils.getAlignedRowRecordSize(dataTypes, values, insertRowNode.getColumnCategories());
     writeAlignedRow(insertRowNode.getDeviceID(), schemaList, insertRowNode.getTime(), values);
@@ -332,18 +334,18 @@ public abstract class AbstractMemTable implements IMemTable {
       InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results) {
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    if (insertTabletNode.getMeasurementSchemas() != null) {
-      for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
-        if (insertTabletNode.getColumns()[i] == null
-            || (insertTabletNode.getColumnCategories() != null
-                && insertTabletNode.getColumnCategories()[i] != TsTableColumnCategory.FIELD)) {
-          schemaList.add(null);
-        } else {
-          schemaList.add(insertTabletNode.getMeasurementSchemas()[i]);
-        }
+    for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
+      if (insertTabletNode.getColumns()[i] == null
+          || (insertTabletNode.getColumnCategories() != null
+              && insertTabletNode.getColumnCategories()[i] != TsTableColumnCategory.FIELD)) {
+        schemaList.add(null);
+      } else {
+        schemaList.add(insertTabletNode.getMeasurementSchemas()[i]);
       }
     }
-
+    if (schemaList.isEmpty()) {
+      return;
+    }
     final List<Pair<IDeviceID, Integer>> deviceEndOffsetPair =
         insertTabletNode.splitByDevice(start, end);
     int splitStart = start;

@@ -148,6 +148,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
               if (databaseName != null
                   && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
                   && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")
+                  && currentPipeTaskMeta != null
                   && currentPipeTaskMeta.getLeaderNodeId() == regionLeaderNodeId) {
                 // Pipe only collect user's data, filter metric database here.
                 updatedConsensusGroupIdToTaskMetaMap.put(
