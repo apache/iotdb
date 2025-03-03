@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaEngineStatistics;
 
 /** Threshold strategy based on the number of nodes. */
