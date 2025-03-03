@@ -419,6 +419,32 @@ public abstract class AlignedTVList extends TVList {
         tmpValueChunkRawSize, 0, memoryBinaryChunkSize, 0, tmpValueChunkRawSize.length);
   }
 
+  private Object getObjectByValueIndex(int rowIndex, int columnIndex) {
+    int arrayIndex = rowIndex / ARRAY_SIZE;
+    int elementIndex = rowIndex % ARRAY_SIZE;
+    List<Object> columnValues = values.get(columnIndex);
+    switch (dataTypes.get(columnIndex)) {
+      case INT32:
+      case DATE:
+        return ((int[]) columnValues.get(arrayIndex))[elementIndex];
+      case INT64:
+      case TIMESTAMP:
+        return ((long[]) columnValues.get(arrayIndex))[elementIndex];
+      case FLOAT:
+        return ((float[]) columnValues.get(arrayIndex))[elementIndex];
+      case DOUBLE:
+        return ((double[]) columnValues.get(arrayIndex))[elementIndex];
+      case BOOLEAN:
+        return ((boolean[]) columnValues.get(arrayIndex))[elementIndex];
+      case STRING:
+      case BLOB:
+      case TEXT:
+        return ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
+      default:
+        throw new IllegalArgumentException(dataTypes.get(columnIndex) + " is not supported");
+    }
+  }
+
   /**
    * Get the int value at the given position in AlignedTvList.
    *
@@ -430,7 +456,14 @@ public abstract class AlignedTVList extends TVList {
     int arrayIndex = rowIndex / ARRAY_SIZE;
     int elementIndex = rowIndex % ARRAY_SIZE;
     List<Object> columnValues = values.get(columnIndex);
-    return ((int[]) columnValues.get(arrayIndex))[elementIndex];
+    if (dataTypes.get(columnIndex) == TSDataType.INT32
+        || dataTypes.get(columnIndex) == TSDataType.DATE) {
+      return ((int[]) columnValues.get(arrayIndex))[elementIndex];
+    } else {
+      return (int)
+          TSDataType.INT32.castFromSingleValue(
+              dataTypes.get(columnIndex), getObjectByValueIndex(rowIndex, columnIndex));
+    }
   }
 
   /**
@@ -444,7 +477,14 @@ public abstract class AlignedTVList extends TVList {
     int arrayIndex = rowIndex / ARRAY_SIZE;
     int elementIndex = rowIndex % ARRAY_SIZE;
     List<Object> columnValues = values.get(columnIndex);
-    return ((long[]) columnValues.get(arrayIndex))[elementIndex];
+    if (dataTypes.get(columnIndex) == TSDataType.INT64
+        || dataTypes.get(columnIndex) == TSDataType.TIMESTAMP) {
+      return ((long[]) columnValues.get(arrayIndex))[elementIndex];
+    } else {
+      return (long)
+          TSDataType.INT64.castFromSingleValue(
+              dataTypes.get(columnIndex), getObjectByValueIndex(rowIndex, columnIndex));
+    }
   }
 
   /**
@@ -458,7 +498,13 @@ public abstract class AlignedTVList extends TVList {
     int arrayIndex = rowIndex / ARRAY_SIZE;
     int elementIndex = rowIndex % ARRAY_SIZE;
     List<Object> columnValues = values.get(columnIndex);
-    return ((float[]) columnValues.get(arrayIndex))[elementIndex];
+    if (dataTypes.get(columnIndex) == TSDataType.FLOAT) {
+      return ((float[]) columnValues.get(arrayIndex))[elementIndex];
+    } else {
+      return (float)
+          TSDataType.FLOAT.castFromSingleValue(
+              dataTypes.get(columnIndex), getObjectByValueIndex(rowIndex, columnIndex));
+    }
   }
 
   /**
@@ -472,7 +518,13 @@ public abstract class AlignedTVList extends TVList {
     int arrayIndex = rowIndex / ARRAY_SIZE;
     int elementIndex = rowIndex % ARRAY_SIZE;
     List<Object> columnValues = values.get(columnIndex);
-    return ((double[]) columnValues.get(arrayIndex))[elementIndex];
+    if (dataTypes.get(columnIndex) == TSDataType.DOUBLE) {
+      return ((double[]) columnValues.get(arrayIndex))[elementIndex];
+    } else {
+      return (double)
+          TSDataType.DOUBLE.castFromSingleValue(
+              dataTypes.get(columnIndex), getObjectByValueIndex(rowIndex, columnIndex));
+    }
   }
 
   /**
@@ -486,7 +538,15 @@ public abstract class AlignedTVList extends TVList {
     int arrayIndex = rowIndex / ARRAY_SIZE;
     int elementIndex = rowIndex % ARRAY_SIZE;
     List<Object> columnValues = values.get(columnIndex);
-    return ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
+    if (dataTypes.get(columnIndex) == TSDataType.TEXT
+        || dataTypes.get(columnIndex) == TSDataType.BLOB
+        || dataTypes.get(columnIndex) == TSDataType.STRING) {
+      return ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
+    } else {
+      return (Binary)
+          TSDataType.TEXT.castFromSingleValue(
+              dataTypes.get(columnIndex), getObjectByValueIndex(rowIndex, columnIndex));
+    }
   }
 
   /**
@@ -500,7 +560,13 @@ public abstract class AlignedTVList extends TVList {
     int arrayIndex = rowIndex / ARRAY_SIZE;
     int elementIndex = rowIndex % ARRAY_SIZE;
     List<Object> columnValues = values.get(columnIndex);
-    return ((boolean[]) columnValues.get(arrayIndex))[elementIndex];
+    if (dataTypes.get(columnIndex) == TSDataType.BOOLEAN) {
+      return ((boolean[]) columnValues.get(arrayIndex))[elementIndex];
+    } else {
+      return (Boolean)
+          TSDataType.BOOLEAN.castFromSingleValue(
+              dataTypes.get(columnIndex), getObjectByValueIndex(rowIndex, columnIndex));
+    }
   }
 
   /**
@@ -620,6 +686,12 @@ public abstract class AlignedTVList extends TVList {
   }
 
   public void deleteColumn(int columnIndex) {
+    if (bitMaps != null) {
+      bitMaps.remove(columnIndex);
+    }
+    dataTypes.remove(columnIndex);
+    values.remove(columnIndex);
+
     if (bitMaps == null) {
       bitMaps = new ArrayList<>(dataTypes.size());
       for (int j = 0; j < dataTypes.size(); j++) {

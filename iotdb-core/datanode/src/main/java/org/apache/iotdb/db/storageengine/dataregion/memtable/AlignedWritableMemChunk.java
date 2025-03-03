@@ -53,6 +53,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -65,7 +66,7 @@ import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 
 public class AlignedWritableMemChunk implements IWritableMemChunk {
 
-  private final Map<String, Integer> measurementIndexMap;
+  private Map<String, Integer> measurementIndexMap;
   private final List<TSDataType> dataTypes;
   private final List<IMeasurementSchema> schemaList;
   private AlignedTVList list;
@@ -521,8 +522,21 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     for (AlignedTVList alignedTvList : sortedList) {
       alignedTvList.deleteColumn(columnIndex);
     }
-    IMeasurementSchema schemaToBeRemoved = schemaList.get(columnIndex);
+    IMeasurementSchema schemaToBeRemoved = schemaList.remove(columnIndex);
+    dataTypes.remove(columnIndex);
     measurementIndexMap.remove(schemaToBeRemoved.getMeasurementName());
+    if (columnIndex != measurementIndexMap.size()) {
+      Map<String, Integer> newIndexMap = new HashMap<>();
+      measurementIndexMap.forEach(
+          (k, v) -> {
+            if (v > columnIndex) {
+              newIndexMap.put(k, v - 1);
+            } else {
+              newIndexMap.put(k, v);
+            }
+          });
+      measurementIndexMap = newIndexMap;
+    }
   }
 
   @Override
