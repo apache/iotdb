@@ -32,7 +32,7 @@ import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTablePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreePatternParser;
-import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
@@ -65,11 +65,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
-    implements TabletInsertionEvent, ReferenceTrackableEvent, Accountable {
+    implements TabletInsertionEvent, ReferenceTrackableEvent, Accountable, AutoCloseable {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeInsertNodeTabletInsertionEvent.class);
@@ -84,7 +85,8 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   private final boolean isAligned;
   private final boolean isGeneratedByPipe;
 
-  private final PipeTabletMemoryBlock allocatedMemoryBlock;
+  private final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock;
+  private volatile List<Tablet> tablets;
 
   private List<TabletInsertionEventParser> eventParsers;
 
@@ -149,9 +151,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     this.isAligned = isAligned;
     this.isGeneratedByPipe = isGeneratedByPipe;
 
-    // Allocate empty memory block, will be resized later.
-    this.allocatedMemoryBlock =
-        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+    this.allocatedMemoryBlock = new AtomicReference<>();
   }
 
   public InsertNode getInsertNode() throws WALPipeException {
@@ -205,7 +205,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         eventParsers.clear();
         eventParsers = null;
       }
-      allocatedMemoryBlock.close();
+      close();
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
@@ -377,18 +377,21 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   }
 
   // TODO: for table model insertion, we need to get the database name
-  public List<Tablet> convertToTablets() {
-    final List<Tablet> tablets =
-        initEventParsers().stream()
-            .map(TabletInsertionEventParser::convertToTablet)
-            .collect(Collectors.toList());
-    PipeDataNodeResourceManager.memory()
-        .forceResize(
-            allocatedMemoryBlock,
-            tablets.stream()
-                .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
-                .reduce(Long::sum)
-                .orElse(0L));
+  public synchronized List<Tablet> convertToTablets() {
+    if (Objects.isNull(tablets)) {
+      tablets =
+          initEventParsers().stream()
+              .map(TabletInsertionEventParser::convertToTablet)
+              .collect(Collectors.toList());
+      allocatedMemoryBlock.compareAndSet(
+          null,
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForTabletWithRetry(
+                  tablets.stream()
+                      .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
+                      .reduce(Long::sum)
+                      .orElse(0L)));
+    }
     return tablets;
   }
 
@@ -529,13 +532,13 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   private static class PipeInsertNodeTabletInsertionEventResource extends PipeEventResource {
 
     private final WALEntryHandler walEntryHandler;
-    private final PipeTabletMemoryBlock allocatedMemoryBlock;
+    private final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock;
 
     private PipeInsertNodeTabletInsertionEventResource(
         final AtomicBoolean isReleased,
         final AtomicInteger referenceCount,
         final WALEntryHandler walEntryHandler,
-        final PipeTabletMemoryBlock allocatedMemoryBlock) {
+        final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock) {
       super(isReleased, referenceCount);
       this.walEntryHandler = walEntryHandler;
       this.allocatedMemoryBlock = allocatedMemoryBlock;
@@ -545,11 +548,31 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     protected void finalizeResource() {
       try {
         PipeDataNodeResourceManager.wal().unpin(walEntryHandler);
-        allocatedMemoryBlock.close();
+        allocatedMemoryBlock.getAndUpdate(
+            memoryBlock -> {
+              if (Objects.nonNull(memoryBlock)) {
+                memoryBlock.close();
+              }
+              return null;
+            });
       } catch (final Exception e) {
         LOGGER.warn(
             "Decrease reference count for memTable {} error.", walEntryHandler.getMemTableId(), e);
       }
     }
+  }
+
+  /////////////////////////// AutoCloseable ///////////////////////////
+
+  @Override
+  public synchronized void close() {
+    allocatedMemoryBlock.getAndUpdate(
+        memoryBlock -> {
+          if (Objects.nonNull(memoryBlock)) {
+            memoryBlock.close();
+          }
+          return null;
+        });
+    tablets = null;
   }
 }

@@ -23,7 +23,7 @@ public interface SubscriptionPipeEvents {
 
   void ack();
 
-  void cleanUp();
+  void cleanUp(final boolean force);
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 

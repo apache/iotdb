@@ -208,17 +208,19 @@ public class RouteBalancer implements IClusterStatusSubscriber {
                 successTransferMap.put(
                     regionGroupId, new ConsensusGroupHeartbeatSample(currentTime, newLeaderId));
                 // Prepare data for flushOldLeader
-                lastBalancedOldLeaderId2RegionMap.compute(
-                    oldLeaderId,
-                    (k, v) -> {
-                      if (v == null) {
-                        List<String> value = new ArrayList<>();
-                        value.add(String.valueOf(regionGroupId.getId()));
-                        return value;
-                      }
-                      v.add(String.valueOf(regionGroupId.getId()));
-                      return v;
-                    });
+                if (oldLeaderId != -1) {
+                  lastBalancedOldLeaderId2RegionMap.compute(
+                      oldLeaderId,
+                      (k, v) -> {
+                        if (v == null) {
+                          List<String> value = new ArrayList<>();
+                          value.add(String.valueOf(regionGroupId.getId()));
+                          return value;
+                        }
+                        v.add(String.valueOf(regionGroupId.getId()));
+                        return v;
+                      });
+                }
                 break;
               case ConsensusFactory.RATIS_CONSENSUS:
               default:

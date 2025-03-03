@@ -403,8 +403,6 @@ public abstract class InsertNode extends SearchNode {
           idColumnIndices.add(i);
         }
       }
-    } else {
-      idColumnIndices = Collections.emptyList();
     }
   }
 
@@ -443,6 +441,7 @@ public abstract class InsertNode extends SearchNode {
         .getPartialPath(ReadWriteIOUtils.readString(stream));
   }
 
+  @Override
   public long getMemorySize() {
     if (memorySize == 0) {
       memorySize = InsertNodeMemoryEstimator.sizeOf(this);

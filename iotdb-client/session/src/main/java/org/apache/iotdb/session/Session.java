@@ -425,6 +425,7 @@ public class Session implements ISession {
     if (nodeUrls.isEmpty()) {
       throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
     }
+    Collections.shuffle(nodeUrls);
     this.nodeUrls = nodeUrls;
     this.username = username;
     this.password = password;
@@ -441,6 +442,7 @@ public class Session implements ISession {
       if (builder.nodeUrls.isEmpty()) {
         throw new IllegalArgumentException("nodeUrls shouldn't be empty.");
       }
+      Collections.shuffle(builder.nodeUrls);
       this.nodeUrls = builder.nodeUrls;
       this.enableQueryRedirection = true;
     } else {
@@ -2964,17 +2966,12 @@ public class Session implements ISession {
 
     TSInsertTabletReq request = new TSInsertTabletReq();
 
-    if (tablet.getSchemas().isEmpty()) {
-      request.measurements = Collections.emptyList();
-      request.types = Collections.emptyList();
-    } else {
-      for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-        if (measurementSchema.getMeasurementName() == null) {
-          throw new IllegalArgumentException("measurement should be non null value");
-        }
-        request.addToMeasurements(measurementSchema.getMeasurementName());
-        request.addToTypes(measurementSchema.getType().ordinal());
+    for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+      if (measurementSchema.getMeasurementName() == null) {
+        throw new IllegalArgumentException("measurement should be non null value");
       }
+      request.addToMeasurements(measurementSchema.getMeasurementName());
+      request.addToTypes(measurementSchema.getType().ordinal());
     }
 
     request.setPrefixPath(tablet.getDeviceId());
