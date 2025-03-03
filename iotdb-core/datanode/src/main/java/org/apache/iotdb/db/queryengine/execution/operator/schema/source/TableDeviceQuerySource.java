@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
+import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
@@ -28,6 +29,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
+import org.apache.iotdb.db.schemaengine.rescon.ISchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
@@ -35,9 +37,14 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
+import javax.annotation.Nonnull;
+
+import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -52,6 +59,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
   private final List<ColumnHeader> columnHeaderList;
   private final DevicePredicateFilter filter;
+  private @Nonnull List<PartialPath> devicePatternList;
 
   public TableDeviceQuerySource(
       final String database,
@@ -64,12 +72,11 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
     this.idDeterminedPredicateList = idDeterminedPredicateList;
     this.columnHeaderList = columnHeaderList;
     this.filter = filter;
+    this.devicePatternList = getDevicePatternList(database, tableName, idDeterminedPredicateList);
   }
 
   @Override
   public ISchemaReader<IDeviceSchemaInfo> getSchemaReader(final ISchemaRegion schemaRegion) {
-    final List<PartialPath> devicePatternList =
-        getDevicePatternList(database, tableName, idDeterminedPredicateList);
     return new ISchemaReader<IDeviceSchemaInfo>() {
 
       private ISchemaReader<IDeviceSchemaInfo> deviceReader;
@@ -185,7 +192,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
     };
   }
 
-  public static List<PartialPath> getDevicePatternList(
+  public static @Nonnull List<PartialPath> getDevicePatternList(
       final String database,
       final String tableName,
       final List<List<SchemaFilter>> idDeterminedPredicateList) {
@@ -257,5 +264,28 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   @Override
   public long getSchemaStatistic(final ISchemaRegion schemaRegion) {
     return schemaRegion.getSchemaRegionStatistics().getTableDevicesNumber(tableName);
+  }
+
+  @Override
+  public long getMaxMemory(final ISchemaRegion schemaRegion) {
+    final ISchemaRegionStatistics statistics = schemaRegion.getSchemaRegionStatistics();
+    final long devicesNumber = statistics.getTableDevicesNumber(tableName);
+    return devicePatternList.stream().allMatch(path -> ((ExtendedPartialPath) path).isNormalPath())
+        ? Math.min(
+            TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
+            devicePatternList.stream()
+                    .map(
+                        devicePattern ->
+                            Arrays.stream(
+                                    devicePattern.getNodes(), 3, devicePattern.getNodeLength())
+                                .map(RamUsageEstimator::sizeOf)
+                                .reduce(0L, Long::sum))
+                    .reduce(0L, Long::sum)
+                + (devicesNumber > 0
+                    ? devicePatternList.size()
+                        * statistics.getTableAttributeMemory(tableName)
+                        / devicesNumber
+                    : 0))
+        : TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
   }
 }

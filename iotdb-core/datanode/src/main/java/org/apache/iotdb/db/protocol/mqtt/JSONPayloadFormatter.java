@@ -118,6 +118,11 @@ public class JSONPayloadFormatter implements PayloadFormatter {
 
   @Override
   public String getName() {
-    return "tree-json";
+    return "json";
+  }
+
+  @Override
+  public String getType() {
+    return PayloadFormatter.TREE_TYPE;
   }
 }
