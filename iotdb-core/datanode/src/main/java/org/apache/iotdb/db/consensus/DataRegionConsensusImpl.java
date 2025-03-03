@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
-import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
@@ -36,6 +35,7 @@ import org.apache.iotdb.consensus.config.PipeConsensusConfig;
 import org.apache.iotdb.consensus.config.PipeConsensusConfig.ReplicateMode;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.config.RatisConfig.Snapshot;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.DataRegionStateMachine;
@@ -79,7 +79,8 @@ public class DataRegionConsensusImpl {
   private static class DataRegionConsensusImplHolder {
 
     private static final IoTDBConfig CONF = IoTDBDescriptor.getInstance().getConfig();
-    private static final MemoryConfig MEMORY_CONFIG = MemoryConfig.getInstance();
+    private static final DataNodeMemoryConfig MEMORY_CONFIG =
+        IoTDBDescriptor.getInstance().getMemoryConfig();
 
     private static IConsensus INSTANCE;
 

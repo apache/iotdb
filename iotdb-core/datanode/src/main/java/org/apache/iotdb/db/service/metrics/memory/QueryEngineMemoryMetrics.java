@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.service.metrics.memory;
 
-import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -34,7 +34,8 @@ import java.util.Arrays;
 
 public class QueryEngineMemoryMetrics implements IMetricSet {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final MemoryConfig memoryConfig = MemoryConfig.getInstance();
+  private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final String QUERY_ENGINE = "QueryEngine";
   private static final String QUERY_ENGINE_BLOOM_FILTER_CACHE = "QueryEngine-BloomFilterCache";
   private static final String QUERY_ENGINE_CHUNK_CACHE = "QueryEngine-ChunkCache";
@@ -50,7 +51,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        memoryConfig.getQueryEngineMemoryManager(),
+        DATA_NODE_MEMORY_CONFIG.getQueryEngineMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         QUERY_ENGINE,
@@ -61,7 +62,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        memoryConfig.getBloomFilterCacheMemoryManager(),
+        DATA_NODE_MEMORY_CONFIG.getBloomFilterCacheMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         QUERY_ENGINE_BLOOM_FILTER_CACHE,
@@ -72,7 +73,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        memoryConfig.getBloomFilterCacheMemoryManager(),
+        DATA_NODE_MEMORY_CONFIG.getBloomFilterCacheMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         QUERY_ENGINE_BLOOM_FILTER_CACHE,
@@ -83,7 +84,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        memoryConfig.getChunkCacheMemoryManager(),
+        DATA_NODE_MEMORY_CONFIG.getChunkCacheMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         QUERY_ENGINE_CHUNK_CACHE,
@@ -94,7 +95,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        memoryConfig.getChunkCacheMemoryManager(),
+        DATA_NODE_MEMORY_CONFIG.getChunkCacheMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         QUERY_ENGINE_CHUNK_CACHE,
@@ -105,7 +106,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        memoryConfig.getTimeSeriesMetaDataCacheMemoryManager(),
+        DATA_NODE_MEMORY_CONFIG.getTimeSeriesMetaDataCacheMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         QUERY_ENGINE_TIME_SERIES_METADATA_CACHE,
@@ -116,7 +117,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        memoryConfig.getTimeSeriesMetaDataCacheMemoryManager(),
+        DATA_NODE_MEMORY_CONFIG.getTimeSeriesMetaDataCacheMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         QUERY_ENGINE_TIME_SERIES_METADATA_CACHE,
@@ -127,7 +128,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        memoryConfig.getOperatorsMemoryManager(),
+        DATA_NODE_MEMORY_CONFIG.getOperatorsMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         QUERY_ENGINE_OPERATORS,
@@ -138,7 +139,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        memoryConfig.getOperatorsMemoryManager(),
+        DATA_NODE_MEMORY_CONFIG.getOperatorsMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         QUERY_ENGINE_OPERATORS,
@@ -149,7 +150,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        memoryConfig.getDataExchangeMemoryManager(),
+        DATA_NODE_MEMORY_CONFIG.getDataExchangeMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         QUERY_ENGINE_DATA_EXCHANGE,
@@ -160,7 +161,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        memoryConfig.getDataExchangeMemoryManager(),
+        DATA_NODE_MEMORY_CONFIG.getDataExchangeMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         QUERY_ENGINE_DATA_EXCHANGE,
@@ -171,7 +172,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        memoryConfig.getTimeIndexMemoryManager(),
+        DATA_NODE_MEMORY_CONFIG.getTimeIndexMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         QUERY_ENGINE_TIME_INDEX,
@@ -182,7 +183,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        memoryConfig.getTimeIndexMemoryManager(),
+        DATA_NODE_MEMORY_CONFIG.getTimeIndexMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         QUERY_ENGINE_TIME_INDEX,
@@ -193,7 +194,7 @@ public class QueryEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        memoryConfig.getCoordinatorMemoryManager(),
+        DATA_NODE_MEMORY_CONFIG.getCoordinatorMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         QUERY_ENGINE_COORDINATOR,

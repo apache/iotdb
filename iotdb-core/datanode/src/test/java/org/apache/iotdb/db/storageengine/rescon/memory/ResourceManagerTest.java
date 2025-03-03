@@ -21,7 +21,7 @@ package org.apache.iotdb.db.storageengine.rescon.memory;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.memory.MemoryConfig;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -78,7 +78,8 @@ public class ResourceManagerTest {
   List<TsFileResource> unseqResources = new ArrayList<>();
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private static final MemoryConfig MEMORY_CONFIG = MemoryConfig.getInstance();
+  private static final DataNodeMemoryConfig MEMORY_CONFIG =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
   private final TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
   private long prevTimeIndexMemoryThreshold;
   private TimeIndexLevel timeIndexLevel;

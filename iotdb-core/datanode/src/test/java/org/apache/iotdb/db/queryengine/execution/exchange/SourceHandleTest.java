@@ -58,13 +58,16 @@ public class SourceHandleTest {
 
   @BeforeClass
   public static void beforeClass() {
-    maxBytesPerFI = IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
-    IoTDBDescriptor.getInstance().getConfig().setMaxBytesPerFragmentInstance(5 * MOCK_TSBLOCK_SIZE);
+    maxBytesPerFI =
+        IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
+    IoTDBDescriptor.getInstance()
+        .getMemoryConfig()
+        .setMaxBytesPerFragmentInstance(5 * MOCK_TSBLOCK_SIZE);
   }
 
   @AfterClass
   public static void afterClass() {
-    IoTDBDescriptor.getInstance().getConfig().setMaxBytesPerFragmentInstance(maxBytesPerFI);
+    IoTDBDescriptor.getInstance().getMemoryConfig().setMaxBytesPerFragmentInstance(maxBytesPerFI);
   }
 
   @Test
@@ -241,7 +244,7 @@ public class SourceHandleTest {
     long maxBytesCanReserve =
         Math.min(
             5 * MOCK_TSBLOCK_SIZE,
-            IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance());
+            IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance());
     sourceHandle.setMaxBytesCanReserve(maxBytesCanReserve);
     Assert.assertFalse(sourceHandle.isBlocked().isDone());
     Assert.assertFalse(sourceHandle.isAborted());

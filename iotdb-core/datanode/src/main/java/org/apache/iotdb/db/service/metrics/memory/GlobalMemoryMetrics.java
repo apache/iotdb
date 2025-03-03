@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.service.metrics.memory;
 
-import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -34,7 +34,8 @@ import java.util.Arrays;
 
 public class GlobalMemoryMetrics implements IMetricSet {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final MemoryConfig memoryConfig = MemoryConfig.getInstance();
+  private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
 
   private static final String TOTAL = "Total";
   public static final String ON_HEAP = "OnHeap";
@@ -46,7 +47,7 @@ public class GlobalMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        memoryConfig.getOnHeapMemoryManager(),
+        DATA_NODE_MEMORY_CONFIG.getOnHeapMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         TOTAL,
@@ -57,7 +58,7 @@ public class GlobalMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        memoryConfig.getOffHeapMemoryManager(),
+        DATA_NODE_MEMORY_CONFIG.getOffHeapMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         TOTAL,

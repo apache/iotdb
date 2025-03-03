@@ -20,7 +20,7 @@ package org.apache.iotdb.db.storageengine.rescon.memory;
 
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
-import org.apache.iotdb.commons.memory.MemoryConfig;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
@@ -42,7 +42,8 @@ public class PrimitiveArrayManager {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  private static final MemoryConfig MEMORY_CONFIG = MemoryConfig.getInstance();
+  private static final DataNodeMemoryConfig MEMORY_CONFIG =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
 
   public static final int ARRAY_SIZE = CONFIG.getPrimitiveArraySize();
 

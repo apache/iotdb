@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.schemaengine.metric;
 
-import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaEngineStatistics;
@@ -52,7 +51,10 @@ public class SchemaEngineCachedMetric implements ISchemaEngineMetric {
     schemaEngineMemMetric.bindTo(metricService);
     metricService.gauge(
         (long)
-            (MemoryConfig.getInstance().getSchemaRegionMemoryManager().getTotalMemorySizeInBytes()
+            (IoTDBDescriptor.getInstance()
+                    .getMemoryConfig()
+                    .getSchemaRegionMemoryManager()
+                    .getTotalMemorySizeInBytes()
                 * ReleaseFlushStrategySizeBasedImpl.RELEASE_THRESHOLD_RATIO),
         Metric.SCHEMA_ENGINE.toString(),
         MetricLevel.IMPORTANT,

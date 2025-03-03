@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.service.metrics.memory;
 
-import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -34,7 +34,8 @@ import java.util.Collections;
 
 public class OffHeapMemoryMetrics implements IMetricSet {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final MemoryConfig memoryConfig = MemoryConfig.getInstance();
+  private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
 
   private static final String DIRECT_BUFFER = "DirectBuffer";
 
@@ -43,7 +44,7 @@ public class OffHeapMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        memoryConfig.getDirectBufferMemoryManager(),
+        DATA_NODE_MEMORY_CONFIG.getDirectBufferMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         DIRECT_BUFFER,
@@ -54,7 +55,7 @@ public class OffHeapMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        memoryConfig.getDirectBufferMemoryManager(),
+        DATA_NODE_MEMORY_CONFIG.getDirectBufferMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         DIRECT_BUFFER,

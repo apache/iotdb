@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.service.metrics.memory;
 
-import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -32,7 +32,8 @@ import org.apache.iotdb.metrics.utils.MetricType;
 
 public class StreamEngineMemoryMetrics implements IMetricSet {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final MemoryConfig memoryConfig = MemoryConfig.getInstance();
+  private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final String STREAM_ENGINE = "StreamEngine";
 
   @Override
@@ -40,7 +41,7 @@ public class StreamEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        memoryConfig.getPipeMemoryManager(),
+        DATA_NODE_MEMORY_CONFIG.getPipeMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         STREAM_ENGINE,
@@ -51,7 +52,7 @@ public class StreamEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        memoryConfig.getPipeMemoryManager(),
+        DATA_NODE_MEMORY_CONFIG.getPipeMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         STREAM_ENGINE,

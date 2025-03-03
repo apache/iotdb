@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
-import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.metric.overview.PipeWALInsertNodeCacheMetrics;
@@ -59,7 +59,8 @@ public class WALInsertNodeCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WALInsertNodeCache.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private static final MemoryConfig MEMORY_CONFIG = MemoryConfig.getInstance();
+  private static final DataNodeMemoryConfig MEMORY_CONFIG =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
 
   private final PipeMemoryBlock allocatedMemoryBlock;
   // Used to adjust the memory usage of the cache

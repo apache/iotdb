@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.audit.AuditLogOperation;
@@ -153,25 +152,13 @@ public class IoTDBConfig {
 
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
 
-  /** Ratio of memory allocated for buffered arrays */
-  private double bufferedArraysMemoryProportion = 0.6;
-
   /** Flush proportion for system */
   private double flushProportion = 0.4;
 
-  /** Reject proportion for system */
-  private double rejectProportion = 0.8;
-
-  /** The proportion of memtable memory for WAL queue */
-  private double walBufferQueueProportion = 0.1;
-
-  /** The proportion of memtable memory for device path cache */
-  private double devicePathCacheProportion = 0.05;
-
   /**
    * If memory cost of data region increased more than proportion of {@linkplain
-   * org.apache.iotdb.commons.memory.MemoryConfig#getStorageEngineMemoryManager()} *{@linkplain
-   * org.apache.iotdb.commons.memory.MemoryConfig#getMemtableMemoryManager()}, report to system.
+   * DataNodeMemoryConfig#getStorageEngineMemoryManager()} *{@linkplain
+   * DataNodeMemoryConfig#getMemtableMemoryManager()}, report to system.
    */
   private double writeMemoryVariationReportProportion = 0.001;
 
@@ -202,9 +189,6 @@ public class IoTDBConfig {
 
   /** Buffer size of each wal node. Unit: byte */
   private int walBufferSize = 32 * 1024 * 1024;
-
-  /** max total direct buffer off heap memory size proportion */
-  private double maxDirectBufferOffHeapMemorySizeProportion = 0.8;
 
   /** Blocking queue capacity of each delete ahead log buffer */
   private int deletionAheadLogBufferQueueCapacity = 500;
@@ -344,9 +328,6 @@ public class IoTDBConfig {
 
   /** How many threads can concurrently flush. When <= 0, use CPU core number. */
   private int flushThreadCount = Runtime.getRuntime().availableProcessors();
-
-  /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
-  private int queryThreadCount = Runtime.getRuntime().availableProcessors();
 
   private int degreeOfParallelism = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
 
@@ -570,19 +551,6 @@ public class IoTDBConfig {
 
   /** The size of global compaction estimation file info cahce. */
   private int globalCompactionFileInfoCacheSize = 1000;
-
-  /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
-  private boolean metaDataCacheEnable = true;
-
-  /** Max bytes of each FragmentInstance for DataExchange */
-  private long maxBytesPerFragmentInstance =
-      Runtime.getRuntime().maxMemory() * 3 / 10 * 200 / 1001 / queryThreadCount;
-
-  /**
-   * If true, we will estimate each query's possible memory footprint before executing it and deny
-   * it if its estimated memory exceeds current free memory
-   */
-  private boolean enableQueryMemoryEstimation = true;
 
   /** Cache size of {@code checkAndGetDataTypeCache}. */
   private int mRemoteSchemaCacheSize = 100000;
@@ -1726,21 +1694,6 @@ public class IoTDBConfig {
     this.flushThreadCount = flushThreadCount;
   }
 
-  public int getQueryThreadCount() {
-    return queryThreadCount;
-  }
-
-  public void setQueryThreadCount(int queryThreadCount) {
-    if (queryThreadCount <= 0) {
-      queryThreadCount = Runtime.getRuntime().availableProcessors();
-    }
-    this.queryThreadCount = queryThreadCount;
-    // TODO @spricoder: influence dynamic change of memory size
-    this.maxBytesPerFragmentInstance =
-        MemoryConfig.getInstance().getDataExchangeMemoryManager().getTotalMemorySizeInBytes()
-            / queryThreadCount;
-  }
-
   public void setDegreeOfParallelism(int degreeOfParallelism) {
     if (degreeOfParallelism > 0) {
       this.degreeOfParallelism = degreeOfParallelism;
@@ -1765,14 +1718,6 @@ public class IoTDBConfig {
 
   public void setMaxAllowedConcurrentQueries(int maxAllowedConcurrentQueries) {
     this.maxAllowedConcurrentQueries = maxAllowedConcurrentQueries;
-  }
-
-  public long getMaxBytesPerFragmentInstance() {
-    return maxBytesPerFragmentInstance;
-  }
-
-  public void setMaxBytesPerFragmentInstance(long maxBytesPerFragmentInstance) {
-    this.maxBytesPerFragmentInstance = maxBytesPerFragmentInstance;
   }
 
   public int getWindowEvaluationThreadCount() {
@@ -1933,15 +1878,6 @@ public class IoTDBConfig {
     this.walBufferSize = walBufferSize;
   }
 
-  public double getMaxDirectBufferOffHeapMemorySizeProportion() {
-    return maxDirectBufferOffHeapMemorySizeProportion;
-  }
-
-  public void setMaxDirectBufferOffHeapMemorySizeProportion(
-      double maxDirectBufferOffHeapMemorySizeProportion) {
-    this.maxDirectBufferOffHeapMemorySizeProportion = maxDirectBufferOffHeapMemorySizeProportion;
-  }
-
   public int getDeletionAheadLogBufferQueueCapacity() {
     return deletionAheadLogBufferQueueCapacity;
   }
@@ -2022,28 +1958,12 @@ public class IoTDBConfig {
     this.mergeIntervalSec = mergeIntervalSec;
   }
 
-  public double getBufferedArraysMemoryProportion() {
-    return bufferedArraysMemoryProportion;
-  }
-
-  public void setBufferedArraysMemoryProportion(double bufferedArraysMemoryProportion) {
-    this.bufferedArraysMemoryProportion = bufferedArraysMemoryProportion;
-  }
-
   public double getFlushProportion() {
     return flushProportion;
   }
 
   public void setFlushProportion(double flushProportion) {
     this.flushProportion = flushProportion;
-  }
-
-  public double getRejectProportion() {
-    return rejectProportion;
-  }
-
-  public void setRejectProportion(double rejectProportion) {
-    this.rejectProportion = rejectProportion;
   }
 
   public double getWriteMemoryVariationReportProportion() {
@@ -2221,22 +2141,6 @@ public class IoTDBConfig {
 
   public void setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
     this.rpcThriftCompressionEnable = rpcThriftCompressionEnable;
-  }
-
-  public boolean isMetaDataCacheEnable() {
-    return metaDataCacheEnable;
-  }
-
-  public void setMetaDataCacheEnable(boolean metaDataCacheEnable) {
-    this.metaDataCacheEnable = metaDataCacheEnable;
-  }
-
-  public boolean isEnableQueryMemoryEstimation() {
-    return enableQueryMemoryEstimation;
-  }
-
-  public void setEnableQueryMemoryEstimation(boolean enableQueryMemoryEstimation) {
-    this.enableQueryMemoryEstimation = enableQueryMemoryEstimation;
   }
 
   public boolean isAutoCreateSchemaEnabled() {
@@ -3361,22 +3265,6 @@ public class IoTDBConfig {
 
   public void setDriverTaskExecutionTimeSliceInMs(int driverTaskExecutionTimeSliceInMs) {
     this.driverTaskExecutionTimeSliceInMs = driverTaskExecutionTimeSliceInMs;
-  }
-
-  public double getWalBufferQueueProportion() {
-    return walBufferQueueProportion;
-  }
-
-  public void setWalBufferQueueProportion(double walBufferQueueProportion) {
-    this.walBufferQueueProportion = walBufferQueueProportion;
-  }
-
-  public double getDevicePathCacheProportion() {
-    return devicePathCacheProportion;
-  }
-
-  public void setDevicePathCacheProportion(double devicePathCacheProportion) {
-    this.devicePathCacheProportion = devicePathCacheProportion;
   }
 
   public static String getEnvironmentVariables() {

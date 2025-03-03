@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.exchange.sink;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -68,7 +67,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   /** max bytes this ShuffleSinkHandle can reserve. */
   private long maxBytesCanReserve =
-      IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+      IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ShuffleSinkHandle.class)
