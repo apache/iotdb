@@ -643,7 +643,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           context.inheritedPredicate != null ? context.inheritedPredicate : TRUE_LITERAL;
 
       // See if we can rewrite outer joins in terms of a plain inner join
-      // node = tryNormalizeToOuterToInnerJoin(node, inheritedPredicate);
+      node = tryNormalizeToOuterToInnerJoin(node, inheritedPredicate);
 
       Expression leftEffectivePredicate = TRUE_LITERAL;
       // effectivePredicateExtractor.extract(session, node.getLeftChild(), types, typeAnalyzer);
@@ -1178,16 +1178,31 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
               node.getFilter(),
               node.isSpillable());
         }
-        return new JoinNode(
-            node.getPlanNodeId(),
-            canConvertToLeftJoin ? LEFT : RIGHT,
-            node.getLeftChild(),
-            node.getRightChild(),
-            node.getCriteria(),
-            node.getLeftOutputSymbols(),
-            node.getRightOutputSymbols(),
-            node.getFilter(),
-            node.isSpillable());
+        if (canConvertToLeftJoin) {
+          return new JoinNode(
+              node.getPlanNodeId(),
+              LEFT,
+              node.getLeftChild(),
+              node.getRightChild(),
+              node.getCriteria(),
+              node.getLeftOutputSymbols(),
+              node.getRightOutputSymbols(),
+              node.getFilter(),
+              node.isSpillable());
+        } else {
+          // temp fix because right join is not supported for now.
+          return node;
+        }
+        //        return new JoinNode(
+        //            node.getPlanNodeId(),
+        //            canConvertToLeftJoin ? LEFT : RIGHT,
+        //            node.getLeftChild(),
+        //            node.getRightChild(),
+        //            node.getCriteria(),
+        //            node.getLeftOutputSymbols(),
+        //            node.getRightOutputSymbols(),
+        //            node.getFilter(),
+        //            node.isSpillable());
       }
 
       if (node.getJoinType() == JoinNode.JoinType.LEFT
