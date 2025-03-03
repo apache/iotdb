@@ -38,7 +38,7 @@ public class DataNodeDevicePathCache {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeDevicePathCache.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
+  private static final DataNodeMemoryConfig memoryConfig =
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private final IMemoryBlock devicePathCacheMemoryBlock;
 
@@ -46,7 +46,7 @@ public class DataNodeDevicePathCache {
 
   private DataNodeDevicePathCache() {
     devicePathCacheMemoryBlock =
-        DATA_NODE_MEMORY_CONFIG
+        memoryConfig
             .getDevicePathCacheMemoryManager()
             .forceAllocate("DevicePathCache", MemoryBlockType.PERFORMANCE);
     // TODO @spricoder: later we can find a way to get the byte size of cache

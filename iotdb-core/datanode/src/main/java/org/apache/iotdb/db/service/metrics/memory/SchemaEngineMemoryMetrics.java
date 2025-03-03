@@ -34,7 +34,7 @@ import java.util.Arrays;
 
 public class SchemaEngineMemoryMetrics implements IMetricSet {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
+  private static final DataNodeMemoryConfig memoryConfig =
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final String SCHEMA_ENGINE = "SchemaEngine";
   private static final String SCHEMA_ENGINE_SCHEMA_REGION = "SchemaEngine-SchemaRegion";
@@ -46,7 +46,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getSchemaEngineMemoryManager(),
+        memoryConfig.getSchemaEngineMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         SCHEMA_ENGINE,
@@ -57,7 +57,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getSchemaRegionMemoryManager(),
+        memoryConfig.getSchemaRegionMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         SCHEMA_ENGINE_SCHEMA_REGION,
@@ -68,7 +68,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getSchemaRegionMemoryManager(),
+        memoryConfig.getSchemaRegionMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         SCHEMA_ENGINE_SCHEMA_REGION,
@@ -79,7 +79,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getSchemaCacheMemoryManager(),
+        memoryConfig.getSchemaCacheMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         SCHEMA_ENGINE_SCHEMA_CACHE,
@@ -90,7 +90,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getSchemaCacheMemoryManager(),
+        memoryConfig.getSchemaCacheMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         SCHEMA_ENGINE_SCHEMA_CACHE,
@@ -101,7 +101,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getPartitionCacheMemoryManager(),
+        memoryConfig.getPartitionCacheMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         SCHEMA_ENGINE_PARTITION_CACHE,
@@ -112,7 +112,7 @@ public class SchemaEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getPartitionCacheMemoryManager(),
+        memoryConfig.getPartitionCacheMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         SCHEMA_ENGINE_PARTITION_CACHE,

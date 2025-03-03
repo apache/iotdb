@@ -34,7 +34,7 @@ import java.util.Arrays;
 
 public class GlobalMemoryMetrics implements IMetricSet {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
+  private static final DataNodeMemoryConfig memoryConfig =
       IoTDBDescriptor.getInstance().getMemoryConfig();
 
   private static final String TOTAL = "Total";
@@ -47,7 +47,7 @@ public class GlobalMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getOnHeapMemoryManager(),
+        memoryConfig.getOnHeapMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         TOTAL,
@@ -58,7 +58,7 @@ public class GlobalMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getOffHeapMemoryManager(),
+        memoryConfig.getOffHeapMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         TOTAL,

@@ -70,10 +70,10 @@ public class TimeSeriesMetadataCache {
   private static final Logger logger = LoggerFactory.getLogger(TimeSeriesMetadataCache.class);
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
+  private static final DataNodeMemoryConfig memoryConfig =
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final IMemoryBlock CACHE_MEMORY_BLOCK;
-  private static final boolean CACHE_ENABLE = DATA_NODE_MEMORY_CONFIG.isMetaDataCacheEnable();
+  private static final boolean CACHE_ENABLE = memoryConfig.isMetaDataCacheEnable();
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
@@ -88,7 +88,7 @@ public class TimeSeriesMetadataCache {
 
   static {
     CACHE_MEMORY_BLOCK =
-        DATA_NODE_MEMORY_CONFIG
+        memoryConfig
             .getTimeSeriesMetaDataCacheMemoryManager()
             .forceAllocate("TimeSeriesMetadataCache", MemoryBlockType.PERFORMANCE);
     // TODO @spricoder find a better way to get the size of cache
