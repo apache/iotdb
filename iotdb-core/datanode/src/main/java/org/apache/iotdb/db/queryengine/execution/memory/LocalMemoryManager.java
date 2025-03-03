@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.memory;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+
 /**
  * Manages memory of a data node. The memory is divided into two memory pools so that the memory for
  * read and for write can be isolated.
