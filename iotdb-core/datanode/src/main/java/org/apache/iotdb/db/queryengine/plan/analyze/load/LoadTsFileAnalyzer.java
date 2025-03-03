@@ -85,31 +85,6 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadTsFileAnalyzer.class);
 
-  // These are only used when constructed from tree model SQL
-  private final LoadTsFileStatement loadTsFileTreeStatement;
-  // These are only used when constructed from table model SQL
-  private final LoadTsFile loadTsFileTableStatement;
-
-  private final boolean isTableModelStatement;
-
-  private final boolean isGeneratedByPipe;
-
-  protected final List<File> tsFiles;
-  private final List<File> tabletConvertionList = new java.util.ArrayList<>();
-  protected final String statementString;
-  protected final boolean isVerifySchema;
-
-  protected final boolean isDeleteAfterLoad;
-
-  protected final boolean isConvertOnTypeMismatch;
-
-  protected final int tabletConversionThreshold;
-
-  protected final boolean isAutoCreateDatabase;
-
-  protected final int databaseLevel;
-
-  protected final String database;
   final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
   final ISchemaFetcher schemaFetcher = ClusterSchemaFetcher.getInstance();
   private final Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
@@ -130,6 +105,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private final List<File> tsFiles;
   private final List<Boolean> isTableModelTsFile;
   private int isTableModelTsFileReliableIndex = -1;
+  private final List<File> tabletConvertionList = new java.util.ArrayList<>();
 
   // User specified configs
   private final int databaseLevel;
@@ -138,6 +114,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private final boolean isDeleteAfterLoad;
   private final boolean isConvertOnTypeMismatch;
   private final boolean isAutoCreateDatabase;
+  private final int tabletConversionThreshold;
 
   // Schema creators for tree and table
   private TreeSchemaAutoCreatorAndVerifier treeSchemaAutoCreatorAndVerifier;
@@ -400,47 +377,6 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     return true;
   }
 
-  protected void executeTabletConversion(final IAnalysis analysis, final LoadAnalyzeException e) {
-    if (shouldSkipConversion(e)) {
-      analysis.setFailStatus(
-          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
-      analysis.setFinishQueryAfterAnalyze(true);
-      setRealStatement(analysis);
-      return;
-    }
-
-    LoadTsFileDataTypeConverter loadTsFileDataTypeConverter =
-        new LoadTsFileDataTypeConverter(isGeneratedByPipe);
-    TSStatus status = doConversion(loadTsFileDataTypeConverter);
-
-    if (status == null) {
-      LOGGER.warn(
-          "Load: Failed to convert to tablets from statement {}. Status is null.",
-          isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement);
-      analysis.setFailStatus(
-          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
-    } else if (!loadTsFileDataTypeConverter.isSuccessful(status)) {
-      LOGGER.warn(
-          "Load: Failed to convert to tablets from statement {}. Status: {}",
-          isTableModelStatement ? loadTsFileTableStatement : loadTsFileTreeStatement,
-          status);
-      analysis.setFailStatus(status);
-    }
-
-    analysis.setFinishQueryAfterAnalyze(true);
-    setRealStatement(analysis);
-  }
-
-  private TSStatus doConversion(LoadTsFileDataTypeConverter converter) {
-    return isTableModelStatement
-        ? converter.convertForTableModel(loadTsFileTableStatement).orElse(null)
-        : converter.convertForTreeModel(loadTsFileTreeStatement).orElse(null);
-  }
-
-  private boolean shouldSkipConversion(LoadAnalyzeException e) {
-    return (e instanceof LoadAnalyzeTypeMismatchException) && !isConvertOnTypeMismatch;
-  }
-
   private void setStatementTsFiles(List<File> files) {
     if (isTableModelStatement) {
       loadTsFileTableStatement.setTsFiles(files);
@@ -448,12 +384,6 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       loadTsFileTreeStatement.setTsFiles(files);
     }
   }
-
-  protected void setRealStatement(IAnalysis analysis) {
-    if (isTableModelStatement) {
-      // Do nothing by now.
-    } else {
-      analysis.setRealStatement(loadTsFileTreeStatement);
 
   private void doAnalyzeSingleTreeFile(
       final File tsFile,
@@ -655,6 +585,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   private void executeTabletConversion(final IAnalysis analysis, final LoadAnalyzeException e) {
+    if (shouldSkipConversion(e)) {
+      analysis.setFailStatus(
+          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
+      analysis.setFinishQueryAfterAnalyze(true);
+      setRealStatement(analysis);
+      return;
+    }
+
     if (isTableModelTsFileReliableIndex < tsFiles.size() - 1) {
       try {
         getFileModelInfoBeforeTabletConversion();
@@ -677,17 +615,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     for (int i = 0; i < tsFiles.size(); i++) {
       try {
         final TSStatus status =
-            (!(e instanceof LoadAnalyzeTypeMismatchException) || isConvertOnTypeMismatch)
-                ? (isTableModelTsFile.get(i)
-                    ? loadTsFileDataTypeConverter
-                        .convertForTableModel(
-                            new LoadTsFile(null, tsFiles.get(i).getPath(), Collections.emptyMap())
-                                .setDatabase(databaseForTableData))
-                        .orElse(null)
-                    : loadTsFileDataTypeConverter
-                        .convertForTreeModel(new LoadTsFileStatement(tsFiles.get(i).getPath()))
-                        .orElse(null))
-                : null;
+            isTableModelTsFile.get(i)
+                ? loadTsFileDataTypeConverter
+                    .convertForTableModel(
+                        new LoadTsFile(null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                            .setDatabase(databaseForTableData))
+                    .orElse(null)
+                : loadTsFileDataTypeConverter
+                    .convertForTreeModel(new LoadTsFileStatement(tsFiles.get(i).getPath()))
+                    .orElse(null);
 
         if (status == null) {
           LOGGER.warn(
@@ -718,6 +654,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     analysis.setFinishQueryAfterAnalyze(true);
     setRealStatement(analysis);
+  }
+
+  private boolean shouldSkipConversion(LoadAnalyzeException e) {
+    return (e instanceof LoadAnalyzeTypeMismatchException) && !isConvertOnTypeMismatch;
   }
 
   private void getFileModelInfoBeforeTabletConversion() throws IOException {

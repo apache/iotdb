@@ -257,9 +257,6 @@ public class LoadTsFileStatement extends Statement {
         LoadTsFileConfigurator.parseOrGetDefaultConvertOnTypeMismatch(loadAttributes);
     this.tabletConversionThreshold =
         LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThreshold(loadAttributes);
-    this.model =
-        LoadTsFileConfigurator.parseOrGetDefaultModel(
-            loadAttributes, LoadTsFileConfigurator.MODEL_TREE_VALUE);
   }
 
   @Override
@@ -287,9 +284,6 @@ public class LoadTsFileStatement extends Statement {
         ON_SUCCESS_KEY, deleteAfterLoad ? ON_SUCCESS_DELETE_VALUE : ON_SUCCESS_NONE_VALUE);
     loadAttributes.put(CONVERT_ON_TYPE_MISMATCH_KEY, String.valueOf(convertOnTypeMismatch));
     loadAttributes.put(TABLET_CONVERSION_THRESHOLD_KEY, String.valueOf(tabletConversionThreshold));
-    if (model != null) {
-      loadAttributes.put(MODEL_KEY, model);
-    }
 
     return new LoadTsFile(null, file.getAbsolutePath(), loadAttributes);
   }
