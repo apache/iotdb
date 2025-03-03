@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.QueryPlanner.PlanAndMappings;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.TimePredicateWithSubqueryReconstructer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
@@ -125,6 +126,7 @@ class SubqueryPlanner {
 
     List<SubqueryExpression> scalarSubqueries = subqueries.getSubqueries();
     if (!scalarSubqueries.isEmpty()) {
+      tryFoldScalarSubqueryInTimePredicate(expression, plannerContext);
       for (Cluster<SubqueryExpression> cluster :
           cluster(builder.getScope(), selectSubqueries(builder, expression, scalarSubqueries))) {
         builder = planScalarSubquery(builder, cluster);
@@ -149,6 +151,12 @@ class SubqueryPlanner {
       }
     }
     return builder;
+  }
+
+  private void tryFoldScalarSubqueryInTimePredicate(
+      Expression expression, MPPQueryContext context) {
+    TimePredicateWithSubqueryReconstructer.reconstructTimePredicateWithSubquery(
+        expression, context);
   }
 
   /**
