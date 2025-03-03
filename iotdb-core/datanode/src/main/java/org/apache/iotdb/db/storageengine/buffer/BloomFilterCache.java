@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
@@ -50,7 +49,6 @@ public class BloomFilterCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(BloomFilterCache.class);
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final DataNodeMemoryConfig MEMORY_CONFIG =
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final IMemoryBlock CACHE_MEMORY_BLOCK;

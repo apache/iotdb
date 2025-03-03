@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
@@ -69,7 +68,6 @@ public class TimeSeriesMetadataCache {
 
   private static final Logger logger = LoggerFactory.getLogger(TimeSeriesMetadataCache.class);
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final DataNodeMemoryConfig memoryConfig =
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final IMemoryBlock CACHE_MEMORY_BLOCK;
