@@ -30,9 +30,12 @@ import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.HashAggregationOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.StreamingHashAggregationOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -40,21 +43,162 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.read.common.type.IntType;
 import org.apache.tsfile.read.common.type.TimestampType;
 import org.junit.Test;
 
 import java.util.Collections;
+import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.TIME_COLUMN_TEMPLATE;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash.DEFAULT_GROUP_NUMBER;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class GroupByLargeDataTest {
+public class AggregationCornerCaseTest {
+  @Test
+  // test StreamingHashOperator produces two output TsBlocks in one calculation
+  public void streamingHashAggTest() {
+    try (StreamingHashAggregationOperator aggregationOperator =
+        genStreamingHashAggregationOperator()) {
+      ListenableFuture<?> listenableFuture = aggregationOperator.isBlocked();
+      listenableFuture.get();
+      int resIndex = 0;
+      while (!aggregationOperator.isFinished() && aggregationOperator.hasNext()) {
+        TsBlock tsBlock = aggregationOperator.next();
+        if (tsBlock != null && !tsBlock.isEmpty()) {
+          if (resIndex == 0) {
+            // produce first TsBlock because result builder is full
+            assertEquals(1000, tsBlock.getPositionCount());
+            assertEquals(1000, tsBlock.getColumn(0).getPositionCount());
+            assertEquals(1000, tsBlock.getColumn(1).getPositionCount());
+          } else if (resIndex == 1) {
+            // produce second TsBlock contains the remaining part
+            assertEquals(25, tsBlock.getPositionCount());
+            assertEquals(25, tsBlock.getColumn(0).getPositionCount());
+            assertEquals(25, tsBlock.getColumn(1).getPositionCount());
+          } else {
+            fail();
+          }
+          resIndex++;
+        }
+        listenableFuture = aggregationOperator.isBlocked();
+        listenableFuture.get();
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  private StreamingHashAggregationOperator genStreamingHashAggregationOperator() {
+
+    // Construct operator tree
+    QueryId queryId = new QueryId("stub_query");
+
+    FragmentInstanceId instanceId =
+        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+    FragmentInstanceStateMachine stateMachine =
+        new FragmentInstanceStateMachine(
+            instanceId,
+            IoTDBThreadPoolFactory.newFixedThreadPool(
+                1, "streamingAggregationHashOperator-test-instance-notification"));
+    FragmentInstanceContext fragmentInstanceContext =
+        createFragmentInstanceContext(instanceId, stateMachine);
+    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
+    PlanNodeId planNodeId1 = new PlanNodeId("1");
+    driverContext.addOperatorContext(1, planNodeId1, TableScanOperator.class.getSimpleName());
+    PlanNodeId planNodeId2 = new PlanNodeId("2");
+    driverContext.addOperatorContext(
+        2, planNodeId2, StreamingHashAggregationOperator.class.getSimpleName());
+    List<TSDataType> outputTypes = ImmutableList.of(TSDataType.INT32, TSDataType.INT32);
+    // construct output TsBlock has same preGroup but has 1025 unPreGroups
+    Operator childOperator =
+        new Operator() {
+          boolean finished = false;
+
+          @Override
+          public OperatorContext getOperatorContext() {
+            return driverContext.getOperatorContexts().get(0);
+          }
+
+          @Override
+          public TsBlock next() {
+            TsBlockBuilder builder = new TsBlockBuilder(outputTypes);
+            ColumnBuilder[] columnBuilders = builder.getValueColumnBuilders();
+            for (int i = 0; i < 1025; i++) {
+              columnBuilders[0].writeInt(1);
+              columnBuilders[1].writeInt(i);
+            }
+            builder.declarePositions(1025);
+            TsBlock result =
+                builder.build(
+                    new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, builder.getPositionCount()));
+            finished = true;
+            return result;
+          }
+
+          @Override
+          public boolean hasNext() throws Exception {
+            return !isFinished();
+          }
+
+          @Override
+          public void close() throws Exception {}
+
+          @Override
+          public boolean isFinished() throws Exception {
+            return finished;
+          }
+
+          @Override
+          public long calculateMaxPeekMemory() {
+            return 0;
+          }
+
+          @Override
+          public long calculateMaxReturnSize() {
+            return 0;
+          }
+
+          @Override
+          public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+
+          @Override
+          public long ramBytesUsed() {
+            return 0;
+          }
+        };
+
+    OperatorContext operatorContext = driverContext.getOperatorContexts().get(1);
+
+    return new StreamingHashAggregationOperator(
+        operatorContext,
+        childOperator,
+        Collections.singletonList(0),
+        Collections.singletonList(0),
+        Collections.singletonList(IntType.INT32),
+        Collections.singletonList(1),
+        Collections.singletonList(1),
+        getComparatorForTable(
+            ImmutableList.of(SortOrder.ASC_NULLS_LAST),
+            ImmutableList.of(0),
+            Collections.singletonList(TSDataType.INT32)),
+        Collections.emptyList(),
+        AggregationNode.Step.SINGLE,
+        DEFAULT_GROUP_NUMBER,
+        Long.MAX_VALUE,
+        false,
+        Long.MAX_VALUE);
+  }
 
   @Test
-  public void test() {
+  public void groupByWithLargeDataTest() {
     try (HashAggregationOperator aggregationOperator = genHashAggregationOperator()) {
       ListenableFuture<?> listenableFuture = aggregationOperator.isBlocked();
       listenableFuture.get();
