@@ -52,7 +52,7 @@ public class TsFileResourceManager {
     memoryBlock =
         MEMORY_CONFIG
             .getTimeIndexMemoryManager()
-            .forceAllocate("TimeIndex", MemoryBlockType.FUNCTION);
+            .forceAllocate("TimeIndex", MemoryBlockType.DYNAMIC);
   }
 
   @TestOnly

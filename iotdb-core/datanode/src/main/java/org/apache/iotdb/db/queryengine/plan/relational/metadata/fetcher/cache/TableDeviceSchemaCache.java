@@ -111,7 +111,7 @@ public class TableDeviceSchemaCache {
     memoryBlock =
         memoryConfig
             .getSchemaCacheMemoryManager()
-            .forceAllocate("TableDeviceSchemaCache", MemoryBlockType.FUNCTION);
+            .forceAllocate("TableDeviceSchemaCache", MemoryBlockType.STATIC);
     dualKeyCache =
         new DualKeyCacheBuilder<TableId, IDeviceID, TableDeviceCacheEntry>()
             .cacheEvictionPolicy(

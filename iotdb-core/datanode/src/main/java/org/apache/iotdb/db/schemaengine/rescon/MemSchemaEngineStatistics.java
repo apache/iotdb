@@ -36,7 +36,6 @@ import java.util.concurrent.atomic.AtomicLong;
 public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
   private static final Logger logger = LoggerFactory.getLogger(MemSchemaEngineStatistics.class);
-
   // Total size of schema region
   private final IMemoryBlock memoryBlock;
   private final ClusterTemplateManager clusterTemplateManager =
@@ -59,7 +58,7 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
         IoTDBDescriptor.getInstance()
             .getMemoryConfig()
             .getSchemaRegionMemoryManager()
-            .forceAllocate("SchemaRegion", MemoryBlockType.FUNCTION);
+            .forceAllocate("SchemaRegion", MemoryBlockType.DYNAMIC);
   }
 
   @Override
