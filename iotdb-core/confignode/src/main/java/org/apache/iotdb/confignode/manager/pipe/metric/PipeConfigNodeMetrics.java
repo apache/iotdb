@@ -20,6 +20,15 @@
 package org.apache.iotdb.confignode.manager.pipe.metric;
 
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
+import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeConfigNodeRemainingTimeMetrics;
+import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeConfigNodeResourceMetrics;
+import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeProcedureMetrics;
+import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeTaskInfoMetrics;
+import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeTemporaryMetaInCoordinatorMetrics;
+import org.apache.iotdb.confignode.manager.pipe.metric.receiver.PipeConfigNodeReceiverMetrics;
+import org.apache.iotdb.confignode.manager.pipe.metric.sink.PipeConfigRegionConnectorMetrics;
+import org.apache.iotdb.confignode.manager.pipe.metric.source.PipeConfigNodeListenerMetrics;
+import org.apache.iotdb.confignode.manager.pipe.metric.source.PipeConfigRegionExtractorMetrics;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 
