@@ -65,7 +65,7 @@ public class ChunkCache {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final DataNodeMemoryConfig MEMORY_CONFIG = DataNodeMemoryConfig.getInstance();
   private static final IMemoryBlock CACHE_MEMORY_BLOCK;
-  private static final boolean CACHE_ENABLE = CONFIG.isMetaDataCacheEnable();
+  private static final boolean CACHE_ENABLE = MEMORY_CONFIG.isMetaDataCacheEnable();
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();

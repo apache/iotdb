@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.exchange;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.LocalSourceHandle;
@@ -80,7 +80,7 @@ public class SharedTsBlockQueue {
   private LocalSinkChannel sinkChannel;
 
   private long maxBytesCanReserve =
-      IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+      DataNodeMemoryConfig.getInstance().getMaxBytesPerFragmentInstance();
 
   // used for SharedTsBlockQueue listener
   private final ExecutorService executorService;

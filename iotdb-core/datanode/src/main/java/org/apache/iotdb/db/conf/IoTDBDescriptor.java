@@ -284,42 +284,10 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 IoTDBConstant.DN_RPC_PORT, Integer.toString(conf.getRpcPort()))));
 
-    conf.setBufferedArraysMemoryProportion(
-        Double.parseDouble(
-            properties.getProperty(
-                "buffered_arrays_memory_proportion",
-                Double.toString(conf.getBufferedArraysMemoryProportion()))));
-
     conf.setFlushProportion(
         Double.parseDouble(
             properties.getProperty(
                 "flush_proportion", Double.toString(conf.getFlushProportion()))));
-
-    final double rejectProportion =
-        Double.parseDouble(
-            properties.getProperty(
-                "reject_proportion", Double.toString(conf.getRejectProportion())));
-
-    final double walBufferQueueProportion =
-        Double.parseDouble(
-            properties.getProperty(
-                "wal_buffer_queue_proportion",
-                Double.toString(conf.getWalBufferQueueProportion())));
-
-    final double devicePathCacheProportion =
-        Double.parseDouble(
-            properties.getProperty(
-                "device_path_cache_proportion",
-                Double.toString(conf.getDevicePathCacheProportion())));
-
-    if (rejectProportion + walBufferQueueProportion + devicePathCacheProportion >= 1) {
-      LOGGER.warn(
-          "The sum of reject_proportion, wal_buffer_queue_proportion and device_path_cache_proportion is too large, use default values 0.8, 0.1 and 0.05.");
-    } else {
-      conf.setRejectProportion(rejectProportion);
-      conf.setWalBufferQueueProportion(walBufferQueueProportion);
-      conf.setDevicePathCacheProportion(devicePathCacheProportion);
-    }
 
     conf.setWriteMemoryVariationReportProportion(
         Double.parseDouble(
@@ -327,12 +295,7 @@ public class IoTDBDescriptor {
                 "write_memory_variation_report_proportion",
                 Double.toString(conf.getWriteMemoryVariationReportProportion()))));
 
-    conf.setMetaDataCacheEnable(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "meta_data_cache_enable", Boolean.toString(conf.isMetaDataCacheEnable()))));
-
-    initMemoryAllocate(properties);
+    DATA_NODE_MEMORY_CONFIG.init(properties);
 
     String systemDir = properties.getProperty("dn_system_dir");
     if (systemDir == null) {
@@ -541,15 +504,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "default_index_window_range",
                 Integer.toString(conf.getDefaultIndexWindowRange()))));
-
-    conf.setQueryThreadCount(
-        Integer.parseInt(
-            properties.getProperty(
-                "query_thread_count", Integer.toString(conf.getQueryThreadCount()))));
-
-    if (conf.getQueryThreadCount() <= 0) {
-      conf.setQueryThreadCount(Runtime.getRuntime().availableProcessors());
-    }
 
     conf.setDegreeOfParallelism(
         Integer.parseInt(
@@ -1814,7 +1768,7 @@ public class IoTDBDescriptor {
             (int)
                 Math.min(
                     TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
-                    conf.getMaxBytesPerFragmentInstance()));
+                    DATA_NODE_MEMORY_CONFIG.getMaxBytesPerFragmentInstance()));
 
     TSFileDescriptor.getInstance()
         .getConfig()
@@ -1992,7 +1946,7 @@ public class IoTDBDescriptor {
                       "select_into_insert_tablet_plan_row_limit"))));
 
       // update enable query memory estimation for memory control
-      conf.setEnableQueryMemoryEstimation(
+      DATA_NODE_MEMORY_CONFIG.setEnableQueryMemoryEstimation(
           Boolean.parseBoolean(
               properties.getProperty(
                   "enable_query_memory_estimation",
@@ -2176,10 +2130,6 @@ public class IoTDBDescriptor {
     } else {
       MetricService.getInstance().reloadService(reloadLevel);
     }
-  }
-
-  private void initMemoryAllocate(TrimProperties properties) {
-    DATA_NODE_MEMORY_CONFIG.init(properties, conf);
   }
 
   private void loadLoadTsFileProps(TrimProperties properties) {

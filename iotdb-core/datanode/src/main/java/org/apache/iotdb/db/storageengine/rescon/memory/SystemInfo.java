@@ -75,7 +75,8 @@ public class SystemInfo {
   private final ExecutorService flushTaskSubmitThreadPool =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.FLUSH_TASK_SUBMIT.getName());
   private double FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
-  private double REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
+  private double REJECT_THRESHOLD =
+      memorySizeForMemtable * DATA_NODE_MEMORY_CONFIG.getRejectProportion();
 
   private volatile boolean isEncodingFasterThanIo = true;
 
@@ -353,7 +354,7 @@ public class SystemInfo {
     memorySizeForMemtable =
         DATA_NODE_MEMORY_CONFIG.getMemtableMemoryManager().getTotalMemorySizeInBytes();
     FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
-    REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
+    REJECT_THRESHOLD = memorySizeForMemtable * DATA_NODE_MEMORY_CONFIG.getRejectProportion();
     WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
     WritingMetrics.getInstance().recordRejectThreshold(REJECT_THRESHOLD);
     WritingMetrics.getInstance()
@@ -471,7 +472,7 @@ public class SystemInfo {
   public synchronized void applyTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
     memorySizeForMemtable -= estimatedTemporaryMemSize;
     FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
-    REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
+    REJECT_THRESHOLD = memorySizeForMemtable * DATA_NODE_MEMORY_CONFIG.getRejectProportion();
     WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
     WritingMetrics.getInstance().recordRejectThreshold(REJECT_THRESHOLD);
     WritingMetrics.getInstance()
@@ -481,7 +482,7 @@ public class SystemInfo {
   public synchronized void releaseTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
     memorySizeForMemtable += estimatedTemporaryMemSize;
     FLUSH_THRESHOLD = memorySizeForMemtable * config.getFlushProportion();
-    REJECT_THRESHOLD = memorySizeForMemtable * config.getRejectProportion();
+    REJECT_THRESHOLD = memorySizeForMemtable * DATA_NODE_MEMORY_CONFIG.getRejectProportion();
     WritingMetrics.getInstance().recordFlushThreshold(FLUSH_THRESHOLD);
     WritingMetrics.getInstance().recordRejectThreshold(REJECT_THRESHOLD);
     WritingMetrics.getInstance()

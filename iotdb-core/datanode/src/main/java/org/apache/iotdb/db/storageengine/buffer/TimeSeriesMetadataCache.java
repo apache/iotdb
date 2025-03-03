@@ -73,7 +73,7 @@ public class TimeSeriesMetadataCache {
   private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
       DataNodeMemoryConfig.getInstance();
   private static final IMemoryBlock CACHE_MEMORY_BLOCK;
-  private static final boolean CACHE_ENABLE = config.isMetaDataCacheEnable();
+  private static final boolean CACHE_ENABLE = DATA_NODE_MEMORY_CONFIG.isMetaDataCacheEnable();
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();

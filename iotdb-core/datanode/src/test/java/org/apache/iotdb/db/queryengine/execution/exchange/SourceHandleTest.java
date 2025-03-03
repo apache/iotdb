@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.memory.MemoryManager;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
@@ -58,13 +59,13 @@ public class SourceHandleTest {
 
   @BeforeClass
   public static void beforeClass() {
-    maxBytesPerFI = IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
-    IoTDBDescriptor.getInstance().getConfig().setMaxBytesPerFragmentInstance(5 * MOCK_TSBLOCK_SIZE);
+    maxBytesPerFI = DataNodeMemoryConfig.getInstance().getMaxBytesPerFragmentInstance();
+    DataNodeMemoryConfig.getInstance().setMaxBytesPerFragmentInstance(5 * MOCK_TSBLOCK_SIZE);
   }
 
   @AfterClass
   public static void afterClass() {
-    IoTDBDescriptor.getInstance().getConfig().setMaxBytesPerFragmentInstance(maxBytesPerFI);
+    DataNodeMemoryConfig.getInstance().setMaxBytesPerFragmentInstance(maxBytesPerFI);
   }
 
   @Test
@@ -241,7 +242,7 @@ public class SourceHandleTest {
     long maxBytesCanReserve =
         Math.min(
             5 * MOCK_TSBLOCK_SIZE,
-            IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance());
+            DataNodeMemoryConfig.getInstance().getMaxBytesPerFragmentInstance());
     sourceHandle.setMaxBytesCanReserve(maxBytesCanReserve);
     Assert.assertFalse(sourceHandle.isBlocked().isDone());
     Assert.assertFalse(sourceHandle.isAborted());

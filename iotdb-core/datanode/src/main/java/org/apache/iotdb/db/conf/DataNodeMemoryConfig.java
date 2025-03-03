@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.memory.MemoryConfig;
 import org.apache.iotdb.commons.memory.MemoryManager;
@@ -29,6 +30,37 @@ import org.slf4j.LoggerFactory;
 
 public class DataNodeMemoryConfig {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeMemoryConfig.class);
+
+  /** Reject proportion for system */
+  private double rejectProportion = 0.8;
+
+  /** The proportion of memtable memory for WAL queue */
+  private double walBufferQueueProportion = 0.1;
+
+  /** The proportion of memtable memory for device path cache */
+  private double devicePathCacheProportion = 0.05;
+
+  /** max total direct buffer off heap memory size proportion */
+  private double maxDirectBufferOffHeapMemorySizeProportion = 0.8;
+
+  /** Ratio of memory allocated for buffered arrays */
+  private double bufferedArraysMemoryProportion = 0.6;
+
+  /**
+   * If true, we will estimate each query's possible memory footprint before executing it and deny
+   * it if its estimated memory exceeds current free memory
+   */
+  private boolean enableQueryMemoryEstimation = true;
+
+  /** whether to cache metadata(ChunkMetaData and TsFileMetaData) or not. */
+  private boolean metaDataCacheEnable = true;
+
+  /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
+  private int queryThreadCount = Runtime.getRuntime().availableProcessors();
+
+  /** Max bytes of each FragmentInstance for DataExchange */
+  private long maxBytesPerFragmentInstance =
+      Runtime.getRuntime().maxMemory() * 3 / 10 * 200 / 1001 / queryThreadCount;
 
   /** The memory manager of on heap */
   private MemoryManager onHeapMemoryManager;
@@ -105,7 +137,7 @@ public class DataNodeMemoryConfig {
   /** The memory manager of direct Buffer */
   private MemoryManager directBufferMemoryManager;
 
-  public void init(TrimProperties properties, IoTDBConfig conf) {
+  public void init(TrimProperties properties) {
     // on heap memory
     String memoryAllocateProportion = properties.getProperty("datanode_memory_proportion", null);
     // Get global memory manager here
@@ -182,8 +214,8 @@ public class DataNodeMemoryConfig {
         "initial allocateMemoryForPipe = {}", pipeMemoryManager.getTotalMemorySizeInBytes());
 
     initSchemaMemoryAllocate(schemaEngineMemoryManager, properties);
-    initStorageEngineAllocate(storageEngineMemoryManager, properties, conf);
-    initQueryEngineMemoryAllocate(queryEngineMemoryManager, properties, conf);
+    initStorageEngineAllocate(storageEngineMemoryManager, properties);
+    initQueryEngineMemoryAllocate(queryEngineMemoryManager, properties);
 
     String offHeapMemoryStr = System.getProperty("OFF_HEAP_MEMORY");
     offHeapMemoryManager =
@@ -197,7 +229,7 @@ public class DataNodeMemoryConfig {
             ? Long.MAX_VALUE
             : (long)
                 (offHeapMemoryManager.getTotalMemorySizeInBytes()
-                    * conf.getMaxDirectBufferOffHeapMemorySizeProportion());
+                    * getMaxDirectBufferOffHeapMemorySizeProportion());
     directBufferMemoryManager =
         offHeapMemoryManager.getOrCreateMemoryManager(
             "DirectBuffer", totalDirectBufferMemorySizeLimit);
@@ -253,7 +285,34 @@ public class DataNodeMemoryConfig {
 
   @SuppressWarnings("java:S3518")
   private void initStorageEngineAllocate(
-      MemoryManager storageEngineMemoryManager, TrimProperties properties, IoTDBConfig conf) {
+      MemoryManager storageEngineMemoryManager, TrimProperties properties) {
+    final double rejectProportion =
+        Double.parseDouble(
+            properties.getProperty("reject_proportion", Double.toString(getRejectProportion())));
+    final double walBufferQueueProportion =
+        Double.parseDouble(
+            properties.getProperty(
+                "wal_buffer_queue_proportion", Double.toString(getWalBufferQueueProportion())));
+    final double devicePathCacheProportion =
+        Double.parseDouble(
+            properties.getProperty(
+                "device_path_cache_proportion", Double.toString(getDevicePathCacheProportion())));
+
+    if (rejectProportion + walBufferQueueProportion + devicePathCacheProportion >= 1) {
+      LOGGER.warn(
+          "The sum of reject_proportion, wal_buffer_queue_proportion and device_path_cache_proportion is too large, use default values 0.8, 0.1 and 0.05.");
+    } else {
+      setRejectProportion(rejectProportion);
+      setWalBufferQueueProportion(walBufferQueueProportion);
+      setDevicePathCacheProportion(devicePathCacheProportion);
+    }
+
+    setBufferedArraysMemoryProportion(
+        Double.parseDouble(
+            properties.getProperty(
+                "buffered_arrays_memory_proportion",
+                Double.toString(getBufferedArraysMemoryProportion()))));
+
     long storageMemoryTotal = storageEngineMemoryManager.getTotalMemorySizeInBytes();
     String valueOfStorageEngineMemoryProportion =
         properties.getProperty("storage_engine_memory_proportion");
@@ -315,29 +374,50 @@ public class DataNodeMemoryConfig {
     timePartitionInfoMemoryManager =
         writeMemoryManager.getOrCreateMemoryManager(
             "TimePartitionInfo", timePartitionInfoMemorySize);
-    long devicePathCacheMemorySize =
-        (long) (memtableMemorySize * conf.getDevicePathCacheProportion());
+    long devicePathCacheMemorySize = (long) (memtableMemorySize * getDevicePathCacheProportion());
     devicePathCacheMemoryManager =
         memtableMemoryManager.getOrCreateMemoryManager(
             "DevicePathCache", devicePathCacheMemorySize);
     long bufferedArraysMemorySize =
-        (long) (storageMemoryTotal * conf.getBufferedArraysMemoryProportion());
+        (long) (storageMemoryTotal * getBufferedArraysMemoryProportion());
     bufferedArraysMemoryManager =
         memtableMemoryManager.getOrCreateMemoryManager("BufferedArray", bufferedArraysMemorySize);
-    long walBufferQueueMemorySize =
-        (long) (memtableMemorySize * conf.getWalBufferQueueProportion());
+    long walBufferQueueMemorySize = (long) (memtableMemorySize * getWalBufferQueueProportion());
     walBufferQueueMemoryManager =
         memtableMemoryManager.getOrCreateMemoryManager("WalBufferQueue", walBufferQueueMemorySize);
   }
 
   @SuppressWarnings("squid:S3518")
   private void initQueryEngineMemoryAllocate(
-      MemoryManager queryEngineMemoryManager, TrimProperties properties, IoTDBConfig conf) {
-    conf.setEnableQueryMemoryEstimation(
+      MemoryManager queryEngineMemoryManager, TrimProperties properties) {
+    setEnableQueryMemoryEstimation(
         Boolean.parseBoolean(
             properties.getProperty(
                 "enable_query_memory_estimation",
-                Boolean.toString(conf.isEnableQueryMemoryEstimation()))));
+                Boolean.toString(isEnableQueryMemoryEstimation()))));
+    setMetaDataCacheEnable(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "meta_data_cache_enable", Boolean.toString(isMetaDataCacheEnable()))));
+    setQueryThreadCount(
+        Integer.parseInt(
+            properties.getProperty("query_thread_count", Integer.toString(getQueryThreadCount()))));
+
+    if (getQueryThreadCount() <= 0) {
+      setQueryThreadCount(Runtime.getRuntime().availableProcessors());
+    }
+    try {
+      // update enable query memory estimation for memory control
+      setEnableQueryMemoryEstimation(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_query_memory_estimation",
+                  ConfigurationFileUtils.getConfigurationDefaultValue(
+                      "enable_query_memory_estimation"))));
+
+    } catch (Exception e) {
+      LOGGER.error(String.format("Fail to reload configuration because %s", e));
+    }
 
     String queryMemoryAllocateProportion =
         properties.getProperty("chunk_timeseriesmeta_free_memory_proportion");
@@ -383,7 +463,7 @@ public class DataNodeMemoryConfig {
     }
 
     // metadata cache is disabled, we need to move all their allocated memory to other parts
-    if (!conf.isMetaDataCacheEnable()) {
+    if (!isMetaDataCacheEnable()) {
       long sum =
           bloomFilterCacheMemoryManager.getTotalMemorySizeInBytes()
               + chunkCacheMemoryManager.getTotalMemorySizeInBytes()
@@ -397,7 +477,7 @@ public class DataNodeMemoryConfig {
       operatorsMemorySize += partForOperators;
     }
     // set max bytes per fragment instance
-    conf.setMaxBytesPerFragmentInstance(dataExchangeMemorySize / conf.getQueryThreadCount());
+    setMaxBytesPerFragmentInstance(dataExchangeMemorySize / getQueryThreadCount());
 
     bloomFilterCacheMemoryManager =
         queryEngineMemoryManager.getOrCreateMemoryManager(
@@ -415,6 +495,87 @@ public class DataNodeMemoryConfig {
         queryEngineMemoryManager.getOrCreateMemoryManager("DataExchange", dataExchangeMemorySize);
     timeIndexMemoryManager =
         queryEngineMemoryManager.getOrCreateMemoryManager("TimeIndex", timeIndexMemorySize);
+  }
+
+  public double getRejectProportion() {
+    return rejectProportion;
+  }
+
+  public void setRejectProportion(double rejectProportion) {
+    this.rejectProportion = rejectProportion;
+  }
+
+  public double getWalBufferQueueProportion() {
+    return walBufferQueueProportion;
+  }
+
+  public void setWalBufferQueueProportion(double walBufferQueueProportion) {
+    this.walBufferQueueProportion = walBufferQueueProportion;
+  }
+
+  public double getMaxDirectBufferOffHeapMemorySizeProportion() {
+    return maxDirectBufferOffHeapMemorySizeProportion;
+  }
+
+  public void setMaxDirectBufferOffHeapMemorySizeProportion(
+      double maxDirectBufferOffHeapMemorySizeProportion) {
+    this.maxDirectBufferOffHeapMemorySizeProportion = maxDirectBufferOffHeapMemorySizeProportion;
+  }
+
+  public double getBufferedArraysMemoryProportion() {
+    return bufferedArraysMemoryProportion;
+  }
+
+  public void setBufferedArraysMemoryProportion(double bufferedArraysMemoryProportion) {
+    this.bufferedArraysMemoryProportion = bufferedArraysMemoryProportion;
+  }
+
+  public double getDevicePathCacheProportion() {
+    return devicePathCacheProportion;
+  }
+
+  public void setDevicePathCacheProportion(double devicePathCacheProportion) {
+    this.devicePathCacheProportion = devicePathCacheProportion;
+  }
+
+  public boolean isEnableQueryMemoryEstimation() {
+    return enableQueryMemoryEstimation;
+  }
+
+  public void setEnableQueryMemoryEstimation(boolean enableQueryMemoryEstimation) {
+    this.enableQueryMemoryEstimation = enableQueryMemoryEstimation;
+  }
+
+  public boolean isMetaDataCacheEnable() {
+    return metaDataCacheEnable;
+  }
+
+  public void setMetaDataCacheEnable(boolean metaDataCacheEnable) {
+    this.metaDataCacheEnable = metaDataCacheEnable;
+  }
+
+  public int getQueryThreadCount() {
+    return queryThreadCount;
+  }
+
+  public void setQueryThreadCount(int queryThreadCount) {
+    if (queryThreadCount <= 0) {
+      queryThreadCount = Runtime.getRuntime().availableProcessors();
+    }
+    this.queryThreadCount = queryThreadCount;
+    // TODO @spricoder: influence dynamic change of memory size
+    if (getDataExchangeMemoryManager() != null) {
+      this.maxBytesPerFragmentInstance =
+          getDataExchangeMemoryManager().getTotalMemorySizeInBytes() / queryThreadCount;
+    }
+  }
+
+  public long getMaxBytesPerFragmentInstance() {
+    return maxBytesPerFragmentInstance;
+  }
+
+  public void setMaxBytesPerFragmentInstance(long maxBytesPerFragmentInstance) {
+    this.maxBytesPerFragmentInstance = maxBytesPerFragmentInstance;
   }
 
   public MemoryManager getOnHeapMemoryManager() {

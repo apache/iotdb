@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.execution.memory;
 
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 /**
  * Manages memory of a data node. The memory is divided into two memory pools so that the memory for
@@ -36,7 +35,7 @@ public class LocalMemoryManager {
         new MemoryPool(
             "read",
             DataNodeMemoryConfig.getInstance().getDataExchangeMemoryManager(),
-            IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance());
+            DataNodeMemoryConfig.getInstance().getMaxBytesPerFragmentInstance());
   }
 
   public MemoryPool getQueryPool() {
