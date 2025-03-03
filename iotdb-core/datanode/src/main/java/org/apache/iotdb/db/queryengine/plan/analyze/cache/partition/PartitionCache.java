@@ -82,7 +82,7 @@ public class PartitionCache {
 
   private static final Logger logger = LoggerFactory.getLogger(PartitionCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
+  private static final DataNodeMemoryConfig memoryConfig =
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final List<String> ROOT_PATH = Arrays.asList("root", "**");
 
@@ -122,7 +122,7 @@ public class PartitionCache {
 
   public PartitionCache() {
     this.memoryBlock =
-        DATA_NODE_MEMORY_CONFIG
+        memoryConfig
             .getPartitionCacheMemoryManager()
             .forceAllocate("PartitionCache", MemoryBlockType.STATIC);
     this.memoryBlock.allocate(this.memoryBlock.getTotalMemorySizeInBytes());

@@ -34,7 +34,7 @@ import java.util.Arrays;
 
 public class StorageEngineMemoryMetrics implements IMetricSet {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
+  private static final DataNodeMemoryConfig memoryConfig =
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final String STORAGE_ENGINE = "StorageEngine";
   private static final String STORAGE_ENGINE_WRITE = "StorageEngine-Write";
@@ -55,7 +55,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getStorageEngineMemoryManager(),
+        memoryConfig.getStorageEngineMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         STORAGE_ENGINE,
@@ -90,7 +90,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getWriteMemoryManager(),
+        memoryConfig.getWriteMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         STORAGE_ENGINE_WRITE,
@@ -101,7 +101,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getCompactionMemoryManager(),
+        memoryConfig.getCompactionMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         STORAGE_ENGINE_COMPACTION,
@@ -112,7 +112,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getCompactionMemoryManager(),
+        memoryConfig.getCompactionMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         STORAGE_ENGINE_COMPACTION,
@@ -155,7 +155,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getMemtableMemoryManager(),
+        memoryConfig.getMemtableMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         STORAGE_ENGINE_WRITE_MEMTABLE,
@@ -166,7 +166,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getTimePartitionInfoMemoryManager(),
+        memoryConfig.getTimePartitionInfoMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO,
@@ -177,7 +177,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getTimePartitionInfoMemoryManager(),
+        memoryConfig.getTimePartitionInfoMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         STORAGE_ENGINE_WRITE_TIME_PARTITION_INFO,
@@ -211,7 +211,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getDevicePathCacheMemoryManager(),
+        memoryConfig.getDevicePathCacheMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         STORAGE_ENGINE_WRITE_MEMTABLE_DEVICE_PATH_CACHE,
@@ -222,7 +222,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getDevicePathCacheMemoryManager(),
+        memoryConfig.getDevicePathCacheMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         STORAGE_ENGINE_WRITE_MEMTABLE_DEVICE_PATH_CACHE,
@@ -234,7 +234,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getBufferedArraysMemoryManager(),
+        memoryConfig.getBufferedArraysMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         STORAGE_ENGINE_WRITE_MEMTABLE_BUFFERED_ARRAYS,
@@ -245,7 +245,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getBufferedArraysMemoryManager(),
+        memoryConfig.getBufferedArraysMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         STORAGE_ENGINE_WRITE_MEMTABLE_BUFFERED_ARRAYS,
@@ -257,7 +257,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getWalBufferQueueMemoryManager(),
+        memoryConfig.getWalBufferQueueMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         STORAGE_ENGINE_WRITE_MEMTABLE_WAL_BUFFER_QUEUE,
@@ -268,7 +268,7 @@ public class StorageEngineMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getWalBufferQueueMemoryManager(),
+        memoryConfig.getWalBufferQueueMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         STORAGE_ENGINE_WRITE_MEMTABLE_WAL_BUFFER_QUEUE,

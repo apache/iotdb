@@ -87,7 +87,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
 public class TableDeviceSchemaCache {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
+  private static final DataNodeMemoryConfig memoryConfig =
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final Logger logger = LoggerFactory.getLogger(TableDeviceSchemaCache.class);
 
@@ -109,7 +109,7 @@ public class TableDeviceSchemaCache {
 
   private TableDeviceSchemaCache() {
     memoryBlock =
-        DATA_NODE_MEMORY_CONFIG
+        memoryConfig
             .getSchemaCacheMemoryManager()
             .forceAllocate("TableDeviceSchemaCache", MemoryBlockType.STATIC);
     dualKeyCache =

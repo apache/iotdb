@@ -32,7 +32,7 @@ import org.apache.iotdb.metrics.utils.MetricType;
 
 public class ConsensusMemoryMetrics implements IMetricSet {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
+  private static final DataNodeMemoryConfig memoryConfig =
       IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final String CONSENSUS = "Consensus";
 
@@ -41,7 +41,7 @@ public class ConsensusMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getConsensusMemoryManager(),
+        memoryConfig.getConsensusMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
         CONSENSUS,
@@ -52,7 +52,7 @@ public class ConsensusMemoryMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        DATA_NODE_MEMORY_CONFIG.getConsensusMemoryManager(),
+        memoryConfig.getConsensusMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
         CONSENSUS,

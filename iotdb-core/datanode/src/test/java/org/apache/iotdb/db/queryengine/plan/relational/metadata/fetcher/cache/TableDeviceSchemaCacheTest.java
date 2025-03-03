@@ -60,7 +60,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.T
 public class TableDeviceSchemaCacheTest {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final DataNodeMemoryConfig DATA_NODE_MEMORY_CONFIG =
+  private static final DataNodeMemoryConfig memoryConfig =
       IoTDBDescriptor.getInstance().getMemoryConfig();
 
   private static long originMemConfig;
@@ -148,8 +148,7 @@ public class TableDeviceSchemaCacheTest {
     DataNodeTableCache.getInstance().preUpdateTable(database1, testTable2);
     DataNodeTableCache.getInstance().commitUpdateTable(database1, table2);
 
-    originMemConfig =
-        DATA_NODE_MEMORY_CONFIG.getSchemaCacheMemoryManager().getTotalMemorySizeInBytes();
+    originMemConfig = memoryConfig.getSchemaCacheMemoryManager().getTotalMemorySizeInBytes();
     changeSchemaCacheMemorySize(1300L);
   }
 
@@ -161,12 +160,12 @@ public class TableDeviceSchemaCacheTest {
   }
 
   private static void changeSchemaCacheMemorySize(long size) {
-    MemoryManager memoryManager = DATA_NODE_MEMORY_CONFIG.getSchemaEngineMemoryManager();
-    MemoryManager schemaCacheMemoryManager = DATA_NODE_MEMORY_CONFIG.getSchemaCacheMemoryManager();
+    MemoryManager memoryManager = memoryConfig.getSchemaEngineMemoryManager();
+    MemoryManager schemaCacheMemoryManager = memoryConfig.getSchemaCacheMemoryManager();
     schemaCacheMemoryManager.clearAll();
     memoryManager.releaseChildMemoryManager("schemaCache");
     schemaCacheMemoryManager = memoryManager.getOrCreateMemoryManager("schemaCache", size);
-    DATA_NODE_MEMORY_CONFIG.setSchemaCacheMemoryManager(schemaCacheMemoryManager);
+    memoryConfig.setSchemaCacheMemoryManager(schemaCacheMemoryManager);
   }
 
   @After
