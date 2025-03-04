@@ -222,7 +222,7 @@ public class TsTable {
     return ttlValue;
   }
 
-  public long getTableTTLInMS() {
+  private long getTableTTLInMS() {
     final Optional<String> ttl = getPropValue(TTL_PROPERTY);
     return ttl.isPresent() && !ttl.get().equalsIgnoreCase(TTL_INFINITE)
         ? Long.parseLong(ttl.get())

@@ -189,7 +189,7 @@ public class HashStrategy implements FlatHashStrategy {
   @Override
   public void hashBatched(Column[] columns, long[] hashes, int offset, int length) {
     for (int i = 0; i < length; i++) {
-      hashes[i] = hash(columns, i);
+      hashes[i] = hash(columns, i + offset);
     }
   }
 

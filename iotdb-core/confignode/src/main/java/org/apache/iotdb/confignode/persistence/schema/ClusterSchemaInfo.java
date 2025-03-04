@@ -93,6 +93,7 @@ import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -620,6 +621,25 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       databaseReadWriteLock.readLock().unlock();
     }
     return schemaMap;
+  }
+
+  @TableModel
+  public long getDatabaseMaxTTL(final String database) {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return tableModelMTree
+          .getAllTablesUnderSpecificDatabase(PartialPath.getQualifiedDatabasePartialPath(database))
+          .stream()
+          .map(pair -> pair.getLeft().getTableTTL())
+          .reduce(Long::max)
+          .orElse(Long.MAX_VALUE);
+    } catch (final MetadataException e) {
+      LOGGER.warn(
+          ERROR_NAME + " when trying to get max ttl under one database, use Long.MAX_VALUE.", e);
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+    return Long.MAX_VALUE;
   }
 
   /**
