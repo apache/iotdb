@@ -32,9 +32,6 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.read.TsFileSequenceReader;
-import org.apache.tsfile.read.controller.CachedChunkLoaderImpl;
-import org.apache.tsfile.read.controller.MetadataQuerierByFileImpl;
-import org.apache.tsfile.read.query.executor.TableQueryExecutor;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.io.File;
@@ -48,6 +45,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
   private final long startTime;
   private final long endTime;
   private final TablePattern tablePattern;
+  private final String userName;
 
   private final PipeMemoryBlock allocatedMemoryBlockForBatchData;
   private final PipeMemoryBlock allocatedMemoryBlockForChunk;
@@ -79,24 +77,8 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
       this.endTime = endTime;
       this.tablePattern = pattern;
 
+      this.userName = userName;
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getPath(), true, true);
-      filteredTableSchemaIterator =
-          tsFileSequenceReader.getTableSchemaMap().entrySet().stream()
-              .filter(
-                  entry ->
-                      (Objects.isNull(pattern) || pattern.matchesTable(entry.getKey()))
-                          && Coordinator.getInstance()
-                              .getAccessControl()
-                              .checkCanSelectFromTable4Pipe(
-                                  userName,
-                                  new QualifiedObjectName(
-                                      sourceEvent.getTableModelDatabaseName(), entry.getKey())))
-              .iterator();
-      tableQueryExecutor =
-          new TableQueryExecutor(
-              new MetadataQuerierByFileImpl(tsFileSequenceReader),
-              new CachedChunkLoaderImpl(tsFileSequenceReader),
-              TableQueryExecutor.TableQueryOrdering.DEVICE);
     } catch (final Exception e) {
       close();
       throw e;
@@ -118,8 +100,15 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                     new TsFileInsertionEventTableParserTabletIterator(
                         tsFileSequenceReader,
                         entry ->
-                            Objects.isNull(tablePattern)
-                                || tablePattern.matchesTable(entry.getKey()),
+                            (Objects.isNull(tablePattern)
+                                    || tablePattern.matchesTable(entry.getKey()))
+                                && Coordinator.getInstance()
+                                    .getAccessControl()
+                                    .checkCanSelectFromTable4Pipe(
+                                        userName,
+                                        new QualifiedObjectName(
+                                            sourceEvent.getTableModelDatabaseName(),
+                                            entry.getKey())),
                         allocatedMemoryBlockForTablet,
                         allocatedMemoryBlockForBatchData,
                         allocatedMemoryBlockForChunk,
