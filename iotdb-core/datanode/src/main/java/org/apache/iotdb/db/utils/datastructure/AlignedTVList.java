@@ -691,6 +691,16 @@ public abstract class AlignedTVList extends TVList {
     if (bitMaps != null) {
       bitMaps.remove(columnIndex);
     }
+    if (memoryBinaryChunkSize != null) {
+      long[] newSizes = new long[memoryBinaryChunkSize.length - 1];
+      int cnt = 0;
+      for (int i = 0; i < memoryBinaryChunkSize.length; i++) {
+        if (i != columnIndex) {
+          newSizes[cnt++] = memoryBinaryChunkSize[i];
+        }
+      }
+      memoryBinaryChunkSize = newSizes;
+    }
     dataTypes.remove(columnIndex);
     values.remove(columnIndex);
   }
