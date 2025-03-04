@@ -154,7 +154,16 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   @Override
   public String toString() {
-    return "InsertRowNode{" + "time=" + time + ", values=" + Arrays.toString(values) + '}';
+    return "InsertRowNode{"
+        + "time="
+        + time
+        + ", values="
+        + Arrays.toString(values)
+        + ", measurements="
+        + Arrays.toString(measurements)
+        + ", dataTypes="
+        + Arrays.toString(dataTypes)
+        + '}';
   }
 
   @Override

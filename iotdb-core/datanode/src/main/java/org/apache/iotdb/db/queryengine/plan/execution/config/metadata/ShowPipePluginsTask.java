@@ -46,8 +46,8 @@ import java.util.stream.Collectors;
 
 public class ShowPipePluginsTask implements IConfigTask {
 
-  private static final Binary PIPE_PLUGIN_TYPE_BUILTIN = BytesUtils.valueOf("Builtin");
-  private static final Binary PIPE_PLUGIN_TYPE_EXTERNAL = BytesUtils.valueOf("External");
+  public static final Binary PIPE_PLUGIN_TYPE_BUILTIN = BytesUtils.valueOf("Builtin");
+  public static final Binary PIPE_PLUGIN_TYPE_EXTERNAL = BytesUtils.valueOf("External");
 
   private static final Binary PIPE_JAR_NAME_EMPTY_FIELD = BytesUtils.valueOf("");
 

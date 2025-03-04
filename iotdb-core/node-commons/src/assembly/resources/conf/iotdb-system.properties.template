@@ -684,6 +684,26 @@ time_partition_interval=604800000
 # Datatype: long
 heartbeat_interval_in_ms=1000
 
+# Default failure detector, enum from {fixed, phi_accrual}
+# effectiveMode: restart
+# Datatype: string
+failure_detector=phi_accrual
+
+# Fixed failure detector threshold of time elapsed without receiving heartbeat replies
+# effectiveMode: restart
+# Datatype: long
+failure_detector_fixed_threshold_in_ms=20000
+
+# Phi accrual: threshold to determine a node is down
+# effectiveMode: restart
+# Datatype: long
+failure_detector_phi_threshold=30
+
+# Phi accrual: acceptable heartbeat pause time (due to JVM GC, etc)
+# effectiveMode: restart
+# Datatype: long
+failure_detector_phi_acceptable_pause_in_ms=10000
+
 # Disk remaining threshold at which DataNode is set to ReadOnly status
 # effectiveMode: restart
 # Datatype: double(percentage)
@@ -1075,7 +1095,7 @@ timestamp_precision=ms
 
 # When the timestamp precision check is enabled, the timestamps those are over 13 digits for ms precision, or over 16 digits for us precision are not allowed to be inserted.
 # For all precisions, ms, us and ns, the timestamps cannot exceed the range of [-9223372036854775808, 9223372036854775807], regardless of whether the check is enabled or not.
-# effectiveMode: first_start
+# effectiveMode: hot_reload
 # Datatype: Boolean
 timestamp_precision_check_enabled=true
 
@@ -1142,10 +1162,24 @@ unseq_memtable_flush_check_interval_in_ms=30000
 # effectiveMode: restart
 tvlist_sort_algorithm=TIM
 
-# When the average point number of timeseries in memtable exceeds this, the memtable is flushed to disk. The default threshold is 100000.
-# effectiveMode: restart
+# When point number in the working TVList exceeds this, it is sorted and handover in writable memtable
+# default 0 means it does not handover working tvlist
+# effectiveMode: hot_reload
 # Datatype: int
-avg_series_point_number_threshold=100000
+tvlist_sort_threshold=0
+
+# The target point nums in one chunk in flushing and compaction.
+# If the point number of a timeseries in memtable exceeds this, the data will be flushed to multiple chunks.
+# effectiveMode: restart
+# Datatype: long
+target_chunk_point_num=100000
+
+# The target chunk size in flushing and compaction.
+# If the size of a timeseries in memtable exceeds this, the data will be flushed to multiple chunks.
+# default is 1.6MB
+# effectiveMode: restart
+# Datatype: long, Unit: byte
+target_chunk_size=1600000
 
 # How many threads can concurrently flush. When <= 0, use CPU core number.
 # effectiveMode: restart
@@ -1275,17 +1309,6 @@ inner_compaction_total_file_num_threshold=100
 # effectiveMode: hot_reload
 # Datatype: int
 max_level_gap_in_inner_compaction=2
-
-# The target chunk size in compaction and when memtable reaches this threshold, flush the memtable to disk.
-# default is 1MB
-# effectiveMode: restart
-# Datatype: long, Unit: byte
-target_chunk_size=1048576
-
-# The target point nums in one chunk in compaction
-# effectiveMode: restart
-# Datatype: long
-target_chunk_point_num=100000
 
 # If the chunk size is lower than this threshold, it will be deserialized into points, default is 128 byte
 # effectiveMode: restart
@@ -1730,10 +1753,10 @@ continuous_query_min_every_interval_in_ms=1000
 pipe_lib_dir=ext/pipe
 
 # The maximum number of threads that can be used to execute the pipe subtasks in PipeSubtaskExecutor.
-# The actual value will be min(pipe_subtask_executor_max_thread_num, max(1, CPU core number / 2)).
+# When <= 0, use max(5, CPU core number / 2).
 # effectiveMode: restart
 # Datatype: int
-pipe_subtask_executor_max_thread_num=5
+pipe_subtask_executor_max_thread_num=0
 
 # The connection timeout (in milliseconds) for the thrift client.
 # effectiveMode: restart
@@ -1742,14 +1765,16 @@ pipe_sink_timeout_ms=900000
 
 # The maximum number of selectors that can be used in the sink.
 # Recommend to set this value to less than or equal to pipe_sink_max_client_number.
+# When <= 0, use max(4, CPU core number / 2).
 # effectiveMode: restart
 # Datatype: int
-pipe_sink_selector_number=4
+pipe_sink_selector_number=0
 
 # The maximum number of clients that can be used in the sink.
+# When <= 0, use max(16, CPU core number / 2).
 # effectiveMode: restart
 # Datatype: int
-pipe_sink_max_client_number=16
+pipe_sink_max_client_number=0
 
 # Whether to enable receiving pipe data through air gap.
 # The receiver can only return 0 or 1 in tcp mode to indicate whether the data is received successfully.
@@ -1943,6 +1968,8 @@ mqtt_handler_pool_size=1
 
 # the mqtt message payload formatter.
 # effectiveMode: restart
+# Options: [json, line]
+# The built-in json only supports tree models, and the line only supports table models.
 # Datatype: String
 mqtt_payload_formatter=json
 

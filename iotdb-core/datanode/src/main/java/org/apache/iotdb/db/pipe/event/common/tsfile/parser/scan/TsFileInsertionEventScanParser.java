@@ -53,7 +53,6 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.File;
 import java.io.IOException;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -63,8 +62,6 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 
 public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
-
-  private static final LocalDate EMPTY_DATE = LocalDate.of(1000, 1, 1);
 
   private final long startTime;
   private final long endTime;
@@ -143,16 +140,31 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             final Tablet tablet = getNextTablet();
             final boolean hasNext = hasNext();
             try {
-              return new PipeRawTabletInsertionEvent(
-                  sourceEvent != null ? sourceEvent.isTableModelEvent() : null,
-                  sourceEvent != null ? sourceEvent.getTreeModelDatabaseName() : null,
-                  tablet,
-                  isAligned,
-                  sourceEvent != null ? sourceEvent.getPipeName() : null,
-                  sourceEvent != null ? sourceEvent.getCreationTime() : 0,
-                  pipeTaskMeta,
-                  sourceEvent,
-                  !hasNext);
+              return sourceEvent == null
+                  ? new PipeRawTabletInsertionEvent(
+                      null,
+                      null,
+                      null,
+                      null,
+                      tablet,
+                      isAligned,
+                      null,
+                      0,
+                      pipeTaskMeta,
+                      sourceEvent,
+                      !hasNext)
+                  : new PipeRawTabletInsertionEvent(
+                      sourceEvent.getRawIsTableModelEvent(),
+                      sourceEvent.getSourceDatabaseNameFromDataRegion(),
+                      sourceEvent.getRawTableModelDataBase(),
+                      sourceEvent.getRawTreeModelDataBase(),
+                      tablet,
+                      isAligned,
+                      sourceEvent.getPipeName(),
+                      sourceEvent.getCreationTime(),
+                      pipeTaskMeta,
+                      sourceEvent,
+                      !hasNext);
             } finally {
               if (!hasNext) {
                 close();

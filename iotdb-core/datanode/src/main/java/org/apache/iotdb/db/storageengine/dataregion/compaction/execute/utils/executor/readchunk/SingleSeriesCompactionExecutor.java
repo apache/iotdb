@@ -58,9 +58,12 @@ public class SingleSeriesCompactionExecutor {
   private Chunk cachedChunk;
   private ChunkMetadata cachedChunkMetadata;
   // record the min time and max time to update the target resource
-  private long minStartTimestamp = Long.MAX_VALUE;
-  private long maxEndTimestamp = Long.MIN_VALUE;
-  private long lastWriteTimestamp = Long.MIN_VALUE;
+  private boolean minStartTimestampSet = false;
+  private long minStartTimestamp;
+  private boolean maxEndTimestampSet = false;
+  private long maxEndTimestamp;
+  private boolean lastWriteTimestampSet = false;
+  private long lastWriteTimestamp;
   private long pointCountInChunkWriter = 0;
   private final CompactionTaskSummary summary;
 
@@ -165,8 +168,10 @@ public class SingleSeriesCompactionExecutor {
       flushChunkWriter();
     }
     fileWriter.checkMetadataSizeAndMayFlush();
-    targetResource.updateStartTime(device, minStartTimestamp);
-    targetResource.updateEndTime(device, maxEndTimestamp);
+    if (minStartTimestampSet) {
+      targetResource.updateStartTime(device, minStartTimestamp);
+      targetResource.updateEndTime(device, maxEndTimestamp);
+    }
   }
 
   private void constructChunkWriterFromReadChunk(Chunk chunk) {
@@ -276,11 +281,13 @@ public class SingleSeriesCompactionExecutor {
         TimeValuePair timeValuePair = batchIterator.nextTimeValuePair();
         checkAndUpdatePreviousTimestamp(timeValuePair.getTimestamp());
         writeTimeAndValueToChunkWriter(timeValuePair);
-        if (timeValuePair.getTimestamp() > maxEndTimestamp) {
+        if (!maxEndTimestampSet || timeValuePair.getTimestamp() > maxEndTimestamp) {
           maxEndTimestamp = timeValuePair.getTimestamp();
+          maxEndTimestampSet = true;
         }
-        if (timeValuePair.getTimestamp() < minStartTimestamp) {
+        if (!minStartTimestampSet || timeValuePair.getTimestamp() < minStartTimestamp) {
           minStartTimestamp = timeValuePair.getTimestamp();
+          minStartTimestampSet = true;
         }
       }
     }
@@ -343,11 +350,13 @@ public class SingleSeriesCompactionExecutor {
 
   private void flushChunkToFileWriter(Chunk chunk, ChunkMetadata chunkMetadata) throws IOException {
     checkAndUpdatePreviousTimestamp(chunkMetadata.getStartTime());
-    if (chunkMetadata.getStartTime() < minStartTimestamp) {
+    if (!minStartTimestampSet || chunkMetadata.getStartTime() < minStartTimestamp) {
       minStartTimestamp = chunkMetadata.getStartTime();
+      minStartTimestampSet = true;
     }
-    if (chunkMetadata.getEndTime() > maxEndTimestamp) {
+    if (!maxEndTimestampSet || chunkMetadata.getEndTime() > maxEndTimestamp) {
       maxEndTimestamp = chunkMetadata.getEndTime();
+      maxEndTimestampSet = true;
     }
     fileWriter.writeChunk(chunk, chunkMetadata);
   }
@@ -375,11 +384,12 @@ public class SingleSeriesCompactionExecutor {
   }
 
   private void checkAndUpdatePreviousTimestamp(long currentWritingTimestamp) {
-    if (currentWritingTimestamp <= lastWriteTimestamp) {
+    if (lastWriteTimestampSet && currentWritingTimestamp <= lastWriteTimestamp) {
       throw new CompactionLastTimeCheckFailedException(
           device, measurement, currentWritingTimestamp, lastWriteTimestamp);
     } else {
       lastWriteTimestamp = currentWritingTimestamp;
+      lastWriteTimestampSet = true;
     }
   }
 }

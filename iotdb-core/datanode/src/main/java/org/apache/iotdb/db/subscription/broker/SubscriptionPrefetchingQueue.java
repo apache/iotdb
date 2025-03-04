@@ -97,6 +97,9 @@ public abstract class SubscriptionPrefetchingQueue {
 
   private final SubscriptionPrefetchingQueueStates states;
 
+  private static final long STATE_REPORT_INTERVAL_IN_MS = 10_000L;
+  private long lastStateReportTimestamp = System.currentTimeMillis();
+
   private volatile boolean isCompleted = false;
   private volatile boolean isClosed = false;
 
@@ -133,11 +136,11 @@ public abstract class SubscriptionPrefetchingQueue {
     batches.cleanUp();
 
     // clean up events in prefetchingQueue
-    prefetchingQueue.forEach(SubscriptionEvent::cleanUp);
+    prefetchingQueue.forEach(event -> event.cleanUp(true));
     prefetchingQueue.clear();
 
     // clean up events in inFlightEvents
-    inFlightEvents.values().forEach(SubscriptionEvent::cleanUp);
+    inFlightEvents.values().forEach(event -> event.cleanUp(true));
     inFlightEvents.clear();
 
     // no need to clean up events in inputPendingQueue, see
@@ -194,7 +197,8 @@ public abstract class SubscriptionPrefetchingQueue {
               return null;
             },
             SubscriptionAgent.receiver().remainingMs());
-      } catch (final Exception ignored) {
+      } catch (final Exception e) {
+        LOGGER.warn("Exception {} occurred when {} execute receiver subtask", this, e, e);
       }
     }
 
@@ -259,6 +263,7 @@ public abstract class SubscriptionPrefetchingQueue {
       if (isClosed()) {
         return false;
       }
+      reportStateIfNeeded();
       // TODO: more refined behavior (prefetch/serialize/...) control
       if (states.shouldPrefetch()) {
         tryPrefetch();
@@ -271,6 +276,13 @@ public abstract class SubscriptionPrefetchingQueue {
       }
     } finally {
       releaseReadLock();
+    }
+  }
+
+  private void reportStateIfNeeded() {
+    if (System.currentTimeMillis() - lastStateReportTimestamp > STATE_REPORT_INTERVAL_IN_MS) {
+      LOGGER.info("Subscription: SubscriptionPrefetchingQueue state {}", this);
+      lastStateReportTimestamp = System.currentTimeMillis();
     }
   }
 
@@ -435,7 +447,7 @@ public abstract class SubscriptionPrefetchingQueue {
                 commitContext,
                 this);
             // clean up committed event
-            ev.cleanUp();
+            ev.cleanUp(false);
             return null; // remove this entry
           }
 
@@ -465,7 +477,7 @@ public abstract class SubscriptionPrefetchingQueue {
           acked.set(true);
 
           // clean up committed event
-          ev.cleanUp();
+          ev.cleanUp(false);
           return null; // remove this entry
         });
 
@@ -656,7 +668,7 @@ public abstract class SubscriptionPrefetchingQueue {
   private final RemappingFunction<SubscriptionEvent> committedCleaner =
       (ev) -> {
         if (ev.isCommitted()) {
-          ev.cleanUp();
+          ev.cleanUp(false);
           return null; // remove this entry
         }
         return ev;
