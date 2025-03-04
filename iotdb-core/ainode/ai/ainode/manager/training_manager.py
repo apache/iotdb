@@ -7,6 +7,8 @@ from iotdb.table_session import TableSession, TableSessionConfig
 from torch.utils.data import Dataset, DataLoader
 
 from ai.thrift.ainode.ttypes import ITableSchema
+from client import ClientManager
+from config import AINodeDescriptor
 from constant import TSStatusCode
 from log import Logger
 from model.TimerXL.exp.exp_forecast import ExpForecast
@@ -58,7 +60,7 @@ class TrainingParameters:
         # optimization
         self.num_workers = 10
         self.itr = 1
-        self.train_epochs = 10
+        self.train_epochs = 1
         self.batch_size = 32
         self.patience = 3
         self.learning_rate = 0.0001
@@ -168,17 +170,16 @@ class TrainingManager:
     def create_training_task(self, model_id:str, model_type, table_list: list[ITableSchema], parameters: dict[str, str]):
         args = get_args()
         args.model = "timer_xl"
-
         total_count, sorted_series = _fetch_schema(table_list, args)
 
         training_dataset = IoTDBDataset(sorted_series, 0, total_count, args.input_token_len, args.output_token_len, args.seq_len)
         training_dataloader = DataLoader(training_dataset, batch_size=args.batch_size, shuffle=True, num_workers=1)
         exp = ExpForecast(args)
+        exp.train(training_dataloader, model_id)
 
-        exp.train(training_dataloader)
-
+        logger.info(model_id + "finished training")
+        ClientManager().borrow_config_node_client().update_model_info(model_id, 3, "finished", [AINodeDescriptor().get_config().get_ainode_id()],args.seq_len,args.output_token_len)
         return get_status(TSStatusCode.SUCCESS_STATUS)
-        # validation_dataset = IoTDBDataset()
 
 
 def get_args():

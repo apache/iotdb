@@ -76,5 +76,5 @@ class Model(nn.Module):
             return dec_out, attns
         return dec_out
 
-    def forward(self, x, x_mark, y_mark):
+    def forward(self, x, x_mark=None, y_mark=None):
         return self.forecast(x, x_mark, y_mark)
