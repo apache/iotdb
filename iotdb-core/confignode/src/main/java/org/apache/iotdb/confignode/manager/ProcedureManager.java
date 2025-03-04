@@ -1292,8 +1292,9 @@ public class ProcedureManager {
             new CreateTrainingProcedure(
                 req.modelId,
                 req.curDatabase,
-                req.targetTables == null ? Collections.emptyList() : req.targetTables,
-                req.targetDbs == null ? Collections.emptyList() : req.targetDbs,
+                req.isSetTargetTables() ? req.getTargetTables() : Collections.emptyList(),
+                req.isSetTargetDbs() ? req.targetDbs : Collections.emptyList(),
+                req.isSetParameters() ? req.getParameters() : Collections.emptyMap(),
                 req.useAllData));
     LOGGER.info("CreateModelProcedure was submitted, procedureId: {}.", procedureId);
     return RpcUtils.SUCCESS_STATUS;

@@ -17,8 +17,8 @@
 #
 import psutil
 
-from ai.thrift.ainode.ttypes import TAIHeartbeatResp, TAIHeartbeatReq
-from ai.thrift.common.ttypes import TLoadSample
+from ainode.thrift.ainode.ttypes import TAIHeartbeatResp, TAIHeartbeatReq
+from ainode.thrift.common.ttypes import TLoadSample
 
 
 class ClusterManager:

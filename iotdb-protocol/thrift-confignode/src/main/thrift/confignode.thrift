@@ -1040,8 +1040,8 @@ struct TUpdateModelInfoReq {
     2: required i32 modelStatus
     3: optional string attributes
     4: optional list<i32> aiNodeIds
-    5: optional list<i32> inputShapes
-    6: optional list<i32> outputShapes
+    5: optional i32 inputLength
+    6: optional i32 outputLength
 }
 
 struct TCreateTrainingReq {
@@ -1050,6 +1050,7 @@ struct TCreateTrainingReq {
     3: optional list<string> targetTables
     4: optional list<string> targetDbs
     5: optional bool useAllData
+    6: optional map<string, string> parameters
 }
 
 // ====================================================

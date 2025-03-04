@@ -15,3 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+class TrainingManager:
+    def __init__(self):
+        pass
+
+    def create_training_task(self, model_id:str, model_type, table_list: list[ITableSchema], parameters: dict[str, str]):
+        raise NotImplementedError

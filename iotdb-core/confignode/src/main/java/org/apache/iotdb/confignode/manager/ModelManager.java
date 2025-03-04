@@ -153,11 +153,11 @@ public class ModelManager {
       modelInformation.updateStatus(ModelStatus.values()[req.getModelStatus()]);
       modelInformation.setAttribute(req.getAttributes());
       modelInformation.setInputColumnSize(1);
-      if (req.getOutputShapesSize() > 0) {
-        modelInformation.setOutputLength(req.getOutputShapes().get(0));
+      if (req.isSetOutputLength()) {
+        modelInformation.setOutputLength(req.getOutputLength());
       }
-      if (req.getInputShapesSize() > 0) {
-        modelInformation.setInputLength(req.getInputShapes().get(0));
+      if (req.isSetInputLength()) {
+        modelInformation.setInputLength(req.getInputLength());
       }
       UpdateModelInfoPlan updateModelInfoPlan =
           new UpdateModelInfoPlan(req.getModelId(), modelInformation);

@@ -23,7 +23,7 @@ from typing import List
 
 AINODE_CONF_DIRECTORY_NAME = "conf"
 AINODE_ROOT_CONF_DIRECTORY_NAME = "conf"
-AINODE_CONF_FILE_NAME = "ai-ainode.properties"
+AINODE_CONF_FILE_NAME = "iotdb-ainode.properties"
 AINODE_CONF_GIT_FILE_NAME = "git.properties"
 AINODE_CONF_POM_FILE_NAME = "pom.properties"
 AINODE_SYSTEM_FILE_NAME = "system.properties"

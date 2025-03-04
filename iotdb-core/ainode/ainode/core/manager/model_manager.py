@@ -19,14 +19,14 @@ from typing import Callable
 
 from yaml import YAMLError
 
-from ai.ainode.constant import TSStatusCode, BuiltInModelType
-from ai.ainode.exception import InvalidUriError, BadConfigValueError, BuiltInModelNotSupportError
-from ai.ainode.log import Logger
-from ai.ainode.model.built_in_model_factory import fetch_built_in_model
-from ai.ainode.model.model_storage import ModelStorage
-from ai.ainode.util.status import get_status
-from ai.thrift.ainode.ttypes import TRegisterModelReq, TRegisterModelResp, TDeleteModelReq
-from ai.thrift.common.ttypes import TSStatus
+from ainode.core.constant import TSStatusCode, BuiltInModelType
+from ainode.core.exception import InvalidUriError, BadConfigValueError, BuiltInModelNotSupportError
+from ainode.core.log import Logger
+from ainode.core.model.built_in_model_factory import fetch_built_in_model
+from ainode.core.model.model_storage import ModelStorage
+from ainode.core.util.status import get_status
+from ainode.thrift.ainode.ttypes import TRegisterModelReq, TRegisterModelResp, TDeleteModelReq
+from ainode.thrift.common.ttypes import TSStatus
 
 logger = Logger()
 

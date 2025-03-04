@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class CreateTrainingProcedure extends AbstractNodeProcedure<CreateTrainingState> {
 
@@ -44,6 +45,7 @@ public class CreateTrainingProcedure extends AbstractNodeProcedure<CreateTrainin
   private List<String> targetTables;
   private List<String> targetDbs;
   private boolean useAllData;
+  private Map<String, String> parameters;
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
@@ -53,12 +55,14 @@ public class CreateTrainingProcedure extends AbstractNodeProcedure<CreateTrainin
       String curDatabase,
       List<String> targetTables,
       List<String> targetDbs,
+      Map<String, String> parameters,
       boolean useAllData) {
     this.modelId = modelId;
     this.curDatabase = curDatabase;
     this.targetTables = targetTables;
     this.targetDbs = targetDbs;
     this.useAllData = useAllData;
+    this.parameters = parameters;
   }
 
   public CreateTrainingProcedure() {
@@ -77,9 +81,9 @@ public class CreateTrainingProcedure extends AbstractNodeProcedure<CreateTrainin
       //                trainingReq.setExistingModelId(createTraining.getExistingModelId());
       //            }
 
-      //            if (createTraining.getParameters() != null) {
-      //                trainingReq.setParameters(createTraining.getParameters());
-      //            }
+      if (!parameters.isEmpty()) {
+        trainingReq.setParameters(parameters);
+      }
 
       List<ITableSchema> tableSchemaList = new ArrayList<>();
 
@@ -111,7 +115,6 @@ public class CreateTrainingProcedure extends AbstractNodeProcedure<CreateTrainin
         tableSchemaList.add(new ITableSchema(curDatabase, tableName));
       }
       trainingReq.setTargetTables(tableSchemaList);
-
       try (AINodeClient client =
           AINodeClientManager.getInstance().borrowClient(AINodeInfo.endPoint)) {
         status = client.createTrainingTask(trainingReq);

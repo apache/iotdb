@@ -21,10 +21,10 @@ from thrift.protocol import TCompactProtocol, TBinaryProtocol
 from thrift.server import TServer
 from thrift.transport import TSocket, TTransport
 
-from ai.ainode.config import AINodeDescriptor
-from ai.ainode.handler import AINodeRPCServiceHandler
-from ai.ainode.log import Logger
-from ai.thrift.ainode import IAINodeRPCService
+from ainode.core.config import AINodeDescriptor
+from ainode.core.handler import AINodeRPCServiceHandler
+from ainode.core.log import Logger
+from ainode.thrift.ainode import IAINodeRPCService
 
 logger = Logger()
 

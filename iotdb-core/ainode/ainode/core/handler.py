@@ -16,15 +16,15 @@
 # under the License.
 #
 
-from ai.ainode.manager.cluster_manager import ClusterManager
-from ai.ainode.manager.inference_manager import InferenceManager
-from ai.ainode.manager.model_manager import ModelManager
-from ai.thrift.ainode import IAINodeRPCService
-from ai.thrift.ainode.ttypes import (TDeleteModelReq, TRegisterModelReq,
-                                     TAIHeartbeatReq, TInferenceReq, TRegisterModelResp, TInferenceResp,
-                                     TAIHeartbeatResp, TTrainingReq)
-from ai.thrift.common.ttypes import TSStatus
-from manager.training_manager import TrainingManager
+from ainode.core.manager.cluster_manager import ClusterManager
+from ainode.core.manager.inference_manager import InferenceManager
+from ainode.core.manager.model_manager import ModelManager
+from ainode.thrift.ainode import IAINodeRPCService
+from ainode.thrift.ainode.ttypes import (TDeleteModelReq, TRegisterModelReq,
+                                         TAIHeartbeatReq, TInferenceReq, TRegisterModelResp, TInferenceResp,
+                                         TAIHeartbeatResp, TTrainingReq)
+from ainode.thrift.common.ttypes import TSStatus
+from ainode.core.manager.training_manager import TrainingManager
 
 
 class AINodeRPCServiceHandler(IAINodeRPCService.Iface):

@@ -3147,6 +3147,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TCreateTrainingReq req =
           new TCreateTrainingReq(createTraining.getModelId(), createTraining.getCurDatabase());
+      req.setParameters(createTraining.getParameters());
       req.setTargetDbs(createTraining.getTargetDbs());
       req.setUseAllData(createTraining.isUseAllData());
       req.setTargetTables(

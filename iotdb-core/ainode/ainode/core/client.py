@@ -21,16 +21,16 @@ from thrift.Thrift import TException
 from thrift.protocol import TCompactProtocol, TBinaryProtocol
 from thrift.transport import TSocket, TTransport
 
-from ai.ainode.config import AINodeDescriptor
-from ai.ainode.constant import TSStatusCode
-from ai.ainode.log import Logger
-from ai.ainode.util.decorator import singleton
-from ai.ainode.util.status import verify_success
-from ai.thrift.common.ttypes import TEndPoint, TSStatus, TAINodeLocation, TAINodeConfiguration
-from ai.thrift.confignode import IConfigNodeRPCService
-from ai.thrift.confignode.ttypes import (TAINodeRemoveReq, TNodeVersionInfo,
-                                         TAINodeRegisterReq, TAINodeRestartReq)
-from ai.thrift.confignode.ttypes import TUpdateModelInfoReq
+from ainode.core.config import AINodeDescriptor
+from ainode.core.constant import TSStatusCode
+from ainode.core.log import Logger
+from ainode.core.util.decorator import singleton
+from ainode.core.util.status import verify_success
+from ainode.thrift.common.ttypes import TEndPoint, TSStatus, TAINodeLocation, TAINodeConfiguration
+from ainode.thrift.confignode import IConfigNodeRPCService
+from ainode.thrift.confignode.ttypes import (TAINodeRemoveReq, TNodeVersionInfo,
+                                             TAINodeRegisterReq, TAINodeRestartReq)
+from ainode.thrift.confignode.ttypes import TUpdateModelInfoReq
 
 logger = Logger()
 
@@ -214,8 +214,8 @@ class ConfigNodeClient(object):
                 )
                 if ainode_id is not None:
                     req.aiNodeIds = ainode_id
-                req.inputShapes = [input_length]
-                req.outputShapes = [output_length]
+                req.inputLength = input_length
+                req.outputLength = output_length
                 status = self._client.updateModelInfo(req)
                 if not self._update_config_node_leader(status):
                     verify_success(status, "An error occurs when calling update model info")

@@ -149,6 +149,8 @@ statement
 
     // AI
     | createModelStatement
+    | showModelsStatement
+    | callInferenceStatement
 
     // View, Trigger, pipe, CQ, Quota are not supported yet
     ;
@@ -734,6 +736,15 @@ hparamPair
     : hparamKey=identifier '=' hyparamValue=primaryExpression
     ;
 
+showModelsStatement
+    : SHOW MODELS
+    | SHOW MODELS modelId=identifier
+    ;
+
+callInferenceStatement
+    : CALL INFERENCE '(' modelId=identifier COMMA inputSql=string (COMMA hparamPair)* ')'
+    ;
+
 // ------------------------------------------- Query Statement ---------------------------------------------------------
 queryStatement
     : query                                                        #statementDefault
@@ -1135,7 +1146,7 @@ nonReserved
     | JSON
     | KEEP | KEY | KEYS | KILL
     | LANGUAGE | LAST | LATERAL | LEADING | LEAVE | LEVEL | LIMIT | LINEAR | LOAD | LOCAL | LOGICAL | LOOP
-    | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASURES | METHOD | MERGE | MICROSECOND | MIGRATE | MILLISECOND | MINUTE | MODEL | MODIFY | MONTH
+    | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASURES | METHOD | MERGE | MICROSECOND | MIGRATE | MILLISECOND | MINUTE | MODEL | MODELS | MODIFY | MONTH
     | NANOSECOND | NESTED | NEXT | NFC | NFD | NFKC | NFKD | NO | NODEID | NONE | NULLIF | NULLS
     | OBJECT | OF | OFFSET | OMIT | ONE | ONLY | OPTION | ORDINALITY | OUTPUT | OVER | OVERFLOW
     | PARTITION | PARTITIONS | PASSING | PAST | PATH | PATTERN | PER | PERIOD | PERMUTE | PIPE | PIPEPLUGIN | PIPEPLUGINS | PIPES | PLAN | POSITION | PRECEDING | PRECISION | PRIVILEGES | PREVIOUS | PROCESSLIST | PROCESSOR | PROPERTIES | PRUNE
@@ -1293,6 +1304,7 @@ IGNORE: 'IGNORE';
 IMMEDIATE: 'IMMEDIATE';
 IN: 'IN';
 INCLUDING: 'INCLUDING';
+INFERENCE: 'INFERENCE';
 INITIAL: 'INITIAL';
 INNER: 'INNER';
 INPUT: 'INPUT';
@@ -1352,6 +1364,7 @@ MIGRATE: 'MIGRATE';
 MILLISECOND: 'MS';
 MINUTE: 'MINUTE' | 'M';
 MODEL: 'MODEL';
+MODELS: 'MODELS';
 MODIFY: 'MODIFY';
 MONTH: 'MONTH' | 'MO';
 NANOSECOND: 'NS';
