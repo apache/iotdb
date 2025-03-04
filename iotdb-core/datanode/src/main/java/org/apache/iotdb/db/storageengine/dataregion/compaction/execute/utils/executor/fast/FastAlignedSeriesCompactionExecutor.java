@@ -281,13 +281,13 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
       String measurement = chunkMetadata.getMeasurementUid();
       IMeasurementSchema schema = measurementSchemaMap.get(measurement);
       if (MetadataUtils.canAlter(chunkMetadata.getDataType(), schema.getType())) {
-        if(schema.getType() != chunkMetadata.getDataType()){
+        if (schema.getType() != chunkMetadata.getDataType()) {
           chunkMetadata.setNewType(schema.getType());
         }
-      }else{
+        return true;
+      } else {
         return false;
       }
-      return schema.getType() == chunkMetadata.getDataType();
     }
     return true;
   }
@@ -370,7 +370,15 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
         valueChunks.add(null);
         continue;
       }
-      valueChunks.add(readChunk(reader, (ChunkMetadata) valueChunkMetadata).rewrite());
+      if (valueChunkMetadata.getNewType() != null) {
+        Chunk chunk =
+            readChunk(reader, (ChunkMetadata) valueChunkMetadata)
+                .rewrite(
+                    ((ChunkMetadata) valueChunkMetadata).getNewType(), chunkMetadataElement.chunk);
+        valueChunks.add(chunk);
+      } else {
+        valueChunks.add(readChunk(reader, (ChunkMetadata) valueChunkMetadata));
+      }
     }
     chunkMetadataElement.valueChunks = valueChunks;
     setForceDecoding(chunkMetadataElement);

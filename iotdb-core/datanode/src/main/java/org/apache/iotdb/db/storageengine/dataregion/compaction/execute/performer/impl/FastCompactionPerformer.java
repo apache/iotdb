@@ -43,6 +43,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.StopReadTsFileByInterruptException;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -237,6 +238,8 @@ public class FastCompactionPerformer
     Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
         deviceIterator.getTimeseriesMetadataOffsetOfCurrentDevice();
 
+    Map<String, TSDataType> measurementDataTypeMap = deviceIterator.getDataTypeOfCurrentDevice();
+
     List<String> allMeasurements = new ArrayList<>(timeseriesMetadataOffsetMap.keySet());
     allMeasurements.sort((String::compareTo));
 
@@ -262,6 +265,7 @@ public class FastCompactionPerformer
                   new FastCompactionPerformerSubTask(
                       fastCrossCompactionWriter,
                       timeseriesMetadataOffsetMap,
+                      measurementDataTypeMap,
                       readerCacheMap,
                       modificationCache,
                       sortedSourceFiles,

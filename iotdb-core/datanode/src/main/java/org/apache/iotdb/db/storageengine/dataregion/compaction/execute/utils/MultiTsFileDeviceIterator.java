@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
@@ -305,7 +306,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         TSDataType correctDataTypeOfCurrentMeasurement =
             measurementDataTypeMap.putIfAbsent(measurementId, dataTypeOfCurrentTimeseriesMetadata);
         if (correctDataTypeOfCurrentMeasurement != null
-            && correctDataTypeOfCurrentMeasurement != dataTypeOfCurrentTimeseriesMetadata) {
+            && !MetadataUtils.canAlter(
+                dataTypeOfCurrentTimeseriesMetadata, correctDataTypeOfCurrentMeasurement)) {
           continue;
         }
         timeseriesMetadataOffsetMap.putIfAbsent(measurementId, new HashMap<>());
@@ -313,6 +315,39 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       }
     }
     return timeseriesMetadataOffsetMap;
+  }
+
+  /**
+   * Get all measurement data types of the current device from source files. Traverse all the files
+   * from the newest to the oldest in turn and start traversing the index tree from the
+   * firstMeasurementNode node to get all the measurement types under the current device.
+   *
+   * @return measurement -> data type
+   * @throws IOException if io errors occurred
+   */
+  public Map<String, TSDataType> getDataTypeOfCurrentDevice() throws IOException {
+    Map<String, TSDataType> dataTypeMap = new HashMap<>();
+    for (TsFileResource resource : tsFileResourcesSortedByDesc) {
+      if (!deviceIteratorMap.containsKey(resource)
+          || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
+        // if this tsfile has no more device or next device is not equals to the current device,
+        // which means this tsfile does not contain the current device, then skip it.
+        continue;
+      }
+      TsFileSequenceReader reader = readerMap.get(resource);
+      for (Map.Entry<String, Pair<TimeseriesMetadata, Pair<Long, Long>>> entrySet :
+          ((CompactionTsFileReader) reader)
+              .getTimeseriesMetadataAndOffsetByDevice(
+                  deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice(),
+                  Collections.emptySet(),
+                  false)
+              .entrySet()) {
+        String measurementId = entrySet.getKey();
+        TSDataType dataType = entrySet.getValue().left.getTsDataType();
+        dataTypeMap.putIfAbsent(measurementId, dataType);
+      }
+    }
+    return dataTypeMap;
   }
 
   /**

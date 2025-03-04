@@ -31,6 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -75,6 +76,8 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
 
   private List<IMeasurementSchema> measurementSchemas;
 
+  private Map<String, TSDataType> dataTypeMap;
+
   /** Used for nonAligned timeseries. */
   @SuppressWarnings("squid:S107")
   public FastCompactionPerformerSubTask(
@@ -91,6 +94,32 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
     this.compactionWriter = compactionWriter;
     this.subTaskId = subTaskId;
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
+    this.isAligned = false;
+    this.deviceId = deviceId;
+    this.readerCacheMap = readerCacheMap;
+    this.modificationCacheMap = modificationCacheMap;
+    this.sortedSourceFiles = sortedSourceFiles;
+    this.measurements = measurements;
+    this.summary = summary;
+    this.ignoreAllNullRows = true;
+  }
+
+  public FastCompactionPerformerSubTask(
+      AbstractCompactionWriter compactionWriter,
+      Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
+      Map<String, TSDataType> dataTypeMap,
+      Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
+      Map<String, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
+          modificationCacheMap,
+      List<TsFileResource> sortedSourceFiles,
+      List<String> measurements,
+      IDeviceID deviceId,
+      FastCompactionTaskSummary summary,
+      int subTaskId) {
+    this.compactionWriter = compactionWriter;
+    this.subTaskId = subTaskId;
+    this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
+    this.dataTypeMap = dataTypeMap;
     this.isAligned = false;
     this.deviceId = deviceId;
     this.readerCacheMap = readerCacheMap;
@@ -141,6 +170,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
               summary);
       for (String measurement : measurements) {
         seriesCompactionExecutor.setNewMeasurement(timeseriesMetadataOffsetMap.get(measurement));
+        seriesCompactionExecutor.setType(dataTypeMap.get(measurement));
         seriesCompactionExecutor.execute();
       }
     } else {
