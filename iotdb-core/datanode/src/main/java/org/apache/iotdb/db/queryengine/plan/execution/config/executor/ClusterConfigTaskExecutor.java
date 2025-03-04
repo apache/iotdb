@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.executor;
 
-import org.apache.iotdb.ainode.rpc.thrift.ITableSchema;
-import org.apache.iotdb.ainode.rpc.thrift.TTrainingReq;
 import org.apache.iotdb.common.rpc.thrift.FunctionType;
 import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -37,9 +35,6 @@ import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.ainode.AINodeClient;
-import org.apache.iotdb.commons.client.ainode.AINodeClientManager;
-import org.apache.iotdb.commons.client.ainode.AINodeInfo;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -87,6 +82,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateTrainingReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
@@ -149,7 +145,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
-import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -226,7 +221,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
@@ -3149,52 +3143,24 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> createTraining(CreateTraining createTraining) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-
-    TTrainingReq trainingReq = new TTrainingReq();
-    trainingReq.setModelId(createTraining.getModelId());
-    trainingReq.setModelType((byte) createTraining.getModelType().ordinal());
-
-    if (createTraining.getExistingModelId() != null) {
-      trainingReq.setExistingModelId(createTraining.getExistingModelId());
-    }
-
-    if (createTraining.getParameters() != null) {
-      trainingReq.setParameters(createTraining.getParameters());
-    }
-
-    List<ITableSchema> tableSchemaList = new ArrayList<>();
-    if (createTraining.isUseAllData() || !createTraining.getTargetDbs().isEmpty()) {
-      try (final ConfigNodeClient client =
-          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        List<String> databaseNameList = new ArrayList<>();
-        if (createTraining.isUseAllData()) {
-          TShowDatabaseResp resp = client.showDatabase(new TGetDatabaseReq());
-          databaseNameList.addAll(resp.getDatabaseInfoMap().keySet());
-        } else {
-          databaseNameList.addAll(createTraining.getTargetDbs());
-        }
-
-        for (String database : databaseNameList) {
-          TShowTableResp resp = client.showTables(database, false);
-          for (TTableInfo tableInfo : resp.getTableInfoList()) {
-            tableSchemaList.add(new ITableSchema(database, tableInfo.getTableName()));
-          }
-        }
-
-      } catch (final Exception e) {
-        future.setException(e);
+    try (final ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TCreateTrainingReq req =
+          new TCreateTrainingReq(createTraining.getModelId(), createTraining.getCurDatabase());
+      req.setTargetDbs(createTraining.getTargetDbs());
+      req.setUseAllData(createTraining.isUseAllData());
+      req.setTargetTables(
+          createTraining.getTargetTables().stream()
+              .map(table -> table.getName().toString())
+              .collect(Collectors.toList()));
+      final TSStatus executionStatus = client.createTraining(req);
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
+        future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    }
-    for (Table table : createTraining.getTargetTables()) {
-      tableSchemaList.add(
-          new ITableSchema(createTraining.getCurDatabase(), table.getName().toString()));
-    }
-    trainingReq.setTargetTables(tableSchemaList);
-
-    try (AINodeClient client =
-        AINodeClientManager.getInstance().borrowClient(AINodeInfo.endPoint)) {
-      client.createTrainingTask(trainingReq);
-    } catch (final Exception e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
