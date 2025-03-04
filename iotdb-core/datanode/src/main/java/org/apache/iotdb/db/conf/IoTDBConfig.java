@@ -115,6 +115,9 @@ public class IoTDBConfig {
   /** The mqtt message payload formatter. */
   private String mqttPayloadFormatter = "json";
 
+  /** The mqtt save data path */
+  private String mqttDataPath = "data/";
+
   /** Max mqtt message size. Unit: byte */
   private int mqttMaxMessageSize = 1048576;
 
@@ -1162,6 +1165,7 @@ public class IoTDBConfig {
   /** Load related */
   private double maxAllocateMemoryRatioForLoad = 0.8;
 
+  private int loadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount = 4096;
   private int loadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber = 4096;
   private int loadTsFileAnalyzeSchemaBatchFlushTableDeviceNumber = 4096; // For table model
   private long loadTsFileAnalyzeSchemaMemorySizeInBytes =
@@ -2726,6 +2730,14 @@ public class IoTDBConfig {
     this.mqttPayloadFormatter = mqttPayloadFormatter;
   }
 
+  public String getMqttDataPath() {
+    return mqttDataPath;
+  }
+
+  public void setMqttDataPath(String mqttDataPath) {
+    this.mqttDataPath = mqttDataPath;
+  }
+
   public int getMqttMaxMessageSize() {
     return mqttMaxMessageSize;
   }
@@ -4052,6 +4064,16 @@ public class IoTDBConfig {
 
   public void setMaxAllocateMemoryRatioForLoad(double maxAllocateMemoryRatioForLoad) {
     this.maxAllocateMemoryRatioForLoad = maxAllocateMemoryRatioForLoad;
+  }
+
+  public int getLoadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount() {
+    return loadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount;
+  }
+
+  public void setLoadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount(
+      int loadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount) {
+    this.loadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount =
+        loadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount;
   }
 
   public int getLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber() {

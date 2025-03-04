@@ -33,7 +33,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventP
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTablePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
@@ -50,7 +50,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
 public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
-    implements TabletInsertionEvent, ReferenceTrackableEvent {
+    implements TabletInsertionEvent, ReferenceTrackableEvent, AutoCloseable {
 
   // For better calculation
   private static final long INSTANCE_SIZE =
@@ -62,7 +62,7 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   private final EnrichedEvent sourceEvent;
   private boolean needToReport;
 
-  private PipeTabletMemoryBlock allocatedMemoryBlock;
+  private final PipeTabletMemoryBlock allocatedMemoryBlock;
 
   private TabletInsertionEventParser eventParser;
 
@@ -104,6 +104,10 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     this.isAligned = isAligned;
     this.sourceEvent = sourceEvent;
     this.needToReport = needToReport;
+
+    // Allocate empty memory block, will be resized later.
+    this.allocatedMemoryBlock =
+        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
   }
 
   public PipeRawTabletInsertionEvent(
@@ -193,10 +197,10 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
 
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
-    allocatedMemoryBlock =
-        PipeDataNodeResourceManager.memory()
-            .forceAllocateForTabletWithRetry(
-                PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + INSTANCE_SIZE);
+    PipeDataNodeResourceManager.memory()
+        .forceResize(
+            allocatedMemoryBlock,
+            PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + INSTANCE_SIZE);
     if (Objects.nonNull(pipeName)) {
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
           .increaseTabletEventCount(pipeName, creationTime);
@@ -444,5 +448,17 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     protected void finalizeResource() {
       allocatedMemoryBlock.close();
     }
+  }
+
+  /////////////////////////// AutoCloseable ///////////////////////////
+
+  @Override
+  public void close() {
+    // The semantic of close is to release the memory occupied by parsing, this method does nothing
+    // to unify the external close semantic:
+    //   1. PipeRawTabletInsertionEvent: the tablet occupying memory upon construction, even when
+    // parsing is involved.
+    //   2. PipeInsertNodeTabletInsertionEvent: the tablet is only constructed when it's actually
+    // involved in parsing.
   }
 }

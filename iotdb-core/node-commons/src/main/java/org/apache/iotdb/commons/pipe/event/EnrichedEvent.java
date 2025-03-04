@@ -61,6 +61,8 @@ public abstract class EnrichedEvent implements Event {
   protected CommitterKey committerKey;
   public static final long NO_COMMIT_ID = -1;
   protected long commitId = NO_COMMIT_ID;
+  // Used in IoTConsensusV2
+  protected long replicateIndexForIoTV2 = NO_COMMIT_ID;
   protected int rebootTimes = 0;
 
   protected final TreePattern treePattern;
@@ -435,6 +437,14 @@ public abstract class EnrichedEvent implements Event {
     return commitId;
   }
 
+  public long getReplicateIndexForIoTV2() {
+    return replicateIndexForIoTV2;
+  }
+
+  public void setReplicateIndexForIoTV2(long replicateIndexForIoTV2) {
+    this.replicateIndexForIoTV2 = replicateIndexForIoTV2;
+  }
+
   public void onCommitted() {
     onCommittedHooks.forEach(Supplier::get);
   }
@@ -461,7 +471,8 @@ public abstract class EnrichedEvent implements Event {
     final EnrichedEvent otherEvent = (EnrichedEvent) o;
     return Objects.equals(committerKey, otherEvent.committerKey)
         && commitId == otherEvent.commitId
-        && rebootTimes == otherEvent.rebootTimes;
+        && rebootTimes == otherEvent.rebootTimes
+        && replicateIndexForIoTV2 == otherEvent.replicateIndexForIoTV2;
   }
 
   @Override
@@ -479,6 +490,8 @@ public abstract class EnrichedEvent implements Event {
         + committerKey
         + "', commitId="
         + commitId
+        + "', replicateIndexForIoTV2="
+        + replicateIndexForIoTV2
         + ", treePattern='"
         + treePattern
         + "', tablePattern='"
@@ -512,6 +525,8 @@ public abstract class EnrichedEvent implements Event {
         + committerKey
         + "', commitId="
         + commitId
+        + "', replicateIndexForIoTV2="
+        + replicateIndexForIoTV2
         + ", treePattern='"
         + treePattern
         + "', tablePattern='"

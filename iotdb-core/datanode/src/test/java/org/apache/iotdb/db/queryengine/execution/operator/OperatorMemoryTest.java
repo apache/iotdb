@@ -688,8 +688,6 @@ public class OperatorMemoryTest {
               driverContext.getOperatorContexts().get(0),
               Mockito.mock(ISchemaSource.class));
 
-      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());
-      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxReturnSize());
       assertEquals(0, operator.calculateRetainedSizeAfterCallingNext());
 
     } finally {

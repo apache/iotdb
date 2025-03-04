@@ -1854,6 +1854,10 @@ public class IoTDBDescriptor {
           properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME).trim());
     }
 
+    if (properties.getProperty(IoTDBConstant.MQTT_DATA_PATH) != null) {
+      conf.setMqttDataPath(properties.getProperty(IoTDBConstant.MQTT_DATA_PATH).trim());
+    }
+
     if (properties.getProperty(IoTDBConstant.ENABLE_MQTT) != null) {
       conf.setEnableMQTTService(
           Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT).trim()));
@@ -2406,6 +2410,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "max_allocate_memory_ratio_for_load",
                 String.valueOf(conf.getMaxAllocateMemoryRatioForLoad()))));
+    conf.setLoadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_analyze_schema_batch_read_time_series_metadata_count",
+                String.valueOf(
+                    conf.getLoadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount()))));
     conf.setLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber(
         Integer.parseInt(
             properties.getProperty(

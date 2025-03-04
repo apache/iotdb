@@ -136,7 +136,7 @@ public class SubscriptionPipeEventBatches {
   }
 
   public void cleanUp() {
-    regionIdToBatch.values().forEach(SubscriptionPipeEventBatch::cleanUp);
+    regionIdToBatch.values().forEach(batch -> batch.cleanUp(true));
     regionIdToBatch.clear();
   }
 }

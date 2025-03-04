@@ -46,12 +46,17 @@ public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents
   @Override
   public void ack() {
     batch.ack();
-    iterationSnapshot.clear();
+    if (Objects.nonNull(iterationSnapshot)) {
+      iterationSnapshot.ack();
+    }
   }
 
   @Override
-  public void cleanUp() {
-    batch.cleanUp();
+  public void cleanUp(final boolean force) {
+    batch.cleanUp(force);
+    if (Objects.nonNull(iterationSnapshot)) {
+      iterationSnapshot.cleanUp();
+    }
   }
 
   /////////////////////////////// stringify ///////////////////////////////

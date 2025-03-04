@@ -83,4 +83,16 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
         "compaction_schedule_interval_in_ms", String.valueOf(compactionScheduleInterval));
     return this;
   }
+
+  @Override
+  public DataNodeConfig setEnableMQTTService(boolean enableMQTTService) {
+    setProperty("enable_mqtt_service", String.valueOf(enableMQTTService));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
+    setProperty("mqtt_payload_formatter", String.valueOf(mqttPayloadFormatter));
+    return this;
+  }
 }

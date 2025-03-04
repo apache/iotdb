@@ -21,6 +21,7 @@ package org.apache.iotdb.mqtt.server;
 
 import org.apache.iotdb.db.protocol.mqtt.Message;
 import org.apache.iotdb.db.protocol.mqtt.PayloadFormatter;
+import org.apache.iotdb.db.protocol.mqtt.TreeMessage;
 
 import io.netty.buffer.ByteBuf;
 
@@ -43,7 +44,7 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
     // this is just an example, so we just generate some Messages directly
     for (int i = 0; i < 2; i++) {
       long ts = i;
-      Message message = new Message();
+      TreeMessage message = new TreeMessage();
       message.setDevice("d" + i);
       message.setTimestamp(ts);
       message.setMeasurements(Arrays.asList("s1", "s2"));
@@ -57,5 +58,10 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
   public String getName() {
     // set the value of mqtt_payload_formatter in iotdb-common.properties as the following string:
     return "CustomizedJson";
+  }
+
+  @Override
+  public String getType() {
+    return PayloadFormatter.TREE_TYPE;
   }
 }

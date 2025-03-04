@@ -123,7 +123,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       final List<Object> values = new ArrayList<>();
 
       for (int i = 0; i < schemas.size(); ++i) {
-        for (int j = 0; j < tablet.getRowSize(); ++j) {
+        for (int j = tablet.getRowSize() - 1; j >= 0; --j) {
           if (Objects.isNull(tablet.getBitMaps())
               || Objects.isNull(tablet.getBitMaps()[i])
               || !tablet.getBitMaps()[i].isMarked(j)) {

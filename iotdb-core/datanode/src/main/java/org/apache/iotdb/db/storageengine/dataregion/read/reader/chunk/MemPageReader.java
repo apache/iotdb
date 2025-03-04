@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.PageMetadata;
-import org.apache.iotdb.db.utils.datastructure.MergeSortTvListIterator;
+import org.apache.iotdb.db.utils.datastructure.MergeSortTVListIterator;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -51,7 +51,7 @@ public class MemPageReader implements IPageReader {
   private TsBlock tsBlock;
   private Filter recordFilter;
 
-  private final MergeSortTvListIterator mergeSortTvListIterator;
+  private final MergeSortTVListIterator mergeSortTvListIterator;
   // MemPage range - [pageStartOffsets, pageEndOffsets)
   private final int[] pageStartOffsets;
   private final int[] pageEndOffsets;
@@ -63,7 +63,7 @@ public class MemPageReader implements IPageReader {
 
   public MemPageReader(
       Supplier<TsBlock> tsBlockSupplier,
-      MergeSortTvListIterator mergeSortTvListIterator,
+      MergeSortTVListIterator mergeSortTvListIterator,
       int[] pageStartOffsets,
       int[] pageEndOffSets,
       TSDataType tsDataType,
