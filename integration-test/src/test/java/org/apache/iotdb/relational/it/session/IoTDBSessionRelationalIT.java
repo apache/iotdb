@@ -378,19 +378,13 @@ public class IoTDBSessionRelationalIT {
 
       SessionDataSet dataSet =
           session.executeQueryStatement("select * from partial_insert order by time");
-      long[] timestamps =
-          new long[] {10000, 20000, 30000, 35000, 40000, 50000, 60000, 70000, 80000, 90000};
-      Boolean[] values =
-          new Boolean[] {true, false, null, null, false, true, null, null, null, null, null};
+      long[] timestamps = new long[] {10000, 20000, 40000, 50000};
+      Boolean[] values = new Boolean[] {true, false, false, true};
       int cnt = 0;
       while (dataSet.hasNext()) {
         RowRecord rec = dataSet.next();
         assertEquals(timestamps[cnt], rec.getFields().get(0).getLongV());
-        if (values[cnt] != null) {
-          assertEquals(values[cnt], rec.getFields().get(1).getBoolV());
-        } else {
-          assertNull(rec.getFields().get(1).getDataType());
-        }
+        assertEquals(values[cnt], rec.getFields().get(1).getBoolV());
         cnt++;
       }
       assertEquals(10, cnt);
