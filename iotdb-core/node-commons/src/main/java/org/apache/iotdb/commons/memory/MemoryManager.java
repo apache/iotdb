@@ -104,7 +104,8 @@ public class MemoryManager {
    * @param name the name of memory block
    * @param sizeInBytes the size in bytes of memory block try to allocate
    * @param type the type of memory block
-   * @return the memory block if success, otherwise throw MemoryException
+   * @return the allocated memory block
+   * @throw MemoryException if fail to allocate after MEMORY_ALLOCATE_MAX_RETRIES retries
    */
   public synchronized IMemoryBlock forceAllocate(
       String name, long sizeInBytes, MemoryBlockType type) {
@@ -117,8 +118,7 @@ public class MemoryManager {
       }
 
       try {
-        // TODO @spricoder: consider to find more memory in active way
-        Thread.sleep(MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS);
+        this.wait(MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         LOGGER.warn("forceAllocate: interrupted while waiting for available memory", e);
@@ -148,11 +148,13 @@ public class MemoryManager {
   }
 
   /**
-   * Try to force allocate memory block with specified size in bytes when memory is sufficient.
+   * Try to force allocate memory block with specified size in bytes when the proportion of used
+   * memory is below the given maxRatio.
    *
    * @param name the name of memory block
    * @param sizeInBytes the size in bytes of memory block try to allocate
-   * @param maxRatio the used threshold of allocatedMemorySizeInBytes / totalMemorySizeInBytes
+   * @param maxRatio the used threshold of allocatedMemorySizeInBytes / totalMemorySizeInBytes, must
+   *     be within [0.0, 1.0
    * @param memoryBlockType the type of memory block
    * @return the memory block if success, otherwise null
    */
@@ -205,7 +207,7 @@ public class MemoryManager {
     }
 
     long sizeToAllocateInBytes = sizeInBytes;
-    while (sizeToAllocateInBytes > MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES) {
+    while (sizeToAllocateInBytes >= MEMORY_ALLOCATE_MIN_SIZE_IN_BYTES) {
       if (totalMemorySizeInBytes - allocatedMemorySizeInBytes >= sizeToAllocateInBytes) {
         LOGGER.debug(
             "tryAllocate: allocated memory, "
@@ -233,7 +235,7 @@ public class MemoryManager {
         totalMemorySizeInBytes,
         allocatedMemorySizeInBytes,
         sizeInBytes);
-    return registerMemoryBlock(name, 0, type);
+    return null;
   }
 
   /**
@@ -253,7 +255,7 @@ public class MemoryManager {
         name,
         (blockName, block) -> {
           if (block != null) {
-            LOGGER.warn("register memory block already exists: {}", block);
+            LOGGER.error("register memory block already exists: {}", block);
             return block;
           } else {
             if (type.equals(MemoryBlockType.STATIC)) {
@@ -294,7 +296,7 @@ public class MemoryManager {
     try {
       block.close();
     } catch (Exception e) {
-      LOGGER.error("releaseWithOutNotify: failed to close memory block", e);
+      LOGGER.error("releaseWithOutNotify: failed to close memory block {}", block, e);
     }
   }
 
@@ -314,22 +316,22 @@ public class MemoryManager {
    */
   public synchronized MemoryManager getOrCreateMemoryManager(
       String name, long sizeInBytes, boolean enabled) {
-    if (sizeInBytes <= 0) {
-      LOGGER.warn("getOrCreateMemoryManager {}: sizeInBytes should be positive", name);
-    }
-    if (this.enabled
-        && sizeInBytes + this.allocatedMemorySizeInBytes > this.totalMemorySizeInBytes) {
-      LOGGER.warn(
-          "getOrCreateMemoryManager failed: total memory size {} bytes is less than allocated memory size {} bytes",
-          sizeInBytes,
-          allocatedMemorySizeInBytes);
-      return null;
-    }
     return children.compute(
         name,
         (managerName, manager) -> {
-          if (manager != null) {
+          if (sizeInBytes <= 0) {
+            LOGGER.warn("getOrCreateMemoryManager {}: sizeInBytes should be positive", name);
+          }
+          if (this.enabled
+              && sizeInBytes + this.allocatedMemorySizeInBytes > this.totalMemorySizeInBytes) {
             LOGGER.warn(
+                "getOrCreateMemoryManager failed: total memory size {} bytes is less than allocated memory size {} bytes",
+                sizeInBytes,
+                allocatedMemorySizeInBytes);
+            return null;
+          }
+          if (manager != null) {
+            LOGGER.debug(
                 "getOrCreateMemoryManager failed: memory manager {} already exists, it's size is {}, enabled is {}",
                 managerName,
                 manager.getTotalMemorySizeInBytes(),

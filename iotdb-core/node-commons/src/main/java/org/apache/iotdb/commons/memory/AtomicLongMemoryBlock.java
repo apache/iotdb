@@ -52,7 +52,7 @@ public class AtomicLongMemoryBlock extends IMemoryBlock {
   }
 
   @Override
-  public long forceAllocate(long sizeInByte) {
+  public long forceAllocateWithoutLimitation(long sizeInByte) {
     return usedMemoryInBytes.addAndGet(sizeInByte);
   }
 

@@ -389,7 +389,7 @@ public class MemoryPool {
       String planNodeId,
       long bytesToReserve,
       long maxBytesCanReserve) {
-    long tryUsedBytes = memoryBlock.forceAllocate(bytesToReserve);
+    long tryUsedBytes = memoryBlock.forceAllocateWithoutLimitation(bytesToReserve);
     long queryRemainingBytes =
         maxBytesCanReserve
             - queryMemoryReservations

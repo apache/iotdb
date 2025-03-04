@@ -78,7 +78,7 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   }
 
   public void requestMemory(final long size) {
-    memoryBlock.forceAllocate(size);
+    memoryBlock.forceAllocateWithoutLimitation(size);
     if (memoryBlock.getUsedMemoryInBytes() >= memoryBlock.getTotalMemorySizeInBytes()) {
       synchronized (allowToCreateNewSeriesLock) {
         if (allowToCreateNewSeries

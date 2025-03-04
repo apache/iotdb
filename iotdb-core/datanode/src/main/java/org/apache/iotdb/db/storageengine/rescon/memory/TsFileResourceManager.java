@@ -71,7 +71,7 @@ public class TsFileResourceManager {
   public synchronized void registerSealedTsFileResource(TsFileResource tsFileResource) {
     if (!sealedTsFileResources.contains(tsFileResource)) {
       sealedTsFileResources.add(tsFileResource);
-      memoryBlock.forceAllocate(tsFileResource.calculateRamSize());
+      memoryBlock.forceAllocateWithoutLimitation(tsFileResource.calculateRamSize());
       chooseTsFileResourceToDegrade();
     }
   }

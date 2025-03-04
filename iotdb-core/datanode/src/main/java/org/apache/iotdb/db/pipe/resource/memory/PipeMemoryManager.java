@@ -311,7 +311,7 @@ public class PipeMemoryManager {
     for (int i = 1; i <= MEMORY_ALLOCATE_MAX_RETRIES; i++) {
       if (memoryBlock.getTotalMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
           >= sizeInBytes) {
-        memoryBlock.forceAllocate(sizeInBytes);
+        memoryBlock.forceAllocateWithoutLimitation(sizeInBytes);
         if (block instanceof PipeTabletMemoryBlock) {
           usedMemorySizeInBytesOfTablets += sizeInBytes;
         }
@@ -451,7 +451,7 @@ public class PipeMemoryManager {
 
     if (memoryBlock.getTotalMemorySizeInBytes() - memoryBlock.getUsedMemoryInBytes()
         >= memoryInBytesNeededToBeAllocated) {
-      memoryBlock.forceAllocate(memoryInBytesNeededToBeAllocated);
+      memoryBlock.forceAllocateWithoutLimitation(memoryInBytesNeededToBeAllocated);
       if (block instanceof PipeTabletMemoryBlock) {
         usedMemorySizeInBytesOfTablets += memoryInBytesNeededToBeAllocated;
       }
@@ -487,7 +487,7 @@ public class PipeMemoryManager {
     // It's good for performance and will not trigger concurrent issues.
     // If forceResize is called on it, we will add it to the allocated blocks.
     if (sizeInBytes > 0) {
-      memoryBlock.forceAllocate(sizeInBytes);
+      memoryBlock.forceAllocateWithoutLimitation(sizeInBytes);
       allocatedBlocks.add(returnedMemoryBlock);
     }
 

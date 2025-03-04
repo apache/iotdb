@@ -87,7 +87,8 @@ public class TimePartitionManager {
               .get(timePartitionId);
       if (timePartitionInfo != null) {
         timePartitionInfo.lastSystemFlushTime = systemFlushTime;
-        timePartitionInfoMemoryBlock.forceAllocate(memSize - timePartitionInfo.memSize);
+        timePartitionInfoMemoryBlock.forceAllocateWithoutLimitation(
+            memSize - timePartitionInfo.memSize);
         timePartitionInfo.memSize = memSize;
         timePartitionInfo.isActive = isActive;
         if (timePartitionInfoMemoryBlock.getUsedMemoryInBytes()

@@ -48,7 +48,7 @@ public abstract class IMemoryBlock implements AutoCloseable {
    * @param sizeInByte the size of memory to be allocated, should be positive
    * @return the number of bytes actually allocated
    */
-  public abstract long forceAllocate(final long sizeInByte);
+  public abstract long forceAllocateWithoutLimitation(final long sizeInByte);
 
   /**
    * Allocate memory managed by this memory block
