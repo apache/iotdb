@@ -70,7 +70,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       final PipeProcessorSubtaskExecutor executor,
       final PipeTaskMeta pipeTaskMeta,
       final boolean forceTabletFormat,
-      final boolean skipParseTsFile) {
+      final boolean skipParsing) {
     final PipeProcessorRuntimeConfiguration runtimeConfiguration =
         new PipeTaskRuntimeConfiguration(
             new PipeTaskProcessorRuntimeEnvironment(
@@ -107,7 +107,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
             creationTime,
             regionId,
             forceTabletFormat,
-            skipParseTsFile,
+            skipParsing,
             isUsedForConsensusPipe);
     this.pipeProcessorSubtask =
         new PipeProcessorSubtask(
