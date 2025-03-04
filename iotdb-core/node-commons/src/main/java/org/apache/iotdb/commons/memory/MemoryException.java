@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.commons.memory;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class MemoryException extends RuntimeException {
@@ -60,18 +55,6 @@ public class MemoryException extends RuntimeException {
   @Override
   public int hashCode() {
     return Objects.hash(getMessage(), getTimestamp());
-  }
-
-  public void serialize(final ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(VERSION, byteBuffer);
-    ReadWriteIOUtils.write(getMessage(), byteBuffer);
-    ReadWriteIOUtils.write(getTimestamp(), byteBuffer);
-  }
-
-  public void serialize(final OutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(VERSION, stream);
-    ReadWriteIOUtils.write(getMessage(), stream);
-    ReadWriteIOUtils.write(getTimestamp(), stream);
   }
 
   @Override

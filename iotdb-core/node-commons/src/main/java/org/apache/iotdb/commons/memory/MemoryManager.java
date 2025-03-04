@@ -44,19 +44,19 @@ public class MemoryManager {
   private final String name;
 
   /** Whether memory management is enabled */
-  private final boolean enable;
+  private final boolean enabled;
 
   /** The total allocate memory size in byte of memory manager */
   private final long totalAllocatedMemorySizeInBytes;
 
   /** The total memory size in byte of memory manager */
-  private long totalMemorySizeInBytes;
+  private volatile long totalMemorySizeInBytes;
 
   /** The static allocated memory size */
-  private long staticAllocatedMemorySizeInBytes = 0L;
+  private volatile long staticAllocatedMemorySizeInBytes = 0L;
 
   /** The allocated memory size */
-  private long allocatedMemorySizeInBytes = 0L;
+  private volatile long allocatedMemorySizeInBytes = 0L;
 
   /** The parent memory manager */
   private final MemoryManager parentMemoryManager;
@@ -73,7 +73,7 @@ public class MemoryManager {
     this.parentMemoryManager = null;
     this.totalAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
-    this.enable = false;
+    this.enabled = false;
   }
 
   MemoryManager(String name, MemoryManager parentMemoryManager, long totalMemorySizeInBytes) {
@@ -81,22 +81,25 @@ public class MemoryManager {
     this.parentMemoryManager = parentMemoryManager;
     this.totalAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
-    this.enable = false;
+    this.enabled = false;
   }
 
   private MemoryManager(
-      String name, MemoryManager parentMemoryManager, long totalMemorySizeInBytes, boolean enable) {
+      String name,
+      MemoryManager parentMemoryManager,
+      long totalMemorySizeInBytes,
+      boolean enabled) {
     this.name = name;
     this.parentMemoryManager = parentMemoryManager;
     this.totalAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
-    this.enable = enable;
+    this.enabled = enabled;
   }
 
   // region The Methods Of IMemoryBlock Management
 
   /**
-   * Try to force allocate memory block with specified size in bytes
+   * Force allocate memory block with specified size in bytes
    *
    * @param name the name of memory block
    * @param sizeInBytes the size in bytes of memory block try to allocate
@@ -105,7 +108,7 @@ public class MemoryManager {
    */
   public synchronized IMemoryBlock forceAllocate(
       String name, long sizeInBytes, MemoryBlockType type) {
-    if (!enable) {
+    if (!enabled) {
       return registerMemoryBlock(name, sizeInBytes, type);
     }
     for (int i = 0; i < MEMORY_ALLOCATE_MAX_RETRIES; i++) {
@@ -158,7 +161,7 @@ public class MemoryManager {
     if (maxRatio < 0.0f || maxRatio > 1.0f) {
       return null;
     }
-    if (!enable) {
+    if (!enabled) {
       return registerMemoryBlock(name, sizeInBytes, memoryBlockType);
     }
     if (totalMemorySizeInBytes - allocatedMemorySizeInBytes >= sizeInBytes
@@ -193,7 +196,7 @@ public class MemoryManager {
       long sizeInBytes,
       LongUnaryOperator customAllocateStrategy,
       MemoryBlockType type) {
-    if (!enable) {
+    if (!enabled) {
       return registerMemoryBlock(name, sizeInBytes, type);
     }
 
@@ -306,15 +309,15 @@ public class MemoryManager {
    *
    * @param name the name of memory manager
    * @param sizeInBytes the total memory size in bytes of memory manager
-   * @param enable whether memory management is enabled
+   * @param enabled whether memory management is enabled
    * @return the memory manager
    */
   public synchronized MemoryManager getOrCreateMemoryManager(
-      String name, long sizeInBytes, boolean enable) {
+      String name, long sizeInBytes, boolean enabled) {
     if (sizeInBytes <= 0) {
       LOGGER.warn("getOrCreateMemoryManager {}: sizeInBytes should be positive", name);
     }
-    if (this.enable
+    if (this.enabled
         && sizeInBytes + this.allocatedMemorySizeInBytes > this.totalMemorySizeInBytes) {
       LOGGER.warn(
           "getOrCreateMemoryManager failed: total memory size {} bytes is less than allocated memory size {} bytes",
@@ -327,14 +330,14 @@ public class MemoryManager {
         (managerName, manager) -> {
           if (manager != null) {
             LOGGER.warn(
-                "getOrCreateMemoryManager failed: memory manager {} already exists, it's size is {}, enable is {}",
+                "getOrCreateMemoryManager failed: memory manager {} already exists, it's size is {}, enabled is {}",
                 managerName,
                 manager.getTotalMemorySizeInBytes(),
                 manager.isEnable());
             return manager;
           } else {
             allocatedMemorySizeInBytes += sizeInBytes;
-            return new MemoryManager(name, this, sizeInBytes, enable);
+            return new MemoryManager(name, this, sizeInBytes, enabled);
           }
         });
   }
@@ -447,7 +450,7 @@ public class MemoryManager {
   }
 
   public boolean isEnable() {
-    return enable;
+    return enabled;
   }
 
   /** Get total memory size in bytes of memory manager */
@@ -609,8 +612,8 @@ public class MemoryManager {
     return "MemoryManager{"
         + "name="
         + name
-        + ", enable="
-        + enable
+        + ", enabled="
+        + enabled
         + ", totalMemorySizeInBytes="
         + totalMemorySizeInBytes
         + ", allocatedMemorySizeInBytes="
@@ -622,18 +625,18 @@ public class MemoryManager {
     print(0);
   }
 
-  private void print(int index) {
+  private void print(int indent) {
     StringBuilder sb = new StringBuilder();
-    for (int i = 0; i < index; i++) {
+    for (int i = 0; i < indent; i++) {
       sb.append("  ");
     }
     sb.append(this);
     LOGGER.info(sb.toString());
     for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
-      block.print(index + 2);
+      block.print(indent + 2);
     }
     for (MemoryManager child : children.values()) {
-      child.print(index + 1);
+      child.print(indent + 1);
     }
   }
 }
