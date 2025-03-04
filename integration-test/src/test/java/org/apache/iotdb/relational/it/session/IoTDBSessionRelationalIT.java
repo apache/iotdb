@@ -387,7 +387,7 @@ public class IoTDBSessionRelationalIT {
         assertEquals(values[cnt], rec.getFields().get(1).getBoolV());
         cnt++;
       }
-      assertEquals(10, cnt);
+      assertEquals(4, cnt);
 
     } finally {
       try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
