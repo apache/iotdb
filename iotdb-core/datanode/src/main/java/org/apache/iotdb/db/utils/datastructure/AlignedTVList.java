@@ -228,7 +228,9 @@ public abstract class AlignedTVList extends TVList {
           break;
       }
     }
-    indices.get(arrayIndex)[elementIndex] = rowCount;
+    if (indices != null) {
+      indices.get(arrayIndex)[elementIndex] = rowCount;
+    }
     rowCount++;
     if (sorted) {
       if (rowCount > 1 && timestamp < getTime(rowCount - 2)) {
@@ -261,9 +263,8 @@ public abstract class AlignedTVList extends TVList {
     if (index >= rowCount) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
-    int arrayIndex = index / ARRAY_SIZE;
-    int elementIndex = index % ARRAY_SIZE;
-    int valueIndex = indices.get(arrayIndex)[elementIndex];
+    int valueIndex =
+        (indices != null) ? indices.get(index / ARRAY_SIZE)[index % ARRAY_SIZE] : index;
     return getAlignedValueByValueIndex(valueIndex, null, floatPrecision, encodingList);
   }
 
@@ -692,7 +693,9 @@ public abstract class AlignedTVList extends TVList {
 
   @Override
   protected void expandValues() {
-    indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
+    if (indices != null) {
+      indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
+    }
     for (int i = 0; i < dataTypes.size(); i++) {
       values.get(i).add(getPrimitiveArraysByType(dataTypes.get(i)));
       if (bitMaps != null && bitMaps.get(i) != null) {
@@ -750,14 +753,6 @@ public abstract class AlignedTVList extends TVList {
         time, (TsPrimitiveType) getAlignedValueForQuery(index, floatPrecision, encodingList));
   }
 
-  @Override
-  protected void releaseLastValueArray() {
-    PrimitiveArrayManager.release(indices.remove(indices.size() - 1));
-    for (List<Object> valueList : values) {
-      PrimitiveArrayManager.release(valueList.remove(valueList.size() - 1));
-    }
-  }
-
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public synchronized void putAlignedValues(
@@ -777,7 +772,9 @@ public abstract class AlignedTVList extends TVList {
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, inputRemaining);
         arrayCopy(value, idx, arrayIdx, elementIdx, inputRemaining);
         for (int i = 0; i < inputRemaining; i++) {
-          indices.get(arrayIdx)[elementIdx + i] = rowCount;
+          if (indices != null) {
+            indices.get(arrayIdx)[elementIdx + i] = rowCount;
+          }
           for (int j = 0; j < values.size(); j++) {
             if (value[j] == null
                 || bitMaps != null && bitMaps[j] != null && bitMaps[j].isMarked(idx + i)
@@ -796,7 +793,9 @@ public abstract class AlignedTVList extends TVList {
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, internalRemaining);
         arrayCopy(value, idx, arrayIdx, elementIdx, internalRemaining);
         for (int i = 0; i < internalRemaining; i++) {
-          indices.get(arrayIdx)[elementIdx + i] = rowCount;
+          if (indices != null) {
+            indices.get(arrayIdx)[elementIdx + i] = rowCount;
+          }
           for (int j = 0; j < values.size(); j++) {
             if (value[j] == null
                 || bitMaps != null && bitMaps[j] != null && bitMaps[j].isMarked(idx + i)
@@ -895,7 +894,7 @@ public abstract class AlignedTVList extends TVList {
 
   @Override
   public long calculateRamSize() {
-    return timestamps.size() * alignedTvListArrayMemCost(dataTypes);
+    return timestamps.size() * alignedTvListArrayMemCost();
   }
 
   /**
@@ -925,8 +924,6 @@ public abstract class AlignedTVList extends TVList {
     }
     // time array mem size
     size += PrimitiveArrayManager.ARRAY_SIZE * 8L;
-    // index array mem size
-    size += PrimitiveArrayManager.ARRAY_SIZE * 4L;
     // array headers mem size
     size += (long) NUM_BYTES_ARRAY_HEADER * (2 + measurementColumnNum);
     // Object references size in ArrayList
@@ -937,13 +934,12 @@ public abstract class AlignedTVList extends TVList {
   /**
    * Get the single alignedTVList array mem cost by give types.
    *
-   * @param types the types in the vector
    * @return AlignedTvListArrayMemSize
    */
-  public static long alignedTvListArrayMemCost(List<TSDataType> types) {
+  public long alignedTvListArrayMemCost() {
     long size = 0;
     // value & bitmap array mem size
-    for (TSDataType type : types) {
+    for (TSDataType type : dataTypes) {
       if (type != null) {
         size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
         size += (long) PrimitiveArrayManager.ARRAY_SIZE / 8 + 1;
@@ -956,11 +952,11 @@ public abstract class AlignedTVList extends TVList {
     // time array mem size
     size += PrimitiveArrayManager.ARRAY_SIZE * 8L;
     // index array mem size
-    size += PrimitiveArrayManager.ARRAY_SIZE * 4L;
+    size += (indices != null) ? PrimitiveArrayManager.ARRAY_SIZE * 4L : 0;
     // array headers mem size
-    size += (long) NUM_BYTES_ARRAY_HEADER * (2 + types.size());
+    size += (long) NUM_BYTES_ARRAY_HEADER * (2 + dataTypes.size());
     // Object references size in ArrayList
-    size += (long) NUM_BYTES_OBJECT_REF * (2 + types.size());
+    size += (long) NUM_BYTES_OBJECT_REF * (2 + dataTypes.size());
     return size;
   }
 

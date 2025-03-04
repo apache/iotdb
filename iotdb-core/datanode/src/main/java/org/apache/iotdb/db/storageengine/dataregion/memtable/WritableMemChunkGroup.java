@@ -146,11 +146,11 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public long getMeasurementSize(String measurement) {
+  public IWritableMemChunk getWritableMemChunk(String measurement) {
     if (!memChunkMap.containsKey(measurement)) {
-      return 0;
+      return null;
     }
-    return memChunkMap.get(measurement).rowCount();
+    return memChunkMap.get(measurement);
   }
 
   @Override
