@@ -32,6 +32,9 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.controller.CachedChunkLoaderImpl;
+import org.apache.tsfile.read.controller.MetadataQuerierByFileImpl;
+import org.apache.tsfile.read.query.executor.TableQueryExecutor;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.io.File;
