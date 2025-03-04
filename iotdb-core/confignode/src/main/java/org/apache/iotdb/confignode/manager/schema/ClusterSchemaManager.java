@@ -480,59 +480,62 @@ public class ClusterSchemaManager {
         continue;
       }
 
+      // Adjust maxSchemaRegionGroupNum for each Database.
+      // All Databases share the DataNodes equally.
+      // The allocated SchemaRegionGroups will not be shrunk.
+      final int allocatedSchemaRegionGroupCount;
       try {
-        // Adjust maxSchemaRegionGroupNum for each Database.
-        // All Databases share the DataNodes equally.
-        // The allocated SchemaRegionGroups will not be shrunk.
-        int allocatedSchemaRegionGroupCount;
-        try {
-          allocatedSchemaRegionGroupCount =
-              getPartitionManager()
-                  .getRegionGroupCount(databaseSchema.getName(), TConsensusGroupType.SchemaRegion);
-        } catch (DatabaseNotExistsException e) {
-          // ignore the pre deleted database
-          continue;
-        }
+        allocatedSchemaRegionGroupCount =
+            getPartitionManager()
+                .getRegionGroupCount(databaseSchema.getName(), TConsensusGroupType.SchemaRegion);
+      } catch (final DatabaseNotExistsException e) {
+        // ignore the pre deleted database
+        continue;
+      }
 
-        int maxSchemaRegionGroupNum =
-            calcMaxRegionGroupNum(
-                databaseSchema.getMinSchemaRegionGroupNum(),
-                SCHEMA_REGION_PER_DATA_NODE,
-                dataNodeNum,
-                databaseNum,
-                databaseSchema.getSchemaReplicationFactor(),
-                allocatedSchemaRegionGroupCount);
-        LOGGER.info(
-            "[AdjustRegionGroupNum] The maximum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
-            databaseSchema.getName(),
-            maxSchemaRegionGroupNum);
+      final int maxSchemaRegionGroupNum =
+          calcMaxRegionGroupNum(
+              databaseSchema.getMinSchemaRegionGroupNum(),
+              SCHEMA_REGION_PER_DATA_NODE,
+              dataNodeNum,
+              databaseNum,
+              databaseSchema.getSchemaReplicationFactor(),
+              allocatedSchemaRegionGroupCount);
+      LOGGER.info(
+          "[AdjustRegionGroupNum] The maximum number of SchemaRegionGroups for Database: {} is adjusted to: {}",
+          databaseSchema.getName(),
+          maxSchemaRegionGroupNum);
 
-        // Adjust maxDataRegionGroupNum for each Database.
-        // All Databases share the DataNodes equally.
-        // The allocated DataRegionGroups will not be shrunk.
-        int allocatedDataRegionGroupCount =
+      // Adjust maxDataRegionGroupNum for each Database.
+      // All Databases share the DataNodes equally.
+      // The allocated DataRegionGroups will not be shrunk.
+      final int allocatedDataRegionGroupCount;
+      try {
+        allocatedDataRegionGroupCount =
             getPartitionManager()
                 .getRegionGroupCount(databaseSchema.getName(), TConsensusGroupType.DataRegion);
-        int maxDataRegionGroupNum =
-            calcMaxRegionGroupNum(
-                databaseSchema.getMinDataRegionGroupNum(),
-                DATA_REGION_PER_DATA_NODE == 0
-                    ? CONF.getDataRegionPerDataNodeProportion()
-                    : DATA_REGION_PER_DATA_NODE,
-                DATA_REGION_PER_DATA_NODE == 0 ? totalCpuCoreNum : dataNodeNum,
-                databaseNum,
-                databaseSchema.getDataReplicationFactor(),
-                allocatedDataRegionGroupCount);
-        LOGGER.info(
-            "[AdjustRegionGroupNum] The maximum number of DataRegionGroups for Database: {} is adjusted to: {}",
-            databaseSchema.getName(),
-            maxDataRegionGroupNum);
-
-        adjustMaxRegionGroupNumPlan.putEntry(
-            databaseSchema.getName(), new Pair<>(maxSchemaRegionGroupNum, maxDataRegionGroupNum));
-      } catch (DatabaseNotExistsException e) {
-        LOGGER.warn("Adjust maxRegionGroupNum failed because Database doesn't exist", e);
+      } catch (final DatabaseNotExistsException e) {
+        // ignore the pre deleted database
+        continue;
       }
+
+      final int maxDataRegionGroupNum =
+          calcMaxRegionGroupNum(
+              databaseSchema.getMinDataRegionGroupNum(),
+              DATA_REGION_PER_DATA_NODE == 0
+                  ? CONF.getDataRegionPerDataNodeProportion()
+                  : DATA_REGION_PER_DATA_NODE,
+              DATA_REGION_PER_DATA_NODE == 0 ? totalCpuCoreNum : dataNodeNum,
+              databaseNum,
+              databaseSchema.getDataReplicationFactor(),
+              allocatedDataRegionGroupCount);
+      LOGGER.info(
+          "[AdjustRegionGroupNum] The maximum number of DataRegionGroups for Database: {} is adjusted to: {}",
+          databaseSchema.getName(),
+          maxDataRegionGroupNum);
+
+      adjustMaxRegionGroupNumPlan.putEntry(
+          databaseSchema.getName(), new Pair<>(maxSchemaRegionGroupNum, maxDataRegionGroupNum));
     }
     try {
       getConsensusManager().write(adjustMaxRegionGroupNumPlan);
