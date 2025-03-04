@@ -677,8 +677,9 @@ public abstract class AlignedTVList extends TVList {
         int originRowIndex = getValueIndex(i);
         int arrayIndex = originRowIndex / ARRAY_SIZE;
         int elementIndex = originRowIndex % ARRAY_SIZE;
-        markNullValue(columnIndex, arrayIndex, elementIndex);
-        deletedNumber++;
+        if (markNullValue(columnIndex, arrayIndex, elementIndex)) {
+          deletedNumber++;
+        }
       } else {
         deleteColumn = false;
       }
@@ -692,23 +693,6 @@ public abstract class AlignedTVList extends TVList {
     }
     dataTypes.remove(columnIndex);
     values.remove(columnIndex);
-
-    if (bitMaps == null) {
-      bitMaps = new ArrayList<>(dataTypes.size());
-      for (int j = 0; j < dataTypes.size(); j++) {
-        bitMaps.add(null);
-      }
-    }
-    if (bitMaps.get(columnIndex) == null) {
-      List<BitMap> columnBitMaps = new ArrayList<>();
-      for (int i = 0; i < values.get(columnIndex).size(); i++) {
-        columnBitMaps.add(new BitMap(ARRAY_SIZE));
-      }
-      bitMaps.set(columnIndex, columnBitMaps);
-    }
-    for (int i = 0; i < bitMaps.get(columnIndex).size(); i++) {
-      bitMaps.get(columnIndex).get(i).markAll();
-    }
   }
 
   protected Object cloneValue(TSDataType type, Object value) {
@@ -947,7 +931,7 @@ public abstract class AlignedTVList extends TVList {
     }
   }
 
-  private void markNullValue(int columnIndex, int arrayIndex, int elementIndex) {
+  private boolean markNullValue(int columnIndex, int arrayIndex, int elementIndex) {
     // init BitMaps if doesn't have
     if (bitMaps == null) {
       bitMaps = new ArrayList<>(dataTypes.size());
@@ -971,7 +955,12 @@ public abstract class AlignedTVList extends TVList {
     }
 
     // mark the null value in the current bitmap
-    bitMaps.get(columnIndex).get(arrayIndex).mark(elementIndex);
+    if (bitMaps.get(columnIndex).get(arrayIndex).isMarked(elementIndex)) {
+      return false;
+    } else {
+      bitMaps.get(columnIndex).get(arrayIndex).mark(elementIndex);
+      return true;
+    }
   }
 
   @Override

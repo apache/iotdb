@@ -522,9 +522,10 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     for (AlignedTVList alignedTvList : sortedList) {
       alignedTvList.deleteColumn(columnIndex);
     }
-    IMeasurementSchema schemaToBeRemoved = schemaList.remove(columnIndex);
-    dataTypes.remove(columnIndex);
-    measurementIndexMap.remove(schemaToBeRemoved.getMeasurementName());
+    // notice: the mem chunk and TVList shares data type list,
+    // and list.deleteColumn will modify it. Therefore, do not modify it here again.
+    schemaList.remove(columnIndex);
+    measurementIndexMap.remove(measurementId);
     if (columnIndex != measurementIndexMap.size()) {
       Map<String, Integer> newIndexMap = new HashMap<>();
       measurementIndexMap.forEach(
