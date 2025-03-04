@@ -102,13 +102,7 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
                         entry ->
                             (Objects.isNull(tablePattern)
                                     || tablePattern.matchesTable(entry.getKey()))
-                                && Coordinator.getInstance()
-                                    .getAccessControl()
-                                    .checkCanSelectFromTable4Pipe(
-                                        userName,
-                                        new QualifiedObjectName(
-                                            sourceEvent.getTableModelDatabaseName(),
-                                            entry.getKey())),
+                                && hasTablePrivilege(entry.getKey()),
                         allocatedMemoryBlockForTablet,
                         allocatedMemoryBlockForBatchData,
                         allocatedMemoryBlockForChunk,
@@ -126,6 +120,18 @@ public class TsFileInsertionEventTableParser extends TsFileInsertionEventParser 
               close();
               throw new PipeException("Error while parsing tsfile insertion event", e);
             }
+          }
+
+          private boolean hasTablePrivilege(final String tableName) {
+            return Objects.isNull(userName)
+                || Objects.isNull(sourceEvent)
+                || Objects.isNull(sourceEvent.getTableModelDatabaseName())
+                || Coordinator.getInstance()
+                    .getAccessControl()
+                    .checkCanSelectFromTable4Pipe(
+                        userName,
+                        new QualifiedObjectName(
+                            sourceEvent.getTableModelDatabaseName(), tableName));
           }
 
           @Override
