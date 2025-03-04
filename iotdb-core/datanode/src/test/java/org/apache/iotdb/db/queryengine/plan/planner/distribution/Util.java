@@ -417,6 +417,11 @@ public class Util {
       }
 
       @Override
+      public TRegionReplicaSet getRegionReplicaSet(TConsensusGroupId id) {
+        return null;
+      }
+
+      @Override
       public void invalidAllCache() {}
     };
   }
