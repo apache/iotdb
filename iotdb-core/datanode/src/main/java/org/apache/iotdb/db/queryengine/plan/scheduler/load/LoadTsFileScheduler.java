@@ -472,9 +472,6 @@ public class LoadTsFileScheduler implements IScheduler {
                   convertedDeviceToIndex, timeIndex.getStartTimes(), timeIndex.getEndTimes()));
     }
 
-    // if load locally, we need to clean tsfileResource's isGeneratedByPipe mark.
-    node.getTsFileResource().setGeneratedByPipe(false);
-
     try {
       FragmentInstance instance =
           new FragmentInstance(
