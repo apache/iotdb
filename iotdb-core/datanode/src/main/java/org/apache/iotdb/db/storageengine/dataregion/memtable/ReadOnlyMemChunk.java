@@ -145,13 +145,13 @@ public class ReadOnlyMemChunk {
   public void initChunkMetaFromTvLists() {
     // create chunk statistics
     Statistics<? extends Serializable> chunkStatistics = Statistics.getStatsByType(dataType);
-    int cnt = 0;
+    int pointsInChunk = 0;
     int[] deleteCursor = {0};
     List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
     timeValuePairIterator = new MergeSortTVListIterator(tvLists, floatPrecision, encoding);
     int[] tvListOffsets = timeValuePairIterator.getTVListOffsets();
     while (timeValuePairIterator.hasNextTimeValuePair()) {
-      if (cnt % MAX_NUMBER_OF_POINTS_IN_PAGE == 0) {
+      if (pointsInChunk % MAX_NUMBER_OF_POINTS_IN_PAGE == 0) {
         Statistics<? extends Serializable> stats = Statistics.getStatsByType(dataType);
         pageStatisticsList.add(stats);
         pageOffsetsList.add(Arrays.copyOf(tvListOffsets, tvListOffsets.length));
@@ -194,7 +194,7 @@ public class ReadOnlyMemChunk {
                 String.format("Data type %s is not supported.", dataType));
         }
       }
-      cnt++;
+      pointsInChunk++;
     }
     pageOffsetsList.add(Arrays.copyOf(tvListOffsets, tvListOffsets.length));
 
