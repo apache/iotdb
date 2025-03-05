@@ -160,7 +160,7 @@ public class MemAlignedChunkReader implements IChunkReader {
 
         TimeValuePair tvPair = timeValuePairIterator.nextTimeValuePair();
         TsPrimitiveType[] values = tvPair.getValue().getVector();
-        
+
         BitMap bitMap = new BitMap(tsDataTypes.size());
         for (int columnIndex = 0; columnIndex < tsDataTypes.size(); columnIndex++) {
           if (values[columnIndex] == null) {

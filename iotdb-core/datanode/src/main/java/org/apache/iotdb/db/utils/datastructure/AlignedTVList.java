@@ -1509,7 +1509,7 @@ public abstract class AlignedTVList extends TVList {
       iterator.allValueColDeletedMap = allValueColDeletedMap;
       iterator.floatPrecision = floatPrecision;
       iterator.encodingList = this.encodingList;
-      iterator.selectedIndex = new int[encodingList.size()];
+      iterator.selectedIndex = new int[dataTypeList.size()];
       iterator.reset();
       return iterator;
     }
