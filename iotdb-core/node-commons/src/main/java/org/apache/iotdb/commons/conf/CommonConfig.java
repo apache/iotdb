@@ -374,11 +374,6 @@ public class CommonConfig {
 
   private volatile Pattern trustedUriPattern = Pattern.compile("file:.*");
 
-  // memory management
-  private boolean enableMemoryTransfer = false;
-
-  private long memoryCheckIntervalInS = 20;
-
   CommonConfig() {
     // Empty constructor
   }
@@ -1713,21 +1708,5 @@ public class CommonConfig {
 
   public void setTrustedUriPattern(Pattern trustedUriPattern) {
     this.trustedUriPattern = trustedUriPattern;
-  }
-
-  public long getMemoryCheckIntervalInS() {
-    return memoryCheckIntervalInS;
-  }
-
-  public void setMemoryCheckIntervalInS(long memoryCheckIntervalInS) {
-    this.memoryCheckIntervalInS = memoryCheckIntervalInS;
-  }
-
-  public boolean isEnableMemoryTransfer() {
-    return enableMemoryTransfer;
-  }
-
-  public void setEnableMemoryTransfer(boolean enableMemoryTransfer) {
-    this.enableMemoryTransfer = enableMemoryTransfer;
   }
 }

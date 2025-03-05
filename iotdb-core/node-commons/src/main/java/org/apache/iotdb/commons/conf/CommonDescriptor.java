@@ -254,15 +254,6 @@ public class CommonDescriptor {
 
     loadRetryProperties(properties);
     loadBinaryAllocatorProps(properties);
-
-    config.setEnableMemoryTransfer(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_memory_transfer", Boolean.toString(config.isEnableMemoryTransfer()))));
-    config.setMemoryCheckIntervalInS(
-        Integer.parseInt(
-            properties.getProperty(
-                "memory_check_interval", String.valueOf(config.getMemoryCheckIntervalInS()))));
   }
 
   private void loadPipeProps(TrimProperties properties) {
