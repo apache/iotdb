@@ -36,6 +36,7 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.Assert.fail;
@@ -80,7 +81,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
   @Test
   public void testPermission() {
-    if (!TestUtils.tryExecuteNonQueryWithRetry(receiverEnv, "create user `thulab` 'passwd'")) {
+    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "create user `thulab` 'passwd'")) {
       return;
     }
 
@@ -128,6 +129,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
           String.format(
               "create pipe a2b"
                   + " with source ("
+                  + "'inclusion'='all',"
                   + "'capture.tree'='true',"
                   + "'capture.table'='true')"
                   + " with sink ("
@@ -168,7 +170,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
     // Grant some privilege
     if (!TestUtils.tryExecuteNonQueryWithRetry(
-        "test", BaseEnv.TABLE_SQL_DIALECT, senderEnv, "grant INSERT on any to user `thulab`")) {
+        "test", BaseEnv.TABLE_SQL_DIALECT, senderEnv, "grant INSERT on any to user thulab")) {
       return;
     }
 
@@ -196,16 +198,21 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
       return;
     }
 
+    TableModelUtils.createDataBaseAndTable(receiverEnv, "test", "test");
+
     // Exception, block here
-    TableModelUtils.assertCountDataAlwaysOnEnv("test1", "test1", 0, receiverEnv);
+    TableModelUtils.assertCountDataAlwaysOnEnv("test", "test", 0, receiverEnv);
 
     // Grant SELECT privilege
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
-        "test", BaseEnv.TABLE_SQL_DIALECT, senderEnv, "grant SELECT on any to user `thulab`")) {
+    if (!TestUtils.tryExecuteNonQueriesWithRetry(
+        "test",
+        BaseEnv.TABLE_SQL_DIALECT,
+        senderEnv,
+        Arrays.asList("grant SELECT on any to user thulab", "start pipe a2b"))) {
       return;
     }
 
     // Will finally pass
-    TableModelUtils.assertCountData("test1", "test1", 100, receiverEnv);
+    TableModelUtils.assertCountData("test", "test", 100, receiverEnv);
   }
 }
