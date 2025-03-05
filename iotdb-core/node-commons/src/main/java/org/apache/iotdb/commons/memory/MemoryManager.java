@@ -46,9 +46,6 @@ public class MemoryManager {
   /** Whether memory management is enabled */
   private final boolean enabled;
 
-  /** The total allocate memory size in byte of memory manager */
-  private final long initiallyAllocatedMemorySizeInBytes;
-
   /** The total memory size in byte of memory manager */
   private volatile long totalMemorySizeInBytes;
 
@@ -68,7 +65,6 @@ public class MemoryManager {
   public MemoryManager(long totalMemorySizeInBytes) {
     this.name = "Test";
     this.parentMemoryManager = null;
-    this.initiallyAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
     this.enabled = false;
   }
@@ -76,7 +72,6 @@ public class MemoryManager {
   MemoryManager(String name, MemoryManager parentMemoryManager, long totalMemorySizeInBytes) {
     this.name = name;
     this.parentMemoryManager = parentMemoryManager;
-    this.initiallyAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
     this.enabled = false;
   }
@@ -88,7 +83,6 @@ public class MemoryManager {
       boolean enabled) {
     this.name = name;
     this.parentMemoryManager = parentMemoryManager;
-    this.initiallyAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
     this.enabled = enabled;
   }
