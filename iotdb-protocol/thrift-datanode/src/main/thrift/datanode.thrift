@@ -385,6 +385,7 @@ struct TLoadCommandReq {
     2: required string uuid
     3: optional bool isGeneratedByPipe
     4: optional binary progressIndex
+    5: optional i32 regionId
 }
 
 struct TAttributeUpdateReq {

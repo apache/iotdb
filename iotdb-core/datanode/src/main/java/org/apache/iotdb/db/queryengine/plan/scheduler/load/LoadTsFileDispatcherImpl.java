@@ -56,8 +56,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -220,21 +221,23 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
 
   public Future<FragInstanceDispatchResult> dispatchCommand(
       TLoadCommandReq loadCommandReq, Set<TRegionReplicaSet> replicaSets) {
-    Set<TEndPoint> allEndPoint = new HashSet<>();
+    Map<TRegionReplicaSet, TEndPoint> replicaSetEndPointMap = new HashMap<>();
     for (TRegionReplicaSet replicaSet : replicaSets) {
       for (TDataNodeLocation dataNodeLocation : replicaSet.getDataNodeLocations()) {
-        allEndPoint.add(dataNodeLocation.getInternalEndPoint());
+        replicaSetEndPointMap.put(replicaSet, dataNodeLocation.getInternalEndPoint());
       }
     }
 
-    for (TEndPoint endPoint : allEndPoint) {
-      try (SetThreadName threadName =
+    for (final Map.Entry<TRegionReplicaSet, TEndPoint> replicaSetEndPointEntry :
+        replicaSetEndPointMap.entrySet()) {
+      try (final SetThreadName threadName =
           new SetThreadName(
               LoadTsFileScheduler.class.getName() + "-" + loadCommandReq.commandType)) {
-        if (isDispatchedToLocal(endPoint)) {
+        loadCommandReq.setRegionId(replicaSetEndPointEntry.getKey().getRegionId().getId());
+        if (isDispatchedToLocal(replicaSetEndPointEntry.getValue())) {
           dispatchLocally(loadCommandReq);
         } else {
-          dispatchRemote(loadCommandReq, endPoint);
+          dispatchRemote(loadCommandReq, replicaSetEndPointEntry.getValue());
         }
       } catch (FragmentInstanceDispatchException e) {
         return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
