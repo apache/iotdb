@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.writeback;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -322,6 +323,14 @@ public class WriteBackConnector implements PipeConnector {
               LocalExecutionPlanner.getInstance().metadata,
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
           .status;
+    } catch (final AccessDeniedException e) {
+      if (!skipIfNoPrivileges) {
+        throw e;
+      }
+      LOGGER.debug(
+          "Execute statement {} to database {}, skip because no permission.",
+          statement.getClass().getSimpleName(),
+          dataBaseName);
     } catch (final Exception e) {
       ALREADY_CREATED_DATABASES.remove(dataBaseName);
 

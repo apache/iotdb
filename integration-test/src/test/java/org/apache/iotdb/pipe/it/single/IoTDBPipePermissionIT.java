@@ -57,7 +57,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "create pipe a2b ('user'='thulab', 'password'='passwd', 'sink'='write-back-sink')");
+          "create pipe a2b ('user'='thulab', 'password'='hack', 'sink'='write-back-sink')");
       fail("Shall fail if password is wrong.");
     } catch (final SQLException ignore) {
       // Expected
@@ -94,8 +94,16 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
       fail("Alter pipe shall not fail if user and password are specified");
     }
 
+    TableModelUtils.createDataBaseAndTable(env, "test", "test1");
+    TableModelUtils.createDataBaseAndTable(env, "test", "test");
+
     // Write some data
-    if (!TableModelUtils.insertData("test1", "test1", 0, 100, env)) {
+    if (!TableModelUtils.insertData("test1", "test", 0, 100, env)) {
+      return;
+    }
+
+    // Filter this
+    if (!TestUtils.tryExecuteNonQueryWithRetry("test", BaseEnv.TABLE_SQL_DIALECT, env, "flush")) {
       return;
     }
 
@@ -110,7 +118,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
       fail(e.getMessage());
     }
 
-    if (!TableModelUtils.insertData("test1", "test1", 100, 200, env)) {
+    if (!TableModelUtils.insertData("test1", "test", 100, 200, env)) {
       return;
     }
 
