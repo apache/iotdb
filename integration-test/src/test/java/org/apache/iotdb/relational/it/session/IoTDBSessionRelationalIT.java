@@ -641,6 +641,7 @@ public class IoTDBSessionRelationalIT {
       }
       try {
         session.insert(tablet);
+        fail("Insert should fail");
       } catch (StatementExecutionException e) {
         assertEquals("507: No Field column present, please check the request", e.getMessage());
       }
