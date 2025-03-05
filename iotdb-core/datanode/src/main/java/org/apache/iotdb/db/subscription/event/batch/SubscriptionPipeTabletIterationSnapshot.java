@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.event.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 
@@ -30,7 +31,7 @@ import java.util.List;
 public class SubscriptionPipeTabletIterationSnapshot {
 
   private final List<EnrichedEvent> iteratedEnrichedEvents = new ArrayList<>();
-  private final List<EnrichedEvent> parsedEnrichedEvents = new ArrayList<>();
+  private final List<PipeRawTabletInsertionEvent> parsedEnrichedEvents = new ArrayList<>();
 
   public List<EnrichedEvent> getIteratedEnrichedEvents() {
     return Collections.unmodifiableList(iteratedEnrichedEvents);
@@ -40,39 +41,48 @@ public class SubscriptionPipeTabletIterationSnapshot {
     iteratedEnrichedEvents.add(enrichedEvent);
   }
 
-  public void addParsedEnrichedEvent(final EnrichedEvent enrichedEvent) {
+  public void addParsedEnrichedEvent(final PipeRawTabletInsertionEvent enrichedEvent) {
     parsedEnrichedEvents.add(enrichedEvent);
   }
 
   public void ack() {
+    closeIteratedEnrichedEvents();
+    decreaseReferenceCountOfParsedEnrichedEvents();
+  }
+
+  public void cleanUp() {
+    closeIteratedEnrichedEvents();
+    clearReferenceCountOfParsedEnrichedEvents();
+  }
+
+  private void closeIteratedEnrichedEvents() {
+    // TODO: unify close interface
     for (final EnrichedEvent enrichedEvent : iteratedEnrichedEvents) {
+      // close data container in tsfile event
       if (enrichedEvent instanceof PipeTsFileInsertionEvent) {
-        // close data container in tsfile event
         ((PipeTsFileInsertionEvent) enrichedEvent).close();
       }
-    }
-
-    for (final EnrichedEvent enrichedEvent : parsedEnrichedEvents) {
+      // close memory block in tablet event
+      if (enrichedEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+        ((PipeInsertNodeTabletInsertionEvent) enrichedEvent).close();
+      }
       if (enrichedEvent instanceof PipeRawTabletInsertionEvent) {
-        // decrease reference count in raw tablet event
-        enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
+        ((PipeRawTabletInsertionEvent) enrichedEvent).close();
       }
     }
   }
 
-  public void cleanUp() {
-    for (final EnrichedEvent enrichedEvent : iteratedEnrichedEvents) {
-      if (enrichedEvent instanceof PipeTsFileInsertionEvent) {
-        // close data container in tsfile event
-        ((PipeTsFileInsertionEvent) enrichedEvent).close();
-      }
+  private void decreaseReferenceCountOfParsedEnrichedEvents() {
+    for (final PipeRawTabletInsertionEvent event : parsedEnrichedEvents) {
+      // decrease reference count in raw tablet event
+      event.decreaseReferenceCount(this.getClass().getName(), true);
     }
+  }
 
-    for (final EnrichedEvent enrichedEvent : parsedEnrichedEvents) {
-      if (enrichedEvent instanceof PipeRawTabletInsertionEvent) {
-        // clear reference count in raw tablet event
-        enrichedEvent.clearReferenceCount(this.getClass().getName());
-      }
+  private void clearReferenceCountOfParsedEnrichedEvents() {
+    for (final PipeRawTabletInsertionEvent event : parsedEnrichedEvents) {
+      // clear reference count in raw tablet event
+      event.clearReferenceCount(this.getClass().getName());
     }
   }
 }

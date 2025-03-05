@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.subscription.event.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -91,10 +92,6 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     // we decrease the reference count of events if and only if when the whole batch is consumed
     if (!hasNext() && referenceCount.get() == 0) {
       for (final EnrichedEvent enrichedEvent : enrichedEvents) {
-        if (enrichedEvent instanceof PipeTsFileInsertionEvent) {
-          // close data container in tsfile event
-          ((PipeTsFileInsertionEvent) enrichedEvent).close();
-        }
         enrichedEvent.decreaseReferenceCount(this.getClass().getName(), true);
       }
     }
@@ -109,10 +106,6 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
     // clear the reference count of events
     for (final EnrichedEvent enrichedEvent : enrichedEvents) {
-      if (enrichedEvent instanceof PipeTsFileInsertionEvent) {
-        // close data container in tsfile event
-        ((PipeTsFileInsertionEvent) enrichedEvent).close();
-      }
       enrichedEvent.clearReferenceCount(this.getClass().getName());
     }
     enrichedEvents.clear();
@@ -162,7 +155,11 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   @Override
   protected boolean shouldEmit() {
     return totalBufferSize >= maxBatchSizeInBytes
-        || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
+        || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs
+        // considering the inaccuracy of the estimation, configure a hard limit here to avoid an
+        // excessively large batch
+        || enrichedEvents.size()
+            >= SubscriptionConfig.getInstance().getSubscriptionMaxAllowedEventCountInTabletBatch();
   }
 
   private List<Tablet> convertToTablets(final TabletInsertionEvent tabletInsertionEvent) {
@@ -192,7 +189,10 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   /////////////////////////////// estimator ///////////////////////////////
 
   private long getEstimatedInsertNodeTabletInsertionEventSize() {
-    return Math.max(100L, (long) insertNodeTabletInsertionEventSizeEstimator.getOneMinuteRate());
+    return Math.max(
+        SubscriptionConfig.getInstance()
+            .getSubscriptionEstimatedInsertNodeTabletInsertionEventSize(),
+        (long) insertNodeTabletInsertionEventSizeEstimator.getOneMinuteRate());
   }
 
   private void updateEstimatedInsertNodeTabletInsertionEventSize(final long size) {
@@ -200,7 +200,9 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   }
 
   private long getEstimatedRawTabletInsertionEventSize() {
-    return Math.max(100L, (long) rawTabletInsertionEventSizeEstimator.getOneMinuteRate());
+    return Math.max(
+        SubscriptionConfig.getInstance().getSubscriptionEstimatedRawTabletInsertionEventSize(),
+        (long) rawTabletInsertionEventSizeEstimator.getOneMinuteRate());
   }
 
   private void updateEstimatedRawTabletInsertionEventSize(final long size) {
@@ -283,13 +285,20 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       if (currentTabletInsertionEventsIterator.hasNext()) {
         final TabletInsertionEvent tabletInsertionEvent =
             currentTabletInsertionEventsIterator.next();
-        if (!((EnrichedEvent) tabletInsertionEvent)
-            .increaseReferenceCount(this.getClass().getName())) {
+        if (!(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
           LOGGER.warn(
-              "SubscriptionPipeTabletEventBatch: Failed to increase the reference count of event {}, skipping it.",
-              ((EnrichedEvent) tabletInsertionEvent).coreReportMessage());
+              "SubscriptionPipeTabletEventBatch: Unexpected tablet insertion event {}, skipping it.",
+              tabletInsertionEvent);
         } else {
-          iterationSnapshot.addParsedEnrichedEvent((EnrichedEvent) tabletInsertionEvent);
+          if (!((PipeRawTabletInsertionEvent) tabletInsertionEvent)
+              .increaseReferenceCount(this.getClass().getName())) {
+            LOGGER.warn(
+                "SubscriptionPipeTabletEventBatch: Failed to increase the reference count of event {}, skipping it.",
+                ((PipeRawTabletInsertionEvent) tabletInsertionEvent).coreReportMessage());
+          } else {
+            iterationSnapshot.addParsedEnrichedEvent(
+                (PipeRawTabletInsertionEvent) tabletInsertionEvent);
+          }
         }
         if (!currentTabletInsertionEventsIterator.hasNext()) {
           iterationSnapshot.addIteratedEnrichedEvent((EnrichedEvent) currentTsFileInsertionEvent);
@@ -327,6 +336,9 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
               .iterator();
       return next();
     } else if (enrichedEvent instanceof TabletInsertionEvent) {
+      // There are two types of TabletInsertionEvent:
+      //   1. PipeInsertNodeTabletInsertionEvent, which binds memory blocks when parsed into tablets
+      //   2. PipeRawTabletInsertionEvent, which is parsed and bound with memory blocks upstream
       iterationSnapshot.addIteratedEnrichedEvent(enrichedEvent);
       return convertToTablets((TabletInsertionEvent) enrichedEvent);
     } else {
