@@ -232,7 +232,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       connectorParameters.addOrReplaceEquivalentAttributes(
           new PipeParameters(
               Collections.singletonMap(
-                  PipeExtractorConstant.SOURCE_IOTDB_PASSWORD_KEY, hashedPassword)));
+                  PipeConnectorConstant.SINK_IOTDB_PASSWORD_KEY, hashedPassword)));
     }
   }
 

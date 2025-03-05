@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.connector.protocol.writeback;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -130,10 +129,10 @@ public class WriteBackConnector implements PipeConnector {
     // Fill in the necessary information. Incomplete information will result in NPE.
     session.setUsername(
         parameters.getStringByKeys(
-            PipeExtractorConstant.EXTRACTOR_IOTDB_USER_KEY,
-            PipeExtractorConstant.SOURCE_IOTDB_USER_KEY,
-            PipeExtractorConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
-            PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY));
+            CONNECTOR_IOTDB_USER_KEY,
+            SINK_IOTDB_USER_KEY,
+            CONNECTOR_IOTDB_USERNAME_KEY,
+            SINK_IOTDB_USERNAME_KEY));
     session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
     session.setZoneId(ZoneId.systemDefault());
 

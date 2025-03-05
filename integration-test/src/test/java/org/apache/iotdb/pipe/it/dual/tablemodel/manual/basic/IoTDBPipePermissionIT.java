@@ -141,7 +141,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
     // Alter to another user, shall fail because of lack of password
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      statement.execute("alter pipe a2b modify source ('user'='thulab')");
+      statement.execute("alter pipe a2b modify source ('username'='thulab')");
       fail("Alter pipe shall fail if only user is specified");
     } catch (final SQLException ignore) {
       // Expected
@@ -150,7 +150,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
     // Successfully alter
     try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
-      statement.execute("alter pipe a2b modify source ('user'='thulab', 'password'='passwd')");
+      statement.execute("alter pipe a2b modify source ('username'='thulab', 'password'='passwd')");
     } catch (final SQLException e) {
       e.printStackTrace();
       fail("Alter pipe shall not fail if user and password are specified");
