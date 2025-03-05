@@ -247,7 +247,9 @@ public class MemoryPool {
           maxBytesCanReserve,
           planNodeId);
       throw new IllegalArgumentException(
-          "Query is aborted since it requests more memory than can be allocated.");
+          String.format(
+              "Query is aborted since it requests more memory than can be allocated, bytesToReserve: %sB, maxBytesCanReserve: %sB",
+              bytesToReserve, maxBytesCanReserve));
     }
 
     ListenableFuture<Void> result;
