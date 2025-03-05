@@ -77,7 +77,7 @@ public class TableAttributeSchema implements IDeviceSchema {
     final Binary previousValue = attributeMap.remove(attribute);
     return Objects.nonNull(previousValue)
         ? (int)
-            -(RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+            (RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
                 + UpdateDetailContainer.sizeOf(previousValue))
         : 0;
   }

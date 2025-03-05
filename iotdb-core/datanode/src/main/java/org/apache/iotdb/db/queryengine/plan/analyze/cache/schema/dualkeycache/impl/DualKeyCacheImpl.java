@@ -469,11 +469,9 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
             for (final Iterator<Map.Entry<SK, T>> it = cacheEntryGroup.getAllCacheEntries();
                 it.hasNext(); ) {
               final Map.Entry<SK, T> entry = it.next();
-              if (!secondKeyChecker.test(entry.getKey())) {
-                continue;
-              }
 
-              if (cacheEntryManager.invalidate(entry.getValue())) {
+              if (secondKeyChecker.test(entry.getKey())
+                  && cacheEntryManager.invalidate(entry.getValue())) {
                 cacheStats.decreaseEntryCount();
                 cacheEntryGroup.removeCacheEntry(entry.getKey());
                 estimateSize.addAndGet(
