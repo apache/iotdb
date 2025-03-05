@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.opcua.OpcUaC
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.websocket.WebSocketConnector;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.writeback.WriteBackConnector;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.donothing.DoNothingExtractor;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.external.PipeExternalExtractor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.iotdb.IoTDBExtractor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.aggregate.AggregateProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.aggregate.StandardStatisticsProcessor;
@@ -58,6 +59,8 @@ public enum BuiltinPipePlugin {
 
   DO_NOTHING_SOURCE("do-nothing-source", DoNothingExtractor.class),
   IOTDB_SOURCE("iotdb-source", IoTDBExtractor.class),
+
+  EXTERNAL_EXTRACTOR("external-extractor", PipeExternalExtractor.class),
 
   // processors
   DO_NOTHING_PROCESSOR("do-nothing-processor", DoNothingProcessor.class),
