@@ -116,11 +116,7 @@ public class PipeInsertionDataNodeListener {
 
     assigner.publishToAssign(
         PipeRealtimeEventFactory.createRealtimeEvent(
-            dataRegionId,
-            assigner.isTableModel(),
-            databaseName,
-            tsFileResource,
-            isLoaded));
+            dataRegionId, assigner.isTableModel(), databaseName, tsFileResource, isLoaded));
   }
 
   public void listenToInsertNode(
