@@ -331,13 +331,18 @@ public class CompactionUtils {
     for (TsFileResource targetResource : targetResources) {
       for (TsFileResource unseqResource : unseqResources) {
         targetResource.updateProgressIndex(unseqResource.getMaxProgressIndexAfterClose());
-        targetResource.setGeneratedByPipe(unseqResource.isGeneratedByPipe());
-        targetResource.setGeneratedByPipeConsensus(unseqResource.isGeneratedByPipeConsensus());
+        targetResource.setGeneratedByPipe(
+            unseqResource.isGeneratedByPipe() & targetResource.isGeneratedByPipe());
+        targetResource.setGeneratedByPipeConsensus(
+            unseqResource.isGeneratedByPipeConsensus()
+                & targetResource.isGeneratedByPipeConsensus());
       }
       for (TsFileResource seqResource : seqResources) {
         targetResource.updateProgressIndex(seqResource.getMaxProgressIndexAfterClose());
-        targetResource.setGeneratedByPipe(seqResource.isGeneratedByPipe());
-        targetResource.setGeneratedByPipeConsensus(seqResource.isGeneratedByPipeConsensus());
+        targetResource.setGeneratedByPipe(
+            seqResource.isGeneratedByPipe() & targetResource.isGeneratedByPipe());
+        targetResource.setGeneratedByPipeConsensus(
+            seqResource.isGeneratedByPipeConsensus() & targetResource.isGeneratedByPipeConsensus());
       }
     }
   }
