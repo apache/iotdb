@@ -29,7 +29,9 @@ import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
+import org.apache.iotdb.db.queryengine.plan.ClusterTopology;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.planner.exceptions.ReplicaSetUnreachableException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
@@ -73,6 +75,7 @@ public class TableModelQueryFragmentPlanner {
 
   // Record FragmentInstances dispatched to same DataNode
   private final Map<TDataNodeLocation, List<FragmentInstance>> dataNodeFIMap = new HashMap<>();
+  private final ClusterTopology topology = ClusterTopology.getInstance();
 
   TableModelQueryFragmentPlanner(SubPlan subPlan, Analysis analysis, MPPQueryContext queryContext) {
     this.subPlan = subPlan;
@@ -114,7 +117,10 @@ public class TableModelQueryFragmentPlanner {
 
     // Get the target region for origin PlanFragment, then its instance will be distributed one
     // of them.
-    TRegionReplicaSet regionReplicaSet = fragment.getTargetRegion();
+    TRegionReplicaSet regionReplicaSet = topology.getReachableSet(fragment.getTargetRegion());
+    if (regionReplicaSet.getDataNodeLocations().isEmpty()) {
+      throw new ReplicaSetUnreachableException(regionReplicaSet);
+    }
 
     // Set ExecutorType and target host for the instance,
     // We need to store all the replica host in case of the scenario that the instance need to be

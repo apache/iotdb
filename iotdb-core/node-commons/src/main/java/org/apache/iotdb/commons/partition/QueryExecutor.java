@@ -22,6 +22,8 @@ package org.apache.iotdb.commons.partition;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
+import org.apache.tsfile.utils.Preconditions;
+
 import java.util.Objects;
 
 /** QueryExecutor indicates this query can execute directly without data from StorageEngine */
@@ -34,6 +36,7 @@ public class QueryExecutor implements ExecutorType {
 
   @Override
   public TDataNodeLocation getDataNodeLocation() {
+    Preconditions.checkArgument(dataNodeLocation != null);
     return dataNodeLocation;
   }
 

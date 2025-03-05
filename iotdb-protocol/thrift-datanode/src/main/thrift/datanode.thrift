@@ -272,6 +272,7 @@ struct TDataNodeHeartbeatReq {
   9: optional i64 deviceQuotaRemain
   10: optional TDataNodeActivation activation
   11: optional set<common.TEndPoint> configNodeEndPoints
+  12: optional map<common.TDataNodeLocation, set<common.TDataNodeLocation>> topology
 }
 
 struct TDataNodeActivation {

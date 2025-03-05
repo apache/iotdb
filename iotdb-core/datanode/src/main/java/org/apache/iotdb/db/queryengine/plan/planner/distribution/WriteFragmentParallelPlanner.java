@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.ClusterTopology;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.IFragmentParallelPlaner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -39,6 +41,7 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
   private IAnalysis analysis;
   private MPPQueryContext queryContext;
   private BiFunction<WritePlanNode, IAnalysis, List<WritePlanNode>> nodeSplitter;
+  private final ClusterTopology topology = ClusterTopology.getInstance();
 
   public WriteFragmentParallelPlanner(
       SubPlan subPlan, IAnalysis analysis, MPPQueryContext queryContext) {
@@ -79,7 +82,8 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
               queryContext.getTimeOut(),
               queryContext.getSession());
       if (split.getRegionReplicaSet() != null) {
-        instance.setExecutorAndHost(new StorageExecutor(split.getRegionReplicaSet()));
+        final TRegionReplicaSet validSet = topology.getReachableSet(split.getRegionReplicaSet());
+        instance.setExecutorAndHost(new StorageExecutor(validSet));
       }
       ret.add(instance);
     }

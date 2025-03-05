@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.load;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -44,13 +45,19 @@ import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSamp
 import org.apache.iotdb.confignode.manager.load.service.EventService;
 import org.apache.iotdb.confignode.manager.load.service.HeartbeatService;
 import org.apache.iotdb.confignode.manager.load.service.StatisticsService;
+import org.apache.iotdb.confignode.manager.load.service.TopologyService;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 
+import org.apache.thrift.annotation.Nullable;
+
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * The {@link LoadManager} at ConfigNodeGroup-Leader is active. It proactively implements the
@@ -72,6 +79,7 @@ public class LoadManager {
   protected HeartbeatService heartbeatService;
   private final StatisticsService statisticsService;
   private final EventService eventService;
+  private final TopologyService topologyService;
 
   public LoadManager(IManager configManager) {
     this.configManager = configManager;
@@ -83,6 +91,7 @@ public class LoadManager {
     this.loadCache = new LoadCache();
     setHeartbeatService(configManager, loadCache);
     this.statisticsService = new StatisticsService(loadCache);
+    this.topologyService = new TopologyService(configManager, loadCache::updateTopology);
     this.eventService = new EventService(configManager, loadCache, routeBalancer);
   }
 
@@ -146,6 +155,7 @@ public class LoadManager {
     statisticsService.startLoadStatisticsService();
     eventService.startEventService();
     partitionBalancer.setupPartitionBalancer();
+    topologyService.startTopologyService();
   }
 
   public void stopLoadServices() {
@@ -155,6 +165,7 @@ public class LoadManager {
     loadCache.clearHeartbeatCache();
     partitionBalancer.clearPartitionBalancer();
     routeBalancer.clearRegionPriority();
+    topologyService.stopTopologyService();
   }
 
   public void clearDataPartitionPolicyTable(String database) {
@@ -463,6 +474,25 @@ public class LoadManager {
     heartbeatSampleMap.forEach(loadCache::cacheConsensusSample);
     loadCache.updateConsensusGroupStatistics();
     eventService.checkAndBroadcastConsensusGroupStatisticsChangeEventIfNecessary();
+  }
+
+  @Nullable
+  public Map<TDataNodeLocation, Set<TDataNodeLocation>> getTopologyMap() {
+    final Map<Integer, Set<Integer>> topology = getLoadCache().getTopology();
+    if (topology == null) {
+      return null;
+    }
+
+    final Map<Integer, TDataNodeLocation> datanodeMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final Map<TDataNodeLocation, Set<TDataNodeLocation>> ret = new HashMap<>();
+    for (final Map.Entry<Integer, Set<Integer>> entry : topology.entrySet()) {
+      final Set<TDataNodeLocation> reachableSet =
+          entry.getValue().stream().map(datanodeMap::get).collect(Collectors.toSet());
+      ret.put(datanodeMap.get(entry.getKey()), reachableSet);
+    }
+
+    return ret;
   }
 
   public LoadCache getLoadCache() {

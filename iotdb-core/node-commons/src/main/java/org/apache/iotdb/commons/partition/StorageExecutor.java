@@ -36,6 +36,9 @@ public class StorageExecutor implements ExecutorType {
 
   @Override
   public TDataNodeLocation getDataNodeLocation() {
+    if (regionReplicaSet.getDataNodeLocations().isEmpty()) {
+      return null;
+    }
     return regionReplicaSet.getDataNodeLocations().get(0);
   }
 
