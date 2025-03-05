@@ -74,7 +74,7 @@ else
   ain_interpreter_dir="$p_ain_interpreter_dir"
 fi
 
-# If ain_system_dir is empty, set default value to ../data/core/system
+# If ain_system_dir is empty, set default value to ../data/ainode/system
 if [ -z "$ain_system_dir" ]
 then
   ain_system_dir="$SCRIPT_DIR/../data/ainode/system"
@@ -89,7 +89,7 @@ fi
 
 # Change the working directory to the parent directory
 cd "$SCRIPT_DIR/.."
-ain_ainode_dir=$(dirname "$ain_interpreter_dir")/core
+ain_ainode_dir=$(dirname "$ain_interpreter_dir")/ainode
 
 
 if [ -z "$p_ain_remove_target" ]; then

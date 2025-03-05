@@ -84,15 +84,7 @@ class ModelStorage(object):
                     self._model_cache[model_path] = model
                     return model
             else:
-                # todo: use modelType instead
-                if 'timer' in model_id:
-                    model_file_path = os.path.join(ain_models_dir, 'checkpoint.pth')
-                    state_dict = torch.load(model_file_path)
-                    model = Model(get_args())
-                    model.load_state_dict(state_dict)
-                    self._model_cache[model_path] = model
-                    return model
-                elif not os.path.exists(model_path):
+                if not os.path.exists(model_path):
                     raise ModelNotExistError(model_path)
                 else:
                     model = torch.jit.load(model_path)

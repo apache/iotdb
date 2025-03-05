@@ -43,10 +43,10 @@ class LoggerFilter(logging.Filter):
         stack_info = ""
         frame_info = stack_trace[7]
         file_name = frame_info.filename
-        # if file_name is not in current working directory, find the first "core" in the path
+        # if file_name is not in current working directory, find the first "iotdb" in the path
         for l in range(len(file_name)):
             i = len(file_name) - l - 1
-            if file_name[i:].startswith("core/") or file_name[i:].startswith("core\\"):
+            if file_name[i:].startswith("iotdb/") or file_name[i:].startswith("iotdb\\"):
                 file_name = file_name[i:]
                 break
 
