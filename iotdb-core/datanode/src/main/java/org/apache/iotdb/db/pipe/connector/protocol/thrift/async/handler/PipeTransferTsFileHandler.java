@@ -431,11 +431,9 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       final long code = resp.getStatus().getCode();
 
       if (code == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
-        if (pendingTransferCount.decrementAndGet() <= 0) {
-          position = resp.getEndWritingOffset();
-          reader.seek(position);
-          LOGGER.info("Redirect file position to {}.", position);
-        }
+        position = resp.getEndWritingOffset();
+        reader.seek(position);
+        LOGGER.info("Redirect file position to {}.", position);
       } else {
         final TSStatus status = response.getStatus();
         // Only handle the failed statuses to avoid string format performance overhead

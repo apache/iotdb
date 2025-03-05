@@ -240,6 +240,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
             pipeDeleteDataNodeEvent.getDeletionResource().toString());
       }
     }
+
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("Successfully transferred deletion event {}.", pipeDeleteDataNodeEvent);
     }
@@ -449,6 +450,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
                 pipeRawTabletInsertionEvent.isTableModelEvent()
                     ? pipeRawTabletInsertionEvent.getTableModelDatabaseName()
                     : null));
+
     for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : clientsAndStatuses) {
       final TPipeTransferResp resp;
       try {
@@ -563,6 +565,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
             String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()),
             e);
       }
+
       final TSStatus status = resp.getStatus();
       // Only handle the failed statuses to avoid string format performance overhead
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()

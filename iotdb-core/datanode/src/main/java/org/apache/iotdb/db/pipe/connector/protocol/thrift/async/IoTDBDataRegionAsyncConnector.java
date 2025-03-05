@@ -483,7 +483,11 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
               null,
               false,
               sealedFile.left);
-      pipeTransferTsFileHandler.transfer(clientManager, clients);
+      try {
+        pipeTransferTsFileHandler.transfer(clientManager, clients);
+      } catch (final Exception ex) {
+        pipeTransferTsFileHandler.onError(ex);
+      }
     }
   }
 
@@ -507,8 +511,11 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
             pipeTsFileInsertionEvent.isTableModelEvent()
                 ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
                 : null);
-
-    pipeTransferTsFileHandler.transfer(clientManager, clients);
+    try {
+      pipeTransferTsFileHandler.transfer(clientManager, clients);
+    } catch (final Exception ex) {
+      pipeTransferTsFileHandler.onError(ex);
+    }
   }
 
   @Override

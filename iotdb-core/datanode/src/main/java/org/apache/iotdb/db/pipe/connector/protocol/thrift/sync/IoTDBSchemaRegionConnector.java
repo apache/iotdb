@@ -135,6 +135,7 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
             pipeSchemaRegionWritePlanEvent.getPlanNode().toString());
       }
     }
+
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("Successfully transferred schema event {}.", pipeSchemaRegionWritePlanEvent);
     }
@@ -210,7 +211,6 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
       final TPipeTransferResp resp;
       // 2. Transfer file seal signal, which means the snapshots are transferred completely
       try {
-
         rateLimitIfNeeded(
             snapshotEvent.getPipeName(),
             snapshotEvent.getCreationTime(),
@@ -237,6 +237,7 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
             snapshotEvent.toString());
       }
     }
+
     LOGGER.info(
         "Successfully transferred file {}, {} and {}.",
         mTreeSnapshotFile,

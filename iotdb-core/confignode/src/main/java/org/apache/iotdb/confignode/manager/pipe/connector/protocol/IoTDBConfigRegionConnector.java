@@ -189,6 +189,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
             pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().toString());
       }
     }
+
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("Successfully transferred config event {}.", pipeConfigRegionWritePlanEvent);
     }
