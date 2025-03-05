@@ -405,6 +405,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualTreeModel
     int index = 0;
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
+      System.out.println("QueryResult: " + record.toString());
+      System.out.println("Expected: " + timestamps[index] + "-" + values.get(index));
       List<Field> fields = record.getFields();
 
       assertEquals(record.getTimestamp(), timestamps[index]);
