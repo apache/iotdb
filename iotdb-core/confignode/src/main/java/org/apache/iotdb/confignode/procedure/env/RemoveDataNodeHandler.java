@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.env;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -36,7 +37,10 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
+import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.load.balancer.region.IDestNodeSelector;
+import org.apache.iotdb.confignode.manager.load.balancer.region.PartiteGraphPlacementDestNodeSelector;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
@@ -51,6 +55,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -69,6 +75,8 @@ public class RemoveDataNodeHandler {
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
   private final ConfigManager configManager;
+
+  private final IDestNodeSelector destNodeSelector = new PartiteGraphPlacementDestNodeSelector();
 
   public RemoveDataNodeHandler(ConfigManager configManager) {
     this.configManager = configManager;
@@ -189,6 +197,136 @@ public class RemoveDataNodeHandler {
           migratedDataNodeRegions.stream()
               .map(regionId -> RegionMigrationPlan.create(regionId, removedDataNode))
               .collect(Collectors.toList()));
+    }
+    return regionMigrationPlans;
+  }
+
+  /**
+   * Retrieves all region migration plans for the specified removed DataNodes and selects the
+   * destination.
+   *
+   * @param removedDataNodes the list of DataNodes from which to obtain migration plans
+   * @return a list of region migration plans associated with the removed DataNodes
+   */
+  public List<RegionMigrationPlan> selectedRegionMigrationPlans(
+      List<TDataNodeLocation> removedDataNodes) {
+
+    Set<Integer> removedDataNodesSet = new HashSet<>();
+    for (TDataNodeLocation removedDataNode : removedDataNodes) {
+      removedDataNodesSet.add(removedDataNode.dataNodeId);
+    }
+
+    final List<TDataNodeConfiguration> availableDataNodes =
+        configManager
+            .getNodeManager()
+            .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.Unknown)
+            .stream()
+            .filter(node -> !removedDataNodesSet.contains(node.getLocation().getDataNodeId()))
+            .collect(Collectors.toList());
+
+    List<RegionMigrationPlan> regionMigrationPlans = new ArrayList<>();
+
+    regionMigrationPlans.addAll(
+        selectMigrationPlans(availableDataNodes, TConsensusGroupType.DataRegion, removedDataNodes));
+
+    regionMigrationPlans.addAll(
+        selectMigrationPlans(
+            availableDataNodes, TConsensusGroupType.SchemaRegion, removedDataNodes));
+
+    return regionMigrationPlans;
+  }
+
+  public List<RegionMigrationPlan> selectMigrationPlans(
+      List<TDataNodeConfiguration> availableDataNodes,
+      TConsensusGroupType consensusGroupType,
+      List<TDataNodeLocation> removedDataNodes) {
+    List<TRegionReplicaSet> allocatedRegionGroups =
+        configManager.getPartitionManager().getAllReplicaSets(consensusGroupType);
+
+    Map<TConsensusGroupId, TDataNodeLocation> replicaSetRemoved = new HashMap<>();
+    List<TRegionReplicaSet> migratedReplicas = new ArrayList<>();
+
+    for (TDataNodeLocation dataNodeLocation : removedDataNodes) {
+      List<TRegionReplicaSet> replicaSets =
+          allocatedRegionGroups.stream()
+              .filter(replicaSet -> replicaSet.getDataNodeLocations().contains(dataNodeLocation))
+              .collect(Collectors.toList());
+      for (TRegionReplicaSet replicaSet : replicaSets) {
+        replicaSetRemoved.put(replicaSet.getRegionId(), dataNodeLocation);
+      }
+      migratedReplicas.addAll(replicaSets);
+    }
+
+    List<TRegionReplicaSet> remainReplicas = new ArrayList<>();
+
+    for (TRegionReplicaSet replicaSet : migratedReplicas) {
+      allocatedRegionGroups.remove(replicaSet);
+      List<TDataNodeLocation> dataNodeLocations = replicaSet.getDataNodeLocations();
+      dataNodeLocations.remove(replicaSetRemoved.get(replicaSet.getRegionId()));
+      replicaSet.setDataNodeLocations(dataNodeLocations);
+      allocatedRegionGroups.add(replicaSet);
+      remainReplicas.add(replicaSet);
+    }
+
+    List<RegionMigrationPlan> regionMigrationPlans = new ArrayList<>();
+
+    for (TRegionReplicaSet remainReplicaSet : remainReplicas) {
+      final Map<Integer, TDataNodeConfiguration> availableDataNodeMap =
+          new HashMap<>(availableDataNodes.size());
+      final Map<Integer, Double> freeDiskSpaceMap = new HashMap<>(availableDataNodes.size());
+      availableDataNodes.forEach(
+          dataNodeConfiguration -> {
+            int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
+            availableDataNodeMap.put(dataNodeId, dataNodeConfiguration);
+            freeDiskSpaceMap.put(
+                dataNodeId, configManager.getLoadManager().getFreeDiskSpace(dataNodeId));
+          });
+      String database =
+          configManager.getPartitionManager().getRegionDatabase(remainReplicaSet.getRegionId());
+
+      List<TRegionReplicaSet> databaseAllocatedRegionGroups =
+          configManager.getPartitionManager().getAllReplicaSets(database, consensusGroupType);
+      int replicationFactor;
+      try {
+        replicationFactor =
+            configManager
+                .getClusterSchemaManager()
+                .getReplicationFactor(database, consensusGroupType);
+      } catch (DatabaseNotExistsException e) {
+        LOGGER.error(
+            "Region {} 's database: {} not exists, use default value.",
+            remainReplicaSet.regionId,
+            database,
+            e);
+        replicationFactor =
+            consensusGroupType.equals(TConsensusGroupType.DataRegion)
+                ? ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor()
+                : ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor();
+      }
+
+      TDataNodeConfiguration selectedDestDataNode =
+          destNodeSelector.selectDestDataNode(
+              availableDataNodeMap,
+              freeDiskSpaceMap,
+              allocatedRegionGroups,
+              databaseAllocatedRegionGroups,
+              replicationFactor,
+              remainReplicaSet.regionId,
+              remainReplicaSet);
+      LOGGER.info(
+          "Selected DataNode {} for Region {}",
+          selectedDestDataNode.getLocation().getDataNodeId(),
+          remainReplicaSet.regionId);
+      allocatedRegionGroups.remove(remainReplicaSet);
+      List<TDataNodeLocation> dataNodeLocations = remainReplicaSet.getDataNodeLocations();
+      dataNodeLocations.add(selectedDestDataNode.getLocation());
+      remainReplicaSet.setDataNodeLocations(dataNodeLocations);
+      allocatedRegionGroups.add(remainReplicaSet);
+      RegionMigrationPlan regionMigrationPlan =
+          RegionMigrationPlan.create(
+              remainReplicaSet.regionId, replicaSetRemoved.get(remainReplicaSet.getRegionId()));
+      regionMigrationPlan.setToDataNode(selectedDestDataNode.getLocation());
+      regionMigrationPlans.add(regionMigrationPlan);
     }
     return regionMigrationPlans;
   }
