@@ -410,13 +410,13 @@ public class TsFileResource implements PersistentResource {
     sourceModFile.writeLock();
     try {
       if (sourceModFile.exists()) {
+        // inherit modifications from the source file
         Files.createLink(
             targetModsFile.toPath(), ModificationFile.getExclusiveMods(getTsFile()).toPath());
-        targetModsFileObject = new ModificationFile(targetModsFile, true);
-      } else {
-        targetModsFileObject = new ModificationFile(targetModsFile, true);
-        sourceModFile.setCascadeFile(Collections.singleton(targetModsFileObject));
       }
+      // ensure that new modifications will be written into the target file
+      targetModsFileObject = new ModificationFile(targetModsFile, true);
+      sourceModFile.setCascadeFile(Collections.singleton(targetModsFileObject));
     } finally {
       sourceModFile.writeUnlock();
     }

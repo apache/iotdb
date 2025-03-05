@@ -123,7 +123,7 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
       return false;
     }
 
-    final long requestCommitId = ((EnrichedEvent) event).getCommitId();
+    final long requestCommitId = ((EnrichedEvent) event).getReplicateIndexForIoTV2();
 
     // The deduplication logic here is to avoid the accumulation of the same event in a batch when
     // retrying.
@@ -182,8 +182,7 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
         (PipeInsertNodeTabletInsertionEvent) event;
     commitId =
         new TCommitId(
-            pipeInsertNodeTabletInsertionEvent.getCommitId(),
-            pipeInsertNodeTabletInsertionEvent.getCommitterKey().getRestartTimes(),
+            pipeInsertNodeTabletInsertionEvent.getReplicateIndexForIoTV2(),
             pipeInsertNodeTabletInsertionEvent.getRebootTimes());
 
     // Read the bytebuffer from the wal file and transfer it directly without serializing or

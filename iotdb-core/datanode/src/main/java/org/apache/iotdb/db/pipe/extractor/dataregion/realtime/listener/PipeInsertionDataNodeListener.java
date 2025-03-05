@@ -116,7 +116,11 @@ public class PipeInsertionDataNodeListener {
 
     assigner.publishToAssign(
         PipeRealtimeEventFactory.createRealtimeEvent(
-            assigner.isTableModel(), databaseName, tsFileResource, isLoaded));
+            dataRegionId,
+            assigner.isTableModel(),
+            databaseName,
+            tsFileResource,
+            isLoaded));
   }
 
   public void listenToInsertNode(
@@ -138,7 +142,12 @@ public class PipeInsertionDataNodeListener {
 
     assigner.publishToAssign(
         PipeRealtimeEventFactory.createRealtimeEvent(
-            assigner.isTableModel(), databaseName, walEntryHandler, insertNode, tsFileResource));
+            dataRegionId,
+            assigner.isTableModel(),
+            databaseName,
+            walEntryHandler,
+            insertNode,
+            tsFileResource));
   }
 
   public DeletionResource listenToDeleteData(
@@ -164,7 +173,7 @@ public class PipeInsertionDataNodeListener {
       deletionResource = null;
     }
 
-    assigner.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(node));
+    assigner.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(regionId, node));
 
     return deletionResource;
   }
