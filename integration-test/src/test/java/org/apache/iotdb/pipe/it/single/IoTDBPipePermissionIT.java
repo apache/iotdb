@@ -95,7 +95,9 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     }
 
     TableModelUtils.createDataBaseAndTable(env, "test", "test1");
+    TableModelUtils.createDataBaseAndTable(env, "test1", "test1");
     TableModelUtils.createDataBaseAndTable(env, "test", "test");
+    TableModelUtils.createDataBaseAndTable(env, "test1", "test");
 
     // Write some data
     if (!TableModelUtils.insertData("test1", "test", 0, 100, env)) {
@@ -103,11 +105,28 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     }
 
     // Filter this
-    if (!TestUtils.tryExecuteNonQueryWithRetry("test", BaseEnv.TABLE_SQL_DIALECT, env, "flush")) {
+    if (!TestUtils.tryExecuteNonQueryWithRetry("test1", BaseEnv.TABLE_SQL_DIALECT, env, "flush")) {
       return;
     }
 
     TableModelUtils.assertCountDataAlwaysOnEnv("test", "test", 0, env);
+
+    // Continue, ensure that it won't block
+    // Grant some privilege
+    if (!TestUtils.tryExecuteNonQueryWithRetry(
+        "test1", BaseEnv.TABLE_SQL_DIALECT, env, "grant INSERT on test.test1 to user thulab")) {
+      return;
+    }
+    if (!TableModelUtils.insertData("test1", "test1", 0, 100, env)) {
+      return;
+    }
+    TableModelUtils.assertCountData("test", "test1", 100, env);
+
+    // Clear data, avoid resending
+    if (!TestUtils.tryExecuteNonQueryWithRetry(
+        "test", BaseEnv.TABLE_SQL_DIALECT, env, "drop database test1")) {
+      return;
+    }
 
     // Alter pipe, throw exception if no privileges
     try (final Connection connection = env.getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -118,7 +137,10 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
       fail(e.getMessage());
     }
 
-    if (!TableModelUtils.insertData("test1", "test", 100, 200, env)) {
+    TableModelUtils.createDataBaseAndTable(env, "test", "test1");
+    TableModelUtils.createDataBaseAndTable(env, "test1", "test1");
+
+    if (!TableModelUtils.insertData("test1", "test", 0, 100, env)) {
       return;
     }
 
