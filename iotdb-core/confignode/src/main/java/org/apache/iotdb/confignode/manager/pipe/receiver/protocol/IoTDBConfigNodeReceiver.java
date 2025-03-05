@@ -357,6 +357,24 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((CommitDeleteColumnPlan) plan).getTableName(),
                     PrivilegeType.ALTER))
             .getStatus();
+      case SetTableComment:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new PrivilegeUnion(
+                    ((SetTableCommentPlan) plan).getDatabase(),
+                    ((SetTableCommentPlan) plan).getTableName(),
+                    PrivilegeType.ALTER))
+            .getStatus();
+      case SetTableColumnComment:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new PrivilegeUnion(
+                    ((SetTableColumnCommentPlan) plan).getDatabase(),
+                    ((SetTableColumnCommentPlan) plan).getTableName(),
+                    PrivilegeType.ALTER))
+            .getStatus();
       case CommitDeleteTable:
         return configManager
             .checkUserPrivileges(
