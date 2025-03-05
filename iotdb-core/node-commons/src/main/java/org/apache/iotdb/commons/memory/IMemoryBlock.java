@@ -108,6 +108,10 @@ public abstract class IMemoryBlock implements AutoCloseable {
   }
 
   public void resizeByRatio(double ratio) {
+    if (ratio <= 0.0) {
+      throw new IllegalArgumentException(
+          String.format("Try to resize %s, but ratio should be positive", this));
+    }
     totalMemorySizeInBytes = (long) (totalMemorySizeInBytes * ratio);
   }
 
