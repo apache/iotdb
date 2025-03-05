@@ -107,14 +107,6 @@ public abstract class IMemoryBlock implements AutoCloseable {
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
   }
 
-  public void resizeByRatio(double ratio) {
-    if (ratio <= 0.0) {
-      throw new IllegalArgumentException(
-          String.format("Try to resize %s, but ratio should be positive", this));
-    }
-    totalMemorySizeInBytes = (long) (totalMemorySizeInBytes * ratio);
-  }
-
   /** Get the maximum memory size in byte of this memory block */
   public long getTotalMemorySizeInBytes() {
     return totalMemorySizeInBytes;
