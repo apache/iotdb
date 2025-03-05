@@ -49,7 +49,10 @@ public abstract class AbstractOperator implements Operator {
     if (oneTupleSize > maxReturnSize) {
       // make sure at least one-tuple-at-a-time
       this.maxTupleSizeOfTsBlock = 1;
-      LOGGER.warn("Only one tuple can be sent each time caused by limited memory");
+      LOGGER.warn(
+          "Only one tuple can be sent each time caused by limited memory, oneTupleSize: {}B, maxReturnSize: {}B",
+          oneTupleSize,
+          maxReturnSize);
     } else {
       this.maxTupleSizeOfTsBlock = (int) (maxReturnSize / oneTupleSize);
     }
