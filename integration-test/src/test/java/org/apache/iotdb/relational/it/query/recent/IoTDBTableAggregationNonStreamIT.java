@@ -52,6 +52,14 @@ public class IoTDBTableAggregationNonStreamIT extends IoTDBTableAggregationIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  public static void main(String[] args) {
+    createSqls[2] =
+        "CREATE TABLE table1(province STRING FIELD, city STRING FIELD, region STRING FIELD, device_id STRING TAG, color STRING ATTRIBUTE, type STRING ATTRIBUTE, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 BOOLEAN FIELD, s6 TEXT FIELD, s7 STRING FIELD, s8 BLOB FIELD, s9 TIMESTAMP FIELD, s10 DATE FIELD)";
+    for (String s : createSqls) {
+      System.out.println(s + ';');
+    }
+  }
+
   @Ignore
   @Override
   public void countIfDistinctTest() {
