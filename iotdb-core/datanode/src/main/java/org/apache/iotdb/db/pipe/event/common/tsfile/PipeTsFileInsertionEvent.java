@@ -33,7 +33,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.aggregator.TsFileInsertionPo
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.TsFileInsertionEventParserProvider;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
-import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
@@ -165,7 +165,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
               synchronized (isClosed) {
                 isClosed.set(true);
                 isClosed.notifyAll();
-
                 // Update flushPointCount after TsFile is closed
                 flushPointCount = processor.getMemTableFlushPointCount();
               }
@@ -349,6 +348,22 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       Thread.currentThread().interrupt();
       return MinimumProgressIndex.INSTANCE;
     }
+  }
+
+  /**
+   * Get ProgressIndex without waiting for tsfile close. Can be used in getting progressIndex when
+   * memTable becomes immutable.
+   */
+  public ProgressIndex forceGetProgressIndex() {
+    if (resource.isEmpty()) {
+      LOGGER.warn(
+          "Skipping temporary TsFile {}'s progressIndex, will report MinimumProgressIndex", tsFile);
+      return MinimumProgressIndex.INSTANCE;
+    }
+    if (Objects.nonNull(overridingProgressIndex)) {
+      return overridingProgressIndex;
+    }
+    return resource.getMaxProgressIndex();
   }
 
   @Override

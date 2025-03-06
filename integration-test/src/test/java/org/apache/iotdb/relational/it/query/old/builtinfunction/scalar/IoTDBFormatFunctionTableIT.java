@@ -76,7 +76,7 @@ public class IoTDBFormatFunctionTableIT {
         "INSERT INTO date_table(time, device_id, s1) VALUES (20, 'd1', '2006-07-04')",
 
         // data for special series
-        "INSERT INTO null_table(time, device_id) VALUES (10, 'd1')",
+        "INSERT INTO null_table(time, device_id, s1) VALUES (10, 'd1', null)",
       };
 
   @BeforeClass

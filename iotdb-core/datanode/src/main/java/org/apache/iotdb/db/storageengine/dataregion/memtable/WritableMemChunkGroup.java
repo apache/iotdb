@@ -146,11 +146,11 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public long getMeasurementSize(String measurement) {
+  public IWritableMemChunk getWritableMemChunk(String measurement) {
     if (!memChunkMap.containsKey(measurement)) {
-      return 0;
+      return null;
     }
-    return memChunkMap.get(measurement).rowCount();
+    return memChunkMap.get(measurement);
   }
 
   @Override
@@ -189,6 +189,18 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
     for (int i = 0; i < memChunkMapSize; ++i) {
       String measurement = ReadWriteIOUtils.readString(stream);
       IWritableMemChunk memChunk = WritableMemChunk.deserialize(stream);
+      memChunkGroup.memChunkMap.put(measurement, memChunk);
+    }
+    return memChunkGroup;
+  }
+
+  public static WritableMemChunkGroup deserializeSingleTVListMemChunks(DataInputStream stream)
+      throws IOException {
+    WritableMemChunkGroup memChunkGroup = new WritableMemChunkGroup();
+    int memChunkMapSize = stream.readInt();
+    for (int i = 0; i < memChunkMapSize; ++i) {
+      String measurement = ReadWriteIOUtils.readString(stream);
+      IWritableMemChunk memChunk = WritableMemChunk.deserializeSingleTVListMemChunks(stream);
       memChunkGroup.memChunkMap.put(measurement, memChunk);
     }
     return memChunkGroup;

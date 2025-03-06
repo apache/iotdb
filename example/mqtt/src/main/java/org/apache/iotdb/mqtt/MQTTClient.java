@@ -79,7 +79,7 @@ public class MQTTClient {
     Thread.sleep(10);
 
     payload = "test1,tag1=t1,tag2=t2  field4=2,field5=2i32,field6=2f 2";
-    connection.publish(DATABASE + "/myTopic", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+    connection.publish(DATABASE, payload.getBytes(), QoS.AT_LEAST_ONCE, false);
     Thread.sleep(10);
 
     payload =

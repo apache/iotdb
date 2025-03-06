@@ -96,6 +96,8 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
   private final FileChannel tagFileChannel;
 
   // Mem-control
+  // Note that this statistics does not have metric currently, thus it's OK to have potentially
+  // multiple "-1"s. Must change this when this is taken into metrics
   private final MemSchemaRegionStatistics schemaRegionStatistics =
       new MemSchemaRegionStatistics(-1, SchemaEngine.getInstance().getSchemaEngineStatistics());
   private final IDeviceAttributeStore deviceAttributeStore =

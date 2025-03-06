@@ -102,6 +102,9 @@ public class TableHeaderSchemaValidator {
         .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION);
 
     final List<ColumnSchema> inputColumnList = tableSchema.getColumns();
+    if (inputColumnList == null || inputColumnList.isEmpty()) {
+      throw new SemanticException("No column other than Time present, please check the request");
+    }
     // Get directly if there is a table because we do not want "addColumn" to affect
     // original writings
     TsTable table =
@@ -167,6 +170,7 @@ public class TableHeaderSchemaValidator {
     }
 
     boolean refreshed = false;
+    boolean noField = true;
     for (final ColumnSchema columnSchema : inputColumnList) {
       TsTableColumnSchema existingColumn = table.getColumnSchema(columnSchema.getName());
       if (Objects.isNull(existingColumn)) {
@@ -196,6 +200,11 @@ public class TableHeaderSchemaValidator {
           }
           missingColumnList.add(columnSchema);
         }
+        if (noField
+            && columnSchema.getColumnCategory() != null
+            && columnSchema.getColumnCategory() == TsTableColumnCategory.FIELD) {
+          noField = false;
+        }
       } else {
         // leave measurement columns' dataType checking to the caller, then the caller can decide
         // whether to do partial insert
@@ -207,7 +216,13 @@ public class TableHeaderSchemaValidator {
               String.format("Wrong category at column %s.", columnSchema.getName()),
               TSStatusCode.COLUMN_CATEGORY_MISMATCH.getStatusCode());
         }
+        if (noField && existingColumn.getColumnCategory() == TsTableColumnCategory.FIELD) {
+          noField = false;
+        }
       }
+    }
+    if (noField) {
+      throw new SemanticException("No Field column present, please check the request");
     }
 
     final List<ColumnSchema> resultColumnList = new ArrayList<>();

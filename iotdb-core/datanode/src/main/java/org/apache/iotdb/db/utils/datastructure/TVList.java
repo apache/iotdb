@@ -86,7 +86,6 @@ public abstract class TVList implements WALEntryValue {
 
   protected TVList() {
     timestamps = new ArrayList<>();
-    indices = new ArrayList<>();
     rowCount = 0;
     seqRowCount = 0;
     maxTime = Long.MIN_VALUE;
@@ -119,16 +118,22 @@ public abstract class TVList implements WALEntryValue {
     return null;
   }
 
+  // get array memory cost of working TVList
+  public long tvListArrayMemCost() {
+    long size = tvListArrayMemCost(getDataType());
+    // index array mem size
+    size += indices != null ? PrimitiveArrayManager.ARRAY_SIZE * 4L : 0;
+    // bimap array mem size
+    size += bitMap != null ? PrimitiveArrayManager.ARRAY_SIZE / 8 + 1L : 0;
+    return size;
+  }
+
   public static long tvListArrayMemCost(TSDataType type) {
     long size = 0;
     // time array mem size
     size += PrimitiveArrayManager.ARRAY_SIZE * 8L;
     // value array mem size
     size += PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
-    // index array mem size
-    size += PrimitiveArrayManager.ARRAY_SIZE * 4L;
-    // bimap array mem size
-    size += PrimitiveArrayManager.ARRAY_SIZE / 8 + 1L;
     // two array headers mem size
     size += NUM_BYTES_ARRAY_HEADER * 2L;
     // Object references size in ArrayList
@@ -137,7 +142,7 @@ public abstract class TVList implements WALEntryValue {
   }
 
   public long calculateRamSize() {
-    return timestamps.size() * tvListArrayMemCost(getDataType());
+    return timestamps.size() * tvListArrayMemCost();
   }
 
   public synchronized boolean isSorted() {
@@ -197,6 +202,15 @@ public abstract class TVList implements WALEntryValue {
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
+    // prepare indices for sorting
+    if (indices == null) {
+      indices = new ArrayList<>();
+      for (int i = 0; i < timestamps.size(); i++) {
+        indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
+        int offset = i * ARRAY_SIZE;
+        Arrays.setAll(indices.get(i), j -> offset + j);
+      }
+    }
     indices.get(arrayIndex)[elementIndex] = valueIndex;
   }
 
@@ -213,6 +227,10 @@ public abstract class TVList implements WALEntryValue {
     if (index >= rowCount) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
+    if (indices == null) {
+      return index;
+    }
+
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
     return indices.get(arrayIndex)[elementIndex];
@@ -374,12 +392,6 @@ public abstract class TVList implements WALEntryValue {
     return clone();
   }
 
-  protected abstract void releaseLastValueArray();
-
-  protected void releaseLastTimeArray() {
-    PrimitiveArrayManager.release(timestamps.remove(timestamps.size() - 1));
-  }
-
   public int delete(long lowerBound, long upperBound) {
     int deletedNumber = 0;
     long maxTime = Long.MIN_VALUE;
@@ -403,14 +415,17 @@ public abstract class TVList implements WALEntryValue {
   }
 
   // common clone for both TVList and AlignedTVList
-  protected void cloneAs(TVList cloneList) {
+  protected synchronized void cloneAs(TVList cloneList) {
     // clone timestamps
     for (long[] timestampArray : timestamps) {
       cloneList.timestamps.add(cloneTime(timestampArray));
     }
     // clone indices
-    for (int[] indicesArray : indices) {
-      cloneList.indices.add(cloneIndex(indicesArray));
+    if (indices != null) {
+      cloneList.indices = new ArrayList<>();
+      for (int[] indicesArray : indices) {
+        cloneList.indices.add(cloneIndex(indicesArray));
+      }
     }
     cloneList.rowCount = rowCount;
     cloneList.seqRowCount = seqRowCount;
@@ -484,7 +499,6 @@ public abstract class TVList implements WALEntryValue {
     for (int i = start; i < end; i++) {
       inPutMinTime = Math.min(inPutMinTime, time[i]);
       maxTime = Math.max(maxTime, time[i]);
-      minTime = Math.min(minTime, time[i]);
       if (inputSorted) {
         if (i < length - 1 && time[i] > time[i + 1]) {
           inputSorted = false;
@@ -493,6 +507,7 @@ public abstract class TVList implements WALEntryValue {
         }
       }
     }
+    minTime = Math.min(minTime, inPutMinTime);
     if (sorted && (rowCount == 0 || time[start] >= getTime(rowCount - 1))) {
       seqRowCount += inputSeqRowCount;
     }
@@ -560,8 +575,31 @@ public abstract class TVList implements WALEntryValue {
         return DoubleTVList.deserialize(stream);
       case BOOLEAN:
         return BooleanTVList.deserialize(stream);
-      case VECTOR:
-        return AlignedTVList.deserialize(stream);
+      default:
+        break;
+    }
+    return null;
+  }
+
+  public static TVList deserializeWithoutBitMap(DataInputStream stream) throws IOException {
+    TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
+    switch (dataType) {
+      case TEXT:
+      case BLOB:
+      case STRING:
+        return BinaryTVList.deserializeWithoutBitMap(stream);
+      case FLOAT:
+        return FloatTVList.deserializeWithoutBitMap(stream);
+      case INT32:
+      case DATE:
+        return IntTVList.deserializeWithoutBitMap(stream);
+      case INT64:
+      case TIMESTAMP:
+        return LongTVList.deserializeWithoutBitMap(stream);
+      case DOUBLE:
+        return DoubleTVList.deserializeWithoutBitMap(stream);
+      case BOOLEAN:
+        return BooleanTVList.deserializeWithoutBitMap(stream);
       default:
         break;
     }

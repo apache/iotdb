@@ -2410,6 +2410,12 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "max_allocate_memory_ratio_for_load",
                 String.valueOf(conf.getMaxAllocateMemoryRatioForLoad()))));
+    conf.setLoadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_analyze_schema_batch_read_time_series_metadata_count",
+                String.valueOf(
+                    conf.getLoadTsFileAnalyzeSchemaBatchReadTimeSeriesMetadataCount()))));
     conf.setLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber(
         Integer.parseInt(
             properties.getProperty(
