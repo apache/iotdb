@@ -638,28 +638,28 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     assertTableNonQueryTestFail(
         EnvFactory.getEnv(),
         "create topic topic1",
-        "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+        "803: Access Denied: No permissions for this operation, only root user is allowed",
         "test",
         "test123",
         null);
     assertTableTestFail(
         EnvFactory.getEnv(),
         "show topics",
-        "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+        "803: Access Denied: No permissions for this operation, only root user is allowed",
         "test",
         "test123",
         null);
     assertTableTestFail(
         EnvFactory.getEnv(),
         "show subscriptions",
-        "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+        "803: Access Denied: No permissions for this operation, only root user is allowed",
         "test",
         "test123",
         null);
     assertTableNonQueryTestFail(
         EnvFactory.getEnv(),
         "drop topic topic1",
-        "803: Access Denied: No permissions for this operation, please add privilege MAINTAIN",
+        "803: Access Denied: No permissions for this operation, only root user is allowed",
         "test",
         "test123",
         null);
