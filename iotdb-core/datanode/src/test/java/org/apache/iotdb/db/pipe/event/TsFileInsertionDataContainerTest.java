@@ -557,6 +557,21 @@ public class TsFileInsertionDataContainerTest {
       final long endTime,
       final boolean isQuery,
       final int expectedCount) {
+    PipeTsFileInsertionEvent tsFileInsertionEvent =
+        new PipeTsFileInsertionEvent(
+            false,
+            "",
+            new TsFileResource(tsFile),
+            true,
+            false,
+            false,
+            null,
+            0,
+            null,
+            null,
+            null,
+            Long.MIN_VALUE,
+            Long.MAX_VALUE);
     try (final TsFileInsertionDataContainer tsFileContainer =
         isQuery
             ? new TsFileInsertionQueryDataContainer(tsFile, pattern, startTime, endTime)
