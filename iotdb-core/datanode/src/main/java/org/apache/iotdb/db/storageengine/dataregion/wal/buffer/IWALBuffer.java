@@ -54,8 +54,9 @@ public interface IWALBuffer extends AutoCloseable {
   void waitForFlush() throws InterruptedException;
 
   /**
-   * Wait for next flush operation done, if the predicate == true after entering a locked environment.
-   * Otherwise, return directly.
+   * Wait for next flush operation done, if the predicate == true after entering a locked
+   * environment. Otherwise, return directly.
+   *
    * @param waitPredicate the condition which should be satisfied before waiting.
    * @throws InterruptedException when interrupted by the flush thread
    */
