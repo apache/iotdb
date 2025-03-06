@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.pipe;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
-import org.apache.iotdb.confignode.manager.pipe.metric.PipeProcedureMetrics;
+import org.apache.iotdb.confignode.manager.pipe.metric.overview.PipeProcedureMetrics;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;

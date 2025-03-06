@@ -171,8 +171,6 @@ public interface IMemTable extends WALEntryValue {
   boolean chunkNotExist(IDeviceID deviceId, String measurement);
 
   /** only used when mem control enabled */
-  long getMeasurementSize(IDeviceID deviceId, String measurement);
-
   IWritableMemChunk getWritableMemChunk(IDeviceID deviceId, String measurement);
 
   /** only used when mem control enabled */

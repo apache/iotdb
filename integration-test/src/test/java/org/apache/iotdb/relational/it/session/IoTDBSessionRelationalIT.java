@@ -618,6 +618,98 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
+  public void insertNoFieldTest() throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      session.executeNonQueryStatement("CREATE TABLE IF NOT EXISTS no_field (tag1 string tag)");
+
+      List<IMeasurementSchema> schemaList =
+          Collections.singletonList(new MeasurementSchema("tag1", TSDataType.STRING));
+      final List<ColumnCategory> columnTypes = Collections.singletonList(ColumnCategory.TAG);
+
+      Tablet tablet =
+          new Tablet(
+              "no_field",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes);
+
+      long timestamp = 0;
+      for (int row = 0; row < 10; row++) {
+        tablet.addTimestamp(row, timestamp++);
+        tablet.addValue("tag1", row, "tag:" + row);
+      }
+      try {
+        session.insert(tablet);
+        fail("Insert should fail");
+      } catch (StatementExecutionException e) {
+        assertEquals("507: No Field column present, please check the request", e.getMessage());
+      }
+      tablet.reset();
+      int cnt = 0;
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from no_field order by time");
+      while (dataSet.hasNext()) {
+        dataSet.next();
+        cnt++;
+      }
+      assertEquals(0, cnt);
+    }
+  }
+
+  @Test
+  public void insertAllFieldDataTypeMismatchTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      session.executeNonQueryStatement(
+          "CREATE TABLE IF NOT EXISTS field_wrong_type (tag1 string tag, f1 int32 field, f2 int32 field)");
+
+      List<IMeasurementSchema> schemaList =
+          Arrays.asList(
+              new MeasurementSchema("tag1", TSDataType.STRING),
+              new MeasurementSchema("f1", TSDataType.DOUBLE),
+              new MeasurementSchema("f2", TSDataType.DOUBLE));
+      final List<ColumnCategory> columnTypes =
+          Arrays.asList(ColumnCategory.TAG, ColumnCategory.FIELD, ColumnCategory.FIELD);
+
+      Tablet tablet =
+          new Tablet(
+              "field_wrong_type",
+              IMeasurementSchema.getMeasurementNameList(schemaList),
+              IMeasurementSchema.getDataTypeList(schemaList),
+              columnTypes);
+
+      long timestamp = 0;
+      for (int row = 0; row < 10; row++) {
+        tablet.addTimestamp(row, timestamp++);
+        tablet.addValue("tag1", row, "tag:" + row);
+        tablet.addValue("f1", row, (double) row);
+        tablet.addValue("f2", row, (double) row);
+      }
+      try {
+        session.insert(tablet);
+        fail("Insert should fail");
+      } catch (StatementExecutionException e) {
+        assertEquals(
+            "507: Fail to insert measurements [f1, f2] "
+                + "caused by [Incompatible data type of column f1: DOUBLE/INT32, "
+                + "Incompatible data type of column f2: DOUBLE/INT32]",
+            e.getMessage());
+      }
+      tablet.reset();
+      int cnt = 0;
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from field_wrong_type order by time");
+      while (dataSet.hasNext()) {
+        dataSet.next();
+        cnt++;
+      }
+      assertEquals(0, cnt);
+    }
+  }
+
+  @Test
   public void insertRelationalTabletWithCacheLeaderTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
@@ -1126,33 +1218,14 @@ public class IoTDBSessionRelationalIT {
   }
 
   @Test
-  public void insertWithoutMeasurementTest()
-      throws IoTDBConnectionException, StatementExecutionException {
+  public void insertWithoutFieldTest() throws IoTDBConnectionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("USE \"db1\"");
       session.executeNonQueryStatement("create table tb (a string tag, b string field)");
       session.executeNonQueryStatement("insert into tb(a) values ('w')");
-      SessionDataSet dataSet = session.executeQueryStatement("select * from tb");
-      int cnt = 0;
-      while (dataSet.hasNext()) {
-        RowRecord rowRecord = dataSet.next();
-        assertEquals("w", rowRecord.getFields().get(1).getBinaryV().toString());
-        assertNull(rowRecord.getFields().get(2).getDataType());
-        cnt++;
-      }
-      assertEquals(1, cnt);
-
-      session.executeNonQueryStatement("flush");
-
-      dataSet = session.executeQueryStatement("select * from tb");
-      cnt = 0;
-      while (dataSet.hasNext()) {
-        RowRecord rowRecord = dataSet.next();
-        assertEquals("w", rowRecord.getFields().get(1).getBinaryV().toString());
-        assertNull(rowRecord.getFields().get(2).getDataType());
-        cnt++;
-      }
-      assertEquals(1, cnt);
+      fail("Exception expected");
+    } catch (StatementExecutionException e) {
+      assertEquals("507: No Field column present, please check the request", e.getMessage());
     }
   }
 
@@ -1234,14 +1307,6 @@ public class IoTDBSessionRelationalIT {
           // time, tag1, m1
           SessionDataSet dataSet =
               session.executeQueryStatement("select * from table" + testNum + " order by time");
-          RowRecord rec = dataSet.next();
-          assertEquals(0, rec.getFields().get(0).getLongV());
-          assertEquals("d1", rec.getFields().get(1).toString());
-          assertNull(rec.getFields().get(2).getDataType());
-          rec = dataSet.next();
-          assertEquals(1, rec.getFields().get(0).getLongV());
-          assertEquals("d1", rec.getFields().get(1).toString());
-          assertNull(rec.getFields().get(2).getDataType());
           assertFalse(dataSet.hasNext());
         } else {
           // cannot cast, expect an exception
