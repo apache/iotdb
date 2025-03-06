@@ -241,7 +241,9 @@ public class MemoryManager {
       String name, long sizeInBytes, MemoryBlockType type) {
     if (sizeInBytes < 0) {
       throw new MemoryException(
-          String.format("register memory block %s failed: sizeInBytes should be positive", name));
+          String.format(
+              "register memory block %s failed: sizeInBytes should be greater or equal to 0",
+              name));
     }
     return allocatedMemoryBlocks.compute(
         name,
