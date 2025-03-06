@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite;
 
-import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
@@ -37,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
@@ -89,11 +89,13 @@ public final class ShowRewrite implements StatementRewrite.Rewrite {
     }
 
     @Override
-    protected Node visitShowStatement(final ShowStatement showStatement, final Void context) {
-      if (InformationSchema.QUERIES.equals(showStatement.getTableName())) {
-        accessControl.checkUserIsAdmin(session.getUserName());
-      }
+    protected Node visitShowQueriesStatement(ShowQueriesStatement node, Void context) {
+      accessControl.checkUserIsAdmin(session.getUserName());
+      return visitShowStatement(node, context);
+    }
 
+    @Override
+    protected Node visitShowStatement(final ShowStatement showStatement, final Void context) {
       return simpleQuery(
           selectList(new AllColumns()),
           from(INFORMATION_DATABASE, showStatement.getTableName()),

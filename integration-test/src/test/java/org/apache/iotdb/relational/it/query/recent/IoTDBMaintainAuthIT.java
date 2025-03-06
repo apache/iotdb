@@ -121,7 +121,7 @@ public class IoTDBMaintainAuthIT {
     tableQueryNoVerifyResultTest("SHOW CURRENT_TIMESTAMP", expectedHeader, USER_2, PASSWORD);
 
     // case 7: show variables
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "SHOW VARIABLES",
         TSStatusCode.NO_PERMISSION.getStatusCode()
@@ -130,7 +130,7 @@ public class IoTDBMaintainAuthIT {
         PASSWORD);
 
     // case 8: show cluster_id
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "SHOW CLUSTER_ID",
         TSStatusCode.NO_PERMISSION.getStatusCode()
@@ -139,7 +139,7 @@ public class IoTDBMaintainAuthIT {
         PASSWORD);
 
     // case 9: flush
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "FLUSH",
         TSStatusCode.NO_PERMISSION.getStatusCode()
@@ -148,7 +148,7 @@ public class IoTDBMaintainAuthIT {
         PASSWORD);
 
     // case 10: clear cache
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "CLEAR CACHE",
         TSStatusCode.NO_PERMISSION.getStatusCode()
@@ -157,7 +157,7 @@ public class IoTDBMaintainAuthIT {
         PASSWORD);
 
     // case 11: set configuration
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "SET CONFIGURATION query_timeout_threshold='100000'",
         TSStatusCode.NO_PERMISSION.getStatusCode()
@@ -184,7 +184,7 @@ public class IoTDBMaintainAuthIT {
         PASSWORD);
 
     // case 13: kill query
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "kill query '20250206_093300_00001_1'",
         TSStatusCode.NO_PERMISSION.getStatusCode()
@@ -193,7 +193,7 @@ public class IoTDBMaintainAuthIT {
         PASSWORD);
 
     // case 14: load configuration
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "LOAD CONFIGURATION",
         TSStatusCode.NO_PERMISSION.getStatusCode()
@@ -202,7 +202,7 @@ public class IoTDBMaintainAuthIT {
         PASSWORD);
 
     // case 15: set system status
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "SET SYSTEM TO RUNNING",
         TSStatusCode.NO_PERMISSION.getStatusCode()
@@ -211,7 +211,7 @@ public class IoTDBMaintainAuthIT {
         PASSWORD);
 
     // case 16: start repair data
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "START REPAIR DATA",
         TSStatusCode.NO_PERMISSION.getStatusCode()
@@ -220,7 +220,7 @@ public class IoTDBMaintainAuthIT {
         PASSWORD);
 
     // case 17: stop repair data
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "STOP REPAIR DATA",
         TSStatusCode.NO_PERMISSION.getStatusCode()
@@ -229,13 +229,13 @@ public class IoTDBMaintainAuthIT {
         PASSWORD);
 
     // case 18: create function
-    // user1 without MAINTAIN
+    // user1
     tableAssertTestFail(
         "create function udsf as 'org.apache.iotdb.db.query.udf.example.relational.ContainNull'",
         TSStatusCode.NO_PERMISSION.getStatusCode() + ": Access Denied: " + ONLY_ADMIN_ALLOWED,
         USER_1,
         PASSWORD);
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "create function udsf as 'org.apache.iotdb.db.query.udf.example.relational.ContainNull'",
         TSStatusCode.NO_PERMISSION.getStatusCode() + ": Access Denied: " + ONLY_ADMIN_ALLOWED,
@@ -243,20 +243,20 @@ public class IoTDBMaintainAuthIT {
         PASSWORD);
 
     // case 19: show functions
-    // user1 with MAINTAIN
+    // user1
     expectedHeader = new String[] {"FunctionName", "FunctionType", "ClassName(UDF)", "State"};
     tableQueryNoVerifyResultTest("SHOW FUNCTIONS", expectedHeader, USER_1, PASSWORD);
-    // user2 without MAINTAIN
+    // user2
     tableQueryNoVerifyResultTest("SHOW FUNCTIONS", expectedHeader, USER_2, PASSWORD);
 
     // case 20: create function
-    // user1 with MAINTAIN
+    // user1
     tableAssertTestFail(
         "drop function udsf",
         TSStatusCode.NO_PERMISSION.getStatusCode() + ": Access Denied: " + ONLY_ADMIN_ALLOWED,
         USER_1,
         PASSWORD);
-    // user2 without MAINTAIN
+    // user2
     tableAssertTestFail(
         "drop function udsf",
         TSStatusCode.NO_PERMISSION.getStatusCode() + ": Access Denied: " + ONLY_ADMIN_ALLOWED,
