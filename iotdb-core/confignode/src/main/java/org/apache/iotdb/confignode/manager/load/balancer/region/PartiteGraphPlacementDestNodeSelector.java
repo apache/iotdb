@@ -20,11 +20,9 @@
 package org.apache.iotdb.confignode.manager.load.balancer.region;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyRegionGroupAllocator.DataNodeEntry;
 
 import org.apache.tsfile.utils.Pair;
@@ -40,7 +38,6 @@ import java.util.stream.Collectors;
 
 public class PartiteGraphPlacementDestNodeSelector implements IDestNodeSelector {
   private int replicationFactor;
-  private int regionPerDataNode;
 
   private int dataNodeNum;
   // The number of allocated Regions in each DataNode
@@ -48,6 +45,7 @@ public class PartiteGraphPlacementDestNodeSelector implements IDestNodeSelector 
   // The number of edges in current cluster
   private int[][] combinationCounter;
   private Map<Integer, Integer> fakeToRealIdMap;
+  private Map<Integer, Integer> realToFakeIdMap;
 
   private Set<Integer> remainDataNodesFakeId;
 
@@ -65,21 +63,9 @@ public class PartiteGraphPlacementDestNodeSelector implements IDestNodeSelector 
       int replicationFactor,
       TConsensusGroupId consensusGroupId,
       TRegionReplicaSet remainReplicaSet) {
-    this.regionPerDataNode =
-        consensusGroupId.getType().equals(TConsensusGroupType.DataRegion)
-            ? ConfigNodeDescriptor.getInstance().getConf().getDataRegionPerDataNode()
-            : ConfigNodeDescriptor.getInstance().getConf().getSchemaRegionPerDataNode();
     prepare(replicationFactor, availableDataNodeMap, allocatedRegionGroups, remainReplicaSet);
 
     searchTargetDataNode(freeDiskSpaceMap);
-
-    if (targetDataNode == -1) {
-      Set<Integer> alternativeDataNodes =
-          fakeToRealIdMap.keySet().stream()
-              .filter(fakeId -> !remainDataNodesFakeId.contains(fakeId))
-              .collect(Collectors.toSet());
-      return availableDataNodeMap.get(alternativeDataNodes.stream().findAny().orElse(null));
-    }
 
     return availableDataNodeMap.get(fakeToRealIdMap.get(targetDataNode));
   }
@@ -91,7 +77,7 @@ public class PartiteGraphPlacementDestNodeSelector implements IDestNodeSelector 
       TRegionReplicaSet remainReplicaSet) {
     this.replicationFactor = replicationFactor;
     this.fakeToRealIdMap = new TreeMap<>();
-    Map<Integer, Integer> realToFakeIdMap = new TreeMap<>();
+    this.realToFakeIdMap = new TreeMap<>();
     this.dataNodeNum = availableDataNodeMap.size();
     List<Integer> dataNodeIdList =
         availableDataNodeMap.values().stream()
@@ -138,13 +124,8 @@ public class PartiteGraphPlacementDestNodeSelector implements IDestNodeSelector 
       if (remainDataNodesFakeId.contains(i)) {
         continue;
       }
-      if (regionCounter[i] < regionPerDataNode) {
-        entryList.add(
-            new DataNodeEntry(i, regionCounter[i], freeDiskSpaceMap.get(fakeToRealIdMap.get(i))));
-      }
-    }
-    if (entryList.isEmpty()) {
-      return;
+      entryList.add(
+          new DataNodeEntry(i, regionCounter[i], freeDiskSpaceMap.get(fakeToRealIdMap.get(i))));
     }
     Collections.sort(entryList);
 

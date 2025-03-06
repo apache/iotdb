@@ -25,14 +25,18 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
+import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class DestNodeSelectorTest {
@@ -40,8 +44,7 @@ public class DestNodeSelectorTest {
   private static final Logger LOGGER = LoggerFactory.getLogger(DestNodeSelectorTest.class);
 
   private static final IDestNodeSelector SELECTOR = new PartiteGraphPlacementDestNodeSelector();
-  private static final IRegionGroupAllocator ALLOCATOR =
-      new PartiteGraphPlacementRegionGroupAllocator();
+  private static final IRegionGroupAllocator ALLOCATOR = new GreedyCopySetRegionGroupAllocator();
 
   private static final TDataNodeLocation REMOVE_DATANODE_LOCATION =
       new TDataNodeLocation().setDataNodeId(5);
@@ -63,7 +66,7 @@ public class DestNodeSelectorTest {
     }
   }
 
-  // manual test only
+  @Test
   public void testSelectDestNode() {
     final int dataRegionGroupNum =
         DATA_REGION_PER_DATA_NODE * TEST_DATA_NODE_NUM / DATA_REPLICATION_FACTOR;
@@ -99,6 +102,8 @@ public class DestNodeSelectorTest {
       remainReplicas.add(replicaSet);
     }
 
+    Set<Integer> selectedNodeIds = new HashSet<>();
+
     for (TRegionReplicaSet remainReplicaSet : remainReplicas) {
       TDataNodeConfiguration selectedNode =
           SELECTOR.selectDestDataNode(
@@ -118,6 +123,9 @@ public class DestNodeSelectorTest {
       dataNodeLocations.add(selectedNode.getLocation());
       remainReplicaSet.setDataNodeLocations(dataNodeLocations);
       allocateResult.add(remainReplicaSet);
+      selectedNodeIds.add(selectedNode.getLocation().getDataNodeId());
     }
+
+    Assert.assertEquals(TEST_DATA_NODE_NUM - 1, selectedNodeIds.size());
   }
 }
