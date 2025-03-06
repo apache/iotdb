@@ -1192,6 +1192,7 @@ struct TTableInfo {
    // TTL is stored as string in table props
    2: required string TTL
    3: optional i32 state
+   4: optional string comment
 }
 
 service IConfigNodeRPCService {

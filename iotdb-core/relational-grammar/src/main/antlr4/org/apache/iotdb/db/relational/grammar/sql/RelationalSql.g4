@@ -55,6 +55,7 @@ statement
     | showTableStatement
     | descTableStatement
     | alterTableStatement
+    | commentStatement
 
     // Index Statement
     | createIndexStatement
@@ -184,6 +185,7 @@ createTableStatement
     : CREATE TABLE (IF NOT EXISTS)? qualifiedName
         '(' (columnDefinition (',' columnDefinition)*)? ')'
         charsetDesc?
+        comment?
         (WITH properties)?
      ;
 
@@ -192,14 +194,18 @@ charsetDesc
     ;
 
 columnDefinition
-    : identifier columnCategory=(TAG | ATTRIBUTE | TIME) charsetName?
-    | identifier type (columnCategory=(TAG | ATTRIBUTE | TIME | FIELD))? charsetName?
+    : identifier columnCategory=(TAG | ATTRIBUTE | TIME) charsetName? comment?
+    | identifier type (columnCategory=(TAG | ATTRIBUTE | TIME | FIELD))? charsetName? comment?
     ;
 
 charsetName
     : CHAR SET identifier
     | CHARSET identifier
     | CHARACTER SET identifier
+    ;
+
+comment
+    : COMMENT string
     ;
 
 dropTableStatement
@@ -224,7 +230,10 @@ alterTableStatement
     | ALTER TABLE (IF EXISTS)? tableName=qualifiedName SET PROPERTIES propertyAssignments                #setTableProperties
     ;
 
-
+commentStatement
+    : COMMENT ON TABLE qualifiedName IS (string | NULL) #commentTable
+    | COMMENT ON COLUMN qualifiedName '.' column=identifier IS (string | NULL) #commentColumn
+    ;
 
 // ------------------------------------------- Index Statement ---------------------------------------------------------
 createIndexStatement
