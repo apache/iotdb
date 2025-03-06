@@ -40,6 +40,7 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -81,6 +82,12 @@ public class InferenceOperator implements ProcessOperator {
   private final TsBlockSerde serde = new TsBlockSerde();
   private InferenceWindowType windowType = null;
 
+  private final boolean generateTimeColumn;
+  private long maxTimestamp;
+  private long minTimestamp;
+  private long interval;
+  private long currentRowIndex;
+
   public InferenceOperator(
       OperatorContext operatorContext,
       Operator child,
@@ -88,6 +95,7 @@ public class InferenceOperator implements ProcessOperator {
       ExecutorService modelInferenceExecutor,
       List<String> targetColumnNames,
       List<String> inputColumnNames,
+      boolean generateTimeColumn,
       long maxRetainedSize,
       long maxReturnSize) {
     this.operatorContext = operatorContext;
@@ -106,6 +114,14 @@ public class InferenceOperator implements ProcessOperator {
     if (modelInferenceDescriptor.getInferenceWindowParameter() != null) {
       windowType = modelInferenceDescriptor.getInferenceWindowParameter().getWindowType();
     }
+
+    if (generateTimeColumn) {
+      this.interval = 0;
+      this.minTimestamp = Long.MAX_VALUE;
+      this.maxTimestamp = Long.MIN_VALUE;
+      this.currentRowIndex = 0;
+    }
+    this.generateTimeColumn = generateTimeColumn;
   }
 
   @Override
@@ -140,6 +156,15 @@ public class InferenceOperator implements ProcessOperator {
     return !finished || (results != null && results.size() != resultIndex);
   }
 
+  private void fillTimeColumn(TsBlock tsBlock) {
+    TimeColumn timeColumn = (TimeColumn) tsBlock.getTimeColumn();
+    long[] time = timeColumn.getTimes();
+    for (int i = 0; i < time.length; i++) {
+      time[i] = maxTimestamp + interval * currentRowIndex;
+      currentRowIndex++;
+    }
+  }
+
   @Override
   public TsBlock next() throws Exception {
     if (inferenceExecutionFuture == null) {
@@ -156,6 +181,9 @@ public class InferenceOperator implements ProcessOperator {
 
       if (results != null && resultIndex != results.size()) {
         TsBlock tsBlock = serde.deserialize(results.get(resultIndex));
+        if (generateTimeColumn) {
+          fillTimeColumn(tsBlock);
+        }
         resultIndex++;
         return tsBlock;
       }
@@ -177,6 +205,9 @@ public class InferenceOperator implements ProcessOperator {
 
         finished = true;
         TsBlock resultTsBlock = serde.deserialize(inferenceResp.inferenceResult.get(0));
+        if (generateTimeColumn) {
+          fillTimeColumn(resultTsBlock);
+        }
         results = inferenceResp.inferenceResult;
         resultIndex++;
         return resultTsBlock;
@@ -194,7 +225,12 @@ public class InferenceOperator implements ProcessOperator {
     ColumnBuilder[] columnBuilders = inputTsBlockBuilder.getValueColumnBuilders();
     totalRow += inputTsBlock.getPositionCount();
     for (int i = 0; i < inputTsBlock.getPositionCount(); i++) {
-      timeColumnBuilder.writeLong(inputTsBlock.getTimeByIndex(i));
+      long timestamp = inputTsBlock.getTimeByIndex(i);
+      if (generateTimeColumn) {
+        minTimestamp = Math.min(minTimestamp, timestamp);
+        maxTimestamp = Math.max(maxTimestamp, timestamp);
+      }
+      timeColumnBuilder.writeLong(timestamp);
       for (int columnIndex = 0; columnIndex < inputTsBlock.getValueColumnCount(); columnIndex++) {
         columnBuilders[columnIndex].write(inputTsBlock.getColumn(columnIndex), i);
       }
@@ -258,6 +294,10 @@ public class InferenceOperator implements ProcessOperator {
   }
 
   private void submitInferenceTask() {
+
+    if (generateTimeColumn) {
+      interval = (maxTimestamp - minTimestamp) / totalRow;
+    }
 
     TsBlock inputTsBlock = inputTsBlockBuilder.build();
 
