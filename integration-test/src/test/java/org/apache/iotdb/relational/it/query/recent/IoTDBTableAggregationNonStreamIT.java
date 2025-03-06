@@ -26,7 +26,6 @@ import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
@@ -50,43 +49,5 @@ public class IoTDBTableAggregationNonStreamIT extends IoTDBTableAggregationIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
-  }
-
-  public static void main(String[] args) {
-    createSqls[2] =
-        "CREATE TABLE table1(province STRING FIELD, city STRING FIELD, region STRING FIELD, device_id STRING TAG, color STRING ATTRIBUTE, type STRING ATTRIBUTE, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 BOOLEAN FIELD, s6 TEXT FIELD, s7 STRING FIELD, s8 BLOB FIELD, s9 TIMESTAMP FIELD, s10 DATE FIELD)";
-    for (String s : createSqls) {
-      System.out.println(s + ';');
-    }
-  }
-
-  @Ignore
-  @Override
-  public void countIfDistinctTest() {
-    super.countIfDistinctTest();
-  }
-
-  @Ignore
-  @Override
-  public void varianceDistinctTest() {
-    super.varianceDistinctTest();
-  }
-
-  @Ignore
-  @Override
-  public void avgDistinctTest() {
-    super.avgDistinctTest();
-  }
-
-  @Ignore
-  @Override
-  public void sumDistinctTest() {
-    super.sumDistinctTest();
-  }
-
-  @Ignore
-  @Override
-  public void countDistinctTest() {
-    super.countDistinctTest();
   }
 }
