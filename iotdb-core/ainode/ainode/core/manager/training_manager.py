@@ -15,6 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
+from ainode.thrift.ainode.ttypes import ITableSchema
+
 class TrainingManager:
     def __init__(self):
         pass
