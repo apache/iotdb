@@ -27,7 +27,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.utils.ModificationUtils;
-import org.apache.iotdb.db.utils.datastructure.MergeSortTvListIterator;
+import org.apache.iotdb.db.utils.datastructure.MergeSortTVListIterator;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -641,7 +641,7 @@ public class WritableMemChunk implements IWritableMemChunk {
     // create MergeSortTvListIterator. It need not handle float/double precision here.
     List<TVList> tvLists = new ArrayList<>(sortedList);
     tvLists.add(list);
-    MergeSortTvListIterator timeValuePairIterator = new MergeSortTvListIterator(tvLists);
+    MergeSortTVListIterator timeValuePairIterator = new MergeSortTVListIterator(tvLists);
 
     TimeValuePair prevTvPair = null;
     while (timeValuePairIterator.hasNextTimeValuePair()) {

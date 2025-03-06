@@ -22,91 +22,77 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import java.util.List;
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static java.util.Objects.requireNonNull;
 
-public class SetProperties extends Statement {
-
-  public enum Type {
-    TABLE,
-    MATERIALIZED_VIEW
-  }
-
-  private final Type type;
-  private final QualifiedName name;
-  private final List<Property> properties;
+public class SetTableComment extends Statement {
+  private final QualifiedName tableName;
   private final boolean ifExists;
+  @Nullable private final String comment;
 
-  public SetProperties(
+  public SetTableComment(
       final @Nonnull NodeLocation location,
-      final Type type,
-      final QualifiedName name,
-      final List<Property> properties,
-      final boolean ifExists) {
-    super(requireNonNull(location, "location is null"));
-    this.type = requireNonNull(type, "type is null");
-    this.name = requireNonNull(name, "name is null");
-    this.properties = ImmutableList.copyOf(requireNonNull(properties, "properties is null"));
+      final QualifiedName tableName,
+      final boolean ifExists,
+      final @Nullable String comment) {
+    super(location);
+    this.tableName = tableName;
     this.ifExists = ifExists;
+    this.comment = comment;
   }
 
-  public Type getType() {
-    return type;
-  }
-
-  public QualifiedName getName() {
-    return name;
-  }
-
-  public List<Property> getProperties() {
-    return properties;
+  public QualifiedName getTableName() {
+    return tableName;
   }
 
   public boolean ifExists() {
     return ifExists;
   }
 
-  @Override
-  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
-    return visitor.visitSetProperties(this, context);
+  @Nullable
+  public String getComment() {
+    return comment;
   }
 
   @Override
-  public List<Node> getChildren() {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
+    return visitor.visitSetTableComment(this, context);
+  }
+
+  @Override
+  public List<? extends Node> getChildren() {
     return ImmutableList.of();
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(type, name, properties, ifExists);
+    return Objects.hash(tableName, ifExists, comment);
   }
 
   @Override
-  public boolean equals(final Object obj) {
-    if (this == obj) {
+  public boolean equals(final Object o) {
+    if (this == o) {
       return true;
     }
-    if ((obj == null) || (getClass() != obj.getClass())) {
+    if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    final SetProperties o = (SetProperties) obj;
-    return type == o.type
-        && ifExists == o.ifExists
-        && Objects.equals(name, o.name)
-        && Objects.equals(properties, o.properties);
+    final SetTableComment that = (SetTableComment) o;
+    return ifExists == that.ifExists
+        && Objects.equals(tableName, that.tableName)
+        && Objects.equals(comment, that.comment);
   }
 
   @Override
   public String toString() {
     return toStringHelper(this)
-        .add("type", type)
-        .add("name", name)
-        .add("properties", properties)
+        .add("tableName", tableName)
         .add("ifExists", ifExists)
+        .add("comment", comment)
         .toString();
   }
 }
