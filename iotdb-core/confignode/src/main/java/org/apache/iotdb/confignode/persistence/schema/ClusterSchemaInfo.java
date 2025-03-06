@@ -58,6 +58,8 @@ import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumn
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -1186,6 +1188,37 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
+  public TSStatus setTableComment(final SetTableCommentPlan plan) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      tableModelMTree.setTableComment(
+          getQualifiedDatabasePartialPath(plan.getDatabase()),
+          plan.getTableName(),
+          plan.getComment());
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (final MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public TSStatus setTableColumnComment(final SetTableColumnCommentPlan plan) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      tableModelMTree.setTableColumnComment(
+          getQualifiedDatabasePartialPath(plan.getDatabase()),
+          plan.getTableName(),
+          plan.getColumnName(),
+          plan.getComment());
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (final MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
   public ShowTableResp showTables(final ShowTablePlan plan) {
     databaseReadWriteLock.readLock().lock();
     try {
@@ -1203,6 +1236,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                                 pair.getLeft().getTableName(),
                                 pair.getLeft().getPropValue(TTL_PROPERTY).orElse(TTL_INFINITE));
                         info.setState(pair.getRight().ordinal());
+                        pair.getLeft()
+                            .getPropValue(TsTable.COMMENT_KEY)
+                            .ifPresent(info::setComment);
                         return info;
                       })
                   .collect(Collectors.toList())
@@ -1244,6 +1280,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                                                 .getPropValue(TTL_PROPERTY)
                                                 .orElse(TTL_INFINITE));
                                     info.setState(pair.getRight().ordinal());
+                                    pair.getLeft()
+                                        .getPropValue(TsTable.COMMENT_KEY)
+                                        .ifPresent(info::setComment);
                                     return info;
                                   })
                               .collect(Collectors.toList()))));

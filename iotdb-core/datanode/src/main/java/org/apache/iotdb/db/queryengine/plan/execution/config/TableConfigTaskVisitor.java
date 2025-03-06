@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -51,6 +52,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.Rec
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.RemoveRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableAddColumnTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableCommentColumnTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableCommentTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableDropColumnTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableRenameColumnTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableRenameTableTask;
@@ -141,10 +144,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSystemStatus;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
@@ -203,6 +208,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrustedUriErrorMsg;
 import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
+import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REGION_GROUP_NUM_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.SCHEMA_REGION_GROUP_NUM_KEY;
@@ -444,6 +450,9 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final TsTable table = new TsTable(tableName);
 
     table.setProps(convertPropertiesToMap(node.getProperties(), false));
+    if (Objects.nonNull(node.getComment())) {
+      table.addProp(TsTable.COMMENT_KEY, node.getComment());
+    }
 
     // TODO: Place the check at statement analyzer
     boolean hasTimeColumn = false;
@@ -451,7 +460,14 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
       final TsTableColumnCategory category = columnDefinition.getColumnCategory();
       final String columnName = columnDefinition.getName().getValue();
       final TSDataType dataType = getDataType(columnDefinition.getType());
-      if (checkTimeColumnIdempotent(category, columnName, dataType) && !hasTimeColumn) {
+      final String comment = columnDefinition.getComment();
+      if (checkTimeColumnIdempotent(
+              category,
+              columnName,
+              dataType,
+              comment,
+              (TimeColumnSchema) table.getColumnSchema(TIME_COLUMN_NAME))
+          && !hasTimeColumn) {
         hasTimeColumn = true;
         continue;
       }
@@ -460,17 +476,24 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             String.format("Columns in table shall not share the same name %s.", columnName));
       }
       table.addColumnSchema(
-          TableHeaderSchemaValidator.generateColumnSchema(category, columnName, dataType));
+          TableHeaderSchemaValidator.generateColumnSchema(category, columnName, dataType, comment));
     }
     return new CreateTableTask(table, database, node.isIfNotExists());
   }
 
   private boolean checkTimeColumnIdempotent(
-      final TsTableColumnCategory category, final String columnName, final TSDataType dataType) {
-    if (category == TsTableColumnCategory.TIME || columnName.equals(TsTable.TIME_COLUMN_NAME)) {
+      final TsTableColumnCategory category,
+      final String columnName,
+      final TSDataType dataType,
+      final String comment,
+      final TimeColumnSchema timeColumnSchema) {
+    if (category == TsTableColumnCategory.TIME || columnName.equals(TIME_COLUMN_NAME)) {
       if (category == TsTableColumnCategory.TIME
-          && columnName.equals(TsTable.TIME_COLUMN_NAME)
+          && columnName.equals(TIME_COLUMN_NAME)
           && dataType == TSDataType.TIMESTAMP) {
+        if (Objects.nonNull(comment)) {
+          timeColumnSchema.getProps().put(TsTable.COMMENT_KEY, comment);
+        }
         return true;
       } else if (dataType == TSDataType.TIMESTAMP) {
         throw new SemanticException(
@@ -524,7 +547,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             TableHeaderSchemaValidator.generateColumnSchema(
                 definition.getColumnCategory(),
                 definition.getName().getValue(),
-                getDataType(definition.getType()))),
+                getDataType(definition.getType()),
+                definition.getComment())),
         context.getQueryId().getId(),
         node.tableIfExists(),
         node.columnIfNotExists());
@@ -592,6 +616,42 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         convertPropertiesToMap(node.getProperties(), true),
         context.getQueryId().getId(),
         node.ifExists());
+  }
+
+  @Override
+  protected IConfigTask visitSetTableComment(
+      final SetTableComment node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName(), true);
+    final String database = databaseTablePair.getLeft();
+    final String tableName = databaseTablePair.getRight();
+
+    accessControl.checkCanAlterTable(
+        context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
+
+    return new AlterTableCommentTableTask(
+        database, tableName, context.getQueryId().getId(), node.ifExists(), node.getComment());
+  }
+
+  @Override
+  protected IConfigTask visitSetColumnComment(
+      final SetColumnComment node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTable(), true);
+    final String database = databaseTablePair.getLeft();
+    final String tableName = databaseTablePair.getRight();
+
+    accessControl.checkCanAlterTable(
+        context.getSession().getUserName(), new QualifiedObjectName(database, tableName));
+
+    return new AlterTableCommentColumnTask(
+        database,
+        tableName,
+        node.getField().getValue(),
+        context.getQueryId().getId(),
+        node.tableIfExists(),
+        node.columnIfExists(),
+        node.getComment());
   }
 
   public static void validateDatabaseName(final String dbName) throws SemanticException {

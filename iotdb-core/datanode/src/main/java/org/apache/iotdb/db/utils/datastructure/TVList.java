@@ -415,7 +415,7 @@ public abstract class TVList implements WALEntryValue {
   }
 
   // common clone for both TVList and AlignedTVList
-  protected void cloneAs(TVList cloneList) {
+  protected synchronized void cloneAs(TVList cloneList) {
     // clone timestamps
     for (long[] timestampArray : timestamps) {
       cloneList.timestamps.add(cloneTime(timestampArray));
@@ -499,7 +499,6 @@ public abstract class TVList implements WALEntryValue {
     for (int i = start; i < end; i++) {
       inPutMinTime = Math.min(inPutMinTime, time[i]);
       maxTime = Math.max(maxTime, time[i]);
-      minTime = Math.min(minTime, time[i]);
       if (inputSorted) {
         if (i < length - 1 && time[i] > time[i + 1]) {
           inputSorted = false;
@@ -508,6 +507,7 @@ public abstract class TVList implements WALEntryValue {
         }
       }
     }
+    minTime = Math.min(minTime, inPutMinTime);
     if (sorted && (rowCount == 0 || time[start] >= getTime(rowCount - 1))) {
       seqRowCount += inputSeqRowCount;
     }
