@@ -237,7 +237,8 @@ public class MemoryManager {
    * @param type the type of memory block
    * @return the memory block
    */
-  private IMemoryBlock getOrRegisterMemoryBlock(String name, long sizeInBytes, MemoryBlockType type) {
+  private IMemoryBlock getOrRegisterMemoryBlock(
+      String name, long sizeInBytes, MemoryBlockType type) {
     if (sizeInBytes < 0) {
       throw new MemoryException(
           String.format("register memory block %s failed: sizeInBytes should be positive", name));
@@ -316,23 +317,24 @@ public class MemoryManager {
         (managerName, manager) -> {
           if (sizeInBytes <= 0) {
             LOGGER.warn("getOrCreateMemoryManager {}: sizeInBytes should be positive", name);
-          }
-          if (this.enabled
-              && sizeInBytes + this.allocatedMemorySizeInBytes > this.totalMemorySizeInBytes) {
-            LOGGER.warn(
-                "getOrCreateMemoryManager failed: total memory size {} bytes is less than allocated memory size {} bytes",
-                sizeInBytes,
-                allocatedMemorySizeInBytes);
             return null;
           }
           if (manager != null) {
             LOGGER.debug(
-                "getOrCreateMemoryManager failed: memory manager {} already exists, it's size is {}, enabled is {}",
+                "getMemoryManager: memory manager {} already exists, it's size is {}, enabled is {}",
                 managerName,
                 manager.getTotalMemorySizeInBytes(),
                 manager.isEnable());
             return manager;
           } else {
+            if (this.enabled
+                && sizeInBytes + this.allocatedMemorySizeInBytes > this.totalMemorySizeInBytes) {
+              LOGGER.warn(
+                  "getOrCreateMemoryManager failed: total memory size {} bytes is less than allocated memory size {} bytes",
+                  sizeInBytes,
+                  allocatedMemorySizeInBytes);
+              return null;
+            }
             allocatedMemorySizeInBytes += sizeInBytes;
             return new MemoryManager(name, this, sizeInBytes, enabled);
           }
