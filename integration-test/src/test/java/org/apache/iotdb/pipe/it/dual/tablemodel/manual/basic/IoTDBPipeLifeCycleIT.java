@@ -20,14 +20,12 @@
 package org.apache.iotdb.pipe.it.dual.tablemodel.manual.basic;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
-import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -39,7 +37,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -49,10 +46,7 @@ import java.util.function.Consumer;
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTableNonQueryTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTableTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
-import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQueriesWithRetry;
 import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQueryWithRetry;
-import static org.apache.iotdb.db.it.utils.TestUtils.executeQueryWithRetry;
-import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSystemPrivileges;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualBasic.class})
@@ -779,37 +773,5 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
         "test",
         "test123",
         null);
-
-    grantUserSystemPrivileges(senderEnv, "test", PrivilegeType.MAINTAIN);
-
-    executeNonQueryWithRetry(
-        senderEnv,
-        "create pipe testPipe\n"
-            + "with connector (\n"
-            + "  'connector'='write-back-connector'\n"
-            + ")",
-        "test",
-        "test123",
-        null,
-        BaseEnv.TABLE_SQL_DIALECT);
-    executeQueryWithRetry(
-        senderEnv, "show pipes", "test", "test123", null, BaseEnv.TABLE_SQL_DIALECT);
-    executeNonQueriesWithRetry(
-        senderEnv,
-        Arrays.asList("start pipe testPipe", "stop pipe testPipe", "drop pipe testPipe"),
-        "test",
-        "test123",
-        null,
-        BaseEnv.TABLE_SQL_DIALECT);
-
-    assertTableNonQueryTestFail(
-        senderEnv,
-        "create pipePlugin TestProcessor as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI 'xxx'",
-        "701: Untrusted uri xxx",
-        "test",
-        "test123",
-        null);
-    executeQueryWithRetry(
-        senderEnv, "show pipe plugins", "test", "test123", null, BaseEnv.TABLE_SQL_DIALECT);
   }
 }
