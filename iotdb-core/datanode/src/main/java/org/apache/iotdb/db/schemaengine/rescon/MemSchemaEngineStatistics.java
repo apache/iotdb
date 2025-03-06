@@ -41,7 +41,7 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
       IoTDBDescriptor.getInstance()
           .getMemoryConfig()
           .getSchemaRegionMemoryManager()
-          .forceAllocate("SchemaRegion", MemoryBlockType.DYNAMIC);
+          .exactAllocate("SchemaRegion", MemoryBlockType.DYNAMIC);
   private final ClusterTemplateManager clusterTemplateManager =
       ClusterTemplateManager.getInstance();
 

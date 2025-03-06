@@ -51,7 +51,7 @@ public class TimePartitionManager {
         IoTDBDescriptor.getInstance()
             .getMemoryConfig()
             .getTimePartitionInfoMemoryManager()
-            .forceAllocate("TimePartitionInfoMemoryBlock", MemoryBlockType.DYNAMIC);
+            .exactAllocate("TimePartitionInfoMemoryBlock", MemoryBlockType.DYNAMIC);
   }
 
   public void registerTimePartitionInfo(TimePartitionInfo timePartitionInfo) {

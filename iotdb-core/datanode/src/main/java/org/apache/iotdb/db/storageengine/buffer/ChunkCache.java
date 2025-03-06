@@ -76,7 +76,7 @@ public class ChunkCache {
     CACHE_MEMORY_BLOCK =
         MEMORY_CONFIG
             .getChunkCacheMemoryManager()
-            .forceAllocate("ChunkCache", MemoryBlockType.STATIC);
+            .exactAllocate("ChunkCache", MemoryBlockType.STATIC);
     // TODO @spricoder: find a way to get the size of the ChunkCache
     CACHE_MEMORY_BLOCK.allocate(CACHE_MEMORY_BLOCK.getTotalMemorySizeInBytes());
   }

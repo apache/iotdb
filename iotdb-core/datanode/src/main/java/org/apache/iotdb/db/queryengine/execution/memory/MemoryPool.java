@@ -127,7 +127,7 @@ public class MemoryPool {
   public MemoryPool(String id, MemoryManager memoryManager, long maxBytesPerFragmentInstance) {
     this.id = Validate.notNull(id, "id can not be null.");
     this.memoryBlock =
-        memoryManager.forceAllocate(memoryManager.getName(), MemoryBlockType.DYNAMIC);
+        memoryManager.exactAllocate(memoryManager.getName(), MemoryBlockType.DYNAMIC);
     Validate.isTrue(
         this.memoryBlock.getTotalMemorySizeInBytes() > 0L,
         "max bytes should be greater than zero: %d",

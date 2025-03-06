@@ -49,7 +49,7 @@ public class MemoryManagerTest {
 
     // create memoryBlock1 in the size of 20 from globalMemoryManager
     IMemoryBlock memoryBlock1 =
-        GLOBAL_MEMORY_MANAGER.forceAllocate("Block1", 20, MemoryBlockType.STATIC);
+        GLOBAL_MEMORY_MANAGER.exactAllocate("Block1", 20, MemoryBlockType.STATIC);
     Assert.assertEquals(80, GLOBAL_MEMORY_MANAGER.getAvailableMemorySizeInBytes());
     Assert.assertEquals(20, GLOBAL_MEMORY_MANAGER.getAllocatedMemorySizeInBytes());
     Assert.assertEquals("Block1", memoryBlock1.getName());
@@ -58,7 +58,7 @@ public class MemoryManagerTest {
 
     // create memoryBlock2 in the size of 10 from globalMemoryManager
     IMemoryBlock memoryBlock2 =
-        GLOBAL_MEMORY_MANAGER.forceAllocateIfSufficient(
+        GLOBAL_MEMORY_MANAGER.exactAllocateIfSufficient(
             "Block2", 10, 0.9f, MemoryBlockType.DYNAMIC);
     Assert.assertEquals(70, GLOBAL_MEMORY_MANAGER.getAvailableMemorySizeInBytes());
     Assert.assertEquals(30, GLOBAL_MEMORY_MANAGER.getAllocatedMemorySizeInBytes());
@@ -74,7 +74,7 @@ public class MemoryManagerTest {
     Assert.assertEquals(50, subMemoryManager.getTotalMemorySizeInBytes());
 
     // create memoryBlock3 in the size of 20 from globalMemoryManager
-    IMemoryBlock memoryBlock3 = GLOBAL_MEMORY_MANAGER.forceAllocate("Block3", MemoryBlockType.NONE);
+    IMemoryBlock memoryBlock3 = GLOBAL_MEMORY_MANAGER.exactAllocate("Block3", MemoryBlockType.NONE);
     Assert.assertEquals(0, GLOBAL_MEMORY_MANAGER.getAvailableMemorySizeInBytes());
     Assert.assertEquals(100, GLOBAL_MEMORY_MANAGER.getAllocatedMemorySizeInBytes());
     Assert.assertEquals("Block3", memoryBlock3.getName());
@@ -143,13 +143,13 @@ public class MemoryManagerTest {
 
     // create memoryBlock when enable
     IMemoryBlock memoryBlock5 =
-        subMemoryManager.forceAllocate("Block5", 10, MemoryBlockType.DYNAMIC);
+        subMemoryManager.exactAllocate("Block5", 10, MemoryBlockType.DYNAMIC);
     Assert.assertEquals(10, memoryBlock5.getTotalMemorySizeInBytes());
     Assert.assertEquals(20, subMemoryManager.getAvailableMemorySizeInBytes());
     Assert.assertNull(
-        subMemoryManager.forceAllocateIfSufficient("Block6", 5, 0.6f, MemoryBlockType.STATIC));
+        subMemoryManager.exactAllocateIfSufficient("Block6", 5, 0.6f, MemoryBlockType.STATIC));
     IMemoryBlock memoryBlock6 =
-        subMemoryManager.forceAllocateIfSufficient("Block6", 5, 0.8f, MemoryBlockType.DYNAMIC);
+        subMemoryManager.exactAllocateIfSufficient("Block6", 5, 0.8f, MemoryBlockType.DYNAMIC);
     Assert.assertEquals(5, memoryBlock6.getTotalMemorySizeInBytes());
     Assert.assertEquals(15, subMemoryManager.getAvailableMemorySizeInBytes());
     IMemoryBlock memoryBlock7 =

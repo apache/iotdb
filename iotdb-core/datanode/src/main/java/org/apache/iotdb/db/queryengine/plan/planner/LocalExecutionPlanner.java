@@ -73,7 +73,7 @@ public class LocalExecutionPlanner {
     OPERATORS_MEMORY_BLOCK =
         MEMORY_CONFIG
             .getOperatorsMemoryManager()
-            .forceAllocate("Operators", MemoryBlockType.DYNAMIC);
+            .exactAllocate("Operators", MemoryBlockType.DYNAMIC);
     MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD =
         (long)
             ((OPERATORS_MEMORY_BLOCK.getTotalMemorySizeInBytes())

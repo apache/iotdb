@@ -90,7 +90,7 @@ public class MemoryManager {
   // region The Methods Of IMemoryBlock Management
 
   /**
-   * Force allocate memory block with specified size in bytes
+   * Allocate memory block with exact specified size in bytes
    *
    * @param name the name of memory block
    * @param sizeInBytes the size in bytes of memory block try to allocate
@@ -98,7 +98,7 @@ public class MemoryManager {
    * @return the allocated memory block
    * @throw MemoryException if fail to allocate after MEMORY_ALLOCATE_MAX_RETRIES retries
    */
-  public synchronized IMemoryBlock forceAllocate(
+  public synchronized IMemoryBlock exactAllocate(
       String name, long sizeInBytes, MemoryBlockType type) {
     if (!enabled) {
       return registerMemoryBlock(name, sizeInBytes, type);
@@ -112,13 +112,13 @@ public class MemoryManager {
         this.wait(MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("forceAllocate: interrupted while waiting for available memory", e);
+        LOGGER.warn("exactAllocate: interrupted while waiting for available memory", e);
       }
     }
 
     throw new MemoryException(
         String.format(
-            "forceAllocate: failed to allocate memory after %d retries, "
+            "exactAllocate: failed to allocate memory after %d retries, "
                 + "total memory size %d bytes, used memory size %d bytes, "
                 + "requested memory size %d bytes",
             MEMORY_ALLOCATE_MAX_RETRIES,
@@ -128,19 +128,19 @@ public class MemoryManager {
   }
 
   /**
-   * Try to force allocate memory block with total memory size in bytes
+   * Try to allocate memory block with total memory size in bytes
    *
    * @param name the name of memory block
    * @param memoryBlockType the type of memory block
    */
-  public synchronized IMemoryBlock forceAllocate(String name, MemoryBlockType memoryBlockType) {
-    return forceAllocate(
+  public synchronized IMemoryBlock exactAllocate(String name, MemoryBlockType memoryBlockType) {
+    return exactAllocate(
         name, totalMemorySizeInBytes - allocatedMemorySizeInBytes, memoryBlockType);
   }
 
   /**
-   * Try to force allocate memory block with specified size in bytes when the proportion of used
-   * memory is below the given maxRatio.
+   * Try to allocate memory block with specified size in bytes when the proportion of used memory is
+   * below the given maxRatio.
    *
    * @param name the name of memory block
    * @param sizeInBytes the size in bytes of memory block try to allocate
@@ -149,7 +149,7 @@ public class MemoryManager {
    * @param memoryBlockType the type of memory block
    * @return the memory block if success, otherwise null
    */
-  public synchronized IMemoryBlock forceAllocateIfSufficient(
+  public synchronized IMemoryBlock exactAllocateIfSufficient(
       String name, long sizeInBytes, float maxRatio, MemoryBlockType memoryBlockType) {
     if (maxRatio < 0.0f || maxRatio > 1.0f) {
       return null;
@@ -159,11 +159,11 @@ public class MemoryManager {
     }
     if (totalMemorySizeInBytes - allocatedMemorySizeInBytes >= sizeInBytes
         && (float) allocatedMemorySizeInBytes / totalMemorySizeInBytes < maxRatio) {
-      return forceAllocate(name, sizeInBytes, memoryBlockType);
+      return exactAllocate(name, sizeInBytes, memoryBlockType);
     } else {
       // TODO @spricoder: consider to find more memory in active way
       LOGGER.debug(
-          "forceAllocateIfSufficient: failed to allocate memory, "
+          "exactAllocateIfSufficient: failed to allocate memory, "
               + "total memory size {} bytes, used memory size {} bytes, "
               + "requested memory size {} bytes, used threshold {}",
           totalMemorySizeInBytes,
