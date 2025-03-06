@@ -394,5 +394,4 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
       }
     }
   }
-  
 }
