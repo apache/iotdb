@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 
 /**
  * This class serializes and flushes {@link WALEntry}. If search is enabled, the order of search
@@ -51,6 +52,14 @@ public interface IWALBuffer extends AutoCloseable {
    * @throws InterruptedException when interrupted by the flush thread
    */
   void waitForFlush() throws InterruptedException;
+
+  /**
+   * Wait for next flush operation done, if the predicate == true after entering a locked environment.
+   * Otherwise, return directly.
+   * @param waitPredicate the condition which should be satisfied before waiting.
+   * @throws InterruptedException when interrupted by the flush thread
+   */
+  public void waitForFlush(Predicate<WALBuffer> waitPredicate) throws InterruptedException;
 
   /**
    * Wait for next flush operation done.
