@@ -101,11 +101,11 @@ public class MemoryManager {
   public synchronized IMemoryBlock exactAllocate(
       String name, long sizeInBytes, MemoryBlockType type) {
     if (!enabled) {
-      return registerMemoryBlock(name, sizeInBytes, type);
+      return getOrRegisterMemoryBlock(name, sizeInBytes, type);
     }
     for (int i = 0; i < MEMORY_ALLOCATE_MAX_RETRIES; i++) {
       if (totalMemorySizeInBytes - allocatedMemorySizeInBytes >= sizeInBytes) {
-        return registerMemoryBlock(name, sizeInBytes, type);
+        return getOrRegisterMemoryBlock(name, sizeInBytes, type);
       }
 
       try {
@@ -155,7 +155,7 @@ public class MemoryManager {
       return null;
     }
     if (!enabled) {
-      return registerMemoryBlock(name, sizeInBytes, memoryBlockType);
+      return getOrRegisterMemoryBlock(name, sizeInBytes, memoryBlockType);
     }
     if (totalMemorySizeInBytes - allocatedMemorySizeInBytes >= sizeInBytes
         && (float) allocatedMemorySizeInBytes / totalMemorySizeInBytes < maxRatio) {
@@ -190,11 +190,11 @@ public class MemoryManager {
       LongUnaryOperator customAllocateStrategy,
       MemoryBlockType type) {
     if (!enabled) {
-      return registerMemoryBlock(name, sizeInBytes, type);
+      return getOrRegisterMemoryBlock(name, sizeInBytes, type);
     }
 
     if (totalMemorySizeInBytes - allocatedMemorySizeInBytes >= sizeInBytes) {
-      return registerMemoryBlock(name, sizeInBytes, type);
+      return getOrRegisterMemoryBlock(name, sizeInBytes, type);
     }
 
     long sizeToAllocateInBytes = sizeInBytes;
@@ -209,7 +209,7 @@ public class MemoryManager {
             allocatedMemorySizeInBytes,
             sizeInBytes,
             sizeToAllocateInBytes);
-        return registerMemoryBlock(name, sizeToAllocateInBytes, type);
+        return getOrRegisterMemoryBlock(name, sizeToAllocateInBytes, type);
       }
 
       sizeToAllocateInBytes =
@@ -237,7 +237,7 @@ public class MemoryManager {
    * @param type the type of memory block
    * @return the memory block
    */
-  private IMemoryBlock registerMemoryBlock(String name, long sizeInBytes, MemoryBlockType type) {
+  private IMemoryBlock getOrRegisterMemoryBlock(String name, long sizeInBytes, MemoryBlockType type) {
     if (sizeInBytes < 0) {
       throw new MemoryException(
           String.format("register memory block %s failed: sizeInBytes should be positive", name));
@@ -246,7 +246,14 @@ public class MemoryManager {
         name,
         (blockName, block) -> {
           if (block != null) {
-            LOGGER.error("register memory block already exists: {}", block);
+            if (block.getTotalMemorySizeInBytes() != sizeInBytes) {
+              LOGGER.warn(
+                  "getOrRegisterMemoryBlock failed: memory block {} already exists, "
+                      + "it's size is {}, requested size is {}",
+                  blockName,
+                  block.getTotalMemorySizeInBytes(),
+                  sizeInBytes);
+            }
             return block;
           } else {
             allocatedMemorySizeInBytes += sizeInBytes;
