@@ -40,10 +40,13 @@ public class IoTDBTableAggregationNonStreamIT extends IoTDBTableAggregationIT {
     EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(128 * 1024);
     EnvFactory.getEnv().getConfig().getCommonConfig().setMaxTsBlockSizeInByte(4 * 1024);
     EnvFactory.getEnv().initClusterEnvironment();
+    String original = createSqls[2];
     // make 'province', 'city', 'region' be FIELD to cover cases using GroupedAccumulator
     createSqls[2] =
         "CREATE TABLE table1(province STRING FIELD, city STRING FIELD, region STRING FIELD, device_id STRING TAG, color STRING ATTRIBUTE, type STRING ATTRIBUTE, s1 INT32 FIELD, s2 INT64 FIELD, s3 FLOAT FIELD, s4 DOUBLE FIELD, s5 BOOLEAN FIELD, s6 TEXT FIELD, s7 STRING FIELD, s8 BLOB FIELD, s9 TIMESTAMP FIELD, s10 DATE FIELD)";
     prepareTableData(createSqls);
+    // rollback original content
+    createSqls[2] = original;
   }
 
   @AfterClass
