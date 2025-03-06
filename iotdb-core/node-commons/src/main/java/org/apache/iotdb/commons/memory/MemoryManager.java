@@ -303,7 +303,7 @@ public class MemoryManager {
   /**
    * Try to create a new memory manager with specified name and total memory size in bytes, then put
    * it into children map. NOTICE: if there are same name memory manager, it will return the
-   * existing one.
+   * existing one instead of creating a new one or update the existing one.
    *
    * @param name the name of memory manager
    * @param sizeInBytes the total memory size in bytes of memory manager
@@ -315,7 +315,7 @@ public class MemoryManager {
     return children.compute(
         name,
         (managerName, manager) -> {
-          if (sizeInBytes <= 0) {
+          if (sizeInBytes < 0) {
             LOGGER.warn("getOrCreateMemoryManager {}: sizeInBytes should be positive", name);
             return null;
           }
