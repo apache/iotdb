@@ -80,7 +80,7 @@ public class SharedTsBlockQueue {
   private LocalSinkChannel sinkChannel;
 
   private long maxBytesCanReserve =
-      IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+      IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
 
   // used for SharedTsBlockQueue listener
   private final ExecutorService executorService;
