@@ -240,9 +240,10 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
           dispatchRemote(loadCommandReq, replicaSetEndPointEntry.getValue());
         }
       } catch (FragmentInstanceDispatchException e) {
+        LOGGER.warn("Cannot dispatch LoadCommand for load operation {}", loadCommandReq, e);
         return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
       } catch (Exception t) {
-        LOGGER.warn("cannot dispatch LoadCommand for load operation", t);
+        LOGGER.warn("Cannot dispatch LoadCommand for load operation {}", loadCommandReq, t);
         return immediateFuture(
             new FragInstanceDispatchResult(
                 RpcUtils.getStatus(

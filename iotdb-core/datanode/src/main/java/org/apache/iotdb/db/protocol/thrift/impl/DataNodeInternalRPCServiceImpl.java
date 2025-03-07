@@ -540,6 +540,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           partitionFetcher.getRegionReplicaSet(
               new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId));
       if (!Objects.equals(replicaSetBeforeExecution, replicaSetAfterExecution)) {
+        LOGGER.warn(
+            "Load request {} for region {} executed with replica set changed from {} to {}",
+            req.uuid,
+            regionId,
+            replicaSetBeforeExecution,
+            replicaSetAfterExecution);
         return createTLoadResp(
             RpcUtils.getStatus(
                 TSStatusCode.LOAD_FILE_ERROR,
