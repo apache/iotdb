@@ -51,8 +51,6 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
   int delete(
       PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp);
 
-  long getMeasurementSize(String measurement);
-
   IWritableMemChunk getWritableMemChunk(String measurement);
 
   long getMaxTime();

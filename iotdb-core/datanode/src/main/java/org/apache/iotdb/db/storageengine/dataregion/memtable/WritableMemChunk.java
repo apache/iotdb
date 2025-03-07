@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.utils.ModificationUtils;
-import org.apache.iotdb.db.utils.datastructure.MergeSortTvListIterator;
+import org.apache.iotdb.db.utils.datastructure.MergeSortTVListIterator;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -119,34 +119,32 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized void writeNonAlignedPoint(long insertTime, Object objectValue) {
-    synchronized (list) {
-      switch (schema.getType()) {
-        case BOOLEAN:
-          putBoolean(insertTime, (boolean) objectValue);
-          break;
-        case INT32:
-        case DATE:
-          putInt(insertTime, (int) objectValue);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          putLong(insertTime, (long) objectValue);
-          break;
-        case FLOAT:
-          putFloat(insertTime, (float) objectValue);
-          break;
-        case DOUBLE:
-          putDouble(insertTime, (double) objectValue);
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-          putBinary(insertTime, (Binary) objectValue);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType().name());
-      }
+  public void writeNonAlignedPoint(long insertTime, Object objectValue) {
+    switch (schema.getType()) {
+      case BOOLEAN:
+        putBoolean(insertTime, (boolean) objectValue);
+        break;
+      case INT32:
+      case DATE:
+        putInt(insertTime, (int) objectValue);
+        break;
+      case INT64:
+      case TIMESTAMP:
+        putLong(insertTime, (long) objectValue);
+        break;
+      case FLOAT:
+        putFloat(insertTime, (float) objectValue);
+        break;
+      case DOUBLE:
+        putDouble(insertTime, (double) objectValue);
+        break;
+      case TEXT:
+      case BLOB:
+      case STRING:
+        putBinary(insertTime, (Binary) objectValue);
+        break;
+      default:
+        throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType().name());
     }
     if (TVLIST_SORT_THRESHOLD > 0 && list.rowCount() >= TVLIST_SORT_THRESHOLD) {
       handoverTvList();
@@ -160,41 +158,39 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized void writeNonAlignedTablet(
+  public void writeNonAlignedTablet(
       long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end) {
-    synchronized (list) {
-      switch (dataType) {
-        case BOOLEAN:
-          boolean[] boolValues = (boolean[]) valueList;
-          putBooleans(times, boolValues, bitMap, start, end);
-          break;
-        case INT32:
-        case DATE:
-          int[] intValues = (int[]) valueList;
-          putInts(times, intValues, bitMap, start, end);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          long[] longValues = (long[]) valueList;
-          putLongs(times, longValues, bitMap, start, end);
-          break;
-        case FLOAT:
-          float[] floatValues = (float[]) valueList;
-          putFloats(times, floatValues, bitMap, start, end);
-          break;
-        case DOUBLE:
-          double[] doubleValues = (double[]) valueList;
-          putDoubles(times, doubleValues, bitMap, start, end);
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-          Binary[] binaryValues = (Binary[]) valueList;
-          putBinaries(times, binaryValues, bitMap, start, end);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + dataType.name());
-      }
+    switch (dataType) {
+      case BOOLEAN:
+        boolean[] boolValues = (boolean[]) valueList;
+        putBooleans(times, boolValues, bitMap, start, end);
+        break;
+      case INT32:
+      case DATE:
+        int[] intValues = (int[]) valueList;
+        putInts(times, intValues, bitMap, start, end);
+        break;
+      case INT64:
+      case TIMESTAMP:
+        long[] longValues = (long[]) valueList;
+        putLongs(times, longValues, bitMap, start, end);
+        break;
+      case FLOAT:
+        float[] floatValues = (float[]) valueList;
+        putFloats(times, floatValues, bitMap, start, end);
+        break;
+      case DOUBLE:
+        double[] doubleValues = (double[]) valueList;
+        putDoubles(times, doubleValues, bitMap, start, end);
+        break;
+      case TEXT:
+      case BLOB:
+      case STRING:
+        Binary[] binaryValues = (Binary[]) valueList;
+        putBinaries(times, binaryValues, bitMap, start, end);
+        break;
+      default:
+        throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + dataType.name());
     }
     if (TVLIST_SORT_THRESHOLD > 0 && list.rowCount() >= TVLIST_SORT_THRESHOLD) {
       handoverTvList();
@@ -636,7 +632,7 @@ public class WritableMemChunk implements IWritableMemChunk {
     // create MergeSortTvListIterator. It need not handle float/double precision here.
     List<TVList> tvLists = new ArrayList<>(sortedList);
     tvLists.add(list);
-    MergeSortTvListIterator timeValuePairIterator = new MergeSortTvListIterator(tvLists);
+    MergeSortTVListIterator timeValuePairIterator = new MergeSortTVListIterator(tvLists);
 
     TimeValuePair prevTvPair = null;
     while (timeValuePairIterator.hasNextTimeValuePair()) {

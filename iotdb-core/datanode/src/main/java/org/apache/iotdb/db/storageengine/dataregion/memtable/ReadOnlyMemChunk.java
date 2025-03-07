@@ -24,7 +24,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemChunkLoader;
 import org.apache.iotdb.db.utils.MathUtils;
-import org.apache.iotdb.db.utils.datastructure.MergeSortTvListIterator;
+import org.apache.iotdb.db.utils.datastructure.MergeSortTVListIterator;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -85,7 +85,7 @@ public class ReadOnlyMemChunk {
   // TVList and its rowCount during query
   private Map<TVList, Integer> tvListQueryMap;
 
-  private MergeSortTvListIterator timeValuePairIterator;
+  private MergeSortTVListIterator timeValuePairIterator;
 
   protected final int MAX_NUMBER_OF_POINTS_IN_PAGE =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
@@ -145,13 +145,13 @@ public class ReadOnlyMemChunk {
   public void initChunkMetaFromTvLists() {
     // create chunk statistics
     Statistics<? extends Serializable> chunkStatistics = Statistics.getStatsByType(dataType);
-    int cnt = 0;
+    int pointsInChunk = 0;
     int[] deleteCursor = {0};
     List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
-    timeValuePairIterator = new MergeSortTvListIterator(tvLists, floatPrecision, encoding);
+    timeValuePairIterator = new MergeSortTVListIterator(tvLists, floatPrecision, encoding);
     int[] tvListOffsets = timeValuePairIterator.getTVListOffsets();
     while (timeValuePairIterator.hasNextTimeValuePair()) {
-      if (cnt % MAX_NUMBER_OF_POINTS_IN_PAGE == 0) {
+      if (pointsInChunk % MAX_NUMBER_OF_POINTS_IN_PAGE == 0) {
         Statistics<? extends Serializable> stats = Statistics.getStatsByType(dataType);
         pageStatisticsList.add(stats);
         pageOffsetsList.add(Arrays.copyOf(tvListOffsets, tvListOffsets.length));
@@ -194,7 +194,7 @@ public class ReadOnlyMemChunk {
                 String.format("Data type %s is not supported.", dataType));
         }
       }
-      cnt++;
+      pointsInChunk++;
     }
     pageOffsetsList.add(Arrays.copyOf(tvListOffsets, tvListOffsets.length));
 
@@ -245,7 +245,7 @@ public class ReadOnlyMemChunk {
     int[] deleteCursor = {0};
     List<TVList> tvLists = new ArrayList<>(tvListQueryMap.keySet());
     IPointReader timeValuePairIterator =
-        new MergeSortTvListIterator(tvLists, floatPrecision, encoding);
+        new MergeSortTVListIterator(tvLists, floatPrecision, encoding);
 
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       TimeValuePair tvPair = timeValuePairIterator.nextTimeValuePair();
@@ -333,7 +333,7 @@ public class ReadOnlyMemChunk {
     return null;
   }
 
-  public MergeSortTvListIterator getMergeSortTVListIterator() {
+  public MergeSortTVListIterator getMergeSortTVListIterator() {
     return timeValuePairIterator;
   }
 
