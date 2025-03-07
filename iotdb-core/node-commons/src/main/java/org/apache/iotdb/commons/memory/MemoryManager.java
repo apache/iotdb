@@ -476,6 +476,10 @@ public class MemoryManager {
     return totalMemorySizeInBytes;
   }
 
+  public long getInitialAllocatedMemorySizeInBytes() {
+    return initialAllocatedMemorySizeInBytes;
+  }
+
   public void setTotalMemorySizeInBytes(long totalMemorySizeInBytes) {
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
   }
