@@ -255,8 +255,8 @@ public class TestUtils {
             for (int i = 1; i <= expectedHeader.length; i++) {
               builder.append(resultSet.getString(i)).append(",");
             }
+            System.out.println(String.format("\"%s\",", builder.toString()));
             assertEquals(expectedRetArray[cnt], builder.toString());
-            // System.out.println(String.format("\"%s\",", builder.toString()));
             cnt++;
           }
           assertEquals(expectedRetArray.length, cnt);
