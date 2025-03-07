@@ -133,6 +133,9 @@ public class PartiteGraphPlacementDestNodeSelector implements IDestNodeSelector 
 
     int pos = 0;
     for (Integer integer : remainDataNodesFakeId) {
+      if (pos >= replicationFactor) {
+        break;
+      }
       alternativeReplica[pos] = integer;
       pos++;
     }

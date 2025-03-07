@@ -333,9 +333,7 @@ public class RemoveDataNodeHandler {
     for (TRegionReplicaSet replicaSet : affectedReplicaSets) {
       // Remove the replica set, update its node list, then re-add it
       allocatedReplicaSets.remove(replicaSet);
-      List<TDataNodeLocation> updatedLocations = new ArrayList<>(replicaSet.getDataNodeLocations());
-      updatedLocations.remove(removedNodeMap.get(replicaSet.getRegionId()));
-      replicaSet.setDataNodeLocations(updatedLocations);
+      replicaSet.getDataNodeLocations().remove(removedNodeMap.get(replicaSet.getRegionId()));
       allocatedReplicaSets.add(replicaSet);
     }
   }
@@ -393,9 +391,7 @@ public class RemoveDataNodeHandler {
       TRegionReplicaSet replicaSet,
       TDataNodeLocation newDataNode) {
     allocatedReplicaSets.remove(replicaSet);
-    List<TDataNodeLocation> updatedLocations = new ArrayList<>(replicaSet.getDataNodeLocations());
-    updatedLocations.add(newDataNode);
-    replicaSet.setDataNodeLocations(updatedLocations);
+    replicaSet.getDataNodeLocations().add(newDataNode);
     allocatedReplicaSets.add(replicaSet);
   }
 

@@ -32,10 +32,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -101,7 +103,37 @@ public class DestNodeSelectorTest {
       remainReplicas.add(replicaSet);
     }
 
-    Set<Integer> selectedNodeIds = new HashSet<>();
+    Map<Integer, Integer> randomRegionCounter = new HashMap<>();
+    Map<Integer, Integer> PGPRegionCounter = new HashMap<>();
+
+    Set<Integer> randomSelectedNodeIds = new HashSet<>();
+    Set<Integer> PGPSelectedNodeIds = new HashSet<>();
+
+    int randomMaxRegionCount = 0;
+    int randomMinRegionCount = Integer.MAX_VALUE;
+
+    int PGPMaxRegionCount = 0;
+    int PGPMinRegionCount = Integer.MAX_VALUE;
+
+    AVAILABLE_DATA_NODE_MAP
+        .keySet()
+        .forEach(
+            nodeId -> {
+              randomRegionCounter.put(nodeId, 0);
+              PGPRegionCounter.put(nodeId, 0);
+            });
+
+    for (TRegionReplicaSet remainReplicaSet : remainReplicas) {
+      TDataNodeLocation selectedNode =
+          randomSelectNodeForRegion(remainReplicaSet.getDataNodeLocations()).get();
+      LOGGER.info(
+          "Random Selected DataNode {} for Region {}",
+          selectedNode.getDataNodeId(),
+          remainReplicaSet.regionId);
+      randomSelectedNodeIds.add(selectedNode.getDataNodeId());
+      randomRegionCounter.put(
+          selectedNode.getDataNodeId(), randomRegionCounter.get(selectedNode.getDataNodeId()) + 1);
+    }
 
     for (TRegionReplicaSet remainReplicaSet : remainReplicas) {
       TDataNodeConfiguration selectedNode =
@@ -114,16 +146,46 @@ public class DestNodeSelectorTest {
               remainReplicaSet.regionId,
               remainReplicaSet);
       LOGGER.info(
-          "Selected DataNode {} for Region {}",
+          "PGP Selected DataNode {} for Region {}",
           selectedNode.getLocation().getDataNodeId(),
           remainReplicaSet.regionId);
       allocateResult.remove(remainReplicaSet);
       List<TDataNodeLocation> dataNodeLocations = remainReplicaSet.getDataNodeLocations();
       dataNodeLocations.add(selectedNode.getLocation());
       allocateResult.add(remainReplicaSet);
-      selectedNodeIds.add(selectedNode.getLocation().getDataNodeId());
+      PGPSelectedNodeIds.add(selectedNode.getLocation().getDataNodeId());
+      PGPRegionCounter.put(
+          selectedNode.getLocation().getDataNodeId(),
+          PGPRegionCounter.get(selectedNode.getLocation().getDataNodeId()) + 1);
     }
 
-    Assert.assertEquals(TEST_DATA_NODE_NUM - 1, selectedNodeIds.size());
+    for (Integer i : randomRegionCounter.keySet()) {
+      Integer value = randomRegionCounter.get(i);
+      randomMaxRegionCount = Math.max(randomMaxRegionCount, value);
+      randomMinRegionCount = Math.min(randomMinRegionCount, value);
+    }
+    for (Integer i : PGPRegionCounter.keySet()) {
+      Integer value = PGPRegionCounter.get(i);
+      PGPMaxRegionCount = Math.max(PGPMaxRegionCount, value);
+      PGPMinRegionCount = Math.min(PGPMinRegionCount, value);
+    }
+
+    Assert.assertEquals(TEST_DATA_NODE_NUM - 1, PGPSelectedNodeIds.size());
+    Assert.assertTrue(PGPSelectedNodeIds.size() >= randomSelectedNodeIds.size());
+    Assert.assertTrue(randomMaxRegionCount >= PGPMaxRegionCount);
+    Assert.assertTrue(randomMinRegionCount <= PGPMinRegionCount);
+  }
+
+  private Optional<TDataNodeLocation> randomSelectNodeForRegion(
+      List<TDataNodeLocation> regionReplicaNodes) {
+    List<TDataNodeConfiguration> dataNodeConfigurations =
+        new ArrayList<>(AVAILABLE_DATA_NODE_MAP.values());
+
+    // Randomly selected to ensure a basic load balancing
+    Collections.shuffle(dataNodeConfigurations);
+    return dataNodeConfigurations.stream()
+        .map(TDataNodeConfiguration::getLocation)
+        .filter(e -> !regionReplicaNodes.contains(e))
+        .findAny();
   }
 }
