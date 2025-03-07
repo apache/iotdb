@@ -2212,19 +2212,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     QualifiedName name = getQualifiedName(context.qualifiedName());
     List<TableFunctionArgument> arguments =
         visit(context.tableFunctionArgument(), TableFunctionArgument.class);
-    List<List<QualifiedName>> copartitioning = ImmutableList.of();
-    if (context.COPARTITION() != null) {
-      copartitioning =
-          context.copartitionTables().stream()
-              .map(
-                  tablesList ->
-                      tablesList.qualifiedName().stream()
-                          .map(this::getQualifiedName)
-                          .collect(toImmutableList()))
-              .collect(toImmutableList());
-    }
 
-    return new TableFunctionInvocation(getLocation(context), name, arguments, copartitioning);
+    return new TableFunctionInvocation(getLocation(context), name, arguments);
   }
 
   @Override
@@ -2306,9 +2295,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     } else {
       TimeDuration timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
 
-      if (timeDuration.monthDuration != 0 && timeDuration.nonMonthDuration != 0) {
-        throw new SemanticException(
-            "Simultaneous setting of monthly and non-monthly intervals is not supported.");
+      if (timeDuration.monthDuration != 0) {
+        throw new SemanticException("Setting monthly intervals is not supported.");
       }
 
       return new LongLiteral(

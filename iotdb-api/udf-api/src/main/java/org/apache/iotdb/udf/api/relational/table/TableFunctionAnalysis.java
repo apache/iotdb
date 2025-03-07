@@ -29,7 +29,7 @@ import java.util.Optional;
 import static java.util.Objects.requireNonNull;
 
 /**
- * An object of this class is produced by the `analyze()` method of a `ConnectorTableFunction`
+ * An object of this class is produced by the `analyze()` method of a `TableFunction`
  * implementation. It contains all the analysis results:
  */
 public class TableFunctionAnalysis {

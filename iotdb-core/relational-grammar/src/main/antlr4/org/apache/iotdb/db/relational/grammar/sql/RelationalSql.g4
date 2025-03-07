@@ -882,8 +882,7 @@ relationPrimary
     ;
 
 tableFunctionCall
-    : qualifiedName '(' (tableFunctionArgument (',' tableFunctionArgument)*)?
-      (COPARTITION copartitionTables (',' copartitionTables)*)? ')'
+    : qualifiedName '(' (tableFunctionArgument (',' tableFunctionArgument)*)?')'
     ;
 
 tableFunctionArgument

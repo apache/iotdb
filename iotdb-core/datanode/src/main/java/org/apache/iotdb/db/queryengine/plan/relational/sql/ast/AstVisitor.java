@@ -673,10 +673,6 @@ public abstract class AstVisitor<R, C> {
     return visitNode(tableFunctionTableArgument, context);
   }
 
-  public R visitEmptyTableTreatment(EmptyTableTreatment emptyTableTreatment, C context) {
-    return visitNode(emptyTableTreatment, context);
-  }
-
   public R visitTableFunctionArgument(TableFunctionArgument tableFunctionArgument, C context) {
     return visitNode(tableFunctionArgument, context);
   }

@@ -1459,18 +1459,6 @@ public final class SqlFormatter {
     private void appendTableFunctionInvocation(TableFunctionInvocation node, Integer indent) {
       builder.append(formatName(node.getName())).append("(\n");
       appendTableFunctionArguments(node.getArguments(), indent + 1);
-      if (!node.getCopartitioning().isEmpty()) {
-        builder.append("\n");
-        append(indent + 1, "COPARTITION ");
-        builder.append(
-            node.getCopartitioning().stream()
-                .map(
-                    tableList ->
-                        tableList.stream()
-                            .map(SqlFormatter::formatName)
-                            .collect(joining(", ", "(", ")")))
-                .collect(joining(", ")));
-      }
       builder.append(")");
     }
 

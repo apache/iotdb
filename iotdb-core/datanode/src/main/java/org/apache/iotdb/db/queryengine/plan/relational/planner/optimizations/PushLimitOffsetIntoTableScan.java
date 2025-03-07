@@ -240,12 +240,12 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
 
     @Override
     public PlanNode visitTableFunctionProcessor(TableFunctionProcessorNode node, Context context) {
-      if (node.getChildren().isEmpty()) {
-        context.enablePushDown = false;
-        return node;
-      } else {
-        return visitPlan(node, context);
+      context.enablePushDown = false;
+      if (node.getChild() != null) {
+        Context subContext = new Context();
+        node.setChild(node.getChild().accept(this, subContext));
       }
+      return node;
     }
 
     @Override

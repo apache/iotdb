@@ -32,6 +32,20 @@ import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpe
 import java.util.List;
 import java.util.Map;
 
+/**
+ * The result relation type of a table function consists of:
+ *
+ * <ul>
+ *   <li>1. columns created by the table function, called the proper columns.
+ *   <li>2. passed columns from input tables:
+ *       <ul>
+ *         <li>- for tables with the "pass through columns" option, these are all columns of the
+ *             table,
+ *         <li>- for tables without the "pass through columns" option, these are the partitioning
+ *             columns of the table, if any.
+ *       </ul>
+ * </ul>
+ */
 public interface TableFunction extends SQLFunction {
 
   /**
@@ -43,8 +57,10 @@ public interface TableFunction extends SQLFunction {
    * <p>The {@link ParameterSpecification} class is abstract and has two concrete implementations:
    *
    * <ul>
-   *   <li>{@link TableParameterSpecification}: Used for parameters specific to table functions.
-   *   <li>{@link ScalarParameterSpecification}: Used for parameters specific to scalar functions.
+   *   <li>{@link TableParameterSpecification}: Used for table parameter specification.We only
+   *       support at most one table parameter.
+   *   <li>{@link ScalarParameterSpecification}: Used for scalar parameter specification. We support
+   *       any number of scalar parameters.
    * </ul>
    *
    * @return a list of {@link ParameterSpecification} objects describing the function's arguments.

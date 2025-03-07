@@ -3125,10 +3125,6 @@ public class StatementAnalyzer {
       if (argumentsAnalysis.getTableArgumentAnalyses().size() > 1) {
         throw new SemanticException("At most one table argument can be passed to a table function");
       }
-      // Copartition is not supported now
-      if (!node.getCopartitioning().isEmpty()) {
-        throw new SemanticException("Copartitioning is not supported now.");
-      }
 
       // validate the required input columns
       // <TableArgumentName, TableColumnIndexes>
