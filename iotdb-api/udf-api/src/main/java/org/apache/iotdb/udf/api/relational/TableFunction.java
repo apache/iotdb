@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The result relation type of a table function consists of:
+ * The result relation type of the table function consists of:
  *
  * <ul>
  *   <li>1. columns created by the table function, called the proper columns.
