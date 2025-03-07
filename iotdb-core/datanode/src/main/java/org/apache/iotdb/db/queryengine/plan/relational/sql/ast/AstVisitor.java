@@ -645,6 +645,10 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitShowQueriesStatement(ShowQueriesStatement node, C context) {
+    return visitShowStatement(node, context);
+  }
+
   protected R visitCountStatement(CountStatement node, C context) {
     return visitStatement(node, context);
   }

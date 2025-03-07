@@ -16,22 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite;
 
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import com.google.common.collect.ImmutableSet;
+import java.util.Optional;
 
-public class StatementRewriteFactory {
-  private final StatementRewrite statementRewrite;
+public class ShowQueriesStatement extends ShowStatement {
 
-  public StatementRewriteFactory(Metadata metadata, AccessControl accessControl) {
-    this.statementRewrite =
-        new StatementRewrite(ImmutableSet.of(new ShowRewrite(metadata, accessControl)));
+  public ShowQueriesStatement(
+      NodeLocation location,
+      String tableName,
+      Optional<Expression> where,
+      Optional<OrderBy> orderBy,
+      Optional<Offset> offset,
+      Optional<Node> limit) {
+    super(location, tableName, where, orderBy, offset, limit);
   }
 
-  public StatementRewrite getStatementRewrite() {
-    return statementRewrite;
+  @Override
+  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+    return visitor.visitShowQueriesStatement(this, context);
   }
 }

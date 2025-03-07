@@ -161,6 +161,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
@@ -1339,7 +1340,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       limit = visitIfPresent(ctx.limitOffsetClause().limit, Node.class);
     }
 
-    return new ShowStatement(
+    return new ShowQueriesStatement(
         getLocation(ctx),
         InformationSchema.QUERIES,
         visitIfPresent(ctx.where, Expression.class),
