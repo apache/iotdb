@@ -56,6 +56,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -221,23 +222,24 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
 
   public Future<FragInstanceDispatchResult> dispatchCommand(
       TLoadCommandReq loadCommandReq, Set<TRegionReplicaSet> replicaSets) {
-    Map<TRegionReplicaSet, TEndPoint> replicaSetEndPointMap = new HashMap<>();
+    Map<TEndPoint, List<Integer>> endPoint2RegionIdsMap = new HashMap<>();
     for (TRegionReplicaSet replicaSet : replicaSets) {
       for (TDataNodeLocation dataNodeLocation : replicaSet.getDataNodeLocations()) {
-        replicaSetEndPointMap.put(replicaSet, dataNodeLocation.getInternalEndPoint());
+        endPoint2RegionIdsMap
+            .computeIfAbsent(dataNodeLocation.getInternalEndPoint(), o -> new ArrayList<>())
+            .add(replicaSet.getRegionId().getId());
       }
     }
 
-    for (final Map.Entry<TRegionReplicaSet, TEndPoint> replicaSetEndPointEntry :
-        replicaSetEndPointMap.entrySet()) {
+    for (final Map.Entry<TEndPoint, List<Integer>> entry : endPoint2RegionIdsMap.entrySet()) {
       try (final SetThreadName threadName =
           new SetThreadName(
               LoadTsFileScheduler.class.getName() + "-" + loadCommandReq.commandType)) {
-        loadCommandReq.setRegionId(replicaSetEndPointEntry.getKey().getRegionId().getId());
-        if (isDispatchedToLocal(replicaSetEndPointEntry.getValue())) {
+        loadCommandReq.setRegionIds(entry.getValue());
+        if (isDispatchedToLocal(entry.getKey())) {
           dispatchLocally(loadCommandReq);
         } else {
-          dispatchRemote(loadCommandReq, replicaSetEndPointEntry.getValue());
+          dispatchRemote(loadCommandReq, entry.getKey());
         }
       } catch (FragmentInstanceDispatchException e) {
         LOGGER.warn("Cannot dispatch LoadCommand for load operation {}", loadCommandReq, e);

@@ -508,13 +508,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TLoadResp sendLoadCommand(final TLoadCommandReq req) {
-    final int regionId = req.getRegionId();
-    final TRegionReplicaSet replicaSetBeforeExecution =
-        req.isSetRegionId()
+    final List<Integer> regionIds = req.getRegionIds();
+    final Map<Integer, TRegionReplicaSet> id2replicaSetBeforeExecution =
+        req.isSetRegionIds()
                 && req.getCommandType() == LoadTsFileScheduler.LoadCommand.EXECUTE.ordinal()
-            ? partitionFetcher.getRegionReplicaSet(
-                new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId))
-            : null;
+            ? regionIds.stream()
+                .collect(
+                    Collectors.toMap(
+                        regionId -> regionId,
+                        regionId ->
+                            partitionFetcher.getRegionReplicaSet(
+                                new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId))))
+            : Collections.emptyMap();
 
     final ProgressIndex progressIndex;
     if (req.isSetProgressIndex()) {
@@ -535,23 +540,26 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                     req.isSetIsGeneratedByPipe() && req.isGeneratedByPipe,
                     progressIndex));
 
-    if (replicaSetBeforeExecution != null) {
-      final TRegionReplicaSet replicaSetAfterExecution =
-          partitionFetcher.getRegionReplicaSet(
-              new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId));
-      if (!Objects.equals(replicaSetBeforeExecution, replicaSetAfterExecution)) {
+    if (!id2replicaSetBeforeExecution.isEmpty()) {
+      for (Map.Entry<Integer, TRegionReplicaSet> entryBefore :
+          id2replicaSetBeforeExecution.entrySet()) {
+        final TRegionReplicaSet replicaSetAfterExecution =
+            partitionFetcher.getRegionReplicaSet(
+                new TConsensusGroupId(TConsensusGroupType.DataRegion, entryBefore.getKey()));
         LOGGER.warn(
             "Load request {} for region {} executed with replica set changed from {} to {}",
             req.uuid,
-            regionId,
-            replicaSetBeforeExecution,
+            entryBefore.getKey(),
+            entryBefore.getValue(),
             replicaSetAfterExecution);
-        return createTLoadResp(
-            RpcUtils.getStatus(
-                TSStatusCode.LOAD_FILE_ERROR,
-                String.format(
-                    "Region %d replica set changed from %s to %s",
-                    regionId, replicaSetBeforeExecution, replicaSetAfterExecution)));
+        if (!Objects.equals(entryBefore.getValue(), replicaSetAfterExecution)) {
+          return createTLoadResp(
+              RpcUtils.getStatus(
+                  TSStatusCode.LOAD_FILE_ERROR,
+                  String.format(
+                      "Region %d replica set changed from %s to %s",
+                      entryBefore.getKey(), entryBefore.getValue(), replicaSetAfterExecution)));
+        }
       }
     }
 
