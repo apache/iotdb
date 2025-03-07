@@ -31,6 +31,7 @@ import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualEnhanced;
+import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDualManualIT;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -239,7 +240,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelDualM
 
       // Create 5 pipes with different zstd compression levels, p4 and p5 should fail.
 
-      try (final Connection connection = senderEnv.getConnection();
+      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
           final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
@@ -257,7 +258,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelDualM
         fail(e.getMessage());
       }
 
-      try (final Connection connection = senderEnv.getConnection();
+      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
           final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
@@ -274,7 +275,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelDualM
         fail(e.getMessage());
       }
 
-      try (final Connection connection = senderEnv.getConnection();
+      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
           final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
@@ -291,7 +292,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelDualM
         fail(e.getMessage());
       }
 
-      try (final Connection connection = senderEnv.getConnection();
+      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
           final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
@@ -309,7 +310,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelDualM
         Assert.assertTrue(e.getMessage().contains("Zstd compression level should be in the range"));
       }
 
-      try (final Connection connection = senderEnv.getConnection();
+      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
           final Statement statement = connection.createStatement()) {
         statement.execute(
             String.format(
