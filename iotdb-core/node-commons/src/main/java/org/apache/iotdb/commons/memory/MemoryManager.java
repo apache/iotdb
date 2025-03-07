@@ -46,8 +46,8 @@ public class MemoryManager {
   /** Whether memory management is enabled */
   private final boolean enabled;
 
-  /** The total allocate memory size in byte of memory manager */
-  private volatile long totalAllocatedMemorySizeInBytes;
+  /** The initial allocate memory size in byte of memory manager */
+  private volatile long initialAllocatedMemorySizeInBytes;
 
   /** The total memory size in byte of memory manager */
   private volatile long totalMemorySizeInBytes;
@@ -71,7 +71,7 @@ public class MemoryManager {
   public MemoryManager(long totalMemorySizeInBytes) {
     this.name = "Test";
     this.parentMemoryManager = null;
-    this.totalAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
+    this.initialAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
     this.enabled = false;
   }
@@ -79,7 +79,7 @@ public class MemoryManager {
   MemoryManager(String name, MemoryManager parentMemoryManager, long totalMemorySizeInBytes) {
     this.name = name;
     this.parentMemoryManager = parentMemoryManager;
-    this.totalAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
+    this.initialAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
     this.enabled = false;
   }
@@ -372,15 +372,12 @@ public class MemoryManager {
    *
    * @param ratio the ratio of new total memory size to old total memory size
    */
-  private void reAllocateMemoryAccordingToRatio(double ratio) {
+  private synchronized void reAllocateMemoryAccordingToRatio(double ratio) {
     // first increase the total memory size of this memory manager
-    long beforeTotalMemorySizeInBytes = this.totalMemorySizeInBytes;
     this.totalMemorySizeInBytes *= ratio;
-    this.totalAllocatedMemorySizeInBytes +=
-        (this.totalMemorySizeInBytes - beforeTotalMemorySizeInBytes);
     // then re-allocate memory for all memory blocks
     for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
-      block.setTotalMemorySizeInBytes((long) (block.getTotalMemorySizeInBytes() * ratio));
+      block.resizeByRatio(ratio);
     }
     // finally re-allocate memory for all child memory managers
     for (Map.Entry<String, MemoryManager> entry : children.entrySet()) {
@@ -476,28 +473,19 @@ public class MemoryManager {
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
   }
 
-  public void setTotalAllocatedMemorySizeInBytes(long totalAllocatedMemorySizeInBytes) {
-    this.totalMemorySizeInBytes +=
-        (totalAllocatedMemorySizeInBytes - this.totalAllocatedMemorySizeInBytes);
-    this.totalAllocatedMemorySizeInBytes = totalAllocatedMemorySizeInBytes;
+  public void setInitialAllocatedMemorySizeInBytesWithReload(long initialAllocatedMemorySizeInBytes) {
+    this.initialAllocatedMemorySizeInBytes = initialAllocatedMemorySizeInBytes;
+    reAllocateMemoryAccordingToRatio(
+        (double) initialAllocatedMemorySizeInBytes / this.initialAllocatedMemorySizeInBytes);
   }
 
   public void setTotalAllocatedMemorySizeInBytesWithReload(long totalAllocatedMemorySizeInBytes) {
-    long beforeTotalMemorySizeInBytes = this.totalMemorySizeInBytes;
-    long afterTotalMemorySizeInBytes =
-        this.totalMemorySizeInBytes
-            + totalAllocatedMemorySizeInBytes
-            - this.totalAllocatedMemorySizeInBytes;
     reAllocateMemoryAccordingToRatio(
-        (double) afterTotalMemorySizeInBytes / beforeTotalMemorySizeInBytes);
+        (double) totalAllocatedMemorySizeInBytes / this.totalMemorySizeInBytes);
   }
 
-  public void expandTotalMemorySizeInBytes(long totalMemorySizeInBytes) {
+  public synchronized void expandTotalMemorySizeInBytes(long totalMemorySizeInBytes) {
     this.totalMemorySizeInBytes += totalMemorySizeInBytes;
-  }
-
-  public long getTotalAllocatedMemorySizeInBytes() {
-    return totalAllocatedMemorySizeInBytes;
   }
 
   /** Get available memory size in bytes of memory manager */
@@ -543,9 +531,9 @@ public class MemoryManager {
    * @return true if available to shrink, otherwise false
    */
   public boolean isAvailableToShrink() {
-    return totalAllocatedMemorySizeInBytes - totalMemorySizeInBytes
-            < totalAllocatedMemorySizeInBytes / 10
-        && totalMemorySizeInBytes != allocatedMemorySizeInBytes;
+    return initialAllocatedMemorySizeInBytes - totalMemorySizeInBytes
+            < initialAllocatedMemorySizeInBytes / 10
+        && totalMemorySizeInBytes > allocatedMemorySizeInBytes;
   }
 
   /**
@@ -555,9 +543,9 @@ public class MemoryManager {
    */
   public synchronized long shrink() {
     long shrinkSize =
-        Math.min(
+        Math.max(0, Math.min(
             getAvailableMemorySizeInBytes() / 10,
-            totalMemorySizeInBytes - totalAllocatedMemorySizeInBytes * 9 / 10);
+            totalMemorySizeInBytes - initialAllocatedMemorySizeInBytes * 9 / 10));
     totalMemorySizeInBytes -= shrinkSize;
     return shrinkSize;
   }
@@ -592,7 +580,7 @@ public class MemoryManager {
       long staticAllocatedMemorySizeInBytes = getStaticAllocatedMemorySizeInBytes();
       double ratio =
           (double) (totalMemorySizeInBytes - staticAllocatedMemorySizeInBytes)
-              / (totalAllocatedMemorySizeInBytes - staticAllocatedMemorySizeInBytes);
+              / (initialAllocatedMemorySizeInBytes - staticAllocatedMemorySizeInBytes);
       for (IMemoryBlock memoryBlock : allocatedMemoryBlocks.values()) {
         if (!memoryBlock.getMemoryBlockType().equals(MemoryBlockType.STATIC)) {
           memoryBlock.resizeByRatio(ratio);
