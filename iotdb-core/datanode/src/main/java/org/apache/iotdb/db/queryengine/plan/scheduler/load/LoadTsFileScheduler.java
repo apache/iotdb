@@ -57,6 +57,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -193,6 +194,8 @@ public class LoadTsFileScheduler implements IScheduler {
           }
           shouldRemoveFileFromLoadingSet = true;
 
+          final long startTimeMs = System.currentTimeMillis();
+
           if (node.isTsFileEmpty()) {
             LOGGER.info("Load skip TsFile {}, because it has no data.", filePath);
           } else if (!node.needDecodeTsFile(
@@ -235,6 +238,13 @@ public class LoadTsFileScheduler implements IScheduler {
             if (!isFirstPhaseSuccess || !isSecondPhaseSuccess) {
               isLoadSingleTsFileSuccess = false;
             }
+          }
+
+          if (RegionMigrateService.getInstance().getLastNotifyTime() > startTimeMs) {
+            LOGGER.warn(
+                "LoadTsFileScheduler: Region migration started or ended during loading TsFile {}, will convert to insertion to avoid data loss",
+                filePath);
+            isLoadSingleTsFileSuccess = false;
           }
 
           if (isLoadSingleTsFileSuccess) {
