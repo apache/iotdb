@@ -36,11 +36,11 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -157,8 +157,8 @@ public class InferenceOperator implements ProcessOperator {
   }
 
   private void fillTimeColumn(TsBlock tsBlock) {
-    TimeColumn timeColumn = (TimeColumn) tsBlock.getTimeColumn();
-    long[] time = timeColumn.getTimes();
+    Column timeColumn = tsBlock.getTimeColumn();
+    long[] time = timeColumn.getLongs();
     for (int i = 0; i < time.length; i++) {
       time[i] = maxTimestamp + interval * currentRowIndex;
       currentRowIndex++;
