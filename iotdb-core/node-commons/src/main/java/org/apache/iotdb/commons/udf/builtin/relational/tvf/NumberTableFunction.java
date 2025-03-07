@@ -27,14 +27,12 @@ import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 import org.apache.iotdb.udf.api.relational.table.argument.DescribedSchema;
 import org.apache.iotdb.udf.api.relational.table.argument.ScalarArgument;
-import org.apache.iotdb.udf.api.relational.table.argument.TableArgument;
 import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProcessor;
 import org.apache.iotdb.udf.api.relational.table.specification.ParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSpecification;
 import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
 import org.apache.iotdb.udf.api.type.Type;
 
-import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.block.column.ColumnBuilder;
 
 import java.util.ArrayList;
@@ -43,12 +41,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
-
-public class VarianceTableFunction implements TableFunction {
+public class NumberTableFunction implements TableFunction {
   private static final String DATA_PARAMETER_NAME = "DATA";
-  private static final String COL_PARAMETER_NAME = "COL";
-  private static final String DELTA_PARAMETER_NAME = "DELTA";
+  private static final String SIZE_PARAMETER_NAME = "SIZE";
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
@@ -57,56 +52,45 @@ public class VarianceTableFunction implements TableFunction {
             .name(DATA_PARAMETER_NAME)
             .passThroughColumns()
             .build(),
-        ScalarParameterSpecification.builder().name(COL_PARAMETER_NAME).type(Type.STRING).build(),
-        ScalarParameterSpecification.builder()
-            .name(DELTA_PARAMETER_NAME)
-            .type(Type.DOUBLE)
-            .build());
+        ScalarParameterSpecification.builder().name(SIZE_PARAMETER_NAME).type(Type.INT64).build());
   }
 
   @Override
   public TableFunctionAnalysis analyze(Map<String, Argument> arguments) throws UDFException {
-    TableArgument tableArgument = (TableArgument) arguments.get(DATA_PARAMETER_NAME);
-    String expectedFieldName =
-        (String) ((ScalarArgument) arguments.get(COL_PARAMETER_NAME)).getValue();
-    int requiredIndex =
-        findColumnIndex(
-            tableArgument,
-            expectedFieldName,
-            ImmutableSet.of(Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE));
-    DescribedSchema properColumnSchema =
-        new DescribedSchema.Builder()
-            .addField("window_index", Type.INT64)
-            .addField("base_value", Type.DOUBLE)
-            .build();
-    // outputColumnSchema
+    long size = (long) ((ScalarArgument) arguments.get(SIZE_PARAMETER_NAME)).getValue();
+    if (size <= 0) {
+      throw new UDFException("Size must be greater than 0");
+    }
     return TableFunctionAnalysis.builder()
-        .properColumnSchema(properColumnSchema)
-        .requiredColumns(DATA_PARAMETER_NAME, Collections.singletonList(requiredIndex))
+        .properColumnSchema(
+            new DescribedSchema.Builder()
+                .addField("window_index", Type.INT64)
+                .addField("count", Type.INT64)
+                .build())
+        .requiredColumns(DATA_PARAMETER_NAME, Collections.singletonList(0))
         .build();
   }
 
   @Override
   public TableFunctionProcessorProvider getProcessorProvider(Map<String, Argument> arguments) {
-    double delta = (double) ((ScalarArgument) arguments.get(DELTA_PARAMETER_NAME)).getValue();
+    long sz = (long) ((ScalarArgument) arguments.get(SIZE_PARAMETER_NAME)).getValue();
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
-        return new VarianceDataProcessor(delta);
+        return new CountDataProcessor(sz);
       }
     };
   }
 
-  private static class VarianceDataProcessor implements TableFunctionDataProcessor {
+  private static class CountDataProcessor implements TableFunctionDataProcessor {
 
-    private final double gap;
+    private final long size;
     private final List<Long> currentRowIndexes = new ArrayList<>();
-    private double baseValue = 0;
     private long curIndex = 0;
     private long windowIndex = 0;
 
-    public VarianceDataProcessor(double delta) {
-      this.gap = delta;
+    public CountDataProcessor(long size) {
+      this.size = size;
     }
 
     @Override
@@ -114,13 +98,8 @@ public class VarianceTableFunction implements TableFunction {
         Record input,
         List<ColumnBuilder> properColumnBuilders,
         ColumnBuilder passThroughIndexBuilder) {
-      double value = input.getDouble(0);
-      if (!currentRowIndexes.isEmpty() && Math.abs(value - baseValue) > gap) {
+      if (currentRowIndexes.size() >= size) {
         outputWindow(properColumnBuilders, passThroughIndexBuilder);
-      }
-      if (currentRowIndexes.isEmpty()) {
-        // use the first value in the window as the base value
-        baseValue = value;
       }
       currentRowIndexes.add(curIndex);
       curIndex++;
@@ -135,13 +114,14 @@ public class VarianceTableFunction implements TableFunction {
 
     private void outputWindow(
         List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
+      int sz = currentRowIndexes.size();
       for (Long currentRowIndex : currentRowIndexes) {
         properColumnBuilders.get(0).writeLong(windowIndex);
-        properColumnBuilders.get(1).writeDouble(baseValue);
+        properColumnBuilders.get(1).writeLong(sz);
         passThroughIndexBuilder.writeLong(currentRowIndex);
       }
-      currentRowIndexes.clear();
       windowIndex++;
+      currentRowIndexes.clear();
     }
   }
 }

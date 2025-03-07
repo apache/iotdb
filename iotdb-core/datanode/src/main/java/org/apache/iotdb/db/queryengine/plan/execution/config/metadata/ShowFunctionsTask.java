@@ -156,7 +156,7 @@ public class ShowFunctionsTask implements IConfigTask {
     appendFunctions(
         builder,
         TableBuiltinTableFunction.getBuiltInTableFunctionName(),
-        BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_AGG_FUNC),
+        BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_TABLE_FUNC),
         BINARY_MAP.get(FUNCTION_STATE_AVAILABLE));
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowFunctionsHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));

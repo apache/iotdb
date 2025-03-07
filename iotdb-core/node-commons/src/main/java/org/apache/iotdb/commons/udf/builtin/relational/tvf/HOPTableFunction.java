@@ -46,8 +46,8 @@ public class HOPTableFunction implements TableFunction {
 
   private static final String DATA_PARAMETER_NAME = "DATA";
   private static final String TIMECOL_PARAMETER_NAME = "TIMECOL";
-  private static final String SLIDE_PARAMETER_NAME = "SLIDE";
   private static final String SIZE_PARAMETER_NAME = "SIZE";
+  private static final String SLIDE_PARAMETER_NAME = "SLIDE";
   private static final String START_PARAMETER_NAME = "START";
 
   @Override
@@ -62,8 +62,8 @@ public class HOPTableFunction implements TableFunction {
             .name(TIMECOL_PARAMETER_NAME)
             .type(Type.STRING)
             .build(),
-        ScalarParameterSpecification.builder().name(SLIDE_PARAMETER_NAME).type(Type.INT64).build(),
         ScalarParameterSpecification.builder().name(SIZE_PARAMETER_NAME).type(Type.INT64).build(),
+        ScalarParameterSpecification.builder().name(SLIDE_PARAMETER_NAME).type(Type.INT64).build(),
         ScalarParameterSpecification.builder()
             .name(START_PARAMETER_NAME)
             .type(Type.TIMESTAMP)
