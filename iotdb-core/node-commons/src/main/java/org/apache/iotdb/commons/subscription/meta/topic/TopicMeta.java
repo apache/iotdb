@@ -66,7 +66,7 @@ public class TopicMeta {
     final TopicMeta copied = new TopicMeta();
     copied.topicName = topicName;
     copied.creationTime = creationTime;
-    copied.config = new TopicConfig(new HashMap<>(config.getAttributes()));
+    copied.config = new TopicConfig(new HashMap<>(config.getAttribute()));
 
     copied.subscribedConsumerGroupIds = new HashSet<>(subscribedConsumerGroupIds);
     return copied;
@@ -125,8 +125,8 @@ public class TopicMeta {
     ReadWriteIOUtils.write(topicName, outputStream);
     ReadWriteIOUtils.write(creationTime, outputStream);
 
-    ReadWriteIOUtils.write(config.getAttributes().size(), outputStream);
-    for (final Map.Entry<String, String> entry : config.getAttributes().entrySet()) {
+    ReadWriteIOUtils.write(config.getAttribute().size(), outputStream);
+    for (final Map.Entry<String, String> entry : config.getAttribute().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
@@ -147,7 +147,7 @@ public class TopicMeta {
     for (int i = 0; i < size; i++) {
       final String key = ReadWriteIOUtils.readString(inputStream);
       final String value = ReadWriteIOUtils.readString(inputStream);
-      topicMeta.config.getAttributes().put(key, value);
+      topicMeta.config.getAttribute().put(key, value);
     }
 
     size = ReadWriteIOUtils.readInt(inputStream);
@@ -168,7 +168,7 @@ public class TopicMeta {
     for (int i = 0; i < size; i++) {
       final String key = ReadWriteIOUtils.readString(byteBuffer);
       final String value = ReadWriteIOUtils.readString(byteBuffer);
-      topicMeta.config.getAttributes().put(key, value);
+      topicMeta.config.getAttribute().put(key, value);
     }
 
     size = ReadWriteIOUtils.readInt(byteBuffer);

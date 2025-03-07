@@ -211,7 +211,7 @@ public class SubscriptionConnectorSubtaskManager {
 
   private String generateAttributeSortedString(final PipeParameters pipeConnectorParameters) {
     final TreeMap<String, String> sortedStringSourceMap =
-        new TreeMap<>(pipeConnectorParameters.getAttributes());
+        new TreeMap<>(pipeConnectorParameters.getAttribute());
     sortedStringSourceMap.remove(SystemConstant.RESTART_KEY);
     return sortedStringSourceMap.toString();
   }

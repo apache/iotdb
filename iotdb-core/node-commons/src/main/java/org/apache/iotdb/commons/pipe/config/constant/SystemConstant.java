@@ -47,7 +47,7 @@ public class SystemConstant {
   }
 
   public static PipeParameters addSystemKeysIfNecessary(final PipeParameters givenPipeParameters) {
-    final Map<String, String> attributes = new HashMap<>(givenPipeParameters.getAttributes());
+    final Map<String, String> attributes = new HashMap<>(givenPipeParameters.getAttribute());
     attributes.putIfAbsent(SQL_DIALECT_KEY, SQL_DIALECT_TREE_VALUE);
     return new PipeParameters(attributes);
   }

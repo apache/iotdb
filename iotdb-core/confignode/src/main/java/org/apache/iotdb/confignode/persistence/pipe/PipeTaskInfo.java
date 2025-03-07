@@ -214,9 +214,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
         new PipeStaticMeta(
             pipeStaticMetaFromCoordinator.getPipeName(),
             pipeStaticMetaFromCoordinator.getCreationTime(),
-            new HashMap<>(pipeStaticMetaFromCoordinator.getExtractorParameters().getAttributes()),
-            new HashMap<>(pipeStaticMetaFromCoordinator.getProcessorParameters().getAttributes()),
-            new HashMap<>(pipeStaticMetaFromCoordinator.getConnectorParameters().getAttributes()));
+            new HashMap<>(pipeStaticMetaFromCoordinator.getExtractorParameters().getAttribute()),
+            new HashMap<>(pipeStaticMetaFromCoordinator.getProcessorParameters().getAttribute()),
+            new HashMap<>(pipeStaticMetaFromCoordinator.getConnectorParameters().getAttribute()));
 
     // 1. In modify mode, based on the passed attributes:
     //   1.1. if they are empty, the original attributes are filled directly.
@@ -225,42 +225,42 @@ public class PipeTaskInfo implements SnapshotProcessor {
     if (!alterPipeRequest.isReplaceAllExtractorAttributes) { // modify mode
       if (alterPipeRequest.getExtractorAttributes().isEmpty()) {
         alterPipeRequest.setExtractorAttributes(
-            copiedPipeStaticMetaFromCoordinator.getExtractorParameters().getAttributes());
+            copiedPipeStaticMetaFromCoordinator.getExtractorParameters().getAttribute());
       } else {
         alterPipeRequest.setExtractorAttributes(
             copiedPipeStaticMetaFromCoordinator
                 .getExtractorParameters()
                 .addOrReplaceEquivalentAttributes(
                     new PipeParameters(alterPipeRequest.getExtractorAttributes()))
-                .getAttributes());
+                .getAttribute());
       }
     }
 
     if (!alterPipeRequest.isReplaceAllProcessorAttributes) { // modify mode
       if (alterPipeRequest.getProcessorAttributes().isEmpty()) {
         alterPipeRequest.setProcessorAttributes(
-            copiedPipeStaticMetaFromCoordinator.getProcessorParameters().getAttributes());
+            copiedPipeStaticMetaFromCoordinator.getProcessorParameters().getAttribute());
       } else {
         alterPipeRequest.setProcessorAttributes(
             copiedPipeStaticMetaFromCoordinator
                 .getProcessorParameters()
                 .addOrReplaceEquivalentAttributes(
                     new PipeParameters(alterPipeRequest.getProcessorAttributes()))
-                .getAttributes());
+                .getAttribute());
       }
     }
 
     if (!alterPipeRequest.isReplaceAllConnectorAttributes) { // modify mode
       if (alterPipeRequest.getConnectorAttributes().isEmpty()) {
         alterPipeRequest.setConnectorAttributes(
-            copiedPipeStaticMetaFromCoordinator.getConnectorParameters().getAttributes());
+            copiedPipeStaticMetaFromCoordinator.getConnectorParameters().getAttribute());
       } else {
         alterPipeRequest.setConnectorAttributes(
             copiedPipeStaticMetaFromCoordinator
                 .getConnectorParameters()
                 .addOrReplaceEquivalentAttributes(
                     new PipeParameters(alterPipeRequest.getConnectorAttributes()))
-                .getAttributes());
+                .getAttribute());
       }
     }
   }

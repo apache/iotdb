@@ -127,7 +127,7 @@ public class VisibilityUtils {
     // UNREACHABLE CODE
     LOGGER.error(
         "BROKEN INVARIANT: DETECT INVISIBLE EXTRACTOR PARAMETERS {}",
-        extractorParameters.getAttributes());
+        extractorParameters.getAttribute());
     return Visibility.NONE;
   }
 }

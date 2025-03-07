@@ -65,8 +65,8 @@ public class ConsumerMeta {
     ReadWriteIOUtils.write(consumerId, outputStream);
     ReadWriteIOUtils.write(creationTime, outputStream);
 
-    ReadWriteIOUtils.write(config.getAttributes().size(), outputStream);
-    for (Map.Entry<String, String> entry : config.getAttributes().entrySet()) {
+    ReadWriteIOUtils.write(config.getAttribute().size(), outputStream);
+    for (Map.Entry<String, String> entry : config.getAttribute().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
@@ -83,7 +83,7 @@ public class ConsumerMeta {
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(inputStream);
       final String value = ReadWriteIOUtils.readString(inputStream);
-      consumerMeta.config.getAttributes().put(key, value);
+      consumerMeta.config.getAttribute().put(key, value);
     }
 
     return consumerMeta;
@@ -100,7 +100,7 @@ public class ConsumerMeta {
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(byteBuffer);
       final String value = ReadWriteIOUtils.readString(byteBuffer);
-      consumerMeta.config.getAttributes().put(key, value);
+      consumerMeta.config.getAttribute().put(key, value);
     }
 
     return consumerMeta;

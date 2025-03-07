@@ -100,18 +100,18 @@ public class PipeStaticMeta {
     ReadWriteIOUtils.write(pipeName, outputStream);
     ReadWriteIOUtils.write(creationTime, outputStream);
 
-    ReadWriteIOUtils.write(extractorParameters.getAttributes().size(), outputStream);
-    for (final Map.Entry<String, String> entry : extractorParameters.getAttributes().entrySet()) {
+    ReadWriteIOUtils.write(extractorParameters.getAttribute().size(), outputStream);
+    for (final Map.Entry<String, String> entry : extractorParameters.getAttribute().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
-    ReadWriteIOUtils.write(processorParameters.getAttributes().size(), outputStream);
-    for (final Map.Entry<String, String> entry : processorParameters.getAttributes().entrySet()) {
+    ReadWriteIOUtils.write(processorParameters.getAttribute().size(), outputStream);
+    for (final Map.Entry<String, String> entry : processorParameters.getAttribute().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
-    ReadWriteIOUtils.write(connectorParameters.getAttributes().size(), outputStream);
-    for (final Map.Entry<String, String> entry : connectorParameters.getAttributes().entrySet()) {
+    ReadWriteIOUtils.write(connectorParameters.getAttribute().size(), outputStream);
+    for (final Map.Entry<String, String> entry : connectorParameters.getAttribute().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
@@ -131,19 +131,19 @@ public class PipeStaticMeta {
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(inputStream);
       final String value = ReadWriteIOUtils.readString(inputStream);
-      pipeStaticMeta.extractorParameters.getAttributes().put(key, value);
+      pipeStaticMeta.extractorParameters.getAttribute().put(key, value);
     }
     size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(inputStream);
       final String value = ReadWriteIOUtils.readString(inputStream);
-      pipeStaticMeta.processorParameters.getAttributes().put(key, value);
+      pipeStaticMeta.processorParameters.getAttribute().put(key, value);
     }
     size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(inputStream);
       final String value = ReadWriteIOUtils.readString(inputStream);
-      pipeStaticMeta.connectorParameters.getAttributes().put(key, value);
+      pipeStaticMeta.connectorParameters.getAttribute().put(key, value);
     }
 
     return pipeStaticMeta;
@@ -163,19 +163,19 @@ public class PipeStaticMeta {
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(byteBuffer);
       final String value = ReadWriteIOUtils.readString(byteBuffer);
-      pipeStaticMeta.extractorParameters.getAttributes().put(key, value);
+      pipeStaticMeta.extractorParameters.getAttribute().put(key, value);
     }
     size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(byteBuffer);
       final String value = ReadWriteIOUtils.readString(byteBuffer);
-      pipeStaticMeta.processorParameters.getAttributes().put(key, value);
+      pipeStaticMeta.processorParameters.getAttribute().put(key, value);
     }
     size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       final String key = ReadWriteIOUtils.readString(byteBuffer);
       final String value = ReadWriteIOUtils.readString(byteBuffer);
-      pipeStaticMeta.connectorParameters.getAttributes().put(key, value);
+      pipeStaticMeta.connectorParameters.getAttribute().put(key, value);
     }
 
     return pipeStaticMeta;

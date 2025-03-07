@@ -2037,11 +2037,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               .addOrReplaceEquivalentAttributes(
                   new PipeParameters(alterPipeStatement.getExtractorAttributes()));
           extractorAttributes =
-              pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters().getAttributes();
+              pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters().getAttribute();
         }
       } else {
         extractorAttributes =
-            pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters().getAttributes();
+            pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters().getAttribute();
       }
 
       if (!alterPipeStatement.getProcessorAttributes().isEmpty()) {
@@ -2054,11 +2054,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               .addOrReplaceEquivalentAttributes(
                   new PipeParameters(alterPipeStatement.getProcessorAttributes()));
           processorAttributes =
-              pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters().getAttributes();
+              pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters().getAttribute();
         }
       } else {
         processorAttributes =
-            pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters().getAttributes();
+            pipeMetaFromCoordinator.getStaticMeta().getProcessorParameters().getAttribute();
       }
 
       if (!alterPipeStatement.getConnectorAttributes().isEmpty()) {
@@ -2071,11 +2071,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               .addOrReplaceEquivalentAttributes(
                   new PipeParameters(alterPipeStatement.getConnectorAttributes()));
           connectorAttributes =
-              pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters().getAttributes();
+              pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters().getAttribute();
         }
       } else {
         connectorAttributes =
-            pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters().getAttributes();
+            pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters().getAttribute();
       }
 
       PipeDataNodeAgent.plugin()
