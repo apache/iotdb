@@ -56,8 +56,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -220,26 +222,30 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
 
   public Future<FragInstanceDispatchResult> dispatchCommand(
       TLoadCommandReq loadCommandReq, Set<TRegionReplicaSet> replicaSets) {
-    Set<TEndPoint> allEndPoint = new HashSet<>();
+    Map<TEndPoint, List<Integer>> endPoint2RegionIdsMap = new HashMap<>();
     for (TRegionReplicaSet replicaSet : replicaSets) {
       for (TDataNodeLocation dataNodeLocation : replicaSet.getDataNodeLocations()) {
-        allEndPoint.add(dataNodeLocation.getInternalEndPoint());
+        endPoint2RegionIdsMap
+            .computeIfAbsent(dataNodeLocation.getInternalEndPoint(), o -> new ArrayList<>())
+            .add(replicaSet.getRegionId().getId());
       }
     }
 
-    for (TEndPoint endPoint : allEndPoint) {
-      try (SetThreadName threadName =
+    for (final Map.Entry<TEndPoint, List<Integer>> entry : endPoint2RegionIdsMap.entrySet()) {
+      try (final SetThreadName threadName =
           new SetThreadName(
               LoadTsFileScheduler.class.getName() + "-" + loadCommandReq.commandType)) {
-        if (isDispatchedToLocal(endPoint)) {
+        loadCommandReq.setRegionIds(entry.getValue());
+        if (isDispatchedToLocal(entry.getKey())) {
           dispatchLocally(loadCommandReq);
         } else {
-          dispatchRemote(loadCommandReq, endPoint);
+          dispatchRemote(loadCommandReq, entry.getKey());
         }
       } catch (FragmentInstanceDispatchException e) {
+        LOGGER.warn("Cannot dispatch LoadCommand for load operation {}", loadCommandReq, e);
         return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
       } catch (Exception t) {
-        LOGGER.warn("cannot dispatch LoadCommand for load operation", t);
+        LOGGER.warn("Cannot dispatch LoadCommand for load operation {}", loadCommandReq, t);
         return immediateFuture(
             new FragInstanceDispatchResult(
                 RpcUtils.getStatus(
