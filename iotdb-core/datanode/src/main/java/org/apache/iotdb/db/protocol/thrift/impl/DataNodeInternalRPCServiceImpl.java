@@ -566,18 +566,21 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus invalidateSchemaCache(final TInvalidateCacheReq req) {
     DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
-    TreeDeviceSchemaCacheManager.getInstance().takeWriteLock();
     try {
-      final String database = req.getFullPath();
-      // req.getFullPath() is a database path
-      ClusterTemplateManager.getInstance().invalid(database);
-      // clear table related cache
-      DataNodeTableCache.getInstance().invalid(database);
-      tableDeviceSchemaCache.invalidate(database);
-      LOGGER.info("Schema cache of {} has been invalidated", req.getFullPath());
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      TreeDeviceSchemaCacheManager.getInstance().takeWriteLock();
+      try {
+        final String database = req.getFullPath();
+        // req.getFullPath() is a database path
+        ClusterTemplateManager.getInstance().invalid(database);
+        // clear table related cache
+        DataNodeTableCache.getInstance().invalid(database);
+        tableDeviceSchemaCache.invalidate(database);
+        LOGGER.info("Schema cache of {} has been invalidated", req.getFullPath());
+        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      } finally {
+        TreeDeviceSchemaCacheManager.getInstance().releaseWriteLock();
+      }
     } finally {
-      TreeDeviceSchemaCacheManager.getInstance().releaseWriteLock();
       DataNodeSchemaLockManager.getInstance().releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
     }
   }
@@ -643,14 +646,17 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus invalidateMatchedSchemaCache(TInvalidateMatchedSchemaCacheReq req) {
-    TreeDeviceSchemaCacheManager cache = TreeDeviceSchemaCacheManager.getInstance();
+  public TSStatus invalidateMatchedSchemaCache(final TInvalidateMatchedSchemaCacheReq req) {
+    final TreeDeviceSchemaCacheManager cache = TreeDeviceSchemaCacheManager.getInstance();
     DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
-    cache.takeWriteLock();
     try {
-      cache.invalidate(PathPatternTree.deserialize(req.pathPatternTree).getAllPathPatterns(true));
+      cache.takeWriteLock();
+      try {
+        cache.invalidate(PathPatternTree.deserialize(req.pathPatternTree).getAllPathPatterns(true));
+      } finally {
+        cache.releaseWriteLock();
+      }
     } finally {
-      cache.releaseWriteLock();
       DataNodeSchemaLockManager.getInstance().releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
     }
     return RpcUtils.SUCCESS_STATUS;

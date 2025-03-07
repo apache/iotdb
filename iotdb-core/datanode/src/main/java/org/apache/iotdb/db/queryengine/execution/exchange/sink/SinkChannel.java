@@ -117,7 +117,7 @@ public class SinkChannel implements ISinkChannel {
 
   /** max bytes this SinkChannel can reserve. */
   private long maxBytesCanReserve =
-      IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+      IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
 
   private static final DataExchangeCostMetricSet DATA_EXCHANGE_COST_METRIC_SET =
       DataExchangeCostMetricSet.getInstance();

@@ -19,70 +19,57 @@
 
 package org.apache.iotdb.db.service.metrics.memory;
 
+import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 import java.util.Arrays;
-import java.util.Collections;
 
 public class GlobalMemoryMetrics implements IMetricSet {
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final SystemInfo systemInfo = SystemInfo.getInstance();
+  private static final DataNodeMemoryConfig memoryConfig =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
 
   private static final String TOTAL = "Total";
   public static final String ON_HEAP = "OnHeap";
   public static final String OFF_HEAP = "OffHeap";
   public static final String[] LEVELS = {"0", "1", "2", "3", "4"};
 
-  private static final String DIRECT_BUFFER = "DirectBuffer";
-
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            TOTAL,
-            Tag.TYPE.toString(),
-            ON_HEAP,
-            Tag.LEVEL.toString(),
-            LEVELS[0])
-        .set(Runtime.getRuntime().maxMemory());
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            TOTAL,
-            Tag.TYPE.toString(),
-            OFF_HEAP,
-            Tag.LEVEL.toString(),
-            LEVELS[0])
-        .set(config.getMaxOffHeapMemoryBytes());
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        memoryConfig.getOnHeapMemoryManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        TOTAL,
+        Tag.TYPE.toString(),
+        ON_HEAP,
+        Tag.LEVEL.toString(),
+        LEVELS[0]);
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        memoryConfig.getOffHeapMemoryManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        TOTAL,
+        Tag.TYPE.toString(),
+        OFF_HEAP,
+        Tag.LEVEL.toString(),
+        LEVELS[0]);
     StorageEngineMemoryMetrics.getInstance().bindTo(metricService);
     QueryEngineMemoryMetrics.getInstance().bindTo(metricService);
     SchemaEngineMemoryMetrics.getInstance().bindTo(metricService);
     ConsensusMemoryMetrics.getInstance().bindTo(metricService);
     StreamEngineMemoryMetrics.getInstance().bindTo(metricService);
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            DIRECT_BUFFER,
-            Tag.TYPE.toString(),
-            OFF_HEAP,
-            Tag.LEVEL.toString(),
-            LEVELS[1])
-        .set(systemInfo.getTotalDirectBufferMemorySizeLimit());
+    OffHeapMemoryMetrics.getInstance().bindTo(metricService);
   }
 
   @Override
@@ -91,7 +78,7 @@ public class GlobalMemoryMetrics implements IMetricSet {
         .forEach(
             type -> {
               metricService.remove(
-                  MetricType.GAUGE,
+                  MetricType.AUTO_GAUGE,
                   Metric.MEMORY_THRESHOLD_SIZE.toString(),
                   Tag.NAME.toString(),
                   TOTAL,
@@ -105,18 +92,7 @@ public class GlobalMemoryMetrics implements IMetricSet {
     SchemaEngineMemoryMetrics.getInstance().unbindFrom(metricService);
     ConsensusMemoryMetrics.getInstance().unbindFrom(metricService);
     StreamEngineMemoryMetrics.getInstance().unbindFrom(metricService);
-    Collections.singletonList(DIRECT_BUFFER)
-        .forEach(
-            name ->
-                metricService.remove(
-                    MetricType.GAUGE,
-                    Metric.MEMORY_THRESHOLD_SIZE.toString(),
-                    Tag.NAME.toString(),
-                    name,
-                    Tag.TYPE.toString(),
-                    OFF_HEAP,
-                    Tag.LEVEL.toString(),
-                    LEVELS[1]));
+    OffHeapMemoryMetrics.getInstance().unbindFrom(metricService);
   }
 
   public static GlobalMemoryMetrics getInstance() {

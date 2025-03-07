@@ -29,67 +29,74 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-public class ConsensusMemoryMetrics implements IMetricSet {
+import java.util.Collections;
+
+public class OffHeapMemoryMetrics implements IMetricSet {
   private static final DataNodeMemoryConfig memoryConfig =
       IoTDBDescriptor.getInstance().getMemoryConfig();
-  private static final String CONSENSUS = "Consensus";
+
+  private static final String DIRECT_BUFFER = "DirectBuffer";
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
     metricService.createAutoGauge(
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        memoryConfig.getConsensusMemoryManager(),
+        memoryConfig.getDirectBufferMemoryManager(),
         MemoryManager::getTotalMemorySizeInBytes,
         Tag.NAME.toString(),
-        CONSENSUS,
+        DIRECT_BUFFER,
         Tag.TYPE.toString(),
-        GlobalMemoryMetrics.ON_HEAP,
+        GlobalMemoryMetrics.OFF_HEAP,
         Tag.LEVEL.toString(),
         GlobalMemoryMetrics.LEVELS[1]);
     metricService.createAutoGauge(
         Metric.MEMORY_ACTUAL_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        memoryConfig.getConsensusMemoryManager(),
+        memoryConfig.getDirectBufferMemoryManager(),
         MemoryManager::getUsedMemorySizeInBytes,
         Tag.NAME.toString(),
-        CONSENSUS,
+        DIRECT_BUFFER,
         Tag.TYPE.toString(),
-        GlobalMemoryMetrics.ON_HEAP,
+        GlobalMemoryMetrics.OFF_HEAP,
         Tag.LEVEL.toString(),
         GlobalMemoryMetrics.LEVELS[1]);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.MEMORY_THRESHOLD_SIZE.toString(),
-        Tag.NAME.toString(),
-        CONSENSUS,
-        Tag.TYPE.toString(),
-        GlobalMemoryMetrics.ON_HEAP,
-        Tag.LEVEL.toString(),
-        GlobalMemoryMetrics.LEVELS[1]);
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.MEMORY_ACTUAL_SIZE.toString(),
-        Tag.NAME.toString(),
-        CONSENSUS,
-        Tag.TYPE.toString(),
-        GlobalMemoryMetrics.ON_HEAP,
-        Tag.LEVEL.toString(),
-        GlobalMemoryMetrics.LEVELS[1]);
+    Collections.singletonList(DIRECT_BUFFER)
+        .forEach(
+            name -> {
+              metricService.remove(
+                  MetricType.AUTO_GAUGE,
+                  Metric.MEMORY_THRESHOLD_SIZE.toString(),
+                  Tag.NAME.toString(),
+                  name,
+                  Tag.TYPE.toString(),
+                  GlobalMemoryMetrics.OFF_HEAP,
+                  Tag.LEVEL.toString(),
+                  GlobalMemoryMetrics.LEVELS[1]);
+              metricService.remove(
+                  MetricType.AUTO_GAUGE,
+                  Metric.MEMORY_ACTUAL_SIZE.toString(),
+                  Tag.NAME.toString(),
+                  name,
+                  Tag.TYPE.toString(),
+                  GlobalMemoryMetrics.OFF_HEAP,
+                  Tag.LEVEL.toString(),
+                  GlobalMemoryMetrics.LEVELS[1]);
+            });
   }
 
-  public static ConsensusMemoryMetrics getInstance() {
-    return ConsensusMemoryMetricsHolder.INSTANCE;
+  public static OffHeapMemoryMetrics getInstance() {
+    return OffHeapMemoryMetrics.OffHeapMemoryMetricsHolder.INSTANCE;
   }
 
-  private static class ConsensusMemoryMetricsHolder {
+  private static class OffHeapMemoryMetricsHolder {
 
-    private static final ConsensusMemoryMetrics INSTANCE = new ConsensusMemoryMetrics();
+    private static final OffHeapMemoryMetrics INSTANCE = new OffHeapMemoryMetrics();
 
-    private ConsensusMemoryMetricsHolder() {}
+    private OffHeapMemoryMetricsHolder() {}
   }
 }
