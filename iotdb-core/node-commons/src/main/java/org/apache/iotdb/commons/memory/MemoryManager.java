@@ -582,17 +582,16 @@ public class MemoryManager {
   /** Try to update allocation */
   public synchronized void updateAllocate() {
     if (children.isEmpty()) {
-      //        long staticAllocatedMemorySizeInBytes = getStaticAllocatedMemorySizeInBytes();
-      //        double ratio =
-      //            (double) (this.totalMemorySizeInBytes - staticAllocatedMemorySizeInBytes)
-      //                / (this.beforeAllocatedMemorySizeInBytes -
-      // staticAllocatedMemorySizeInBytes);
-      //        this.beforeAllocatedMemorySizeInBytes = this.totalMemorySizeInBytes;
-      //        for (IMemoryBlock memoryBlock : allocatedMemoryBlocks.values()) {
-      //          if (!memoryBlock.getMemoryBlockType().equals(MemoryBlockType.STATIC)) {
-      //            this.allocatedMemorySizeInBytes += memoryBlock.resizeByRatio(ratio);
-      //          }
-      //        }
+      long staticAllocatedMemorySizeInBytes = getStaticAllocatedMemorySizeInBytes();
+      double ratio =
+          (double) (this.totalMemorySizeInBytes - staticAllocatedMemorySizeInBytes)
+              / (this.beforeAllocatedMemorySizeInBytes - staticAllocatedMemorySizeInBytes);
+      this.beforeAllocatedMemorySizeInBytes = this.totalMemorySizeInBytes;
+      for (IMemoryBlock memoryBlock : allocatedMemoryBlocks.values()) {
+        if (!memoryBlock.getMemoryBlockType().equals(MemoryBlockType.STATIC)) {
+          this.allocatedMemorySizeInBytes += memoryBlock.resizeByRatio(ratio);
+        }
+      }
     } else {
       // Try to find memory manager with highest and lowest memory usage
       MemoryManager highestMemoryManager = null;
