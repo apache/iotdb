@@ -1197,7 +1197,7 @@ public class StatementAnalyzer {
               throw new IllegalStateException("Unknown ColumnName: " + field);
             }
             matchedColumns.add(new Identifier(columnName));
-            outputColumnNames.add(columnName);
+            outputColumnNames.add(alias == null ? columnName : alias.getValue());
           }
         } else {
           Pattern pattern;

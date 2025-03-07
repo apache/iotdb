@@ -23,7 +23,6 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -48,12 +47,6 @@ public class IoTDBColumnsMatchTableIT {
         "INSERT INTO table1(time,device_id,s1,s2) values(2,'d2',2,20)",
         "INSERT INTO table1(time,device_id,s1) values(3,'d3',3)"
       };
-
-  private static final String MULTI_GAFILL_ERROR_MSG =
-      TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": multiple date_bin_gapfill calls not allowed";
-  private static final String TIME_RANGE_CANNOT_INFER_ERROR_MSG =
-      TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-          + ": could not infer startTime or endTime from WHERE clause";
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -108,6 +101,16 @@ public class IoTDBColumnsMatchTableIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+
+    expectedHeader = new String[] {"s", "s", "s", "s"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,d1,1,10,",
+          "1970-01-01T00:00:00.002Z,d2,2,20,",
+          "1970-01-01T00:00:00.003Z,d3,3,null,"
+        };
+    tableResultSetEqualTest(
+        "SELECT COLUMNS(*) AS s FROM table1 order by 1", expectedHeader, retArray, DATABASE_NAME);
 
     // case 2: no according reference group
     tableAssertTestFail(
