@@ -130,37 +130,37 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   private Future<FragInstanceDispatchResult> dispatchRead(List<FragmentInstance> instances) {
     long startTime = System.nanoTime();
 
-    for (FragmentInstance instance : instances) {
-      long fragInstanceStartTime = System.nanoTime();
-      try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
-        dispatchOneInstance(instance);
-      } catch (FragmentInstanceDispatchException e) {
-        return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
-      } catch (Throwable t) {
-        LOGGER.warn(DISPATCH_FAILED, t);
-        return immediateFuture(
-            new FragInstanceDispatchResult(
-                RpcUtils.getStatus(
-                    TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage())));
-      } finally {
-        // friendly for gc, clear the plan node tree, for some queries select all devices, it will
-        // release lots of memory
-        if (!queryContext.isExplainAnalyze()) {
-          // EXPLAIN ANALYZE will use these instances, so we can't clear them
-          instance.getFragment().clearUselessField();
-        } else {
-          // TypeProvider is not used in EXPLAIN ANALYZE, so we can clear it
-          instance.getFragment().clearTypeProvider();
+    try {
+      for (FragmentInstance instance : instances) {
+        try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
+          dispatchOneInstance(instance);
+        } catch (FragmentInstanceDispatchException e) {
+          return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
+        } catch (Throwable t) {
+          LOGGER.warn(DISPATCH_FAILED, t);
+          return immediateFuture(
+              new FragInstanceDispatchResult(
+                  RpcUtils.getStatus(
+                      TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage())));
+        } finally {
+          // friendly for gc, clear the plan node tree, for some queries select all devices, it will
+          // release lots of memory
+          if (!queryContext.isExplainAnalyze()) {
+            // EXPLAIN ANALYZE will use these instances, so we can't clear them
+            instance.getFragment().clearUselessField();
+          } else {
+            // TypeProvider is not used in EXPLAIN ANALYZE, so we can clear it
+            instance.getFragment().clearTypeProvider();
+          }
         }
-
-        long fragInstanceDispatchReadTime = System.nanoTime() - fragInstanceStartTime;
-        QUERY_EXECUTION_METRIC_SET.recordExecutionCost(DISPATCH_READ, fragInstanceDispatchReadTime);
       }
-    }
 
-    long queryDispatchReadTime = System.nanoTime() - startTime;
-    queryContext.recordDispatchCost(queryDispatchReadTime);
-    return immediateFuture(new FragInstanceDispatchResult(true));
+      return immediateFuture(new FragInstanceDispatchResult(true));
+    } finally {
+      long queryDispatchReadTime = System.nanoTime() - startTime;
+      QUERY_EXECUTION_METRIC_SET.recordExecutionCost(DISPATCH_READ, queryDispatchReadTime);
+      queryContext.recordDispatchCost(queryDispatchReadTime);
+    }
   }
 
   private Future<FragInstanceDispatchResult> dispatchWriteSync(List<FragmentInstance> instances) {
