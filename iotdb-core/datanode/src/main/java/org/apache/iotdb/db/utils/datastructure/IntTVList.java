@@ -244,7 +244,6 @@ public abstract class IntTVList extends TVList {
       tIdx = tIdx - nullCnt;
       inPutMinTime = Math.min(inPutMinTime, time[tIdx]);
       maxTime = Math.max(maxTime, time[tIdx]);
-      minTime = Math.min(minTime, time[tIdx]);
       if (inputSorted) {
         if (tIdx > 0 && time[tIdx - 1] > time[tIdx]) {
           inputSorted = false;
@@ -253,6 +252,7 @@ public abstract class IntTVList extends TVList {
         }
       }
     }
+    minTime = Math.min(minTime, inPutMinTime);
 
     if (sorted
         && (rowCount == 0

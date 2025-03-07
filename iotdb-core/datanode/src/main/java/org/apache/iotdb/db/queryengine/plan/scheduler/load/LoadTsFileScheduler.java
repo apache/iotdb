@@ -467,6 +467,7 @@ public class LoadTsFileScheduler implements IScheduler {
       final TRegionReplicaSet currentReplicaSet =
           partitionFetcher.fetcher.getRegionReplicaSet(regionId);
       if (!Objects.equals(replicaSet, currentReplicaSet)) {
+        LOGGER.warn("Region replica set changed from {} to {}", replicaSet, currentReplicaSet);
         throw new RegionReplicaSetChangedException(replicaSet, currentReplicaSet);
       }
     }
