@@ -381,6 +381,7 @@ public class MemoryManager {
    */
   private synchronized void reAllocateMemoryAccordingToRatio(double ratio) {
     // first increase the total memory size of this memory manager
+    this.beforeAllocatedMemorySizeInBytes = this.totalMemorySizeInBytes;
     this.totalMemorySizeInBytes *= ratio;
     // then re-allocate memory for all memory blocks
     for (IMemoryBlock block : allocatedMemoryBlocks.values()) {
