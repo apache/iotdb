@@ -112,6 +112,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelDualManualIT 
       extractorAttributes.put("capture.table", "true");
       // Add this property to avoid making self cycle.
       extractorAttributes.put("source.forwarding-pipe-requests", "false");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("sink", "iotdb-thrift-sink");
       connectorAttributes.put("sink.batch.enable", "false");

@@ -155,6 +155,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeTableModelDualM
       extractorAttributes.put("extractor.realtime.mode", realtimeMode);
       extractorAttributes.put("capture.table", "true");
       extractorAttributes.put("capture.tree", "true");
+      extractorAttributes.put("user", "root");
 
       processorAttributes.put("processor", "do-nothing-processor");
 
