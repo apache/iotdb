@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzerFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountStatement;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
@@ -54,12 +56,12 @@ public final class ShowRewrite implements StatementRewrite.Rewrite {
   private final Metadata metadata;
 
   // private final SqlParser parser;
-  // private final AccessControl accessControl;
+  private final AccessControl accessControl;
 
-  public ShowRewrite(final Metadata metadata) {
+  public ShowRewrite(final Metadata metadata, final AccessControl accessControl) {
     this.metadata = requireNonNull(metadata, "metadata is null");
     // this.parser = requireNonNull(parser, "parser is null");
-    // this.accessControl = requireNonNull(accessControl, "accessControl is null");
+    this.accessControl = requireNonNull(accessControl, "accessControl is null");
   }
 
   @Override
@@ -70,26 +72,30 @@ public final class ShowRewrite implements StatementRewrite.Rewrite {
       final List<Expression> parameters,
       final Map<NodeRef<Parameter>, Expression> parameterLookup,
       final WarningCollector warningCollector) {
-    final Visitor visitor = new Visitor(metadata, session);
+    final Visitor visitor = new Visitor(metadata, session, accessControl);
     return (Statement) visitor.process(node, null);
   }
 
   private static class Visitor extends AstVisitor<Node, Void> {
     private final Metadata metadata;
     private final SessionInfo session;
+    private final AccessControl accessControl;
 
-    public Visitor(final Metadata metadata, final SessionInfo session) {
+    public Visitor(
+        final Metadata metadata, final SessionInfo session, final AccessControl accessControl) {
       this.metadata = requireNonNull(metadata, "metadata is null");
       this.session = requireNonNull(session, "session is null");
+      this.accessControl = requireNonNull(accessControl, "accessControl is null");
+    }
+
+    @Override
+    protected Node visitShowQueriesStatement(ShowQueriesStatement node, Void context) {
+      accessControl.checkUserIsAdmin(session.getUserName());
+      return visitShowStatement(node, context);
     }
 
     @Override
     protected Node visitShowStatement(final ShowStatement showStatement, final Void context) {
-      // CatalogSchemaName schema = createCatalogSchemaName(session, showQueries,
-      // showQueries.getSchema());
-
-      // accessControl.checkCanShowQueries(session.toSecurityContext(), schema);
-
       return simpleQuery(
           selectList(new AllColumns()),
           from(INFORMATION_DATABASE, showStatement.getTableName()),

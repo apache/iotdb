@@ -74,13 +74,17 @@ public class IoTDBFormatFunctionTableIT {
         // data for date series
         "INSERT INTO date_table(time, device_id, s1) VALUES (10, 'd1', '2024-01-01')",
         "INSERT INTO date_table(time, device_id, s1) VALUES (20, 'd1', '2006-07-04')",
+        "INSERT INTO date_table(time, device_id, s1) VALUES (30, 'd2', '1970-01-01')",
+        "INSERT INTO date_table(time, device_id, s1) VALUES (40, 'd2', '9999-12-31')",
+        "INSERT INTO date_table(time, device_id, s1) VALUES (50, 'd2', '1900-01-01')",
 
         // data for special series
-        "INSERT INTO null_table(time, device_id) VALUES (10, 'd1')",
+        "INSERT INTO null_table(time, device_id, s1) VALUES (10, 'd1', null)",
       };
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setTimestampPrecision("ns");
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
@@ -150,7 +154,7 @@ public class IoTDBFormatFunctionTableIT {
     tableResultSetEqualTest(
         "SELECT FORMAT('%1$tF %1$tT.%1tL', s1) FROM timestamp_table",
         new String[] {"_col0"},
-        new String[] {"1970-01-01 00:00:00.010,", "1970-01-01 00:00:00.020,"},
+        new String[] {"1970-01-01 00:00:00.000,", "1970-01-01 00:00:00.000,"},
         DATABASE_NAME);
 
     tableResultSetEqualTest(
@@ -166,7 +170,7 @@ public class IoTDBFormatFunctionTableIT {
   @Test
   public void testDateFormat() {
     tableResultSetEqualTest(
-        "SELECT FORMAT('%1$tA, %1$tB %1$te, %1$tY', s1) FROM date_table",
+        "SELECT FORMAT('%1$tA, %1$tB %1$te, %1$tY', s1) FROM date_table where device_id = 'd1'",
         new String[] {"_col0"},
         new String[] {
           format("%1$tA, %1$tB %1$te, %1$tY,", LocalDate.of(2024, 1, 1)),
@@ -175,10 +179,14 @@ public class IoTDBFormatFunctionTableIT {
         DATABASE_NAME);
 
     tableResultSetEqualTest(
-        "SELECT FORMAT('%1$s %1$tF %1$tY-%1$tm-%1$td', s1) FROM date_table",
+        "SELECT FORMAT('%1$s %1$tF %1$tY-%1$tm-%1$td', s1) FROM date_table where device_id = 'd1'",
         new String[] {"_col0"},
         new String[] {"2024-01-01 2024-01-01 2024-01-01,", "2006-07-04 2006-07-04 2006-07-04,"},
         DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "SELECT FORMAT('%1$tY', s1) FROM date_table where device_id = 'd2'",
+        new String[] {"_col0"}, new String[] {"1970,", "9999,", "1900,"}, DATABASE_NAME);
   }
 
   @Test

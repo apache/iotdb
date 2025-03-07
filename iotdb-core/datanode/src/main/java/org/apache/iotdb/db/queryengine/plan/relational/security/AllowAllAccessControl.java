@@ -79,11 +79,6 @@ public class AllowAllAccessControl implements AccessControl {
   }
 
   @Override
-  public void checkUserHasMaintainPrivilege(String userName) {
-    // allow anything
-  }
-
-  @Override
   public void checkUserCanRunRelationalAuthorStatement(
       String userName, RelationalAuthorStatement statement) {
     // allow anything

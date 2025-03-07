@@ -27,7 +27,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 public class MemoryControlledWALEntryQueue {
-
   private final BlockingQueue<WALEntry> queue;
   private static final Object nonFullCondition = new Object();
 
@@ -38,7 +37,7 @@ public class MemoryControlledWALEntryQueue {
   public WALEntry poll(long timeout, TimeUnit unit) throws InterruptedException {
     WALEntry e = queue.poll(timeout, unit);
     if (e != null) {
-      SystemInfo.getInstance().updateWalQueueMemoryCost(-getElementSize(e));
+      SystemInfo.getInstance().getWalBufferQueueMemoryBlock().release(getElementSize(e));
       synchronized (nonFullCondition) {
         nonFullCondition.notifyAll();
       }
@@ -49,21 +48,19 @@ public class MemoryControlledWALEntryQueue {
   public void put(WALEntry e) throws InterruptedException {
     long elementSize = getElementSize(e);
     synchronized (nonFullCondition) {
-      while (SystemInfo.getInstance().cannotReserveMemoryForWalEntry(elementSize)) {
+      while (!SystemInfo.getInstance().getWalBufferQueueMemoryBlock().allocate(elementSize)) {
         nonFullCondition.wait();
       }
     }
     queue.put(e);
-    SystemInfo.getInstance().updateWalQueueMemoryCost(elementSize);
   }
 
   public WALEntry take() throws InterruptedException {
     WALEntry e = queue.take();
-    SystemInfo.getInstance().updateWalQueueMemoryCost(-getElementSize(e));
+    SystemInfo.getInstance().getWalBufferQueueMemoryBlock().release(getElementSize(e));
     synchronized (nonFullCondition) {
       nonFullCondition.notifyAll();
     }
-
     return e;
   }
 

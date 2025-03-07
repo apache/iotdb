@@ -401,6 +401,14 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitSetTableComment(SetTableComment node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitSetColumnComment(SetColumnComment node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitCreateIndex(CreateIndex node, C context) {
     return visitStatement(node, context);
   }
@@ -635,6 +643,10 @@ public abstract class AstVisitor<R, C> {
 
   protected R visitShowStatement(ShowStatement node, C context) {
     return visitStatement(node, context);
+  }
+
+  protected R visitShowQueriesStatement(ShowQueriesStatement node, C context) {
+    return visitShowStatement(node, context);
   }
 
   protected R visitCountStatement(CountStatement node, C context) {
