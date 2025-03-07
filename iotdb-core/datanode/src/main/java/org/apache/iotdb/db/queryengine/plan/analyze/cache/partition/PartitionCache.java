@@ -197,8 +197,8 @@ public class PartitionCache {
    * @return {@code true} if this database exists
    */
   private boolean containsDatabase(final String database) {
+    databaseCacheLock.readLock().lock();
     try {
-      databaseCacheLock.readLock().lock();
       return databaseCache.contains(database);
     } finally {
       databaseCacheLock.readLock().unlock();
@@ -394,8 +394,8 @@ public class PartitionCache {
       final DatabaseCacheResult<?, ?> result,
       final List<IDeviceID> deviceIDs,
       final boolean failFast) {
+    databaseCacheLock.readLock().lock();
     try {
-      databaseCacheLock.readLock().lock();
       // reset result before try
       result.reset();
       boolean status = true;

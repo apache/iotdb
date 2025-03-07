@@ -246,8 +246,8 @@ public class PipeConsensus implements IConsensus {
                 Collectors.groupingBy(
                     entry -> entry.getKey().getConsensusGroupId(),
                     Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+    stateMachineMapLock.writeLock().lock();
     try {
-      stateMachineMapLock.writeLock().lock();
       stateMachineMap.forEach(
           (key, value) ->
               value.checkConsensusPipe(existedPipes.getOrDefault(key, ImmutableMap.of())));
@@ -322,37 +322,40 @@ public class PipeConsensus implements IConsensus {
 
     Lock lock =
         consensusGroupIdReentrantLockMap.computeIfAbsent(groupId, key -> new ReentrantLock());
+    lock.lock();
     try {
-      lock.lock();
       stateMachineMapLock.readLock().lock();
-      if (stateMachineMap.containsKey(groupId)) {
-        throw new ConsensusGroupAlreadyExistException(groupId);
-      }
+      try {
+        if (stateMachineMap.containsKey(groupId)) {
+          throw new ConsensusGroupAlreadyExistException(groupId);
+        }
 
-      final String path = getPeerDir(groupId);
-      File consensusDir = new File(path);
-      if (!consensusDir.exists() && !consensusDir.mkdirs()) {
-        LOGGER.warn("Unable to create consensus dir for group {} at {}", groupId, path);
-        throw new ConsensusException(
-            String.format("Unable to create consensus dir for group %s", groupId));
-      }
+        final String path = getPeerDir(groupId);
+        File consensusDir = new File(path);
+        if (!consensusDir.exists() && !consensusDir.mkdirs()) {
+          LOGGER.warn("Unable to create consensus dir for group {} at {}", groupId, path);
+          throw new ConsensusException(
+              String.format("Unable to create consensus dir for group %s", groupId));
+        }
 
-      PipeConsensusServerImpl consensus =
-          new PipeConsensusServerImpl(
-              new Peer(groupId, thisNodeId, thisNode),
-              registry.apply(groupId),
-              peers,
-              config,
-              consensusPipeManager,
-              syncClientManager);
-      stateMachineMap.put(groupId, consensus);
-      consensus.start(false); // pipe will start after creating
-      KillPoint.setKillPoint(DataNodeKillPoints.DESTINATION_CREATE_LOCAL_PEER);
-    } catch (IOException e) {
-      LOGGER.warn("Cannot create local peer for group {} with peers {}", groupId, peers, e);
-      throw new ConsensusException(e);
+        PipeConsensusServerImpl consensus =
+            new PipeConsensusServerImpl(
+                new Peer(groupId, thisNodeId, thisNode),
+                registry.apply(groupId),
+                peers,
+                config,
+                consensusPipeManager,
+                syncClientManager);
+        stateMachineMap.put(groupId, consensus);
+        consensus.start(false); // pipe will start after creating
+        KillPoint.setKillPoint(DataNodeKillPoints.DESTINATION_CREATE_LOCAL_PEER);
+      } catch (IOException e) {
+        LOGGER.warn("Cannot create local peer for group {} with peers {}", groupId, peers, e);
+        throw new ConsensusException(e);
+      } finally {
+        stateMachineMapLock.readLock().unlock();
+      }
     } finally {
-      stateMachineMapLock.readLock().unlock();
       lock.unlock();
     }
   }
@@ -362,21 +365,24 @@ public class PipeConsensus implements IConsensus {
     KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.BEFORE_DELETE);
     Lock lock =
         consensusGroupIdReentrantLockMap.computeIfAbsent(groupId, key -> new ReentrantLock());
+    lock.lock();
     try {
-      lock.lock();
       stateMachineMapLock.readLock().lock();
-      if (!stateMachineMap.containsKey(groupId)) {
-        throw new ConsensusGroupNotExistException(groupId);
+      try {
+        if (!stateMachineMap.containsKey(groupId)) {
+          throw new ConsensusGroupNotExistException(groupId);
+        }
+
+        final PipeConsensusServerImpl consensus = stateMachineMap.get(groupId);
+        consensus.clear();
+        stateMachineMap.remove(groupId);
+
+        FileUtils.deleteFileOrDirectory(new File(getPeerDir(groupId)));
+        KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
+      } finally {
+        stateMachineMapLock.readLock().unlock();
       }
-
-      final PipeConsensusServerImpl consensus = stateMachineMap.get(groupId);
-      consensus.clear();
-      stateMachineMap.remove(groupId);
-
-      FileUtils.deleteFileOrDirectory(new File(getPeerDir(groupId)));
-      KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
     } finally {
-      stateMachineMapLock.readLock().unlock();
       lock.unlock();
       consensusGroupIdReentrantLockMap.remove(groupId);
     }
