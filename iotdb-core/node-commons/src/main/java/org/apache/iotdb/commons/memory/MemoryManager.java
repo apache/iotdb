@@ -632,6 +632,8 @@ public class MemoryManager {
         + name
         + ", enabled="
         + enabled
+        + ", initialAllocatedMemorySizeInBytes="
+        + initialAllocatedMemorySizeInBytes
         + ", totalMemorySizeInBytes="
         + totalMemorySizeInBytes
         + ", allocatedMemorySizeInBytes="
