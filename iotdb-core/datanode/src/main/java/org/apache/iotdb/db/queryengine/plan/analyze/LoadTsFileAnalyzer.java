@@ -273,6 +273,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         tsFileResource.updatePlanIndexes(reader.getMaxPlanIndex());
       } else {
         tsFileResource.deserialize();
+        // Reset tsfileResource's isGeneratedByPipe mark to prevent deserializing the wrong mark.
+        // If this tsfile is loaded by a pipe receiver, the correct mark will be added in
+        // `listenToTsFile`
+        tsFileResource.setGeneratedByPipe(loadTsFileStatement.isGeneratedByPipe());
       }
 
       schemaAutoCreatorAndVerifier.setCurrentModificationsAndTimeIndex(tsFileResource);

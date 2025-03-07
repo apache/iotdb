@@ -170,6 +170,9 @@ public class TsFileResource {
   /** used to prevent circular replication in PipeConsensus */
   private boolean isGeneratedByPipeConsensus = false;
 
+  /** used to prevent circular replication in Pipe */
+  private boolean isGeneratedByPipe = false;
+
   private InsertionCompactionCandidateStatus insertionCompactionCandidateStatus =
       InsertionCompactionCandidateStatus.NOT_CHECKED;
 
@@ -268,6 +271,9 @@ public class TsFileResource {
     } else {
       TsFileResourceBlockType.EMPTY_BLOCK.serialize(outputStream);
     }
+
+    ReadWriteIOUtils.write(isGeneratedByPipeConsensus, outputStream);
+    ReadWriteIOUtils.write(isGeneratedByPipe, outputStream);
   }
 
   /** deserialize from disk */
@@ -293,6 +299,11 @@ public class TsFileResource {
         if (blockType == TsFileResourceBlockType.PROGRESS_INDEX) {
           maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
         }
+      }
+
+      if (inputStream.available() > 0) {
+        isGeneratedByPipeConsensus = ReadWriteIOUtils.readBoolean(inputStream);
+        isGeneratedByPipe = ReadWriteIOUtils.readBoolean(inputStream);
       }
     }
   }
@@ -554,6 +565,14 @@ public class TsFileResource {
 
   public void setGeneratedByPipeConsensus(boolean generatedByPipeConsensus) {
     isGeneratedByPipeConsensus = generatedByPipeConsensus;
+  }
+
+  public boolean isGeneratedByPipe() {
+    return isGeneratedByPipe;
+  }
+
+  public void setGeneratedByPipe(boolean generatedByPipe) {
+    isGeneratedByPipe = generatedByPipe;
   }
 
   public void writeLock() {
