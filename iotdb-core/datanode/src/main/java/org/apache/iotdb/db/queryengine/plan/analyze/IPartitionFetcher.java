@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
@@ -87,6 +89,8 @@ public interface IPartitionFetcher {
 
   /** Update region cache in partition cache when receive request from config node */
   boolean updateRegionCache(TRegionRouteReq req);
+
+  TRegionReplicaSet getRegionReplicaSet(TConsensusGroupId id);
 
   /** Invalid all partition cache */
   void invalidAllCache();
