@@ -140,7 +140,6 @@ public class IoTDBAlterColumnTypeIT {
       session.insert(tablet);
       tablet.reset();
 
-
       // alter the type to "to"
       boolean isCompatible = MetadataUtils.canAlter(from, to);
       if (isCompatible) {
@@ -175,7 +174,6 @@ public class IoTDBAlterColumnTypeIT {
       assertNull(dataSet.next());
       dataSet.close();
 
-
       // write an altered point in sequence and unsequnce tsfile
       tablet =
           new Tablet(
@@ -205,7 +203,6 @@ public class IoTDBAlterColumnTypeIT {
       session.insert(tablet);
       tablet.reset();
 
-
       dataSet =
           session.executeQueryStatement("select * from write_and_alter_column_type order by time");
       for (int i = 1; i <= 4; i++) {
@@ -232,7 +229,8 @@ public class IoTDBAlterColumnTypeIT {
         } else if (newType == TSDataType.DATE) {
           assertEquals(genValue(newType, expectedValue[i]), rec.getFields().get(i).getDateV());
         } else {
-          assertEquals(genValue(newType, expectedValue[i]).toString(), rec.getFields().get(i).toString());
+          assertEquals(
+              genValue(newType, expectedValue[i]).toString(), rec.getFields().get(i).toString());
         }
       }
       assertFalse(dataSet.hasNext());

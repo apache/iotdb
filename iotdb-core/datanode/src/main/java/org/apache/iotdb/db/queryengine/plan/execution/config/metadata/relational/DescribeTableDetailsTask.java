@@ -86,6 +86,12 @@ public class DescribeTableDetailsTask extends AbstractTableTask {
       builder
           .getColumnBuilder(3)
           .writeBinary(new Binary(columnStatus, TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(4)
+          .writeBinary(
+              new Binary(
+                  columnSchema.getProps().getOrDefault(TsTable.COMMENT_KEY, ""),
+                  TSFileConfig.STRING_CHARSET));
       builder.declarePosition();
     }
 

@@ -35,6 +35,8 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -58,6 +60,8 @@ import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnP
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
@@ -111,6 +115,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -355,6 +360,24 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((CommitDeleteColumnPlan) plan).getTableName(),
                     PrivilegeType.ALTER))
             .getStatus();
+      case SetTableComment:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new PrivilegeUnion(
+                    ((SetTableCommentPlan) plan).getDatabase(),
+                    ((SetTableCommentPlan) plan).getTableName(),
+                    PrivilegeType.ALTER))
+            .getStatus();
+      case SetTableColumnComment:
+        return configManager
+            .checkUserPrivileges(
+                username,
+                new PrivilegeUnion(
+                    ((SetTableColumnCommentPlan) plan).getDatabase(),
+                    ((SetTableColumnCommentPlan) plan).getTableName(),
+                    PrivilegeType.ALTER))
+            .getStatus();
       case CommitDeleteTable:
         return configManager
             .checkUserPrivileges(
@@ -587,32 +610,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             ? configManager.getTTLManager().unsetTTL((SetTTLPlan) plan, true)
             : configManager.getTTLManager().setTTL((SetTTLPlan) plan, true);
       case PipeCreateTable:
-        TSStatus result =
-            configManager
-                .getProcedureManager()
-                .executeWithoutDuplicate(
-                    ((PipeCreateTablePlan) plan).getDatabase(),
-                    ((PipeCreateTablePlan) plan).getTable(),
-                    ((PipeCreateTablePlan) plan).getTable().getTableName(),
-                    queryId,
-                    ProcedureType.CREATE_TABLE_PROCEDURE,
-                    new CreateTableProcedure(
-                        ((PipeCreateTablePlan) plan).getDatabase(),
-                        ((PipeCreateTablePlan) plan).getTable(),
-                        true));
-        if (result.getCode() == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()) {
-          // If the table already exists, we shall add the sender table's columns to the
-          // receiver's table, inner procedure guaranteeing that the columns existing at the
-          // receiver table will be trimmed
-          result =
-              executePlan(
-                  new AddTableColumnPlan(
-                      ((PipeCreateTablePlan) plan).getDatabase(),
-                      ((PipeCreateTablePlan) plan).getTable().getTableName(),
-                      ((PipeCreateTablePlan) plan).getTable().getColumnList(),
-                      false));
-        }
-        return result;
+        return executeIdempotentCreateTable((PipeCreateTablePlan) plan, queryId);
       case AddTableColumn:
         return configManager
             .getProcedureManager()
@@ -688,6 +686,23 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((CommitDeleteTablePlan) plan).getTableName(),
                     queryId,
                     true));
+      case SetTableComment:
+        return configManager
+            .getClusterSchemaManager()
+            .setTableComment(
+                ((SetTableCommentPlan) plan).getDatabase(),
+                ((SetTableCommentPlan) plan).getTableName(),
+                ((SetTableCommentPlan) plan).getComment(),
+                true);
+      case SetTableColumnComment:
+        return configManager
+            .getClusterSchemaManager()
+            .setTableColumnComment(
+                ((SetTableColumnCommentPlan) plan).getDatabase(),
+                ((SetTableColumnCommentPlan) plan).getTableName(),
+                ((SetTableColumnCommentPlan) plan).getColumnName(),
+                ((SetTableColumnCommentPlan) plan).getComment(),
+                true);
       case PipeDeleteDevices:
         return configManager
             .getProcedureManager()
@@ -744,6 +759,57 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       default:
         return configManager.getConsensusManager().write(new PipeEnrichedPlan(plan));
     }
+  }
+
+  private TSStatus executeIdempotentCreateTable(
+      final PipeCreateTablePlan plan, final String queryId) throws ConsensusException {
+    final String database = plan.getDatabase();
+    final TsTable table = plan.getTable();
+    TSStatus result =
+        configManager
+            .getProcedureManager()
+            .executeWithoutDuplicate(
+                database,
+                table,
+                table.getTableName(),
+                queryId,
+                ProcedureType.CREATE_TABLE_PROCEDURE,
+                new CreateTableProcedure(database, table, true));
+    if (result.getCode() == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()) {
+      // If the table already exists, we shall add the sender table's columns to the
+      // receiver's table, inner procedure guaranteeing that the columns existing at the
+      // receiver table will be trimmed
+      result =
+          executePlan(
+              new AddTableColumnPlan(database, table.getTableName(), table.getColumnList(), false));
+      if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.getCode() != TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()) {
+        return result;
+      }
+      // Add comments
+      final Optional<String> tableComment = table.getPropValue(TsTable.COMMENT_KEY);
+      if (tableComment.isPresent()) {
+        result =
+            executePlan(
+                new SetTableCommentPlan(database, table.getTableName(), tableComment.get()));
+      }
+      if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return result;
+      }
+      for (final TsTableColumnSchema schema : table.getColumnList()) {
+        final String columnComment = schema.getProps().get(TsTable.COMMENT_KEY);
+        if (Objects.nonNull(columnComment)) {
+          result =
+              executePlan(
+                  new SetTableColumnCommentPlan(
+                      database, table.getTableName(), schema.getColumnName(), columnComment));
+        }
+        if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return result;
+        }
+      }
+    }
+    return result;
   }
 
   /** Used to construct pipe related procedures */
