@@ -359,7 +359,7 @@ public class IoTConsensusConfig {
       private long checkpointGap = 500;
       private IMemoryBlock consensusMemoryBlock =
           new AtomicLongMemoryBlock(
-              "Consensus-Default", null, Runtime.getRuntime().maxMemory() / 10);
+              "Consensus-Default", null, Runtime.getRuntime().totalMemory() / 10);
       private double maxMemoryRatioForQueue = 0.6;
       private long regionMigrationSpeedLimitBytesPerSecond = 32 * 1024 * 1024L;
 

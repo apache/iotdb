@@ -107,6 +107,19 @@ public abstract class IMemoryBlock implements AutoCloseable {
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
   }
 
+  public long resizeByRatio(double ratio) {
+    long before = this.totalMemorySizeInBytes;
+    this.totalMemorySizeInBytes = (long) (before * ratio);
+    if (name.equals("WalBufferQueue")) {
+      LOGGER.error(
+          "WalBufferQueue Resized from {} to {}, {}",
+          before,
+          this.totalMemorySizeInBytes,
+          memoryManager);
+    }
+    return this.totalMemorySizeInBytes - before;
+  }
+
   /** Get the maximum memory size in byte of this memory block */
   public long getTotalMemorySizeInBytes() {
     return totalMemorySizeInBytes;
