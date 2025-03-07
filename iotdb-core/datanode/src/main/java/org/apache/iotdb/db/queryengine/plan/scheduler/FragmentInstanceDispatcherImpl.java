@@ -129,7 +129,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   //  topological dispatch according to dependency relations between FragmentInstances
   private Future<FragInstanceDispatchResult> dispatchRead(List<FragmentInstance> instances) {
     long startTime = System.nanoTime();
+
     for (FragmentInstance instance : instances) {
+      long fragInstanceStartTime = System.nanoTime();
       try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
         dispatchOneInstance(instance);
       } catch (FragmentInstanceDispatchException e) {
@@ -151,11 +153,13 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           instance.getFragment().clearTypeProvider();
         }
 
-        long dispatchReadTime = System.nanoTime() - startTime;
-        QUERY_EXECUTION_METRIC_SET.recordExecutionCost(DISPATCH_READ, dispatchReadTime);
-        queryContext.recordDispatchCost(dispatchReadTime);
+        long fragInstanceDispatchReadTime = System.nanoTime() - fragInstanceStartTime;
+        QUERY_EXECUTION_METRIC_SET.recordExecutionCost(DISPATCH_READ, fragInstanceDispatchReadTime);
       }
     }
+
+    long queryDispatchReadTime = System.nanoTime() - startTime;
+    queryContext.recordDispatchCost(queryDispatchReadTime);
     return immediateFuture(new FragInstanceDispatchResult(true));
   }
 
