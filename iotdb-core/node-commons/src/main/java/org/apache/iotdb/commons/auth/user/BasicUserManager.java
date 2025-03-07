@@ -172,9 +172,6 @@ public abstract class BasicUserManager extends BasicRoleManager {
         throw new AuthException(
             getEntityNotExistErrorCode(), String.format(getNoSuchEntityError(), username));
       }
-      if (!user.hasRole(roleName)) {
-        return;
-      }
       user.getRoleSet().remove(roleName);
     } finally {
       lock.writeUnlock(username);
