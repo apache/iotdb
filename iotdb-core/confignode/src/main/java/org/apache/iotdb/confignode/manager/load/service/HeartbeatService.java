@@ -23,6 +23,7 @@ import org.apache.iotdb.ainode.rpc.thrift.TAIHeartbeatReq;
 import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -48,6 +49,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Future;
@@ -163,6 +165,9 @@ public class HeartbeatService {
 
     /* Update heartbeat counter */
     heartbeatCounter.getAndIncrement();
+    final Map<TDataNodeLocation, Set<TDataNodeLocation>> topologyMap =
+        configManager.getLoadManager().getTopologyMap();
+    Optional.ofNullable(topologyMap).ifPresent(heartbeatReq::setTopology);
 
     return heartbeatReq;
   }

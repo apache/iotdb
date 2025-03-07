@@ -83,6 +83,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
+import org.apache.iotdb.db.queryengine.plan.planner.exceptions.ReplicaSetUnreachableException;
+import org.apache.iotdb.db.queryengine.plan.planner.exceptions.RootFIPlacementException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
@@ -429,6 +431,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       t = e;
       return RpcUtils.getTSExecuteStatementResp(
           RpcUtils.getStatus(TSStatusCode.SQL_PARSE_ERROR, e.getMessage()));
+    } catch (RootFIPlacementException | ReplicaSetUnreachableException e) {
+      finished = true;
+      t = e;
+      return RpcUtils.getTSExecuteStatementResp(
+          RpcUtils.getStatus(TSStatusCode.PLAN_FAILED_NETWORK_PARTITION, e.getMessage()));
     } catch (Exception e) {
       finished = true;
       t = e;

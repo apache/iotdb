@@ -200,6 +200,11 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     List<FragmentInstance> localInstances = new ArrayList<>();
     List<FragmentInstance> remoteInstances = new ArrayList<>();
     for (FragmentInstance instance : instances) {
+      if (instance.getHostDataNode() == null) {
+        dataNodeFailureList.add(
+            new TSStatus(TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode()));
+        continue;
+      }
       TEndPoint endPoint = instance.getHostDataNode().getInternalEndPoint();
       if (isDispatchedToLocal(endPoint)) {
         localInstances.add(instance);

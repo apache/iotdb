@@ -49,6 +49,7 @@ import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSamp
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionStatistics;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 
+import org.apache.thrift.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,6 +66,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -95,6 +97,8 @@ public class LoadCache {
   // Map<DataNodeId, confirmedConfigNodes>
   private final Map<Integer, Set<TEndPoint>> confirmedConfigNodeMap;
 
+  private final AtomicReference<Map<Integer, Set<Integer>>> topologyGraphRef;
+
   public LoadCache() {
     this.nodeCacheMap = new ConcurrentHashMap<>();
     this.heartbeatProcessingMap = new ConcurrentHashMap<>();
@@ -102,6 +106,7 @@ public class LoadCache {
     this.regionSizeMap = new ConcurrentHashMap<>();
     this.consensusGroupCacheMap = new ConcurrentHashMap<>();
     this.confirmedConfigNodeMap = new ConcurrentHashMap<>();
+    this.topologyGraphRef = new AtomicReference<>(null);
   }
 
   public void initHeartbeatCache(final IManager configManager) {
@@ -767,6 +772,15 @@ public class LoadCache {
     LOGGER.warn(
         "[RegionElection] The leader of RegionGroups: {} is not determined after 10 heartbeat interval. Some function might fail.",
         regionGroupIds);
+  }
+
+  public void updateTopology(Map<Integer, Set<Integer>> latestTopology) {
+    topologyGraphRef.set(latestTopology);
+  }
+
+  @Nullable
+  public Map<Integer, Set<Integer>> getTopology() {
+    return topologyGraphRef.getAndSet(null);
   }
 
   public void updateConfirmedConfigNodeEndPoints(
