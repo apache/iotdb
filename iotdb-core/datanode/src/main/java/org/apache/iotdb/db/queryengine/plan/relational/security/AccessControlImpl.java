@@ -175,6 +175,11 @@ public class AccessControlImpl implements AccessControl {
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return;
         }
+
+        // user can list his roles.
+        if (statement.getUserName() != null && statement.getUserName().equals(userName)) {
+          return;
+        }
         authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MANAGE_ROLE);
         return;
       case LIST_ROLE_PRIV:
