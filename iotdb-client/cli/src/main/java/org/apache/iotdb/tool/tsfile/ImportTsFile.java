@@ -61,6 +61,9 @@ public class ImportTsFile extends AbstractTsFileTool {
   private static final String THREAD_NUM_ARGS = "tn";
   private static final String THREAD_NUM_NAME = "thread_num";
 
+  private static final String DATABASE_ARGS = "db";
+  private static final String DATABASE_NAME = "database";
+
   protected static final String VERIFY_ARGS = "v";
   protected static final String VERIFY_NAME = "verify";
 
@@ -86,6 +89,7 @@ public class ImportTsFile extends AbstractTsFileTool {
   private static boolean isRemoteLoad = true;
   protected static boolean verify = true;
   private static SessionPool sessionPool;
+  private static String databaseName;
 
   private static void createOptions() {
     createBaseOptions();
@@ -152,6 +156,15 @@ public class ImportTsFile extends AbstractTsFileTool {
             .desc("The number of threads used to import tsfile, default is 8.")
             .build();
     options.addOption(opThreadNum);
+
+    Option opDatabase =
+        Option.builder(DATABASE_ARGS)
+            .longOpt(DATABASE_NAME)
+            .argName(DATABASE_NAME)
+            .hasArg()
+            .desc("The target database name (optional)")
+            .build();
+    options.addOption(opDatabase);
 
     Option opTimestampPrecision =
         Option.builder(TIMESTAMP_PRECISION_ARGS)
@@ -309,6 +322,8 @@ public class ImportTsFile extends AbstractTsFileTool {
         null != commandLine.getOptionValue(VERIFY_ARGS)
             ? Boolean.parseBoolean(commandLine.getOptionValue(VERIFY_ARGS))
             : verify;
+
+    databaseName = commandLine.getOptionValue(DATABASE_ARGS);
   }
 
   public static boolean isFileStoreEquals(String pathString, File dir) {
@@ -409,6 +424,7 @@ public class ImportTsFile extends AbstractTsFileTool {
     // ImportTsFileBase
     ImportTsFileBase.setSuccessAndFailDirAndOperation(
         successDir, successOperation, failDir, failOperation);
+    ImportTsFileBase.setDatabaseName(databaseName);
   }
 
   public static void asyncImportTsFiles() {
