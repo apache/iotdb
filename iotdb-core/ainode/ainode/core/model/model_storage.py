@@ -31,9 +31,6 @@ from ainode.core.exception import ModelNotExistError
 from ainode.core.log import Logger
 from ainode.core.model.model_factory import fetch_model_by_uri
 from ainode.core.util.lock import ModelLockPool
-from ainode.core.manager.training_manager import get_args
-from ainode.core.model.TimerXL.models.timer_xl import Model
-
 logger = Logger()
 
 
