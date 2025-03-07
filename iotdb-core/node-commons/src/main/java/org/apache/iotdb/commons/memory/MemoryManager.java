@@ -20,7 +20,6 @@
 package org.apache.iotdb.commons.memory;
 
 import org.apache.iotdb.commons.utils.TestOnly;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,6 +74,7 @@ public class MemoryManager {
     this.name = "Test";
     this.parentMemoryManager = null;
     this.initialAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
+    this.beforeAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
     this.enabled = false;
   }
@@ -83,6 +83,7 @@ public class MemoryManager {
     this.name = name;
     this.parentMemoryManager = parentMemoryManager;
     this.initialAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
+    this.beforeAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
     this.enabled = false;
   }
@@ -94,6 +95,8 @@ public class MemoryManager {
       boolean enabled) {
     this.name = name;
     this.parentMemoryManager = parentMemoryManager;
+    this.initialAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
+    this.beforeAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
     this.enabled = enabled;
   }
@@ -480,12 +483,7 @@ public class MemoryManager {
       long initialAllocatedMemorySizeInBytes) {
     this.initialAllocatedMemorySizeInBytes = initialAllocatedMemorySizeInBytes;
     reAllocateMemoryAccordingToRatio(
-        (double) initialAllocatedMemorySizeInBytes / this.initialAllocatedMemorySizeInBytes);
-  }
-
-  public void setTotalAllocatedMemorySizeInBytesWithReload(long totalAllocatedMemorySizeInBytes) {
-    reAllocateMemoryAccordingToRatio(
-        (double) totalAllocatedMemorySizeInBytes / this.totalMemorySizeInBytes);
+        (double) this.initialAllocatedMemorySizeInBytes / this.beforeAllocatedMemorySizeInBytes);
   }
 
   public synchronized void expandTotalMemorySizeInBytes(long totalMemorySizeInBytes) {
@@ -583,20 +581,16 @@ public class MemoryManager {
   /** Try to update allocation */
   public synchronized void updateAllocate() {
     if (children.isEmpty()) {
-      //      long staticAllocatedMemorySizeInBytes = getStaticAllocatedMemorySizeInBytes();
-      //      long before =
-      //          beforeAllocatedMemorySizeInBytes == null
-      //              ? initialAllocatedMemorySizeInBytes
-      //              : beforeAllocatedMemorySizeInBytes;
-      //      double ratio =
-      //          (double) (totalMemorySizeInBytes - staticAllocatedMemorySizeInBytes)
-      //              / (before - staticAllocatedMemorySizeInBytes);
-      //      this.beforeAllocatedMemorySizeInBytes = totalMemorySizeInBytes;
-      //      for (IMemoryBlock memoryBlock : allocatedMemoryBlocks.values()) {
-      //        if (!memoryBlock.getMemoryBlockType().equals(MemoryBlockType.STATIC)) {
-      //          this.allocatedMemorySizeInBytes += memoryBlock.resizeByRatio(ratio);
-      //        }
-      //      }
+        long staticAllocatedMemorySizeInBytes = getStaticAllocatedMemorySizeInBytes();
+        double ratio =
+            (double) (this.totalMemorySizeInBytes - staticAllocatedMemorySizeInBytes)
+                / (this.beforeAllocatedMemorySizeInBytes - staticAllocatedMemorySizeInBytes);
+        this.beforeAllocatedMemorySizeInBytes = this.totalMemorySizeInBytes;
+        for (IMemoryBlock memoryBlock : allocatedMemoryBlocks.values()) {
+          if (!memoryBlock.getMemoryBlockType().equals(MemoryBlockType.STATIC)) {
+            this.allocatedMemorySizeInBytes += memoryBlock.resizeByRatio(ratio);
+          }
+        }
     } else {
       // Try to find memory manager with highest and lowest memory usage
       MemoryManager highestMemoryManager = null;
