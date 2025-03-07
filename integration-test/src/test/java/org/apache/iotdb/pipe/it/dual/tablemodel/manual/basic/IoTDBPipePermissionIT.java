@@ -23,6 +23,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.MultiClusterIT1;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
@@ -42,7 +43,7 @@ import java.util.Collections;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({TableClusterIT.class})
+@Category({MultiClusterIT1.class})
 public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
   @Override
   @Before
