@@ -205,8 +205,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       }
 
       IWritableMemChunk memChunk = memChunkMap.get(incomingSchema.getMeasurementName());
-      if (memChunk != null
-          && memChunk.getWorkingTVList().getDataType() != incomingSchema.getType()) {
+      if (memChunk != null && memChunk.getSchema().getType() != incomingSchema.getType()) {
         throw new DataTypeInconsistentException(
             memChunk.getWorkingTVList().getDataType(), incomingSchema.getType());
       }

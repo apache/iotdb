@@ -96,20 +96,19 @@ public class IoTDBAlterColumnTypeIT {
     for (TSDataType from : typesToTest) {
       for (TSDataType to : typesToTest) {
         System.out.printf("testing %s to %s%n", from, to);
-        doWriteAndAlter(from, to, false);
-        doWriteAndAlter(from, to, true);
+        doWriteAndAlter(from, to);
       }
     }
   }
 
-  private void doWriteAndAlter(TSDataType from, TSDataType to, boolean flush)
+  private void doWriteAndAlter(TSDataType from, TSDataType to)
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
       // create a table with type of "from"
       session.executeNonQueryStatement(
           "CREATE TABLE IF NOT EXISTS write_and_alter_column_type (s1 " + from + ")");
 
-      // write a point of "from"
+      // write a sequence tsfile point of "from"
       Tablet tablet =
           new Tablet(
               "write_and_alter_column_type",
@@ -120,10 +119,27 @@ public class IoTDBAlterColumnTypeIT {
       tablet.addValue("s1", 0, genValue(from, 1));
       session.insert(tablet);
       tablet.reset();
+      session.executeNonQueryStatement("FLUSH");
 
-      if (flush) {
-        session.executeNonQueryStatement("FLUSH");
-      }
+      // write an unsequence tsfile point of "from"
+      tablet.addTimestamp(0, 1);
+      tablet.addValue("s1", 0, genValue(from, 1));
+      session.insert(tablet);
+      tablet.reset();
+      session.executeNonQueryStatement("FLUSH");
+
+      // write a sequence memtable point of "from"
+      tablet.addTimestamp(0, 2);
+      tablet.addValue("s1", 0, genValue(from, 2));
+      session.insert(tablet);
+      tablet.reset();
+
+      // write an unsequence memtable point of "from"
+      tablet.addTimestamp(0, 1);
+      tablet.addValue("s1", 0, genValue(from, 1));
+      session.insert(tablet);
+      tablet.reset();
+
 
       // alter the type to "to"
       boolean isCompatible = MetadataUtils.canAlter(from, to);
@@ -143,66 +159,80 @@ public class IoTDBAlterColumnTypeIT {
 
       SessionDataSet dataSet =
           session.executeQueryStatement("select * from write_and_alter_column_type order by time");
-      RowRecord rec = dataSet.next();
+      RowRecord rec;
       TSDataType newType = isCompatible ? to : from;
-      assertEquals(1, rec.getFields().get(0).getLongV());
-      if (newType == TSDataType.BLOB) {
-        assertEquals(genValue(newType, 1), rec.getFields().get(1).getBinaryV());
-      } else if (newType == TSDataType.DATE) {
-        assertEquals(genValue(newType, 1), rec.getFields().get(1).getDateV());
-      } else {
-        assertEquals(genValue(newType, 1).toString(), rec.getFields().get(1).toString());
+      for (int i = 1; i <= 2; i++) {
+        rec = dataSet.next();
+        assertEquals(i, rec.getFields().get(0).getLongV());
+        if (newType == TSDataType.BLOB) {
+          assertEquals(genValue(newType, i), rec.getFields().get(1).getBinaryV());
+        } else if (newType == TSDataType.DATE) {
+          assertEquals(genValue(newType, i), rec.getFields().get(1).getDateV());
+        } else {
+          assertEquals(genValue(newType, i).toString(), rec.getFields().get(1).toString());
+        }
       }
+      assertNull(dataSet.next());
+      dataSet.close();
 
-      // write a point
+
+      // write an altered point in sequence and unsequnce tsfile
       tablet =
           new Tablet(
               "write_and_alter_column_type",
               Collections.singletonList("s1"),
               Collections.singletonList(newType),
               Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 3);
+      tablet.addValue("s1", 0, genValue(newType, 3));
+      session.insert(tablet);
+      tablet.reset();
+
+      tablet.addTimestamp(0, 1);
+      tablet.addValue("s1", 0, genValue(newType, 1));
+      session.insert(tablet);
+      tablet.reset();
+      session.executeNonQueryStatement("FLUSH");
+
+      // write an altered point in sequence and unsequnce memtable
+      tablet.addTimestamp(0, 4);
+      tablet.addValue("s1", 0, genValue(newType, 4));
+      session.insert(tablet);
+      tablet.reset();
+
       tablet.addTimestamp(0, 2);
       tablet.addValue("s1", 0, genValue(newType, 2));
       session.insert(tablet);
       tablet.reset();
 
-      if (flush) {
-        session.executeNonQueryStatement("FLUSH");
-      }
 
       dataSet =
           session.executeQueryStatement("select * from write_and_alter_column_type order by time");
-      rec = dataSet.next();
-      assertEquals(1, rec.getFields().get(0).getLongV());
-      if (newType == TSDataType.BLOB) {
-        assertEquals(genValue(newType, 1), rec.getFields().get(1).getBinaryV());
-      } else if (newType == TSDataType.DATE) {
-        assertEquals(genValue(newType, 1), rec.getFields().get(1).getDateV());
-      } else {
-        assertEquals(genValue(newType, 1).toString(), rec.getFields().get(1).toString());
+      for (int i = 1; i <= 4; i++) {
+        rec = dataSet.next();
+        assertEquals(i, rec.getFields().get(0).getLongV());
+        if (newType == TSDataType.BLOB) {
+          assertEquals(genValue(newType, i), rec.getFields().get(1).getBinaryV());
+        } else if (newType == TSDataType.DATE) {
+          assertEquals(genValue(newType, i), rec.getFields().get(1).getDateV());
+        } else {
+          assertEquals(genValue(newType, i).toString(), rec.getFields().get(1).toString());
+        }
       }
-
-      rec = dataSet.next();
-      assertEquals(2, rec.getFields().get(0).getLongV());
-      if (newType == TSDataType.BLOB) {
-        assertEquals(genValue(newType, 2), rec.getFields().get(1).getBinaryV());
-      } else if (newType == TSDataType.DATE) {
-        assertEquals(genValue(newType, 2), rec.getFields().get(1).getDateV());
-      } else {
-        assertEquals(genValue(newType, 2).toString(), rec.getFields().get(1).toString());
-      }
+      assertFalse(dataSet.hasNext());
 
       dataSet =
           session.executeQueryStatement(
               "select min(s1),max(s1),first(s1),last(s1) from write_and_alter_column_type");
       rec = dataSet.next();
+      int[] expectedValue = {1, 4, 1, 4};
       for (int i = 0; i < 4; i++) {
         if (newType == TSDataType.BLOB) {
-          assertEquals(genValue(newType, i % 2 + 1), rec.getFields().get(i).getBinaryV());
+          assertEquals(genValue(newType, expectedValue[i]), rec.getFields().get(i).getBinaryV());
         } else if (newType == TSDataType.DATE) {
-          assertEquals(genValue(newType, i % 2 + 1), rec.getFields().get(i).getDateV());
+          assertEquals(genValue(newType, expectedValue[i]), rec.getFields().get(i).getDateV());
         } else {
-          assertEquals(genValue(newType, i % 2 + 1).toString(), rec.getFields().get(i).toString());
+          assertEquals(genValue(newType, expectedValue[i]).toString(), rec.getFields().get(i).toString());
         }
       }
       assertFalse(dataSet.hasNext());
@@ -212,8 +242,8 @@ public class IoTDBAlterColumnTypeIT {
             session.executeQueryStatement(
                 "select avg(s1),sum(s1) from write_and_alter_column_type");
         rec = dataSet.next();
-        assertEquals(1.5, rec.getFields().get(0).getDoubleV(), 0.001);
-        assertEquals(3.0, rec.getFields().get(1).getDoubleV(), 0.001);
+        assertEquals(2.5, rec.getFields().get(0).getDoubleV(), 0.001);
+        assertEquals(10.0, rec.getFields().get(1).getDoubleV(), 0.001);
         assertFalse(dataSet.hasNext());
       }
 

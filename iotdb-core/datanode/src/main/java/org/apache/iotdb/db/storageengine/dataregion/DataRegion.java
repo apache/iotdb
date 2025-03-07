@@ -1076,8 +1076,18 @@ public class DataRegion implements IDataRegionForQuery {
       try {
         tsFileProcessor = insertToTsFileProcessor(insertRowNode, isSequence, timePartitionId);
       } catch (DataTypeInconsistentException e) {
-        tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, isSequence);
-        fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+        // flush both MemTables so that the new type can be inserted into a new MemTable
+        TsFileProcessor workSequenceProcessor = workSequenceTsFileProcessors.get(timePartitionId);
+        if (workSequenceProcessor != null) {
+          fileFlushPolicy.apply(this, workSequenceProcessor, workSequenceProcessor.isSequence());
+        }
+        TsFileProcessor workUnsequenceProcessor =
+            workUnsequenceTsFileProcessors.get(timePartitionId);
+        if (workUnsequenceProcessor != null) {
+          fileFlushPolicy.apply(
+              this, workUnsequenceProcessor, workUnsequenceProcessor.isSequence());
+        }
+
         isSequence =
             config.isEnableSeparateData()
                 && insertRowNode.getTime()
@@ -1262,6 +1272,7 @@ public class DataRegion implements IDataRegionForQuery {
       TSStatus[] results,
       long[] infoForMetrics,
       List<Pair<IDeviceID, Integer>> deviceEndOffsetPairs) {
+    final int initialStart = start;
     try {
       Map<Long, List<int[]>[]> splitInfo = new HashMap<>();
       for (Pair<IDeviceID, Integer> deviceEndOffsetPair : deviceEndOffsetPairs) {
@@ -1272,6 +1283,7 @@ public class DataRegion implements IDataRegionForQuery {
       return doInsert(insertTabletNode, splitInfo, results, infoForMetrics);
     } catch (DataTypeInconsistentException e) {
       // the exception will trigger a flush, which requires the flush time to be recalculated
+      start = initialStart;
       Map<Long, List<int[]>[]> splitInfo = new HashMap<>();
       for (Pair<IDeviceID, Integer> deviceEndOffsetPair : deviceEndOffsetPairs) {
         int end = deviceEndOffsetPair.getRight();
@@ -1374,7 +1386,15 @@ public class DataRegion implements IDataRegionForQuery {
       registerToTsFile(insertTabletNode, tsFileProcessor);
       tsFileProcessor.insertTablet(insertTabletNode, rangeList, results, noFailure, infoForMetrics);
     } catch (DataTypeInconsistentException e) {
-      fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+      // flush both MemTables so that the new type can be inserted into a new MemTable
+      TsFileProcessor workSequenceProcessor = workSequenceTsFileProcessors.get(timePartitionId);
+      if (workSequenceProcessor != null) {
+        fileFlushPolicy.apply(this, workSequenceProcessor, workSequenceProcessor.isSequence());
+      }
+      TsFileProcessor workUnsequenceProcessor = workUnsequenceTsFileProcessors.get(timePartitionId);
+      if (workUnsequenceProcessor != null) {
+        fileFlushPolicy.apply(this, workUnsequenceProcessor, workUnsequenceProcessor.isSequence());
+      }
       throw e;
     } catch (WriteProcessRejectException e) {
       logger.warn("insert to TsFileProcessor rejected, {}", e.getMessage());
@@ -1514,9 +1534,18 @@ public class DataRegion implements IDataRegionForQuery {
       registerToTsFile(subInsertRowsNode, tsFileProcessor);
       tsFileProcessor.insertRows(subInsertRowsNode, infoForMetrics);
     } catch (DataTypeInconsistentException e) {
-      fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
       InsertRowNode firstRow = subInsertRowsNode.getInsertRowNodeList().get(0);
       long timePartitionId = TimePartitionUtils.getTimePartitionId(firstRow.getTime());
+      // flush both MemTables so that the new type can be inserted into a new MemTable
+      TsFileProcessor workSequenceProcessor = workSequenceTsFileProcessors.get(timePartitionId);
+      if (workSequenceProcessor != null) {
+        fileFlushPolicy.apply(this, workSequenceProcessor, workSequenceProcessor.isSequence());
+      }
+      TsFileProcessor workUnsequenceProcessor = workUnsequenceTsFileProcessors.get(timePartitionId);
+      if (workUnsequenceProcessor != null) {
+        fileFlushPolicy.apply(this, workUnsequenceProcessor, workUnsequenceProcessor.isSequence());
+      }
+
       boolean isSequence =
           config.isEnableSeparateData()
               && firstRow.getTime()
