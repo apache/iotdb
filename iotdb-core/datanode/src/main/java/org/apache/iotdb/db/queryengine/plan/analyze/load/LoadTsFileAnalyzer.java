@@ -105,6 +105,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private final List<File> tsFiles;
   private final List<Boolean> isTableModelTsFile;
   private int isTableModelTsFileReliableIndex = -1;
+  private final List<File> tabletConvertionList = new java.util.ArrayList<>();
 
   // User specified configs
   private final int databaseLevel;
@@ -113,6 +114,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private final boolean isDeleteAfterLoad;
   private final boolean isConvertOnTypeMismatch;
   private final boolean isAutoCreateDatabase;
+  private final int tabletConversionThreshold;
 
   // Schema creators for tree and table
   private TreeSchemaAutoCreatorAndVerifier treeSchemaAutoCreatorAndVerifier;
@@ -136,6 +138,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.isVerifySchema = loadTsFileStatement.isVerifySchema();
     this.isDeleteAfterLoad = loadTsFileStatement.isDeleteAfterLoad();
     this.isConvertOnTypeMismatch = loadTsFileStatement.isConvertOnTypeMismatch();
+    this.tabletConversionThreshold = loadTsFileStatement.getTabletConversionThreshold();
     this.isAutoCreateDatabase = loadTsFileStatement.isAutoCreateDatabase();
   }
 
@@ -157,6 +160,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.isVerifySchema = loadTsFileTableStatement.isVerifySchema();
     this.isDeleteAfterLoad = loadTsFileTableStatement.isDeleteAfterLoad();
     this.isConvertOnTypeMismatch = loadTsFileTableStatement.isConvertOnTypeMismatch();
+    this.tabletConversionThreshold = loadTsFileTableStatement.getTabletConversionThreshold();
     this.isAutoCreateDatabase = loadTsFileTableStatement.isAutoCreateDatabase();
   }
 
@@ -257,6 +261,19 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         continue;
       }
 
+      if (tsFile.length() < tabletConversionThreshold) {
+        tabletConvertionList.add(tsFile);
+        if (LOGGER.isInfoEnabled()) {
+          LOGGER.info(
+              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, {} tsfiles have been added to the conversion list, progress: {}%",
+              i + 1,
+              tsfileNum,
+              tabletConvertionList.size(),
+              String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
+        }
+        continue;
+      }
+
       try {
         analyzeSingleTsFile(tsFile, i);
         if (LOGGER.isInfoEnabled()) {
@@ -290,13 +307,13 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         return false;
       }
     }
-    return true;
+
+    return handleTabletConversionList(analysis);
   }
 
   private void analyzeSingleTsFile(final File tsFile, int i)
       throws IOException, AuthException, LoadAnalyzeException {
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
-
       // check whether the tsfile is tree-model or not
       final Map<String, TableSchema> tableSchemaMap = reader.getTableSchemaMap();
       final boolean isTableModelFile = Objects.nonNull(tableSchemaMap) && !tableSchemaMap.isEmpty();
@@ -337,6 +354,34 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       if (isDeleteAfterLoad) {
         FileUtils.deleteQuietly(tsFile);
       }
+    }
+  }
+
+  private boolean handleTabletConversionList(IAnalysis analysis) {
+    if (tabletConvertionList.isEmpty()) {
+      return true;
+    }
+
+    // 1. all mini files are converted to tablets
+    setStatementTsFiles(tabletConvertionList);
+    executeTabletConversion(
+        analysis, new LoadAnalyzeException("Failed to convert mini file to tablet"));
+    if (analysis.isFailed()) {
+      return false;
+    }
+
+    // 2. remove the converted mini files from the tsFiles and load the rest
+    tsFiles.removeAll(tabletConvertionList);
+    setStatementTsFiles(tsFiles);
+    analysis.setFinishQueryAfterAnalyze(false);
+    return true;
+  }
+
+  private void setStatementTsFiles(List<File> files) {
+    if (isTableModelStatement) {
+      loadTsFileTableStatement.setTsFiles(files);
+    } else {
+      loadTsFileTreeStatement.setTsFiles(files);
     }
   }
 
@@ -544,6 +589,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   }
 
   private void executeTabletConversion(final IAnalysis analysis, final LoadAnalyzeException e) {
+    if (shouldSkipConversion(e)) {
+      analysis.setFailStatus(
+          new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()).setMessage(e.getMessage()));
+      analysis.setFinishQueryAfterAnalyze(true);
+      setRealStatement(analysis);
+      return;
+    }
+
     if (isTableModelTsFileReliableIndex < tsFiles.size() - 1) {
       try {
         getFileModelInfoBeforeTabletConversion();
@@ -566,17 +619,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     for (int i = 0; i < tsFiles.size(); i++) {
       try {
         final TSStatus status =
-            (!(e instanceof LoadAnalyzeTypeMismatchException) || isConvertOnTypeMismatch)
-                ? (isTableModelTsFile.get(i)
-                    ? loadTsFileDataTypeConverter
-                        .convertForTableModel(
-                            new LoadTsFile(null, tsFiles.get(i).getPath(), Collections.emptyMap())
-                                .setDatabase(databaseForTableData))
-                        .orElse(null)
-                    : loadTsFileDataTypeConverter
-                        .convertForTreeModel(new LoadTsFileStatement(tsFiles.get(i).getPath()))
-                        .orElse(null))
-                : null;
+            isTableModelTsFile.get(i)
+                ? loadTsFileDataTypeConverter
+                    .convertForTableModel(
+                        new LoadTsFile(null, tsFiles.get(i).getPath(), Collections.emptyMap())
+                            .setDatabase(databaseForTableData))
+                    .orElse(null)
+                : loadTsFileDataTypeConverter
+                    .convertForTreeModel(new LoadTsFileStatement(tsFiles.get(i).getPath()))
+                    .orElse(null);
 
         if (status == null) {
           LOGGER.warn(
@@ -607,6 +658,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     analysis.setFinishQueryAfterAnalyze(true);
     setRealStatement(analysis);
+  }
+
+  private boolean shouldSkipConversion(LoadAnalyzeException e) {
+    return (e instanceof LoadAnalyzeTypeMismatchException) && !isConvertOnTypeMismatch;
   }
 
   private void getFileModelInfoBeforeTabletConversion() throws IOException {

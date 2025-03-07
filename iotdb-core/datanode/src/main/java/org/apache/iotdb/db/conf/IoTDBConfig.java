@@ -1096,6 +1096,8 @@ public class IoTDBConfig {
 
   private double loadWriteThroughputBytesPerSecond = -1; // Bytes/s
 
+  private int loadTabletConversionThreshold = -1;
+
   private boolean loadActiveListeningEnable = true;
 
   private String[] loadActiveListeningDirs =
@@ -3821,6 +3823,14 @@ public class IoTDBConfig {
 
   public void setLoadWriteThroughputBytesPerSecond(double loadWriteThroughputBytesPerSecond) {
     this.loadWriteThroughputBytesPerSecond = loadWriteThroughputBytesPerSecond;
+  }
+
+  public int getLoadTabletConversionThreshold() {
+    return loadTabletConversionThreshold;
+  }
+
+  public void setLoadTabletConversionThreshold(int loadTabletConversionThreshold) {
+    this.loadTabletConversionThreshold = loadTabletConversionThreshold;
   }
 
   public int getLoadActiveListeningMaxThreadNum() {

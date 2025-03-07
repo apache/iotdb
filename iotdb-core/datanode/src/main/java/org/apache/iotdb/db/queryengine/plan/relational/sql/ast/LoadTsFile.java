@@ -43,6 +43,7 @@ public class LoadTsFile extends Statement {
   private String database; // For loading to table-model only
   private boolean deleteAfterLoad = false;
   private boolean convertOnTypeMismatch = true;
+  private int tabletConversionThreshold = -1;
   private boolean autoCreateDatabase = true;
   private boolean verify;
   private boolean isGeneratedByPipe = false;
@@ -62,6 +63,7 @@ public class LoadTsFile extends Statement {
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
     this.deleteAfterLoad = false;
     this.convertOnTypeMismatch = true;
+    this.tabletConversionThreshold = -1;
     this.verify = true;
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.resources = new ArrayList<>();
@@ -103,6 +105,10 @@ public class LoadTsFile extends Statement {
     return convertOnTypeMismatch;
   }
 
+  public int getTabletConversionThreshold() {
+    return tabletConversionThreshold;
+  }
+
   public boolean isVerifySchema() {
     return verify;
   }
@@ -140,6 +146,11 @@ public class LoadTsFile extends Statement {
     return tsFiles;
   }
 
+  public void setTsFiles(List<File> tsFiles) {
+    this.tsFiles.clear();
+    this.tsFiles.addAll(tsFiles);
+  }
+
   public void addTsFileResource(TsFileResource resource) {
     resources.add(resource);
   }
@@ -162,6 +173,8 @@ public class LoadTsFile extends Statement {
     this.deleteAfterLoad = LoadTsFileConfigurator.parseOrGetDefaultOnSuccess(loadAttributes);
     this.convertOnTypeMismatch =
         LoadTsFileConfigurator.parseOrGetDefaultConvertOnTypeMismatch(loadAttributes);
+    this.tabletConversionThreshold =
+        LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThreshold(loadAttributes);
     this.verify = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
   }
 

@@ -2194,6 +2194,12 @@ public class IoTDBDescriptor {
                 "load_write_throughput_bytes_per_second",
                 String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
 
+    conf.setLoadTabletConversionThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tablet_conversion_threshold",
+                String.valueOf(conf.getLoadTabletConversionThreshold()))));
+
     conf.setLoadActiveListeningEnable(
         Boolean.parseBoolean(
             properties.getProperty(
