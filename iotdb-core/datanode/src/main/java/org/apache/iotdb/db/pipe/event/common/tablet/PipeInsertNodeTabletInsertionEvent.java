@@ -65,8 +65,10 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -84,6 +86,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
           + RamUsageEstimator.shallowSizeOfInstance(WALEntryPosition.class)
           + RamUsageEstimator.shallowSizeOfInstance(AtomicInteger.class)
           + RamUsageEstimator.shallowSizeOfInstance(AtomicBoolean.class);
+  private static final long SET_SIZE = RamUsageEstimator.shallowSizeOfInstance(HashSet.class);
 
   private final WALEntryHandler walEntryHandler;
   private final boolean isAligned;
@@ -95,14 +98,17 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   private List<TabletInsertionEventParser> eventParsers;
 
   private final PartialPath devicePath;
-
   private ProgressIndex progressIndex;
+
+  // Only useful for insertRows
+  private final Set<String> tableNames;
 
   public PipeInsertNodeTabletInsertionEvent(
       final Boolean isTableModel,
       final String databaseNameFromDataRegion,
       final WALEntryHandler walEntryHandler,
       final PartialPath devicePath,
+      final Set<String> tableNames,
       final ProgressIndex progressIndex,
       final boolean isAligned,
       final boolean isGeneratedByPipe) {
@@ -111,6 +117,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         databaseNameFromDataRegion,
         walEntryHandler,
         devicePath,
+        tableNames,
         progressIndex,
         isAligned,
         isGeneratedByPipe,
@@ -130,6 +137,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       final String databaseNameFromDataRegion,
       final WALEntryHandler walEntryHandler,
       final PartialPath devicePath,
+      final Set<String> tableNames,
       final ProgressIndex progressIndex,
       final boolean isAligned,
       final boolean isGeneratedByPipe,
@@ -157,6 +165,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     this.walEntryHandler = walEntryHandler;
     // Record device path here so there's no need to get it from InsertNode cache later.
     this.devicePath = devicePath;
+    this.tableNames = tableNames;
     this.progressIndex = progressIndex;
     this.isAligned = isAligned;
     this.isGeneratedByPipe = isGeneratedByPipe;
@@ -259,6 +268,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         getSourceDatabaseNameFromDataRegion(),
         walEntryHandler,
         devicePath,
+        tableNames,
         progressIndex,
         isAligned,
         isGeneratedByPipe,
@@ -283,13 +293,20 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     if (skipIfNoPrivileges || !isTableModelEvent()) {
       return;
     }
+    if (Objects.nonNull(devicePath)) {
+      checkTableName(DeviceIDFactory.getInstance().getDeviceID(devicePath).getTableName());
+    } else {
+      for (final String tableName : tableNames) {
+        checkTableName(tableName);
+      }
+    }
+  }
+
+  private void checkTableName(final String tableName) {
     if (!Coordinator.getInstance()
         .getAccessControl()
         .checkCanSelectFromTable4Pipe(
-            userName,
-            new QualifiedObjectName(
-                getTableModelDatabaseName(),
-                DeviceIDFactory.getInstance().getDeviceID(devicePath).getTableName()))) {
+            userName, new QualifiedObjectName(getTableModelDatabaseName(), tableName))) {
       throw new AccessDeniedException(
           String.format(
               "No privilege for SELECT for user %s at table %s.%s",
@@ -561,7 +578,11 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + (Objects.nonNull(devicePath) ? PartialPath.estimateSize(devicePath) : 0)
-        + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0);
+        + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0)
+        + (Objects.nonNull(tableNames)
+            ? SET_SIZE
+                + tableNames.stream().mapToLong(RamUsageEstimator::sizeOf).reduce(0L, Long::sum)
+            : 0);
   }
 
   private static class PipeInsertNodeTabletInsertionEventResource extends PipeEventResource {

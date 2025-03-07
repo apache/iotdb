@@ -31,11 +31,15 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpochM
 import org.apache.iotdb.db.pipe.processor.pipeconsensus.PipeConsensusProcessor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.stream.Collectors;
 
 public class PipeRealtimeEventFactory {
 
@@ -74,12 +78,22 @@ public class PipeRealtimeEventFactory {
       final WALEntryHandler walEntryHandler,
       final InsertNode insertNode,
       final TsFileResource resource) {
-    PipeInsertNodeTabletInsertionEvent insertionEvent =
+    final PipeInsertNodeTabletInsertionEvent insertionEvent =
         new PipeInsertNodeTabletInsertionEvent(
             isTableModel,
             databaseNameFromDataRegion,
             walEntryHandler,
             insertNode.getTargetPath(),
+            (insertNode instanceof InsertRowsNode)
+                ? ((InsertRowsNode) insertNode)
+                    .getInsertRowNodeList().stream()
+                        .map(
+                            node ->
+                                DeviceIDFactory.getInstance()
+                                    .getDeviceID(node.getTargetPath())
+                                    .getTableName())
+                        .collect(Collectors.toSet())
+                : null,
             insertNode.getProgressIndex(),
             insertNode.isAligned(),
             insertNode.isGeneratedByPipe());
