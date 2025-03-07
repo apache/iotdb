@@ -97,7 +97,6 @@ public class DestNodeSelectorTest {
       List<TDataNodeLocation> dataNodeLocations = replicaSet.getDataNodeLocations();
       allocateResult.remove(replicaSet);
       dataNodeLocations.remove(REMOVE_DATANODE_LOCATION);
-      replicaSet.setDataNodeLocations(dataNodeLocations);
       allocateResult.add(replicaSet);
       remainReplicas.add(replicaSet);
     }
@@ -121,7 +120,6 @@ public class DestNodeSelectorTest {
       allocateResult.remove(remainReplicaSet);
       List<TDataNodeLocation> dataNodeLocations = remainReplicaSet.getDataNodeLocations();
       dataNodeLocations.add(selectedNode.getLocation());
-      remainReplicaSet.setDataNodeLocations(dataNodeLocations);
       allocateResult.add(remainReplicaSet);
       selectedNodeIds.add(selectedNode.getLocation().getDataNodeId());
     }
