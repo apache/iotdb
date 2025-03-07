@@ -55,7 +55,7 @@ public class PipeEventCollector implements EventCollector {
 
   private final boolean forceTabletFormat;
 
-  private final boolean skipParseTsFile;
+  private final boolean skipParsing;
 
   private final boolean isUsedForConsensusPipe;
 
@@ -68,13 +68,13 @@ public class PipeEventCollector implements EventCollector {
       final long creationTime,
       final int regionId,
       final boolean forceTabletFormat,
-      final boolean skipParseTsFile,
+      final boolean skipParsing,
       final boolean isUsedInConsensusPipe) {
     this.pendingQueue = pendingQueue;
     this.creationTime = creationTime;
     this.regionId = regionId;
     this.forceTabletFormat = forceTabletFormat;
-    this.skipParseTsFile = skipParseTsFile;
+    this.skipParsing = skipParsing;
     this.isUsedForConsensusPipe = isUsedInConsensusPipe;
   }
 
@@ -100,7 +100,11 @@ public class PipeEventCollector implements EventCollector {
   }
 
   private void parseAndCollectEvent(final PipeInsertNodeTabletInsertionEvent sourceEvent) {
-    // TODO: let subscription module fully manage the parsing process of the insert node event
+    if (skipParsing) {
+      collectEvent(sourceEvent);
+      return;
+    }
+
     if (sourceEvent.shouldParseTimeOrPattern()) {
       for (final PipeRawTabletInsertionEvent parsedEvent :
           sourceEvent.toRawTabletInsertionEvents()) {
@@ -126,7 +130,7 @@ public class PipeEventCollector implements EventCollector {
       return;
     }
 
-    if (skipParseTsFile) {
+    if (skipParsing) {
       collectEvent(sourceEvent);
       return;
     }

@@ -68,6 +68,15 @@ public class MergeSortTVListIterator implements IPointReader {
 
   private void prepareNext() {
     currentTvPair = null;
+    if (tvListIterators.size() == 1) {
+      TVList.TVListIterator iterator = tvListIterators.get(0);
+      if (iterator.hasNext()) {
+        currentTvPair = iterator.current();
+      }
+      probeNext = true;
+      return;
+    }
+
     for (int i : probeIterators) {
       TVList.TVListIterator iterator = tvListIterators.get(i);
       if (iterator.hasNext()) {
@@ -114,10 +123,16 @@ public class MergeSortTVListIterator implements IPointReader {
   }
 
   public void step() {
-    for (int index : probeIterators) {
-      TVList.TVListIterator iterator = tvListIterators.get(index);
+    if (tvListIterators.size() == 1) {
+      TVList.TVListIterator iterator = tvListIterators.get(0);
       iterator.step();
-      tvListOffsets[index] = iterator.getIndex();
+      tvListOffsets[0] = iterator.getIndex();
+    } else {
+      for (int index : probeIterators) {
+        TVList.TVListIterator iterator = tvListIterators.get(index);
+        iterator.step();
+        tvListOffsets[index] = iterator.getIndex();
+      }
     }
     probeNext = false;
   }
@@ -140,10 +155,12 @@ public class MergeSortTVListIterator implements IPointReader {
       tvListIterators.get(i).setIndex(tvListOffsets[i]);
       this.tvListOffsets[i] = tvListOffsets[i];
     }
-    minHeap.clear();
-    probeIterators.clear();
-    for (int i = 0; i < tvListIterators.size(); i++) {
-      probeIterators.add(i);
+    if (tvListIterators.size() > 1) {
+      minHeap.clear();
+      probeIterators.clear();
+      for (int i = 0; i < tvListIterators.size(); i++) {
+        probeIterators.add(i);
+      }
     }
     probeNext = false;
   }
