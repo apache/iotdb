@@ -115,9 +115,10 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
 
     // leader cache configuration
     final boolean useLeaderCache =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
-            CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE);
+        !shouldSendToAllClients
+            && parameters.getBooleanOrDefault(
+                Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
+                CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE);
 
     clientManager =
         constructClient(
@@ -132,7 +133,8 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
             shouldReceiverConvertOnTypeMismatch,
             loadTsFileStrategy,
             loadTsFileValidation,
-            shouldMarkAsPipeRequest);
+            shouldMarkAsPipeRequest,
+            shouldSendToAllClients);
   }
 
   protected abstract IoTDBSyncClientManager constructClient(
@@ -149,7 +151,8 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
       final boolean validateTsFile,
-      final boolean shouldMarkAsPipeRequest);
+      final boolean shouldMarkAsPipeRequest,
+      final boolean shouldSendToAllClients);
 
   @Override
   public void handshake() throws Exception {
@@ -171,7 +174,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
   protected void transferFilePieces(
       final Map<Pair<String, Long>, Double> pipe2WeightMap,
       final File file,
-      final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
+      final List<Pair<IoTDBSyncClient, Boolean>> clientsAndStatuses,
       final boolean isMultiFile)
       throws PipeException, IOException {
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
@@ -188,55 +191,57 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
             readLength == readFileBufferSize
                 ? readBuffer
                 : Arrays.copyOfRange(readBuffer, 0, readLength);
-        final PipeTransferFilePieceResp resp;
-        try {
-          final TPipeTransferReq req =
-              compressIfNeeded(
-                  isMultiFile
-                      ? getTransferMultiFilePieceReq(file.getName(), position, payLoad)
-                      : getTransferSingleFilePieceReq(file.getName(), position, payLoad));
-          pipe2WeightMap.forEach(
-              (namePair, weight) ->
-                  rateLimitIfNeeded(
-                      namePair.getLeft(),
-                      namePair.getRight(),
-                      clientAndStatus.getLeft().getEndPoint(),
-                      (long) (req.getBody().length * weight)));
-          resp =
-              PipeTransferFilePieceResp.fromTPipeTransferResp(
-                  clientAndStatus.getLeft().pipeTransfer(req));
-        } catch (final Exception e) {
-          clientAndStatus.setRight(false);
-          throw new PipeConnectionException(
-              String.format(
-                  "Network error when transfer file %s, because %s.", file, e.getMessage()),
-              e);
-        }
-
+        final TPipeTransferReq req =
+            compressIfNeeded(
+                isMultiFile
+                    ? getTransferMultiFilePieceReq(file.getName(), position, payLoad)
+                    : getTransferSingleFilePieceReq(file.getName(), position, payLoad));
         position += readLength;
+        for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : clientsAndStatuses) {
 
-        final TSStatus status = resp.getStatus();
-        // This case only happens when the connection is broken, and the connector is reconnected
-        // to the receiver, then the receiver will redirect the file position to the last position
-        if (status.getCode() == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
-          position = resp.getEndWritingOffset();
-          reader.seek(position);
-          LOGGER.info("Redirect file position to {}.", position);
-          continue;
-        }
+          final PipeTransferFilePieceResp resp;
+          try {
+            pipe2WeightMap.forEach(
+                (namePair, weight) ->
+                    rateLimitIfNeeded(
+                        namePair.getLeft(),
+                        namePair.getRight(),
+                        clientAndStatus.getLeft().getEndPoint(),
+                        (long) (req.getBody().length * weight)));
+            resp =
+                PipeTransferFilePieceResp.fromTPipeTransferResp(
+                    clientAndStatus.getLeft().pipeTransfer(req));
+          } catch (final Exception e) {
+            clientAndStatus.setRight(false);
+            throw new PipeConnectionException(
+                String.format(
+                    "Network error when transfer file %s, because %s.", file, e.getMessage()),
+                e);
+          }
 
-        // Send handshake req and then re-transfer the event
-        if (status.getCode()
-            == TSStatusCode.PIPE_CONFIG_RECEIVER_HANDSHAKE_NEEDED.getStatusCode()) {
-          clientManager.sendHandshakeReq(clientAndStatus);
-        }
-        // Only handle the failed statuses to avoid string format performance overhead
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-          receiverStatusHandler.handle(
-              resp.getStatus(),
-              String.format("Transfer file %s error, result status %s.", file, resp.getStatus()),
-              file.getName());
+          final TSStatus status = resp.getStatus();
+          // This case only happens when the connection is broken, and the connector is reconnected
+          // to the receiver, then the receiver will redirect the file position to the last position
+          if (status.getCode() == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
+            position = resp.getEndWritingOffset();
+            reader.seek(position);
+            LOGGER.info("Redirect file position to {}.", position);
+            continue;
+          }
+
+          // Send handshake req and then re-transfer the event
+          if (status.getCode()
+              == TSStatusCode.PIPE_CONFIG_RECEIVER_HANDSHAKE_NEEDED.getStatusCode()) {
+            clientManager.sendHandshakeReq(clientAndStatus);
+          }
+          // Only handle the failed statuses to avoid string format performance overhead
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+            receiverStatusHandler.handle(
+                resp.getStatus(),
+                String.format("Transfer file %s error, result status %s.", file, resp.getStatus()),
+                file.getName());
+          }
         }
       }
     }

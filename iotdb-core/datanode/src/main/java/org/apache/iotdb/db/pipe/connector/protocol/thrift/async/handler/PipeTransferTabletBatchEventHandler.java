@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHandler {
@@ -49,12 +50,15 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
 
   private final List<EnrichedEvent> events;
   private final Map<Pair<String, Long>, Long> pipeName2BytesAccumulated;
+  private final AtomicInteger eventsReferenceCount;
 
   private final TPipeTransferReq req;
   private final double reqCompressionRatio;
 
   public PipeTransferTabletBatchEventHandler(
-      final PipeTabletEventPlainBatch batch, final IoTDBDataRegionAsyncConnector connector)
+      final PipeTabletEventPlainBatch batch,
+      final IoTDBDataRegionAsyncConnector connector,
+      final AtomicInteger eventsReferenceCount)
       throws IOException {
     super(connector);
 
@@ -69,6 +73,7 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
                 uncompressedReq, connector.getCompressors())
             : uncompressedReq;
     reqCompressionRatio = (double) req.getBody().length / uncompressedReq.getBody().length;
+    this.eventsReferenceCount = eventsReferenceCount;
   }
 
   public void transfer(final AsyncPipeDataTransferServiceClient client) throws TException {
@@ -104,11 +109,13 @@ public class PipeTransferTabletBatchEventHandler extends PipeTransferTrackableHa
           LeaderCacheUtils.parseRecommendedRedirections(status)) {
         connector.updateLeaderCache(redirectPair.getLeft(), redirectPair.getRight());
       }
-
-      events.forEach(
-          event ->
-              event.decreaseReferenceCount(
-                  PipeTransferTabletBatchEventHandler.class.getName(), true));
+      final int referenceCount = eventsReferenceCount.decrementAndGet();
+      if (referenceCount <= 0) {
+        events.forEach(
+            event ->
+                event.decreaseReferenceCount(
+                    PipeTransferTabletBatchEventHandler.class.getName(), true));
+      }
     } catch (final Exception e) {
       onError(e);
       return false;

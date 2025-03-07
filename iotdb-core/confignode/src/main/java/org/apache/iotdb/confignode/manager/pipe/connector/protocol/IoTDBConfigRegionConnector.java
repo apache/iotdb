@@ -75,7 +75,8 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
       final boolean validateTsFile,
-      final boolean shouldMarkAsPipeRequest) {
+      final boolean shouldMarkAsPipeRequest,
+      final boolean shouldSendToAllClients) {
     return new IoTDBConfigNodeSyncClientManager(
         nodeUrls,
         useSSL,
@@ -87,7 +88,8 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
         shouldReceiverConvertOnTypeMismatch,
         loadTsFileStrategy,
         validateTsFile,
-        shouldMarkAsPipeRequest);
+        shouldMarkAsPipeRequest,
+        shouldSendToAllClients);
   }
 
   @Override
@@ -128,7 +130,8 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
   }
 
   private void doTransferWrapper(
-      final PipeConfigRegionWritePlanEvent pipeConfigRegionWritePlanEvent) throws PipeException {
+      final PipeConfigRegionWritePlanEvent pipeConfigRegionWritePlanEvent)
+      throws PipeException, IOException {
     // We increase the reference count for this event to determine if the event may be released.
     if (!pipeConfigRegionWritePlanEvent.increaseReferenceCount(
         IoTDBConfigRegionConnector.class.getName())) {
@@ -143,44 +146,48 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
   }
 
   private void doTransfer(final PipeConfigRegionWritePlanEvent pipeConfigRegionWritePlanEvent)
-      throws PipeException {
-    final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
+      throws PipeException, IOException {
+    final List<Pair<IoTDBSyncClient, Boolean>> clientsAndStatuses =
+        shouldSendToAllClients
+            ? clientManager.getAllClients()
+            : Collections.singletonList(clientManager.getClient());
+    final TPipeTransferReq req =
+        compressIfNeeded(
+            PipeTransferConfigPlanReq.toTPipeTransferReq(
+                pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan()));
+    for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : clientsAndStatuses) {
+      final TPipeTransferResp resp;
+      try {
+        rateLimitIfNeeded(
+            pipeConfigRegionWritePlanEvent.getPipeName(),
+            pipeConfigRegionWritePlanEvent.getCreationTime(),
+            clientAndStatus.getLeft().getEndPoint(),
+            req.getBody().length);
+        resp = clientAndStatus.getLeft().pipeTransfer(req);
+      } catch (final Exception e) {
+        clientAndStatus.setRight(false);
+        throw new PipeConnectionException(
+            String.format(
+                "Network error when transfer config region write plan %s, because %s.",
+                pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().getType(), e.getMessage()),
+            e);
+      }
 
-    final TPipeTransferResp resp;
-    try {
-      final TPipeTransferReq req =
-          compressIfNeeded(
-              PipeTransferConfigPlanReq.toTPipeTransferReq(
-                  pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan()));
-      rateLimitIfNeeded(
-          pipeConfigRegionWritePlanEvent.getPipeName(),
-          pipeConfigRegionWritePlanEvent.getCreationTime(),
-          clientAndStatus.getLeft().getEndPoint(),
-          req.getBody().length);
-      resp = clientAndStatus.getLeft().pipeTransfer(req);
-    } catch (final Exception e) {
-      clientAndStatus.setRight(false);
-      throw new PipeConnectionException(
-          String.format(
-              "Network error when transfer config region write plan %s, because %s.",
-              pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().getType(), e.getMessage()),
-          e);
-    }
-
-    final TSStatus status = resp.getStatus();
-    // Send handshake req and then re-transfer the event
-    if (status.getCode() == TSStatusCode.PIPE_CONFIG_RECEIVER_HANDSHAKE_NEEDED.getStatusCode()) {
-      clientManager.sendHandshakeReq(clientAndStatus);
-    }
-    // Only handle the failed statuses to avoid string format performance overhead
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-      receiverStatusHandler.handle(
-          status,
-          String.format(
-              "Transfer config region write plan %s error, result status %s.",
-              pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().getType(), status),
-          pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().toString());
+      final TSStatus status = resp.getStatus();
+      // Send handshake req and then re-transfer the event
+      if (status.getCode() == TSStatusCode.PIPE_CONFIG_RECEIVER_HANDSHAKE_NEEDED.getStatusCode()) {
+        clientManager.sendHandshakeReq(clientAndStatus);
+      }
+      // Only handle the failed statuses to avoid string format performance overhead
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        receiverStatusHandler.handle(
+            status,
+            String.format(
+                "Transfer config region write plan %s error, result status %s.",
+                pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().getType(), status),
+            pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().toString());
+      }
     }
 
     if (LOGGER.isDebugEnabled()) {
@@ -209,68 +216,73 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
     final long creationTime = snapshotEvent.getCreationTime();
     final File snapshotFile = snapshotEvent.getSnapshotFile();
     final File templateFile = snapshotEvent.getTemplateFile();
-    final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
+    final List<Pair<IoTDBSyncClient, Boolean>> clientsAndStatuses =
+        shouldSendToAllClients
+            ? clientManager.getAllClients()
+            : Collections.singletonList(clientManager.getClient());
 
     // 1. Transfer snapshotFile, and template File if exists
     transferFilePieces(
         Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0),
         snapshotFile,
-        clientAndStatus,
+        clientsAndStatuses,
         true);
     if (Objects.nonNull(templateFile)) {
       transferFilePieces(
           Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0),
           templateFile,
-          clientAndStatus,
+          clientsAndStatuses,
           true);
     }
-    // 2. Transfer file seal signal, which means the snapshots are transferred completely
-    final TPipeTransferResp resp;
-    try {
-      final TPipeTransferReq req =
-          compressIfNeeded(
-              PipeTransferConfigSnapshotSealReq.toTPipeTransferReq(
-                  // The pattern is surely Non-null
-                  snapshotEvent.getTreePattern().getPattern(),
-                  snapshotEvent.getTablePattern().getDatabasePattern(),
-                  snapshotEvent.getTablePattern().getTablePattern(),
-                  snapshotEvent.getTreePattern().isTreeModelDataAllowedToBeCaptured(),
-                  snapshotEvent.getTablePattern().isTableModelDataAllowedToBeCaptured(),
-                  snapshotFile.getName(),
-                  snapshotFile.length(),
-                  Objects.nonNull(templateFile) ? templateFile.getName() : null,
-                  Objects.nonNull(templateFile) ? templateFile.length() : 0,
-                  snapshotEvent.getFileType(),
-                  snapshotEvent.toSealTypeString()));
-      rateLimitIfNeeded(
-          snapshotEvent.getPipeName(),
-          snapshotEvent.getCreationTime(),
-          clientAndStatus.getLeft().getEndPoint(),
-          req.getBody().length);
-      resp = clientAndStatus.getLeft().pipeTransfer(req);
-    } catch (final Exception e) {
-      clientAndStatus.setRight(false);
-      throw new PipeConnectionException(
-          String.format(
-              "Network error when seal config region snapshot %s, because %s.",
-              snapshotFile, e.getMessage()),
-          e);
-    }
+    final TPipeTransferReq req =
+        compressIfNeeded(
+            PipeTransferConfigSnapshotSealReq.toTPipeTransferReq(
+                // The pattern is surely Non-null
+                snapshotEvent.getTreePattern().getPattern(),
+                snapshotEvent.getTablePattern().getDatabasePattern(),
+                snapshotEvent.getTablePattern().getTablePattern(),
+                snapshotEvent.getTreePattern().isTreeModelDataAllowedToBeCaptured(),
+                snapshotEvent.getTablePattern().isTableModelDataAllowedToBeCaptured(),
+                snapshotFile.getName(),
+                snapshotFile.length(),
+                Objects.nonNull(templateFile) ? templateFile.getName() : null,
+                Objects.nonNull(templateFile) ? templateFile.length() : 0,
+                snapshotEvent.getFileType(),
+                snapshotEvent.toSealTypeString()));
+    for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : clientsAndStatuses) {
+      // 2. Transfer file seal signal, which means the snapshots are transferred completely
+      final TPipeTransferResp resp;
+      try {
+        rateLimitIfNeeded(
+            snapshotEvent.getPipeName(),
+            snapshotEvent.getCreationTime(),
+            clientAndStatus.getLeft().getEndPoint(),
+            req.getBody().length);
+        resp = clientAndStatus.getLeft().pipeTransfer(req);
+      } catch (final Exception e) {
+        clientAndStatus.setRight(false);
+        throw new PipeConnectionException(
+            String.format(
+                "Network error when seal config region snapshot %s, because %s.",
+                snapshotFile, e.getMessage()),
+            e);
+      }
 
-    final TSStatus status = resp.getStatus();
-    // Send handshake req and then re-transfer the event
-    if (status.getCode() == TSStatusCode.PIPE_CONFIG_RECEIVER_HANDSHAKE_NEEDED.getStatusCode()) {
-      clientManager.sendHandshakeReq(clientAndStatus);
-    }
-    // Only handle the failed statuses to avoid string format performance overhead
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-      receiverStatusHandler.handle(
-          status,
-          String.format(
-              "Seal config region snapshot file %s error, result status %s.",
-              snapshotFile, resp.getStatus()),
-          snapshotFile.toString());
+      final TSStatus status = resp.getStatus();
+      // Send handshake req and then re-transfer the event
+      if (status.getCode() == TSStatusCode.PIPE_CONFIG_RECEIVER_HANDSHAKE_NEEDED.getStatusCode()) {
+        clientManager.sendHandshakeReq(clientAndStatus);
+      }
+      // Only handle the failed statuses to avoid string format performance overhead
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        receiverStatusHandler.handle(
+            status,
+            String.format(
+                "Seal config region snapshot file %s error, result status %s.",
+                snapshotFile, resp.getStatus()),
+            snapshotFile.toString());
+      }
     }
 
     LOGGER.info("Successfully transferred config region snapshot {}.", snapshotFile);

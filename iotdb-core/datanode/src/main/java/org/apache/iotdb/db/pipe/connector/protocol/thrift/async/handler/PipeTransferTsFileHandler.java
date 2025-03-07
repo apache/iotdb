@@ -88,8 +88,11 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
   private final AtomicBoolean isSealSignalSent;
 
+  private AtomicInteger pendingTransferCount;
+
   private IoTDBDataNodeAsyncClientManager clientManager;
   private AsyncPipeDataTransferServiceClient client;
+  private List<AsyncPipeDataTransferServiceClient> clients;
 
   public PipeTransferTsFileHandler(
       final IoTDBDataRegionAsyncConnector connector,
@@ -145,6 +148,10 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       throws TException, IOException {
     this.clientManager = clientManager;
     this.client = client;
+
+    if (pendingTransferCount == null) {
+      pendingTransferCount = new AtomicInteger(1);
+    }
 
     client.setShouldReturnSelf(false);
     client.setTimeoutDynamically(clientManager.getConnectionTimeout());
@@ -227,6 +234,117 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     position += readLength;
   }
 
+  public void transfer(
+      final IoTDBDataNodeAsyncClientManager clientManager,
+      final List<AsyncPipeDataTransferServiceClient> clients)
+      throws TException, IOException {
+    this.clientManager = clientManager;
+    this.clients = clients;
+    if (pendingTransferCount == null) {
+      pendingTransferCount = new AtomicInteger(clients.size());
+    }
+    clients.forEach(
+        client -> {
+          client.setShouldReturnSelf(false);
+          client.setTimeoutDynamically(clientManager.getConnectionTimeout());
+        });
+
+    final int readLength = reader.read(readBuffer);
+
+    if (readLength == -1) {
+      if (currentFile == modFile) {
+        currentFile = tsFile;
+        position = 0;
+        try {
+          reader.close();
+        } catch (final IOException e) {
+          LOGGER.warn("Failed to close file reader when successfully transferred mod file.", e);
+        }
+        reader = new RandomAccessFile(tsFile, "r");
+        transfer(clientManager, clients);
+      } else if (currentFile == tsFile) {
+        isSealSignalSent.set(true);
+
+        final TPipeTransferReq uncompressedReq =
+            transferMod
+                ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                    modFile.getName(),
+                    modFile.length(),
+                    tsFile.getName(),
+                    tsFile.length(),
+                    dataBaseName)
+                : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                    tsFile.getName(), tsFile.length(), dataBaseName);
+        final TPipeTransferReq req =
+            connector.isRpcCompressionEnabled()
+                ? PipeTransferCompressedReq.toTPipeTransferReq(
+                    uncompressedReq, connector.getCompressors())
+                : uncompressedReq;
+        for (AsyncPipeDataTransferServiceClient client : clients) {
+          pipeName2WeightMap.forEach(
+              (pipePair, weight) ->
+                  connector.rateLimitIfNeeded(
+                      pipePair.getLeft(),
+                      pipePair.getRight(),
+                      client.getEndPoint(),
+                      (long) (req.getBody().length * weight)));
+          try {
+            if (!tryTransfer(client, req)) {
+              return;
+            }
+          } catch (TException e) {
+            LOGGER.warn(
+                "Exception occurred while sending to receiver {}:{}",
+                client.getIp(),
+                client.getPort(),
+                e);
+            this.onError(e);
+          }
+        }
+      }
+      return;
+    }
+
+    final byte[] payload =
+        readLength == readFileBufferSize
+            ? readBuffer
+            : Arrays.copyOfRange(readBuffer, 0, readLength);
+    final TPipeTransferReq uncompressedReq =
+        transferMod
+            ? PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(
+                currentFile.getName(), position, payload)
+            : PipeTransferTsFilePieceReq.toTPipeTransferReq(
+                currentFile.getName(), position, payload);
+    final TPipeTransferReq req =
+        connector.isRpcCompressionEnabled()
+            ? PipeTransferCompressedReq.toTPipeTransferReq(
+                uncompressedReq, connector.getCompressors())
+            : uncompressedReq;
+
+    for (AsyncPipeDataTransferServiceClient client : clients) {
+      pipeName2WeightMap.forEach(
+          (pipePair, weight) ->
+              connector.rateLimitIfNeeded(
+                  pipePair.getLeft(),
+                  pipePair.getRight(),
+                  client.getEndPoint(),
+                  (long) (req.getBody().length * weight)));
+      try {
+        if (!tryTransfer(client, req)) {
+          return;
+        }
+      } catch (TException e) {
+        LOGGER.warn(
+            "Exception occurred while sending to receiver {}:{}",
+            client.getIp(),
+            client.getPort(),
+            e);
+        this.onError(e);
+      }
+    }
+    position += readLength;
+  }
+
   @Override
   protected boolean onCompleteInternal(final TPipeTransferResp response) {
     if (isSealSignalSent.get()) {
@@ -248,50 +366,58 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         return false;
       }
 
-      try {
-        if (reader != null) {
-          reader.close();
-        }
+      if (pendingTransferCount.decrementAndGet() <= 0) {
+        try {
+          if (reader != null) {
+            reader.close();
+          }
 
-        // Delete current file when using tsFile as batch
-        if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
-          RetryUtils.retryOnException(
-              () -> {
-                FileUtils.delete(currentFile);
-                return null;
-              });
-        }
-      } catch (final IOException e) {
-        LOGGER.warn(
-            "Failed to close file reader or delete tsFile when successfully transferred file.", e);
-      } finally {
-        final int referenceCount = eventsReferenceCount.decrementAndGet();
-        if (referenceCount <= 0) {
-          events.forEach(
-              event ->
-                  event.decreaseReferenceCount(PipeTransferTsFileHandler.class.getName(), true));
-        }
+          // Delete current file when using tsFile as batch
+          if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
+            RetryUtils.retryOnException(
+                () -> {
+                  FileUtils.delete(currentFile);
+                  return null;
+                });
+          }
+        } catch (final IOException e) {
+          LOGGER.warn(
+              "Failed to close file reader or delete tsFile when successfully transferred file.",
+              e);
+        } finally {
+          final int referenceCount = eventsReferenceCount.decrementAndGet();
+          if (referenceCount <= 0) {
+            events.forEach(
+                event ->
+                    event.decreaseReferenceCount(PipeTransferTsFileHandler.class.getName(), true));
+          }
 
-        if (events.size() <= 1 || LOGGER.isDebugEnabled()) {
-          LOGGER.info(
-              "Successfully transferred file {} (committer key={}, commit id={}, reference count={}).",
-              tsFile,
-              events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
-              events.stream().map(EnrichedEvent::getCommitId).collect(Collectors.toList()),
-              referenceCount);
-        } else {
-          LOGGER.info(
-              "Successfully transferred file {} (batched TableInsertionEvents, reference count={}).",
-              tsFile,
-              referenceCount);
-        }
+          if (events.size() <= 1 || LOGGER.isDebugEnabled()) {
+            LOGGER.info(
+                "Successfully transferred file {} (committer key={}, commit id={}, reference count={}).",
+                tsFile,
+                events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
+                events.stream().map(EnrichedEvent::getCommitId).collect(Collectors.toList()),
+                referenceCount);
+          } else {
+            LOGGER.info(
+                "Successfully transferred file {} (batched TableInsertionEvents, reference count={}).",
+                tsFile,
+                referenceCount);
+          }
 
-        if (client != null) {
-          client.setShouldReturnSelf(true);
-          client.returnSelf();
+          if (client != null) {
+            client.setShouldReturnSelf(true);
+            client.returnSelf();
+          }
+          if (clients != null) {
+            for (final AsyncPipeDataTransferServiceClient client : clients) {
+              client.setShouldReturnSelf(true);
+              client.returnSelf();
+            }
+          }
         }
       }
-
       return true;
     }
 
@@ -318,8 +444,15 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
               .handle(status, response.getStatus().getMessage(), tsFile.getName());
         }
       }
-
-      transfer(clientManager, client);
+      if (pendingTransferCount.decrementAndGet() <= 0) {
+        pendingTransferCount = null;
+        if (client != null) {
+          transfer(clientManager, client);
+        }
+        if (clients != null) {
+          transfer(clientManager, clients);
+        }
+      }
     } catch (final Exception e) {
       onError(e);
       return false;
@@ -374,6 +507,10 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     } finally {
       try {
         if (client != null) {
+          client.setShouldReturnSelf(true);
+          client.returnSelf();
+        }
+        for (final AsyncPipeDataTransferServiceClient client : clients) {
           client.setShouldReturnSelf(true);
           client.returnSelf();
         }

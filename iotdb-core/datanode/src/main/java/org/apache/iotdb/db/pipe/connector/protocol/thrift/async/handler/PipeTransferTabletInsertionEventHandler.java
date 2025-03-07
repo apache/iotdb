@@ -32,6 +32,8 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransferTrackableHandler {
 
   private static final Logger LOGGER =
@@ -39,15 +41,18 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
 
   protected final PipeInsertionEvent event;
   protected final TPipeTransferReq req;
+  private final AtomicInteger eventsReferenceCount;
 
   protected PipeTransferTabletInsertionEventHandler(
       final PipeInsertionEvent event,
       final TPipeTransferReq req,
-      final IoTDBDataRegionAsyncConnector connector) {
+      final IoTDBDataRegionAsyncConnector connector,
+      final AtomicInteger eventsReferenceCount) {
     super(connector);
 
     this.event = event;
     this.req = req;
+    this.eventsReferenceCount = eventsReferenceCount;
   }
 
   public void transfer(final AsyncPipeDataTransferServiceClient client) throws TException {
@@ -74,7 +79,10 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
             .statusHandler()
             .handle(response.getStatus(), response.getStatus().getMessage(), event.toString());
       }
-      event.decreaseReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName(), true);
+      final int referenceCount = eventsReferenceCount.decrementAndGet();
+      if (referenceCount <= 0) {
+        event.decreaseReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName(), true);
+      }
       if (status.isSetRedirectNode()) {
         updateLeaderCache(status);
       }
