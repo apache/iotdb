@@ -51,7 +51,7 @@ public class TimePartitionManager {
         IoTDBDescriptor.getInstance()
             .getMemoryConfig()
             .getTimePartitionInfoMemoryManager()
-            .forceAllocate("TimePartitionInfoMemoryBlock", MemoryBlockType.DYNAMIC);
+            .exactAllocate("TimePartitionInfoMemoryBlock", MemoryBlockType.DYNAMIC);
   }
 
   public void registerTimePartitionInfo(TimePartitionInfo timePartitionInfo) {
@@ -87,7 +87,8 @@ public class TimePartitionManager {
               .get(timePartitionId);
       if (timePartitionInfo != null) {
         timePartitionInfo.lastSystemFlushTime = systemFlushTime;
-        timePartitionInfoMemoryBlock.forceAllocate(memSize - timePartitionInfo.memSize);
+        timePartitionInfoMemoryBlock.forceAllocateWithoutLimitation(
+            memSize - timePartitionInfo.memSize);
         timePartitionInfo.memSize = memSize;
         timePartitionInfo.isActive = isActive;
         if (timePartitionInfoMemoryBlock.getUsedMemoryInBytes()

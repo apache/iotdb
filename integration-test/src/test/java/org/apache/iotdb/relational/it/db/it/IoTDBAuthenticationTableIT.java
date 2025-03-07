@@ -14,28 +14,48 @@
 
 package org.apache.iotdb.relational.it.db.it;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.tablemodel.CompactionTableModelTestFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.TableClusterIT;
+import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Locale;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+@RunWith(IoTDBTestRunner.class)
+@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBAuthenticationTableIT {
   @BeforeClass
-  public static void setUpClass() {
+  public static void setUpClass() throws Exception {
     Locale.setDefault(Locale.ENGLISH);
     EnvFactory.getEnv().initClusterEnvironment();
   }
@@ -70,7 +90,7 @@ public class IoTDBAuthenticationTableIT {
   public void testInsert() throws IoTDBConnectionException, StatementExecutionException {
 
     try (ITableSession sessionRoot = EnvFactory.getEnv().getTableSessionConnection()) {
-      sessionRoot.executeNonQueryStatement("CREATE DATABASE test");
+      sessionRoot.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS test");
       sessionRoot.executeNonQueryStatement("USE test");
 
       // insert by root
@@ -95,19 +115,22 @@ public class IoTDBAuthenticationTableIT {
         sessionRoot.executeNonQueryStatement("REVOKE INSERT ON ANY FROM USER root");
         fail("Should have thrown an exception");
       } catch (StatementExecutionException e) {
-        assertEquals("803: Cannot grant/revoke privileges to/from admin", e.getMessage());
+        assertEquals(
+            "803: Access Denied: Cannot grant/revoke privileges of admin user", e.getMessage());
       }
       try {
         sessionRoot.executeNonQueryStatement("REVOKE INSERT ON DATABASE test FROM USER root");
         fail("Should have thrown an exception");
       } catch (StatementExecutionException e) {
-        assertEquals("803: Cannot grant/revoke privileges of admin user", e.getMessage());
+        assertEquals(
+            "803: Access Denied: Cannot grant/revoke privileges of admin user", e.getMessage());
       }
       try {
         sessionRoot.executeNonQueryStatement("REVOKE INSERT ON TABLE table1 FROM USER root");
         fail("Should have thrown an exception");
       } catch (StatementExecutionException e) {
-        assertEquals("803: Cannot grant/revoke privileges of admin user", e.getMessage());
+        assertEquals(
+            "803: Access Denied: Cannot grant/revoke privileges of admin user", e.getMessage());
       }
 
       // test users
@@ -606,19 +629,22 @@ public class IoTDBAuthenticationTableIT {
         sessionRoot.executeNonQueryStatement("REVOKE DELETE ON ANY FROM USER root");
         fail("Should have thrown an exception");
       } catch (StatementExecutionException e) {
-        assertEquals("803: Cannot grant/revoke privileges to/from admin", e.getMessage());
+        assertEquals(
+            "803: Access Denied: Cannot grant/revoke privileges of admin user", e.getMessage());
       }
       try {
         sessionRoot.executeNonQueryStatement("REVOKE DELETE ON DATABASE test FROM USER root");
         fail("Should have thrown an exception");
       } catch (StatementExecutionException e) {
-        assertEquals("803: Cannot grant/revoke privileges of admin user", e.getMessage());
+        assertEquals(
+            "803: Access Denied: Cannot grant/revoke privileges of admin user", e.getMessage());
       }
       try {
         sessionRoot.executeNonQueryStatement("REVOKE DELETE ON TABLE table1 FROM USER root");
         fail("Should have thrown an exception");
       } catch (StatementExecutionException e) {
-        assertEquals("803: Cannot grant/revoke privileges of admin user", e.getMessage());
+        assertEquals(
+            "803: Access Denied: Cannot grant/revoke privileges of admin user", e.getMessage());
       }
 
       // test users
@@ -996,6 +1022,76 @@ public class IoTDBAuthenticationTableIT {
               e.getMessage());
         }
       }
+    }
+  }
+
+  @Test
+  public void testTableAuth() throws Exception {
+    File tmpDir = new File(Files.createTempDirectory("load").toUri());
+    createUser("test", "test123");
+
+    final TsFileResource resource4 = new TsFileResource(new File(tmpDir, "test1-0-0-0.tsfile"));
+    try (final CompactionTableModelTestFileWriter writer =
+        new CompactionTableModelTestFileWriter(resource4)) {
+      writer.registerTableSchemaWithTagField("t2", Arrays.asList("id1", "id2", "id3"));
+      writer.startChunkGroup("t2", Arrays.asList("id_field1", "id_field2", "id_field3"));
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1",
+          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(20, 22)}}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s2",
+          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(20, 22)}}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+
+    try (final Connection userCon =
+            EnvFactory.getEnv().getConnection("test", "test123", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement userStmt = userCon.createStatement()) {
+      Assert.assertThrows(
+          SQLException.class,
+          () -> {
+            userStmt.execute(
+                String.format(
+                    "load '%s' with ('database-level'='2', 'database-name'='test')",
+                    tmpDir.getAbsolutePath()));
+          });
+    }
+
+    try (Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("grant create on database test to user test");
+    }
+
+    try (final Connection userCon =
+            EnvFactory.getEnv().getConnection("test", "test123", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement userStmt = userCon.createStatement()) {
+      Assert.assertThrows(
+          SQLException.class,
+          () -> {
+            userStmt.execute(
+                String.format(
+                    "load '%s' with ('database-level'='2', 'database-name'='test')",
+                    tmpDir.getAbsolutePath()));
+          });
+    }
+
+    try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("grant insert on any to user test");
+    }
+
+    try (final Connection userCon =
+            EnvFactory.getEnv().getConnection("test", "test123", BaseEnv.TABLE_SQL_DIALECT);
+        final Statement userStmt = userCon.createStatement()) {
+      userStmt.execute(
+          String.format(
+              "load '%s' with ('database-level'='2', 'database-name'='test')",
+              tmpDir.getAbsolutePath()));
     }
   }
 }

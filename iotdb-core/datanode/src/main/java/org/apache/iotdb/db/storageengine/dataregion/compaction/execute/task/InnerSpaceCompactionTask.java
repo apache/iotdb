@@ -439,7 +439,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   protected void prepareTargetFiles() throws IOException {
-    CompactionUtils.updateProgressIndex(
+    CompactionUtils.updateProgressIndexAndMark(
         filesView.targetFilesInPerformer,
         filesView.sequence ? filesView.sourceFilesInCompactionPerformer : Collections.emptyList(),
         filesView.sequence ? Collections.emptyList() : filesView.sourceFilesInCompactionPerformer);

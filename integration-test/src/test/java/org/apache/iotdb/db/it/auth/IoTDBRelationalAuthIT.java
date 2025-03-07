@@ -154,7 +154,6 @@ public class IoTDBRelationalAuthIT {
       // admin can do all things below.
       adminStmt.execute("GRANT MANAGE_USER to user testuser2 with grant option");
       adminStmt.execute("GRANT MANAGE_ROLE to user testuser");
-      adminStmt.execute("GRANT MAINTAIN to ROLE testrole with grant option");
 
       adminStmt.execute("use testdb");
       adminStmt.execute("GRANT SELECT ON TABLE TB to user testuser");
@@ -179,7 +178,6 @@ public class IoTDBRelationalAuthIT {
       // testdb.* insert
       // any alter
       // manage_role
-      // MAINTAIN with grant option
 
       // cannot create user
       Assert.assertThrows(
@@ -210,7 +208,6 @@ public class IoTDBRelationalAuthIT {
           () -> {
             userStmt.execute("GRANT manage_role to role testrole2");
           });
-      userStmt.execute("GRANT MAINTAIN to ROLE testrole2");
 
       // can list itself privileges and the all roles privileges
       ResultSet rs = userStmt.executeQuery("List privileges of user testuser");
@@ -221,15 +218,13 @@ public class IoTDBRelationalAuthIT {
                   ",*.*,ALTER,false,",
                   ",testdb.*,INSERT,false,",
                   ",testdb.tb,SELECT,false,",
-                  ",testdb.tb,INSERT,false,",
-                  "testrole2,,MAINTAIN,false,",
-                  "testrole,,MAINTAIN,true,"));
+                  ",testdb.tb,INSERT,false,"));
       TestUtils.assertResultSetEqual(rs, "Role,Scope,Privileges,GrantOption,", ans);
       rs = userStmt.executeQuery("List privileges of role testrole");
-      ans = new HashSet<>(Collections.singletonList("testrole,,MAINTAIN,true,"));
+      ans = new HashSet<>();
       TestUtils.assertResultSetEqual(rs, "Role,Scope,Privileges,GrantOption,", ans);
       rs = userStmt.executeQuery("List privileges of role testrole2");
-      ans = new HashSet<>(Collections.singletonList("testrole2,,MAINTAIN,false,"));
+      ans = new HashSet<>();
       TestUtils.assertResultSetEqual(rs, "Role,Scope,Privileges,GrantOption,", ans);
       // testdb.TB's privilege is not grant option.
       Assert.assertThrows(

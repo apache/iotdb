@@ -41,7 +41,7 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
       IoTDBDescriptor.getInstance()
           .getMemoryConfig()
           .getSchemaRegionMemoryManager()
-          .forceAllocate("SchemaRegion", MemoryBlockType.DYNAMIC);
+          .exactAllocate("SchemaRegion", MemoryBlockType.DYNAMIC);
   private final ClusterTemplateManager clusterTemplateManager =
       ClusterTemplateManager.getInstance();
 
@@ -78,7 +78,7 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   }
 
   public void requestMemory(final long size) {
-    memoryBlock.forceAllocate(size);
+    memoryBlock.forceAllocateWithoutLimitation(size);
     if (memoryBlock.getUsedMemoryInBytes() >= memoryBlock.getTotalMemorySizeInBytes()) {
       synchronized (allowToCreateNewSeriesLock) {
         if (allowToCreateNewSeries

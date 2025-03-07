@@ -84,15 +84,15 @@ public class SystemInfo {
     compactionMemoryBlock =
         memoryConfig
             .getCompactionMemoryManager()
-            .forceAllocate("Compaction", MemoryBlockType.DYNAMIC);
+            .exactAllocate("Compaction", MemoryBlockType.DYNAMIC);
     walBufferQueueMemoryBlock =
         memoryConfig
             .getWalBufferQueueMemoryManager()
-            .forceAllocate("WalBufferQueue", MemoryBlockType.DYNAMIC);
+            .exactAllocate("WalBufferQueue", MemoryBlockType.DYNAMIC);
     directBufferMemoryBlock =
         memoryConfig
             .getDirectBufferMemoryManager()
-            .forceAllocate("DirectBuffer", MemoryBlockType.DYNAMIC);
+            .exactAllocate("DirectBuffer", MemoryBlockType.DYNAMIC);
     loadWriteMemory();
   }
 

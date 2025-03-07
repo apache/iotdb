@@ -2602,7 +2602,7 @@ public class IoTDBDescriptor {
     long newSize =
         storageEngineMemoryManager.getTotalMemorySizeInBytes()
             + consensusMemoryManager.getTotalMemorySizeInBytes();
-    consensusMemoryManager.setTotalAllocatedMemorySizeInBytes(0);
+    consensusMemoryManager.setTotalMemorySizeInBytes(0);
     storageEngineMemoryManager.setTotalAllocatedMemorySizeInBytesWithReload(newSize);
     SystemInfo.getInstance().loadWriteMemory();
   }

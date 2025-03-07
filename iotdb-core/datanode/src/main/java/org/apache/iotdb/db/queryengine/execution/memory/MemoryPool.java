@@ -127,7 +127,7 @@ public class MemoryPool {
   public MemoryPool(String id, MemoryManager memoryManager, long maxBytesPerFragmentInstance) {
     this.id = Validate.notNull(id, "id can not be null.");
     this.memoryBlock =
-        memoryManager.forceAllocate(memoryManager.getName(), MemoryBlockType.DYNAMIC);
+        memoryManager.exactAllocate(memoryManager.getName(), MemoryBlockType.DYNAMIC);
     Validate.isTrue(
         this.memoryBlock.getTotalMemorySizeInBytes() > 0L,
         "max bytes should be greater than zero: %d",
@@ -251,7 +251,9 @@ public class MemoryPool {
           maxBytesCanReserve,
           planNodeId);
       throw new IllegalArgumentException(
-          "Query is aborted since it requests more memory than can be allocated.");
+          String.format(
+              "Query is aborted since it requests more memory than can be allocated, bytesToReserve: %sB, maxBytesCanReserve: %sB",
+              bytesToReserve, maxBytesCanReserve));
     }
 
     ListenableFuture<Void> result;
@@ -389,7 +391,7 @@ public class MemoryPool {
       String planNodeId,
       long bytesToReserve,
       long maxBytesCanReserve) {
-    long tryUsedBytes = memoryBlock.forceAllocate(bytesToReserve);
+    long tryUsedBytes = memoryBlock.forceAllocateWithoutLimitation(bytesToReserve);
     long queryRemainingBytes =
         maxBytesCanReserve
             - queryMemoryReservations

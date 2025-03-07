@@ -266,12 +266,23 @@ public class LoadTsFileTableSchemaCache {
             .computeIfAbsent(
                 realSchema.getTableName(), k -> new Pair<>(realIdColumnCount, new HashMap<>()))
             .getRight();
+
+    Map<String, Integer> idColumnNameToIndex = new HashMap<>();
+    for (int i = 0; i < realSchema.getIdColumns().size(); i++) {
+      idColumnNameToIndex.put(realSchema.getIdColumns().get(i).getName(), i);
+    }
+    Map<String, ColumnSchema> fieldColumnNameToSchema = new HashMap<>();
+    for (ColumnSchema column : realSchema.getColumns()) {
+      if (column.getColumnCategory() == TsTableColumnCategory.FIELD) {
+        fieldColumnNameToSchema.put(column.getName(), column);
+      }
+    }
+
     int idColumnIndex = 0;
-    for (int i = 0; i < fileSchema.getColumns().size(); i++) {
-      final ColumnSchema fileColumn = fileSchema.getColumns().get(i);
+    for (ColumnSchema fileColumn : fileSchema.getColumns()) {
       if (fileColumn.getColumnCategory() == TsTableColumnCategory.TAG) {
-        final int realIndex = realSchema.getIndexAmongIdColumns(fileColumn.getName());
-        if (realIndex != -1) {
+        Integer realIndex = idColumnNameToIndex.get(fileColumn.getName());
+        if (realIndex != null) {
           idColumnMapping.put(idColumnIndex++, realIndex);
         } else {
           throw new LoadAnalyzeException(
@@ -280,9 +291,8 @@ public class LoadTsFileTableSchemaCache {
                   fileColumn.getName(), realSchema.getTableName()));
         }
       } else if (fileColumn.getColumnCategory() == TsTableColumnCategory.FIELD) {
-        final ColumnSchema realColumn =
-            realSchema.getColumn(fileColumn.getName(), fileColumn.getColumnCategory());
-        if (!fileColumn.getType().equals(realColumn.getType())) {
+        ColumnSchema realColumn = fieldColumnNameToSchema.get(fileColumn.getName());
+        if (realColumn == null || !fileColumn.getType().equals(realColumn.getType())) {
           throw new LoadAnalyzeTypeMismatchException(
               String.format(
                   "Data type mismatch for column %s in table %s, type in TsFile: %s, type in IoTDB: %s",

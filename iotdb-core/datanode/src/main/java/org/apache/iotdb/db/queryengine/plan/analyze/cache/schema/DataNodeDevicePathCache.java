@@ -46,7 +46,7 @@ public class DataNodeDevicePathCache {
     devicePathCacheMemoryBlock =
         memoryConfig
             .getDevicePathCacheMemoryManager()
-            .forceAllocate("DevicePathCache", MemoryBlockType.STATIC);
+            .exactAllocate("DevicePathCache", MemoryBlockType.STATIC);
     // TODO @spricoder: later we can find a way to get the byte size of cache
     devicePathCacheMemoryBlock.allocate(devicePathCacheMemoryBlock.getTotalMemorySizeInBytes());
     devicePathCache =

@@ -111,7 +111,7 @@ public class TableDeviceSchemaCache {
     memoryBlock =
         memoryConfig
             .getSchemaCacheMemoryManager()
-            .forceAllocate("TableDeviceSchemaCache", MemoryBlockType.STATIC);
+            .exactAllocate("TableDeviceSchemaCache", MemoryBlockType.STATIC);
     dualKeyCache =
         new DualKeyCacheBuilder<TableId, IDeviceID, TableDeviceCacheEntry>()
             .cacheEvictionPolicy(
@@ -654,8 +654,8 @@ public class TableDeviceSchemaCache {
       DataNodeTableCache.getInstance().invalid(database, tableName, columnName);
       final ToIntFunction<TableDeviceCacheEntry> updateFunction =
           isAttributeColumn
-              ? entry -> entry.invalidateAttributeColumn(columnName)
-              : entry -> entry.invalidateLastCache(columnName, true);
+              ? entry -> -entry.invalidateAttributeColumn(columnName)
+              : entry -> -entry.invalidateLastCache(columnName, true);
       dualKeyCache.update(new TableId(null, tableName), deviceID -> true, updateFunction);
     } finally {
       readWriteLock.writeLock().unlock();

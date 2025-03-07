@@ -73,7 +73,7 @@ public class LocalExecutionPlanner {
     OPERATORS_MEMORY_BLOCK =
         MEMORY_CONFIG
             .getOperatorsMemoryManager()
-            .forceAllocate("Operators", MemoryBlockType.DYNAMIC);
+            .exactAllocate("Operators", MemoryBlockType.DYNAMIC);
     MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD =
         (long)
             ((OPERATORS_MEMORY_BLOCK.getTotalMemorySizeInBytes())
@@ -255,7 +255,7 @@ public class LocalExecutionPlanner {
         <= MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD) {
       return false;
     } else {
-      OPERATORS_MEMORY_BLOCK.forceAllocate(memoryInBytes);
+      OPERATORS_MEMORY_BLOCK.forceAllocateWithoutLimitation(memoryInBytes);
       return true;
     }
   }
@@ -265,10 +265,10 @@ public class LocalExecutionPlanner {
         <= MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD) {
       long result =
           OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes() - MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD;
-      OPERATORS_MEMORY_BLOCK.forceAllocate(result);
+      OPERATORS_MEMORY_BLOCK.forceAllocateWithoutLimitation(result);
       return result;
     } else {
-      OPERATORS_MEMORY_BLOCK.forceAllocate(memoryInBytes);
+      OPERATORS_MEMORY_BLOCK.forceAllocateWithoutLimitation(memoryInBytes);
       return memoryInBytes;
     }
   }

@@ -1358,8 +1358,21 @@ public class IoTDBAuthIT {
       try (Connection JackConnection =
               EnvFactory.getEnv().getConnection("Jack", "temppw", BaseEnv.TABLE_SQL_DIALECT);
           Statement Jack = JackConnection.createStatement()) {
-        testClusterManagementSqlImpl(
-            clusterManagementSQLList, () -> adminStmt.execute("GRANT MAINTAIN TO USER Jack"), Jack);
+        // Jack has no authority to execute these SQLs
+        for (String sql : clusterManagementSQLList) {
+          try {
+            Jack.execute(sql);
+          } catch (IoTDBSQLException e) {
+            if (TSStatusCode.NO_PERMISSION.getStatusCode() != e.getErrorCode()) {
+              fail(
+                  String.format(
+                      "SQL should fail because of no permission, but the error code is %d: %s",
+                      e.getErrorCode(), sql));
+            }
+            continue;
+          }
+          fail(String.format("SQL should fail because of no permission: %s", sql));
+        }
       }
     }
   }

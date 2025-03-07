@@ -48,7 +48,7 @@ public abstract class IMemoryBlock implements AutoCloseable {
    * @param sizeInByte the size of memory to be allocated, should be positive
    * @return the number of bytes actually allocated
    */
-  public abstract long forceAllocate(final long sizeInByte);
+  public abstract long forceAllocateWithoutLimitation(final long sizeInByte);
 
   /**
    * Allocate memory managed by this memory block
@@ -58,7 +58,8 @@ public abstract class IMemoryBlock implements AutoCloseable {
   public abstract boolean allocate(final long sizeInByte);
 
   /**
-   * Allocate memory managed by this memory block
+   * Allocate memory managed by this memory block. if the currently used ratio is already above
+   * maxRatio, the allocation will fail".
    *
    * @param sizeInByte the size of memory to be allocated, should be positive
    * @param maxRatio the maximum ratio of memory can be allocated
@@ -69,7 +70,7 @@ public abstract class IMemoryBlock implements AutoCloseable {
    * Allocate memory managed by this memory block until the required memory is available
    *
    * @param sizeInByte the size of memory to be allocated, should be positive
-   * @param retryIntervalInMillis the time interval to wait for memory to be available
+   * @param retryIntervalInMillis the time interval to wait after each allocation failure
    */
   public abstract boolean allocateUntilAvailable(final long sizeInByte, long retryIntervalInMillis)
       throws InterruptedException;
@@ -78,7 +79,7 @@ public abstract class IMemoryBlock implements AutoCloseable {
    * Try to release memory managed by this memory block
    *
    * @param sizeInByte the size of memory to be released, should be positive
-   * @return
+   * @return the used size after release, zero if the release fails
    */
   public abstract long release(final long sizeInByte);
 
@@ -130,9 +131,9 @@ public abstract class IMemoryBlock implements AutoCloseable {
     return memoryBlockType;
   }
 
-  public void print(int index) {
+  public void print(int indent) {
     StringBuilder sb = new StringBuilder();
-    for (int i = 0; i < index; i++) {
+    for (int i = 0; i < indent; i++) {
       sb.append("  ");
     }
     sb.append(this);
