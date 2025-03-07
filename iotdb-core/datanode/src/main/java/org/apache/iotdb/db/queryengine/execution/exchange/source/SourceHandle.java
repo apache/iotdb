@@ -108,7 +108,7 @@ public class SourceHandle implements ISourceHandle {
 
   /** max bytes this SourceHandle can reserve. */
   private long maxBytesCanReserve =
-      IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+      IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
 
   /**
    * this is set to true after calling isBlocked() at least once which indicates that this

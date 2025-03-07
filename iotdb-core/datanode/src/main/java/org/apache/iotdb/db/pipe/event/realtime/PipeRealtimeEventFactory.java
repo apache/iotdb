@@ -47,11 +47,10 @@ public class PipeRealtimeEventFactory {
       final Boolean isTableModel,
       final String databaseNameFromDataRegion,
       final TsFileResource resource,
-      final boolean isLoaded,
-      final boolean isGeneratedByPipe) {
+      final boolean isLoaded) {
     PipeTsFileInsertionEvent tsFileInsertionEvent =
         new PipeTsFileInsertionEvent(
-            isTableModel, databaseNameFromDataRegion, resource, isLoaded, isGeneratedByPipe, false);
+            isTableModel, databaseNameFromDataRegion, resource, isLoaded, false);
 
     // if using IoTV2, assign a replicateIndex for this event
     if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus

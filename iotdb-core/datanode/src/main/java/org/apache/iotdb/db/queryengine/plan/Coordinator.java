@@ -180,8 +180,9 @@ public class Coordinator {
     this.executor = getQueryExecutor();
     this.writeOperationExecutor = getWriteExecutor();
     this.scheduledExecutor = getScheduledExecutor();
+    this.accessControl = new AccessControlImpl(new ITableAuthCheckerImpl());
     this.statementRewrite =
-        new StatementRewriteFactory(LocalExecutionPlanner.getInstance().metadata)
+        new StatementRewriteFactory(LocalExecutionPlanner.getInstance().metadata, accessControl)
             .getStatementRewrite();
     this.logicalPlanOptimizers =
         new LogicalOptimizeFactory(
@@ -193,7 +194,6 @@ public class Coordinator {
                 new PlannerContext(
                     LocalExecutionPlanner.getInstance().metadata, new InternalTypeManager()))
             .getPlanOptimizers();
-    this.accessControl = new AccessControlImpl(new ITableAuthCheckerImpl());
     this.dataNodeLocationSupplier = DataNodeLocationSupplierFactory.getSupplier();
   }
 
