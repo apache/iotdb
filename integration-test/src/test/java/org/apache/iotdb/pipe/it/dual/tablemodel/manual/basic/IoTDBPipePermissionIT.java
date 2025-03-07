@@ -213,6 +213,14 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
     }
 
     // Will finally pass
-    TableModelUtils.assertCountData("test", "test", 100, receiverEnv);
+    TableModelUtils.assertCountData(
+        "test",
+        "test",
+        100,
+        receiverEnv,
+        o -> {
+          TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
+          TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
+        });
   }
 }
