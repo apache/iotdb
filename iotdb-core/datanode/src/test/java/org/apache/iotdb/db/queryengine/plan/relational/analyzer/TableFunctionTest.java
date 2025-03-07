@@ -75,7 +75,7 @@ public class TableFunctionTest {
                 .addScalarArgument("TIMECOL", "time")
                 .addScalarArgument("SIZE", 3600000L)
                 .addScalarArgument("SLIDE", 1800000L)
-                .addScalarArgument("START", 0L)
+                .addScalarArgument("ORIGIN", 0L)
                 .addTableArgument(
                     "DATA",
                     tableArgument()
@@ -286,7 +286,7 @@ public class TableFunctionTest {
                 .addScalarArgument("TIMECOL", "time")
                 .addScalarArgument("SIZE", 3600000L)
                 .addScalarArgument("SLIDE", 1800000L)
-                .addScalarArgument("START", 0L)
+                .addScalarArgument("ORIGIN", 0L)
                 .addTableArgument(
                     "DATA",
                     tableArgument().rowSemantics().passThroughSymbols("tag1", "tag2", "tag3"));
