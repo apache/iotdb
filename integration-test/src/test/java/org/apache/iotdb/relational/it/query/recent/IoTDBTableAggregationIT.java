@@ -39,8 +39,8 @@ import static org.apache.iotdb.relational.it.db.it.IoTDBMultiTAGsWithAttributesT
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBTableAggregationIT {
-  private static final String DATABASE_NAME = "test";
-  private static final String[] createSqls =
+  protected static final String DATABASE_NAME = "test";
+  protected static final String[] createSqls =
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,

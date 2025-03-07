@@ -108,11 +108,6 @@ public class AccessControlImpl implements AccessControl {
   }
 
   @Override
-  public void checkUserHasMaintainPrivilege(String userName) {
-    authChecker.checkGlobalPrivilege(userName, TableModelPrivilege.MAINTAIN);
-  }
-
-  @Override
   public void checkUserCanRunRelationalAuthorStatement(
       String userName, RelationalAuthorStatement statement) {
     AuthorRType type = statement.getAuthorType();
@@ -288,6 +283,7 @@ public class AccessControlImpl implements AccessControl {
           authChecker.checkGlobalPrivilegeGrantOption(
               userName, TableModelPrivilege.getTableModelType(privilegeType));
         }
+        break;
       default:
         break;
     }

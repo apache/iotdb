@@ -137,14 +137,6 @@ public interface AccessControl {
   void checkCanShowOrDescTable(String userName, QualifiedObjectName tableName);
 
   /**
-   * Check if user has global maintain privilege
-   *
-   * @param userName name of user
-   * @throws AccessDeniedException if not allowed
-   */
-  void checkUserHasMaintainPrivilege(String userName);
-
-  /**
    * Check if user can run relational author statement.
    *
    * @param userName name of user
