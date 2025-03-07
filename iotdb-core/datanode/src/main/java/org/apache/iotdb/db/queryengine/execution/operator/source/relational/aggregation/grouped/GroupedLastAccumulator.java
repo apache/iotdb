@@ -360,6 +360,7 @@ public class GroupedLastAccumulator implements GroupedAccumulator {
         length += Integer.BYTES + values.length;
         bytes = new byte[length];
         longToBytes(maxTimes.get(groupId), bytes, 0);
+        BytesUtils.intToBytes(values.length, bytes, Long.BYTES);
         System.arraycopy(values, 0, bytes, length - values.length, values.length);
         return bytes;
       case BOOLEAN:

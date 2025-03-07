@@ -17,36 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils.datastructure;
+package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-public class PageColumnAccessInfo {
-  // time -> (selectedTVList, selectedIndex)
-  private final int[][] indices;
-  private int count;
+import java.util.Optional;
 
-  public PageColumnAccessInfo(int maxNumberOfPointsInPage) {
-    this.indices = new int[maxNumberOfPointsInPage][];
-    for (int i = 0; i < maxNumberOfPointsInPage; i++) {
-      indices[i] = new int[2];
-    }
-    this.count = 0;
+public class ShowQueriesStatement extends ShowStatement {
+
+  public ShowQueriesStatement(
+      NodeLocation location,
+      String tableName,
+      Optional<Expression> where,
+      Optional<OrderBy> orderBy,
+      Optional<Offset> offset,
+      Optional<Node> limit) {
+    super(location, tableName, where, orderBy, offset, limit);
   }
 
-  public int[] get(int index) {
-    return indices[index];
-  }
-
-  public void add(int[] columnAccess) {
-    indices[count][0] = columnAccess[0];
-    indices[count][1] = columnAccess[1];
-    count++;
-  }
-
-  public int count() {
-    return count;
-  }
-
-  public void reset() {
-    count = 0;
+  @Override
+  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+    return visitor.visitShowQueriesStatement(this, context);
   }
 }

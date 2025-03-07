@@ -96,7 +96,7 @@ public class SimpleNestedLoopCrossJoinOperator extends AbstractOperator {
   @Override
   public TsBlock next() throws Exception {
     if (retainedTsBlock != null) {
-      getResultFromRetainedTsBlock();
+      return getResultFromRetainedTsBlock();
     }
     // start stopwatch
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);

@@ -24,12 +24,16 @@ import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Optional;
 
 public class CommonDescriptor {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(CommonDescriptor.class);
   private final CommonConfig config = new CommonConfig();
 
   private CommonDescriptor() {}
