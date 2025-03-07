@@ -17,28 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.memory;
+package org.apache.iotdb.commons.memory;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-
-/**
- * Manages memory of a data node. The memory is divided into two memory pools so that the memory for
- * read and for write can be isolated.
- */
-public class LocalMemoryManager {
-
-  private final MemoryPool queryPool;
-
-  public LocalMemoryManager() {
-    // TODO @spricoder: why this pool is only used for query data exchange
-    queryPool =
-        new MemoryPool(
-            "read",
-            IoTDBDescriptor.getInstance().getMemoryConfig().getDataExchangeMemoryManager(),
-            IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance());
-  }
-
-  public MemoryPool getQueryPool() {
-    return queryPool;
-  }
+public enum MemoryBlockType {
+  NONE,
+  // static memory
+  STATIC,
+  // dynamic memory
+  DYNAMIC,
 }
