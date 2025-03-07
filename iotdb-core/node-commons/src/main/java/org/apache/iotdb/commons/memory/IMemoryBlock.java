@@ -107,8 +107,10 @@ public abstract class IMemoryBlock implements AutoCloseable {
     this.totalMemorySizeInBytes = totalMemorySizeInBytes;
   }
 
-  public void resizeByRatio(double ratio) {
-    totalMemorySizeInBytes = (long) (totalMemorySizeInBytes * ratio);
+  public long resizeByRatio(double ratio) {
+    long before = this.totalMemorySizeInBytes;
+    this.totalMemorySizeInBytes = (long) (before * ratio);
+    return this.totalMemorySizeInBytes - before;
   }
 
   /** Get the maximum memory size in byte of this memory block */
