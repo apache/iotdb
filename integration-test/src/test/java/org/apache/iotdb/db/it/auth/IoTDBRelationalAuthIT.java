@@ -557,15 +557,16 @@ public class IoTDBRelationalAuthIT {
       TestUtils.assertResultSetEqual(resultSet, "User,", resultSetList);
       resultSet = adminStmt.executeQuery("List role");
       TestUtils.assertResultSetEqual(resultSet, "Role,", Collections.singleton("!@#$%^*()_+-=3,"));
-      adminStmt.execute("GRANT role \"!@#$%^*()_+-=3\" to  \"!@#$%^*()_+-=2\"");
+      adminStmt.execute("GRANT role \"!@#$%^*()_+-=3\" to  \"!@#$%^*()_+-=1\"");
+      adminStmt.execute("ALTER user \"!@#$%^*()_+-=1\" set password '!@#$%^*()_+-=\'");
     }
 
     try (Connection userCon =
             EnvFactory.getEnv()
-                .getConnection("!@#$%^*()_+-=2", "!@#$%^*()_+-=", BaseEnv.TABLE_SQL_DIALECT);
+                .getConnection("!@#$%^*()_+-=1", "!@#$%^*()_+-=", BaseEnv.TABLE_SQL_DIALECT);
         Statement userConStatement = userCon.createStatement()) {
       // List his role.
-      ResultSet set = userConStatement.executeQuery("List role of user \"!@#$%^*()_+-=2\"");
+      ResultSet set = userConStatement.executeQuery("List role of user \"!@#$%^*()_+-=1\"");
       TestUtils.assertResultSetEqual(set, "Role,", Collections.singleton("!@#$%^*()_+-=3,"));
     } catch (IoTDBSQLException e) {
       Assert.fail();
