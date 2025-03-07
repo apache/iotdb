@@ -613,7 +613,7 @@ dropRoleStatement
     ;
 
 alterUserStatement
-    : ALTER USER userName=identifier SET PASSWORD password=identifier
+    : ALTER USER userName=identifier SET PASSWORD password=string
     ;
 
 grantUserRoleStatement

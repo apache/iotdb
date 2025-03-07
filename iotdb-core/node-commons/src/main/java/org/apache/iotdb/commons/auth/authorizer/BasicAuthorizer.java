@@ -231,17 +231,11 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           TSStatusCode.ROLE_NOT_EXIST, String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
     }
     // the role may be deleted before it ts granted to the user, so a double check is necessary.
-    boolean success = userManager.grantRoleToUser(roleName, userName);
-    if (success) {
-      role = roleManager.getEntity(roleName);
-      if (role == null) {
-        throw new AuthException(
-            TSStatusCode.ROLE_NOT_EXIST, String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
-      }
-    } else {
+    userManager.grantRoleToUser(roleName, userName);
+    role = roleManager.getEntity(roleName);
+    if (role == null) {
       throw new AuthException(
-          TSStatusCode.USER_ALREADY_HAS_ROLE,
-          String.format("User %s already has role %s", userName, roleName));
+          TSStatusCode.ROLE_NOT_EXIST, String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
     }
   }
 
@@ -257,11 +251,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       throw new AuthException(
           TSStatusCode.ROLE_NOT_EXIST, String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
     }
-    if (!userManager.revokeRoleFromUser(roleName, userName)) {
-      throw new AuthException(
-          TSStatusCode.USER_NOT_HAS_ROLE,
-          String.format("User %s does not have role %s", userName, roleName));
-    }
+    userManager.revokeRoleFromUser(roleName, userName);
   }
 
   @Override
