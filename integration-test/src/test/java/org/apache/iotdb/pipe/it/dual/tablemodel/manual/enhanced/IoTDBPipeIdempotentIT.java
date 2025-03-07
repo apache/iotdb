@@ -176,6 +176,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.forwarding-pipe-requests", "false");
       extractorAttributes.put("extractor.capture.table", "true");
       extractorAttributes.put("extractor.capture.tree", "false");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);

@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public abstract class BasicAuthorizer implements IAuthorizer, IService {
@@ -111,6 +112,17 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     return user != null
         && password != null
         && AuthUtils.validatePassword(password, user.getPassword());
+  }
+
+  @Override
+  public String login4Pipe(final String username, final String password) {
+    final User user = userManager.getEntity(username);
+    return (user != null
+                && password != null
+                && AuthUtils.validatePassword(password, user.getPassword())
+            || Objects.isNull(password))
+        ? user.getPassword()
+        : null;
   }
 
   @Override
@@ -314,6 +326,9 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       case RELATIONAL:
         // check any scope privilege
         if (union.isForAny()) {
+          if (union.getPrivilegeType() == null) {
+            return role.checkAnyVisible();
+          }
           if (union.isGrantOption()) {
             return role.checkAnyScopePrivilegeGrantOption(union.getPrivilegeType());
           }
