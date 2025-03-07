@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixPipePattern;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.query.TsFileInsertionQueryDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInsertionScanDataContainer;
@@ -559,15 +560,12 @@ public class TsFileInsertionDataContainerTest {
       final int expectedCount) {
     PipeTsFileInsertionEvent tsFileInsertionEvent =
         new PipeTsFileInsertionEvent(
-            false,
-            "",
             new TsFileResource(tsFile),
             true,
             false,
             false,
             null,
             0,
-            null,
             null,
             null,
             Long.MIN_VALUE,
