@@ -22,7 +22,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.assertions;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -37,6 +39,10 @@ public class ExchangeNodeMatcher implements Matcher {
   public MatchResult detailMatches(
       PlanNode node, SessionInfo sessionInfo, Metadata metadata, SymbolAliases symbolAliases) {
     checkState(shapeMatches(node));
-    return MatchResult.match();
+    SymbolAliases.Builder builder = SymbolAliases.builder();
+    for (Symbol outputSymbolAlias : node.getOutputSymbols()) {
+      builder.put(outputSymbolAlias.getName(), new SymbolReference(outputSymbolAlias.getName()));
+    }
+    return MatchResult.match(symbolAliases.withNewAliases(builder.build()));
   }
 }

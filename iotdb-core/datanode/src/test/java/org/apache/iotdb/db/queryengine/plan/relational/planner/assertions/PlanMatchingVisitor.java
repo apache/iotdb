@@ -32,6 +32,7 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments.identity;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.NO_MATCH;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.match;
 
@@ -50,12 +51,11 @@ final class PlanMatchingVisitor extends PlanVisitor<MatchResult, PlanMatchPatter
   @Override
   public MatchResult visitTableExchange(ExchangeNode node, PlanMatchPattern pattern) {
     // When ExchangeNode support to get outputSymbols
-    /*return pattern.detailMatches(
-    node,
-    sessionInfo,
-    metadata,
-    new SymbolAliases().updateAssignments(identity(node.getOutputSymbols())));*/
-    return new MatchResult(true);
+    return pattern.detailMatches(
+        node,
+        sessionInfo,
+        metadata,
+        new SymbolAliases().updateAssignments(identity(node.getOutputSymbols())));
   }
 
   @Override

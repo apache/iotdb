@@ -309,7 +309,9 @@ public abstract class AbstractMergeSortJoinOperator extends AbstractOperator {
       if (cachedNextRightBlock != null) {
         addRightBlockWithMemoryReservation(cachedNextRightBlock);
         cachedNextRightBlock = null;
-        tryCacheNextRightTsBlock();
+        if (rightChild.isBlocked().isDone()) {
+          tryCacheNextRightTsBlock();
+        }
       } else {
         if (rightChild.hasNextWithTimer()) {
           TsBlock block = rightChild.nextWithTimer();
