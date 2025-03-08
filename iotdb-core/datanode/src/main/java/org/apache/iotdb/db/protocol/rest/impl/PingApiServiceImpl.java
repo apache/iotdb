@@ -20,7 +20,7 @@ package org.apache.iotdb.db.protocol.rest.impl;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.db.protocol.rest.PingApiService;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
-import org.apache.iotdb.db.service.RPCService;
+import org.apache.iotdb.db.service.ExternalRPCService;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import javax.ws.rs.core.Response;
@@ -32,7 +32,7 @@ public class PingApiServiceImpl extends PingApiService {
 
   @Override
   public Response tryPing(SecurityContext securityContext) {
-    if (RPCService.getInstance().getRPCServiceStatus().equals(ThriftService.STATUS_DOWN)) {
+    if (ExternalRPCService.getInstance().getRPCServiceStatus().equals(ThriftService.STATUS_DOWN)) {
       return Response.status(Response.Status.SERVICE_UNAVAILABLE)
           .entity(
               new ExecutionStatus()

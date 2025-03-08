@@ -66,6 +66,9 @@ public class AuthorityChecker {
 
   public static final TSStatus SUCCEED = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
+  public static final String ONLY_ADMIN_ALLOWED =
+      "No permissions for this operation, only root user is allowed";
+
   private static final String NO_PERMISSION_PROMOTION =
       "No permissions for this operation, please add privilege ";
 
@@ -316,6 +319,15 @@ public class AuthorityChecker {
 
   public static boolean checkRole(String username, String roleName) {
     return authorityFetcher.get().checkRole(username, roleName);
+  }
+
+  public static TSStatus checkSuperUserOrMaintain(String userName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MAINTAIN),
+        PrivilegeType.MAINTAIN);
   }
 
   public static void buildTSBlock(
