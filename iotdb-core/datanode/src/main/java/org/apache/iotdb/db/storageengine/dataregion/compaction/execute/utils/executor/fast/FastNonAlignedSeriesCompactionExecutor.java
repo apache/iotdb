@@ -36,6 +36,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
@@ -44,6 +45,7 @@ import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.utils.Pair;
@@ -65,6 +67,9 @@ public class FastNonAlignedSeriesCompactionExecutor extends SeriesCompactionExec
   // tsfile resource -> timeseries metadata <startOffset, endOffset>
   // used to get the chunk metadatas from tsfile directly according to timeseries metadata offset.
   private Map<TsFileResource, Pair<Long, Long>> timeseriesMetadataOffsetMap;
+
+  // the data type of the current series
+  private TSDataType dataType;
 
   // it is used to initialize the fileList when compacting a new series
   private final List<TsFileResource> sortResources;
@@ -104,6 +109,10 @@ public class FastNonAlignedSeriesCompactionExecutor extends SeriesCompactionExec
     // files that do not contain the current device have been filtered out as well.
     sortResources.forEach(x -> fileList.add(new FileElement(x)));
     hasStartMeasurement = false;
+  }
+
+  public void setType(TSDataType dataType) {
+    this.dataType = dataType;
   }
 
   @Override
@@ -155,10 +164,11 @@ public class FastNonAlignedSeriesCompactionExecutor extends SeriesCompactionExec
           removeFile(fileElement);
         }
       }
-
       for (int i = 0; i < iChunkMetadataList.size(); i++) {
         IChunkMetadata chunkMetadata = iChunkMetadataList.get(i);
-
+        if (dataType != null && chunkMetadata.getDataType() != dataType) {
+          chunkMetadata.setNewType(dataType);
+        }
         // add into queue
         chunkMetadataQueue.add(
             new ChunkMetadataElement(
@@ -193,8 +203,16 @@ public class FastNonAlignedSeriesCompactionExecutor extends SeriesCompactionExec
     chunkMetadataElement.chunk =
         readerCacheMap
             .get(chunkMetadataElement.fileElement.resource)
-            .readMemChunk((ChunkMetadata) chunkMetadataElement.chunkMetadata);
-
+            .readMemChunk((ChunkMetadata) chunkMetadataElement.chunkMetadata)
+            .rewrite(((ChunkMetadata) chunkMetadataElement.chunkMetadata).getNewType());
+    if (chunkMetadataElement.chunkMetadata.getNewType() != null) {
+      ChunkMetadata chunkMetadata = (ChunkMetadata) chunkMetadataElement.chunkMetadata;
+      chunkMetadata.setTsDataType(chunkMetadataElement.chunkMetadata.getNewType());
+      Statistics<?> statistics = Statistics.getStatsByType(chunkMetadata.getNewType());
+      statistics.mergeStatistics(chunkMetadataElement.chunk.getChunkStatistic());
+      chunkMetadata.setStatistics(statistics);
+      chunkMetadataElement.chunkMetadata = chunkMetadata;
+    }
     if (!hasStartMeasurement) {
       // for nonAligned sensors, only after getting chunkMetadatas can we create metadata to
       // start
