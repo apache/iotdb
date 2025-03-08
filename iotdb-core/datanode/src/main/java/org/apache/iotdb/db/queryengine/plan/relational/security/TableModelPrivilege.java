@@ -25,7 +25,6 @@ public enum TableModelPrivilege {
   // global privilege
   MANAGE_USER,
   MANAGE_ROLE,
-  MAINTAIN,
 
   // scope privilege
   CREATE,
@@ -41,8 +40,6 @@ public enum TableModelPrivilege {
         return PrivilegeType.MANAGE_ROLE;
       case MANAGE_USER:
         return PrivilegeType.MANAGE_USER;
-      case MAINTAIN:
-        return PrivilegeType.MAINTAIN;
       case CREATE:
         return PrivilegeType.CREATE;
       case DROP:
@@ -66,8 +63,6 @@ public enum TableModelPrivilege {
         return TableModelPrivilege.MANAGE_ROLE;
       case MANAGE_USER:
         return TableModelPrivilege.MANAGE_USER;
-      case MAINTAIN:
-        return TableModelPrivilege.MAINTAIN;
       case CREATE:
         return TableModelPrivilege.CREATE;
       case DROP:

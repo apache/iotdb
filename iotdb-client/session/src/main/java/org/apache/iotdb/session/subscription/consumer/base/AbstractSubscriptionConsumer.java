@@ -291,8 +291,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
     // close subscription providers
     providers.acquireWriteLock();
-    providers.closeProviders();
-    providers.releaseWriteLock();
+    try {
+      providers.closeProviders();
+    } finally {
+      providers.releaseWriteLock();
+    }
 
     isClosed.set(true);
 
