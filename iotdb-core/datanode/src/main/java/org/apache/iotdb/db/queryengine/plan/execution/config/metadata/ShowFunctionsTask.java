@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinTableFunction;
 import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
 import org.apache.iotdb.commons.udf.utils.TreeUDFUtils;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -151,6 +152,11 @@ public class ShowFunctionsTask implements IConfigTask {
         builder,
         TableBuiltinAggregationFunction.getBuiltInAggregateFunctionName(),
         BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_AGG_FUNC),
+        BINARY_MAP.get(FUNCTION_STATE_AVAILABLE));
+    appendFunctions(
+        builder,
+        TableBuiltinTableFunction.getBuiltInTableFunctionName(),
+        BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_TABLE_FUNC),
         BINARY_MAP.get(FUNCTION_STATE_AVAILABLE));
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowFunctionsHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));

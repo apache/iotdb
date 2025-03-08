@@ -220,7 +220,7 @@ public class StatementGeneratorTest {
             Tablet.ColumnCategory.FIELD);
     List<TsTableColumnCategory> columnCategories =
         tsfileColumnCategories.stream()
-            .map(TsTableColumnCategory::fromTsFileColumnType)
+            .map(TsTableColumnCategory::fromTsFileColumnCategory)
             .collect(Collectors.toList());
     TSInsertTabletReq req =
         new TSInsertTabletReq(

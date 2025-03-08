@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
+import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -375,6 +376,11 @@ public class TSBSMetadata implements Metadata {
   public DataPartition getDataPartitionWithUnclosedTimeRange(
       String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return DATA_PARTITION;
+  }
+
+  @Override
+  public TableFunction getTableFunction(String functionName) {
+    return null;
   }
 
   private static final DataPartition DATA_PARTITION =

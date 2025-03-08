@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySour
 import org.apache.iotdb.db.queryengine.plan.execution.memory.TableModelStatementMemorySourceContext;
 import org.apache.iotdb.db.queryengine.plan.execution.memory.TableModelStatementMemorySourceVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
@@ -62,6 +63,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 
 import com.google.common.collect.ArrayListMultimap;
@@ -182,6 +184,9 @@ public class Analysis implements IAnalysis {
   private final Map<NodeRef<Relation>, QualifiedName> relationNames = new LinkedHashMap<>();
 
   private final Set<NodeRef<Relation>> aliasedRelations = new LinkedHashSet<>();
+
+  private final Map<NodeRef<TableFunctionInvocation>, TableFunctionInvocationAnalysis>
+      tableFunctionAnalyses = new LinkedHashMap<>();
 
   private final Map<QualifiedObjectName, Map<Symbol, ColumnSchema>> tableColumnSchemas =
       new HashMap<>();
@@ -852,6 +857,15 @@ public class Analysis implements IAnalysis {
     } else {
       return dataPartition.getDataRegionReplicaSetWithTimeFilter(database, deviceId, timeFilter);
     }
+  }
+
+  public void setTableFunctionAnalysis(
+      TableFunctionInvocation node, TableFunctionInvocationAnalysis analysis) {
+    tableFunctionAnalyses.put(NodeRef.of(node), analysis);
+  }
+
+  public TableFunctionInvocationAnalysis getTableFunctionAnalysis(TableFunctionInvocation node) {
+    return tableFunctionAnalyses.get(NodeRef.of(node));
   }
 
   @Override

@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinTableFunction;
 import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.exception.load.LoadAnalyzeTableColumnDisorderException;
@@ -58,6 +59,7 @@ import org.apache.iotdb.udf.api.customizer.analysis.ScalarFunctionAnalysis;
 import org.apache.iotdb.udf.api.customizer.parameter.FunctionArguments;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
 import org.apache.iotdb.udf.api.relational.ScalarFunction;
+import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.BlobType;
@@ -797,6 +799,17 @@ public class TableMetadataImpl implements Metadata {
       String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return partitionFetcher.getDataPartitionWithUnclosedTimeRange(
         Collections.singletonMap(database, sgNameToQueryParamsMap));
+  }
+
+  @Override
+  public TableFunction getTableFunction(String functionName) {
+    if (TableBuiltinTableFunction.isBuiltInTableFunction(functionName)) {
+      return TableBuiltinTableFunction.getBuiltinTableFunction(functionName);
+    } else if (TableUDFUtils.isTableFunction(functionName)) {
+      return TableUDFUtils.getTableFunction(functionName);
+    } else {
+      throw new SemanticException("Unknown function: " + functionName);
+    }
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {
