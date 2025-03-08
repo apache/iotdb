@@ -1055,8 +1055,8 @@ public class PipeConsensusReceiver {
       // buffer for it.
       if (!tsFileWriter.isPresent()) {
         // We should synchronously find the idle writer to avoid concurrency issues.
+        lock.lock();
         try {
-          lock.lock();
           // We need to check tsFileWriter.isPresent() here. Since there may be both retry-sent
           // tsfile
           // events and real-time-sent tsfile events, causing the receiver's tsFileWriter load to

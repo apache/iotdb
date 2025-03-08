@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressInde
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
@@ -110,6 +111,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.extractor.IoTDBExtractor.getSkipIfNoPrivileges;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_ROOT;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
@@ -151,7 +153,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   private boolean shouldExtractInsertion;
   private boolean shouldExtractDeletion;
   private boolean shouldTransferModFile; // Whether to transfer mods
-
+  protected String userName;
+  protected boolean skipIfNoPrivileges = true;
   private boolean shouldTerminatePipeOnAllHistoricalEventsConsumed;
   private boolean isTerminateSignalSent = false;
 
@@ -405,9 +408,18 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
               || extractorModeValue.equalsIgnoreCase(EXTRACTOR_MODE_QUERY_VALUE);
     }
 
+    userName =
+        parameters.getStringByKeys(
+            PipeExtractorConstant.EXTRACTOR_IOTDB_USER_KEY,
+            PipeExtractorConstant.SOURCE_IOTDB_USER_KEY,
+            PipeExtractorConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
+            PipeExtractorConstant.SOURCE_IOTDB_USERNAME_KEY);
+
+    skipIfNoPrivileges = getSkipIfNoPrivileges(parameters);
+
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info(
-          "Pipe {}@{}: historical data extraction time range, start time {}({}), end time {}({}), sloppy pattern {}, sloppy time range {}, should transfer mod file {}, should terminate pipe on all historical events consumed {}",
+          "Pipe {}@{}: historical data extraction time range, start time {}({}), end time {}({}), sloppy pattern {}, sloppy time range {}, should transfer mod file {}, should terminate pipe on all historical events consumed {}, username: {}, skip if no privileges: {}",
           pipeName,
           dataRegionId,
           DateTimeUtils.convertLongToDate(historicalDataExtractionStartTime),
@@ -417,7 +429,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
           sloppyPattern,
           sloppyTimeRange,
           shouldTransferModFile,
-          shouldTerminatePipeOnAllHistoricalEventsConsumed);
+          shouldTerminatePipeOnAllHistoricalEventsConsumed,
+          userName,
+          skipIfNoPrivileges);
     }
   }
 
@@ -789,13 +803,14 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             resource,
             shouldTransferModFile,
             false,
-            false,
             true,
             pipeName,
             creationTime,
             pipeTaskMeta,
             treePattern,
             tablePattern,
+            userName,
+            skipIfNoPrivileges,
             historicalDataExtractionStartTime,
             historicalDataExtractionEndTime);
 
@@ -853,6 +868,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             pipeTaskMeta,
             treePattern,
             tablePattern,
+            userName,
+            skipIfNoPrivileges,
             false);
 
     if (sloppyPattern || isDbNameCoveredByPattern) {

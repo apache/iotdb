@@ -240,7 +240,8 @@ public class LocalExecutionPlanContext {
   }
 
   public long getMaxBytesOneHandleCanReserve() {
-    long maxBytesPerFI = IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
+    long maxBytesPerFI =
+        IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
     return exchangeSumNum == 0 ? maxBytesPerFI : maxBytesPerFI / exchangeSumNum;
   }
 

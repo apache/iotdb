@@ -25,7 +25,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
-import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
@@ -242,9 +241,8 @@ public class TableDeviceSchemaValidator {
                 .getSessionInfo(SessionManager.getInstance().getCurrSession()),
             "Create device or update device attribute for insert",
             LocalExecutionPlanner.getInstance().metadata,
-            context == null || context.getQueryType().equals(QueryType.WRITE)
-                ? config.getQueryTimeoutThreshold()
-                : context.getTimeOut(),
+            // Never timeout for write statement
+            Long.MAX_VALUE,
             false);
     if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new RuntimeException(

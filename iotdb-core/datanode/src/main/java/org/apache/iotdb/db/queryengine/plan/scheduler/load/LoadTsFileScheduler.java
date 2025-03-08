@@ -58,7 +58,6 @@ import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.StorageEngine;
-import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
@@ -97,6 +96,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
@@ -336,7 +336,7 @@ public class LoadTsFileScheduler implements IScheduler {
             fragmentId.genFragmentInstanceId(),
             null,
             queryContext.getQueryType(),
-            queryContext.getTimeOut(),
+            queryContext.getTimeOut() - (System.currentTimeMillis() - queryContext.getStartTime()),
             queryContext.getSession());
     instance.setExecutorAndHost(new StorageExecutor(replicaSet));
     Future<FragInstanceDispatchResult> dispatchResultFuture =
@@ -467,6 +467,7 @@ public class LoadTsFileScheduler implements IScheduler {
       final TRegionReplicaSet currentReplicaSet =
           partitionFetcher.fetcher.getRegionReplicaSet(regionId);
       if (!Objects.equals(replicaSet, currentReplicaSet)) {
+        LOGGER.warn("Region replica set changed from {} to {}", replicaSet, currentReplicaSet);
         throw new RegionReplicaSetChangedException(replicaSet, currentReplicaSet);
       }
     }
@@ -504,7 +505,8 @@ public class LoadTsFileScheduler implements IScheduler {
               fragmentId.genFragmentInstanceId(),
               null,
               queryContext.getQueryType(),
-              queryContext.getTimeOut(),
+              queryContext.getTimeOut()
+                  - (System.currentTimeMillis() - queryContext.getStartTime()),
               queryContext.getSession());
       instance.setExecutorAndHost(new StorageExecutor(node.getLocalRegionReplicaSet()));
       dispatcher.dispatchLocally(instance);
@@ -521,48 +523,51 @@ public class LoadTsFileScheduler implements IScheduler {
     }
 
     // add metrics
-    DataRegion dataRegion =
-        StorageEngine.getInstance()
-            .getDataRegion(
-                (DataRegionId)
-                    ConsensusGroupId.Factory.createFromTConsensusGroupId(
-                        node.getLocalRegionReplicaSet().getRegionId()));
-
-    dataRegion
-        .getNonSystemDatabaseName()
+    Optional.ofNullable(
+            StorageEngine.getInstance()
+                .getDataRegion(
+                    (DataRegionId)
+                        ConsensusGroupId.Factory.createFromTConsensusGroupId(
+                            node.getLocalRegionReplicaSet().getRegionId())))
         .ifPresent(
-            databaseName -> {
-              // Report load tsFile points to IoTDB flush metrics
-              MemTableFlushTask.recordFlushPointsMetricInternal(
-                  node.getWritePointCount(), databaseName, dataRegion.getDataRegionId());
+            dataRegion ->
+                dataRegion
+                    .getNonSystemDatabaseName()
+                    .ifPresent(
+                        databaseName -> {
+                          // Report load tsFile points to IoTDB flush metrics
+                          MemTableFlushTask.recordFlushPointsMetricInternal(
+                              node.getWritePointCount(),
+                              databaseName,
+                              dataRegion.getDataRegionId());
 
-              MetricService.getInstance()
-                  .count(
-                      node.getWritePointCount(),
-                      Metric.QUANTITY.toString(),
-                      MetricLevel.CORE,
-                      Tag.NAME.toString(),
-                      Metric.POINTS_IN.toString(),
-                      Tag.DATABASE.toString(),
-                      databaseName,
-                      Tag.REGION.toString(),
-                      dataRegion.getDataRegionId(),
-                      Tag.TYPE.toString(),
-                      Metric.LOAD_POINT_COUNT.toString());
-              MetricService.getInstance()
-                  .count(
-                      node.getWritePointCount(),
-                      Metric.LEADER_QUANTITY.toString(),
-                      MetricLevel.CORE,
-                      Tag.NAME.toString(),
-                      Metric.POINTS_IN.toString(),
-                      Tag.DATABASE.toString(),
-                      databaseName,
-                      Tag.REGION.toString(),
-                      dataRegion.getDataRegionId(),
-                      Tag.TYPE.toString(),
-                      Metric.LOAD_POINT_COUNT.toString());
-            });
+                          MetricService.getInstance()
+                              .count(
+                                  node.getWritePointCount(),
+                                  Metric.QUANTITY.toString(),
+                                  MetricLevel.CORE,
+                                  Tag.NAME.toString(),
+                                  Metric.POINTS_IN.toString(),
+                                  Tag.DATABASE.toString(),
+                                  databaseName,
+                                  Tag.REGION.toString(),
+                                  dataRegion.getDataRegionId(),
+                                  Tag.TYPE.toString(),
+                                  Metric.LOAD_POINT_COUNT.toString());
+                          MetricService.getInstance()
+                              .count(
+                                  node.getWritePointCount(),
+                                  Metric.LEADER_QUANTITY.toString(),
+                                  MetricLevel.CORE,
+                                  Tag.NAME.toString(),
+                                  Metric.POINTS_IN.toString(),
+                                  Tag.DATABASE.toString(),
+                                  databaseName,
+                                  Tag.REGION.toString(),
+                                  dataRegion.getDataRegionId(),
+                                  Tag.TYPE.toString(),
+                                  Metric.LOAD_POINT_COUNT.toString());
+                        }));
 
     return true;
   }

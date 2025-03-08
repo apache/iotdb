@@ -238,14 +238,9 @@ public class AuthorStatementTest {
     checkGrantPrivileges(
         true, Collections.singletonList(PrivilegeType.MANAGE_ROLE), "", false, false);
     checkGrantPrivileges(
-        false, Collections.singletonList(PrivilegeType.MAINTAIN), "", false, false);
-    checkGrantPrivileges(
         true, Arrays.asList(PrivilegeType.MANAGE_USER, PrivilegeType.MANAGE_ROLE), "", true, false);
     checkGrantPrivileges(
         true, Collections.singletonList(PrivilegeType.MANAGE_USER), "ANY", true, true);
-    // Illegal privileges combination.
-    checkGrantPrivileges(
-        true, Arrays.asList(PrivilegeType.MAINTAIN, PrivilegeType.SELECT), "", true, true);
 
     // Illegal privilege
     checkGrantPrivileges(
