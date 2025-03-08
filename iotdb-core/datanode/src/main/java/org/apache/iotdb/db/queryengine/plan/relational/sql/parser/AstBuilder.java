@@ -60,6 +60,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentTime;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
@@ -159,6 +160,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowModels;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowQueriesStatement;
@@ -195,6 +197,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
+import org.apache.iotdb.db.queryengine.plan.relational.type.ModelType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
@@ -2775,6 +2778,62 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitIntervalField(RelationalSqlParser.IntervalFieldContext ctx) {
     return super.visitIntervalField(ctx);
+  }
+
+  // ***************** AI *****************
+  @Override
+  public Node visitCreateModelStatement(RelationalSqlParser.CreateModelStatementContext ctx) {
+    String modelId = ctx.modelId.getText();
+    if (ctx.modelType().TIMER_XL() == null) {
+      throw new IllegalArgumentException("Currently we only support Timer_XL for model training");
+    }
+    CreateTraining createTraining = new CreateTraining(modelId, ModelType.TIMER_XL);
+    if (ctx.HYPERPARAMETERS() != null) {
+      Map<String, String> parameters = new HashMap<>();
+      for (RelationalSqlParser.HparamPairContext hparamPairContext : ctx.hparamPair()) {
+        parameters.put(
+            hparamPairContext.hparamKey.getText(), hparamPairContext.hyparamValue.getText());
+      }
+      createTraining.setParameters(parameters);
+    }
+
+    if (ctx.existingModelId != null) {
+      createTraining.setExistingModelId(ctx.existingModelId.getText());
+    }
+
+    if (ctx.trainingData().ALL() != null) {
+      createTraining.setUseAllData(true);
+    } else {
+      List<Table> targetTables = new ArrayList<>();
+      List<String> targetDbs = new ArrayList<>();
+      for (RelationalSqlParser.DataElementContext dataElementContext :
+          ctx.trainingData().dataElement()) {
+        if (dataElementContext.databaseElement() != null) {
+          targetDbs.add(
+              ((Identifier) visit(dataElementContext.databaseElement().database)).getValue());
+        } else {
+          targetTables.add(
+              new Table(getQualifiedName(dataElementContext.tableElement().qualifiedName())));
+        }
+      }
+
+      if (targetDbs.isEmpty() && targetTables.isEmpty()) {
+        throw new IllegalArgumentException(
+            "No training data is supported for model, please indicate database or table");
+      }
+      createTraining.setTargetDbs(targetDbs);
+      createTraining.setTargetTables(targetTables);
+    }
+    return createTraining;
+  }
+
+  @Override
+  public Node visitShowModelsStatement(RelationalSqlParser.ShowModelsStatementContext ctx) {
+    ShowModels showModels = new ShowModels();
+    if (ctx.modelId != null) {
+      showModels.setModelId(ctx.modelId.getText());
+    }
+    return showModels;
   }
 
   // ***************** arguments *****************

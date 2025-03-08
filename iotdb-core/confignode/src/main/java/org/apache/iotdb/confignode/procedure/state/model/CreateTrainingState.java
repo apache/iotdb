@@ -17,13 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.model;
+package org.apache.iotdb.confignode.procedure.state.model;
 
-public enum ModelStatus {
-  INACTIVE,
-  LOADING,
-  TRAINING,
-  ACTIVE,
-  DROPPING,
-  UNAVAILABLE
+public enum CreateTrainingState {
+  TRAINING
 }

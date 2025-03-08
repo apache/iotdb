@@ -23,8 +23,8 @@ import random
 import sys
 import threading
 
-from iotdb.ainode.constant import STD_LEVEL, AINODE_LOG_FILE_NAMES, AINODE_LOG_FILE_LEVELS
-from iotdb.ainode.util.decorator import singleton
+from ainode.core.constant import STD_LEVEL, AINODE_LOG_FILE_NAMES, AINODE_LOG_FILE_LEVELS
+from ainode.core.util.decorator import singleton
 
 
 class LoggerFilter(logging.Filter):

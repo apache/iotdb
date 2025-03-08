@@ -40,24 +40,29 @@ public class InferenceNode extends SingleChildProcessNode {
 
   // the column order in select item which reflects the real input order
   private final List<String> targetColumnNames;
+  private boolean generateTimeColumn = false;
 
   public InferenceNode(
       PlanNodeId id,
       PlanNode child,
       ModelInferenceDescriptor modelInferenceDescriptor,
+      boolean generateTimeColumn,
       List<String> targetColumnNames) {
     super(id, child);
     this.modelInferenceDescriptor = modelInferenceDescriptor;
     this.targetColumnNames = targetColumnNames;
+    this.generateTimeColumn = generateTimeColumn;
   }
 
   public InferenceNode(
       PlanNodeId id,
       ModelInferenceDescriptor modelInferenceDescriptor,
+      boolean generateTimeColumn,
       List<String> inputColumnNames) {
     super(id);
     this.modelInferenceDescriptor = modelInferenceDescriptor;
     this.targetColumnNames = inputColumnNames;
+    this.generateTimeColumn = generateTimeColumn;
   }
 
   public ModelInferenceDescriptor getModelInferenceDescriptor() {
@@ -68,6 +73,10 @@ public class InferenceNode extends SingleChildProcessNode {
     return targetColumnNames;
   }
 
+  public boolean isGenerateTimeColumn() {
+    return generateTimeColumn;
+  }
+
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitInference(this, context);
@@ -75,7 +84,8 @@ public class InferenceNode extends SingleChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new InferenceNode(getPlanNodeId(), child, modelInferenceDescriptor, targetColumnNames);
+    return new InferenceNode(
+        getPlanNodeId(), child, modelInferenceDescriptor, generateTimeColumn, targetColumnNames);
   }
 
   @Override
@@ -87,6 +97,7 @@ public class InferenceNode extends SingleChildProcessNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.INFERENCE.serialize(byteBuffer);
     modelInferenceDescriptor.serialize(byteBuffer);
+    ReadWriteIOUtils.write(generateTimeColumn, byteBuffer);
     ReadWriteIOUtils.writeStringList(targetColumnNames, byteBuffer);
   }
 
@@ -94,15 +105,18 @@ public class InferenceNode extends SingleChildProcessNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.INFERENCE.serialize(stream);
     modelInferenceDescriptor.serialize(stream);
+    ReadWriteIOUtils.write(generateTimeColumn, stream);
     ReadWriteIOUtils.writeStringList(targetColumnNames, stream);
   }
 
   public static InferenceNode deserialize(ByteBuffer buffer) {
     ModelInferenceDescriptor modelInferenceDescriptor =
         ModelInferenceDescriptor.deserialize(buffer);
+    boolean generateTimeColumn = ReadWriteIOUtils.readBool(buffer);
     List<String> inputColumnNames = ReadWriteIOUtils.readStringList(buffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new InferenceNode(planNodeId, modelInferenceDescriptor, inputColumnNames);
+    return new InferenceNode(
+        planNodeId, modelInferenceDescriptor, generateTimeColumn, inputColumnNames);
   }
 
   @Override

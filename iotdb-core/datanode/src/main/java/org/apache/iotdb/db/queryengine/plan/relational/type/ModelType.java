@@ -16,14 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.queryengine.plan.relational.type;
 
-package org.apache.iotdb.commons.model;
-
-public enum ModelStatus {
-  INACTIVE,
-  LOADING,
-  TRAINING,
-  ACTIVE,
-  DROPPING,
-  UNAVAILABLE
+public enum ModelType {
+  USER_DEFINED,
+  TIMER_XL,
+  TIMER
 }

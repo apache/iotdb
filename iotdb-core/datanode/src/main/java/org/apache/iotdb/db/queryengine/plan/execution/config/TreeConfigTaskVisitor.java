@@ -58,9 +58,9 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTTLTas
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.UnSetTTLTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.CreateModelTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.DropModelTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowModelsTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.CreateModelTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.DropModelTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowModelsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ExtendRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
