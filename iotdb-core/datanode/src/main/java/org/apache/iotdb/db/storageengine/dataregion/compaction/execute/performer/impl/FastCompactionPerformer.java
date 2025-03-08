@@ -32,6 +32,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionPerformerSubTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionSeriesContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchemaCollector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
@@ -236,9 +237,18 @@ public class FastCompactionPerformer
     // offset later. Here we don't need to deserialize chunk metadata, we can deserialize them and
     // get their schema later.
     Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
-        deviceIterator.getTimeseriesMetadataOffsetOfCurrentDevice();
+        new LinkedHashMap<>();
 
-    Map<String, TSDataType> measurementDataTypeMap = deviceIterator.getDataTypeOfCurrentDevice();
+    Map<String, TSDataType> measurementDataTypeMap = new LinkedHashMap<>();
+
+    Map<String, CompactionSeriesContext> compactionSeriesContextMap =
+        deviceIterator.getCompactionSeriesContextOfCurrentDevice();
+
+    for (Map.Entry<String, CompactionSeriesContext> entry : compactionSeriesContextMap.entrySet()) {
+      timeseriesMetadataOffsetMap.put(
+          entry.getKey(), entry.getValue().getFileTimeseriesMetdataOffsetMap());
+      measurementDataTypeMap.put(entry.getKey(), entry.getValue().getFinalType());
+    }
 
     List<String> allMeasurements = new ArrayList<>(timeseriesMetadataOffsetMap.keySet());
     allMeasurements.sort((String::compareTo));
@@ -263,9 +273,8 @@ public class FastCompactionPerformer
           CompactionTaskManager.getInstance()
               .submitSubTask(
                   new FastCompactionPerformerSubTask(
+                      compactionSeriesContextMap,
                       fastCrossCompactionWriter,
-                      timeseriesMetadataOffsetMap,
-                      measurementDataTypeMap,
                       readerCacheMap,
                       modificationCache,
                       sortedSourceFiles,

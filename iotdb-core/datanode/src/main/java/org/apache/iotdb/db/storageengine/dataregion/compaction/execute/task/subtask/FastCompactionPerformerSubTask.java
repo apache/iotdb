@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionSeriesContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.BatchedFastAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.FastAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.FastNonAlignedSeriesCompactionExecutor;
@@ -31,7 +32,6 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -76,7 +76,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
 
   private List<IMeasurementSchema> measurementSchemas;
 
-  private Map<String, TSDataType> dataTypeMap;
+  private Map<String, CompactionSeriesContext> compactionSeriesContextMap;
 
   /** Used for nonAligned timeseries. */
   @SuppressWarnings("squid:S107")
@@ -105,9 +105,8 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
   }
 
   public FastCompactionPerformerSubTask(
+      Map<String, CompactionSeriesContext> compactionSeriesContextMap,
       AbstractCompactionWriter compactionWriter,
-      Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
-      Map<String, TSDataType> dataTypeMap,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
       Map<String, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
           modificationCacheMap,
@@ -118,8 +117,8 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
       int subTaskId) {
     this.compactionWriter = compactionWriter;
     this.subTaskId = subTaskId;
-    this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
-    this.dataTypeMap = dataTypeMap;
+    this.compactionSeriesContextMap = compactionSeriesContextMap;
+    this.timeseriesMetadataOffsetMap = null;
     this.isAligned = false;
     this.deviceId = deviceId;
     this.readerCacheMap = readerCacheMap;
@@ -169,8 +168,10 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
               subTaskId,
               summary);
       for (String measurement : measurements) {
-        seriesCompactionExecutor.setNewMeasurement(timeseriesMetadataOffsetMap.get(measurement));
-        seriesCompactionExecutor.setType(dataTypeMap.get(measurement));
+        seriesCompactionExecutor.setNewMeasurement(
+            compactionSeriesContextMap.get(measurement).getFileTimeseriesMetdataOffsetMap());
+        seriesCompactionExecutor.setType(
+            compactionSeriesContextMap.get(measurement).getFinalType());
         seriesCompactionExecutor.execute();
       }
     } else {

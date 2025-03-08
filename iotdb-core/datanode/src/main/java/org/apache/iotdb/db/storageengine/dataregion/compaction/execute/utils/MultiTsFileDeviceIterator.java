@@ -326,7 +326,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * @throws IOException if io errors occurred
    */
   public Map<String, TSDataType> getDataTypeOfCurrentDevice() throws IOException {
-    Map<String, TSDataType> dataTypeMap = new HashMap<>();
+    Map<String, TSDataType> measurementNameDataTypeMap = new HashMap<>();
     for (TsFileResource resource : tsFileResourcesSortedByDesc) {
       if (!deviceIteratorMap.containsKey(resource)
           || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
@@ -344,10 +344,46 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
               .entrySet()) {
         String measurementId = entrySet.getKey();
         TSDataType dataType = entrySet.getValue().left.getTsDataType();
-        dataTypeMap.putIfAbsent(measurementId, dataType);
+        measurementNameDataTypeMap.putIfAbsent(measurementId, dataType);
       }
     }
-    return dataTypeMap;
+    return measurementNameDataTypeMap;
+  }
+
+  public Map<String, CompactionSeriesContext> getCompactionSeriesContextOfCurrentDevice()
+      throws IOException {
+    Map<String, CompactionSeriesContext> compactionSeriesContextMap = new HashMap<>();
+    for (TsFileResource resource : tsFileResourcesSortedByDesc) {
+      if (!deviceIteratorMap.containsKey(resource)
+          || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
+        // if this tsfile has no more device or next device is not equals to the current device,
+        // which means this tsfile does not contain the current device, then skip it.
+        continue;
+      }
+      TsFileSequenceReader reader = readerMap.get(resource);
+      for (Map.Entry<String, Pair<TimeseriesMetadata, Pair<Long, Long>>> entrySet :
+          ((CompactionTsFileReader) reader)
+              .getTimeseriesMetadataAndOffsetByDevice(
+                  deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice(),
+                  Collections.emptySet(),
+                  false)
+              .entrySet()) {
+        String measurementId = entrySet.getKey();
+        TimeseriesMetadata timeseriesMetadata = entrySet.getValue().left;
+        Pair<Long, Long> offset = entrySet.getValue().right;
+        TSDataType dataType = entrySet.getValue().left.getTsDataType();
+        if (compactionSeriesContextMap.get(measurementId) != null
+            && compactionSeriesContextMap.get(measurementId).getFinalType() != null
+            && !MetadataUtils.canAlter(
+                dataType, compactionSeriesContextMap.get(measurementId).getFinalType())) {
+          continue;
+        }
+        compactionSeriesContextMap.putIfAbsent(measurementId, new CompactionSeriesContext());
+        compactionSeriesContextMap.get(measurementId).put(resource, entrySet.getValue().right);
+        compactionSeriesContextMap.get(measurementId).setFinalTypeIfAbsent(dataType);
+      }
+    }
+    return compactionSeriesContextMap;
   }
 
   /**
