@@ -204,7 +204,7 @@ public class AINodeBasicIT {
 
       try (ResultSet resultSet = statement.executeQuery(sql2)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        checkHeader(resultSetMetaData, "output0,output1,output2");
+        checkHeader(resultSetMetaData, "Time,output0,output1,output2");
         int count = 0;
         while (resultSet.next()) {
           float s2 = resultSet.getFloat(2);
@@ -221,7 +221,7 @@ public class AINodeBasicIT {
 
       try (ResultSet resultSet = statement.executeQuery(sql3)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        checkHeader(resultSetMetaData, "output0,output1,output2");
+        checkHeader(resultSetMetaData, "Time,output0,output1,output2");
         int count = 0;
         while (resultSet.next()) {
           count++;
