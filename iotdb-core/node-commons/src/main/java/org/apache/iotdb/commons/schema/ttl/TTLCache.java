@@ -290,6 +290,9 @@ public class TTLCache {
     }
 
     public CacheNode getChild(String name) {
+      if (name.startsWith("root.")) {
+        name = name.substring("root.".length());
+      }
       return children.get(name);
     }
 
