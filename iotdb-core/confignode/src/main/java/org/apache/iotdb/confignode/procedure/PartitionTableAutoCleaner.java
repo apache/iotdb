@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import static org.apache.iotdb.confignode.manager.partition.PartitionManager.CONSENSUS_WRITE_ERROR;
 
@@ -54,13 +55,10 @@ public class PartitionTableAutoCleaner<Env> extends InternalProcedure<Env> {
   @Override
   protected void periodicExecute(Env env) {
     List<String> databases = configManager.getClusterSchemaManager().getDatabaseNames();
-    Map<String, Long> databaseTTLMap =
-        configManager.getClusterSchemaManager().getTTLInfoForUpgrading();
+    Map<String, Long> databaseTTLMap = new TreeMap<>();
     for (String database : databases) {
-      long subTreeMaxTTL = configManager.getTTLManager().getDatabaseMaxTTL(database);
-      databaseTTLMap.put(
-          database, Math.max(subTreeMaxTTL, databaseTTLMap.getOrDefault(database, -1L)));
-      long databaseTTL = databaseTTLMap.get(database);
+      long databaseTTL = configManager.getTTLManager().getDatabaseMaxTTL(database);
+      databaseTTLMap.put(database, databaseTTL);
       if (!configManager.getPartitionManager().isDatabaseExist(database)
           || databaseTTL < 0
           || databaseTTL == Long.MAX_VALUE) {
