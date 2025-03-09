@@ -68,6 +68,16 @@ public class LoadTsFileStatement extends Statement {
   private final List<TsFileResource> resources;
   private final List<Long> writePointCountList;
 
+  public String getOriginClusterId() {
+    return originClusterId;
+  }
+
+  public void setOriginClusterId(String originClusterId) {
+    this.originClusterId = originClusterId;
+  }
+
+  private String originClusterId;
+
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
     this.file = new File(filePath);
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();

@@ -79,6 +79,8 @@ public abstract class EnrichedEvent implements Event {
   protected String userName;
   protected boolean skipIfNoPrivileges;
 
+  // protected final String originClusterId;
+
   protected EnrichedEvent(
       final String pipeName,
       final long creationTime,
@@ -101,6 +103,7 @@ public abstract class EnrichedEvent implements Event {
     this.skipIfNoPrivileges = skipIfNoPrivileges;
     this.startTime = startTime;
     this.endTime = endTime;
+    // this.originClusterId = originClusterId;
 
     isPatternParsed =
         (treePattern == null || treePattern.isRoot())

@@ -70,7 +70,8 @@ public class TsFileEpochManager {
         event,
         epoch,
         resource.getDevices().stream()
-            .collect(Collectors.toMap(Functions.identity(), device -> EMPTY_MEASUREMENT_ARRAY)));
+            .collect(Collectors.toMap(Functions.identity(), device -> EMPTY_MEASUREMENT_ARRAY)),
+        resource.getOriginClusterId());
   }
 
   public PipeRealtimeEvent bindPipeInsertNodeTabletInsertionEvent(
@@ -83,7 +84,8 @@ public class TsFileEpochManager {
         epoch,
         node instanceof InsertRowsNode
             ? getDevice2MeasurementsMapFromInsertRowsNode((InsertRowsNode) node)
-            : Collections.singletonMap(node.getDeviceID(), node.getMeasurements()));
+            : Collections.singletonMap(node.getDeviceID(), node.getMeasurements()),
+        node.getOriginClusterId());
   }
 
   private Map<IDeviceID, String[]> getDevice2MeasurementsMapFromInsertRowsNode(

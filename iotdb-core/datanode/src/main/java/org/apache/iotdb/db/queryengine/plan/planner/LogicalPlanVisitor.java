@@ -491,6 +491,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             insertRowStatement.getValues(),
             insertRowStatement.isNeedInferType());
     insertNode.setFailedMeasurementNumber(insertRowStatement.getFailedMeasurementNumber());
+    insertNode.setOriginClusterId(insertRowStatement.getOriginClusterId());
     return insertNode;
   }
 

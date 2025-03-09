@@ -656,7 +656,7 @@ public class PipeConsensusReceiver {
         StorageEngine.getInstance().getDataRegion(((DataRegionId) consensusGroupId));
     if (region != null) {
       TsFileResource resource = generateTsFileResource(filePath, progressIndex);
-      region.loadNewTsFile(resource, true, false);
+      region.loadNewTsFile(resource, true, false, null);
     } else {
       // Data region is null indicates that dr has been removed or migrated. In those cases, there
       // is no need to replicate data. we just return success to avoid leader keeping retry

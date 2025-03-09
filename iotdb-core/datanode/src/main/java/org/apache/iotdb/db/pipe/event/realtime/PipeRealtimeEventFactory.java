@@ -117,7 +117,7 @@ public class PipeRealtimeEventFactory {
   public static PipeRealtimeEvent createRealtimeEvent(
       final String dataRegionId, final boolean shouldPrintMessage) {
     return new PipeRealtimeEvent(
-        new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null);
+        new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null, null);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(
@@ -137,11 +137,11 @@ public class PipeRealtimeEventFactory {
           deleteDataNodeEvent);
     }
 
-    return new PipeRealtimeEvent(deleteDataNodeEvent, null, null);
+    return new PipeRealtimeEvent(deleteDataNodeEvent, null, null, null);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(final ProgressReportEvent event) {
-    return new PipeRealtimeEvent(event, null, null);
+    return new PipeRealtimeEvent(event, null, null, null);
   }
 
   private PipeRealtimeEventFactory() {

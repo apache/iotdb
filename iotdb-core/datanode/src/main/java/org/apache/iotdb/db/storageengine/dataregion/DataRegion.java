@@ -2947,7 +2947,8 @@ public class DataRegion implements IDataRegionForQuery {
   public void loadNewTsFile(
       final TsFileResource newTsFileResource,
       final boolean deleteOriginFile,
-      final boolean isGeneratedByPipe)
+      final boolean isGeneratedByPipe,
+      final String originClusterId)
       throws LoadFileException {
     final File tsfileToBeInserted = newTsFileResource.getTsFile();
     final long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
@@ -2980,7 +2981,8 @@ public class DataRegion implements IDataRegionForQuery {
           newTsFileResource,
           newFilePartitionId,
           deleteOriginFile,
-          isGeneratedByPipe);
+          isGeneratedByPipe,
+          originClusterId);
 
       FileMetrics.getInstance()
           .addTsFile(
@@ -3048,7 +3050,8 @@ public class DataRegion implements IDataRegionForQuery {
       final TsFileResource tsFileResource,
       final long filePartitionId,
       final boolean deleteOriginFile,
-      boolean isGeneratedByPipe)
+      boolean isGeneratedByPipe,
+      final String originClusterId)
       throws LoadFileException, DiskSpaceInsufficientException {
     final File targetFile =
         fsFactory.getFile(

@@ -84,16 +84,19 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       internalServiceClientManager;
   private final ExecutorService executor;
   private final boolean isGeneratedByPipe;
+  private final String originClusterId;
 
   public LoadTsFileDispatcherImpl(
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager,
-      boolean isGeneratedByPipe) {
+      boolean isGeneratedByPipe,
+      String originClusterId) {
     this.internalServiceClientManager = internalServiceClientManager;
     this.localhostIpAddr = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
     this.localhostInternalPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
     this.executor =
         IoTDBThreadPoolFactory.newCachedThreadPool(LoadTsFileDispatcherImpl.class.getName());
     this.isGeneratedByPipe = isGeneratedByPipe;
+    this.originClusterId = originClusterId;
   }
 
   public void setUuid(String uuid) {
@@ -176,7 +179,8 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
             .loadNewTsFile(
                 tsFileResource,
                 ((LoadSingleTsFileNode) planNode).isDeleteAfterLoad(),
-                isGeneratedByPipe);
+                isGeneratedByPipe,
+                originClusterId);
       } catch (LoadFileException e) {
         LOGGER.warn("Load TsFile Node {} error.", planNode, e);
         TSStatus resultStatus = new TSStatus();

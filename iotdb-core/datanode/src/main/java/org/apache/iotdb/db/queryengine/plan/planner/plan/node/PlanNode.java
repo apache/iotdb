@@ -50,6 +50,7 @@ public abstract class PlanNode implements IConsensusRequest {
   protected PlanNodeId id;
 
   protected boolean isGeneratedByPipe = false;
+  protected String originClusterId = null;
 
   protected PlanNode() {}
 
@@ -72,6 +73,14 @@ public abstract class PlanNode implements IConsensusRequest {
 
   public void markAsGeneratedByPipe() {
     isGeneratedByPipe = true;
+  }
+
+  public String getOriginClusterId() {
+    return originClusterId;
+  }
+
+  public void setOriginClusterId(String originClusterId) {
+    this.originClusterId = originClusterId;
   }
 
   public abstract List<PlanNode> getChildren();

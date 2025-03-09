@@ -74,6 +74,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected String username = CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
   protected String password = CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
 
+  protected String clusterIdFromHandshakeRequest;
+
   private static final boolean IS_FSYNC_ENABLED =
       PipeConfig.getInstance().getPipeFileReceiverFsyncEnabled();
   private File writingFile;
@@ -187,7 +189,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
         getSenderHost(),
         getSenderPort(),
         newReceiverDir.getPath());
-    return new TPipeTransferResp(RpcUtils.SUCCESS_STATUS);
+    return new TPipeTransferResp(RpcUtils.SUCCESS_STATUS).setClusterId(getClusterId());
   }
 
   protected abstract String getReceiverFileBaseDir() throws Exception;
@@ -211,7 +213,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     }
 
     // Reject to handshake if the request does not contain sender's clusterId.
-    final String clusterIdFromHandshakeRequest =
+    clusterIdFromHandshakeRequest =
         req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID);
     if (clusterIdFromHandshakeRequest == null) {
       final TSStatus status =

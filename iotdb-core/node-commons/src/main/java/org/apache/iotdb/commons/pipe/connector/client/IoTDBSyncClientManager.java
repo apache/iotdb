@@ -249,10 +249,14 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       } else {
         clientAndStatus.setRight(true);
         client.setTimeout(CONNECTION_TIMEOUT_MS.get());
+        if (resp.isSetClusterId()) {
+          client.setClusterId(resp.getClusterId());
+        }
         LOGGER.info(
-            "Handshake success. Target server ip: {}, port: {}",
+            "Handshake success. Target server ip: {}, port: {}, clusterId:{}",
             client.getIpAddress(),
-            client.getPort());
+            client.getPort(),
+            client.getClusterId());
       }
     } catch (Exception e) {
       LOGGER.warn(

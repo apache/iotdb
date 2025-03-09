@@ -202,6 +202,16 @@ public class TsFileResource implements PersistentResource {
   /** used to prevent circular replication in Pipe */
   private boolean isGeneratedByPipe = false;
 
+  public String getOriginClusterId() {
+    return originClusterId;
+  }
+
+  public void setOriginClusterId(String originClusterId) {
+    this.originClusterId = originClusterId;
+  }
+
+  private String originClusterId;
+
   private InsertionCompactionCandidateStatus insertionCompactionCandidateStatus =
       InsertionCompactionCandidateStatus.NOT_CHECKED;
 
@@ -308,6 +318,9 @@ public class TsFileResource implements PersistentResource {
 
     ReadWriteIOUtils.write(isGeneratedByPipeConsensus, outputStream);
     ReadWriteIOUtils.write(isGeneratedByPipe, outputStream);
+    if (originClusterId != null) {
+      ReadWriteIOUtils.write(originClusterId, outputStream);
+    }
   }
 
   /** deserialize from disk */
@@ -343,6 +356,9 @@ public class TsFileResource implements PersistentResource {
       if (inputStream.available() > 0) {
         isGeneratedByPipeConsensus = ReadWriteIOUtils.readBoolean(inputStream);
         isGeneratedByPipe = ReadWriteIOUtils.readBoolean(inputStream);
+      }
+      if (inputStream.available() > 0) {
+        originClusterId = ReadWriteIOUtils.readString(inputStream);
       }
     }
   }

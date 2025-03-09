@@ -440,6 +440,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TPipeTransferResp handleTransferTabletInsertNode(
       final PipeTransferTabletInsertNodeReq req) {
     final InsertBaseStatement statement = req.constructStatement();
+    statement.setOriginClusterId(clusterIdFromHandshakeRequest);
     return new TPipeTransferResp(
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
@@ -448,6 +449,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TPipeTransferResp handleTransferTabletBinary(final PipeTransferTabletBinaryReq req) {
     final InsertBaseStatement statement = req.constructStatement();
+    statement.setOriginClusterId(clusterIdFromHandshakeRequest);
     return new TPipeTransferResp(
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
@@ -456,6 +458,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TPipeTransferResp handleTransferTabletRaw(final PipeTransferTabletRawReq req) {
     final InsertTabletStatement statement = req.constructStatement();
+    statement.setOriginClusterId(clusterIdFromHandshakeRequest);
     return new TPipeTransferResp(
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
@@ -596,6 +599,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     statement.setVerifySchema(validateTsFile.get());
     statement.setAutoCreateDatabase(false);
     statement.setDatabase(dataBaseName);
+    statement.setOriginClusterId(clusterIdFromHandshakeRequest);
 
     return executeStatementAndClassifyExceptions(statement);
   }
@@ -745,6 +749,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
    * message field.
    */
   private TSStatus executeStatementAndAddRedirectInfo(final InsertBaseStatement statement) {
+    statement.setOriginClusterId(clusterIdFromHandshakeRequest);
     final TSStatus result = executeStatementAndClassifyExceptions(statement);
 
     if (result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
