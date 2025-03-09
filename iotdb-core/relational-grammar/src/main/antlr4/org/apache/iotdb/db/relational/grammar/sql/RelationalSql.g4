@@ -710,7 +710,7 @@ revokeGrantOpt
 // ------------------------------------------- AI ---------------------------------------------------------
 
 createModelStatement
-    : CREATE MODEL modelType modelId=identifier (WITH HYPERPARAMETERS '(' hparamPair (',' hparamPair)* ')')? (FROM MODEL existingModelId=string)? ON DATASET '(' trainingData ')'
+    : CREATE MODEL modelType modelId=identifier (WITH HYPERPARAMETERS '(' hparamPair (',' hparamPair)* ')')? (FROM MODEL existingModelId=identifier)? ON DATASET '(' trainingData ')'
     ;
 
 trainingData

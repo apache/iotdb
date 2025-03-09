@@ -3150,6 +3150,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       req.setParameters(createTraining.getParameters());
       req.setTargetDbs(createTraining.getTargetDbs());
       req.setUseAllData(createTraining.isUseAllData());
+      req.setExistingModelId(createTraining.getExistingModelId());
       req.setTargetTables(
           createTraining.getTargetTables().stream()
               .map(table -> table.getName().toString())

@@ -60,6 +60,7 @@ public class CreateTrainingProcedure extends AbstractNodeProcedure<CreateTrainin
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateTrainingProcedure.class);
   private static final int RETRY_THRESHOLD = 0;
   private String modelId;
+  private String existingModelId = null;
   private String curDatabase;
   private List<String> targetTables;
   private List<String> targetDbs;
@@ -71,12 +72,14 @@ public class CreateTrainingProcedure extends AbstractNodeProcedure<CreateTrainin
 
   public CreateTrainingProcedure(
       String modelId,
+      String existingModelId,
       String curDatabase,
       List<String> targetTables,
       List<String> targetDbs,
       Map<String, String> parameters,
       boolean useAllData) {
     this.modelId = modelId;
+    this.existingModelId = existingModelId;
     this.curDatabase = curDatabase;
     this.targetTables = targetTables;
     this.targetDbs = targetDbs;
@@ -96,9 +99,9 @@ public class CreateTrainingProcedure extends AbstractNodeProcedure<CreateTrainin
       trainingReq.setModelId(modelId);
       trainingReq.setModelType((byte) ModelType.USER_DEFINED.ordinal());
 
-      //            if (createTraining.getExistingModelId() != null) {
-      //                trainingReq.setExistingModelId(createTraining.getExistingModelId());
-      //            }
+      if (existingModelId != null) {
+        trainingReq.setExistingModelId(existingModelId);
+      }
 
       if (!parameters.isEmpty()) {
         trainingReq.setParameters(parameters);

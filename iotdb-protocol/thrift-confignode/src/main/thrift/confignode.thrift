@@ -1051,6 +1051,7 @@ struct TCreateTrainingReq {
     4: optional list<string> targetDbs
     5: optional bool useAllData
     6: optional map<string, string> parameters
+    7: optional string existingModelId
 }
 
 // ====================================================

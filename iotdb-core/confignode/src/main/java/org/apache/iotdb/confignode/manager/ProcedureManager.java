@@ -1291,6 +1291,7 @@ public class ProcedureManager {
         executor.submitProcedure(
             new CreateTrainingProcedure(
                 req.modelId,
+                req.existingModelId,
                 req.curDatabase,
                 req.isSetTargetTables() ? req.getTargetTables() : Collections.emptyList(),
                 req.isSetTargetDbs() ? req.targetDbs : Collections.emptyList(),
