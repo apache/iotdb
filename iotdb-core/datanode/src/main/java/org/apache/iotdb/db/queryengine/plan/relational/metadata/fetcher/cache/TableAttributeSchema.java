@@ -77,7 +77,7 @@ public class TableAttributeSchema implements IDeviceSchema {
     final Binary previousValue = attributeMap.remove(attribute);
     return Objects.nonNull(previousValue)
         ? (int)
-            -(RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+            (RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
                 + UpdateDetailContainer.sizeOf(previousValue))
         : 0;
   }
@@ -86,8 +86,10 @@ public class TableAttributeSchema implements IDeviceSchema {
     return attributeMap;
   }
 
+  @Override
   public int estimateSize() {
-    return (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY * attributeMap.size()
+    return INSTANCE_SIZE
+        + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY * attributeMap.size()
         + attributeMap.values().stream()
             .mapToInt(attrValue -> (int) attrValue.ramBytesUsed())
             .reduce(0, Integer::sum);

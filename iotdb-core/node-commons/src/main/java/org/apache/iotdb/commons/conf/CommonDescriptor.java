@@ -24,12 +24,16 @@ import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Optional;
 
 public class CommonDescriptor {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(CommonDescriptor.class);
   private final CommonConfig config = new CommonConfig();
 
   private CommonDescriptor() {}
@@ -738,6 +742,22 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_check_memory_enough_interval_ms",
                 String.valueOf(config.getSubscriptionCheckMemoryEnoughIntervalMs()))));
+    config.setSubscriptionEstimatedInsertNodeTabletInsertionEventSize(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_estimated_insert_node_tablet_insertion_event_size",
+                String.valueOf(
+                    config.getSubscriptionEstimatedInsertNodeTabletInsertionEventSize()))));
+    config.setSubscriptionEstimatedRawTabletInsertionEventSize(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_estimated_raw_tablet_insertion_event_size",
+                String.valueOf(config.getSubscriptionEstimatedRawTabletInsertionEventSize()))));
+    config.setSubscriptionMaxAllowedEventCountInTabletBatch(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_max_allowed_event_count_in_tablet_batch",
+                String.valueOf(config.getSubscriptionMaxAllowedEventCountInTabletBatch()))));
 
     config.setSubscriptionPrefetchEnabled(
         Boolean.parseBoolean(

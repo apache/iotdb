@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.event.common.tablet;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
@@ -32,10 +33,11 @@ import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventParser;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTablePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreePatternParser;
-import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -43,6 +45,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryPosition;
@@ -61,15 +65,18 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
-    implements TabletInsertionEvent, ReferenceTrackableEvent, Accountable {
+    implements TabletInsertionEvent, ReferenceTrackableEvent, Accountable, AutoCloseable {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeInsertNodeTabletInsertionEvent.class);
@@ -79,24 +86,29 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
           + RamUsageEstimator.shallowSizeOfInstance(WALEntryPosition.class)
           + RamUsageEstimator.shallowSizeOfInstance(AtomicInteger.class)
           + RamUsageEstimator.shallowSizeOfInstance(AtomicBoolean.class);
+  private static final long SET_SIZE = RamUsageEstimator.shallowSizeOfInstance(HashSet.class);
 
   private final WALEntryHandler walEntryHandler;
   private final boolean isAligned;
   private final boolean isGeneratedByPipe;
 
-  private final PipeTabletMemoryBlock allocatedMemoryBlock;
+  private final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock;
+  private volatile List<Tablet> tablets;
 
   private List<TabletInsertionEventParser> eventParsers;
 
   private final PartialPath devicePath;
-
   private ProgressIndex progressIndex;
+
+  // Only useful for insertRows
+  private final Set<String> tableNames;
 
   public PipeInsertNodeTabletInsertionEvent(
       final Boolean isTableModel,
       final String databaseNameFromDataRegion,
       final WALEntryHandler walEntryHandler,
       final PartialPath devicePath,
+      final Set<String> tableNames,
       final ProgressIndex progressIndex,
       final boolean isAligned,
       final boolean isGeneratedByPipe) {
@@ -105,6 +117,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         databaseNameFromDataRegion,
         walEntryHandler,
         devicePath,
+        tableNames,
         progressIndex,
         isAligned,
         isGeneratedByPipe,
@@ -113,6 +126,8 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         null,
         null,
         null,
+        null,
+        true,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
   }
@@ -122,6 +137,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       final String databaseNameFromDataRegion,
       final WALEntryHandler walEntryHandler,
       final PartialPath devicePath,
+      final Set<String> tableNames,
       final ProgressIndex progressIndex,
       final boolean isAligned,
       final boolean isGeneratedByPipe,
@@ -130,6 +146,8 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     super(
@@ -138,6 +156,8 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userName,
+        skipIfNoPrivileges,
         startTime,
         endTime,
         isTableModelEvent,
@@ -145,13 +165,12 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     this.walEntryHandler = walEntryHandler;
     // Record device path here so there's no need to get it from InsertNode cache later.
     this.devicePath = devicePath;
+    this.tableNames = tableNames;
     this.progressIndex = progressIndex;
     this.isAligned = isAligned;
     this.isGeneratedByPipe = isGeneratedByPipe;
 
-    // Allocate empty memory block, will be resized later.
-    this.allocatedMemoryBlock =
-        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+    this.allocatedMemoryBlock = new AtomicReference<>();
   }
 
   public InsertNode getInsertNode() throws WALPipeException {
@@ -205,7 +224,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         eventParsers.clear();
         eventParsers = null;
       }
-      allocatedMemoryBlock.close();
+      close();
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
@@ -240,6 +259,8 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     return new PipeInsertNodeTabletInsertionEvent(
@@ -247,6 +268,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         getSourceDatabaseNameFromDataRegion(),
         walEntryHandler,
         devicePath,
+        tableNames,
         progressIndex,
         isAligned,
         isGeneratedByPipe,
@@ -255,6 +277,8 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userName,
+        skipIfNoPrivileges,
         startTime,
         endTime);
   }
@@ -262,6 +286,34 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean isGeneratedByPipe() {
     return isGeneratedByPipe;
+  }
+
+  @Override
+  public void throwIfNoPrivilege() {
+    if (skipIfNoPrivileges || !isTableModelEvent()) {
+      return;
+    }
+    if (Objects.nonNull(devicePath)) {
+      checkTableName(DeviceIDFactory.getInstance().getDeviceID(devicePath).getTableName());
+    } else {
+      for (final String tableName : tableNames) {
+        checkTableName(tableName);
+      }
+    }
+  }
+
+  private void checkTableName(final String tableName) {
+    if (!Coordinator.getInstance()
+        .getAccessControl()
+        .checkCanSelectFromTable4Pipe(
+            userName, new QualifiedObjectName(getTableModelDatabaseName(), tableName))) {
+      throw new AccessDeniedException(
+          String.format(
+              "No privilege for SELECT for user %s at table %s.%s",
+              userName,
+              tableModelDatabaseName,
+              DeviceIDFactory.getInstance().getDeviceID(devicePath).getTableName()));
+    }
   }
 
   @Override
@@ -377,18 +429,21 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   }
 
   // TODO: for table model insertion, we need to get the database name
-  public List<Tablet> convertToTablets() {
-    final List<Tablet> tablets =
-        initEventParsers().stream()
-            .map(TabletInsertionEventParser::convertToTablet)
-            .collect(Collectors.toList());
-    PipeDataNodeResourceManager.memory()
-        .forceResize(
-            allocatedMemoryBlock,
-            tablets.stream()
-                .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
-                .reduce(Long::sum)
-                .orElse(0L));
+  public synchronized List<Tablet> convertToTablets() {
+    if (Objects.isNull(tablets)) {
+      tablets =
+          initEventParsers().stream()
+              .map(TabletInsertionEventParser::convertToTablet)
+              .collect(Collectors.toList());
+      allocatedMemoryBlock.compareAndSet(
+          null,
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForTabletWithRetry(
+                  tablets.stream()
+                      .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
+                      .reduce(Long::sum)
+                      .orElse(0L)));
+    }
     return tablets;
   }
 
@@ -523,19 +578,23 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + (Objects.nonNull(devicePath) ? PartialPath.estimateSize(devicePath) : 0)
-        + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0);
+        + (Objects.nonNull(progressIndex) ? progressIndex.ramBytesUsed() : 0)
+        + (Objects.nonNull(tableNames)
+            ? SET_SIZE
+                + tableNames.stream().mapToLong(RamUsageEstimator::sizeOf).reduce(0L, Long::sum)
+            : 0);
   }
 
   private static class PipeInsertNodeTabletInsertionEventResource extends PipeEventResource {
 
     private final WALEntryHandler walEntryHandler;
-    private final PipeTabletMemoryBlock allocatedMemoryBlock;
+    private final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock;
 
     private PipeInsertNodeTabletInsertionEventResource(
         final AtomicBoolean isReleased,
         final AtomicInteger referenceCount,
         final WALEntryHandler walEntryHandler,
-        final PipeTabletMemoryBlock allocatedMemoryBlock) {
+        final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock) {
       super(isReleased, referenceCount);
       this.walEntryHandler = walEntryHandler;
       this.allocatedMemoryBlock = allocatedMemoryBlock;
@@ -545,11 +604,31 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     protected void finalizeResource() {
       try {
         PipeDataNodeResourceManager.wal().unpin(walEntryHandler);
-        allocatedMemoryBlock.close();
+        allocatedMemoryBlock.getAndUpdate(
+            memoryBlock -> {
+              if (Objects.nonNull(memoryBlock)) {
+                memoryBlock.close();
+              }
+              return null;
+            });
       } catch (final Exception e) {
         LOGGER.warn(
             "Decrease reference count for memTable {} error.", walEntryHandler.getMemTableId(), e);
       }
     }
+  }
+
+  /////////////////////////// AutoCloseable ///////////////////////////
+
+  @Override
+  public synchronized void close() {
+    allocatedMemoryBlock.getAndUpdate(
+        memoryBlock -> {
+          if (Objects.nonNull(memoryBlock)) {
+            memoryBlock.close();
+          }
+          return null;
+        });
+    tablets = null;
   }
 }
