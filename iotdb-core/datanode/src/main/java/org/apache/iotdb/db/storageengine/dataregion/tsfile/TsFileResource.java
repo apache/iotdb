@@ -306,6 +306,7 @@ public class TsFileResource implements PersistentResource {
       TsFileResourceBlockType.EMPTY_BLOCK.serialize(outputStream);
     }
 
+    TsFileResourceBlockType.PIPE_MARK.serialize(outputStream);
     ReadWriteIOUtils.write(isGeneratedByPipeConsensus, outputStream);
     ReadWriteIOUtils.write(isGeneratedByPipe, outputStream);
   }
@@ -335,14 +336,17 @@ public class TsFileResource implements PersistentResource {
       while (inputStream.available() > 0) {
         final TsFileResourceBlockType blockType =
             TsFileResourceBlockType.deserialize(ReadWriteIOUtils.readByte(inputStream));
-        if (blockType == TsFileResourceBlockType.PROGRESS_INDEX) {
-          maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
+        switch (blockType) {
+          case PROGRESS_INDEX:
+            maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
+            break;
+          case PIPE_MARK:
+            isGeneratedByPipeConsensus = ReadWriteIOUtils.readBoolean(inputStream);
+            isGeneratedByPipe = ReadWriteIOUtils.readBoolean(inputStream);
+            break;
+          default:
+            break;
         }
-      }
-
-      if (inputStream.available() > 0) {
-        isGeneratedByPipeConsensus = ReadWriteIOUtils.readBoolean(inputStream);
-        isGeneratedByPipe = ReadWriteIOUtils.readBoolean(inputStream);
       }
     }
   }
