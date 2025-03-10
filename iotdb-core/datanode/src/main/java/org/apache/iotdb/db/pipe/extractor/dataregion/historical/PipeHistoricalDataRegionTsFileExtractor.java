@@ -628,7 +628,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             resource,
             shouldTransferModFile,
             false,
-            false,
             true,
             pipeName,
             creationTime,

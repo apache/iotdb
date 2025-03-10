@@ -191,7 +191,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         performer.setSummary(summary);
         performer.perform();
 
-        CompactionUtils.updateProgressIndex(
+        CompactionUtils.updateProgressIndexAndMark(
             targetTsfileResourceList, selectedSequenceFiles, selectedUnsequenceFiles);
         CompactionUtils.moveTargetFile(
             targetTsfileResourceList,
