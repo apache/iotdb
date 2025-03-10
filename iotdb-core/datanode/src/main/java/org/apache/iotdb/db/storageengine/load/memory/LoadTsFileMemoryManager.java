@@ -88,8 +88,9 @@ public class LoadTsFileMemoryManager {
           sizeInBytes,
           usedMemorySizeInBytes.get());
     }
-    usedMemorySizeInBytes.addAndGet(-sizeInBytes);
-    QUERY_ENGINE_MEMORY_MANAGER.releaseToFreeMemoryForOperators(sizeInBytes);
+    final long sizeToRelease = Math.min(sizeInBytes, usedMemorySizeInBytes.get());
+    usedMemorySizeInBytes.addAndGet(-sizeToRelease);
+    QUERY_ENGINE_MEMORY_MANAGER.releaseToFreeMemoryForOperators(sizeToRelease);
     this.notifyAll();
   }
 
@@ -97,8 +98,16 @@ public class LoadTsFileMemoryManager {
       long sizeInBytes) throws LoadRuntimeOutOfMemoryException {
     try {
       forceAllocateFromQuery(sizeInBytes);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Load: Allocated AnalyzeSchemaMemoryBlock from query engine, size: {}", sizeInBytes);
+      }
     } catch (LoadRuntimeOutOfMemoryException e) {
       if (dataCacheMemoryBlock != null && dataCacheMemoryBlock.doShrink(sizeInBytes)) {
+        LOGGER.info(
+            "Load: Query engine's memory is not sufficient, allocated AnalyzeSchemaMemoryBlock from DataCacheMemoryBlock, size: {}",
+            sizeInBytes);
+        usedMemorySizeInBytes.addAndGet(sizeInBytes);
         return new LoadTsFileAnalyzeSchemaMemoryBlock(sizeInBytes);
       }
       throw e;
