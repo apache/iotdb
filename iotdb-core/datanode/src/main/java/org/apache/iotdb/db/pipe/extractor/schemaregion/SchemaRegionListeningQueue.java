@@ -54,12 +54,16 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
         case PIPE_ENRICHED_WRITE:
           event =
               new PipeSchemaRegionWritePlanEvent(
-                  ((PipeEnrichedWritePlanNode) node).getWritePlanNode(), true);
+                  ((PipeEnrichedWritePlanNode) node).getWritePlanNode(),
+                  true,
+                  node.getOriginClusterId());
           break;
         case PIPE_ENRICHED_NON_WRITE:
           event =
               new PipeSchemaRegionWritePlanEvent(
-                  ((PipeEnrichedNonWritePlanNode) node).getNonWritePlanNode(), true);
+                  ((PipeEnrichedNonWritePlanNode) node).getNonWritePlanNode(),
+                  true,
+                  node.getOriginClusterId());
           break;
         default:
           event = new PipeSchemaRegionWritePlanEvent(node, false);

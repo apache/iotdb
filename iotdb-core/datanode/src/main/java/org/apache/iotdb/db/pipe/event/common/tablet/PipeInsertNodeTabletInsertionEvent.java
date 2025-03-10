@@ -91,6 +91,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   private final WALEntryHandler walEntryHandler;
   private final boolean isAligned;
   private final boolean isGeneratedByPipe;
+  private final String originClusterId;
 
   private final AtomicReference<PipeTabletMemoryBlock> allocatedMemoryBlock;
   private volatile List<Tablet> tablets;
@@ -111,7 +112,8 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       final Set<String> tableNames,
       final ProgressIndex progressIndex,
       final boolean isAligned,
-      final boolean isGeneratedByPipe) {
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
     this(
         isTableModel,
         databaseNameFromDataRegion,
@@ -121,6 +123,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         progressIndex,
         isAligned,
         isGeneratedByPipe,
+        originClusterId,
         null,
         0,
         null,
@@ -141,6 +144,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
       final ProgressIndex progressIndex,
       final boolean isAligned,
       final boolean isGeneratedByPipe,
+      final String originClusterId,
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
@@ -169,6 +173,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
     this.progressIndex = progressIndex;
     this.isAligned = isAligned;
     this.isGeneratedByPipe = isGeneratedByPipe;
+    this.originClusterId = originClusterId;
 
     this.allocatedMemoryBlock = new AtomicReference<>();
   }
@@ -272,6 +277,7 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
         progressIndex,
         isAligned,
         isGeneratedByPipe,
+        originClusterId,
         pipeName,
         creationTime,
         pipeTaskMeta,
@@ -286,6 +292,11 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean isGeneratedByPipe() {
     return isGeneratedByPipe;
+  }
+
+  @Override
+  public String getOriginClusterId() {
+    return originClusterId;
   }
 
   @Override

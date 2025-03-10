@@ -44,6 +44,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
   private AbstractDeleteDataNode deleteDataNode;
   private DeletionResource deletionResource;
   private boolean isGeneratedByPipe;
+  private String originClusterId;
   private ProgressIndex progressIndex;
 
   public PipeDeleteDataNodeEvent() {
@@ -143,6 +144,11 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
   @Override
   public boolean isGeneratedByPipe() {
     return isGeneratedByPipe;
+  }
+
+  @Override
+  public String getOriginClusterId() {
+    return originClusterId;
   }
 
   @Override

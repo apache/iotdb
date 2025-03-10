@@ -29,6 +29,8 @@ import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeC
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskConnectorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeConnectorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBDataNodeSyncConnector;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -45,6 +47,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 public class PipeConnectorSubtaskManager {
@@ -56,6 +59,7 @@ public class PipeConnectorSubtaskManager {
 
   private final Map<String, List<PipeConnectorSubtaskLifeCycle>>
       attributeSortedString2SubtaskLifeCycleMap = new HashMap<>();
+  private final Map<String, Set<String>> attributeSortedStringToSinkClusterIdsMap = new HashMap<>();
 
   public synchronized String register(
       final PipeConnectorSubtaskExecutor executor,
@@ -116,6 +120,7 @@ public class PipeConnectorSubtaskManager {
               : new UnboundedBlockingPendingQueue<>(new PipeDataRegionEventCounter());
 
       for (int connectorIndex = 0; connectorIndex < connectorNum; connectorIndex++) {
+
         final PipeConnector pipeConnector =
             isDataRegionConnector
                 ? PipeDataNodeAgent.plugin().dataRegion().reflectConnector(pipeConnectorParameters)
@@ -156,6 +161,17 @@ public class PipeConnectorSubtaskManager {
         final PipeConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =
             new PipeConnectorSubtaskLifeCycle(executor, pipeConnectorSubtask, pendingQueue);
         pipeConnectorSubtaskLifeCycleList.add(pipeConnectorSubtaskLifeCycle);
+
+        if (pipeConnector instanceof IoTDBDataNodeSyncConnector) {
+          attributeSortedStringToSinkClusterIdsMap.put(
+              attributeSortedString,
+              ((IoTDBDataNodeSyncConnector) pipeConnector).getEndPointsClusterIds());
+        }
+        if (pipeConnector instanceof IoTDBDataRegionAsyncConnector) {
+          attributeSortedStringToSinkClusterIdsMap.put(
+              attributeSortedString,
+              ((IoTDBDataRegionAsyncConnector) pipeConnector).getEndPointsClusterIds());
+        }
       }
 
       attributeSortedString2SubtaskLifeCycleMap.put(
@@ -185,6 +201,7 @@ public class PipeConnectorSubtaskManager {
 
     if (lifeCycles.isEmpty()) {
       attributeSortedString2SubtaskLifeCycleMap.remove(attributeSortedString);
+      attributeSortedStringToSinkClusterIdsMap.remove(attributeSortedString);
     }
 
     PipeEventCommitManager.getInstance().deregister(pipeName, creationTime, regionId);
@@ -231,6 +248,10 @@ public class PipeConnectorSubtaskManager {
         new TreeMap<>(pipeConnectorParameters.getAttribute());
     sortedStringSourceMap.remove(SystemConstant.RESTART_KEY);
     return sortedStringSourceMap.toString();
+  }
+
+  public Set<String> getSinkClusterIds(String attributeSortedString) {
+    return attributeSortedStringToSinkClusterIdsMap.get(attributeSortedString);
   }
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////

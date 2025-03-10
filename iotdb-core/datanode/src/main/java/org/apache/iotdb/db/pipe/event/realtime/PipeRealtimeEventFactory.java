@@ -96,7 +96,8 @@ public class PipeRealtimeEventFactory {
                 : null,
             insertNode.getProgressIndex(),
             insertNode.isAligned(),
-            insertNode.isGeneratedByPipe());
+            insertNode.isGeneratedByPipe(),
+            insertNode.getOriginClusterId());
 
     // if using IoTV2, assign a replicateIndex for this event
     if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus
@@ -117,7 +118,7 @@ public class PipeRealtimeEventFactory {
   public static PipeRealtimeEvent createRealtimeEvent(
       final String dataRegionId, final boolean shouldPrintMessage) {
     return new PipeRealtimeEvent(
-        new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null, null);
+        new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(
@@ -137,11 +138,11 @@ public class PipeRealtimeEventFactory {
           deleteDataNodeEvent);
     }
 
-    return new PipeRealtimeEvent(deleteDataNodeEvent, null, null, null);
+    return new PipeRealtimeEvent(deleteDataNodeEvent, null, null);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(final ProgressReportEvent event) {
-    return new PipeRealtimeEvent(event, null, null, null);
+    return new PipeRealtimeEvent(event, null, null);
   }
 
   private PipeRealtimeEventFactory() {

@@ -36,9 +36,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_PRIORITY_STRATEGY;
@@ -60,6 +63,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
   private final Map<TEndPoint, String> endPoint2HandshakeErrorMessage = new ConcurrentHashMap<>();
 
   private final LoadBalancer loadBalancer;
+
+  private final Set<String> endPointsClusterIds = Collections.synchronizedSet(new HashSet<>());
 
   protected IoTDBSyncClientManager(
       List<TEndPoint> endPoints,
@@ -250,13 +255,12 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
         clientAndStatus.setRight(true);
         client.setTimeout(CONNECTION_TIMEOUT_MS.get());
         if (resp.isSetClusterId()) {
-          client.setClusterId(resp.getClusterId());
+          endPointsClusterIds.add(resp.getClusterId());
         }
         LOGGER.info(
-            "Handshake success. Target server ip: {}, port: {}, clusterId:{}",
+            "Handshake success. Target server ip: {}, port: {}",
             client.getIpAddress(),
-            client.getPort(),
-            client.getClusterId());
+            client.getPort());
       }
     } catch (Exception e) {
       LOGGER.warn(
@@ -275,6 +279,10 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       throws IOException;
 
   protected abstract String getClusterId();
+
+  public Set<String> getEndPointsClusterIds() {
+    return endPointsClusterIds;
+  }
 
   public Pair<IoTDBSyncClient, Boolean> getClient() {
     return loadBalancer.getClient();

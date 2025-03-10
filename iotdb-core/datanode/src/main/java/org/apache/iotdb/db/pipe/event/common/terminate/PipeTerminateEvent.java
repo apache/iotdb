@@ -93,6 +93,11 @@ public class PipeTerminateEvent extends EnrichedEvent {
   }
 
   @Override
+  public String getOriginClusterId() {
+    return null;
+  }
+
+  @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     return true;
   }

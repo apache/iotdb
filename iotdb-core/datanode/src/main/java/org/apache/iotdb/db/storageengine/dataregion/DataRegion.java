@@ -3142,7 +3142,8 @@ public class DataRegion implements IDataRegionForQuery {
 
     // Listen before the tsFile is added into tsFile manager to avoid it being compacted
     PipeInsertionDataNodeListener.getInstance()
-        .listenToTsFile(dataRegionId, databaseName, tsFileResource, true, isGeneratedByPipe,originClusterId);
+        .listenToTsFile(
+            dataRegionId, databaseName, tsFileResource, true, isGeneratedByPipe, originClusterId);
 
     tsFileManager.add(tsFileResource, false);
 

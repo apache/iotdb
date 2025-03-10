@@ -265,7 +265,6 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   private void doTransfer(
       final TEndPoint endPoint, final PipeTabletEventPlainBatch batchToTransfer) {
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient(endPoint);
-
     final TPipeTransferResp resp;
     try {
       final TPipeTransferReq uncompressedReq = batchToTransfer.toTPipeTransferReq();

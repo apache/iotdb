@@ -146,7 +146,10 @@ public class PipeDataRegionAssigner implements Closeable {
                 return;
               }
 
-              if ((event.getEvent().isGeneratedByPipe() && !extractor.isForwardingPipeRequests())) {
+              if ((event.getEvent().isGeneratedByPipe() && !extractor.isForwardingPipeRequests())
+                  || (extractor.isDoubleLiving()
+                      && Objects.nonNull(event.getOriginClusterId())
+                      && extractor.getSinkClusterIds().contains(event.getOriginClusterId()))) {
                 // The frequency of progress reports is limited by the counter, while progress
                 // reports to TsFileInsertionEvent are not limited.
                 if (!(event.getEvent() instanceof TsFileInsertionEvent)) {

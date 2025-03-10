@@ -58,6 +58,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_DATABASE_KEY;
@@ -695,6 +696,14 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     if (Objects.nonNull(taskID)) {
       PipeDataRegionExtractorMetrics.getInstance().deregister(taskID);
     }
+  }
+
+  public Set<String> getSinkClusterIds() {
+    return realtimeExtractor.getSinkClusterIds();
+  }
+
+  public void setSinkClusterIds(Set<String> sinkClusterIds) {
+    realtimeExtractor.setSinkClusterIds(sinkClusterIds);
   }
 
   //////////////////////////// APIs provided for detecting stuck ////////////////////////////

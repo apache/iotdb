@@ -52,16 +52,6 @@ public class IoTDBSyncClient extends IClientRPCService.Client
   private final int port;
   private final TEndPoint endPoint;
 
-  public String getClusterId() {
-    return clusterId;
-  }
-
-  public void setClusterId(String clusterId) {
-    this.clusterId = clusterId;
-  }
-
-  private String clusterId;
-
   public IoTDBSyncClient(
       ThriftClientProperty property,
       String ipAddress,

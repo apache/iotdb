@@ -406,6 +406,8 @@ public abstract class EnrichedEvent implements Event {
 
   public abstract boolean isGeneratedByPipe();
 
+  public abstract String getOriginClusterId();
+
   /** Whether the {@link EnrichedEvent} need to be committed in order. */
   public boolean needToCommit() {
     return true;

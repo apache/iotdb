@@ -155,13 +155,12 @@ public abstract class IoTDBExtractor implements PipeExtractor {
                 PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
             PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
 
-      isForwardingPipeRequests =
-          parameters.getBooleanOrDefault(
-              Arrays.asList(
-                  PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
-                  PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
-              PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
-
+    isForwardingPipeRequests =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(
+                PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
+                PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
+            PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
 
     userName =
         parameters.getStringByKeys(

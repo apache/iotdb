@@ -85,6 +85,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   private final boolean isGeneratedByPipeConsensus;
   private final boolean isGeneratedByHistoricalExtractor;
 
+  private final String originClusterId;
+
   private final AtomicBoolean isClosed;
   private final AtomicReference<TsFileInsertionEventParser> eventParser;
 
@@ -161,6 +163,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     this.isGeneratedByPipe = resource.isGeneratedByPipe();
     this.isGeneratedByPipeConsensus = resource.isGeneratedByPipeConsensus();
     this.isGeneratedByHistoricalExtractor = isGeneratedByHistoricalExtractor;
+
+    this.originClusterId = resource.getOriginClusterId();
 
     isClosed = new AtomicBoolean(resource.isClosed());
     // Register close listener if TsFile is not closed
@@ -426,6 +430,11 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean isGeneratedByPipe() {
     return isGeneratedByPipe;
+  }
+
+  @Override
+  public String getOriginClusterId() {
+    return originClusterId;
   }
 
   @Override

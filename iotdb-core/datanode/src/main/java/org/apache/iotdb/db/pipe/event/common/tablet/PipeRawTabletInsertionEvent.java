@@ -294,6 +294,11 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   }
 
   @Override
+  public String getOriginClusterId() {
+    throw new UnsupportedOperationException("getOriginClusterId() is not supported!");
+  }
+
+  @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     final long[] timestamps = tablet.getTimestamps();
     if (Objects.isNull(timestamps) || timestamps.length == 0) {

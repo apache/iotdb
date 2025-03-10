@@ -106,4 +106,8 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
             shouldMarkAsPipeRequest);
     return clientManager;
   }
+
+  public Set<String> getEndPointsClusterIds() {
+    return clientManager.getEndPointsClusterIds();
+  }
 }

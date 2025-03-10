@@ -104,6 +104,11 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
   }
 
   @Override
+  public String getOriginClusterId() {
+    return enrichedEvent.getOriginClusterId();
+  }
+
+  @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     return enrichedEvent.mayEventTimeOverlappedWithTimeRange();
   }

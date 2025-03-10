@@ -44,12 +44,6 @@ public class PipeRealtimeEvent extends EnrichedEvent {
 
   private Map<IDeviceID, String[]> device2Measurements;
 
-  private final String originClusterId;
-
-  public String getOriginClusterId() {
-    return originClusterId;
-  }
-
   public PipeRealtimeEvent(
       final EnrichedEvent event,
       final TsFileEpoch tsFileEpoch,
@@ -64,27 +58,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
         null,
         true,
         Long.MIN_VALUE,
-        Long.MAX_VALUE,
-        null);
-  }
-
-  public PipeRealtimeEvent(
-      final EnrichedEvent event,
-      final TsFileEpoch tsFileEpoch,
-      final Map<IDeviceID, String[]> device2Measurements,
-      final String originClusterId) {
-    this(
-        event,
-        tsFileEpoch,
-        device2Measurements,
-        null,
-        null,
-        null,
-        null,
-        true,
-        Long.MIN_VALUE,
-        Long.MAX_VALUE,
-        originClusterId);
+        Long.MAX_VALUE);
   }
 
   public PipeRealtimeEvent(
@@ -97,8 +71,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       final String userName,
       final boolean skipIfNoPrivileges,
       final long startTime,
-      final long endTime,
-      final String originClusterId) {
+      final long endTime) {
     // PipeTaskMeta is used to report the progress of the event, the PipeRealtimeEvent
     // is only used in the realtime event extractor, which does not need to report the progress
     // of the event, so the pipeTaskMeta is always null.
@@ -116,7 +89,6 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     this.event = event;
     this.tsFileEpoch = tsFileEpoch;
     this.device2Measurements = device2Measurements;
-    this.originClusterId = originClusterId;
   }
 
   public EnrichedEvent getEvent() {
@@ -256,13 +228,17 @@ public class PipeRealtimeEvent extends EnrichedEvent {
         userName,
         skipIfNoPrivileges,
         startTime,
-        endTime,
-        null);
+        endTime);
   }
 
   @Override
   public boolean isGeneratedByPipe() {
     return event.isGeneratedByPipe();
+  }
+
+  @Override
+  public String getOriginClusterId() {
+    return event.getOriginClusterId();
   }
 
   @Override

@@ -1292,7 +1292,7 @@ public class TsFileProcessor {
                 tsFileResource,
                 false,
                 tmpMemTable.isTotallyGeneratedByPipe(),
-                    null);
+                null);
 
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
