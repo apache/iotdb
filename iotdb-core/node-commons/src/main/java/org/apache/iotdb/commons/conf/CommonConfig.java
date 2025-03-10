@@ -265,6 +265,7 @@ public class CommonConfig {
   private float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage = 0.1F;
   private long pipeStuckRestartIntervalSeconds = 120;
   private long pipeStuckRestartMinIntervalMs = 5 * 60 * 1000L; // 5 minutes
+  private boolean pipeEpochKeepTsFileAfterStuckRestartEnabled = false;
   private long pipeStorageEngineFlushTimeIntervalMs = Long.MAX_VALUE;
 
   private int pipeMetaReportMaxLogNumPerRound = 10;
@@ -1088,6 +1089,10 @@ public class CommonConfig {
     return pipeStuckRestartMinIntervalMs;
   }
 
+  public boolean isPipeEpochKeepTsFileAfterStuckRestartEnabled() {
+    return pipeEpochKeepTsFileAfterStuckRestartEnabled;
+  }
+
   public long getPipeStorageEngineFlushTimeIntervalMs() {
     return pipeStorageEngineFlushTimeIntervalMs;
   }
@@ -1098,6 +1103,11 @@ public class CommonConfig {
 
   public void setPipeStuckRestartMinIntervalMs(long pipeStuckRestartMinIntervalMs) {
     this.pipeStuckRestartMinIntervalMs = pipeStuckRestartMinIntervalMs;
+  }
+
+  public void setPipeEpochKeepTsFileAfterStuckRestartEnabled(
+      boolean pipeEpochKeepTsFileAfterStuckRestartEnabled) {
+    this.pipeEpochKeepTsFileAfterStuckRestartEnabled = pipeEpochKeepTsFileAfterStuckRestartEnabled;
   }
 
   public void setPipeStorageEngineFlushTimeIntervalMs(long pipeStorageEngineFlushTimeIntervalMs) {

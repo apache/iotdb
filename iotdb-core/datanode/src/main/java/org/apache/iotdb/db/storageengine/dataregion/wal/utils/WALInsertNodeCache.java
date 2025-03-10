@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -58,6 +59,7 @@ public class WALInsertNodeCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WALInsertNodeCache.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
   private final PipeMemoryBlock allocatedMemoryBlock;
   // Used to adjust the memory usage of the cache
@@ -75,8 +77,9 @@ public class WALInsertNodeCache {
     final long requestedAllocateSize =
         (long)
             Math.min(
-                (double) 2 * CONFIG.getWalFileSizeThresholdInByte(),
-                CONFIG.getAllocateMemoryForPipe() * 0.8 / 5);
+                (double) PIPE_CONFIG.getPipeMaxAllowedPinnedMemTableCount()
+                    * CONFIG.getWalFileSizeThresholdInByte(),
+                CONFIG.getAllocateMemoryForPipe() * 0.45);
     allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory()
             .tryAllocate(requestedAllocateSize)

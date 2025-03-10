@@ -268,6 +268,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeStuckRestartMinIntervalMs();
   }
 
+  public boolean isPipeEpochKeepTsFileAfterStuckRestartEnabled() {
+    return COMMON_CONFIG.isPipeEpochKeepTsFileAfterStuckRestartEnabled();
+  }
+
   public long getPipeStorageEngineFlushTimeIntervalMs() {
     return COMMON_CONFIG.getPipeStorageEngineFlushTimeIntervalMs();
   }
@@ -475,6 +479,9 @@ public class PipeConfig {
         getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage());
     LOGGER.info("PipeStuckRestartIntervalSeconds: {}", getPipeStuckRestartIntervalSeconds());
     LOGGER.info("PipeStuckRestartMinIntervalMs: {}", getPipeStuckRestartMinIntervalMs());
+    LOGGER.info(
+        "PipeEpochKeepTsFileAfterStuckRestartEnabled: {}",
+        isPipeEpochKeepTsFileAfterStuckRestartEnabled());
     LOGGER.info(
         "PipeStorageEngineFlushTimeIntervalMs: {}", getPipeStorageEngineFlushTimeIntervalMs());
 

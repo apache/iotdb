@@ -540,6 +540,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_stuck_restart_min_interval_ms",
                 String.valueOf(config.getPipeStuckRestartMinIntervalMs()))));
+    config.setPipeEpochKeepTsFileAfterStuckRestartEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_epoch_keep_tsfile_after_stuck_restart_enabled",
+                String.valueOf(config.isPipeEpochKeepTsFileAfterStuckRestartEnabled()))));
     config.setPipeStorageEngineFlushTimeIntervalMs(
         Long.parseLong(
             properties.getProperty(
