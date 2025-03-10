@@ -235,6 +235,7 @@ public class CommonConfig {
   private long pipeConnectorRetryIntervalMs = 1000L;
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
 
+  private long pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall = 500;
   private int pipeAsyncConnectorSelectorNumber =
       Math.max(4, Runtime.getRuntime().availableProcessors() / 2);
   private int pipeAsyncConnectorMaxClientNumber =
@@ -857,6 +858,16 @@ public class CommonConfig {
 
   public boolean isPipeConnectorRPCThriftCompressionEnabled() {
     return pipeConnectorRPCThriftCompressionEnabled;
+  }
+
+  public void setPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall(
+      long pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall) {
+    this.pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall =
+        pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall;
+  }
+
+  public long getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall() {
+    return pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall;
   }
 
   public int getPipeAsyncConnectorSelectorNumber() {

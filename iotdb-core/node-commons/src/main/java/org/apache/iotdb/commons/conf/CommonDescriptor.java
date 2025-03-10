@@ -421,6 +421,15 @@ public class CommonDescriptor {
                     properties.getProperty(
                         "pipe_connector_rpc_thrift_compression_enabled",
                         String.valueOf(config.isPipeConnectorRPCThriftCompressionEnabled())))));
+    config.setPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall(
+        Long.parseLong(
+            Optional.ofNullable(
+                    properties.getProperty("pipe_async_sink_max_retry_execution_time_ms_per_call"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_async_connector_max_retry_execution_time_ms_per_call",
+                        String.valueOf(
+                            config.getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall())))));
     int pipeAsyncConnectorSelectorNumber =
         Integer.parseInt(
             Optional.ofNullable(properties.getProperty("pipe_sink_selector_number"))

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.async;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtask;
@@ -92,6 +93,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   private final IoTDBDataRegionSyncConnector retryConnector = new IoTDBDataRegionSyncConnector();
   private final BlockingQueue<Event> retryEventQueue = new LinkedBlockingQueue<>();
+  private final long maxRetryExecutionTimeMsPerCall =
+      PipeConfig.getInstance().getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall();
 
   private IoTDBDataNodeAsyncClientManager clientManager;
 
@@ -416,10 +419,18 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
    * @see PipeConnector#transfer(TsFileInsertionEvent) for more details.
    */
   private void transferQueuedEventsIfNecessary() throws Exception {
+    if (retryEventQueue.isEmpty()) {
+      return;
+    }
+
+    final long currentTime = System.currentTimeMillis();
     while (!retryEventQueue.isEmpty()) {
       synchronized (this) {
-        if (isClosed.get() || retryEventQueue.isEmpty()) {
+        if (isClosed.get()) {
           return;
+        }
+        if (retryEventQueue.isEmpty()) {
+          break;
         }
 
         final Event peekedEvent = retryEventQueue.peek();
@@ -452,6 +463,11 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         if (polledEvent != null && LOGGER.isDebugEnabled()) {
           LOGGER.debug("Polled event {} from retry queue.", polledEvent);
         }
+      }
+
+      // Stop retrying if the execution time exceeds the threshold for better realtime performance
+      if (System.currentTimeMillis() - currentTime > maxRetryExecutionTimeMsPerCall) {
+        break;
       }
     }
 
