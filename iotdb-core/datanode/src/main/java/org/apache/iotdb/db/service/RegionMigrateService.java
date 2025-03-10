@@ -50,11 +50,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class RegionMigrateService implements IService {
@@ -75,8 +75,7 @@ public class RegionMigrateService implements IService {
   private static final ConcurrentHashMap<Long, TRegionMigrateResult> taskResultMap =
       new ConcurrentHashMap<>();
 
-  private static final HashSet<TConsensusGroupId> migratingRegions = new HashSet<>();
-  private static long lastNotifyTime = Long.MIN_VALUE;
+  private static final AtomicLong lastNotifyTime = new AtomicLong(Long.MIN_VALUE);
 
   private static final TRegionMigrateResult unfinishedResult = new TRegionMigrateResult();
 
@@ -86,32 +85,17 @@ public class RegionMigrateService implements IService {
     return Holder.INSTANCE;
   }
 
-  public synchronized void notifyRegionMigration(TNotifyRegionMigrationReq req) {
-    lastNotifyTime = System.currentTimeMillis();
+  public void notifyRegionMigration(TNotifyRegionMigrationReq req) {
+    lastNotifyTime.set(System.currentTimeMillis());
     if (req.isIsStart()) {
-      if (migratingRegions.contains(req.getRegionId())) {
-        LOGGER.warn("Region {} is already migrating and notified again", req.getRegionId());
-      } else {
-        LOGGER.info("Region {} is notified to be migrating", req.getRegionId());
-        migratingRegions.add(req.getRegionId());
-      }
+      LOGGER.info("Region {} is notified to begin migrating", req.getRegionId());
     } else {
-      if (!migratingRegions.contains(req.getRegionId())) {
-        LOGGER.warn(
-            "Region {} is not migrating, but notified to finish migrating", req.getRegionId());
-      } else {
-        LOGGER.info("Region {} is notified to finish migrating", req.getRegionId());
-        migratingRegions.remove(req.getRegionId());
-      }
+      LOGGER.info("Region {} is notified to finish migrating", req.getRegionId());
     }
   }
 
-  public synchronized boolean hasRunningRegionMigrationTask() {
-    return !migratingRegions.isEmpty();
-  }
-
-  public synchronized long getLastNotifyTime() {
-    return lastNotifyTime;
+  public long getLastNotifyTime() {
+    return lastNotifyTime.get();
   }
 
   /**
