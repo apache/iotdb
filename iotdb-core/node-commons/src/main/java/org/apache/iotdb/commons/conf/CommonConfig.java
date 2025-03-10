@@ -204,7 +204,8 @@ public class CommonConfig {
 
   private boolean pipeFileReceiverFsyncEnabled = true;
 
-  private int pipeRealTimeQueuePollHistoryThreshold = 1;
+  private int pipeRealTimeQueuePollTsFileThreshold = 10;
+  private int pipeRealTimeQueuePollHistoricalTsFileThreshold = 3;
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor. */
   private int pipeSubtaskExecutorMaxThreadNum =
@@ -259,7 +260,7 @@ public class CommonConfig {
 
   private int pipeMaxAllowedHistoricalTsFilePerDataRegion = 100;
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 10;
-  private int pipeMaxAllowedPinnedMemTableCount = 10; // per data region
+  private int pipeMaxAllowedPinnedMemTableCount = 5; // per data region
   private long pipeMaxAllowedLinkedTsFileCount = 300;
   private float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage = 0.1F;
   private long pipeStuckRestartIntervalSeconds = 120;
@@ -990,12 +991,22 @@ public class CommonConfig {
     this.pipeSubtaskExecutorForcedRestartIntervalMs = pipeSubtaskExecutorForcedRestartIntervalMs;
   }
 
-  public int getPipeRealTimeQueuePollHistoryThreshold() {
-    return pipeRealTimeQueuePollHistoryThreshold;
+  public int getPipeRealTimeQueuePollTsFileThreshold() {
+    return pipeRealTimeQueuePollTsFileThreshold;
   }
 
-  public void setPipeRealTimeQueuePollHistoryThreshold(int pipeRealTimeQueuePollHistoryThreshold) {
-    this.pipeRealTimeQueuePollHistoryThreshold = pipeRealTimeQueuePollHistoryThreshold;
+  public void setPipeRealTimeQueuePollTsFileThreshold(int pipeRealTimeQueuePollTsFileThreshold) {
+    this.pipeRealTimeQueuePollTsFileThreshold = pipeRealTimeQueuePollTsFileThreshold;
+  }
+
+  public int getPipeRealTimeQueuePollHistoricalTsFileThreshold() {
+    return pipeRealTimeQueuePollHistoricalTsFileThreshold;
+  }
+
+  public void setPipeRealTimeQueuePollHistoricalTsFileThreshold(
+      int pipeRealTimeQueuePollHistoricalTsFileThreshold) {
+    this.pipeRealTimeQueuePollHistoricalTsFileThreshold =
+        pipeRealTimeQueuePollHistoricalTsFileThreshold;
   }
 
   public void setPipeAirGapReceiverEnabled(boolean pipeAirGapReceiverEnabled) {

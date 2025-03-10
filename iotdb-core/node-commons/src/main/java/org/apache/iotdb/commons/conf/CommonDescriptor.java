@@ -300,11 +300,19 @@ public class CommonDescriptor {
                 String.valueOf(
                     config.getPipeDataStructureTsFileMemoryBlockAllocationRejectThreshold()))));
 
-    config.setPipeRealTimeQueuePollHistoryThreshold(
+    config.setPipeRealTimeQueuePollTsFileThreshold(
+        Integer.parseInt(
+            Optional.ofNullable(
+                    properties.getProperty("pipe_realtime_queue_poll_history_threshold"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_realtime_queue_poll_tsfile_threshold",
+                        String.valueOf(config.getPipeRealTimeQueuePollTsFileThreshold())))));
+    config.setPipeRealTimeQueuePollHistoricalTsFileThreshold(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_realtime_queue_poll_history_threshold",
-                Integer.toString(config.getPipeRealTimeQueuePollHistoryThreshold()))));
+                "pipe_realtime_queue_poll_historical_tsfile_threshold",
+                String.valueOf(config.getPipeRealTimeQueuePollHistoricalTsFileThreshold()))));
 
     int pipeSubtaskExecutorMaxThreadNum =
         Integer.parseInt(
