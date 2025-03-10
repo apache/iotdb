@@ -181,7 +181,8 @@ public class TopologyService {
         heartbeats.entrySet()) {
       final int fromId = entry.getKey().getLeft();
       final int toId = entry.getKey().getRight();
-      if (failureDetector.isAvailable(entry.getValue())) {
+      if (entry.getValue().isEmpty() || failureDetector.isAvailable(entry.getValue())) {
+        // when the first heartbeat is not received, we still consider this node reachable
         latestTopology.get(fromId).add(toId);
       } else {
         LOGGER.info(
