@@ -43,7 +43,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patte
  * pruned, because there is currently no way to communicate to the table function the request for
  * not producing certain columns.
  */
-// TODO(UDF): prune table function's proper outputs
 public class PruneTableFunctionProcessorColumns
     extends ProjectOffPushDownRule<TableFunctionProcessorNode> {
   public PruneTableFunctionProcessorColumns() {
