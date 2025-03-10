@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.db.utils.sort.DiskSpiller;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -54,6 +55,17 @@ public abstract class SortOperator extends AbstractSortOperator {
       buildResult();
       TsBlock res = buildFinalResult(tsBlockBuilder);
       tsBlockBuilder.reset();
+      // sout print res
+      for (int i = 0; i < res.getPositionCount(); i++) {
+        for (Column column : res.getValueColumns()) {
+          if (column.isNull(i)) {
+            System.out.print("null, ");
+          } else {
+            System.out.print(column.getObject(i) + ", ");
+          }
+        }
+        System.out.println();
+      }
       return res;
     }
     long startTime = System.nanoTime();
