@@ -25,10 +25,12 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 
 import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,6 +40,8 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class InsertMultiTabletsStatement extends InsertBaseStatement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(InsertMultiTabletsStatement.class);
 
   /** The {@link InsertTabletStatement} list */
   List<InsertTabletStatement> insertTabletStatementList;
@@ -154,6 +158,17 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
   @Override
   public void toLowerCase() {
     insertTabletStatementList.forEach(InsertTabletStatement::toLowerCase);
+  }
+
+  @Override
+  protected long calculateBytes() {
+    return INSTANCE_SIZE
+        + (Objects.nonNull(insertTabletStatementList)
+            ? UpdateDetailContainer.LIST_SIZE
+                + insertTabletStatementList.stream()
+                    .mapToLong(InsertTabletStatement::calculateBytes)
+                    .reduce(0L, Long::sum)
+            : 0);
   }
 
   @Override

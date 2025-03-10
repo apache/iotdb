@@ -28,10 +28,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 
 import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -42,6 +44,9 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class InsertRowsStatement extends InsertBaseStatement {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(InsertRowsStatement.class);
 
   /** the InsertRowsStatement list */
   private List<InsertRowStatement> insertRowStatementList;
@@ -185,6 +190,17 @@ public class InsertRowsStatement extends InsertBaseStatement {
   @Override
   public void toLowerCase() {
     insertRowStatementList.forEach(InsertRowStatement::toLowerCase);
+  }
+
+  @Override
+  protected long calculateBytes() {
+    return INSTANCE_SIZE
+        + (Objects.nonNull(insertRowStatementList)
+            ? UpdateDetailContainer.LIST_SIZE
+                + insertRowStatementList.stream()
+                    .mapToLong(InsertRowStatement::calculateBytes)
+                    .reduce(0L, Long::sum)
+            : 0);
   }
 
   @Override

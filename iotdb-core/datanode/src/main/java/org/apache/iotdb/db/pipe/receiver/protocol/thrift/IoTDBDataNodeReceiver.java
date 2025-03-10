@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.receiver.protocol.thrift;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
@@ -72,6 +73,8 @@ import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTreePatternParseVi
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeTableStatementDataTypeConvertExecutionVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementDataTypeConvertExecutionVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementToBatchVisitor;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -178,6 +181,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private static final long LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS =
       PipeConfig.getInstance().getPipeReceiverLoginPeriodicVerificationIntervalMs();
   private long lastSuccessfulLoginTime = Long.MIN_VALUE;
+  private PipeMemoryBlock memoryBlock;
 
   static {
     try {
@@ -781,7 +785,12 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TSStatus executeStatementAndClassifyExceptions(final Statement statement) {
+    long memory = 0L;
     try {
+      if (statement instanceof InsertBaseStatement) {
+        memory = ((InsertBaseStatement) statement).ramBytesUsed();
+        memoryBlock = PipeDataNodeResourceManager.memory().forceAllocate(memory);
+      }
       final TSStatus result =
           executeStatementWithPermissionCheckAndRetryOnDataTypeMismatch(statement);
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -795,6 +804,18 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             result);
         return statement.accept(STATEMENT_STATUS_VISITOR, result);
       }
+    } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
+      final String msg =
+          String.format(
+              "Temporarily out of memory when executing statement %s, Requested memory: %s, used memory: %s, total memory: %s",
+              statement,
+              memory,
+              PipeDataNodeResourceManager.memory().getUsedMemorySizeInBytes(),
+              PipeDataNodeResourceManager.memory().getFreeMemorySizeInBytes());
+      LOGGER.debug("Receiver id = {}: {}", receiverId.get(), msg, e);
+      return new TSStatus(
+              TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
+          .setMessage(msg);
     } catch (final Exception e) {
       LOGGER.warn(
           "Receiver id = {}: Exception encountered while executing statement {}: ",
@@ -802,6 +823,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           statement,
           e);
       return statement.accept(STATEMENT_EXCEPTION_VISITOR, e);
+    } finally {
+      if (Objects.nonNull(memoryBlock)) {
+        memoryBlock.close();
+        memoryBlock = null;
+      }
     }
   }
 
