@@ -260,7 +260,7 @@ public class CommonConfig {
   private long pipeReceiverLoginPeriodicVerificationIntervalMs = 300000;
 
   private int pipeMaxAllowedHistoricalTsFilePerDataRegion = 100;
-  private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 10;
+  private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 5;
   private int pipeMaxAllowedPinnedMemTableCount = 5; // per data region
   private long pipeMaxAllowedLinkedTsFileCount = 300;
   private float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage = 0.1F;
