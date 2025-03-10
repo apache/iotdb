@@ -113,6 +113,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   protected boolean isForwardingPipeRequests;
 
+  protected boolean isDoubleLiving;
+
   private boolean shouldTransferModFile; // Whether to transfer mods
 
   private boolean sloppyTimeRange; // true to disable time range filter after extraction
@@ -241,22 +243,19 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
             ? TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime)
             : TimePartitionUtils.getTimePartitionId(realtimeDataExtractionEndTime) - 1;
 
-    final boolean isDoubleLiving =
+    isDoubleLiving =
         parameters.getBooleanOrDefault(
             Arrays.asList(
                 PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
                 PipeExtractorConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
             PipeExtractorConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
-    if (isDoubleLiving) {
-      isForwardingPipeRequests = false;
-    } else {
+
       isForwardingPipeRequests =
           parameters.getBooleanOrDefault(
               Arrays.asList(
                   PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
                   PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
               PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
-    }
 
     if (parameters.hasAnyAttributes(EXTRACTOR_MODS_KEY, SOURCE_MODS_KEY)) {
       shouldTransferModFile =
@@ -539,6 +538,11 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     return isForwardingPipeRequests;
   }
 
+  public final boolean isDoubleLiving(){
+    return isDoubleLiving;
+  }
+
+
   public abstract boolean isNeedListenToTsFile();
 
   public abstract boolean isNeedListenToInsertNode();
@@ -567,7 +571,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
         .add("startTimePartitionIdLowerBound", startTimePartitionIdLowerBound)
         .add("endTimePartitionIdUpperBound", endTimePartitionIdUpperBound)
         .add("dataRegionTimePartitionIdBound", dataRegionTimePartitionIdBound)
-        .add("isForwardingPipeRequests", isForwardingPipeRequests)
+        .add("isForwardingPipeRequests", isForwardingPipeRequests).add("isDoubleLiving", isDoubleLiving)
         .add("shouldTransferModFile", shouldTransferModFile)
         .add("sloppyTimeRange", sloppyTimeRange)
         .add("sloppyPattern", sloppyPattern)
