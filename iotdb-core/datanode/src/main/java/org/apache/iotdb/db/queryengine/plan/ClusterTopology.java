@@ -87,18 +87,20 @@ public class ClusterTopology {
 
     // brute-force search to select DataNode candidates that can communicate to all
     // TRegionReplicaSets
-    final List<TDataNodeLocation> dataNodeCandidates = new ArrayList<>();
+    final List<Integer> dataNodeCandidates = new ArrayList<>();
     for (final Integer datanode : topologyMapCurrent.keySet()) {
       boolean reachableToAllSets = true;
       final Set<Integer> datanodeReachableToThis = topologyMapCurrent.get(datanode);
       for (final TRegionReplicaSet replicaSet : all) {
-        final List<TDataNodeLocation> replicaSetLocations =
-            new ArrayList<>(replicaSet.getDataNodeLocations());
-        replicaSetLocations.retainAll(datanodeReachableToThis);
-        reachableToAllSets = !replicaSetLocations.isEmpty();
+        final List<Integer> replicaNodeLocations =
+            replicaSet.getDataNodeLocations().stream()
+                .map(TDataNodeLocation::getDataNodeId)
+                .collect(Collectors.toList());
+        replicaNodeLocations.retainAll(datanodeReachableToThis);
+        reachableToAllSets = !replicaNodeLocations.isEmpty();
       }
       if (reachableToAllSets) {
-        dataNodeCandidates.add(dataNodes.get(datanode));
+        dataNodeCandidates.add(datanode);
       }
     }
 
@@ -106,12 +108,16 @@ public class ClusterTopology {
     // allReachableDataNodes
     final List<TRegionReplicaSet> reachableSetCandidates = new ArrayList<>();
     for (final TRegionReplicaSet replicaSet : all) {
-      final List<TDataNodeLocation> commonLocations =
-          new ArrayList<>(replicaSet.getDataNodeLocations());
+      final List<Integer> commonLocations =
+          replicaSet.getDataNodeLocations().stream()
+              .map(TDataNodeLocation::getDataNodeId)
+              .collect(Collectors.toList());
       commonLocations.retainAll(dataNodeCandidates);
       if (!commonLocations.isEmpty()) {
+        final List<TDataNodeLocation> validLocations =
+            commonLocations.stream().map(dataNodes::get).collect(Collectors.toList());
         final TRegionReplicaSet validCandidate =
-            new TRegionReplicaSet(replicaSet.getRegionId(), commonLocations);
+            new TRegionReplicaSet(replicaSet.getRegionId(), validLocations);
         reachableSetCandidates.add(validCandidate);
       }
     }

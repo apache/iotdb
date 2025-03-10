@@ -44,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -117,9 +118,13 @@ public class TableModelQueryFragmentPlanner {
 
     // Get the target region for origin PlanFragment, then its instance will be distributed one
     // of them.
-    TRegionReplicaSet regionReplicaSet = topology.getReachableSet(fragment.getTargetRegion());
-    if (regionReplicaSet != null && regionReplicaSet.getDataNodeLocations().isEmpty()) {
-      throw new ReplicaSetUnreachableException(regionReplicaSet);
+    TRegionReplicaSet regionReplicaSet = fragment.getTargetRegion();
+    if (regionReplicaSet != null
+        && !CollectionUtils.isEmpty(regionReplicaSet.getDataNodeLocations())) {
+      regionReplicaSet = topology.getReachableSet(regionReplicaSet);
+      if (regionReplicaSet.getDataNodeLocations().isEmpty()) {
+        throw new ReplicaSetUnreachableException(fragment.getTargetRegion());
+      }
     }
 
     // Set ExecutorType and target host for the instance,

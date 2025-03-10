@@ -181,12 +181,10 @@ public class TopologyService {
         heartbeats.entrySet()) {
       final int fromId = entry.getKey().getLeft();
       final int toId = entry.getKey().getRight();
-      if (entry.getValue().isEmpty() || failureDetector.isAvailable(entry.getValue())) {
-        // when the first heartbeat is not received, we still consider this node reachable
-        latestTopology.get(fromId).add(toId);
+      if (!entry.getValue().isEmpty() && !failureDetector.isAvailable(entry.getValue())) {
+        LOGGER.info("Connection from DataNode {} to DataNode {} is broken", fromId, toId);
       } else {
-        LOGGER.info(
-            String.format("Connection from DataNode %d to DataNode %d is broken", fromId, toId));
+        latestTopology.get(fromId).add(toId);
       }
     }
 

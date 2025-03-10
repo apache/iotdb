@@ -46,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesSta
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -154,9 +155,13 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
 
     // Get the target region for origin PlanFragment, then its instance will be distributed one
     // of them.
-    TRegionReplicaSet regionReplicaSet = topology.getReachableSet(fragment.getTargetRegion());
-    if (regionReplicaSet != null && regionReplicaSet.getDataNodeLocations().isEmpty()) {
-      throw new ReplicaSetUnreachableException(fragment.getTargetRegion());
+    TRegionReplicaSet regionReplicaSet = fragment.getTargetRegion();
+    if (regionReplicaSet != null
+        && !CollectionUtils.isEmpty(regionReplicaSet.getDataNodeLocations())) {
+      regionReplicaSet = topology.getReachableSet(regionReplicaSet);
+      if (regionReplicaSet.getDataNodeLocations().isEmpty()) {
+        throw new ReplicaSetUnreachableException(fragment.getTargetRegion());
+      }
     }
 
     // Set ExecutorType and target host for the instance
