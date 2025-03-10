@@ -104,7 +104,6 @@ public class PipeInsertionDataNodeListener {
       final boolean isGeneratedByPipe,
       final String originClusterId) {
     tsFileResource.setGeneratedByPipe(isGeneratedByPipe);
-    tsFileResource.setOriginClusterId(originClusterId);
     // We don't judge whether listenToTsFileExtractorCount.get() == 0 here on purpose
     // because extractors may use tsfile events when some exceptions occur in the
     // insert nodes listening process.
@@ -118,7 +117,12 @@ public class PipeInsertionDataNodeListener {
 
     assigner.publishToAssign(
         PipeRealtimeEventFactory.createRealtimeEvent(
-            dataRegionId, assigner.isTableModel(), databaseName, tsFileResource, isLoaded));
+            dataRegionId,
+            assigner.isTableModel(),
+            databaseName,
+            tsFileResource,
+            isLoaded,
+            originClusterId));
   }
 
   public void listenToInsertNode(

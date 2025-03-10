@@ -101,7 +101,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final String databaseNameFromDataRegion,
       final TsFileResource resource,
       final boolean isLoaded,
-      final boolean isGeneratedByHistoricalExtractor) {
+      final boolean isGeneratedByHistoricalExtractor,
+      final String originClusterId) {
     // The modFile must be copied before the event is assigned to the listening pipes
     this(
         isTableModelEvent,
@@ -110,6 +111,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         true,
         isLoaded,
         isGeneratedByHistoricalExtractor,
+        originClusterId,
         null,
         0,
         null,
@@ -128,6 +130,42 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       final boolean isWithMod,
       final boolean isLoaded,
       final boolean isGeneratedByHistoricalExtractor,
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final TreePattern treePattern,
+      final TablePattern tablePattern,
+      final String userName,
+      final boolean skipIfNoPrivileges,
+      final long startTime,
+      final long endTime) {
+    this(
+        isTableModelEvent,
+        databaseNameFromDataRegion,
+        resource,
+        true,
+        isLoaded,
+        isGeneratedByHistoricalExtractor,
+        null,
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        treePattern,
+        tablePattern,
+        userName,
+        skipIfNoPrivileges,
+        startTime,
+        endTime);
+  }
+
+  public PipeTsFileInsertionEvent(
+      final Boolean isTableModelEvent,
+      final String databaseNameFromDataRegion,
+      final TsFileResource resource,
+      final boolean isWithMod,
+      final boolean isLoaded,
+      final boolean isGeneratedByHistoricalExtractor,
+      final String originClusterId,
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
@@ -164,7 +202,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     this.isGeneratedByPipeConsensus = resource.isGeneratedByPipeConsensus();
     this.isGeneratedByHistoricalExtractor = isGeneratedByHistoricalExtractor;
 
-    this.originClusterId = resource.getOriginClusterId();
+    this.originClusterId = originClusterId;
 
     isClosed = new AtomicBoolean(resource.isClosed());
     // Register close listener if TsFile is not closed
@@ -416,6 +454,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         isWithMod,
         isLoaded,
         isGeneratedByHistoricalExtractor,
+        null,
         pipeName,
         creationTime,
         pipeTaskMeta,

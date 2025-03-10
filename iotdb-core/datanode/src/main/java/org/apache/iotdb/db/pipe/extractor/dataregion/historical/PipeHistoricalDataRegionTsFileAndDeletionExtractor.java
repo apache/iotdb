@@ -804,6 +804,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             shouldTransferModFile,
             false,
             true,
+            null,
             pipeName,
             creationTime,
             pipeTaskMeta,
