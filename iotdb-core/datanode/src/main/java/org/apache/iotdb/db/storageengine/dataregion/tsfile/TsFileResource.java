@@ -293,7 +293,7 @@ public class TsFileResource {
         }
       }
 
-      while (inputStream.available() > 0) {
+      if (inputStream.available() > 0) {
         final TsFileResourceBlockType blockType =
             TsFileResourceBlockType.deserialize(ReadWriteIOUtils.readByte(inputStream));
         if (blockType == TsFileResourceBlockType.PROGRESS_INDEX) {
