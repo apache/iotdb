@@ -35,6 +35,7 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Binary;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -54,6 +55,14 @@ public class MockTableModelDataPartition {
   static final String DEVICE_4 = "table1.shanghai.B3.YY";
   static final String DEVICE_5 = "table1.shenzhen.B2.ZZ";
   static final String DEVICE_6 = "table1.shenzhen.B1.XX";
+
+  static final List<List<String>> DEVICES_REGION_GROUP = new ArrayList<>(3);
+
+  static {
+    DEVICES_REGION_GROUP.add(Arrays.asList(DEVICE_5, DEVICE_6));
+    DEVICES_REGION_GROUP.add(Arrays.asList(DEVICE_4, DEVICE_5, DEVICE_6, DEVICE_3));
+    DEVICES_REGION_GROUP.add(Arrays.asList(DEVICE_2, DEVICE_1));
+  }
 
   static final List<Binary> DEVICE_1_ATTRIBUTES =
       Arrays.asList(
