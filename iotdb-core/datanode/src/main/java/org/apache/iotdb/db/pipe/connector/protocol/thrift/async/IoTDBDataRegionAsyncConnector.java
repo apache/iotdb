@@ -420,6 +420,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
    */
   private void transferQueuedEventsIfNecessary() throws Exception {
     if (retryEventQueue.isEmpty()) {
+      // Trigger cron heartbeat event in retry connector to send batch in time
+      retryConnector.transfer(PipeConnectorSubtask.CRON_HEARTBEAT_EVENT);
       return;
     }
 
