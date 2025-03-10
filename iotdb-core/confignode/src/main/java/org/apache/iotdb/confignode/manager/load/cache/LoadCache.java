@@ -57,6 +57,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -106,7 +107,7 @@ public class LoadCache {
     this.regionSizeMap = new ConcurrentHashMap<>();
     this.consensusGroupCacheMap = new ConcurrentHashMap<>();
     this.confirmedConfigNodeMap = new ConcurrentHashMap<>();
-    this.topologyGraph = null;
+    this.topologyGraph = new HashMap<>();
     this.topologyChanged = new AtomicBoolean(false);
   }
 
