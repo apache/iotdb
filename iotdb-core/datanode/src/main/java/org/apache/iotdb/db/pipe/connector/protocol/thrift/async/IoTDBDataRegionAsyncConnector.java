@@ -423,7 +423,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    final long currentTime = System.currentTimeMillis();
+    final long retryStartTime = System.currentTimeMillis();
     while (!retryEventQueue.isEmpty()) {
       synchronized (this) {
         if (isClosed.get()) {
@@ -466,7 +466,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       }
 
       // Stop retrying if the execution time exceeds the threshold for better realtime performance
-      if (System.currentTimeMillis() - currentTime > maxRetryExecutionTimeMsPerCall) {
+      if (System.currentTimeMillis() - retryStartTime > maxRetryExecutionTimeMsPerCall) {
         break;
       }
     }

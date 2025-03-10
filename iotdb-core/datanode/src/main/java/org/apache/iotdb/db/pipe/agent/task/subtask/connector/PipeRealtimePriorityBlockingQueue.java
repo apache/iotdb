@@ -41,13 +41,13 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   private final BlockingDeque<TsFileInsertionEvent> tsfileInsertEventDeque =
       new LinkedBlockingDeque<>();
 
-  private final AtomicInteger eventCount = new AtomicInteger(0);
-
   private static final int POLL_TSFILE_THRESHOLD =
       PipeConfig.getInstance().getPipeRealTimeQueuePollTsFileThreshold();
+  private final AtomicInteger pollTsFileCounter = new AtomicInteger(0);
+
   private static final int POLL_HISTORICAL_TSFILE_THRESHOLD =
       Math.max(PipeConfig.getInstance().getPipeRealTimeQueuePollHistoricalTsFileThreshold(), 1);
-  private final AtomicLong pollHistoryCounter = new AtomicLong(0);
+  private final AtomicLong pollHistoricalTsFileCounter = new AtomicLong(0);
 
   public PipeRealtimePriorityBlockingQueue() {
     super(new PipeDataRegionEventCounter());
@@ -85,24 +85,24 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   @Override
   public Event directPoll() {
     Event event = null;
-    if (eventCount.get() >= POLL_TSFILE_THRESHOLD) {
+    if (pollTsFileCounter.get() >= POLL_TSFILE_THRESHOLD) {
       event =
-          pollHistoryCounter.incrementAndGet() % POLL_HISTORICAL_TSFILE_THRESHOLD == 0
+          pollHistoricalTsFileCounter.incrementAndGet() % POLL_HISTORICAL_TSFILE_THRESHOLD == 0
               ? tsfileInsertEventDeque.pollFirst()
               : tsfileInsertEventDeque.pollLast();
-      eventCount.set(0);
+      pollTsFileCounter.set(0);
     }
     if (Objects.isNull(event)) {
       // Sequentially poll the first offered non-TsFileInsertionEvent
       event = super.directPoll();
       if (Objects.isNull(event)) {
         event =
-            pollHistoryCounter.incrementAndGet() % POLL_HISTORICAL_TSFILE_THRESHOLD == 0
+            pollHistoricalTsFileCounter.incrementAndGet() % POLL_HISTORICAL_TSFILE_THRESHOLD == 0
                 ? tsfileInsertEventDeque.pollFirst()
                 : tsfileInsertEventDeque.pollLast();
       }
       if (event != null) {
-        eventCount.incrementAndGet();
+        pollTsFileCounter.incrementAndGet();
       }
     }
 
@@ -123,24 +123,24 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   @Override
   public Event waitedPoll() {
     Event event = null;
-    if (eventCount.get() >= POLL_TSFILE_THRESHOLD) {
+    if (pollTsFileCounter.get() >= POLL_TSFILE_THRESHOLD) {
       event =
-          pollHistoryCounter.incrementAndGet() % POLL_HISTORICAL_TSFILE_THRESHOLD == 0
+          pollHistoricalTsFileCounter.incrementAndGet() % POLL_HISTORICAL_TSFILE_THRESHOLD == 0
               ? tsfileInsertEventDeque.pollFirst()
               : tsfileInsertEventDeque.pollLast();
-      eventCount.set(0);
+      pollTsFileCounter.set(0);
     }
     if (event == null) {
       // Sequentially poll the first offered non-TsFileInsertionEvent
       event = super.directPoll();
       if (event == null && !tsfileInsertEventDeque.isEmpty()) {
         event =
-            pollHistoryCounter.incrementAndGet() % POLL_HISTORICAL_TSFILE_THRESHOLD == 0
+            pollHistoricalTsFileCounter.incrementAndGet() % POLL_HISTORICAL_TSFILE_THRESHOLD == 0
                 ? tsfileInsertEventDeque.pollFirst()
                 : tsfileInsertEventDeque.pollLast();
       }
       if (event != null) {
-        eventCount.incrementAndGet();
+        pollTsFileCounter.incrementAndGet();
       }
     }
 
@@ -149,12 +149,12 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       event = super.waitedPoll();
       if (Objects.isNull(event)) {
         event =
-            pollHistoryCounter.incrementAndGet() % POLL_HISTORICAL_TSFILE_THRESHOLD == 0
+            pollHistoricalTsFileCounter.incrementAndGet() % POLL_HISTORICAL_TSFILE_THRESHOLD == 0
                 ? tsfileInsertEventDeque.pollFirst()
                 : tsfileInsertEventDeque.pollLast();
       }
       if (event != null) {
-        eventCount.incrementAndGet();
+        pollTsFileCounter.incrementAndGet();
       }
     }
 
