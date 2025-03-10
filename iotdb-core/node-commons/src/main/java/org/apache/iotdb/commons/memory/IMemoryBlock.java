@@ -61,7 +61,7 @@ public abstract class IMemoryBlock implements AutoCloseable {
    * Allocate memory managed by this memory block. if the currently used ratio is already above
    * maxRatio, the allocation will fail".
    *
-   * @param sizeInByte the size of memory to be allocated, should be positive
+   * @param sizeInBytes the size of memory to be allocated, should be positive
    * @param maxRatio the maximum ratio of memory can be allocated
    */
   public abstract boolean allocateIfSufficient(final long sizeInBytes, final double maxRatio);
