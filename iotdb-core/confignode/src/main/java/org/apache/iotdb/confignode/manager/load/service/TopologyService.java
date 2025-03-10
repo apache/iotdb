@@ -22,11 +22,16 @@ package org.apache.iotdb.confignode.manager.load.service;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
+import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
@@ -41,6 +46,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -122,10 +128,30 @@ public class TopologyService {
     }
 
     // 2. send the verify connection RPC to all datanode
-    final List<TTestConnectionResult> results =
-        configManager
-            .getClusterManager()
-            .testAllDataNodeConnectionWithTimeout(dataNodeLocations, PROBING_TIMEOUT_MS);
+    final TNodeLocations nodeLocations = new TNodeLocations();
+    nodeLocations.setDataNodeLocations(dataNodeLocations);
+    nodeLocations.setConfigNodeLocations(Collections.emptyList());
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodes().stream()
+            .map(TDataNodeConfiguration::getLocation)
+            .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
+    final DataNodeAsyncRequestContext<TNodeLocations, TTestConnectionResp>
+        dataNodeAsyncRequestContext =
+            new DataNodeAsyncRequestContext<>(
+                CnToDnAsyncRequestType.SUBMIT_TEST_DN_INTERNAL_CONNECTION_TASK,
+                nodeLocations,
+                dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequestWithTimeoutInMs(dataNodeAsyncRequestContext, PROBING_TIMEOUT_MS);
+    final List<TTestConnectionResult> results = new ArrayList<>();
+    dataNodeAsyncRequestContext
+        .getResponseMap()
+        .forEach(
+            (nodeId, resp) -> {
+              if (resp.isSetResultList()) {
+                results.addAll(resp.getResultList());
+              }
+            });
 
     // 3. collect results and update the heartbeat timestamps
     for (final TTestConnectionResult result : results) {

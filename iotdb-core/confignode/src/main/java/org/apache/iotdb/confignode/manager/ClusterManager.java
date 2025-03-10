@@ -232,25 +232,6 @@ public class ClusterManager {
             CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequest(handler));
   }
 
-  public List<TTestConnectionResult> testAllDataNodeConnectionWithTimeout(
-      List<TDataNodeLocation> dataNodeLocations, long timeoutMs) {
-    final TSender sender =
-        new TSender()
-            .setConfigNodeLocation(
-                ConfigNodeDescriptor.getInstance().getConf().generateLocalConfigNodeLocation());
-    return TestConnectionUtils.testConnectionsImpl(
-        dataNodeLocations,
-        sender,
-        TDataNodeLocation::getDataNodeId,
-        TDataNodeLocation::getInternalEndPoint,
-        TServiceType.DataNodeInternalService,
-        CnToDnAsyncRequestType.TEST_CONNECTION,
-        (AsyncRequestContext<Object, TSStatus, CnToDnAsyncRequestType, TDataNodeLocation>
-                handler) ->
-            CnToDnInternalServiceAsyncRequestManager.getInstance()
-                .sendAsyncRequestWithTimeoutInMs(handler, timeoutMs));
-  }
-
   private List<TTestConnectionResult> badDataNodeConnectionResult(
       TSStatus badStatus, TDataNodeLocation sourceDataNode, TNodeLocations nodeLocations) {
     final TSender sender = new TSender().setDataNodeLocation(sourceDataNode);

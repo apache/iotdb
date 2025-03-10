@@ -55,6 +55,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -66,7 +67,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -96,8 +96,8 @@ public class LoadCache {
   private final Map<TConsensusGroupId, ConsensusGroupCache> consensusGroupCacheMap;
   // Map<DataNodeId, confirmedConfigNodes>
   private final Map<Integer, Set<TEndPoint>> confirmedConfigNodeMap;
-
-  private final AtomicReference<Map<Integer, Set<Integer>>> topologyGraphRef;
+  private Map<Integer, Set<Integer>> topologyGraph;
+  private final AtomicBoolean topologyChanged;
 
   public LoadCache() {
     this.nodeCacheMap = new ConcurrentHashMap<>();
@@ -106,7 +106,8 @@ public class LoadCache {
     this.regionSizeMap = new ConcurrentHashMap<>();
     this.consensusGroupCacheMap = new ConcurrentHashMap<>();
     this.confirmedConfigNodeMap = new ConcurrentHashMap<>();
-    this.topologyGraphRef = new AtomicReference<>(null);
+    this.topologyGraph = null;
+    this.topologyChanged = new AtomicBoolean(false);
   }
 
   public void initHeartbeatCache(final IManager configManager) {
@@ -775,12 +776,19 @@ public class LoadCache {
   }
 
   public void updateTopology(Map<Integer, Set<Integer>> latestTopology) {
-    topologyGraphRef.set(latestTopology);
+    if (!latestTopology.equals(topologyGraph)) {
+      LOGGER.info("[Topology Service] Cluster topology changed, latest: {}", latestTopology);
+      topologyGraph = latestTopology;
+      topologyChanged.set(true);
+    }
   }
 
   @Nullable
   public Map<Integer, Set<Integer>> getTopology() {
-    return topologyGraphRef.getAndSet(null);
+    if (topologyChanged.compareAndSet(true, false)) {
+      return Collections.unmodifiableMap(topologyGraph);
+    }
+    return null;
   }
 
   public void updateConfirmedConfigNodeEndPoints(

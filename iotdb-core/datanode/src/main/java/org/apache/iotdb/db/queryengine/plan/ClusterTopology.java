@@ -38,8 +38,9 @@ import java.util.stream.Collectors;
 
 public class ClusterTopology {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterTopology.class);
-  private final TDataNodeLocation myself;
-  private volatile Map<TDataNodeLocation, Set<TDataNodeLocation>> topologyMap;
+  private final Integer myself;
+  private volatile Map<Integer, TDataNodeLocation> dataNodes;
+  private volatile Map<Integer, Set<Integer>> topologyMap;
   private volatile boolean isPartitioned;
 
   public static ClusterTopology getInstance() {
@@ -50,9 +51,13 @@ public class ClusterTopology {
     if (!isPartitioned || origin == null) {
       return origin;
     }
-    final List<TDataNodeLocation> locations = new ArrayList<>(origin.getDataNodeLocations());
-    final Set<TDataNodeLocation> reachable = topologyMap.get(myself);
-    locations.retainAll(reachable);
+    final Set<Integer> reachableToMyself = Collections.unmodifiableSet(topologyMap.get(myself));
+    final List<TDataNodeLocation> locations = new ArrayList<>();
+    for (final TDataNodeLocation location : origin.getDataNodeLocations()) {
+      if (reachableToMyself.contains(location.getDataNodeId())) {
+        locations.add(location);
+      }
+    }
     return new TRegionReplicaSet(origin.getRegionId(), locations);
   }
 
@@ -77,15 +82,15 @@ public class ClusterTopology {
     if (!isPartitioned || all == null || all.isEmpty()) {
       return all;
     }
-    final Map<TDataNodeLocation, Set<TDataNodeLocation>> topologyMapCurrent =
+    final Map<Integer, Set<Integer>> topologyMapCurrent =
         Collections.unmodifiableMap(this.topologyMap);
 
     // brute-force search to select DataNode candidates that can communicate to all
     // TRegionReplicaSets
     final List<TDataNodeLocation> dataNodeCandidates = new ArrayList<>();
-    for (final TDataNodeLocation datanode : topologyMapCurrent.keySet()) {
+    for (final Integer datanode : topologyMapCurrent.keySet()) {
       boolean reachableToAllSets = true;
-      final Set<TDataNodeLocation> datanodeReachableToThis = topologyMapCurrent.get(datanode);
+      final Set<Integer> datanodeReachableToThis = topologyMapCurrent.get(datanode);
       for (final TRegionReplicaSet replicaSet : all) {
         final List<TDataNodeLocation> replicaSetLocations =
             new ArrayList<>(replicaSet.getDataNodeLocations());
@@ -93,7 +98,7 @@ public class ClusterTopology {
         reachableToAllSets = !replicaSetLocations.isEmpty();
       }
       if (reachableToAllSets) {
-        dataNodeCandidates.add(datanode);
+        dataNodeCandidates.add(dataNodes.get(datanode));
       }
     }
 
@@ -114,24 +119,33 @@ public class ClusterTopology {
     return reachableSetCandidates;
   }
 
-  public void updateTopology(Map<TDataNodeLocation, Set<TDataNodeLocation>> latest) {
-    this.topologyMap = latest;
-    this.isPartitioned = latest.get(myself).size() != latest.keySet().size();
+  public void updateTopology(
+      final Map<Integer, TDataNodeLocation> dataNodes, Map<Integer, Set<Integer>> latestTopology) {
+    this.dataNodes = dataNodes;
+    this.topologyMap = latestTopology;
+    if (latestTopology.get(myself) == null) {
+      // latest topology doesn't include this node information.
+      // This mostly happens when this node just starts and haven't report connection details.
+      this.isPartitioned = false;
+    } else {
+      this.isPartitioned = latestTopology.get(myself).size() != latestTopology.keySet().size();
+    }
+    LOGGER.info("[Topology] latest view from config-node: {}", latestTopology);
     if (isPartitioned) {
-      final Set<TDataNodeLocation> allDataLocations = new HashSet<>(latest.keySet());
-      allDataLocations.removeAll(latest.get(myself));
+      final Set<Integer> allDataLocations = new HashSet<>(latestTopology.keySet());
+      allDataLocations.removeAll(latestTopology.get(myself));
       final String partitioned =
           allDataLocations.stream()
-              .map(TDataNodeLocation::getDataNodeId)
               .collect(
                   StringBuilder::new, (sb, id) -> sb.append(",").append(id), StringBuilder::append)
               .toString();
-      LOGGER.info("This DataNode {} is partitioned with [{}]", myself.getDataNodeId(), partitioned);
+      LOGGER.info("This DataNode {} is partitioned with [{}]", myself, partitioned);
     }
   }
 
   private ClusterTopology() {
-    this.myself = IoTDBDescriptor.getInstance().getConfig().generateLocalDataNodeLocation();
+    this.myself =
+        IoTDBDescriptor.getInstance().getConfig().generateLocalDataNodeLocation().getDataNodeId();
     this.isPartitioned = false;
     this.topologyMap = null;
   }

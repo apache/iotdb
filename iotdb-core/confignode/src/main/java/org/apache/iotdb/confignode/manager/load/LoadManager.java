@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.manager.load;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -49,15 +48,10 @@ import org.apache.iotdb.confignode.manager.load.service.TopologyService;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 
-import org.apache.thrift.annotation.Nullable;
-
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * The {@link LoadManager} at ConfigNodeGroup-Leader is active. It proactively implements the
@@ -474,25 +468,6 @@ public class LoadManager {
     heartbeatSampleMap.forEach(loadCache::cacheConsensusSample);
     loadCache.updateConsensusGroupStatistics();
     eventService.checkAndBroadcastConsensusGroupStatisticsChangeEventIfNecessary();
-  }
-
-  @Nullable
-  public Map<TDataNodeLocation, Set<TDataNodeLocation>> getTopologyMap() {
-    final Map<Integer, Set<Integer>> topology = getLoadCache().getTopology();
-    if (topology == null) {
-      return null;
-    }
-
-    final Map<Integer, TDataNodeLocation> datanodeMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations();
-    final Map<TDataNodeLocation, Set<TDataNodeLocation>> ret = new HashMap<>();
-    for (final Map.Entry<Integer, Set<Integer>> entry : topology.entrySet()) {
-      final Set<TDataNodeLocation> reachableSet =
-          entry.getValue().stream().map(datanodeMap::get).collect(Collectors.toSet());
-      ret.put(datanodeMap.get(entry.getKey()), reachableSet);
-    }
-
-    return ret;
   }
 
   public LoadCache getLoadCache() {

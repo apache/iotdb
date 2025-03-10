@@ -1759,6 +1759,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             .collect(Collectors.toList()));
   }
 
+  @Override
+  public TTestConnectionResp submitInternalTestConnectionTask(TNodeLocations nodeLocations)
+      throws TException {
+    return new TTestConnectionResp(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        testAllDataNodeInternalServiceConnection(nodeLocations.getDataNodeLocations()));
+  }
+
   private static <Location, RequestType> List<TTestConnectionResult> testConnections(
       final List<Location> nodeLocations,
       final Function<Location, Integer> getId,
@@ -1917,8 +1925,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
     }
 
-    if (req.isSetTopology()) {
-      clusterTopology.updateTopology(req.getTopology());
+    if (req.isSetTopology() && req.isSetDataNodes()) {
+      clusterTopology.updateTopology(req.getDataNodes(), req.getTopology());
     }
 
     return resp;

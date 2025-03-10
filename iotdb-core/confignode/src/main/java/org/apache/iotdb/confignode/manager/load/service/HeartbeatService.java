@@ -23,7 +23,6 @@ import org.apache.iotdb.ainode.rpc.thrift.TAIHeartbeatReq;
 import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -163,11 +162,15 @@ public class HeartbeatService {
       heartbeatReq.setSpaceQuotaUsage(configManager.getClusterQuotaManager().getSpaceQuotaUsage());
     }
 
+    final Map<Integer, Set<Integer>> topologyMap =
+        configManager.getLoadManager().getLoadCache().getTopology();
+    if (topologyMap != null) {
+      heartbeatReq.setTopology(topologyMap);
+      heartbeatReq.setDataNodes(configManager.getNodeManager().getRegisteredDataNodeLocations());
+    }
+
     /* Update heartbeat counter */
     heartbeatCounter.getAndIncrement();
-    final Map<TDataNodeLocation, Set<TDataNodeLocation>> topologyMap =
-        configManager.getLoadManager().getTopologyMap();
-    Optional.ofNullable(topologyMap).ifPresent(heartbeatReq::setTopology);
 
     return heartbeatReq;
   }
