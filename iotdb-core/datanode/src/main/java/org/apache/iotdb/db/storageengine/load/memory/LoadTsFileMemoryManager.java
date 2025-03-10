@@ -98,8 +98,10 @@ public class LoadTsFileMemoryManager {
       long sizeInBytes) throws LoadRuntimeOutOfMemoryException {
     try {
       forceAllocateFromQuery(sizeInBytes);
-      LOGGER.info(
-          "Load: Allocated AnalyzeSchemaMemoryBlock from query engine, size: {}", sizeInBytes);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Load: Allocated AnalyzeSchemaMemoryBlock from query engine, size: {}", sizeInBytes);
+      }
     } catch (LoadRuntimeOutOfMemoryException e) {
       if (dataCacheMemoryBlock != null && dataCacheMemoryBlock.doShrink(sizeInBytes)) {
         LOGGER.info(
@@ -138,10 +140,12 @@ public class LoadTsFileMemoryManager {
     long bytesNeeded = newSizeInBytes - memoryBlock.getTotalMemorySizeInBytes();
     try {
       forceAllocateFromQuery(bytesNeeded);
-      LOGGER.info(
-          "Load: Force resized LoadTsFileAnalyzeSchemaMemoryBlock with memory from query engine, size added: {}, new size: {}",
-          bytesNeeded,
-          newSizeInBytes);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.info(
+            "Load: Force resized LoadTsFileAnalyzeSchemaMemoryBlock with memory from query engine, size added: {}, new size: {}",
+            bytesNeeded,
+            newSizeInBytes);
+      }
     } catch (LoadRuntimeOutOfMemoryException e) {
       if (dataCacheMemoryBlock != null && dataCacheMemoryBlock.doShrink(bytesNeeded)) {
         LOGGER.info(
