@@ -21,11 +21,13 @@ package org.apache.iotdb.db.protocol.thrift.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TLoadSample;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSender;
 import org.apache.iotdb.common.rpc.thrift.TServiceType;
@@ -507,6 +509,19 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TLoadResp sendLoadCommand(final TLoadCommandReq req) {
+    final List<Integer> regionIds = req.getRegionIds();
+    final Map<Integer, TRegionReplicaSet> id2replicaSetBeforeExecution =
+        req.isSetRegionIds()
+                && req.getCommandType() == LoadTsFileScheduler.LoadCommand.EXECUTE.ordinal()
+            ? regionIds.stream()
+                .collect(
+                    Collectors.toMap(
+                        regionId -> regionId,
+                        regionId ->
+                            partitionFetcher.getRegionReplicaSet(
+                                new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId))))
+            : Collections.emptyMap();
+
     final ProgressIndex progressIndex;
     if (req.isSetProgressIndex()) {
       progressIndex = ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex()));
@@ -517,13 +532,39 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           "Use local generated load progress index {} for uuid {}.", progressIndex, req.uuid);
     }
 
-    return createTLoadResp(
-        StorageEngine.getInstance()
-            .executeLoadCommand(
-                LoadTsFileScheduler.LoadCommand.values()[req.commandType],
-                req.uuid,
-                req.isSetIsGeneratedByPipe() && req.isGeneratedByPipe,
-                progressIndex));
+    final TLoadResp resp =
+        createTLoadResp(
+            StorageEngine.getInstance()
+                .executeLoadCommand(
+                    LoadTsFileScheduler.LoadCommand.values()[req.commandType],
+                    req.uuid,
+                    req.isSetIsGeneratedByPipe() && req.isGeneratedByPipe,
+                    progressIndex));
+
+    if (!id2replicaSetBeforeExecution.isEmpty()) {
+      for (Map.Entry<Integer, TRegionReplicaSet> entryBefore :
+          id2replicaSetBeforeExecution.entrySet()) {
+        final TRegionReplicaSet replicaSetAfterExecution =
+            partitionFetcher.getRegionReplicaSet(
+                new TConsensusGroupId(TConsensusGroupType.DataRegion, entryBefore.getKey()));
+        LOGGER.warn(
+            "Load request {} for region {} executed with replica set changed from {} to {}",
+            req.uuid,
+            entryBefore.getKey(),
+            entryBefore.getValue(),
+            replicaSetAfterExecution);
+        if (!Objects.equals(entryBefore.getValue(), replicaSetAfterExecution)) {
+          return createTLoadResp(
+              RpcUtils.getStatus(
+                  TSStatusCode.LOAD_FILE_ERROR,
+                  String.format(
+                      "Region %d replica set changed from %s to %s",
+                      entryBefore.getKey(), entryBefore.getValue(), replicaSetAfterExecution)));
+        }
+      }
+    }
+
+    return resp;
   }
 
   @Override

@@ -70,8 +70,17 @@ public class MergeSortAlignedTVListIterator implements IPointReader {
 
   private void prepareNextRow() {
     currentTvPair = null;
+    if (alignedTvListIterators.size() == 1) {
+      AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(0);
+      if (iterator.hasNext()) {
+        currentTvPair = iterator.current();
+      }
+      probeNext = true;
+      return;
+    }
+
     for (int i : probeIterators) {
-      TVList.TVListIterator iterator = alignedTvListIterators.get(i);
+      AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(i);
       if (iterator.hasNext()) {
         minHeap.add(new Pair<>(iterator.currentTime(), i));
       }
@@ -128,10 +137,16 @@ public class MergeSortAlignedTVListIterator implements IPointReader {
   }
 
   public void step() {
-    for (int index : probeIterators) {
-      TVList.TVListIterator iterator = alignedTvListIterators.get(index);
+    if (alignedTvListIterators.size() == 1) {
+      AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(0);
       iterator.step();
-      alignedTvListOffsets[index] = iterator.getIndex();
+      alignedTvListOffsets[0] = iterator.getIndex();
+    } else {
+      for (int index : probeIterators) {
+        AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(index);
+        iterator.step();
+        alignedTvListOffsets[index] = iterator.getIndex();
+      }
     }
     probeNext = false;
   }
@@ -154,10 +169,12 @@ public class MergeSortAlignedTVListIterator implements IPointReader {
       alignedTvListIterators.get(i).setIndex(alignedTvListOffsets[i]);
       this.alignedTvListOffsets[i] = alignedTvListOffsets[i];
     }
-    minHeap.clear();
-    probeIterators.clear();
-    for (int i = 0; i < alignedTvListIterators.size(); i++) {
-      probeIterators.add(i);
+    if (alignedTvListIterators.size() > 1) {
+      minHeap.clear();
+      probeIterators.clear();
+      for (int i = 0; i < alignedTvListIterators.size(); i++) {
+        probeIterators.add(i);
+      }
     }
     probeNext = false;
   }

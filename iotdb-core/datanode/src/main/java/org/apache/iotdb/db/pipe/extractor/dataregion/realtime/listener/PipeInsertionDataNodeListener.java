@@ -181,6 +181,12 @@ public class PipeInsertionDataNodeListener {
                 PipeRealtimeEventFactory.createRealtimeEvent(key, shouldPrintMessage)));
   }
 
+  //////////////////////////// Permission change ////////////////////////////
+
+  public void invalidateAllCache() {
+    dataRegionId2Assigner.values().forEach(PipeDataRegionAssigner::invalidateCache);
+  }
+
   /////////////////////////////// singleton ///////////////////////////////
 
   private PipeInsertionDataNodeListener() {
