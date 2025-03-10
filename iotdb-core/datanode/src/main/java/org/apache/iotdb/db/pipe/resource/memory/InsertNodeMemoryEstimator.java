@@ -44,6 +44,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -542,6 +543,11 @@ public class InsertNodeMemoryEstimator {
 
   public static long sizeOfValues(
       final Object[] columns, final MeasurementSchema[] measurementSchemas) {
+    // Directly calculate if measurementSchemas are absent
+    if (Objects.isNull(measurementSchemas)) {
+      return RamUsageEstimator.shallowSizeOf(columns)
+          + Arrays.stream(columns).mapToLong(RamUsageEstimator::sizeOfObject).reduce(0L, Long::sum);
+    }
     long size =
         RamUsageEstimator.alignObjectSize(
             NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * columns.length);
