@@ -37,6 +37,6 @@ public class PayloadFormatManagerTest {
 
   @Test
   public void getDefaultPayloadFormat() {
-    assertNotNull(PayloadFormatManager.getPayloadFormat("tree-json"));
+    assertNotNull(PayloadFormatManager.getPayloadFormat("json"));
   }
 }

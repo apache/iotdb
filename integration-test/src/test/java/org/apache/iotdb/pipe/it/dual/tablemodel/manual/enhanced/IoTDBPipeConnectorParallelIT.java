@@ -74,6 +74,8 @@ public class IoTDBPipeConnectorParallelIT extends AbstractPipeTableModelDualManu
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("capture.table", "true");
+      extractorAttributes.put("user", "root");
+
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "true");
       connectorAttributes.put("connector.ip", receiverIp);

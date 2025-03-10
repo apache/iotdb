@@ -144,6 +144,18 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
         "revoke all from user newUser");
   }
 
+  @Test
+  public void testSetTableCommentIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Collections.singletonList("create table test(a tag)"), "COMMENT ON TABLE test is 'tag'");
+  }
+
+  @Test
+  public void testSetTableColumnCommentIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Collections.singletonList("create table test(a tag)"), "COMMENT ON COLUMN test.a IS 'tag'");
+  }
+
   private void testTableConfigIdempotent(final List<String> beforeSqlList, final String testSql)
       throws Exception {
     final String database = "test";
@@ -164,6 +176,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
       extractorAttributes.put("extractor.forwarding-pipe-requests", "false");
       extractorAttributes.put("extractor.capture.table", "true");
       extractorAttributes.put("extractor.capture.tree", "false");
+      extractorAttributes.put("user", "root");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);

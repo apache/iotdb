@@ -26,7 +26,11 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.jdbc.IoTDBSQLException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.google.common.collect.ImmutableList;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -46,6 +50,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Callable;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
@@ -1279,6 +1284,133 @@ public class IoTDBAuthIT {
     adminStmt.execute("create user head 'password'");
     adminStmt.execute("create role tail");
     adminStmt.execute("create user tail 'password'");
+  }
+
+  @Test
+  public void testClusterManagementSqlOfTreeModel() throws Exception {
+    ImmutableList<String> clusterManagementSQLList =
+        ImmutableList.of(
+            // show cluster, nodes, regions,
+            "show ainodes",
+            "show confignodes",
+            "show datanodes",
+            "show cluster",
+            "show clusterid",
+            "show regions",
+            "show data regionid where database=root.**",
+
+            // remove node
+            "remove datanode 0",
+            "remove confignode 0",
+
+            // region operation
+            "migrate region 0 from 1 to 2",
+            "reconstruct region 0 on 1",
+            "extend region 0 to 1",
+            "remove region 0 from 1",
+
+            // others
+            "show timeslotid where database=root.test",
+            "count timeslotid where database=root.test",
+            "show data seriesslotid where database=root.test",
+            "verify connection");
+
+    try (Connection adminCon = EnvFactory.getEnv().getConnection();
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("CREATE USER Jack 'temppw'");
+
+      try (Connection JackConnection = EnvFactory.getEnv().getConnection("Jack", "temppw");
+          Statement Jack = JackConnection.createStatement()) {
+        testClusterManagementSqlImpl(
+            clusterManagementSQLList,
+            () -> adminStmt.execute("GRANT MAINTAIN ON root.** TO USER Jack"),
+            Jack);
+      }
+    }
+  }
+
+  @Test
+  public void testClusterManagementSqlOfTableModel() throws Exception {
+    ImmutableList<String> clusterManagementSQLList =
+        ImmutableList.of(
+            // show cluster, nodes, regions,
+            "show ainodes",
+            "show confignodes",
+            "show datanodes",
+            "show cluster",
+            "show clusterid",
+            "show regions",
+
+            // remove node
+            "remove datanode 0",
+            "remove confignode 0",
+
+            // region operation
+            "migrate region 0 from 1 to 2",
+            "reconstruct region 0 on 1",
+            "extend region 0 to 1",
+            "remove region 0 from 1");
+
+    try (Connection adminCon = EnvFactory.getEnv().getTableConnection();
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("CREATE USER Jack 'temppw'");
+
+      try (Connection JackConnection =
+              EnvFactory.getEnv().getConnection("Jack", "temppw", BaseEnv.TABLE_SQL_DIALECT);
+          Statement Jack = JackConnection.createStatement()) {
+        // Jack has no authority to execute these SQLs
+        for (String sql : clusterManagementSQLList) {
+          try {
+            Jack.execute(sql);
+          } catch (IoTDBSQLException e) {
+            if (TSStatusCode.NO_PERMISSION.getStatusCode() != e.getErrorCode()) {
+              fail(
+                  String.format(
+                      "SQL should fail because of no permission, but the error code is %d: %s",
+                      e.getErrorCode(), sql));
+            }
+            continue;
+          }
+          fail(String.format("SQL should fail because of no permission: %s", sql));
+        }
+      }
+    }
+  }
+
+  private void testClusterManagementSqlImpl(
+      List<String> clusterManagementSqlList, Callable<Boolean> giveJackAuthority, Statement Jack)
+      throws Exception {
+    // Jack has no authority to execute these SQLs
+    for (String sql : clusterManagementSqlList) {
+      try {
+        Jack.execute(sql);
+      } catch (IoTDBSQLException e) {
+        if (TSStatusCode.NO_PERMISSION.getStatusCode() != e.getErrorCode()) {
+          fail(
+              String.format(
+                  "SQL should fail because of no permission, but the error code is %d: %s",
+                  e.getErrorCode(), sql));
+        }
+        continue;
+      }
+      fail(String.format("SQL should fail because of no permission: %s", sql));
+    }
+
+    // Give Jack authority
+    giveJackAuthority.call();
+
+    // Jack is able to execute these SQLs now
+    for (String sql : clusterManagementSqlList) {
+      try {
+        // No exception is fine
+        Jack.execute(sql);
+      } catch (IoTDBSQLException e) {
+        // If there is an exception, error code must not be NO_PERMISSION
+        if (TSStatusCode.NO_PERMISSION.getStatusCode() == e.getErrorCode()) {
+          fail(String.format("SQL should not fail with no permission: %s", sql));
+        }
+      }
+    }
   }
 
   @Test

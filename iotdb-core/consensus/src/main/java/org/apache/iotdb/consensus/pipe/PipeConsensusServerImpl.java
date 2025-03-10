@@ -42,7 +42,7 @@ import org.apache.iotdb.consensus.config.PipeConsensusConfig.ReplicateMode;
 import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeManager;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
-import org.apache.iotdb.consensus.pipe.consensuspipe.ProgressIndexManager;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ReplicateProgressManager;
 import org.apache.iotdb.consensus.pipe.metric.PipeConsensusServerMetrics;
 import org.apache.iotdb.consensus.pipe.thrift.TCheckConsensusPipeCompletedReq;
 import org.apache.iotdb.consensus.pipe.thrift.TCheckConsensusPipeCompletedResp;
@@ -89,7 +89,7 @@ public class PipeConsensusServerImpl {
   private final AtomicBoolean isStarted;
   private final String consensusGroupId;
   private final ConsensusPipeManager consensusPipeManager;
-  private final ProgressIndexManager progressIndexManager;
+  private final ReplicateProgressManager replicateProgressManager;
   private final IClientManager<TEndPoint, SyncPipeConsensusServiceClient> syncClientManager;
   private final PipeConsensusServerMetrics pipeConsensusServerMetrics;
   private final ReplicateMode replicateMode;
@@ -111,7 +111,7 @@ public class PipeConsensusServerImpl {
     this.isStarted = new AtomicBoolean(false);
     this.consensusGroupId = thisNode.getGroupId().toString();
     this.consensusPipeManager = consensusPipeManager;
-    this.progressIndexManager = config.getPipe().getProgressIndexManager();
+    this.replicateProgressManager = config.getPipe().getProgressIndexManager();
     this.syncClientManager = syncClientManager;
     this.pipeConsensusServerMetrics = new PipeConsensusServerMetrics(this);
     this.replicateMode = config.getReplicateMode();
@@ -309,9 +309,9 @@ public class PipeConsensusServerImpl {
   }
 
   public TSStatus write(IConsensusRequest request) {
+    stateMachineLock.lock();
     try {
       long consensusWriteStartTime = System.nanoTime();
-      stateMachineLock.lock();
       long getStateMachineLockTime = System.nanoTime();
       // statistic the time of acquiring stateMachine lock
       pipeConsensusServerMetrics.recordGetStateMachineLockTime(
@@ -319,7 +319,7 @@ public class PipeConsensusServerImpl {
       long writeToStateMachineStartTime = System.nanoTime();
       if (request instanceof ComparableConsensusRequest) {
         ((ComparableConsensusRequest) request)
-            .setProgressIndex(progressIndexManager.assignProgressIndex(thisNode.getGroupId()));
+            .setProgressIndex(replicateProgressManager.assignProgressIndex(thisNode.getGroupId()));
       }
       TSStatus result = stateMachine.write(request);
       long writeToStateMachineEndTime = System.nanoTime();
@@ -335,9 +335,9 @@ public class PipeConsensusServerImpl {
   }
 
   public TSStatus writeOnFollowerReplica(IConsensusRequest request) {
+    stateMachineLock.lock();
     try {
       long consensusWriteStartTime = System.nanoTime();
-      stateMachineLock.lock();
       long getStateMachineLockTime = System.nanoTime();
       // statistic the time of acquiring stateMachine lock
       pipeConsensusServerMetrics.recordGetStateMachineLockTime(
@@ -608,12 +608,21 @@ public class PipeConsensusServerImpl {
     }
   }
 
+  public boolean isConsensusPipesTransmissionCompleted(List<String> consensusPipeNames) {
+    return consensusPipeNames.stream()
+        .noneMatch(
+            pipeName ->
+                replicateProgressManager.getSyncLagForSpecificConsensusPipe(
+                        thisNode.getGroupId(), new ConsensusPipeName(pipeName))
+                    > 0);
+  }
+
   public synchronized boolean isConsensusPipesTransmissionCompleted(
       List<String> consensusPipeNames, boolean refreshCachedProgressIndex) {
     if (refreshCachedProgressIndex) {
       cachedProgressIndex =
           cachedProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
-              progressIndexManager.getMaxAssignedProgressIndex(thisNode.getGroupId()));
+              replicateProgressManager.getMaxAssignedProgressIndex(thisNode.getGroupId()));
     }
 
     try {
@@ -621,7 +630,7 @@ public class PipeConsensusServerImpl {
           .noneMatch(
               name ->
                   cachedProgressIndex.isAfter(
-                      progressIndexManager.getProgressIndex(new ConsensusPipeName(name))));
+                      replicateProgressManager.getProgressIndex(new ConsensusPipeName(name))));
     } catch (PipeException e) {
       LOGGER.info(e.getMessage());
       return false;

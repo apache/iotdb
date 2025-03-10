@@ -247,6 +247,11 @@ public class LinePayloadFormatter implements PayloadFormatter {
 
   @Override
   public String getName() {
-    return "table-line";
+    return "line";
+  }
+
+  @Override
+  public String getType() {
+    return PayloadFormatter.TABLE_TYPE;
   }
 }

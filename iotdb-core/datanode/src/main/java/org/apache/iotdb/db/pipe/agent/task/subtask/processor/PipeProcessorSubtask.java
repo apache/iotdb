@@ -31,8 +31,8 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
-import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.processor.PipeProcessorMetrics;
 import org.apache.iotdb.db.pipe.processor.pipeconsensus.PipeConsensusProcessor;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
@@ -132,6 +132,9 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
     outputEventCollector.resetFlags();
     try {
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event).throwIfNoPrivilege();
+      }
       // event can be supplied after the subtask is closed, so we need to check isClosed here
       if (!isClosed.get()) {
         if (event instanceof TabletInsertionEvent) {

@@ -96,6 +96,8 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
   private final FileChannel tagFileChannel;
 
   // Mem-control
+  // Note that this statistics does not have metric currently, thus it's OK to have potentially
+  // multiple "-1"s. Must change this when this is taken into metrics
   private final MemSchemaRegionStatistics schemaRegionStatistics =
       new MemSchemaRegionStatistics(-1, SchemaEngine.getInstance().getSchemaEngineStatistics());
   private final IDeviceAttributeStore deviceAttributeStore =
@@ -128,6 +130,7 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
   private List<Object[]> tableDeviceIdList = new ArrayList<>();
   private List<String> attributeNameList = null;
   private List<Object[]> attributeValueList = new ArrayList<>();
+  private boolean isClosed = false;
 
   public SRStatementGenerator(
       final File mtreeFile,
@@ -224,16 +227,20 @@ public class SRStatementGenerator implements Iterator<Object>, Iterable<Object> 
         }
       }
     }
-    try {
-      inputStream.close();
-      if (tagFileChannel != null) {
-        tagFileChannel.close();
+
+    if (!isClosed) {
+      try {
+        inputStream.close();
+        if (tagFileChannel != null) {
+          tagFileChannel.close();
+        }
+        deviceAttributeStore.clear();
+      } catch (final IOException e) {
+        lastExcept = e;
+      } finally {
+        schemaRegionStatistics.clear();
       }
-      deviceAttributeStore.clear();
-    } catch (final IOException e) {
-      lastExcept = e;
-    } finally {
-      schemaRegionStatistics.clear();
+      isClosed = true;
     }
     return false;
   }

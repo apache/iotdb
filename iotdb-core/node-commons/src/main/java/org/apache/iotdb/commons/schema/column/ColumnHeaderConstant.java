@@ -268,6 +268,7 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_CATEGORY = "Category";
   public static final String TABLE_NAME = "TableName";
   public static final String PRIVILEGES = "Privileges";
+  public static final String COMMENT = "Comment";
 
   public static final String GRANT_OPTION = "GrantOption";
 
@@ -619,7 +620,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COLUMN_NAME, TSDataType.TEXT),
           new ColumnHeader(COLUMN_DATA_TYPE, TSDataType.TEXT),
           new ColumnHeader(COLUMN_CATEGORY, TSDataType.TEXT),
-          new ColumnHeader(STATUS, TSDataType.TEXT));
+          new ColumnHeader(STATUS, TSDataType.TEXT),
+          new ColumnHeader(COMMENT, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showTablesColumnHeaders =
       ImmutableList.of(
@@ -630,7 +632,8 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(TABLE_NAME, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TTL, TSDataType.TEXT),
-          new ColumnHeader(STATUS, TSDataType.TEXT));
+          new ColumnHeader(STATUS, TSDataType.TEXT),
+          new ColumnHeader(COMMENT, TSDataType.TEXT));
 
   public static final List<ColumnHeader> LIST_USER_OR_ROLE_PRIVILEGES_COLUMN_HEADERS =
       ImmutableList.of(

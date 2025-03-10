@@ -199,6 +199,9 @@ public class TsFileResource implements PersistentResource {
   /** used to prevent circular replication in PipeConsensus */
   private boolean isGeneratedByPipeConsensus = false;
 
+  /** used to prevent circular replication in Pipe */
+  private boolean isGeneratedByPipe = false;
+
   private InsertionCompactionCandidateStatus insertionCompactionCandidateStatus =
       InsertionCompactionCandidateStatus.NOT_CHECKED;
 
@@ -302,6 +305,9 @@ public class TsFileResource implements PersistentResource {
     } else {
       TsFileResourceBlockType.EMPTY_BLOCK.serialize(outputStream);
     }
+
+    ReadWriteIOUtils.write(isGeneratedByPipeConsensus, outputStream);
+    ReadWriteIOUtils.write(isGeneratedByPipe, outputStream);
   }
 
   /** deserialize from disk */
@@ -332,6 +338,11 @@ public class TsFileResource implements PersistentResource {
         if (blockType == TsFileResourceBlockType.PROGRESS_INDEX) {
           maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
         }
+      }
+
+      if (inputStream.available() > 0) {
+        isGeneratedByPipeConsensus = ReadWriteIOUtils.readBoolean(inputStream);
+        isGeneratedByPipe = ReadWriteIOUtils.readBoolean(inputStream);
       }
     }
   }
@@ -399,13 +410,13 @@ public class TsFileResource implements PersistentResource {
     sourceModFile.writeLock();
     try {
       if (sourceModFile.exists()) {
+        // inherit modifications from the source file
         Files.createLink(
             targetModsFile.toPath(), ModificationFile.getExclusiveMods(getTsFile()).toPath());
-        targetModsFileObject = new ModificationFile(targetModsFile, true);
-      } else {
-        targetModsFileObject = new ModificationFile(targetModsFile, true);
-        sourceModFile.setCascadeFile(Collections.singleton(targetModsFileObject));
       }
+      // ensure that new modifications will be written into the target file
+      targetModsFileObject = new ModificationFile(targetModsFile, true);
+      sourceModFile.setCascadeFile(Collections.singleton(targetModsFileObject));
     } finally {
       sourceModFile.writeUnlock();
     }
@@ -739,6 +750,14 @@ public class TsFileResource implements PersistentResource {
 
   public void setGeneratedByPipeConsensus(boolean generatedByPipeConsensus) {
     isGeneratedByPipeConsensus = generatedByPipeConsensus;
+  }
+
+  public boolean isGeneratedByPipe() {
+    return isGeneratedByPipe;
+  }
+
+  public void setGeneratedByPipe(boolean generatedByPipe) {
+    isGeneratedByPipe = generatedByPipe;
   }
 
   public void writeLock() {
