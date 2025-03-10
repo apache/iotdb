@@ -488,6 +488,11 @@ public class InsertNodeMemoryEstimator {
 
   public static long sizeOfColumns(
       final Object[] columns, final MeasurementSchema[] measurementSchemas) {
+    // Directly calculate if measurementSchemas are absent
+    if (Objects.isNull(measurementSchemas)) {
+      return RamUsageEstimator.shallowSizeOf(columns)
+          + Arrays.stream(columns).mapToLong(RamUsageEstimator::sizeOfObject).reduce(0L, Long::sum);
+    }
     long size =
         RamUsageEstimator.alignObjectSize(
             NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * columns.length);
@@ -542,16 +547,16 @@ public class InsertNodeMemoryEstimator {
   }
 
   public static long sizeOfValues(
-      final Object[] columns, final MeasurementSchema[] measurementSchemas) {
+      final Object[] values, final MeasurementSchema[] measurementSchemas) {
     // Directly calculate if measurementSchemas are absent
     if (Objects.isNull(measurementSchemas)) {
-      return RamUsageEstimator.shallowSizeOf(columns)
-          + Arrays.stream(columns).mapToLong(RamUsageEstimator::sizeOfObject).reduce(0L, Long::sum);
+      return RamUsageEstimator.shallowSizeOf(values)
+          + Arrays.stream(values).mapToLong(RamUsageEstimator::sizeOfObject).reduce(0L, Long::sum);
     }
     long size =
         RamUsageEstimator.alignObjectSize(
-            NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * columns.length);
-    for (int i = 0; i < columns.length; i++) {
+            NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * values.length);
+    for (int i = 0; i < values.length; i++) {
       switch (measurementSchemas[i].getType()) {
         case INT64:
         case TIMESTAMP:
@@ -584,7 +589,7 @@ public class InsertNodeMemoryEstimator {
         case TEXT:
         case BLOB:
           {
-            final Binary binary = (Binary) columns[i];
+            final Binary binary = (Binary) values[i];
             size += sizeOfBinary(binary);
           }
       }
