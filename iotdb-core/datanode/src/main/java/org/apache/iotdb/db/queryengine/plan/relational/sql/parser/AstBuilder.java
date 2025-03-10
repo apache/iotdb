@@ -141,10 +141,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SelectItem;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSystemStatus;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
@@ -160,6 +162,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowSubscriptions;
@@ -363,6 +366,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         ctx.charsetDesc() == null
             ? null
             : ((Identifier) visit(ctx.charsetDesc().identifierOrString())).getValue(),
+        ctx.comment() == null ? null : ((StringLiteral) visit(ctx.comment().string())).getValue(),
         properties);
   }
 
@@ -375,7 +379,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getColumnCategory(ctx.columnCategory),
         ctx.charsetName() == null
             ? null
-            : ((Identifier) visit(ctx.charsetName().identifier())).getValue());
+            : ((Identifier) visit(ctx.charsetName().identifier())).getValue(),
+        ctx.comment() == null ? null : ((StringLiteral) visit(ctx.comment().string())).getValue());
   }
 
   @Override
@@ -483,6 +488,26 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
                     node.getSymbol().getTokenIndex() > ctx.COLUMN().getSymbol().getTokenIndex());
     return new AlterColumnDataType(
         getLocation(ctx), tableName, columnName, dataType, ifTableExists, ifColumnExists);
+  }
+
+  @Override
+  public Node visitCommentTable(final RelationalSqlParser.CommentTableContext ctx) {
+    return new SetTableComment(
+        getLocation(ctx),
+        getQualifiedName(ctx.qualifiedName()),
+        false,
+        Objects.nonNull(ctx.string()) ? ((StringLiteral) visit(ctx.string())).getValue() : null);
+  }
+
+  @Override
+  public Node visitCommentColumn(final RelationalSqlParser.CommentColumnContext ctx) {
+    return new SetColumnComment(
+        getLocation(ctx),
+        getQualifiedName(ctx.qualifiedName()),
+        lowerIdentifier((Identifier) visit(ctx.column)),
+        false,
+        false,
+        Objects.nonNull(ctx.string()) ? ((StringLiteral) visit(ctx.string())).getValue() : null);
   }
 
   @Override
@@ -1336,7 +1361,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       limit = visitIfPresent(ctx.limitOffsetClause().limit, Node.class);
     }
 
-    return new ShowStatement(
+    return new ShowQueriesStatement(
         getLocation(ctx),
         InformationSchema.QUERIES,
         visitIfPresent(ctx.where, Expression.class),

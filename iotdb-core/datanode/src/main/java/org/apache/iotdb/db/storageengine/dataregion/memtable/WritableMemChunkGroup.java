@@ -149,14 +149,6 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public long getMeasurementSize(String measurement) {
-    if (!memChunkMap.containsKey(measurement)) {
-      return 0;
-    }
-    return memChunkMap.get(measurement).rowCount();
-  }
-
-  @Override
   public IWritableMemChunk getWritableMemChunk(String measurement) {
     if (!memChunkMap.containsKey(measurement)) {
       return null;
@@ -213,8 +205,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       }
 
       IWritableMemChunk memChunk = memChunkMap.get(incomingSchema.getMeasurementName());
-      if (memChunk != null
-          && memChunk.getWorkingTVList().getDataType() != incomingSchema.getType()) {
+      if (memChunk != null && memChunk.getSchema().getType() != incomingSchema.getType()) {
         throw new DataTypeInconsistentException(
             memChunk.getWorkingTVList().getDataType(), incomingSchema.getType());
       }

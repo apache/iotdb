@@ -55,6 +55,7 @@ statement
     | showTableStatement
     | descTableStatement
     | alterTableStatement
+    | commentStatement
 
     // Index Statement
     | createIndexStatement
@@ -179,6 +180,7 @@ createTableStatement
     : CREATE TABLE (IF NOT EXISTS)? qualifiedName
         '(' (columnDefinition (',' columnDefinition)*)? ')'
         charsetDesc?
+        comment?
         (WITH properties)?
      ;
 
@@ -187,14 +189,18 @@ charsetDesc
     ;
 
 columnDefinition
-    : identifier columnCategory=(TAG | ATTRIBUTE | TIME) charsetName?
-    | identifier type (columnCategory=(TAG | ATTRIBUTE | TIME | FIELD))? charsetName?
+    : identifier columnCategory=(TAG | ATTRIBUTE | TIME) charsetName? comment?
+    | identifier type (columnCategory=(TAG | ATTRIBUTE | TIME | FIELD))? charsetName? comment?
     ;
 
 charsetName
     : CHAR SET identifier
     | CHARSET identifier
     | CHARACTER SET identifier
+    ;
+
+comment
+    : COMMENT string
     ;
 
 dropTableStatement
@@ -220,7 +226,10 @@ alterTableStatement
     | ALTER TABLE (IF EXISTS)? tableName=qualifiedName ALTER COLUMN (IF EXISTS)? column=identifier SET DATA TYPE new_type=type #alterColumnDataType
     ;
 
-
+commentStatement
+    : COMMENT ON TABLE qualifiedName IS (string | NULL) #commentTable
+    | COMMENT ON COLUMN qualifiedName '.' column=identifier IS (string | NULL) #commentColumn
+    ;
 
 // ------------------------------------------- Index Statement ---------------------------------------------------------
 createIndexStatement
@@ -665,7 +674,6 @@ objectScope
 systemPrivilege
     : MANAGE_USER
     | MANAGE_ROLE
-    | MAINTAIN
     ;
 
 objectPrivilege
@@ -1096,7 +1104,7 @@ nonReserved
     | JSON
     | KEEP | KEY | KEYS | KILL
     | LANGUAGE | LAST | LATERAL | LEADING | LEAVE | LEVEL | LIMIT | LINEAR | LOAD | LOCAL | LOGICAL | LOOP
-    | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASURES | METHOD | MERGE | MICROSECOND | MIGRATE | MILLISECOND | MINUTE | MODIFY | MONTH
+    | MANAGE_ROLE | MANAGE_USER | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASURES | METHOD | MERGE | MICROSECOND | MIGRATE | MILLISECOND | MINUTE | MODIFY | MONTH
     | NANOSECOND | NESTED | NEXT | NFC | NFD | NFKC | NFKD | NO | NODEID | NONE | NULLIF | NULLS
     | OBJECT | OF | OFFSET | OMIT | ONE | ONLY | OPTION | ORDINALITY | OUTPUT | OVER | OVERFLOW
     | PARTITION | PARTITIONS | PASSING | PAST | PATH | PATTERN | PER | PERIOD | PERMUTE | PIPE | PIPEPLUGIN | PIPEPLUGINS | PIPES | PLAN | POSITION | PRECEDING | PRECISION | PRIVILEGES | PREVIOUS | PROCESSLIST | PROCESSOR | PROPERTIES | PRUNE
@@ -1294,7 +1302,6 @@ LOCALTIME: 'LOCALTIME';
 LOCALTIMESTAMP: 'LOCALTIMESTAMP';
 LOGICAL: 'LOGICAL';
 LOOP: 'LOOP';
-MAINTAIN: 'MAINTAIN';
 MANAGE_ROLE: 'MANAGE_ROLE';
 MANAGE_USER: 'MANAGE_USER';
 MAP: 'MAP';

@@ -59,6 +59,8 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTimeParti
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableColumnCommentPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTableCommentPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -934,7 +936,6 @@ public class ClusterSchemaManager {
   }
 
   public synchronized TSStatus dropSchemaTemplate(String templateName) {
-
     // check template existence
     GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(templateName);
     TemplateInfoResp templateInfoResp;
@@ -1367,6 +1368,43 @@ public class ClusterSchemaManager {
               isGeneratedByPipe
                   ? new PipeEnrichedPlan(setTablePropertiesPlan)
                   : setTablePropertiesPlan);
+    } catch (final ConsensusException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+  }
+
+  public synchronized TSStatus setTableComment(
+      final String database,
+      final String tableName,
+      final String comment,
+      final boolean isGeneratedByPipe) {
+    final SetTableCommentPlan setTableCommentPlan =
+        new SetTableCommentPlan(database, tableName, comment);
+    try {
+      return getConsensusManager()
+          .write(
+              isGeneratedByPipe ? new PipeEnrichedPlan(setTableCommentPlan) : setTableCommentPlan);
+    } catch (final ConsensusException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+  }
+
+  public synchronized TSStatus setTableColumnComment(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final String comment,
+      final boolean isGeneratedByPipe) {
+    final SetTableColumnCommentPlan setTableColumnCommentPlan =
+        new SetTableColumnCommentPlan(database, tableName, columnName, comment);
+    try {
+      return getConsensusManager()
+          .write(
+              isGeneratedByPipe
+                  ? new PipeEnrichedPlan(setTableColumnCommentPlan)
+                  : setTableColumnCommentPlan);
     } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());

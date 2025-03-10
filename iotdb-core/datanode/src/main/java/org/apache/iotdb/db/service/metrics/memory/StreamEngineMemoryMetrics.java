@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.service.metrics.memory;
 
+import org.apache.iotdb.commons.memory.MemoryManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -29,29 +30,50 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 public class StreamEngineMemoryMetrics implements IMetricSet {
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final DataNodeMemoryConfig memoryConfig =
+      IoTDBDescriptor.getInstance().getMemoryConfig();
   private static final String STREAM_ENGINE = "StreamEngine";
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService
-        .getOrCreateGauge(
-            Metric.MEMORY_THRESHOLD_SIZE.toString(),
-            MetricLevel.NORMAL,
-            Tag.NAME.toString(),
-            STREAM_ENGINE,
-            Tag.TYPE.toString(),
-            GlobalMemoryMetrics.ON_HEAP,
-            Tag.LEVEL.toString(),
-            GlobalMemoryMetrics.LEVELS[1])
-        .set(config.getAllocateMemoryForPipe());
+    metricService.createAutoGauge(
+        Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        memoryConfig.getPipeMemoryManager(),
+        MemoryManager::getTotalMemorySizeInBytes,
+        Tag.NAME.toString(),
+        STREAM_ENGINE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[1]);
+    metricService.createAutoGauge(
+        Metric.MEMORY_ACTUAL_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        memoryConfig.getPipeMemoryManager(),
+        MemoryManager::getUsedMemorySizeInBytes,
+        Tag.NAME.toString(),
+        STREAM_ENGINE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[1]);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.GAUGE,
+        MetricType.AUTO_GAUGE,
         Metric.MEMORY_THRESHOLD_SIZE.toString(),
+        Tag.NAME.toString(),
+        STREAM_ENGINE,
+        Tag.TYPE.toString(),
+        GlobalMemoryMetrics.ON_HEAP,
+        Tag.LEVEL.toString(),
+        GlobalMemoryMetrics.LEVELS[1]);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.MEMORY_ACTUAL_SIZE.toString(),
         Tag.NAME.toString(),
         STREAM_ENGINE,
         Tag.TYPE.toString(),

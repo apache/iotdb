@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
-import org.apache.iotdb.db.utils.datastructure.MergeSortTvListIterator;
+import org.apache.iotdb.db.utils.datastructure.MergeSortTVListIterator;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -47,7 +47,7 @@ import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 public class MemChunkReader implements IChunkReader, IPointReader {
 
   private final ReadOnlyMemChunk readableChunk;
-  private final MergeSortTvListIterator timeValuePairIterator;
+  private final MergeSortTVListIterator timeValuePairIterator;
   private final Filter globalTimeFilter;
   private final List<IPageReader> pageReaderList;
 

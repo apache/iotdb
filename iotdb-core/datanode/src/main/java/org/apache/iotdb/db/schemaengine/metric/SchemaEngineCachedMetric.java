@@ -52,7 +52,10 @@ public class SchemaEngineCachedMetric implements ISchemaEngineMetric {
     schemaEngineMemMetric.bindTo(metricService);
     metricService.gauge(
         (long)
-            (IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion()
+            (IoTDBDescriptor.getInstance()
+                    .getMemoryConfig()
+                    .getSchemaRegionMemoryManager()
+                    .getTotalMemorySizeInBytes()
                 * ReleaseFlushStrategySizeBasedImpl.RELEASE_THRESHOLD_RATIO),
         Metric.SCHEMA_ENGINE.toString(),
         MetricLevel.IMPORTANT,

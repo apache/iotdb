@@ -32,7 +32,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
-import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigRegionConnectorMetrics;
+import org.apache.iotdb.confignode.manager.pipe.metric.sink.PipeConfigRegionConnectorMetrics;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;

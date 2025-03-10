@@ -340,7 +340,8 @@ public abstract class InsertNode extends SearchNode {
 
   public boolean allMeasurementFailed() {
     if (measurements != null) {
-      return failedMeasurementNumber >= measurements.length;
+      return failedMeasurementNumber
+          >= measurements.length - (idColumnIndices == null ? 0 : idColumnIndices.size());
     }
     return true;
   }
