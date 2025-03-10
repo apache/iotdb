@@ -55,7 +55,7 @@ public abstract class SortOperator extends AbstractSortOperator {
       buildResult();
       TsBlock res = buildFinalResult(tsBlockBuilder);
       tsBlockBuilder.reset();
-      // sout print res
+      System.out.println("====== sort result ======= ");
       for (int i = 0; i < res.getPositionCount(); i++) {
         for (Column column : res.getValueColumns()) {
           if (column.isNull(i)) {
@@ -73,6 +73,17 @@ public abstract class SortOperator extends AbstractSortOperator {
       TsBlock tsBlock = inputOperator.nextWithTimer();
       if (tsBlock == null) {
         return null;
+      }
+      System.out.println("receive new tsBlock: " + tsBlock);
+      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+        for (Column column : tsBlock.getValueColumns()) {
+          if (column.isNull(i)) {
+            System.out.print("null, ");
+          } else {
+            System.out.print(column.getObject(i) + ", ");
+          }
+        }
+        System.out.println();
       }
       dataSize += tsBlock.getSizeInBytes();
       cacheTsBlock(tsBlock);

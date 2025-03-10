@@ -215,7 +215,20 @@ public class TableFunctionOperator implements ProcessOperator {
         }
       }
     }
-    return blockBuilder.build(new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, positionCount));
+    TsBlock res =
+        blockBuilder.build(new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, positionCount));
+    System.out.println("====== tvf result ======= ");
+    for (int i = 0; i < res.getPositionCount(); i++) {
+      for (Column column : res.getValueColumns()) {
+        if (column.isNull(i)) {
+          System.out.print("null, ");
+        } else {
+          System.out.print(column.getObject(i) + ", ");
+        }
+      }
+      System.out.println();
+    }
+    return res;
   }
 
   private void consumeCurrentPartitionState() {
