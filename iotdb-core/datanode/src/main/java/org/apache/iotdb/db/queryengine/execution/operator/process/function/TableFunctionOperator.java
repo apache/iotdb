@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.function;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationMergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.PartitionState;
 import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.Slice;
@@ -32,11 +34,13 @@ import org.apache.iotdb.udf.api.relational.table.processor.TableFunctionDataProc
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.LongColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Arrays;
 import java.util.Iterator;
@@ -47,6 +51,12 @@ import static org.apache.iotdb.db.queryengine.execution.operator.source.relation
 // only one input source is supported now
 public class TableFunctionOperator implements ProcessOperator {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AggregationMergeSortOperator.class);
+
+  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+
   private final OperatorContext operatorContext;
   private final Operator inputOperator;
   private final TableFunctionProcessorProvider processorProvider;
@@ -54,14 +64,12 @@ public class TableFunctionOperator implements ProcessOperator {
   private final TsBlockBuilder blockBuilder;
   private final int properChannelCount;
   private final boolean needPassThrough;
+  private final SliceCache sliceCache;
 
   private TableFunctionDataProcessor processor;
   private PartitionState partitionState;
   private ListenableFuture<?> isBlocked;
   private boolean finished = false;
-  private ColumnBuilder passThroughIndexBuilder;
-
-  private SliceCache sliceCache;
 
   public TableFunctionOperator(
       OperatorContext operatorContext,
@@ -119,6 +127,9 @@ public class TableFunctionOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
+    if (partitionState == null) {
+      partitionState = partitionRecognizer.nextState();
+    }
     PartitionState.StateType stateType = partitionState.getStateType();
     Slice slice = partitionState.getSlice();
     if (stateType == PartitionState.StateType.INIT
@@ -149,6 +160,7 @@ public class TableFunctionOperator implements ProcessOperator {
           return tsBlock;
         } else {
           processor = processorProvider.getDataProcessor();
+          processor.beforeStart();
         }
       }
       sliceCache.addSlice(slice);
@@ -216,10 +228,6 @@ public class TableFunctionOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    if (partitionState == null) {
-      isBlocked().get(); // wait for the next TsBlock
-      partitionState = partitionRecognizer.nextState();
-    }
     return !finished;
   }
 
@@ -236,21 +244,26 @@ public class TableFunctionOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return 0;
+    return inputOperator.calculateMaxPeekMemory()
+        + Math.max(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, blockBuilder.getRetainedSizeInBytes());
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    return 0;
+    return Math.max(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, blockBuilder.getRetainedSizeInBytes());
   }
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return 0;
+    return inputOperator.calculateRetainedSizeAfterCallingNext();
   }
 
   @Override
   public long ramBytesUsed() {
-    return 0;
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(inputOperator)
+        + blockBuilder.getRetainedSizeInBytes()
+        + sliceCache.getEstimatedSize();
   }
 }

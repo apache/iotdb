@@ -26,21 +26,25 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /** Parts of partition. */
 public class Slice {
-
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Slice.class);
   private final Column[] requiredColumns;
   private final Column[] passThroughColumns;
   private final List<Type> dataTypes;
   private final long size;
+  private final long estimatedSize;
 
   public Slice(
       int startIndex,
@@ -59,6 +63,12 @@ public class Slice {
     this.passThroughColumns =
         passThroughChannels.stream().map(partitionColumns::get).toArray(Column[]::new);
     this.dataTypes = dataTypes;
+
+    Set<Integer> channels = new HashSet<>();
+    channels.addAll(requiredChannels);
+    channels.addAll(passThroughChannels);
+    this.estimatedSize =
+        channels.stream().map(i -> columns[i].getRetainedSizeInBytes()).reduce(0L, Long::sum);
   }
 
   public long getSize() {
@@ -91,69 +101,85 @@ public class Slice {
     };
   }
 
+  public long getEstimatedSize() {
+    return estimatedSize;
+  }
+
   private Record getRecord(int offset, Column[] originalColumns) {
-    return new Record() {
-      @Override
-      public int getInt(int columnIndex) {
-        return originalColumns[columnIndex].getInt(offset);
-      }
+    return new RecordImpl(offset, originalColumns, dataTypes);
+  }
 
-      @Override
-      public long getLong(int columnIndex) {
-        return originalColumns[columnIndex].getLong(offset);
-      }
+  private static class RecordImpl implements Record {
+    private final int offset;
+    private final Column[] originalColumns;
+    private final List<Type> dataTypes;
 
-      @Override
-      public float getFloat(int columnIndex) {
-        return originalColumns[columnIndex].getFloat(offset);
-      }
+    private RecordImpl(int offset, Column[] originalColumns, List<Type> dataTypes) {
+      this.offset = offset;
+      this.originalColumns = originalColumns;
+      this.dataTypes = dataTypes;
+    }
 
-      @Override
-      public double getDouble(int columnIndex) {
-        return originalColumns[columnIndex].getDouble(offset);
-      }
+    @Override
+    public int getInt(int columnIndex) {
+      return originalColumns[columnIndex].getInt(offset);
+    }
 
-      @Override
-      public boolean getBoolean(int columnIndex) {
-        return originalColumns[columnIndex].getBoolean(offset);
-      }
+    @Override
+    public long getLong(int columnIndex) {
+      return originalColumns[columnIndex].getLong(offset);
+    }
 
-      @Override
-      public Binary getBinary(int columnIndex) {
-        return originalColumns[columnIndex].getBinary(offset);
-      }
+    @Override
+    public float getFloat(int columnIndex) {
+      return originalColumns[columnIndex].getFloat(offset);
+    }
 
-      @Override
-      public String getString(int columnIndex) {
-        return originalColumns[columnIndex]
-            .getBinary(offset)
-            .getStringValue(TSFileConfig.STRING_CHARSET);
-      }
+    @Override
+    public double getDouble(int columnIndex) {
+      return originalColumns[columnIndex].getDouble(offset);
+    }
 
-      @Override
-      public LocalDate getLocalDate(int columnIndex) {
-        return DateUtils.parseIntToLocalDate(originalColumns[columnIndex].getInt(offset));
-      }
+    @Override
+    public boolean getBoolean(int columnIndex) {
+      return originalColumns[columnIndex].getBoolean(offset);
+    }
 
-      @Override
-      public Object getObject(int columnIndex) {
-        return originalColumns[columnIndex].getObject(offset);
-      }
+    @Override
+    public Binary getBinary(int columnIndex) {
+      return originalColumns[columnIndex].getBinary(offset);
+    }
 
-      @Override
-      public Type getDataType(int columnIndex) {
-        return dataTypes.get(columnIndex);
-      }
+    @Override
+    public String getString(int columnIndex) {
+      return originalColumns[columnIndex]
+          .getBinary(offset)
+          .getStringValue(TSFileConfig.STRING_CHARSET);
+    }
 
-      @Override
-      public boolean isNull(int columnIndex) {
-        return originalColumns[columnIndex].isNull(offset);
-      }
+    @Override
+    public LocalDate getLocalDate(int columnIndex) {
+      return DateUtils.parseIntToLocalDate(originalColumns[columnIndex].getInt(offset));
+    }
 
-      @Override
-      public int size() {
-        return originalColumns.length;
-      }
-    };
+    @Override
+    public Object getObject(int columnIndex) {
+      return originalColumns[columnIndex].getObject(offset);
+    }
+
+    @Override
+    public Type getDataType(int columnIndex) {
+      return dataTypes.get(columnIndex);
+    }
+
+    @Override
+    public boolean isNull(int columnIndex) {
+      return originalColumns[columnIndex].isNull(offset);
+    }
+
+    @Override
+    public int size() {
+      return originalColumns.length;
+    }
   }
 }

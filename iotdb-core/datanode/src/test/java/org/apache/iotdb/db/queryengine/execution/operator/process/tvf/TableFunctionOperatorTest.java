@@ -212,9 +212,6 @@ public class TableFunctionOperatorTest {
       partitionRecognizer.addTsBlock(childOperator.next());
       state = partitionRecognizer.nextState();
       Assert.assertEquals(PartitionState.StateType.NEW_PARTITION, state.getStateType());
-      checkIteratorSimply(state.getSlice(), Collections.emptyList());
-      state = partitionRecognizer.nextState();
-      Assert.assertEquals(PartitionState.StateType.NEW_PARTITION, state.getStateType());
       checkIteratorSimply(
           state.getSlice(),
           Arrays.asList(

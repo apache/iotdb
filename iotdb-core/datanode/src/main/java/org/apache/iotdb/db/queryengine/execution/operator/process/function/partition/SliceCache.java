@@ -30,6 +30,8 @@ public class SliceCache {
   private final List<Slice> slices = new ArrayList<>();
   private final List<Long> startOffsets = new ArrayList<>();
 
+  private long estimatedSize = 0;
+
   public List<Column[]> getPassThroughResult(Column passThroughIndexes) {
     List<Column[]> result = new ArrayList<>();
     int sliceIndex = findSliceIndex(passThroughIndexes.getLong(0));
@@ -66,6 +68,7 @@ public class SliceCache {
           startOffsets.get(startOffsets.size() - 1)
               + slices.get(startOffsets.size() - 1).getSize());
     }
+    this.estimatedSize += slice.getEstimatedSize();
   }
 
   private long getSliceOffset(int slideIndex) {
@@ -79,7 +82,6 @@ public class SliceCache {
 
     while (left <= right) {
       int mid = left + (right - left) / 2;
-
       if (startOffsets.get(mid) <= passThroughIndex) {
         result = mid;
         left = mid + 1;
@@ -88,6 +90,10 @@ public class SliceCache {
       }
     }
     return result;
+  }
+
+  public long getEstimatedSize() {
+    return estimatedSize;
   }
 
   public void clear() {
