@@ -180,6 +180,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
   private static final long LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS =
       PipeConfig.getInstance().getPipeReceiverLoginPeriodicVerificationIntervalMs();
+  private static final double MEMORY_EXPAND_RATIO =
+      PipeConfig.getInstance().getPipeReceiverInsertNodeMemoryExpandRatio();
   private long lastSuccessfulLoginTime = Long.MIN_VALUE;
   private PipeMemoryBlock memoryBlock;
 
@@ -789,7 +791,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     try {
       if (statement instanceof InsertBaseStatement) {
         memory = ((InsertBaseStatement) statement).ramBytesUsed();
-        memoryBlock = PipeDataNodeResourceManager.memory().forceAllocate(memory);
+        memoryBlock =
+            PipeDataNodeResourceManager.memory()
+                .forceAllocate((long) (memory * MEMORY_EXPAND_RATIO));
       }
       final TSStatus result =
           executeStatementWithPermissionCheckAndRetryOnDataTypeMismatch(statement);
