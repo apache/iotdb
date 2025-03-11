@@ -229,7 +229,8 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
         TABLE_PRIVILEGE_PARSE_VISITOR.process(plan, userName);
     if (result.isPresent()) {
       return Optional.of(
-          new PipeConfigRegionWritePlanEvent(result.get(), event.isGeneratedByPipe()));
+          new PipeConfigRegionWritePlanEvent(
+              result.get(), event.isGeneratedByPipe(), event.getOriginClusterId()));
     }
     if (skipIfNoPrivileges) {
       return Optional.empty();
@@ -246,7 +247,8 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
             tablePattern)
         .map(
             configPhysicalPlan ->
-                new PipeConfigRegionWritePlanEvent(configPhysicalPlan, event.isGeneratedByPipe()));
+                new PipeConfigRegionWritePlanEvent(
+                    configPhysicalPlan, event.isGeneratedByPipe(), event.getOriginClusterId()));
   }
 
   public static Optional<ConfigPhysicalPlan> parseConfigPlan(
