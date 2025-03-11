@@ -733,7 +733,7 @@ public class ConfigManager implements IManager {
   public TSStatus setDatabase(final DatabaseSchemaPlan databaseSchemaPlan) {
     final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.setDatabase(databaseSchemaPlan, false);
+      return clusterSchemaManager.setDatabase(databaseSchemaPlan, false, null);
     } else {
       return status;
     }
@@ -743,7 +743,7 @@ public class ConfigManager implements IManager {
   public TSStatus alterDatabase(final DatabaseSchemaPlan databaseSchemaPlan) {
     final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.alterDatabase(databaseSchemaPlan, false);
+      return clusterSchemaManager.alterDatabase(databaseSchemaPlan, false, null);
     } else {
       return status;
     }
@@ -1255,7 +1255,7 @@ public class ConfigManager implements IManager {
   public TSStatus operatePermission(final AuthorPlan authorPlan) {
     final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return permissionManager.operatePermission(authorPlan, false);
+      return permissionManager.operatePermission(authorPlan, false, null);
     } else {
       return status;
     }
@@ -2159,7 +2159,8 @@ public class ConfigManager implements IManager {
           status =
               clusterSchemaManager.setDatabase(
                   new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema),
-                  isGeneratedByPipe);
+                  isGeneratedByPipe,
+                  null);
           if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             failedStatus.add(status);
           }

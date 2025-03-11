@@ -553,11 +553,13 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             ConfigNodeDescriptor.getInstance().getConf().getDefaultDataRegionGroupNumPerDatabase());
         schema.setMaxSchemaRegionGroupNum(schema.getMinSchemaRegionGroupNum());
         schema.setMaxDataRegionGroupNum(schema.getMinDataRegionGroupNum());
-        return configManager.getClusterSchemaManager().setDatabase((DatabaseSchemaPlan) plan, true);
+        return configManager
+            .getClusterSchemaManager()
+            .setDatabase((DatabaseSchemaPlan) plan, true, clusterIdFromHandshakeRequest);
       case AlterDatabase:
         return configManager
             .getClusterSchemaManager()
-            .alterDatabase((DatabaseSchemaPlan) plan, true);
+            .alterDatabase((DatabaseSchemaPlan) plan, true, clusterIdFromHandshakeRequest);
       case DeleteDatabase:
         return configManager.deleteDatabases(
             new TDeleteDatabasesReq(
@@ -754,10 +756,14 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RRevokeUserSysPri:
       case RGrantUserRole:
       case RRevokeUserRole:
-        return configManager.getPermissionManager().operatePermission((AuthorPlan) plan, true);
+        return configManager
+            .getPermissionManager()
+            .operatePermission((AuthorPlan) plan, true, clusterIdFromHandshakeRequest);
       case CreateSchemaTemplate:
       default:
-        return configManager.getConsensusManager().write(new PipeEnrichedPlan(plan));
+        return configManager
+            .getConsensusManager()
+            .write(new PipeEnrichedPlan(plan, clusterIdFromHandshakeRequest));
     }
   }
 

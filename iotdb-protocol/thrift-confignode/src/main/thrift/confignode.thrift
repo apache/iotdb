@@ -167,6 +167,7 @@ struct TDeleteDatabasesReq {
   1: required list<string> prefixPathList
   2: optional bool isGeneratedByPipe
   3: optional bool isTableModel
+  4: optional string originClusterId
 }
 
 struct TSetSchemaReplicationFactorReq {
@@ -545,6 +546,7 @@ struct TCreateTriggerReq {
 struct TDropTriggerReq {
   1: required string triggerName
   2: optional bool isGeneratedByPipe
+  3: optional string originClusterId
 }
 
 struct TGetLocationForTriggerResp {
@@ -735,6 +737,7 @@ struct TSetSchemaTemplateReq {
   2: required string name
   3: required string path
   4: optional bool isGeneratedByPipe
+  5: optional string originClusterId
 }
 
 struct TGetPathsSetTemplatesReq {
@@ -864,12 +867,14 @@ struct TDeleteTimeSeriesReq {
   1: required string queryId
   2: required binary pathPatternTree
   3: optional bool isGeneratedByPipe
+  4: optional string originClusterId
 }
 
 struct TDeleteLogicalViewReq {
   1: required string queryId
   2: required binary pathPatternTree
   3: optional bool isGeneratedByPipe
+  4: optional string originClusterId
 }
 
 struct TAlterLogicalViewReq {
@@ -1005,6 +1010,7 @@ struct TUnsetSchemaTemplateReq {
   2: required string templateName
   3: required string path
   4: optional bool isGeneratedByPipe
+  5: optional String originClusterId
 }
 
 struct TCreateModelReq {

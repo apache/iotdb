@@ -159,7 +159,9 @@ public class ClusterSchemaManager {
 
   /** Set Database */
   public TSStatus setDatabase(
-      final DatabaseSchemaPlan databaseSchemaPlan, final boolean isGeneratedByPipe) {
+      final DatabaseSchemaPlan databaseSchemaPlan,
+      final boolean isGeneratedByPipe,
+      final String originClusterIds) {
     TSStatus result;
 
     final TDatabaseSchema schema = databaseSchemaPlan.getSchema();
@@ -213,7 +215,9 @@ public class ClusterSchemaManager {
 
   /** Alter Database */
   public TSStatus alterDatabase(
-      final DatabaseSchemaPlan databaseSchemaPlan, final boolean isGeneratedByPipe) {
+      final DatabaseSchemaPlan databaseSchemaPlan,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
     TSStatus result;
     final TDatabaseSchema databaseSchema = databaseSchemaPlan.getSchema();
 
@@ -260,7 +264,7 @@ public class ClusterSchemaManager {
           getConsensusManager()
               .write(
                   isGeneratedByPipe
-                      ? new PipeEnrichedPlan(databaseSchemaPlan)
+                      ? new PipeEnrichedPlan(databaseSchemaPlan, originClusterId)
                       : databaseSchemaPlan);
       PartitionMetrics.bindDatabaseReplicationFactorMetricsWhenUpdate(
           MetricService.getInstance(),

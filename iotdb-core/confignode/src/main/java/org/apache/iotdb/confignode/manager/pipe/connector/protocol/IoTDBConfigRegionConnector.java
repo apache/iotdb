@@ -53,6 +53,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 @TreeModel
 @TableModel
@@ -274,5 +275,9 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
     }
 
     LOGGER.info("Successfully transferred config region snapshot {}.", snapshotFile);
+  }
+
+  public Set<String> getSinkClusterIds() {
+    return clientManager.getEndPointsClusterIds();
   }
 }

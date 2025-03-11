@@ -31,6 +31,8 @@ public class PipeEnrichedPlan extends ConfigPhysicalPlan {
 
   private ConfigPhysicalPlan innerPlan;
 
+  private String originClusterIds;
+
   public PipeEnrichedPlan() {
     super(ConfigPhysicalPlanType.PipeEnriched);
   }
@@ -40,8 +42,18 @@ public class PipeEnrichedPlan extends ConfigPhysicalPlan {
     this.innerPlan = innerPlan;
   }
 
+  public PipeEnrichedPlan(ConfigPhysicalPlan innerPlan, String originClusterIds) {
+    super(ConfigPhysicalPlanType.PipeEnriched);
+    this.innerPlan = innerPlan;
+    this.originClusterIds = originClusterIds;
+  }
+
   public ConfigPhysicalPlan getInnerPlan() {
     return innerPlan;
+  }
+
+  public String getOriginClusterIds() {
+    return originClusterIds;
   }
 
   @Override

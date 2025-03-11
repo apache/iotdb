@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironmen
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
+import org.apache.iotdb.confignode.manager.pipe.connector.protocol.IoTDBConfigRegionConnector;
 import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
 import org.apache.iotdb.confignode.manager.pipe.metric.sink.PipeConfigRegionConnectorMetrics;
 import org.apache.iotdb.pipe.api.PipeExtractor;
@@ -147,6 +148,12 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
 
       // 4. Handshake
       outputPipeConnector.handshake();
+      if (outputPipeConnector instanceof IoTDBConfigRegionConnector
+          && extractor instanceof IoTDBConfigRegionExtractor) {
+        ((IoTDBConfigRegionExtractor) extractor)
+            .setSinkClusterIds(
+                ((IoTDBConfigRegionConnector) outputPipeConnector).getSinkClusterIds());
+      }
     } catch (final Exception e) {
       try {
         outputPipeConnector.close();
