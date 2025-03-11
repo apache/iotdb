@@ -46,6 +46,8 @@ public class Slice {
   private final long size;
   private final long estimatedSize;
 
+  private final String slice_id;
+
   public Slice(
       int startIndex,
       int endIndex,
@@ -69,6 +71,8 @@ public class Slice {
     channels.addAll(passThroughChannels);
     this.estimatedSize =
         channels.stream().map(i -> columns[i].getRetainedSizeInBytes()).reduce(0L, Long::sum);
+
+    this.slice_id = "slice_" + startIndex + "_" + endIndex + "_" + columns[0];
   }
 
   public long getSize() {
@@ -82,6 +86,7 @@ public class Slice {
   }
 
   public Iterator<Record> getRequiredRecordIterator() {
+    System.out.println("====== Slice getRequiredRecordIterator: " + slice_id + " ======= ");
     return new Iterator<Record>() {
       private int curIndex = 0;
 

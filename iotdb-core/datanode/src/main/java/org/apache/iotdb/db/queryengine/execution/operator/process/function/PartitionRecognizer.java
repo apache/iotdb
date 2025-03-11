@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.function.parti
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.udf.api.type.Type;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 
@@ -75,6 +76,21 @@ public class PartitionRecognizer {
           "The partition handler is finished, cannot add more data.");
     }
     currentTsBlock = tsBlock;
+    System.out.println("====== PartitionRecognizer add tsblock ======= ");
+    if (tsBlock == null) {
+      System.out.println("NULL TsBlock");
+    } else {
+      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+        for (Column column : tsBlock.getValueColumns()) {
+          if (column.isNull(i)) {
+            System.out.print("null, ");
+          } else {
+            System.out.print(column.getObject(i) + ", ");
+          }
+        }
+        System.out.println();
+      }
+    }
   }
 
   /** Marks the handler as finished. */
@@ -160,10 +176,14 @@ public class PartitionRecognizer {
     while (compareKey.rowIndex < currentTsBlock.getPositionCount()) {
       if (partitionComparator.compare(partitionKey, compareKey) != 0) {
         partitionKey = compareKey;
+        System.out.println(
+            "====== PartitionRecognizer find next different row index: " + compareKey.rowIndex);
         return compareKey.rowIndex;
       }
       compareKey.rowIndex++;
     }
+    System.out.println(
+        "====== PartitionRecognizer find next different row index: " + compareKey.rowIndex);
     return compareKey.rowIndex;
   }
 
