@@ -440,7 +440,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TPipeTransferResp handleTransferTabletInsertNode(
       final PipeTransferTabletInsertNodeReq req) {
     final InsertBaseStatement statement = req.constructStatement();
-    statement.setOriginClusterId(clusterIdFromHandshakeRequest);
     return new TPipeTransferResp(
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
@@ -449,7 +448,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TPipeTransferResp handleTransferTabletBinary(final PipeTransferTabletBinaryReq req) {
     final InsertBaseStatement statement = req.constructStatement();
-    statement.setOriginClusterId(clusterIdFromHandshakeRequest);
     return new TPipeTransferResp(
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
@@ -458,7 +456,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TPipeTransferResp handleTransferTabletRaw(final PipeTransferTabletRawReq req) {
     final InsertTabletStatement statement = req.constructStatement();
-    statement.setOriginClusterId(clusterIdFromHandshakeRequest);
     return new TPipeTransferResp(
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
@@ -599,7 +596,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     statement.setVerifySchema(validateTsFile.get());
     statement.setAutoCreateDatabase(false);
     statement.setDatabase(dataBaseName);
-    statement.setOriginClusterId(clusterIdFromHandshakeRequest);
 
     return executeStatementAndClassifyExceptions(statement);
   }
@@ -695,6 +691,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               .alterLogicalViewByPipe((AlterLogicalViewNode) req.getPlanNode()));
     }
     final Object statement = PLAN_TO_STATEMENT_VISITOR.process(req.getPlanNode(), null);
+
     return statement instanceof Statement
         ? new TPipeTransferResp(executeStatementAndClassifyExceptions((Statement) statement))
         : new TPipeTransferResp(
@@ -749,7 +746,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
    * message field.
    */
   private TSStatus executeStatementAndAddRedirectInfo(final InsertBaseStatement statement) {
-    statement.setOriginClusterId(clusterIdFromHandshakeRequest);
     final TSStatus result = executeStatementAndClassifyExceptions(statement);
 
     if (result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
@@ -912,7 +908,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
       return Coordinator.getInstance()
           .executeForTableModel(
-              shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
+              shouldMarkAsPipeRequest.get()
+                  ? new PipeEnrichedStatement(statement, clusterIdFromHandshakeRequest)
+                  : statement,
               relationalSqlParser,
               SESSION_MANAGER.getCurrSession(),
               SESSION_MANAGER.requestQueryId(),
@@ -936,7 +934,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         // Retry after creating the database
         return Coordinator.getInstance()
             .executeForTableModel(
-                shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
+                shouldMarkAsPipeRequest.get()
+                    ? new PipeEnrichedStatement(statement, clusterIdFromHandshakeRequest)
+                    : statement,
                 relationalSqlParser,
                 SESSION_MANAGER.getCurrSession(),
                 SESSION_MANAGER.requestQueryId(),
@@ -987,7 +987,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TSStatus executeStatementForTreeModel(final Statement statement) {
     return Coordinator.getInstance()
         .executeForTreeModel(
-            shouldMarkAsPipeRequest.get() ? new PipeEnrichedStatement(statement) : statement,
+            shouldMarkAsPipeRequest.get()
+                ? new PipeEnrichedStatement(statement, clusterIdFromHandshakeRequest)
+                : statement,
             SESSION_MANAGER.requestQueryId(),
             SESSION_MANAGER.getSessionInfo(SESSION_MANAGER.getCurrSession()),
             "",

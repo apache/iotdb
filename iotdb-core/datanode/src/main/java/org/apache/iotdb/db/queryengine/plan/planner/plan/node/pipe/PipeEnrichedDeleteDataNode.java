@@ -58,6 +58,13 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
     this.deleteDataNode = deleteDataNode;
   }
 
+  public PipeEnrichedDeleteDataNode(
+      final AbstractDeleteDataNode deleteDataNode, final String originClusterId) {
+    super(deleteDataNode.getPlanNodeId());
+    this.deleteDataNode = deleteDataNode;
+    this.originClusterId = originClusterId;
+  }
+
   public PlanNode getDeleteDataNode() {
     return deleteDataNode;
   }
@@ -70,6 +77,11 @@ public class PipeEnrichedDeleteDataNode extends AbstractDeleteDataNode {
   @Override
   public void markAsGeneratedByPipe() {
     deleteDataNode.markAsGeneratedByPipe();
+  }
+
+  @Override
+  public void setOriginClusterId(final String originClusterId) {
+    deleteDataNode.setOriginClusterId(originClusterId);
   }
 
   @Override

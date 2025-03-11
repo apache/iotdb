@@ -285,6 +285,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   public TSStatus visitPipeEnrichedDeleteDataNode(
       final PipeEnrichedDeleteDataNode node, final DataRegion context) {
     node.getDeleteDataNode().markAsGeneratedByPipe();
+    node.getDeleteDataNode().setOriginClusterId(node.getOriginClusterId());
     return node.getDeleteDataNode().accept(this, context);
   }
 }

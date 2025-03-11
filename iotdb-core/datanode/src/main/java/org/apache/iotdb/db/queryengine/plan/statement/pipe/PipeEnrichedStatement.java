@@ -37,9 +37,17 @@ public class PipeEnrichedStatement extends Statement {
 
   private Statement innerStatement;
 
+  private String originClusterId;
+
   public PipeEnrichedStatement(final Statement innerStatement) {
     statementType = StatementType.PIPE_ENRICHED;
     this.innerStatement = innerStatement;
+  }
+
+  public PipeEnrichedStatement(final Statement innerStatement, final String originClusterId) {
+    statementType = StatementType.PIPE_ENRICHED;
+    this.innerStatement = innerStatement;
+    this.originClusterId = originClusterId;
   }
 
   public Statement getInnerStatement() {
@@ -48,6 +56,10 @@ public class PipeEnrichedStatement extends Statement {
 
   public void setInnerStatement(final Statement innerStatement) {
     this.innerStatement = innerStatement;
+  }
+
+  public String getOriginClusterId() {
+    return originClusterId;
   }
 
   @Override

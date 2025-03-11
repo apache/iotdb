@@ -82,6 +82,11 @@ public class PipeEnrichedNonWritePlanNode extends PlanNode {
   }
 
   @Override
+  public void setOriginClusterId(final String originClusterId) {
+    nonWritePlanNode.setOriginClusterId(originClusterId);
+  }
+
+  @Override
   public PlanNodeId getPlanNodeId() {
     return nonWritePlanNode.getPlanNodeId();
   }

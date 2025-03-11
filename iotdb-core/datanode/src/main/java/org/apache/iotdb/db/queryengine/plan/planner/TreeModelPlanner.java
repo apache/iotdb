@@ -142,8 +142,7 @@ public class TreeModelPlanner implements IPlanner {
                   syncInternalServiceClientManager,
                   partitionFetcher,
                   true,
-                  ((LoadTsFileStatement) ((PipeEnrichedStatement) statement).getInnerStatement())
-                      .getOriginClusterId())
+                  ((PipeEnrichedStatement) statement).getOriginClusterId())
               : new LoadTsFileScheduler(
                   distributedPlan,
                   context,

@@ -1419,6 +1419,7 @@ public class DataRegion implements IDataRegionForQuery {
               if (insertRowNode.isGeneratedByRemoteConsensusLeader()) {
                 v.markAsGeneratedByRemoteConsensusLeader();
               }
+              v.setOriginClusterId(insertRowsNode.getOriginClusterId());
             }
             if (v.isAligned() != insertRowNode.isAligned()) {
               v.setMixingAlignment(true);

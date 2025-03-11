@@ -63,6 +63,13 @@ public class PipeEnrichedInsertNode extends InsertNode {
     this.insertNode = insertNode;
   }
 
+  public PipeEnrichedInsertNode(final InsertNode insertNode, final String originClusterId) {
+    super(insertNode.getPlanNodeId());
+    this.insertNode = insertNode;
+    this.originClusterId = originClusterId;
+    insertNode.setOriginClusterId(originClusterId);
+  }
+
   public InsertNode getInsertNode() {
     return insertNode;
   }
@@ -75,6 +82,11 @@ public class PipeEnrichedInsertNode extends InsertNode {
   @Override
   public void markAsGeneratedByPipe() {
     insertNode.markAsGeneratedByPipe();
+  }
+
+  @Override
+  public void setOriginClusterId(final String originClusterId) {
+    insertNode.setOriginClusterId(originClusterId);
   }
 
   @Override

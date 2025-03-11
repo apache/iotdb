@@ -112,6 +112,13 @@ public class InsertMultiTabletsNode extends InsertNode {
     this.insertTabletNodeList = insertTabletNodeList;
   }
 
+  public InsertMultiTabletsNode(PlanNodeId id, String originClusterId) {
+    super(id);
+    parentInsertTabletNodeIndexList = new ArrayList<>();
+    insertTabletNodeList = new ArrayList<>();
+    this.originClusterId = originClusterId;
+  }
+
   public List<Integer> getParentInsertTabletNodeIndexList() {
     return parentInsertTabletNodeIndexList;
   }
@@ -151,7 +158,9 @@ public class InsertMultiTabletsNode extends InsertNode {
         if (tmpNode != null) {
           tmpNode.addInsertTabletNode((InsertTabletNode) subNode, i);
         } else {
-          tmpNode = new InsertMultiTabletsNode(this.getPlanNodeId());
+          tmpNode =
+              new InsertMultiTabletsNode(
+                  this.getPlanNodeId(), insertTabletNode.getOriginClusterId());
           tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
           tmpNode.addInsertTabletNode((InsertTabletNode) subNode, i);
           splitMap.put(dataRegionReplicaSet, tmpNode);
@@ -260,6 +269,12 @@ public class InsertMultiTabletsNode extends InsertNode {
   public void markAsGeneratedByRemoteConsensusLeader() {
     super.markAsGeneratedByRemoteConsensusLeader();
     insertTabletNodeList.forEach(InsertTabletNode::markAsGeneratedByRemoteConsensusLeader);
+  }
+
+  @Override
+  public void setOriginClusterId(final String originClusterId) {
+    this.originClusterId = originClusterId;
+    insertTabletNodeList.forEach(node -> node.setOriginClusterId(originClusterId));
   }
 
   @Override

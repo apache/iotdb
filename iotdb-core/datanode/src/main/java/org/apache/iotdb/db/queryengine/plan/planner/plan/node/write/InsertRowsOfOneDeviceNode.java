@@ -308,6 +308,12 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   }
 
   @Override
+  public void setOriginClusterId(final String originClusterId) {
+    this.originClusterId = originClusterId;
+    insertRowNodeList.forEach(insertRowNode -> insertRowNode.setOriginClusterId(originClusterId));
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;

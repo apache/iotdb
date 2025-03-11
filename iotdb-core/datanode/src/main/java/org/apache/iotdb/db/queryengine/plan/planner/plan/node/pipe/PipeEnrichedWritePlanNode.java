@@ -81,6 +81,13 @@ public class PipeEnrichedWritePlanNode extends WritePlanNode {
     this.writePlanNode = schemaWriteNode;
   }
 
+  public PipeEnrichedWritePlanNode(
+      final WritePlanNode schemaWriteNode, final String originClusterId) {
+    super(schemaWriteNode.getPlanNodeId());
+    this.writePlanNode = schemaWriteNode;
+    this.originClusterId = originClusterId;
+  }
+
   public WritePlanNode getWritePlanNode() {
     return writePlanNode;
   }

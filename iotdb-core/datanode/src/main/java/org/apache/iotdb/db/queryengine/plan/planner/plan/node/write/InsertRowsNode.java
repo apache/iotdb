@@ -73,6 +73,13 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
     insertRowNodeIndexList = new ArrayList<>();
   }
 
+  public InsertRowsNode(PlanNodeId id, String originClusterId) {
+    super(id);
+    insertRowNodeList = new ArrayList<>();
+    insertRowNodeIndexList = new ArrayList<>();
+    this.originClusterId = originClusterId;
+  }
+
   @Override
   public InsertNode mergeInsertNode(List<InsertNode> insertNodes) {
     List<InsertRowNode> list = new ArrayList<>();
@@ -262,6 +269,12 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
+  public void setOriginClusterId(final String originClusterId) {
+    this.originClusterId = originClusterId;
+    insertRowNodeList.forEach(insertRowNode -> insertRowNode.setOriginClusterId(originClusterId));
+  }
+
+  @Override
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     Map<TRegionReplicaSet, InsertRowsNode> splitMap = new HashMap<>();
     List<TEndPoint> redirectInfo = new ArrayList<>();
@@ -282,7 +295,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
       if (tmpNode != null) {
         tmpNode.addOneInsertRowNode(insertRowNode, i);
       } else {
-        tmpNode = new InsertRowsNode(this.getPlanNodeId());
+        tmpNode = new InsertRowsNode(this.getPlanNodeId(), insertRowNode.getOriginClusterId());
         tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
         tmpNode.addOneInsertRowNode(insertRowNode, i);
         splitMap.put(dataRegionReplicaSet, tmpNode);
