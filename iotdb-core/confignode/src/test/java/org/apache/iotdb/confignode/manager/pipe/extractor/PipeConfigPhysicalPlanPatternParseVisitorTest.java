@@ -331,7 +331,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
     Assert.assertEquals(
         Collections.singletonList(new PartialPath("root.db.device.s1")),
         PathPatternTree.deserialize(
-                ((PipeDeleteTimeSeriesPlan)
+                ((PipeDeleteLogicalViewPlan)
                         IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
                             .visitPipeDeleteLogicalView(
                                 new PipeDeleteLogicalViewPlan(patternTree.serialize()),
