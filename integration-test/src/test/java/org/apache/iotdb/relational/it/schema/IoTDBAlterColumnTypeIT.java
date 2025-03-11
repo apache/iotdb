@@ -571,7 +571,6 @@ public class IoTDBAlterColumnTypeIT {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
       session.executeNonQueryStatement(
           "CREATE TABLE IF NOT EXISTS concurrent_write_and_alter (s1 int32)");
-      session.executeNonQueryStatement("SET CONFIGURATION enable_seq_space_compaction='false'");
     }
 
     ExecutorService threadPool = Executors.newCachedThreadPool();

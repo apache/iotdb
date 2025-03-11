@@ -199,11 +199,11 @@ public class CompactionDataTypeAlterTest extends AbstractCompactionTest {
     Assert.assertEquals(
         1, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
     Assert.assertEquals(
-            2, ((long) tsFileManager.getTsFileList(true).get(0).getEndTime(device).get()));
+        2, ((long) tsFileManager.getTsFileList(true).get(0).getEndTime(device).get()));
     TsFileResource tsFileResource = tsFileManager.getTsFileList(true).get(0);
     try (TsFileSequenceReader reader =
-                 new TsFileSequenceReader(tsFileResource.getTsFile().getAbsolutePath());
-         TsFileReader readTsFile = new TsFileReader(reader)) {
+            new TsFileSequenceReader(tsFileResource.getTsFile().getAbsolutePath());
+        TsFileReader readTsFile = new TsFileReader(reader)) {
       ArrayList<Path> paths = new ArrayList<>();
       paths.add(new Path(device, "s1", true));
       paths.add(new Path(device, "s2", true));
@@ -229,11 +229,11 @@ public class CompactionDataTypeAlterTest extends AbstractCompactionTest {
     Assert.assertEquals(
         1, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
     Assert.assertEquals(
-            2, ((long) tsFileManager.getTsFileList(true).get(0).getEndTime(device).get()));
+        2, ((long) tsFileManager.getTsFileList(true).get(0).getEndTime(device).get()));
     TsFileResource tsFileResource = tsFileManager.getTsFileList(true).get(0);
     try (TsFileSequenceReader reader =
-                 new TsFileSequenceReader(tsFileResource.getTsFile().getAbsolutePath());
-         TsFileReader readTsFile = new TsFileReader(reader)) {
+            new TsFileSequenceReader(tsFileResource.getTsFile().getAbsolutePath());
+        TsFileReader readTsFile = new TsFileReader(reader)) {
       ArrayList<Path> paths = new ArrayList<>();
       paths.add(new Path(device, "s1", true));
       paths.add(new Path(device, "s2", true));
