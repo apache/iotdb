@@ -26,7 +26,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.db.utils.sort.DiskSpiller;
 
-import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -55,17 +54,6 @@ public abstract class SortOperator extends AbstractSortOperator {
       buildResult();
       TsBlock res = buildFinalResult(tsBlockBuilder);
       tsBlockBuilder.reset();
-      System.out.println("====== sort result ======= ");
-      for (int i = 0; i < res.getPositionCount(); i++) {
-        for (Column column : res.getValueColumns()) {
-          if (column.isNull(i)) {
-            System.out.print("null, ");
-          } else {
-            System.out.print(column.getObject(i) + ", ");
-          }
-        }
-        System.out.println();
-      }
       return res;
     }
     long startTime = System.nanoTime();
@@ -73,17 +61,6 @@ public abstract class SortOperator extends AbstractSortOperator {
       TsBlock tsBlock = inputOperator.nextWithTimer();
       if (tsBlock == null) {
         return null;
-      }
-      System.out.println("receive new tsBlock: " + tsBlock);
-      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-        for (Column column : tsBlock.getValueColumns()) {
-          if (column.isNull(i)) {
-            System.out.print("null, ");
-          } else {
-            System.out.print(column.getObject(i) + ", ");
-          }
-        }
-        System.out.println();
       }
       dataSize += tsBlock.getSizeInBytes();
       cacheTsBlock(tsBlock);
