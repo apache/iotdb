@@ -98,6 +98,19 @@ public class SetTemplateProcedure
     this.templateSetPath = templateSetPath;
   }
 
+  public SetTemplateProcedure(
+      final String queryId,
+      final String templateName,
+      final String templateSetPath,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
+    super(isGeneratedByPipe);
+    this.queryId = queryId;
+    this.templateName = templateName;
+    this.templateSetPath = templateSetPath;
+    this.originClusterId = originClusterId;
+  }
+
   @Override
   protected Flow executeFromState(final ConfigNodeProcedureEnv env, final SetTemplateState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
@@ -355,7 +368,7 @@ public class SetTemplateProcedure
               .getConsensusManager()
               .write(
                   isGeneratedByPipe
-                      ? new PipeEnrichedPlan(commitSetSchemaTemplatePlan)
+                      ? new PipeEnrichedPlan(commitSetSchemaTemplatePlan, originClusterId)
                       : commitSetSchemaTemplatePlan);
     } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
@@ -596,7 +609,8 @@ public class SetTemplateProcedure
         && Objects.equals(getCycles(), that.getCycles())
         && Objects.equals(isGeneratedByPipe, that.isGeneratedByPipe)
         && Objects.equals(templateName, that.templateName)
-        && Objects.equals(templateSetPath, that.templateSetPath);
+        && Objects.equals(templateSetPath, that.templateSetPath)
+        && Objects.equals(originClusterId, that.originClusterId);
   }
 
   @Override
@@ -607,6 +621,7 @@ public class SetTemplateProcedure
         getCycles(),
         isGeneratedByPipe,
         templateName,
-        templateSetPath);
+        templateSetPath,
+        originClusterId);
   }
 }

@@ -95,6 +95,16 @@ public class DeactivateTemplateProcedure
     setTemplateSetInfo(templateSetInfo);
   }
 
+  public DeactivateTemplateProcedure(
+      String queryId,
+      Map<PartialPath, List<Template>> templateSetInfo,
+      boolean isGeneratedByPipe,
+      String originClusterId) {
+    super(isGeneratedByPipe, originClusterId);
+    this.queryId = queryId;
+    setTemplateSetInfo(templateSetInfo);
+  }
+
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, DeactivateTemplateState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {

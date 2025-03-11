@@ -137,9 +137,10 @@ public class ConfigNodeProcedureEnv {
    * @param isGeneratedByPipe whether the deletion is triggered by pipe request
    * @return tsStatus
    */
-  public TSStatus deleteDatabaseConfig(final String name, final boolean isGeneratedByPipe) {
+  public TSStatus deleteDatabaseConfig(
+      final String name, final boolean isGeneratedByPipe, final String originClusterId) {
     return getClusterSchemaManager()
-        .deleteDatabase(new DeleteDatabasePlan(name), isGeneratedByPipe);
+        .deleteDatabase(new DeleteDatabasePlan(name), isGeneratedByPipe, originClusterId);
   }
 
   /**

@@ -432,12 +432,14 @@ struct TDeleteDataForDeleteSchemaReq {
   1: required list<common.TConsensusGroupId> dataRegionIdList
   2: required binary pathPatternTree
   3: optional bool isGeneratedByPipe
+  4: optional string originClusterId
 }
 
 struct TDeleteTimeSeriesReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
   3: optional bool isGeneratedByPipe
+  4: optional string originClusterId
 }
 
 struct TConstructSchemaBlackListWithTemplateReq {

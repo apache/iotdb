@@ -566,51 +566,67 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     Collections.singletonList(((DeleteDatabasePlan) plan).getName()))
                 .setIsGeneratedByPipe(true)
                 .setIsTableModel(
-                    PathUtils.isTableModelDatabase(((DeleteDatabasePlan) plan).getName())));
+                    PathUtils.isTableModelDatabase(((DeleteDatabasePlan) plan).getName()))
+                .setOriginClusterId(clusterIdFromHandshakeRequest));
       case ExtendSchemaTemplate:
         return configManager
             .getClusterSchemaManager()
-            .extendSchemaTemplate(((ExtendSchemaTemplatePlan) plan).getTemplateExtendInfo(), true);
+            .extendSchemaTemplate(
+                ((ExtendSchemaTemplatePlan) plan).getTemplateExtendInfo(),
+                true,
+                clusterIdFromHandshakeRequest);
       case CommitSetSchemaTemplate:
         return configManager.setSchemaTemplate(
             new TSetSchemaTemplateReq(
                     queryId,
                     ((CommitSetSchemaTemplatePlan) plan).getName(),
                     ((CommitSetSchemaTemplatePlan) plan).getPath())
-                .setIsGeneratedByPipe(true));
+                .setIsGeneratedByPipe(true)
+                .setOriginClusterId(clusterIdFromHandshakeRequest));
       case PipeUnsetTemplate:
         return configManager.unsetSchemaTemplate(
             new TUnsetSchemaTemplateReq(
                     queryId,
                     ((PipeUnsetSchemaTemplatePlan) plan).getName(),
                     ((PipeUnsetSchemaTemplatePlan) plan).getPath())
-                .setIsGeneratedByPipe(true));
+                .setIsGeneratedByPipe(true)
+                .setOriginClusterId(clusterIdFromHandshakeRequest));
       case PipeDeleteTimeSeries:
         return configManager.deleteTimeSeries(
             new TDeleteTimeSeriesReq(
                     queryId, ((PipeDeleteTimeSeriesPlan) plan).getPatternTreeBytes())
-                .setIsGeneratedByPipe(true));
+                .setIsGeneratedByPipe(true)
+                .setOriginClusterId(clusterIdFromHandshakeRequest));
       case PipeDeleteLogicalView:
         return configManager.deleteLogicalView(
             new TDeleteLogicalViewReq(
                     queryId, ((PipeDeleteLogicalViewPlan) plan).getPatternTreeBytes())
-                .setIsGeneratedByPipe(true));
+                .setIsGeneratedByPipe(true)
+                .setOriginClusterId(clusterIdFromHandshakeRequest));
       case PipeDeactivateTemplate:
         return configManager
             .getProcedureManager()
             .deactivateTemplate(
-                queryId, ((PipeDeactivateTemplatePlan) plan).getTemplateSetInfo(), true);
+                queryId,
+                ((PipeDeactivateTemplatePlan) plan).getTemplateSetInfo(),
+                true,
+                clusterIdFromHandshakeRequest);
       case UpdateTriggerStateInTable:
         // TODO: Record complete message in trigger
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       case DeleteTriggerInTable:
         return configManager.dropTrigger(
             new TDropTriggerReq(((DeleteTriggerInTablePlan) plan).getTriggerName())
-                .setIsGeneratedByPipe(true));
+                .setIsGeneratedByPipe(true)
+                .setOriginClusterId(clusterIdFromHandshakeRequest));
       case SetTTL:
         return ((SetTTLPlan) plan).getTTL() == TTLCache.NULL_TTL
-            ? configManager.getTTLManager().unsetTTL((SetTTLPlan) plan, true)
-            : configManager.getTTLManager().setTTL((SetTTLPlan) plan, true);
+            ? configManager
+                .getTTLManager()
+                .unsetTTL((SetTTLPlan) plan, true, clusterIdFromHandshakeRequest)
+            : configManager
+                .getTTLManager()
+                .setTTL((SetTTLPlan) plan, true, clusterIdFromHandshakeRequest);
       case PipeCreateTable:
         return executeIdempotentCreateTable((PipeCreateTablePlan) plan, queryId);
       case AddTableColumn:
@@ -627,7 +643,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((AddTableColumnPlan) plan).getTableName(),
                     queryId,
                     ((AddTableColumnPlan) plan).getColumnSchemaList(),
-                    true));
+                    true,
+                    clusterIdFromHandshakeRequest));
       case SetTableProperties:
         return configManager
             .getProcedureManager()
@@ -780,7 +797,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                 table.getTableName(),
                 queryId,
                 ProcedureType.CREATE_TABLE_PROCEDURE,
-                new CreateTableProcedure(database, table, true));
+                new CreateTableProcedure(database, table, true, clusterIdFromHandshakeRequest));
     if (result.getCode() == TSStatusCode.TABLE_ALREADY_EXISTS.getStatusCode()) {
       // If the table already exists, we shall add the sender table's columns to the
       // receiver's table, inner procedure guaranteeing that the columns existing at the

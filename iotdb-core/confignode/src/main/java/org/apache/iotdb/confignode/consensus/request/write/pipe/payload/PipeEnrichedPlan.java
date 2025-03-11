@@ -31,7 +31,7 @@ public class PipeEnrichedPlan extends ConfigPhysicalPlan {
 
   private ConfigPhysicalPlan innerPlan;
 
-  private String originClusterIds;
+  private String originClusterId;
 
   public PipeEnrichedPlan() {
     super(ConfigPhysicalPlanType.PipeEnriched);
@@ -42,18 +42,18 @@ public class PipeEnrichedPlan extends ConfigPhysicalPlan {
     this.innerPlan = innerPlan;
   }
 
-  public PipeEnrichedPlan(ConfigPhysicalPlan innerPlan, String originClusterIds) {
+  public PipeEnrichedPlan(ConfigPhysicalPlan innerPlan, String originClusterId) {
     super(ConfigPhysicalPlanType.PipeEnriched);
     this.innerPlan = innerPlan;
-    this.originClusterIds = originClusterIds;
+    this.originClusterId = originClusterId;
   }
 
   public ConfigPhysicalPlan getInnerPlan() {
     return innerPlan;
   }
 
-  public String getOriginClusterIds() {
-    return originClusterIds;
+  public String getOriginClusterId() {
+    return originClusterId;
   }
 
   @Override
@@ -61,11 +61,27 @@ public class PipeEnrichedPlan extends ConfigPhysicalPlan {
     stream.writeShort(getType().getPlanType());
     ByteBuffer buffer = innerPlan.serializeToByteBuffer();
     stream.write(buffer.array(), 0, buffer.limit());
+
+    if (originClusterId == null) {
+      stream.writeBoolean(false);
+    } else {
+      stream.writeBoolean(true);
+      stream.writeUTF(originClusterId);
+    }
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     innerPlan = ConfigPhysicalPlan.Factory.create(buffer);
+
+    if (buffer.hasRemaining() && buffer.get() == 1) { // Read boolean
+      int strLength = buffer.getShort();
+      byte[] bytes = new byte[strLength];
+      buffer.get(bytes);
+      originClusterId = new String(bytes);
+    } else {
+      originClusterId = null;
+    }
   }
 
   @Override

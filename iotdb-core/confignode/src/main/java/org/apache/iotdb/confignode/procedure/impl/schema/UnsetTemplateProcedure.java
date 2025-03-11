@@ -81,6 +81,18 @@ public class UnsetTemplateProcedure
     this.path = path;
   }
 
+  public UnsetTemplateProcedure(
+      String queryId,
+      Template template,
+      PartialPath path,
+      boolean isGeneratedByPipe,
+      String originClusterId) {
+    super(isGeneratedByPipe, originClusterId);
+    this.queryId = queryId;
+    this.template = template;
+    this.path = path;
+  }
+
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, UnsetTemplateState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
@@ -196,7 +208,8 @@ public class UnsetTemplateProcedure
     TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .unsetSchemaTemplateInBlackList(template.getId(), path, isGeneratedByPipe);
+            .unsetSchemaTemplateInBlackList(
+                template.getId(), path, isGeneratedByPipe, originClusterId);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(UnsetTemplateState.CLEAN_DATANODE_TEMPLATE_CACHE);
     } else {
@@ -364,12 +377,20 @@ public class UnsetTemplateProcedure
         && Objects.equals(isGeneratedByPipe, that.isGeneratedByPipe)
         && Objects.equals(queryId, that.queryId)
         && Objects.equals(template, that.template)
-        && Objects.equals(path, that.path);
+        && Objects.equals(path, that.path)
+        && Objects.equals(originClusterId, that.originClusterId);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, queryId, template, path);
+        getProcId(),
+        getCurrentState(),
+        getCycles(),
+        isGeneratedByPipe,
+        queryId,
+        template,
+        path,
+        originClusterId);
   }
 }

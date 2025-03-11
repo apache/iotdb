@@ -63,6 +63,17 @@ public class AddTableColumnProcedure
     this.addedColumnList = addedColumnList;
   }
 
+  public AddTableColumnProcedure(
+      final String database,
+      final String tableName,
+      final String queryId,
+      final List<TsTableColumnSchema> addedColumnList,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
+    super(database, tableName, queryId, isGeneratedByPipe, originClusterId);
+    this.addedColumnList = addedColumnList;
+  }
+
   @Override
   protected Flow executeFromState(final ConfigNodeProcedureEnv env, final AddTableColumnState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
@@ -129,7 +140,8 @@ public class AddTableColumnProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .addTableColumn(database, tableName, addedColumnList, isGeneratedByPipe);
+            .addTableColumn(
+                database, tableName, addedColumnList, isGeneratedByPipe, originClusterId);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     } else {

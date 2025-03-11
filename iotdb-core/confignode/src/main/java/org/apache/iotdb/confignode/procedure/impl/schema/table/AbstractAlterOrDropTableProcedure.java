@@ -73,6 +73,18 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
     this.queryId = queryId;
   }
 
+  protected AbstractAlterOrDropTableProcedure(
+      final String database,
+      final String tableName,
+      final String queryId,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
+    super(isGeneratedByPipe, originClusterId);
+    this.database = database;
+    this.tableName = tableName;
+    this.queryId = queryId;
+  }
+
   public String getDatabase() {
     return database;
   }

@@ -136,7 +136,9 @@ public class TriggerManager {
     return configManager
         .getProcedureManager()
         .dropTrigger(
-            req.getTriggerName(), req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
+            req.getTriggerName(),
+            req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe(),
+            req.getOriginClusterId());
   }
 
   public TGetTriggerTableResp getTriggerTable(boolean onlyStateful) {

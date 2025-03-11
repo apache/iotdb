@@ -57,6 +57,12 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
     this.triggerName = triggerName;
   }
 
+  public DropTriggerProcedure(
+      String triggerName, boolean isGeneratedByPipe, String originClusterId) {
+    super(isGeneratedByPipe, originClusterId);
+    this.triggerName = triggerName;
+  }
+
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, DropTriggerState state) {
     if (triggerName == null) {

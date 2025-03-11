@@ -1003,6 +1003,7 @@ struct TDeactivateSchemaTemplateReq {
   2: required binary pathPatternTree
   3: optional string templateName
   4: optional bool isGeneratedByPipe
+  5: optional string originClusterId
 }
 
 struct TUnsetSchemaTemplateReq {
@@ -1010,7 +1011,7 @@ struct TUnsetSchemaTemplateReq {
   2: required string templateName
   3: required string path
   4: optional bool isGeneratedByPipe
-  5: optional String originClusterId
+  5: optional string originClusterId
 }
 
 struct TCreateModelReq {

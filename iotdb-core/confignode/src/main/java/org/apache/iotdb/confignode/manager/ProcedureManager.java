@@ -246,7 +246,9 @@ public class ProcedureManager {
   }
 
   public TSStatus deleteDatabases(
-      final List<TDatabaseSchema> deleteSgSchemaList, final boolean isGeneratedByPipe) {
+      final List<TDatabaseSchema> deleteSgSchemaList,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
     final List<DeleteDatabaseProcedure> procedures = new ArrayList<>();
     final long startCheckTimeForProcedures = System.currentTimeMillis();
     for (final TDatabaseSchema databaseSchema : deleteSgSchemaList) {
@@ -262,7 +264,7 @@ public class ProcedureManager {
 
           if (Boolean.FALSE.equals(procedureIdDuplicatePair.getRight())) {
             DeleteDatabaseProcedure procedure =
-                new DeleteDatabaseProcedure(databaseSchema, isGeneratedByPipe);
+                new DeleteDatabaseProcedure(databaseSchema, isGeneratedByPipe, originClusterId);
             this.executor.submitProcedure(procedure);
             procedures.add(procedure);
             break;
@@ -296,7 +298,10 @@ public class ProcedureManager {
   }
 
   public TSStatus deleteTimeSeries(
-      String queryId, PathPatternTree patternTree, boolean isGeneratedByPipe) {
+      String queryId,
+      PathPatternTree patternTree,
+      boolean isGeneratedByPipe,
+      String originClusterId) {
     DeleteTimeSeriesProcedure procedure = null;
     synchronized (this) {
       boolean hasOverlappedTask = false;
@@ -324,7 +329,8 @@ public class ProcedureManager {
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
               "Some other task is deleting some target timeseries.");
         }
-        procedure = new DeleteTimeSeriesProcedure(queryId, patternTree, isGeneratedByPipe);
+        procedure =
+            new DeleteTimeSeriesProcedure(queryId, patternTree, isGeneratedByPipe, originClusterId);
         this.executor.submitProcedure(procedure);
       }
     }
@@ -364,7 +370,10 @@ public class ProcedureManager {
         }
         procedure =
             new DeleteLogicalViewProcedure(
-                queryId, patternTree, req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
+                queryId,
+                patternTree,
+                req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe(),
+                req.getOriginClusterId());
         this.executor.submitProcedure(procedure);
       }
     }
@@ -413,7 +422,11 @@ public class ProcedureManager {
   }
 
   public TSStatus setSchemaTemplate(
-      String queryId, String templateName, String templateSetPath, boolean isGeneratedByPipe) {
+      String queryId,
+      String templateName,
+      String templateSetPath,
+      boolean isGeneratedByPipe,
+      String originClusterId) {
     SetTemplateProcedure procedure = null;
     synchronized (this) {
       boolean hasOverlappedTask = false;
@@ -442,7 +455,8 @@ public class ProcedureManager {
               "Some other task is setting template on target path.");
         }
         procedure =
-            new SetTemplateProcedure(queryId, templateName, templateSetPath, isGeneratedByPipe);
+            new SetTemplateProcedure(
+                queryId, templateName, templateSetPath, isGeneratedByPipe, originClusterId);
         this.executor.submitProcedure(procedure);
       }
     }
@@ -450,7 +464,10 @@ public class ProcedureManager {
   }
 
   public TSStatus deactivateTemplate(
-      String queryId, Map<PartialPath, List<Template>> templateSetInfo, boolean isGeneratedByPipe) {
+      String queryId,
+      Map<PartialPath, List<Template>> templateSetInfo,
+      boolean isGeneratedByPipe,
+      String originClusterId) {
     DeactivateTemplateProcedure procedure = null;
     synchronized (this) {
       boolean hasOverlappedTask = false;
@@ -489,7 +506,9 @@ public class ProcedureManager {
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
               "Some other task is deactivating some target template from target path.");
         }
-        procedure = new DeactivateTemplateProcedure(queryId, templateSetInfo, isGeneratedByPipe);
+        procedure =
+            new DeactivateTemplateProcedure(
+                queryId, templateSetInfo, isGeneratedByPipe, originClusterId);
         this.executor.submitProcedure(procedure);
       }
     }
@@ -497,7 +516,11 @@ public class ProcedureManager {
   }
 
   public TSStatus unsetSchemaTemplate(
-      String queryId, Template template, PartialPath path, boolean isGeneratedByPipe) {
+      String queryId,
+      Template template,
+      PartialPath path,
+      boolean isGeneratedByPipe,
+      String originClusterId) {
     UnsetTemplateProcedure procedure = null;
     synchronized (this) {
       boolean hasOverlappedTask = false;
@@ -527,7 +550,8 @@ public class ProcedureManager {
               "Some other task is unsetting target template from target path "
                   + path.getFullPath());
         }
-        procedure = new UnsetTemplateProcedure(queryId, template, path, isGeneratedByPipe);
+        procedure =
+            new UnsetTemplateProcedure(queryId, template, path, isGeneratedByPipe, originClusterId);
         this.executor.submitProcedure(procedure);
       }
     }
@@ -1259,8 +1283,10 @@ public class ProcedureManager {
    * @return {@link TSStatusCode#SUCCESS_STATUS} if the trigger has been dropped successfully,
    *     {@link TSStatusCode#DROP_TRIGGER_ERROR} otherwise
    */
-  public TSStatus dropTrigger(String triggerName, boolean isGeneratedByPipe) {
-    DropTriggerProcedure procedure = new DropTriggerProcedure(triggerName, isGeneratedByPipe);
+  public TSStatus dropTrigger(
+      String triggerName, boolean isGeneratedByPipe, String originClusterId) {
+    DropTriggerProcedure procedure =
+        new DropTriggerProcedure(triggerName, isGeneratedByPipe, originClusterId);
     executor.submitProcedure(procedure);
     TSStatus status = waitingProcedureFinished(procedure);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -1691,6 +1717,14 @@ public class ProcedureManager {
 
   public TSStatus setTTL(SetTTLPlan setTTLPlan, final boolean isGeneratedByPipe) {
     SetTTLProcedure procedure = new SetTTLProcedure(setTTLPlan, isGeneratedByPipe);
+    executor.submitProcedure(procedure);
+    return waitingProcedureFinished(procedure);
+  }
+
+  public TSStatus setTTL(
+      SetTTLPlan setTTLPlan, final boolean isGeneratedByPipe, final String originalClusterId) {
+    SetTTLProcedure procedure =
+        new SetTTLProcedure(setTTLPlan, isGeneratedByPipe, originalClusterId);
     executor.submitProcedure(procedure);
     return waitingProcedureFinished(procedure);
   }

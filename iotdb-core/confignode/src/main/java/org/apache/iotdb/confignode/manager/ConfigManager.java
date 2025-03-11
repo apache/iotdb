@@ -651,9 +651,9 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       if (setTTLPlan.getTTL() == TTLCache.NULL_TTL) {
-        return ttlManager.unsetTTL(setTTLPlan, false);
+        return ttlManager.unsetTTL(setTTLPlan, false, null);
       } else {
-        return ttlManager.setTTL(setTTLPlan, false);
+        return ttlManager.setTTL(setTTLPlan, false, null);
       }
     } else {
       return status;
@@ -768,7 +768,8 @@ public class ConfigManager implements IManager {
 
       return procedureManager.deleteDatabases(
           new ArrayList<>(deleteDatabaseSchemaMap.values()),
-          tDeleteReq.isSetIsGeneratedByPipe() && tDeleteReq.isIsGeneratedByPipe());
+          tDeleteReq.isSetIsGeneratedByPipe() && tDeleteReq.isIsGeneratedByPipe(),
+          tDeleteReq.isSetOriginClusterId() ? tDeleteReq.getOriginClusterId() : null);
     } else {
       return status;
     }
@@ -1970,7 +1971,8 @@ public class ConfigManager implements IManager {
           req.getQueryId(),
           req.getName(),
           req.getPath(),
-          req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
+          req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe(),
+          req.getOriginClusterId());
     } else {
       return status;
     }
@@ -2041,7 +2043,8 @@ public class ConfigManager implements IManager {
     return procedureManager.deactivateTemplate(
         req.getQueryId(),
         templateSetInfo,
-        req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
+        req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe(),
+        req.getOriginClusterId());
   }
 
   @Override
@@ -2058,7 +2061,8 @@ public class ConfigManager implements IManager {
             req.getQueryId(),
             checkResult.right,
             new PartialPath(req.getPath()),
-            req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
+            req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe(),
+            req.getOriginClusterId());
       } catch (IllegalPathException e) {
         return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
       }
@@ -2086,7 +2090,7 @@ public class ConfigManager implements IManager {
           TemplateAlterOperationUtil.parseOperationType(buffer);
       if (operationType.equals(TemplateAlterOperationType.EXTEND_TEMPLATE)) {
         return clusterSchemaManager.extendSchemaTemplate(
-            TemplateAlterOperationUtil.parseTemplateExtendInfo(buffer), false);
+            TemplateAlterOperationUtil.parseTemplateExtendInfo(buffer), false, null);
       }
       return RpcUtils.getStatus(TSStatusCode.UNSUPPORTED_OPERATION);
     } else {
@@ -2102,6 +2106,7 @@ public class ConfigManager implements IManager {
       PathPatternTree rawPatternTree =
           PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
       boolean isGeneratedByPipe = req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe();
+      String originClusterId = req.getOriginClusterId();
       /**
        * If delete pattern is prefix path (such as root.db.**), it may be optimized to delete
        * database plus create database. We need to determine two conditions: whether the pattern
@@ -2126,7 +2131,8 @@ public class ConfigManager implements IManager {
         deleteTimeSeriesPatternPaths.add(path);
       }
       if (!canOptimize) {
-        return procedureManager.deleteTimeSeries(queryId, rawPatternTree, isGeneratedByPipe);
+        return procedureManager.deleteTimeSeries(
+            queryId, rawPatternTree, isGeneratedByPipe, originClusterId);
       }
       // check if the database is using template
       try {
@@ -2143,14 +2149,14 @@ public class ConfigManager implements IManager {
         deleteTimeSeriesPatternTree.constructTree();
         status =
             procedureManager.deleteTimeSeries(
-                queryId, deleteTimeSeriesPatternTree, isGeneratedByPipe);
+                queryId, deleteTimeSeriesPatternTree, isGeneratedByPipe, originClusterId);
       }
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // 2. delete database
         List<TSStatus> failedStatus = new ArrayList<>();
         status =
             procedureManager.deleteDatabases(
-                new ArrayList<>(deleteDatabaseSchemas), isGeneratedByPipe);
+                new ArrayList<>(deleteDatabaseSchemas), isGeneratedByPipe, originClusterId);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           failedStatus.add(status);
         }
@@ -2160,7 +2166,7 @@ public class ConfigManager implements IManager {
               clusterSchemaManager.setDatabase(
                   new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema),
                   isGeneratedByPipe,
-                  null);
+                  originClusterId);
           if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             failedStatus.add(status);
           }

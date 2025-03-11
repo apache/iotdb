@@ -64,6 +64,8 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   /** Mark whether this procedure is called by a pipe forwarded request. */
   protected boolean isGeneratedByPipe;
 
+  protected String originClusterId;
+
   private boolean isStateDeserialized = false;
 
   protected StateMachineProcedure() {
@@ -72,6 +74,11 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
 
   protected StateMachineProcedure(final boolean isGeneratedByPipe) {
     this.isGeneratedByPipe = isGeneratedByPipe;
+  }
+
+  protected StateMachineProcedure(final boolean isGeneratedByPipe, final String originClusterId) {
+    this.isGeneratedByPipe = isGeneratedByPipe;
+    this.originClusterId = originClusterId;
   }
 
   public enum Flow {
@@ -275,6 +282,13 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
     for (int state : states) {
       stream.writeInt(state);
     }
+
+    if (originClusterId == null) {
+      stream.writeBoolean(false);
+    } else {
+      stream.writeBoolean(true);
+      stream.writeUTF(originClusterId);
+    }
   }
 
   @Override
@@ -291,6 +305,17 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
       }
     }
     this.setStateDeserialized(true);
+    if (byteBuffer.hasRemaining()) {
+      boolean hasClusterId = byteBuffer.get() != 0;
+      if (hasClusterId) {
+        int strLength = byteBuffer.getShort();
+        byte[] bytes = new byte[strLength];
+        byteBuffer.get(bytes);
+        originClusterId = new String(bytes);
+      } else {
+        originClusterId = null;
+      }
+    }
   }
 
   /**

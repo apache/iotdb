@@ -89,6 +89,16 @@ public class DeleteLogicalViewProcedure
     setPatternTree(patternTree);
   }
 
+  public DeleteLogicalViewProcedure(
+      final String queryId,
+      final PathPatternTree patternTree,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
+    super(isGeneratedByPipe, originClusterId);
+    this.queryId = queryId;
+    setPatternTree(patternTree);
+  }
+
   @Override
   protected Flow executeFromState(
       final ConfigNodeProcedureEnv env, final DeleteLogicalViewState state)

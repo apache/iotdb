@@ -39,6 +39,10 @@ public abstract class AbstractNodeProcedure<TState>
     super(isGeneratedByPipe);
   }
 
+  protected AbstractNodeProcedure(final boolean isGeneratedByPipe, final String originClusterId) {
+    super(isGeneratedByPipe, originClusterId);
+  }
+
   @Override
   protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
     configNodeProcedureEnv.getSchedulerLock().lock();

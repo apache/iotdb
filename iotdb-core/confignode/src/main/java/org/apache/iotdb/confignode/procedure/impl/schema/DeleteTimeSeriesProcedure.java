@@ -94,6 +94,16 @@ public class DeleteTimeSeriesProcedure
     setPatternTree(patternTree);
   }
 
+  public DeleteTimeSeriesProcedure(
+      final String queryId,
+      final PathPatternTree patternTree,
+      final boolean isGeneratedByPipe,
+      final String originClusterId) {
+    super(isGeneratedByPipe, originClusterId);
+    this.queryId = queryId;
+    setPatternTree(patternTree);
+  }
+
   @Override
   protected Flow executeFromState(
       final ConfigNodeProcedureEnv env, final DeleteTimeSeriesState state)
@@ -278,7 +288,8 @@ public class DeleteTimeSeriesProcedure
               .getConsensusManager()
               .write(
                   isGeneratedByPipe
-                      ? new PipeEnrichedPlan(new PipeDeleteTimeSeriesPlan(patternTreeBytes))
+                      ? new PipeEnrichedPlan(
+                          new PipeDeleteTimeSeriesPlan(patternTreeBytes), originClusterId)
                       : new PipeDeleteTimeSeriesPlan(patternTreeBytes));
     } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
@@ -385,13 +396,19 @@ public class DeleteTimeSeriesProcedure
         && this.getCurrentState().equals(that.getCurrentState())
         && this.getCycles() == getCycles()
         && this.isGeneratedByPipe == that.isGeneratedByPipe
-        && this.patternTree.equals(that.patternTree);
+        && this.patternTree.equals(that.patternTree)
+        && Objects.equals(this.originClusterId, that.originClusterId);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, patternTree);
+        getProcId(),
+        getCurrentState(),
+        getCycles(),
+        isGeneratedByPipe,
+        patternTree,
+        originClusterId);
   }
 
   private class DeleteTimeSeriesRegionTaskExecutor<Q>
