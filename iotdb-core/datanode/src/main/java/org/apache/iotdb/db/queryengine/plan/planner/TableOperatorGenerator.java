@@ -599,6 +599,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   }
 
   private ImmutableMap<Symbol, Integer> makeLayoutFromOutputSymbols(List<Symbol> outputSymbols) {
+    if (outputSymbols == null) {
+      return ImmutableMap.of();
+    }
     ImmutableMap.Builder<Symbol, Integer> outputMappings = ImmutableMap.builder();
     int channel = 0;
     for (Symbol symbol : outputSymbols) {
