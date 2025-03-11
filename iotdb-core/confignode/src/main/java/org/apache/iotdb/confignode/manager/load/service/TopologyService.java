@@ -174,6 +174,7 @@ public class TopologyService {
     }
 
     // 4. use failure detector to identify potential network partitions
+    boolean partitionDetected = false;
     final Map<Integer, Set<Integer>> latestTopology =
         dataNodeLocations.stream()
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, k -> new HashSet<>()));
@@ -183,12 +184,15 @@ public class TopologyService {
       final int toId = entry.getKey().getRight();
       if (!entry.getValue().isEmpty() && !failureDetector.isAvailable(entry.getValue())) {
         LOGGER.info("Connection from DataNode {} to DataNode {} is broken", fromId, toId);
+        partitionDetected = true;
       } else {
         latestTopology.get(fromId).add(toId);
       }
     }
 
     // 5. notify the listeners on topology change
-    topologyChangeListener.accept(latestTopology);
+    if (partitionDetected) {
+      topologyChangeListener.accept(latestTopology);
+    }
   }
 }
