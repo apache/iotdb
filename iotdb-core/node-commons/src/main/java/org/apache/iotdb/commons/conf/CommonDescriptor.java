@@ -496,6 +496,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_receiver_login_periodic_verification_interval_ms",
                 Long.toString(config.getPipeReceiverLoginPeriodicVerificationIntervalMs()))));
+    config.setPipeReceiverInsertNodeMemoryExpandRatio(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_receiver_insert_node_memory_expand_ratio",
+                Double.toString(config.getPipeReceiverInsertNodeMemoryExpandRatio()))));
 
     config.setPipeMaxAllowedHistoricalTsFilePerDataRegion(
         Integer.parseInt(
