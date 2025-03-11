@@ -122,6 +122,7 @@ public class PartitionRecognizer {
     if (PartitionState.NEED_MORE_DATA_STATE.equals(state)) {
       currentIndex = 0;
     }
+    System.out.println("====== PartitionRecognizer update state: " + state.getStateType());
   }
 
   private PartitionState handleInitState() {
